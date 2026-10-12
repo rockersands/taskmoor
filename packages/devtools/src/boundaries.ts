@@ -56,6 +56,7 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
         '\\.test\\.tsx?$',
         '^packages/testkit/',
         '^packages/devtools/',
+        '^packages/spikes/',
         '/testing\\.ts$',
         '^apps/web/src/test/',
       ],

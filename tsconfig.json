@@ -11,6 +11,9 @@
       "path": "packages/devtools"
     },
     {
+      "path": "packages/spikes"
+    },
+    {
       "path": "apps/server"
     },
     {

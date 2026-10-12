@@ -28,6 +28,16 @@ export default class VerifyReporter {
       }
       const errors = mod.errors();
       if (errors.length > 0) summary.fileErrors.push({ file, errors: errors.map(describe) });
+      // A failing beforeAll/afterAll lands on the suite, not on its (skipped) tests.
+      for (const suite of mod.children.allSuites()) {
+        const suiteErrors = suite.errors();
+        if (suiteErrors.length > 0) {
+          summary.fileErrors.push({
+            file: `${file} > ${suite.fullName}`,
+            errors: suiteErrors.map(describe),
+          });
+        }
+      }
     }
 
     summary.unhandled = unhandledErrors.map(describe);

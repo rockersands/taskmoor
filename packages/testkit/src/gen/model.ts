@@ -80,6 +80,13 @@ export interface GenConfig {
   end: Date;
 }
 
+/** Short size label for names: 1000 -> 1k, 1000000 -> 1m, 2500000 -> 2500k, 12 -> 12. */
+export function sizeLabel(n: number): string {
+  if (n % 1_000_000 === 0) return `${n / 1_000_000}m`;
+  if (n % 1_000 === 0) return `${n / 1_000}k`;
+  return String(n);
+}
+
 /** Sensible proportions for a given item count, matching the 1M, 10M and 30M benchmark tiers. */
 export function scaleConfig(items: number, overrides: Partial<GenConfig> = {}): GenConfig {
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.round(v)));

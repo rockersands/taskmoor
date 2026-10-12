@@ -1,0 +1,18 @@
+{
+  "name": "@tracksmith/spikes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Architecture spikes: throwaway benchmarks whose measured results feed the ADRs.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tracksmith/testkit": "workspace:*",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

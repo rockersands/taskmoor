@@ -11,7 +11,7 @@
     "./golden": "./src/golden.ts",
     "./property": "./src/property.ts",
     "./gen": "./src/gen/index.ts",
-    "./server": "./src/pg/server.ts"
+    "./server": "./src/pg/bench.ts"
   },
   "dependencies": {
     "embedded-postgres": "16.14.0-beta.17",
