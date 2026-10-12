@@ -44,7 +44,8 @@ COPY --from=builder /src/apps/server/dist/ ./
 COPY --from=builder /src/apps/web/dist/ ./web/
 COPY LICENSE ./
 USER node
-EXPOSE 8080
+# 8080 serves the app; 9464 is the internal Prometheus endpoint (ADR-023).
+EXPOSE 8080 9464
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8080)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "server.mjs"]

@@ -57,3 +57,27 @@ Scheduled backups come with M1.
 
 The Builder (M1) generates these files with fresh secrets and a reverse proxy with HTTPS; until
 then, copy the examples and fill them by hand.
+
+## Monitoring
+
+Each process serves Prometheus metrics on an internal port, `9464` by default (`METRICS_PORT`,
+`0` turns it off; `METRICS_HOST` picks the address). The Compose kits do not publish it: a
+Prometheus on the same Docker network scrapes `tracksmith:9464/metrics`. The metrics cover
+request latency per route (`tracksmith_http_request_duration_seconds`), statement latency
+(`tracksmith_db_query_duration_seconds`), the database pool
+(`tracksmith_db_pool_connections`), the age of the last backup
+(`tracksmith_backup_age_seconds`), the version and roles (`tracksmith_build_info`) and the
+usual process metrics.
+`observability/` has an example Prometheus configuration (`prometheus.yml`), alert rules
+(`alerts.yml`: instance down, server errors, slow requests and statements, a queueing database
+pool, an old or missing backup) and a Grafana dashboard (`grafana-dashboard.json`).
+
+Traces are off unless an OpenTelemetry collector is configured with the standard variables
+(`OTEL_EXPORTER_OTLP_ENDPOINT`, or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, plus
+`OTEL_EXPORTER_OTLP_HEADERS` and `OTEL_SERVICE_NAME` if needed). Each request becomes a server
+span that continues an incoming `traceparent`, with one child span per database statement (its
+SQL text, never its parameters). Nothing leaves the server by default.
+
+Site administrators see the same picture in the app under Settings, System status: version and
+uptime, database connection, size, migrations and pool, free disk space, the last backup, and
+the runtime.

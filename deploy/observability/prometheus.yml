@@ -1,0 +1,15 @@
+# Example Prometheus configuration for a Compose install (ADR-023, OPS-011). Run Prometheus on
+# the same Docker network as the kit and it reaches the backend by its service name. With
+# several processes (one per role), list each one as a target.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: tracksmith
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["tracksmith:9464"]

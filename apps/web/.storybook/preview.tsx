@@ -2,6 +2,8 @@ import type { Preview } from '@storybook/react-vite';
 import { I18nProvider } from '../src/i18n/I18nProvider';
 import '../src/styles/tokens.css';
 import '../src/styles/shell.css';
+import '../src/styles/forms.css';
+import '../src/styles/admin.css';
 
 const preview: Preview = {
   parameters: {

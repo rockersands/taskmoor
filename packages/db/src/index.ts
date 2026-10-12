@@ -1,4 +1,4 @@
-export { createDb, type DbOptions } from './client';
+export { createDb, type DbOptions, type PoolStats, poolStats, type QueryEvent } from './client';
 export {
   knownMigrations,
   MIGRATION_LOCK_TABLE,

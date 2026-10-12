@@ -1,8 +1,10 @@
 import { useMemo, useSyncExternalStore } from 'react';
+import { SettingsPage } from './admin/SettingsPage';
+import { SystemPage } from './admin/SystemPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { RequireSession } from './session/RequireSession';
-import { type Session, SessionProvider } from './session/SessionProvider';
+import { type Session, SessionProvider, useSession } from './session/SessionProvider';
 import { SetupPage } from './setup/SetupPage';
 import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
@@ -49,21 +51,40 @@ function routeFromHash(hash: string, fallback: string): string {
   return NAV_ITEMS.some((item) => item.id === id) && id ? id : fallback;
 }
 
+/** Pages below Settings that have their own route. */
+const ADMIN_SYSTEM = '#/admin/system';
+
 function Pages() {
   const t = useT();
   const hash = useHash();
-  const active = routeFromHash(hash, 'home');
+  const system = hash.startsWith(ADMIN_SYSTEM);
+  const active = system ? 'settings' : routeFromHash(hash, 'home');
   const page = NAV_ITEMS.find((item) => item.id === active);
+  const { session } = useSession();
+  const admin = session.status === 'signed-in' && session.user.isSiteAdmin;
   const commands = useMemo<Command[]>(
-    () =>
-      NAV_ITEMS.map((item) => ({
+    () => [
+      ...NAV_ITEMS.map((item) => ({
         id: `go-${item.id}`,
         labelId: item.labelId,
         run: () => {
           window.location.hash = item.href;
         },
       })),
-    [],
+      // Administration commands are offered to site administrators only.
+      ...(admin
+        ? [
+            {
+              id: 'go-system',
+              labelId: 'admin.system.title' as const,
+              run: () => {
+                window.location.hash = ADMIN_SYSTEM;
+              },
+            },
+          ]
+        : []),
+    ],
+    [admin],
   );
 
   // First-run setup stands alone: no shell until there is an administrator.
@@ -77,7 +98,11 @@ function Pages() {
     );
   }
 
-  const content = (
+  const content = system ? (
+    <SystemPage />
+  ) : active === 'settings' ? (
+    <SettingsPage />
+  ) : (
     <>
       <h1 className="page-title">{page ? t(page.labelId) : ''}</h1>
       <p className="page-note">{t('page.underConstruction')}</p>

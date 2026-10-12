@@ -2,11 +2,14 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
+import type { Tracer } from '@opentelemetry/api';
 import type { Database } from '@tracksmith/db';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { resolveSession, SESSION_COOKIE } from './auth';
 import type { Role, ServerConfig } from './config';
+import { instrumentApp, type Metrics } from './observability';
+import { registerAdminRoutes } from './routes/admin';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 
@@ -21,6 +24,14 @@ export interface AppDeps {
   webDir?: string;
   /** Mark session cookies Secure (true behind HTTPS; tests and plain-HTTP trials say false). */
   secureCookies?: boolean;
+  /** Request latency goes here (ADR-023). */
+  metrics?: Metrics;
+  /** Requests open server spans with it (ADR-023); absent when tracing is off. */
+  tracer?: Tracer;
+  /** Instance data directory, for the admin status page. */
+  dataDir?: string;
+  /** When the process started; defaults to when the app was built. */
+  startedAt?: Date;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -28,6 +39,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const level = deps.logLevel ?? 'silent';
   const roles = deps.roles ?? ['api'];
   const app = Fastify({ logger: level === 'silent' ? false : { level } });
+  instrumentApp(app, {
+    ...(deps.metrics ? { metrics: deps.metrics } : {}),
+    ...(deps.tracer ? { tracer: deps.tracer } : {}),
+  });
   await app.register(fastifyCookie);
 
   // Liveness: the process is up. Never touches dependencies, so restarts are not triggered by
@@ -54,6 +69,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const cookieOptions = { secureCookies: deps.secureCookies ?? false };
     registerSetupRoutes(app, db, cookieOptions);
     registerSessionRoutes(app, db, cookieOptions);
+    registerAdminRoutes(app, db, {
+      version: deps.version,
+      roles,
+      startedAt: deps.startedAt ?? new Date(),
+      ...(deps.dataDir ? { dataDir: deps.dataDir } : {}),
+    });
   }
 
   if (roles.includes('web') && deps.webDir) {

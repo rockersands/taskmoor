@@ -55,3 +55,21 @@ test('[IAM-001] signing out and back in with the password works', async ({ page 
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Settings');
 });
+
+test('[OPS-010] the administrator opens the system status from Settings', async ({ page }) => {
+  const signIn = await page.request.post('/api/v1/session', {
+    data: { email: ADMIN.email, password: ADMIN.password },
+  });
+  expect(signIn.status()).toBe(200);
+  await page.goto('./#/settings');
+  await page.getByRole('link', { name: 'System status' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('System status');
+  const database = page.getByRole('region', { name: 'Database' });
+  await expect(database.getByText('Connected')).toBeVisible();
+  await expect(database.getByText(/^\d+ applied$/)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Runtime' }).getByText(/^v\d+\./)).toBeVisible();
+
+  // Everyone else is turned away by the backend as well as the page.
+  await page.request.delete('/api/v1/session');
+  expect((await page.request.get('/api/v1/admin/system')).status()).toBe(401);
+});

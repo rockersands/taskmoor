@@ -26,6 +26,12 @@ const envSchema = z.object({
   PUBLIC_URL: z.string().url().optional(),
   /** Fixed setup token for installers and tests; otherwise one is generated per start. */
   TRACKSMITH_SETUP_TOKEN: z.string().min(16).optional(),
+  /** Files, backups and the backup marker (ADR-021); the image sets /data. */
+  TRACKSMITH_DATA: z.string().min(1).optional(),
+  /** Internal Prometheus port (ADR-023); 0 turns the metrics listener off. */
+  METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
+  /** Address of the metrics listener; defaults to HOST. */
+  METRICS_HOST: z.string().min(1).optional(),
 });
 
 export interface ServerConfig {
@@ -40,6 +46,10 @@ export interface ServerConfig {
   publicUrl: string;
   secureCookies: boolean;
   setupToken: string | undefined;
+  dataDir: string | undefined;
+  /** 0 when the metrics listener is off. */
+  metricsPort: number;
+  metricsHost: string;
 }
 
 export function parseRoles(text: string): Role[] {
@@ -89,5 +99,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     publicUrl: e.PUBLIC_URL ?? `http://localhost:${e.PORT}`,
     secureCookies: (e.PUBLIC_URL ?? '').startsWith('https://'),
     setupToken: e.TRACKSMITH_SETUP_TOKEN,
+    dataDir: e.TRACKSMITH_DATA,
+    metricsPort: e.METRICS_PORT,
+    metricsHost: e.METRICS_HOST ?? e.HOST,
   };
 }

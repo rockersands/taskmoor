@@ -1,16 +1,29 @@
-import { createDb, migrateToLatest } from '@tracksmith/db';
+import { createDb, migrateToLatest, poolStats } from '@tracksmith/db';
 import { buildApp } from './app';
 import { loadConfig } from './config';
+import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
 import { issueSetupToken, setupLink } from './setup';
 import { waitForDatabase } from './startup';
 
 const config = loadConfig();
+const startedAt = new Date();
+// Observability first (ADR-023), so the database client reports to it from the first query.
+const tracing = startTracing({ version: config.version, roles: config.roles });
+let readPool: (() => ReturnType<typeof poolStats>) | undefined;
+const metrics = createMetrics({
+  version: config.version,
+  roles: config.roles,
+  pool: () => readPool?.(),
+  ...(config.dataDir ? { dataDir: config.dataDir } : {}),
+});
 const db = config.databaseUrl
   ? createDb({
       connectionString: config.databaseUrl,
       applicationName: `tracksmith-${config.roles.join('+')}`,
+      onQuery: queryObserver({ metrics, ...(tracing ? { tracer: tracing.tracer } : {}) }),
     })
   : undefined;
+if (db) readPool = () => poolStats(db);
 
 // The API role owns the schema; workers wait for it (an older worker next to a newer API is
 // the rolling-upgrade case of ADR-022).
@@ -36,7 +49,12 @@ const app = await buildApp({
   roles: config.roles,
   secureCookies: config.secureCookies,
   ...(config.webDir ? { webDir: config.webDir } : {}),
+  metrics,
+  ...(tracing ? { tracer: tracing.tracer } : {}),
+  ...(config.dataDir ? { dataDir: config.dataDir } : {}),
+  startedAt,
 });
+const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
 
 const timers: NodeJS.Timeout[] = [];
 if (config.roles.includes('worker')) {
@@ -51,6 +69,11 @@ if (config.roles.includes('realtime')) {
 
 await app.listen({ port: config.port, host: config.host });
 app.log.info({ roles: config.roles, version: config.version }, 'listening');
+if (metricsServer) {
+  await metricsServer.listen({ port: config.metricsPort, host: config.metricsHost });
+  app.log.info({ port: config.metricsPort }, 'metrics listening');
+}
+if (tracing) app.log.info('tracing to the configured OTLP endpoint');
 
 let closing = false;
 async function shutdown(signal: string): Promise<void> {
@@ -59,6 +82,8 @@ async function shutdown(signal: string): Promise<void> {
   app.log.info({ signal }, 'shutting down');
   for (const t of timers) clearInterval(t);
   await app.close();
+  await metricsServer?.close();
+  await tracing?.shutdown();
   await db?.destroy();
   process.exit(0);
 }

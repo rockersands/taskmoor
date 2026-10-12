@@ -1,0 +1,126 @@
+/* Administration pages: settings links and the system status page. Desktop first. */
+.system-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.system-header .page-title {
+  margin: 0;
+}
+
+.system-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+}
+
+.facts {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  background: var(--color-surface);
+}
+
+.facts-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-300);
+}
+
+.facts-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: minmax(8rem, 40%) minmax(0, 1fr);
+  gap: var(--space-3);
+  font-size: var(--font-size-200);
+}
+
+.fact dt {
+  color: var(--color-text-muted);
+}
+
+.fact dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fact-note {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.status-ok {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.status-bad {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.status-warn {
+  color: var(--color-warning);
+}
+
+.button-secondary {
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.button-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-section {
+  margin-top: var(--space-4);
+  max-width: 40rem;
+}
+
+.link-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* Narrow screens: labels above values. */
+@media (max-width: 30rem) {
+  .fact {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+@media (pointer: coarse) {
+  .button-primary,
+  .button-secondary,
+  .link-list a {
+    min-height: var(--hit-target-touch);
+  }
+}

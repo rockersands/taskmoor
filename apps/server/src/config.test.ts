@@ -16,7 +16,23 @@ describe('loadConfig', () => {
       publicUrl: 'http://localhost:8080',
       secureCookies: false,
       setupToken: undefined,
+      dataDir: undefined,
+      metricsPort: 9464,
+      metricsHost: '0.0.0.0',
     });
+  });
+
+  it('[OPS-011] reads the metrics listener and the data directory', () => {
+    expect(
+      loadConfig({
+        DATABASE_URL: DB,
+        METRICS_PORT: '0',
+        HOST: '127.0.0.1',
+        TRACKSMITH_DATA: '/data',
+      }),
+    ).toMatchObject({ metricsPort: 0, metricsHost: '127.0.0.1', dataDir: '/data' });
+    expect(loadConfig({ DATABASE_URL: DB, METRICS_HOST: '10.0.0.5' }).metricsHost).toBe('10.0.0.5');
+    expect(() => loadConfig({ DATABASE_URL: DB, METRICS_PORT: '70000' })).toThrow(/METRICS_PORT/);
   });
 
   it('reads every supported variable', () => {
