@@ -1,9 +1,20 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/testkit" },
-    { "path": "packages/db" },
-    { "path": "apps/server" },
-    { "path": "apps/web" }
+    {
+      "path": "packages/testkit"
+    },
+    {
+      "path": "packages/db"
+    },
+    {
+      "path": "packages/devtools"
+    },
+    {
+      "path": "apps/server"
+    },
+    {
+      "path": "apps/web"
+    }
   ]
 }

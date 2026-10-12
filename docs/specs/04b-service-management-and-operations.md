@@ -1,3 +1,10 @@
+---
+spec: 04b
+title: "Service management and operations: on-call and alerting, status pages, CMDB and mobile"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 04b Service management and operations: on-call and alerting, status pages, CMDB and mobile
 
 This file specifies, for Tracksmith (a working name for the product), the operations layer that Atlassian rebuilt inside Jira Service Management when it retired Opsgenie (end of support 5 April 2027): alert ingestion, teams, on-call schedules, escalations, routing, notification channels including SMS and voice, heartbeats and stakeholder communication. It also covers public and private status pages (Atlassian still sells Statuspage separately), the Assets-style CMDB with its query language, imports, discovery and reconciliation, and the mobile apps. Everything Atlassian gates behind JSM Premium or meters per object is free and unmetered here.

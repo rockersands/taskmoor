@@ -1,3 +1,10 @@
+---
+spec: 05a
+title: "Administration, security and self-hosting: identity, permissions, audit and security"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 05a Administration, security and self-hosting: identity, permissions, audit and security
 
 This file specifies identity and access for Tracksmith (a working name for the product): local sign-in and two-factor authentication, SAML and OIDC single sign-on with several identity providers, LDAP and Active Directory, SCIM provisioning, tokens and service accounts, users, groups, roles and guests, global and space permissions, item-level security, the authorization engine, audit logging, SIEM streaming, IP allowlists, data classification and encryption. It also covers the security rules for AI (provider keys, AI audit, redaction, agent safety) and for the split deployment in which a static frontend kit on one domain talks to a self-hosted backend on another. Atlassian spreads these controls across plan tiers and the separately priced Atlassian Guard; in Tracksmith they are all included.

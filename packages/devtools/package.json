@@ -1,0 +1,14 @@
+{
+  "name": "@tracksmith/devtools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repository tools: backlog navigation, governance and provenance checks.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@tracksmith/testkit": "workspace:*",
+    "dependency-cruiser": "^18.6.0"
+  }
+}

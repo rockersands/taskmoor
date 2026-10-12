@@ -1,3 +1,10 @@
+---
+spec: 02a
+title: "Platform, API and integrations: APIs, compatibility shim, webhooks, MCP and migration"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 02a Platform, API and integrations: APIs, compatibility shim, webhooks, MCP and migration
 
 This file specifies the programmable surface of Tracksmith (a working name for the product) and the way customers move in and out: the native REST API, the Jira-compatible API shim that keeps existing scripts and integrations working, webhooks, the built-in MCP server, the command-line client, and the importers for Jira Data Center, Server and Cloud plus full export. The importer is the product's main acquisition channel before Jira Data Center turns read-only on 28 March 2029, so it must carry more than Atlassian's own migration assistant, including what that tool drops. Files 02b (automation, extensions, development tools) and 02c (AI) complete the platform.

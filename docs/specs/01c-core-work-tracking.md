@@ -1,3 +1,10 @@
+---
+spec: 01c
+title: "Core work tracking: reports, dashboards, notifications and collaboration"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 01c Core work tracking: reports, dashboards, notifications and collaboration
 
 This file specifies how people using Tracksmith (a working name for the product) see and are told about work: agile and general reports, dashboards and gadgets, space insight dashboards, the analytics store for BI tools, notification policies and channels, the inbox, rich text, real-time collaboration and chat integrations. Jira users complain most about notification floods and clunky reporting, so this file sets explicit behaviour for batching, digests and exports, and keeps every Jira report and gadget so imported dashboards keep working.

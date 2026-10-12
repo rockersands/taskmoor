@@ -31,22 +31,25 @@ Read this first in every session, then update it before you stop.
   (`docs/specs`) and the research report (`docs/research`).
 - ADRs written: 001, 002 (Proposed: licence), 003, 004, 030 and 033 (desktop first, mobile must
   work).
-- Last result: `pnpm verify --e2e` passes. Lint, types and 34 tests ran in about 8s; 6 e2e checks
-  ran in about 9s.
+- Repo tooling in `@tracksmith/devtools`, enforced by tests in `pnpm verify`:
+  - `pnpm next-task` (reads `docs/plan/backlog.csv` and `progress.csv`; checks dependencies and
+    cycles);
+  - governance sections, relative links and the ADR index;
+  - spec provenance front matter (M0-006);
+  - dependency-cruiser module boundaries (M0-010), with a fixture that breaks every rule.
+- Clean-room protocol in `docs/legal/clean-room.md`; source list in `docs/research/sources.md`.
+- Task M0-035 added for the DCO and branch protection, which wait on the licence decision.
+- Last result: `pnpm verify` passes with 70 tests in about 11s. `pnpm verify --e2e` passed
+  earlier with 6 checks.
 
 ### Next (in order)
 
-1. M0-001 rest: confirm the first CI run is green on GitHub. Once the licence is confirmed, add
-   the DCO check and branch protection.
-2. M0-003: `tools/next-task` reads `docs/plan/backlog.csv` and prints the first unblocked task;
-   unit-test the dependency parsing.
-3. M0-002 rest: `tools/check-governance`, which checks the required sections in CLAUDE.md,
-   HANDOFF.md and STATUS.md.
-4. M0-005 and M0-006: clean-room protocol (`docs/legal/clean-room.md`) and a provenance
-   front-matter check for spec files.
-5. M0-010: dependency-cruiser boundary rules, plus a fixture that must fail.
-6. M0-012: licence allowlist, SBOM, secret scan, Renovate.
-7. M0-013 and M0-014: spec IDs and a traceability check, so tests can cite requirement IDs.
+1. M0-001 rest: the first push waits on a one-time Git Credential Manager sign-in as
+   Rockersands. After it lands, check that the first CI run is green on GitHub.
+2. M0-012: licence allowlist, SBOM, secret scan, Renovate.
+3. M0-013 and M0-014: spec IDs and a traceability check, so tests can cite requirement IDs.
+4. M0-015: synthetic data generator in the testkit (fixed seeds; 1M, 10M and 30M items).
+5. Spikes M0-016 to M0-023, in the order `pnpm next-task` prints them.
 
 ### Notes and gotchas
 
@@ -56,6 +59,8 @@ Read this first in every session, then update it before you stop.
   (see `runWithoutPipes` in `packages/testkit/src/pg/server.ts`).
 - In Playwright, `getByRole(..., { name: 'Boards' })` also matches "Dashboards". Use
   `exact: true` for short names.
+- Record task state in `docs/plan/progress.csv` (in-progress, done, waiting-on-user) as you go;
+  `pnpm next-task` and a test read it.
 
 ### Waiting on the user
 

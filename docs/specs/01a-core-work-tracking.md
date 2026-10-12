@@ -1,3 +1,10 @@
+---
+spec: 01a
+title: "Core work tracking: work items, fields and workflows"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 01a Core work tracking: work items, fields and workflows
 
 This file specifies the work-item core of Tracksmith (a working name for the product): spaces, work types and hierarchy, system and custom fields, configuration modes and schemes, versions, components, links, comments, attachments, history, archiving and the workflow engine (statuses, transitions, conditions, validators, post functions and approvals). Everything else in the product (boards, queries, service desk, plans, automation) builds on these objects, so the catalogs below are also the contract the importer (file 02a) maps Jira data into. Files 01b and 01c continue the core with search, agile views, reports and collaboration.

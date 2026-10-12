@@ -1,3 +1,10 @@
+---
+spec: 05b
+title: "Administration, security and self-hosting: deployment, operations and non-functional requirements"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 05b Administration, security and self-hosting: deployment, operations and non-functional requirements
 
 This file specifies how Tracksmith (a working name for the product) is installed, connected, upgraded, backed up and observed, and the non-functional targets every module must meet. Tracksmith ships as two pieces: a backend the customer hosts (API, workers, realtime service and PostgreSQL) and a static frontend that runs on any domain or static host. The Tracksmith Builder produces both from one form, so connection settings match on both sides without manual wiring. Easy self-hosting is a product requirement with measurable targets, not documentation: a fresh VM must reach a working app on a domain in under 15 minutes, and a team of up to about 500 users must run on 2 to 4 vCPU and 4 to 8 GB of RAM.

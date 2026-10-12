@@ -1,3 +1,10 @@
+---
+spec: 01b
+title: "Core work tracking: query language, search and agile views"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 01b Core work tracking: query language, search and agile views
 
 This file specifies, for Tracksmith (a working name for the product), the query language (a native language plus a JQL-compatible dialect), saved filters and subscriptions, the search experience and exports, and the agile and business views built on queries: boards, backlog, sprints, timeline, list and calendar, plus navigation. Query compatibility matters as much as features here: customers must be able to paste their existing saved filters and get the same results, so the catalogs below list every operator, field and function the research found, under both Jira's legacy and 2025-2026 names.

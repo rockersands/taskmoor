@@ -1,3 +1,10 @@
+---
+spec: 04a
+title: "Service management and operations: service desk, knowledge base and ITSM"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 04a Service management and operations: service desk, knowledge base and ITSM
 
 This file specifies the Jira Service Management equivalent in Tracksmith (a working name for the product): service spaces with request types, branded help centres and portals, free and unlimited customers and organizations, queues, the SLA engine with calendars, email and chat channels, approvals, forms, satisfaction surveys, the knowledge base, and the ITIL practices Atlassian gates behind JSM Premium (incident, major incident, post-incident review, problem and change management with risk scoring and CI/CD gating). Agents are not licensed or counted. File 04b continues with on-call and alerting, status pages, the CMDB and mobile apps.

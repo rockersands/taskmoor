@@ -49,7 +49,7 @@
   },
   "overrides": [
     {
-      "includes": ["tools/**", "**/*.config.ts", "**/scripts/**", "apps/server/src/main.ts"],
+      "includes": ["tools/**", "**/*.config.ts", "**/src/cli/**", "apps/server/src/main.ts"],
       "linter": {
         "rules": {
           "suspicious": { "noConsole": "off" }

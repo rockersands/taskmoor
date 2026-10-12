@@ -1,3 +1,10 @@
+---
+spec: 02c
+title: "Platform, API and integrations: AI gateway and AI features"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 02c Platform, API and integrations: AI gateway and AI features
 
 This file specifies the AI layer of Tracksmith (a working name for the product). Every self-hosted install can switch AI on by pasting a cloud AI key (or pointing at a local model), with no vendor metering by Tracksmith: the customer pays its AI provider directly and sets its own spend limits. Claude models are the default, reached through Anthropic's official SDK either directly or through the customer's existing Amazon Bedrock, Google Vertex AI or Microsoft Foundry account; OpenAI-compatible and local endpoints cover air-gapped sites. The file defines the provider settings, one internal gateway that all AI features call, default models and effort per feature, and the features themselves by milestone. Security, privacy and cost controls for AI are in file 05a (IAM-020 to IAM-023), file 05b (OPS-020) and NFR-011 and NFR-012.

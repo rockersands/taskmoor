@@ -1,3 +1,10 @@
+---
+spec: 03
+title: "Planning, time, discovery and quality"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 03 Planning, time, discovery and quality
 
 This file specifies, for Tracksmith (a working name for the product), the planning and management layers that Jira sells as Premium features, as separate products or through Marketplace apps: Plans (cross-team planning with sandbox, scenarios, capacity and a program board), the cross-space hierarchy grid, time tracking with timesheets, approvals and cost, Product Discovery with a public idea portal, Align-style portfolio management (OKRs, strategy, budgets, WSJF, PI planning), and test management. All of it is included in the free product. Each area builds on the work-item core (files 01a to 01c) rather than keeping its own copy of items.

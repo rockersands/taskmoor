@@ -1,3 +1,10 @@
+---
+spec: 02b
+title: "Platform, API and integrations: automation, extensions and development tools"
+sources: docs/research/sources.md
+accessed: 2026-10-11
+attestation: own-words
+---
 # 02b Platform, API and integrations: automation, extensions and development tools
 
 This file specifies, for Tracksmith (a working name for the product), the automation engine (Jira Automation parity without step metering or per-rule caps), the extension platform (sandboxed server extensions, UI extension slots and a scripting runtime that covers what ScriptRunner, JMWE and JSU sell), and the development-tool integration layer (development panel, smart commits, deployment tracking and DORA metrics). These are the areas where Jira customers buy the most Marketplace apps, so each catalog lists what must be native.

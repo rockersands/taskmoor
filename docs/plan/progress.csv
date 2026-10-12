@@ -1,0 +1,13 @@
+Task ID,State,Date,Note
+M0-001,in-progress,2026-10-12,"Repo, remote and SECURITY.md done; first push pending. DCO and branch protection moved to M0-035"
+M0-002,done,2026-10-12,Governance sections checked by packages/devtools/src/docs-check.ts in pnpm verify
+M0-003,done,2026-10-12,pnpm next-task with progress.csv; backlog integrity checked in pnpm verify
+M0-004,done,2026-10-12,ADR-001 to 003 written (002 Proposed until the user confirms); link and ADR index checks run in pnpm verify
+M0-005,done,2026-10-12,docs/legal/clean-room.md; counsel review row added to decisions.csv
+M0-006,done,2026-10-12,Spec front matter plus provenance check in pnpm verify
+M0-008,done,2026-10-12,Biome instead of ESLint and Prettier (ADR-004)
+M0-009,done,2026-10-12,Embedded Postgres 16 harness; CI runs Postgres 16 and 18
+M0-010,done,2026-10-12,dependency-cruiser rules in packages/devtools/src/boundaries.ts; fixture that breaks each rule
+M0-011,in-progress,2026-10-12,"Lint, types, tests and e2e in CI; image build comes with M0-025"
+M0-031,in-progress,2026-10-12,Tokens and responsive shell; Storybook and axe to do
+M0-035,waiting-on-user,2026-10-12,Needs the licence decision (ADR-002)
