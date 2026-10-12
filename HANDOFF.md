@@ -94,8 +94,13 @@ Read this first in every session, then update it before you stop.
 ### Waiting on the user
 
 - Run `gh auth refresh -s workflow` (browser sign-in as Rockersands) so pushes may change
-  `.github/workflows/*`. A ci.yml change (Chromium in every test job) is parked in
-  `git stash` as "ci: chromium in all jobs"; pop, commit and push it after the refresh.
+  `.github/workflows/*`. The local branch `ci-workflows` holds the nightly benchmark job
+  (`nightly.yml`, M0-033) and Chromium in every test job (`ci.yml`); after the refresh:
+  `git push origin ci-workflows`, then merge it into main (or `git merge ci-workflows` and push).
+  After the first green nightly run, copy its `nightly-results` artifact's JSON files into
+  `docs/spikes/baseline/ci/` so later runs catch regressions.
+- Docker Desktop is installed but needs WSL: run `wsl --install` as administrator and reboot.
+  M0-025 to M0-030 (images, install kits, migrations, backup drill) wait for it.
 
 - Public name: pick from the shortlist in `docs/decisions/name.md` (issuetide, workrill,
   taskmoor) or propose another; the codename stays until then.

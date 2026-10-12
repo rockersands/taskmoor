@@ -156,6 +156,14 @@ export async function datasetContext(pool: pg.Pool): Promise<DatasetContext> {
     `SELECT id FROM gen.items WHERE type = 'Epic' ORDER BY id LIMIT 1`,
   );
   const newest = await pool.query<{ at: Date }>('SELECT max(created_at) AS at FROM gen.items');
+  // Assignments are Zipf-skewed; user 1 holds a large share of every item. "Me" queries run as
+  // the user at the tenth percentile of the assignee ranking: busy, not an outlier.
+  const typical = await pool.query<{ assignee_id: number }>(
+    `SELECT assignee_id FROM gen.items WHERE assignee_id IS NOT NULL
+      GROUP BY assignee_id ORDER BY count(*) DESC
+      OFFSET (SELECT count(DISTINCT assignee_id) / 10 FROM gen.items) LIMIT 1`,
+  );
+  const me = typical.rows[0]?.assignee_id ?? 1;
 
   const toType = (t: string): CustomField['type'] | undefined =>
     t === 'text' || t === 'number' || t === 'date' || t === 'user' || t === 'labels'
@@ -193,9 +201,9 @@ export async function datasetContext(pool: pg.Pool): Promise<DatasetContext> {
       multiA: multi?.options[0] ?? '',
       multiB: multi?.options[1] ?? '',
       parentId: epic.rows[0]?.id ?? '1',
-      userId: '1',
+      userId: String(me),
     },
-    currentUserId: 1,
+    currentUserId: me,
     // Relative dates are measured from the newest item, so "-30d" means something.
     now: newest.rows[0]?.at ?? new Date(),
   };

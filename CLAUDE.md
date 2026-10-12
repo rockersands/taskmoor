@@ -32,6 +32,9 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
 | `pnpm trace` | Requirements cited by tests, per milestone |
 | `pnpm gen --items N` | Generate and load a synthetic dataset into the `bench` cluster (`--force` reloads) |
+| `pnpm spike <name> ...` | Run a benchmark spike (`field-storage`, `query`, `authz`, `authz-overhead`, `sync`, `queue`, `xml`); writes `docs/spikes/<name>.md` and `data/<name>.json` |
+| `pnpm bench:check [--size 1m]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression) |
+| `pnpm status-report [--date D]` | Weekly status report to `docs/status/<date>.md`; copy it to the user's Drive folder |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
@@ -40,7 +43,8 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 Full logs land in `.verify/<step>.log`; `.verify/summary.json` holds the last result.
 Tests need no Docker: the first run creates an embedded Postgres 16 cluster in
 `.cache/pg-test`, later runs start it in about a second. Set `TRACKSMITH_TEST_DATABASE_URL` to use
-another server instead (CI does this).
+another server instead (CI does this), or `TRACKSMITH_PG_CACHE_DIR` to keep the embedded clusters
+on another disk (for example while a benchmark saturates this one).
 
 ## Definition of done
 

@@ -1,0 +1,46 @@
+{
+  "spike": "sync",
+  "at": "2026-10-12T10:30:27.755Z",
+  "items": 200000,
+  "machine": {
+    "cpu": "AMD Ryzen 7 3700X 8-Core Processor",
+    "cores": 16,
+    "postgres": "16.14"
+  },
+  "bootstrap": {
+    "spaces": 1,
+    "rows": 51835,
+    "bytes": 51184774,
+    "seconds": 2.584,
+    "rowsPerSecond": 20060
+  },
+  "mutations": {
+    "count": 20000,
+    "writers": 8,
+    "seconds": 14.365,
+    "perSecond": 1392,
+    "gaps": 0
+  },
+  "deltaUnderLoad": {
+    "name": "delta-under-load",
+    "runs": 20000,
+    "p50": 0,
+    "p95": 1,
+    "max": 724,
+    "mean": 0.53
+  },
+  "deltaIdle": {
+    "name": "delta-idle",
+    "runs": 200,
+    "p50": 1,
+    "p95": 1,
+    "max": 2,
+    "mean": 0.76
+  },
+  "outbox": {
+    "queued": 1000,
+    "firstRunSeconds": 1.353,
+    "replaySeconds": 0.384,
+    "appliedTwice": 0
+  }
+}

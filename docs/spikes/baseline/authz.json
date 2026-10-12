@@ -1,0 +1,91 @@
+{
+  "spike": "authz",
+  "at": "2026-10-12T10:25:57.801Z",
+  "config": {
+    "seed": 7,
+    "users": 100000,
+    "groups": 5000,
+    "spaces": 30000,
+    "policies": 600
+  },
+  "counts": {
+    "memberships": 341755,
+    "grants": 48019,
+    "roleActors": 304705,
+    "tuples": 754479
+  },
+  "checks": 2000,
+  "machine": {
+    "cpu": "AMD Ryzen 7 3700X 8-Core Processor",
+    "cores": 16,
+    "postgres": "16.14"
+  },
+  "candidates": [
+    {
+      "id": "inprocess-cold",
+      "check": {
+        "name": "inprocess-cold",
+        "runs": 2000,
+        "p50": 1.14,
+        "p95": 1.47,
+        "max": 12.8,
+        "mean": 1.17
+      },
+      "list": {
+        "name": "list",
+        "runs": 50,
+        "p50": 95.41,
+        "p95": 122.62,
+        "max": 153.85,
+        "mean": 95.17,
+        "medianSpaces": 24120
+      },
+      "loadSeconds": 5.166,
+      "mismatches": 0
+    },
+    {
+      "id": "inprocess-cached",
+      "check": {
+        "name": "inprocess-cached",
+        "runs": 2000,
+        "p50": 0,
+        "p95": 0,
+        "max": 0.1,
+        "mean": 0
+      },
+      "list": {
+        "name": "list",
+        "runs": 50,
+        "p50": 95.41,
+        "p95": 122.62,
+        "max": 153.85,
+        "mean": 95.17,
+        "medianSpaces": 24120
+      },
+      "loadSeconds": 5.166,
+      "mismatches": 0
+    },
+    {
+      "id": "openfga",
+      "check": {
+        "name": "openfga",
+        "runs": 2000,
+        "p50": 8.83,
+        "p95": 15.9,
+        "max": 147.94,
+        "mean": 9.34
+      },
+      "list": {
+        "name": "list",
+        "runs": 50,
+        "p50": 205.82,
+        "p95": 249.01,
+        "max": 261.37,
+        "mean": 204.52,
+        "medianSpaces": 24120
+      },
+      "loadSeconds": 146.947,
+      "mismatches": 0
+    }
+  ]
+}
