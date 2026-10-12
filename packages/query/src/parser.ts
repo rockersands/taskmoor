@@ -12,7 +12,6 @@ import type {
 } from './ast';
 import { QueryError, type Token, tokenize } from './lexer';
 
-const COMPARE_OPS: readonly CompareOp[] = ['=', '!=', '<', '<=', '>', '>=', '~', '!~'];
 const PREDICATES: readonly PredicateKind[] = [
   'from',
   'to',

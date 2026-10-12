@@ -12,8 +12,10 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@formatjs/icu-messageformat-parser": "^3.5.21",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-intl": "12.1.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",

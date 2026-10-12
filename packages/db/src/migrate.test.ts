@@ -55,5 +55,5 @@ describe('migrateToLatest', () => {
       await Promise.all(clients.map((db) => db.destroy()));
       await fresh.drop();
     }
-  });
+  }, 30_000);
 });

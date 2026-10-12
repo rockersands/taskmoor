@@ -62,6 +62,16 @@ Read this first in every session, then update it before you stop.
 
 ### Notes and gotchas
 
+- Pushes use the GitHub CLI token through a repo-local credential helper
+  (`git config --local credential.helper`); Git Credential Manager would otherwise open a
+  sign-in window. The CLI is signed in as rockersands.
+- Bench datasets live in `.cache/pg-test/bench` as UNLOGGED tables: stop that cluster cleanly
+  (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
+- While a big spike runs, database tests are slow; the root Vitest config allows 60 s for
+  hooks. Run `pnpm verify` when the machine is idle before trusting a failure.
+- In `pnpm verify ... | grep`, use `set -o pipefail` before chaining a commit, or the grep
+  status hides a failure.
+
 - If `pnpm` is not on PATH, use `corepack pnpm ...`. `corepack enable` needs admin rights on
   this machine, so it was not run.
 - When `pg_ctl` starts the server it must not inherit Node's pipes, or the call hangs on Windows

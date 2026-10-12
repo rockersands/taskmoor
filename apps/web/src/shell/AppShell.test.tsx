@@ -123,3 +123,25 @@ describe('compact layout (phones)', () => {
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
 });
+
+describe('pseudo-locale', () => {
+  it('reaches every visible string and reports no missing message', () => {
+    const errors: Error[] = [];
+    render(<App locale="en-XA" onI18nError={(e) => errors.push(e)} />);
+    const texts: string[] = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent?.trim();
+      if (text) texts.push(text);
+    }
+    for (const el of document.body.querySelectorAll('[aria-label], [title]')) {
+      for (const attr of ['aria-label', 'title']) {
+        const value = el.getAttribute(attr);
+        if (value) texts.push(value);
+      }
+    }
+    expect(texts.length).toBeGreaterThan(5);
+    expect(texts.filter((t) => !/^\[.+\]$/s.test(t))).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+});

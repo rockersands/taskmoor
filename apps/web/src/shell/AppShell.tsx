@@ -6,12 +6,12 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useT } from '../i18n/I18nProvider';
 import { MenuIcon } from './icons';
 import { type NavItem, NavList } from './NavList';
 import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
 
 interface AppShellProps {
-  productName: string;
   items: readonly NavItem[];
   activeId: string;
   children: ReactNode;
@@ -23,7 +23,8 @@ interface AppShellProps {
  * Desktop first: on wide screens the sidebar is always there and can collapse to an icon rail.
  * Below 768px it becomes a drawer opened from the menu button, so the app still works on phones.
  */
-export function AppShell({ productName, items, activeId, children }: AppShellProps) {
+export function AppShell({ items, activeId, children }: AppShellProps) {
+  const t = useT();
   const compact = useMediaQuery(COMPACT_QUERY);
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -73,7 +74,7 @@ export function AppShell({ productName, items, activeId, children }: AppShellPro
       data-collapsed={!compact && collapsed}
     >
       <a className="skip-link" href="#main">
-        Skip to content
+        {t('shell.skipToContent')}
       </a>
 
       <header className="shell-topbar">
@@ -82,7 +83,7 @@ export function AppShell({ productName, items, activeId, children }: AppShellPro
             ref={menuButton}
             type="button"
             className="icon-button"
-            aria-label="Open navigation"
+            aria-label={t('shell.openNavigation')}
             aria-expanded={drawerOpen}
             aria-controls="shell-drawer"
             onClick={() => setDrawerOpen(true)}
@@ -93,7 +94,7 @@ export function AppShell({ productName, items, activeId, children }: AppShellPro
           <button
             type="button"
             className="icon-button"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
             aria-expanded={!collapsed}
             aria-controls="shell-sidebar"
             onClick={() => setCollapsed((value) => !value)}
@@ -101,7 +102,7 @@ export function AppShell({ productName, items, activeId, children }: AppShellPro
             <MenuIcon />
           </button>
         )}
-        <span className="shell-brand">{productName}</span>
+        <span className="shell-brand">{t('app.name')}</span>
       </header>
 
       {!compact && (
@@ -115,7 +116,7 @@ export function AppShell({ productName, items, activeId, children }: AppShellPro
           <button
             type="button"
             className="shell-backdrop"
-            aria-label="Close navigation"
+            aria-label={t('shell.closeNavigation')}
             tabIndex={-1}
             onClick={closeDrawer}
           />
@@ -125,7 +126,7 @@ export function AppShell({ productName, items, activeId, children }: AppShellPro
             className="shell-drawer"
             role="dialog"
             aria-modal="true"
-            aria-label="Navigation"
+            aria-label={t('shell.navigationDialog')}
             onKeyDown={trapFocus}
           >
             <NavList items={items} activeId={activeId} showLabels onNavigate={closeDrawer} />

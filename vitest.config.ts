@@ -9,6 +9,9 @@ export default defineConfig({
     globalSetup: ['./packages/testkit/src/pg/global-setup.ts'],
     // Lets pnpm verify print file:line for each failing test.
     includeTaskLocation: true,
+    // Database creation can take seconds on a loaded machine or a slow CI runner.
+    testTimeout: 20_000,
+    hookTimeout: 60_000,
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**', 'apps/*/src/**'],
