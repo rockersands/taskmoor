@@ -122,8 +122,12 @@ Read this first in every session, then update it before you stop.
    upgrade under load with 55,271 requests and none failed. Locally, kind's etcd timed out
    while robocopy saturated C: (Docker's disk); rerun `tools/helm/kind-test.sh` locally only
    on a quiet disk. The upgrade rolls the same image; test two versions with the first release.
-3. **M1-034**: a second one-hour fuzz (seed 20261013) runs on the fixed lexer; when it ends
-   with no failures, mark M1-034 done and M1-035 with it (record inputs and the slowest time).
+3. **M1-034 and M1-035: done.** The second one-hour fuzz ran 6,365,749 inputs with no failure.
+   **M1-100 air-gap bundle (in progress, uncommitted):** `tools/airgap/` (bundle.sh, verify.sh,
+   install-offline.sh, test-offline.sh, README), install.sh gained `TRACKSMITH_PULL`,
+   `TRACKSMITH_COMPOSE_OVERRIDE` and in-container readiness, the Compose kit's Postgres image
+   is `POSTGRES_IMAGE`. Next: run `TAG=tracksmith:dev bash tools/airgap/test-offline.sh` on a
+   quiet disk, add it to a workflow, and ask the user where the release signing key lives.
 4. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
    `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
 5. Next M1 work that does not wait on M0 acceptance: M1-100 (air-gap bundle), the catalogue
