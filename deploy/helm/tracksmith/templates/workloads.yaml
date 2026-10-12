@@ -1,0 +1,143 @@
+{{- include "tracksmith.validate" . -}}
+{{- $root := . -}}
+{{- range $component := list "app" "worker" }}
+{{- $c := index $root.Values $component }}
+{{- if or (eq $component "app") $c.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+  labels:
+    {{- include "tracksmith.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  {{- if not $c.autoscaling.enabled }}
+  replicas: {{ $c.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    # Never below full capacity during an upgrade: a new pod is ready before an old one stops.
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      {{- include "tracksmith.selector" (dict "root" $root "component" $component) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "tracksmith.selector" (dict "root" $root "component" $component) | nindent 8 }}
+      annotations:
+        {{- with $c.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        checksum/database: {{ include (print $root.Template.BasePath "/secret.yaml") $root | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "tracksmith.serviceAccount" $root }}
+      automountServiceAccountToken: false
+      {{- with $root.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml $root.Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ $root.Values.terminationGracePeriodSeconds }}
+      containers:
+        - name: tracksmith
+          image: {{ include "tracksmith.image" $root }}
+          imagePullPolicy: {{ $root.Values.image.pullPolicy }}
+          env:
+            - name: TRACKSMITH_ROLE
+              value: {{ if eq $component "app" }}{{ $c.roles | quote }}{{ else }}"worker"{{ end }}
+            {{- include "tracksmith.env" $root | nindent 12 }}
+          ports:
+            - { name: http, containerPort: 8080 }
+            - { name: metrics, containerPort: {{ $root.Values.metrics.port }} }
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 2
+            failureThreshold: 90
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 4
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              # Keep serving while the endpoint leaves every Service; then SIGTERM closes the
+              # listener and in-flight requests finish.
+              exec: { command: ["sleep", "{{ $root.Values.drainSeconds }}"] }
+          resources:
+            {{- toYaml $c.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $root.Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: data
+          {{- if and (eq $component "app") (eq $root.Values.storage.type "local") }}
+          persistentVolumeClaim:
+            claimName: {{ include "tracksmith.fullname" $root }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with $c.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $c.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $c.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- if $c.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+  labels:
+    {{- include "tracksmith.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+  minReplicas: {{ $c.autoscaling.minReplicas }}
+  maxReplicas: {{ $c.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ $c.autoscaling.targetCPUUtilizationPercentage }} }
+{{- end }}
+{{- $replicas := ternary $c.autoscaling.minReplicas $c.replicas $c.autoscaling.enabled | int }}
+{{- if and $c.podDisruptionBudget.enabled (gt $replicas 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+  labels:
+    {{- include "tracksmith.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  minAvailable: {{ $c.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "tracksmith.selector" (dict "root" $root "component" $component) | nindent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}

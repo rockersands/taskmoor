@@ -63,6 +63,13 @@ Read this first in every session, then update it before you stop.
   overflowed the stack before); `@current` tokens and slash dates lex. Tests: the 969 parse
   cases of the conformance suite run as parser tests, plus recovery, position, hint, limit
   and property tests. `pnpm fuzz query --minutes 60` is the fuzzer (`packages/devtools`).
+- Afternoon (Opus 5.5): M1-035 Jira-compatible dialect (`toNative`/`toJira` on the shared tree);
+  M1-103 metrics on port 9464, OTLP traces when configured, the admin System status page (CI
+  green including e2e) and example Prometheus rules and a Grafana dashboard in
+  `deploy/observability`; the compiler drives custom-field queries from their side table when
+  the order allows (10M results under Next); the licence gate now reads the 26 packages pnpm
+  stores under hashed folder names (it skipped them before); the fuzzer found a numeral
+  precision bug in the lexer (fixed).
 - Query compiler fixes found by the spike: id tiebreaker in the newest-first indexes and
   `NULLS LAST` only on nullable columns (41.7 ms to 0.65 ms); `WAS` as one history `EXISTS`
   (1.9 s to 0.65 ms for a value that never occurred); labels and word search use index-friendly
@@ -73,47 +80,58 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-0. **State of the 10M run (2026-10-12, 12:45 local).** The background chain
-   (`.cache/scripts/timings.sh`) finished `field-storage` and `authz-overhead` at 10M and is
-   running the 1M spikes (`query`, then `authz-overhead`, then `field-storage --candidates
-   jsonb,side`). `.cache/scripts/activity.mts` prints what the bench cluster executes (it reads
-   the port from `.cache/pg-test/bench/postmaster.pid`; run with `corepack pnpm exec tsx`). If
-   a bench cluster is left running by a dead process, stop it cleanly with the embedded
-   `pg_ctl -D .cache/pg-test/bench -m fast stop` (binary under
-   `node_modules/.pnpm/@embedded-postgres+windows-x64@*/node_modules/@embedded-postgres/windows-x64/native/bin`).
-1. **The 10M findings and what to do about them.** Uncommitted reports:
-   `docs/spikes/field-storage-10m.md`, `docs/spikes/authz-overhead-10m.md` (and their JSON).
-   - **Query compiler at 10M**: the system-field, history and permission queries stay under
-     15 ms, but four custom-field queries miss the 300 ms budget: `option-eq`, `date-window`
-     and `multi-in` timed out at 60 s, `user-field-mine` took 4.5 s. All four combine a
-     custom-field `EXISTS` with an `ORDER BY` on an item column, so the planner cannot walk
-     the side table's `(field_id, value, created_at DESC)` index in order. Next: on an idle
-     cluster, `VACUUM ANALYZE` the `bench_10m` side tables (bulk-loaded tables have no
-     visibility map, so index-only scans fetch the heap), `EXPLAIN` the four compiled
-     statements (`compileTemplate` in `packages/spikes/src/query-bench/run.ts`), then teach
-     the compiler to drive from the side table when the ORDER BY is `created` (copied to side
-     rows) or the same custom field: `FROM v_x v JOIN item i ... ORDER BY v.created_at`. The
-     query spike also crashed after the timings on a `count(*)` that outlived the 60 s
-     statement timeout; it now reads the count from `gen.meta` (committed), so rerun
-     `pnpm spike query --items 10000000 --runs 20` for the report.
-   - **Field storage at 10M**: two side-table query shapes were bad at 10M (fixed as
-     semi-joins plus a newest-first side index, committed). Add the index to the built
-     schemas with `corepack pnpm exec tsx .cache/scripts/side-indexes.mts bench_10m` (and
-     `bench_1m`) on an idle cluster, `VACUUM ANALYZE`, then rerun `pnpm spike field-storage
-     --items 10000000 --candidates side --runs 20`. The first run overlapped a 30-minute
-     autovacuum of `gen.item`, which inflated the edit p95 (465 ms against 50 ms; p50 58 ms).
+0. **Where the benchmark data lives (2026-10-12, 14:30).** E: is a 5,400 rpm hard disk (see
+   Notes); the user made room on G: for the bench cluster. It is being copied from
+   `.cache/pg-test/bench` to C: and then moved to `G:/tracksmith-pg/bench` (137 GB after
+   dropping the ruled-out 10M JSONB and EAV schemas). From now on run benchmarks with
+   `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg`. Once G: has served a full run, delete the E:
+   copy. Helper scripts in `.cache/scripts/` (run with `corepack pnpm exec tsx`, with
+   `TRACKSMITH_PG_CACHE_DIR` set): `hold-bench.mts` keeps the cluster up between spikes
+   (create `.cache/scripts/release-bench` to stop it cleanly), `activity.mts` shows running
+   statements, `prepare-10m.mts` adds the newest-first side index and vacuums, `stats-10m.mts`
+   adds (field_id, value) extended statistics, `explain-multi.mts` explains the multi-select
+   query in both compiler forms, `sizes.mts` lists table sizes.
+1. **The 10M results and what is left (M0-016, M0-017, then ADR-008 and ADR-010).**
+   - **Query compiler at 10M with side-table anchoring (committed)**, measured on the E: hard
+     disk: 21 of 22 queries under 20 ms p95 (option-eq 1.2 ms, date-window 0.5 ms,
+     user-field-mine 0.7 ms, number-gt-sorted 0.8 ms; before: three timeouts and 4.5 s). Log:
+     `.cache/scripts/rerun-query-10m.log`; report `docs/spikes/query-compiler-10m.md`.
+   - **multi-in is still bad**: `"multi" IN (A, B) AND status != Done ORDER BY created DESC`
+     times out in both compiler forms. The planner estimates 121 matching side rows where there
+     are about 37,000 (two values of 18,600 rows each), because a 30,000-row ANALYZE sample of
+     a 147M-row table cannot see per-field option values; it then fetches every match and
+     sorts. Extended statistics on (field_id, value) (added to the spike schema, committed)
+     moved the estimate only from 58 to 121. Next, on C:: raise the statistics target of
+     `value` and of the extended statistics on the side tables (`ALTER TABLE ... ALTER COLUMN
+     value SET STATISTICS 5000`, `ALTER STATISTICS ... SET STATISTICS 5000`), ANALYZE, and
+     check that the plan walks `(field_id, created_at DESC)` and stops after 50. If estimates
+     stay unreliable, keep per-option counts in the app (they are cheap to maintain) and let
+     the compiler choose the plan shape from them; record the outcome in ADR-008 and ADR-010.
+   - **Field storage at 10M**: the semi-join rewrite and the newest-first index cut the date
+     window from 57 s to 1.8 s and option-plus-number from 13 s to 3.2 s on the hard disk;
+     rerun on C: (`pnpm spike field-storage --items 10000000 --candidates side --runs 20`).
+     `docs/spikes/field-storage-1m.md` was overwritten by a run without the new index;
+     rerun at 1M too (`--candidates jsonb,side` reuses the schemas).
    - **Permission pre-filter at 10M**: every filtered query stays under 15 ms, but the
      relative budget in `pnpm bench:check` (at most 20% where it costs more than 2 ms) fails
-     at up to 310% (2.6 ms to 10.7 ms). Waiting on the user: keep the relative budget, or
-     state it as an absolute one (for example at most 10 ms added).
+     at up to 310% (2.6 ms to 10.7 ms). Waiting on the user (see below).
    - Then fill the 10M tables into ADR-008 and ADR-010, flip them to Accepted (README too),
-     mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline` with the 1M/10M files
-     if within budget, `pnpm bench:check`, commit the reports with the ADRs.
-2. M0-028 and M0-033 are done (see Done); nothing else waits on CI.
-3. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
+     mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline`, `pnpm bench:check`,
+     commit the reports with the ADRs.
+2. **M1-099 Helm chart (in progress, uncommitted):** `deploy/helm/tracksmith`, README,
+   `tools/helm/kind-test.sh` (+ `postgres.yaml`, `load.mjs`), `.github/workflows/helm.yml`,
+   `packages/devtools/src/helm-chart.test.ts` (skips without helm; Helm and kind are in
+   `.cache/tools`). First kind run: install and `helm test` passed; the rolling upgrade failed
+   on "etcdserver: request timed out" while robocopy saturated C: (Docker's disk). Rerun with
+   `PATH=.cache/tools/helm/windows-amd64:.cache/tools/kind:$PATH KEEP_CLUSTER=1 bash
+   tools/helm/kind-test.sh` once C: is quiet. If the load sees failures, add a drain phase on
+   SIGTERM (readiness 503 and `Connection: close` on responses for a few seconds before
+   closing), because clients keep idle connections to old pods.
+3. **M1-034**: a second one-hour fuzz (seed 20261013) runs on the fixed lexer; when it ends
+   with no failures, mark M1-034 done and M1-035 with it (record inputs and the slowest time).
+4. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
    `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
-4. Next M1 work that does not wait on M0 acceptance: M1-034 (parser with error recovery and
-   source positions; the query suite's grammar and sprint sections guide it) and the catalogue
+5. Next M1 work that does not wait on M0 acceptance: M1-100 (air-gap bundle), the catalogue
    gaps the query suite lists; M1-001 once M0-034 is accepted.
 
 ### Notes and gotchas
@@ -126,9 +144,13 @@ Read this first in every session, then update it before you stop.
   (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
   The bench cluster is shared: a second process attaches to the running server; if the owner
   stops it (a `pnpm gen` finishing), attached benchmarks fail; rerun them.
-- Disks on this machine: E: and G: are NVMe, C: is a hard disk (the user asked that C: not be
-  used for heavy work). The repository and its `.cache` live on E:. While a big spike
-  saturates E:, run the gate with the test clusters on G:
+- **Disks on this machine (measured 2026-10-12 with Get-PhysicalDisk):** E: is a Seagate
+  ST4000DM004, a 5,400 rpm hard disk (random 8 KB reads 13 ms p50), and holds the repository
+  and `.cache/pg-test`, so every bench cluster. C: (Kingston NV1, 342 GB free) and G: (XPG
+  S40G, 86 GB free) are NVMe; D: is another hard disk. The user confirmed this and said C:
+  and G: are free to use: database clusters and benchmarks go there through
+  `TRACKSMITH_PG_CACHE_DIR`, the source tree stays on E:. Benchmarks on E: measure seeks, not
+  the design. Run the gate with the test clusters on an NVMe drive:
   `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg-test pnpm verify`
   (and `PLAYWRIGHT_BROWSERS_PATH=<empty dir>` skips the browser stories; CI runs them).
   Each Vitest project sets its own timeouts; the root config's are not inherited.
@@ -183,8 +205,9 @@ Read this first in every session, then update it before you stop.
   taskmoor) or propose another; the codename stays until then.
 - After the first green nightly run (03:00 UTC, or "Run workflow" on the Actions tab), copy
   the `nightly-results` artifact's JSON files into `docs/spikes/baseline/ci/` so later runs
-  catch regressions. (Done on the user's side: the GitHub token now carries the `workflow`
-  scope and Docker Desktop runs on WSL 2; Docker's disk image sits on C:, the hard disk, and
-  can be moved from Docker Desktop's settings.)
+  catch regressions. (Done: the CI baseline is in `docs/spikes/baseline/ci`.)
+- Permission pre-filter budget: at 10M every filtered query stays under 15 ms, but the
+  overhead is up to 310% of a 2.6 ms query. Keep the relative budget (and optimise the
+  pre-filter), or state it as an absolute one (for example at most 10 ms added)?
 - The other open decisions are listed at the end of `docs/status/2026-10-12.md`; none blocks
   M0 except the name and, before the first public release, counsel's review.

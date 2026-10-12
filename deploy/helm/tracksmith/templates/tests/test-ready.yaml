@@ -1,0 +1,46 @@
+# helm test: the app answers through its Service, the database is reachable, and the metrics
+# endpoint publishes the build info.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "tracksmith.fullname" . }}-test
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    # Kept after success so `helm test --logs` shows the probe's output; replaced next run.
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  containers:
+    - name: probe
+      image: {{ include "tracksmith.image" . }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      command:
+        - node
+        - -e
+        - |
+          const base = 'http://{{ include "tracksmith.fullname" . }}:{{ .Values.service.port }}';
+          const metrics = 'http://{{ include "tracksmith.fullname" . }}-metrics:{{ .Values.metrics.port }}/metrics';
+          const get = async (url) => {
+            const res = await fetch(url);
+            const text = await res.text();
+            if (!res.ok) throw new Error(`${url} answered ${res.status}: ${text}`);
+            return text;
+          };
+          const main = async () => {
+            const health = JSON.parse(await get(`${base}/health`));
+            if (health.status !== 'ok') throw new Error(`health: ${JSON.stringify(health)}`);
+            await get(`${base}/ready`);
+            const setup = JSON.parse(await get(`${base}/api/v1/setup`));
+            if (typeof setup.needed !== 'boolean') throw new Error(`setup: ${JSON.stringify(setup)}`);
+            if (!(await get(metrics)).includes('tracksmith_build_info')) throw new Error('no build info');
+            console.log(`ok: version ${health.version}, roles ${health.roles.join(',')}`);
+          };
+          main().catch((error) => { console.error(error.message); process.exit(1); });

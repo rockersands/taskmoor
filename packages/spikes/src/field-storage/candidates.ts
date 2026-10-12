@@ -59,7 +59,10 @@ const SIDE_INDEXES = (name: string, multi = false) => `
 ALTER TABLE fs_side.${name} ADD PRIMARY KEY (item_id, field_id${multi ? ', value' : ''});
 CREATE INDEX ON fs_side.${name} (field_id, value, created_at DESC) INCLUDE (item_id);
 CREATE INDEX ON fs_side.${name} (space_id, field_id, value, created_at DESC) INCLUDE (item_id);
-CREATE INDEX ON fs_side.${name} (field_id, created_at DESC) INCLUDE (value, item_id);`;
+CREATE INDEX ON fs_side.${name} (field_id, created_at DESC) INCLUDE (value, item_id);
+-- Values belong to their field: without these, the planner multiplies the two selectivities
+-- and expected 58 rows where 37,000 matched at 10M items, then fetched them all.
+CREATE STATISTICS fs_side.${name}_field_value (dependencies, ndistinct, mcv) ON field_id, value FROM fs_side.${name};`;
 
 export const candidates: Record<CandidateId, Candidate> = {
   jsonb: {

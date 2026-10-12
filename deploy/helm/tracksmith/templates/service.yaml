@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tracksmith.fullname" . }}
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "tracksmith.selector" (dict "root" . "component" "app") | nindent 4 }}
+  ports:
+    - { name: http, port: {{ .Values.service.port }}, targetPort: http }
+---
+# Metrics of every role, for Prometheus; not meant to be exposed outside the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tracksmith.fullname" . }}-metrics
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - { name: metrics, port: {{ .Values.metrics.port }}, targetPort: metrics }
+{{- if .Values.metrics.serviceMonitor.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "tracksmith.fullname" . }}
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: metrics
+  endpoints:
+    - { port: metrics, interval: {{ .Values.metrics.serviceMonitor.interval }} }
+{{- end }}
+{{- if .Values.serviceAccount.create }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "tracksmith.serviceAccount" . }}
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+{{- end }}
+{{- if eq .Values.storage.type "local" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "tracksmith.fullname" . }}-data
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+  annotations:
+    # Uninstalling the release keeps the files; delete the claim yourself to remove them.
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [{{ .Values.storage.local.accessMode }}]
+  {{- with .Values.storage.local.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.local.size }}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "tracksmith.fullname" . }}
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "tracksmith.fullname" . }}
+                port: { name: http }
+{{- end }}

@@ -1,0 +1,48 @@
+{{- if .Values.upgradeCheck.enabled }}
+# ADR-022: before an upgrade changes anything, the new image checks the database. A blocking
+# finding (unreachable, older than PostgreSQL 16, or migrated by a newer release) fails this
+# hook and Helm stops the upgrade.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "tracksmith.fullname" . }}-upgrade-check
+  labels:
+    {{- include "tracksmith.labels" . | nindent 4 }}
+    app.kubernetes.io/component: upgrade-check
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: upgrade-check
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: check-upgrade
+          image: {{ include "tracksmith.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node", "cli.mjs", "check-upgrade"]
+          env:
+            - name: TRACKSMITH_ROLE
+              value: api
+            {{- include "tracksmith.env" . | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

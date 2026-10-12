@@ -1,0 +1,9 @@
+apiVersion: v2
+name: tracksmith
+description: Self-hosted work tracker (ADR-021). One image; the app and worker roles run as separate deployments.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+license: AGPL-3.0-only
+keywords: [issue-tracker, project-management, self-hosted]

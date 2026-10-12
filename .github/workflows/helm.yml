@@ -1,0 +1,39 @@
+name: Helm chart
+
+# The chart on kind (M1-099): install with two app replicas, helm test, then a rolling upgrade
+# under load with zero failed requests (tools/helm/kind-test.sh). Runs when the chart, the
+# server or the image change, weekly, and on demand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/helm/**"
+      - "tools/helm/**"
+      - "apps/server/**"
+      - "Dockerfile"
+      - ".github/workflows/helm.yml"
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kind:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install kind
+        run: |
+          curl -fsSL -o kind https://github.com/kubernetes-sigs/kind/releases/download/v0.29.0/kind-linux-amd64
+          echo "c72eda46430f065fb45c5f70e7c957cc9209402ef309294821978677c8fb3284  kind" | sha256sum -c -
+          chmod +x kind && sudo mv kind /usr/local/bin/kind
+          helm version --short && kubectl version --client
+      - name: Lint the chart
+        run: helm lint deploy/helm/tracksmith --set database.url=postgres://u:p@db/ts
+      - name: Build the image
+        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+      - name: Install, helm test and a rolling upgrade under load
+        run: TAG=tracksmith:ci bash tools/helm/kind-test.sh
