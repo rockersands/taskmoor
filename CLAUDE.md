@@ -35,6 +35,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
+| `pnpm --filter @tracksmith/web storybook` | Storybook; every story also runs as a browser test with axe in `pnpm verify` |
 
 Full logs land in `.verify/<step>.log`; `.verify/summary.json` holds the last result.
 Tests need no Docker: the first run creates an embedded Postgres 16 cluster in
@@ -83,7 +84,10 @@ another server instead (CI does this).
 - UI: desktop first, and it must still work on phones (ADR-033). Use design tokens from
   `apps/web/src/styles/tokens.css`; touch targets of at least 44px under `(pointer: coarse)`; no
   sideways scrolling. Component tests use `setViewportWidth()` for compact layouts.
-- Accessibility: semantic roles and names first; tests query by role and name.
+- Accessibility: semantic roles and names first; tests query by role and name. Every component
+  gets a story (`*.stories.tsx`); stories run in a real browser with axe (ADR-024).
+- Strings: never literal UI text in components; add an ID to `apps/web/src/i18n/messages.en.ts`
+  and read it with `useT()`. The `en-XA` pseudo-locale test fails on strings that bypass it.
 - Secrets never enter the repo or the frontend bundle.
 
 ## Clean room (ADR-003)

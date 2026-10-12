@@ -1,5 +1,6 @@
 // pnpm spike field-storage --items <n> [--runs <n>] [--rebuild] [--candidates a,b]
 // pnpm spike queue [--jobs <n>] [--workers <n>] [--batch <n>] [--no-durable]
+// pnpm spike query --items <n> [--runs <n>]
 //
 // Runs an architecture spike and writes its results to docs/spikes/data/<name>.json and
 // docs/spikes/<name>.md. The field-storage spike needs the dataset that
@@ -18,12 +19,14 @@ import {
 import pg from 'pg';
 import type { CandidateId } from '../field-storage/candidates';
 import { renderReport, runFieldStorageSpike } from '../field-storage/run';
+import { renderQueryReport, runQueryBench } from '../query-bench/run';
 import { renderQueueReport, runQueueSpike } from '../queue/bench';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const USAGE =
   'Usage: pnpm spike field-storage --items <n> [--runs <n>] [--rebuild] [--candidates jsonb,side,eav]\n' +
-  '       pnpm spike queue [--jobs <n>] [--workers <n>] [--batch <n>] [--no-durable]';
+  '       pnpm spike queue [--jobs <n>] [--workers <n>] [--batch <n>] [--no-durable]\n' +
+  '       pnpm spike query --items <n> [--runs <n>]';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -68,6 +71,31 @@ switch (positionals[0]) {
         log: (m) => console.log(m),
       });
       writeResults(`field-storage-${sizeLabel(items)}`, result, renderReport(result));
+    } finally {
+      await bench.close();
+    }
+    break;
+  }
+  case 'query': {
+    const items = Number(values.items?.replaceAll('_', ''));
+    if (!Number.isInteger(items) || items < 1) {
+      console.error(USAGE);
+      process.exit(2);
+    }
+    const bench = await openBenchDatabase(benchDatabaseName(items));
+    try {
+      const side = await bench.pool.query("SELECT to_regclass('fs_side.item') IS NOT NULL AS ok");
+      if (!side.rows[0]?.ok) {
+        console.error(
+          `No side schema in ${bench.name}. Run: pnpm spike field-storage --items ${items}`,
+        );
+        process.exit(1);
+      }
+      const result = await runQueryBench(bench.pool, {
+        runs: Number(values.runs),
+        log: (m) => console.log(m),
+      });
+      writeResults(`query-compiler-${sizeLabel(items)}`, result, renderQueryReport(result));
     } finally {
       await bench.close();
     }

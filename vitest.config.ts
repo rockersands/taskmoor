@@ -5,7 +5,13 @@ import { defineConfig } from 'vitest/config';
 // test Postgres once for the whole run.
 export default defineConfig({
   test: {
-    projects: ['packages/*', 'apps/*'],
+    projects: [
+      'packages/*',
+      'apps/server',
+      'apps/web/vitest.config.ts',
+      // Stories run as browser tests with axe checks (M0-031).
+      'apps/web/vitest.stories.config.ts',
+    ],
     globalSetup: ['./packages/testkit/src/pg/global-setup.ts'],
     // Lets pnpm verify print file:line for each failing test.
     includeTaskLocation: true,

@@ -36,7 +36,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-021 Queue spike | Done | In-house SKIP LOCKED queue chosen (ADR-015) |
 | M0-023 AI gateway skeleton | Done | `@tracksmith/ai` with contract tests (ADR-028) |
 | M0-011 GitHub Actions | Partial | Lint, types, tests, e2e; image build comes with M0-025 |
-| M0-031 Design system | Started | Tokens and shell styles; Storybook and axe to do |
+| M0-031 Design system | Done | Tokens, shell components, Storybook with axe on every story (ADR-024) |
 | M0-032 App shell | Mostly done | Hash routing, ICU i18n, pseudo-locale checks; command palette to do |
 | M0-035 DCO enforcement | Done | Git hooks, `pnpm dco` and CI; no branch protection on the free plan |
 | All other M0 tasks | Not started | |

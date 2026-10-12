@@ -1,5 +1,5 @@
 Task ID,State,Date,Note
-M0-001,in-progress,2026-10-12,"Repo, remote and SECURITY.md done; first push pending. DCO and branch protection moved to M0-035"
+M0-001,done,2026-10-12,"Repo pushed; CI green on main; SECURITY.md; DCO via M0-035 (no branch protection on the free plan)"
 M0-002,done,2026-10-12,Governance sections checked by packages/devtools/src/docs-check.ts in pnpm verify
 M0-003,done,2026-10-12,pnpm next-task with progress.csv; backlog integrity checked in pnpm verify
 M0-004,done,2026-10-12,ADR-001 to 003 written (002 Proposed until the user confirms); link and ADR index checks run in pnpm verify
@@ -19,6 +19,6 @@ M0-017,in-progress,2026-10-12,"@tracksmith/query parser, resolver and SQL compil
 M0-020,done,2026-10-12,"@tracksmith/richtext schema and lossless format conversion; 50 docs plus property test; Yjs and Hocuspocus sync verified; ADR-014"
 M0-021,done,2026-10-12,"In-house SKIP LOCKED queue 18k jobs/s vs Graphile 1.4k; outbox exactly-once tests; ADR-015"
 M0-023,done,2026-10-12,"@tracksmith/ai gateway over Anthropic API, Bedrock, Vertex, Foundry and OpenAI-compatible; mocked contract tests; ADR-028"
-M0-031,in-progress,2026-10-12,Tokens and responsive shell; Storybook and axe to do
+M0-031,done,2026-10-12,"Tokens, shell components, Storybook 10 builds; every story runs as a browser test with axe (serious/critical fail); ADR-024"
 M0-032,in-progress,2026-10-12,"Shell with hash routing; ICU MessageFormat via react-intl; en-XA pseudo-locale with zero-untranslated tests (component and e2e); command palette to do"
 M0-035,done,2026-10-12,"AGPL-3.0-only LICENSE; DCO via git hooks, pnpm dco and the CI verify job; free GitHub plan, so no branch protection"

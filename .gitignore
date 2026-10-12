@@ -6,6 +6,9 @@ coverage/
 .verify/
 *.tsbuildinfo
 
+# Storybook
+storybook-static/
+
 # Playwright
 playwright-report/
 test-results/

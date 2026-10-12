@@ -80,7 +80,7 @@ export async function checkBoundaries(
     baseDir,
     validate: true,
     ruleSet: { forbidden: BOUNDARY_RULES },
-    exclude: { path: 'node_modules|/\\.tsbuild/|/dist/|/e2e/|\\.config\\.ts$' },
+    exclude: { path: 'node_modules|/\\.tsbuild/|/dist/|/storybook-static/|/e2e/|\\.config\\.ts$' },
     doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
