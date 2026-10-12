@@ -1,0 +1,22 @@
+{
+  "name": "@tracksmith/ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI provider gateway: one interface over Claude on the Anthropic API, Bedrock, Vertex AI and Foundry, plus OpenAI-compatible local models.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "0.34.4",
+    "@anthropic-ai/foundry-sdk": "0.5.4",
+    "@anthropic-ai/sdk": "0.133.0",
+    "@anthropic-ai/vertex-sdk": "0.20.4",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@tracksmith/testkit": "workspace:*"
+  }
+}
