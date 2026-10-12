@@ -9,6 +9,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env, for example postgres://user:pass@host:5432/tracksmith}
       TRACKSMITH_ROLE: ${TRACKSMITH_ROLE:-all}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      TRACKSMITH_SETUP_TOKEN: ${TRACKSMITH_SETUP_TOKEN:-}
     ports:
       - "${TRACKSMITH_PORT:-8080}:8080"
     volumes:

@@ -25,6 +25,8 @@ services:
       DATABASE_URL: postgres://tracksmith:${POSTGRES_PASSWORD}@postgres:5432/tracksmith # secret-scan: allow
       TRACKSMITH_ROLE: ${TRACKSMITH_ROLE:-all}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      TRACKSMITH_SETUP_TOKEN: ${TRACKSMITH_SETUP_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

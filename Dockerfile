@@ -25,12 +25,20 @@ RUN pnpm --filter @tracksmith/web build && node tools/build/server.mjs
 
 FROM node:${NODE_VERSION}-alpine AS runtime
 ARG TRACKSMITH_VERSION=0.0.0-dev
+# pg_dump and pg_restore for `node cli.mjs backup` and `restore` (OPS-008, OPS-009), one client
+# per supported server major (3 MB each): a dump is taken and loaded with the server's own
+# version, since a newer pg_restore emits settings an older server rejects.
+RUN apk add --no-cache postgresql16-client postgresql17-client postgresql18-client
 ENV NODE_ENV=production \
     TRACKSMITH_VERSION=${TRACKSMITH_VERSION} \
     TRACKSMITH_ROLE=all \
     TRACKSMITH_WEB_DIR=/app/web \
+    TRACKSMITH_DATA=/data \
     PORT=8080 \
     HOST=0.0.0.0
+# Files and backups live here; owned by the app user so a fresh volume is writable.
+RUN mkdir -p /data && chown node:node /data
+VOLUME ["/data"]
 WORKDIR /app
 COPY --from=builder /src/apps/server/dist/ ./
 COPY --from=builder /src/apps/web/dist/ ./web/

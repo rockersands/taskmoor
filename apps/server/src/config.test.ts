@@ -68,6 +68,12 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ DATABASE_URL: DB, PUBLIC_URL: 'tracker' })).toThrow(/PUBLIC_URL/);
   });
 
+  it('treats empty variables as unset, which is what Compose passes for them', () => {
+    const config = loadConfig({ DATABASE_URL: DB, TRACKSMITH_SETUP_TOKEN: '', PUBLIC_URL: '' });
+    expect(config.setupToken).toBeUndefined();
+    expect(config.publicUrl).toBe('http://localhost:8080');
+  });
+
   it('[OPS-002] runs every role by default and accepts a comma-separated subset', () => {
     expect(loadConfig({ DATABASE_URL: DB }).roles).toEqual(['api', 'worker', 'realtime', 'web']);
     expect(loadConfig({ DATABASE_URL: DB, TRACKSMITH_ROLE: 'realtime, API' }).roles).toEqual([

@@ -47,5 +47,8 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-031 Design system | Done | Tokens, shell components, Storybook with axe on every story (ADR-024) |
 | M0-032 App shell | Done | Hash routing, session guard stub, command palette, ICU i18n, pseudo-locale checks |
 | M0-035 DCO enforcement | Done | Git hooks, `pnpm dco` and CI; no branch protection on the free plan |
+| M0-029 Migrations and upgrade harness | Done | Forward-only migrations, upgrade tests from the last three releases' schemas, `node cli.mjs check-upgrade`, `migrate` and `status` in the image |
+| M0-030 Backup and restore | Done | `node cli.mjs backup`, `restore --yes` and `checksum`; drill (back up, wipe, restore, compare) green locally and in CI |
+| M0-028 Install matrix | In progress | Nightly workflow: install.sh timed on Ubuntu 22.04, 24.04 and arm64 runners and in Debian 12 and Rocky 9 containers; first run pending |
 | M0-034 M0 gate | In progress | pnpm gate M0 prints the exit checklist; waits on the 10M run, Docker items, counsel and user acceptance |
 | All other M0 tasks | Not started | |

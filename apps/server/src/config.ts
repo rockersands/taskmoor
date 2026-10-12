@@ -63,7 +63,9 @@ export function parseRoles(text: string): Role[] {
  * broke but never echo the value, because DATABASE_URL can hold a password.
  */
 export function loadConfig(env: Record<string, string | undefined> = process.env): ServerConfig {
-  const parsed = envSchema.safeParse(env);
+  // Compose and systemd pass unset variables as empty strings; those mean "not set".
+  const given = Object.fromEntries(Object.entries(env).filter(([, v]) => v !== ''));
+  const parsed = envSchema.safeParse(given);
   if (!parsed.success) {
     const problems = parsed.error.issues.map((i) => `${i.path.join('.')} ${i.message}`);
     throw new Error(`Invalid server configuration:\n- ${problems.join('\n- ')}`);

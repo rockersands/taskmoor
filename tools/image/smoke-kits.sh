@@ -17,8 +17,8 @@ cleanup() {
   docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
   docker rm -f "ts-smoke-$ID-tracksmith-1" "ts-smoke-$ID-postgres-1" "ts-smoke-ext-$ID-tracksmith-1" >/dev/null 2>&1 || true
-  docker volume rm "ts-smoke-$ID_postgres-data" "ts-smoke-$ID_tracksmith-data" "ts-smoke-ext-$ID_tracksmith-data" >/dev/null 2>&1 || true
-  docker network rm "ts-smoke-$ID_default" "ts-smoke-ext-$ID_default" >/dev/null 2>&1 || true
+  docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_tracksmith-data" "ts-smoke-ext-${ID}_tracksmith-data" >/dev/null 2>&1 || true
+  docker network rm "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 

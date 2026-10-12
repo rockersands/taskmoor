@@ -2,11 +2,11 @@
 
 Read this first in every session, then update it before you stop.
 
-## Last session: 2026-10-12 (overnight)
+## Last session: 2026-10-12 (overnight and morning)
 
 ### Done
 
-- **M0 is 22 of 35 tasks done; 31 of 33 ADRs accepted.** `pnpm gate M0` prints the exit
+- **M0 is 28 of 35 tasks done; 31 of 33 ADRs accepted.** `pnpm gate M0` prints the exit
   checklist; `STATUS.md` has the task table; `docs/status/2026-10-12.md` is the first weekly
   report (also in the user's Drive folder as a Google Doc).
 - Foundation (earlier today): repo with the personal identity only, DCO hooks and CI (Postgres
@@ -28,6 +28,13 @@ Read this first in every session, then update it before you stop.
 - Benchmark tooling (M0-033): `pnpm bench:check` (budgets plus a 20% regression check against
   `docs/spikes/baseline`), `pnpm status-report`, the nightly workflow on the `ci-workflows`
   branch (see Waiting on the user).
+- Install skeleton (M0-025 to M0-027, M0-029, M0-030; M0-011's image build): one multi-arch
+  image with roles by `TRACKSMITH_ROLE`, the all-in-one image, two Compose kits with
+  `install.sh`/`install.ps1`, first-run setup with cookie sessions, the upgrade harness and the
+  operator CLI in the image (`node cli.mjs check-upgrade | migrate | status | backup | restore |
+  checksum`), and the restore drill `tools/image/drill-backup.sh` (back up, wipe, restore,
+  compare table checksums, sign in) in the CI image job. The nightly install matrix
+  (M0-028, `install-matrix.yml`) is written; its first run is the next step.
 - Query compiler fixes found by the spike: id tiebreaker in the newest-first indexes and
   `NULLS LAST` only on nullable columns (41.7 ms to 0.65 ms); `WAS` as one history `EXISTS`
   (1.9 s to 0.65 ms for a value that never occurred); labels and word search use index-friendly
@@ -38,18 +45,19 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. **The 10M run.** The chain started at 03:18 local time holds the bench cluster:
-   `pnpm gen --items 10000000` (done, 38 min) then `pnpm spike field-storage --items 10000000`
-   (jsonb done, side building, then eav). The EAV candidate is already ruled out at 1M, so when
-   the chain reaches the eav build (`gen.pairs` and `fs_side` complete), stop it and run
-   `pnpm spike field-storage --items 10000000 --candidates jsonb,side` (reuses the built
-   schemas, times queries only), then `pnpm spike query --items 10000000` (builds the extra
-   indexes first, about 20 min) and `pnpm spike authz-overhead --items 10000000`, then the same
-   two at `--items 1000000`. Fill the 10M tables into ADR-008 and ADR-010, flip both to
-   Accepted (README too), mark M0-016, M0-017 and M0-024 done, refresh the baselines in
-   `docs/spikes/baseline` with the new 1M/10M files if they are within budget.
-2. M0-025 to M0-030 (image, all-in-one, setup page, install matrix, migration harness,
-   backup drill) once Docker works; M0-011's image build goes with M0-025.
+1. **The 10M run.** The reload chain (started 10:18 local on 2026-10-12) holds the bench
+   cluster: `pnpm gen --items 10000000` finished at 11:10 (52 min, fingerprint 7ba375e3e818fa59,
+   tables now LOGGED), `pnpm gen --items 1000000` follows, then the scratchpad script
+   `timings.sh` runs `spike field-storage --items 10000000 --candidates side`, `spike query` and
+   `spike authz-overhead` at 10M, then `query`, `authz-overhead` and `field-storage
+   --candidates jsonb,side` at 1M (about an hour in all; each writes `docs/spikes/<name>-<size>.md`
+   and `data/`). Then fill the 10M tables into ADR-008 and ADR-010, flip both to Accepted (README
+   too), mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline` with the new 1M/10M
+   files if they are within budget, and run `pnpm bench:check`.
+2. **Install matrix (M0-028).** After the push: `gh workflow run install-matrix.yml`, then
+   `gh run watch`; record the seconds per OS from the job summary in `progress.csv` and
+   `STATUS.md` and mark the task done when every required row is green (the arm64 row may be
+   unavailable on the free plan; it is `continue-on-error`).
 3. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
    `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
 
@@ -88,6 +96,23 @@ Read this first in every session, then update it before you stop.
   start until setup completes; `TRACKSMITH_SETUP_TOKEN` fixes the token (the e2e suite uses
   `e2e-setup-token-0123456789`). `pnpm verify --e2e` starts `apps/web/e2e/api-server.ts` (embedded
   Postgres cluster `e2e`, port 8787) and the Vite preview proxies `/api` to it.
+- Docker drills from Git Bash: wrap docker so that `MSYS_NO_PATHCONV=1` applies to it alone
+  (`docker() { MSYS_NO_PATHCONV=1 command docker "$@"; }`), or `/data/...` arguments become
+  Windows paths; exporting it instead breaks curl's `-o /dev/null` (exit 23) and `$WORK` paths.
+  `docker cp` needs a native host path (`cygpath -w`) and an existing parent directory in the
+  container. `curl | grep -q` under `pipefail` can fail with curl's exit 23 because grep closes
+  the pipe first (GNU grep also stops early when its output is /dev/null); read the body into a
+  variable and match on it.
+- PostgreSQL client versions: a pg_restore newer than the server fails on
+  `SET transaction_timeout` (17+ emits it), so the image ships clients 16, 17 and 18 under
+  `/usr/libexec/postgresql<major>` and `clientBinary()` in `apps/server/src/backup.ts` picks the
+  server's major; `TRACKSMITH_PG_BIN` points at another directory. The round-trip test
+  (`backup.roundtrip.test.ts`) skips when no matching client is on this machine; the CI image
+  job runs the real drill.
+- Python's `Path.write_text` on Windows writes CRLF: Biome's format check then fails and git
+  shows whole-file diffs. Open files with `newline='\n'` or run `sed -i 's/\r$//'` afterwards.
+- Commit 5ffe3ad carries the message of the commit before it; it holds the upgrade harness and
+  the operator CLI (M0-029). Noted in the body of the commit that followed.
 - Record task state in `docs/plan/progress.csv` (in-progress, done, waiting-on-user) as you go;
   `pnpm next-task`, `pnpm status-report`, `pnpm gate` and a test read it.
 

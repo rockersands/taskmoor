@@ -1,0 +1,46 @@
+name: Install matrix
+
+# Nightly install test (M0-028, OPS-001): the Compose kit's install.sh on fresh runners and,
+# for the distributions GitHub does not host, inside a fresh container of that distribution
+# using the runner's Docker daemon. Each job records the time from "nothing" to /ready in the
+# job summary. Real virtual machines per OS come when a VM budget exists.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    # arm64 hosted runners may not be available on every plan; the other rows still count.
+    continue-on-error: ${{ matrix.os == 'ubuntu-24.04-arm' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the image
+        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+      - name: Install with the kit and time it
+        run: bash tools/install-matrix/run.sh "${{ matrix.os }}"
+
+  containers:
+    name: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["debian:12", "rockylinux:9"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the image
+        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+      - name: Install from inside a fresh ${{ matrix.image }} userland
+        run: bash tools/install-matrix/container.sh "${{ matrix.image }}"

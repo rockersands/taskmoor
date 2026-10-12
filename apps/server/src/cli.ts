@@ -1,13 +1,24 @@
 // The backend's command line, shipped in the image as cli.mjs:
-//   node cli.mjs check-upgrade   pre-upgrade check (OPS-006); exit 1 while anything blocks
-//   node cli.mjs migrate         apply pending migrations and exit (what the api role does at start)
-//   node cli.mjs status          migration status as JSON
+//   node cli.mjs check-upgrade          pre-upgrade check (OPS-006); exit 1 while anything blocks
+//   node cli.mjs migrate                apply pending migrations and exit
+//   node cli.mjs status                 migration status as JSON
+//   node cli.mjs backup [--out <dir>]   database, files and config into <dir> (OPS-008)
+//   node cli.mjs restore <dir> --yes    put a backup back; stop the other roles first (OPS-009)
+//   node cli.mjs checksum               one checksum per table, for restore drills
+import { join } from 'node:path';
+import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@tracksmith/db';
+import { backup, backupSize, restore, tableChecksums } from './backup';
 import { loadConfig } from './config';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 
-const command = process.argv[2] ?? 'help';
-const USAGE = 'Usage: node cli.mjs <check-upgrade | migrate | status>';
+const { positionals, values } = parseArgs({
+  allowPositionals: true,
+  options: { out: { type: 'string' }, yes: { type: 'boolean', default: false } },
+});
+const command = positionals[0] ?? 'help';
+const USAGE =
+  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | checksum>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -22,8 +33,11 @@ if (!config.databaseUrl) {
   process.stderr.write('DATABASE_URL is required\n');
   process.exit(2);
 }
+const databaseUrl = config.databaseUrl;
+const dataDir = process.env.TRACKSMITH_DATA;
+const say = (message: string) => process.stdout.write(`${message}\n`);
 const db = createDb({
-  connectionString: config.databaseUrl,
+  connectionString: databaseUrl,
   maxConnections: 2,
   applicationName: 'tracksmith-cli',
 });
@@ -31,24 +45,63 @@ const db = createDb({
 try {
   switch (command) {
     case 'check-upgrade': {
-      const checks = await checkUpgrade(db, {
-        ...(process.env.TRACKSMITH_DATA ? { dataDir: process.env.TRACKSMITH_DATA } : {}),
-      });
+      const checks = await checkUpgrade(db, dataDir ? { dataDir } : {});
       process.stdout.write(formatChecks(checks));
       if (checks.some((c) => c.state === 'block')) process.exitCode = 1;
       break;
     }
     case 'migrate': {
       const applied = await migrateToLatest(db);
-      process.stdout.write(
-        applied.length === 0 ? 'Up to date.\n' : `Applied: ${applied.join(', ')}\n`,
+      say(applied.length === 0 ? 'Up to date.' : `Applied: ${applied.join(', ')}`);
+      break;
+    }
+    case 'status':
+      say(JSON.stringify(await migrationStatus(db), null, 2));
+      break;
+    case 'backup': {
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const out = values.out ?? join(dataDir ?? '.', 'backups', stamp);
+      const manifest = await backup(db, out, {
+        databaseUrl,
+        ...(dataDir ? { dataDir } : {}),
+        version: config.version,
+        config: {
+          PUBLIC_URL: config.publicUrl,
+          TRACKSMITH_ROLE: config.roles.join(','),
+          TRACKSMITH_VERSION: config.version,
+        },
+        log: say,
+      });
+      say(
+        `${out}: ${Math.round(backupSize(out) / 1e6)} MB, ${manifest.migrations.length} migrations`,
       );
       break;
     }
-    case 'status': {
-      process.stdout.write(`${JSON.stringify(await migrationStatus(db), null, 2)}\n`);
+    case 'restore': {
+      const dir = positionals[1];
+      if (!dir) {
+        process.stderr.write(`${USAGE}\n`);
+        process.exitCode = 2;
+        break;
+      }
+      if (!values.yes) {
+        process.stderr.write(
+          'restore replaces the database and the files; stop the other roles and add --yes to confirm\n',
+        );
+        process.exitCode = 2;
+        break;
+      }
+      const manifest = await restore(db, dir, {
+        databaseUrl,
+        ...(dataDir ? { dataDir } : {}),
+        log: say,
+      });
+      say(`restored a backup from ${manifest.createdAt} (version ${manifest.version})`);
       break;
     }
+    case 'checksum':
+      say(JSON.stringify(await tableChecksums(db), null, 2));
+      break;
     default:
       process.stderr.write(`${USAGE}\n`);
       process.exitCode = 2;

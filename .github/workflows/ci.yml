@@ -196,3 +196,5 @@ jobs:
           docker rm -f app
       - name: All-in-one image and Compose kits
         run: TAG=tracksmith:ci bash tools/image/smoke-kits.sh
+      - name: Backup and restore drill
+        run: TAG=tracksmith:ci bash tools/image/drill-backup.sh
