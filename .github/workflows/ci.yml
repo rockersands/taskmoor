@@ -139,7 +139,8 @@ jobs:
           retention-days: 7
 
   # Software bill of materials and known-vulnerability gate. CodeQL joins once the repo is public
-  # (it needs GitHub Advanced Security on private repos).
+  # (it needs GitHub Advanced Security on private repos). Third-party actions are pinned by
+  # commit SHA so a moved tag cannot change what runs.
   security:
     name: security (SBOM, vulnerabilities)
     if: github.event_name != 'pull_request'
@@ -148,14 +149,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: SBOM (CycloneDX)
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: .
           format: cyclonedx-json
           output-file: sbom.cdx.json
           artifact-name: sbom.cdx.json
       - name: Vulnerability scan (fixable high and critical fail the build)
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: vuln

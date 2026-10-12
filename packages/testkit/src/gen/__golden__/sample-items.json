@@ -1,0 +1,173 @@
+[
+  {
+    "history": [],
+    "item": {
+      "assigneeId": 11,
+      "createdAt": "2018-01-04T05:50:52.821Z",
+      "description": "Logs show a timeout after thirty seconds. Expected result: the list refreshes without a reload. Steps to reproduce are attached below.",
+      "fields": {
+        "1": "Aegor 1",
+        "2": 47.22,
+        "4": "Linyor 2",
+        "5": "Tamgal 3",
+        "7": "permissions check 956",
+        "8": "payment form 80",
+        "9": "Gorbel 4",
+        "10": [
+          "ops",
+          "data",
+          "infra"
+        ]
+      },
+      "id": 1,
+      "key": "AB-1",
+      "labels": [],
+      "number": 1,
+      "parentId": null,
+      "priority": "Medium",
+      "reporterId": 1,
+      "resolvedAt": "2018-01-16T19:07:44.689Z",
+      "spaceId": 2,
+      "status": "Done",
+      "statusCategory": "done",
+      "summary": "Migrate timezone handling in the EU region",
+      "type": "Task",
+      "updatedAt": "2018-01-16T19:07:44.689Z"
+    }
+  },
+  {
+    "history": [],
+    "item": {
+      "assigneeId": 1,
+      "createdAt": "2018-01-10T14:48:58.997Z",
+      "description": "Steps to reproduce are attached below. Needs a decision from the product owner. Performance regressed after the last deploy. We agreed to keep the old endpoint for one release.",
+      "fields": {
+        "1": "Lolo 2",
+        "2": 476.88,
+        "4": "Jundar 7",
+        "5": "Velkel 7",
+        "7": "invoice report 975",
+        "8": "backup script 297",
+        "9": "Gorbel 4",
+        "10": [
+          "search",
+          "mobile",
+          "frontend"
+        ]
+      },
+      "id": 2,
+      "key": "AB-2",
+      "labels": [
+        "ops"
+      ],
+      "number": 2,
+      "parentId": null,
+      "priority": "Medium",
+      "reporterId": 4,
+      "resolvedAt": null,
+      "spaceId": 2,
+      "status": "To Do",
+      "statusCategory": "todo",
+      "summary": "Rename backup script for admins",
+      "type": "Epic",
+      "updatedAt": "2018-01-28T15:11:44.660Z"
+    }
+  },
+  {
+    "history": [
+      {
+        "actorId": 8,
+        "at": "2018-01-28T03:34:27.782Z",
+        "field": "status",
+        "from": "status 9",
+        "itemId": 3,
+        "to": "Won't Do"
+      },
+      {
+        "actorId": 3,
+        "at": "2018-01-30T03:28:58.680Z",
+        "field": "cf:1",
+        "from": "custom 9",
+        "itemId": 3,
+        "to": "custom 4"
+      },
+      {
+        "actorId": 1,
+        "at": "2018-02-01T17:33:05.804Z",
+        "field": "status",
+        "from": "status 8",
+        "itemId": 3,
+        "to": "Won't Do"
+      },
+      {
+        "actorId": 1,
+        "at": "2018-02-09T01:18:57.824Z",
+        "field": "assignee",
+        "from": "16",
+        "itemId": 3,
+        "to": "assignee 7"
+      },
+      {
+        "actorId": 20,
+        "at": "2018-02-23T04:23:50.731Z",
+        "field": "status",
+        "from": "status 9",
+        "itemId": 3,
+        "to": "Won't Do"
+      },
+      {
+        "actorId": 2,
+        "at": "2018-02-26T22:32:44.224Z",
+        "field": "priority",
+        "from": "priority 8",
+        "itemId": 3,
+        "to": "priority 1"
+      },
+      {
+        "actorId": 5,
+        "at": "2018-03-01T09:23:52.668Z",
+        "field": "status",
+        "from": "status 7",
+        "itemId": 3,
+        "to": "Won't Do"
+      }
+    ],
+    "item": {
+      "assigneeId": null,
+      "createdAt": "2018-01-20T13:18:45.244Z",
+      "description": "Expected result: the list refreshes without a reload.",
+      "fields": {
+        "1": "Aegor 1",
+        "2": 310.82,
+        "3": "2023-07-11",
+        "4": "Wenor 1",
+        "5": "Ivohal 6",
+        "6": "archive policy 12",
+        "7": "onboarding flow 776",
+        "8": "webhook retry 524",
+        "9": "Feneth 1",
+        "10": [
+          "mobile",
+          "api"
+        ]
+      },
+      "id": 3,
+      "key": "AA-1",
+      "labels": [
+        "tech-debt",
+        "ops"
+      ],
+      "number": 1,
+      "parentId": null,
+      "priority": "Medium",
+      "reporterId": 3,
+      "resolvedAt": "2018-03-01T20:33:50.024Z",
+      "spaceId": 1,
+      "status": "Won't Do",
+      "statusCategory": "done",
+      "summary": "Update error banner for new users",
+      "type": "Task",
+      "updatedAt": "2018-03-01T20:33:50.024Z"
+    }
+  }
+]

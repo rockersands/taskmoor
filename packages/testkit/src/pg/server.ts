@@ -26,8 +26,22 @@ interface Binaries {
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const CACHE_DIR = join(REPO_ROOT, '.cache', 'pg-test');
-const PERSISTENT_DIR = join(CACHE_DIR, 'pg16');
-const LOCK_FILE = join(CACHE_DIR, 'pg16.lock');
+
+export interface EmbeddedOptions {
+  /** Cluster name; its data lives in .cache/pg-test/<name> and is kept between runs. */
+  name: string;
+  /** Extra `-c key=value` server settings, applied after the defaults. */
+  settings?: Record<string, string | number>;
+}
+
+const DEFAULT_SETTINGS: Record<string, string | number> = {
+  listen_addresses: 'localhost',
+  fsync: 'off',
+  synchronous_commit: 'off',
+  full_page_writes: 'off',
+  max_connections: 300,
+  shared_buffers: '128MB',
+};
 
 /**
  * Starts the Postgres server for a test run.
@@ -42,12 +56,20 @@ export async function startTestPostgres(): Promise<PgServer> {
   if (external) {
     return { adminUrl: external, kind: 'external', stop: async () => {} };
   }
+  return startEmbeddedPostgres({ name: 'pg16' });
+}
 
+/** Starts (creating on first use) a named embedded Postgres 16 cluster. */
+export async function startEmbeddedPostgres(options: EmbeddedOptions): Promise<PgServer> {
   const bins = await resolveBinaries();
   await mkdir(CACHE_DIR, { recursive: true });
 
-  const ownsPersistent = await acquireLock();
-  const dataDir = ownsPersistent ? PERSISTENT_DIR : join(CACHE_DIR, `tmp-${process.pid}`);
+  const lockFile = join(CACHE_DIR, `${options.name}.lock`);
+  const ownsPersistent = await acquireLock(lockFile);
+  const dataDir = join(
+    CACHE_DIR,
+    ownsPersistent ? options.name : `tmp-${options.name}-${process.pid}`,
+  );
   const logFile = `${dataDir}.log`;
 
   if (!existsSync(join(dataDir, 'PG_VERSION'))) {
@@ -68,14 +90,10 @@ export async function startTestPostgres(): Promise<PgServer> {
   await stopIfRunning(bins, dataDir);
 
   const port = await freePort();
+  const settings = { ...DEFAULT_SETTINGS, ...options.settings };
   const serverFlags = [
     `-p ${port}`,
-    '-c listen_addresses=localhost',
-    '-c fsync=off',
-    '-c synchronous_commit=off',
-    '-c full_page_writes=off',
-    '-c max_connections=300',
-    '-c shared_buffers=128MB',
+    ...Object.entries(settings).map(([k, v]) => `-c ${k}=${v}`),
   ].join(' ');
 
   // The server outlives pg_ctl, so pg_ctl must not share pipes with this process: on Windows
@@ -94,9 +112,11 @@ export async function startTestPostgres(): Promise<PgServer> {
   ]);
   if (code !== 0) {
     const log = await readFile(logFile, 'utf8').catch(() => '');
-    if (ownsPersistent) await releaseLock();
+    if (ownsPersistent) await releaseLock(lockFile);
     throw new Error(
-      `Test Postgres failed to start (pg_ctl exit ${code}).\n--- server log ---\n${log.slice(-4000)}`,
+      `Embedded Postgres "${options.name}" failed to start (pg_ctl exit ${code}).
+--- server log ---
+${log.slice(-4000)}`,
     );
   }
 
@@ -104,11 +124,11 @@ export async function startTestPostgres(): Promise<PgServer> {
     adminUrl: `postgres://postgres@localhost:${port}/postgres`,
     kind: 'embedded',
     stop: async () => {
-      await run(bins.pg_ctl, ['stop', '-D', dataDir, '-m', 'fast', '-w', '-t', '60']).catch(
+      await run(bins.pg_ctl, ['stop', '-D', dataDir, '-m', 'fast', '-w', '-t', '120']).catch(
         () => {},
       );
       if (ownsPersistent) {
-        await releaseLock();
+        await releaseLock(lockFile);
       } else {
         await rm(dataDir, { recursive: true, force: true });
         await rm(logFile, { force: true });
@@ -156,24 +176,24 @@ async function stopIfRunning(bins: Binaries, dataDir: string): Promise<void> {
   }
 }
 
-async function acquireLock(): Promise<boolean> {
+async function acquireLock(lockFile: string): Promise<boolean> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const handle = await open(LOCK_FILE, 'wx');
+      const handle = await open(lockFile, 'wx');
       await handle.writeFile(String(process.pid));
       await handle.close();
       return true;
     } catch {
-      const owner = Number.parseInt(await readFile(LOCK_FILE, 'utf8').catch(() => ''), 10);
+      const owner = Number.parseInt(await readFile(lockFile, 'utf8').catch(() => ''), 10);
       if (Number.isInteger(owner) && owner !== process.pid && isAlive(owner)) return false;
-      await unlink(LOCK_FILE).catch(() => {});
+      await unlink(lockFile).catch(() => {});
     }
   }
   return false;
 }
 
-async function releaseLock(): Promise<void> {
-  await unlink(LOCK_FILE).catch(() => {});
+async function releaseLock(lockFile: string): Promise<void> {
+  await unlink(lockFile).catch(() => {});
 }
 
 function isAlive(pid: number): boolean {

@@ -46,15 +46,19 @@ Read this first in every session, then update it before you stop.
   `.githooks/prepare-commit-msg` and checked by the pre-push hook, `pnpm dco` and CI. The user
   stays on GitHub's free plan: no branch protection, so CI is the gate, and CI is trimmed to fit
   the free minutes (PRs run one Linux job; Windows runs weekly).
-- Last result: `pnpm verify` passes with 78 tests in about 11s. `pnpm verify --e2e` passed
+- Synthetic data generator (M0-015): `@tracksmith/testkit/gen` builds users, spaces, fields,
+  items and history from a seed (Zipf-skewed spaces and users, epic/subtask hierarchy, custom
+  field values); `pnpm gen --items N` loads it with COPY into the `gen` schema of the embedded
+  `bench` cluster (`.cache/pg-test/bench`, kept between runs, skipped when the fingerprint
+  matches). 100k items load in about 20s; expect about 30 min for 10M.
+- Last result: `pnpm verify` passes with 105 tests in about 11s. `pnpm verify --e2e` passed
   earlier with 6 checks.
 
 ### Next (in order)
 
 1. M0-001 rest: the first push waits on a one-time Git Credential Manager sign-in as
    Rockersands. After it lands, check that the first CI run is green on GitHub.
-2. M0-015: synthetic data generator in the testkit (fixed seeds; 1M, 10M and 30M items).
-3. Spikes M0-016 to M0-023, in the order `pnpm next-task` prints them.
+2. Spikes M0-016 to M0-023, in the order `pnpm next-task` prints them.
 
 ### Notes and gotchas
 

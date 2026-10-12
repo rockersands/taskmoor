@@ -34,4 +34,5 @@ needs GitHub Advanced Security.
 ## Consequences
 
 Adding a dependency with an unusual licence needs a decision recorded here first. Third-party
-GitHub Actions are pinned by tag for now; pin them by commit SHA before the first public release.
+GitHub Actions (outside the `actions/` organisation) are pinned by commit SHA with the version in
+a comment; Dependabot keeps the pins current.

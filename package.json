@@ -21,7 +21,8 @@
     "dev:server": "pnpm --filter @tracksmith/server dev",
     "next-task": "tsx packages/devtools/src/cli/next-task.ts",
     "trace": "tsx packages/devtools/src/cli/trace.ts",
-    "dco": "tsx packages/devtools/src/cli/dco.ts"
+    "dco": "tsx packages/devtools/src/cli/dco.ts",
+    "gen": "tsx packages/testkit/src/cli/gen.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
