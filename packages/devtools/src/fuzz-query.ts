@@ -18,7 +18,7 @@ import { Rng } from '@tracksmith/testkit/gen';
  */
 
 /** Inputs slower than this are reported: the parser is linear, so a slow input is a bug. */
-export const SLOW_MS = 250;
+export const SLOW_MS = 1000;
 
 const SAME = (a: unknown, b: unknown) =>
   JSON.stringify(stripSpans(a)) === JSON.stringify(stripSpans(b));

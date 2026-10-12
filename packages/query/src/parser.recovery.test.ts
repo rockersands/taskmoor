@@ -181,6 +181,27 @@ describe('positions and hints', () => {
   });
 });
 
+describe('numbers', () => {
+  it('[QRY-001] keeps numerals a JavaScript number cannot hold exactly as written (found by the fuzzer)', () => {
+    for (const [text, kind] of [
+      ['filter > 10001100001100010000110001', 'word'],
+      ['id = 9007199254740993', 'word'],
+      ['x = 0.0000001', 'word'],
+      ['id = 9007199254740991', 'number'],
+      ['x = 3.50', 'number'],
+      ['x = -12', 'number'],
+    ] as const) {
+      const query = parseQuery(text);
+      expect((query.where as { value: { kind: string } }).value.kind, text).toBe(kind);
+      const printed = printQuery(query);
+      expect(parseWithDiagnostics(printed).errors, printed).toEqual([]);
+    }
+    expect(printQuery(parseQuery('filter > 10001100001100010000110001'))).toBe(
+      'filter > 10001100001100010000110001',
+    );
+  });
+});
+
 describe('limits', () => {
   it(`[QRY-001] refuses nesting deeper than ${MAX_DEPTH} levels instead of overflowing the stack`, () => {
     for (const text of [

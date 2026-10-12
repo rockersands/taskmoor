@@ -147,7 +147,8 @@ export function scan(text: string): ScanResult {
       let j = i + 1;
       while (j < text.length && WORD_CHAR.test(text[j] as string)) j++;
       const word = text.slice(i, j);
-      const type: TokenType = /^[+-]?\d+(\.\d+)?$/.test(word) ? 'number' : 'word';
+      const type: TokenType =
+        /^[+-]?\d+(\.\d+)?$/.test(word) && exactNumber(word) ? 'number' : 'word';
       tokens.push({ type, text: word, span: { start, end: j } });
       i = j;
       continue;
@@ -160,6 +161,17 @@ export function scan(text: string): ScanResult {
   }
   tokens.push({ type: 'eof', text: '', span: { start: text.length, end: text.length } });
   return { tokens, errors };
+}
+
+/**
+ * A numeral is a number only when a JavaScript number holds it exactly and prints it back
+ * without an exponent; otherwise it stays a word, so `id = 10001100001100010000110001` keeps
+ * every digit instead of turning into 1.0001100001100010e+25 (found by the fuzzer).
+ */
+function exactNumber(word: string): boolean {
+  const n = Number(word);
+  if (!Number.isFinite(n) || /e/i.test(String(n))) return false;
+  return Number.isInteger(n) ? Number.isSafeInteger(n) : true;
 }
 
 function startsToken(text: string, i: number): boolean {
