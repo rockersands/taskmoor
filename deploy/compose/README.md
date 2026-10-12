@@ -17,3 +17,11 @@ are forward-only and run at start (ADR-022). Stop: `docker compose down` (add `-
 the data).
 
 For a single container with Postgres inside, see `deploy/allinone`.
+
+## Installer options
+
+`install.sh` reads these from the environment: `TRACKSMITH_IMAGE` and `POSTGRES_IMAGE` pick the
+images; `TRACKSMITH_PULL=never` installs from images already loaded (the air-gap bundle does
+this) and never contacts a registry; `TRACKSMITH_COMPOSE_OVERRIDE` adds compose files, for
+example one that puts the stack on an internal network. Readiness is checked from inside the
+container, so it works behind any firewall or network mode.

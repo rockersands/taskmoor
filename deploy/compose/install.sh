@@ -42,21 +42,33 @@ for p in "$port"; do
   fi
 done
 
-say "starting Tracksmith with $file"
-docker compose -f "$file" up -d --quiet-pull
+# TRACKSMITH_COMPOSE_OVERRIDE adds compose files (space-separated), for example to put the
+# stack on an internal network; TRACKSMITH_PULL=never installs from images already loaded
+# (the air-gap bundle) and never contacts a registry.
+files=(-f "$file")
+for extra in ${TRACKSMITH_COMPOSE_OVERRIDE:-}; do files+=(-f "$extra"); done
+compose() { docker compose "${files[@]}" "$@"; }
 
+say "starting Tracksmith with $file"
+compose up -d --quiet-pull --pull "${TRACKSMITH_PULL:-missing}"
+
+# Readiness is asked from inside the container, so it works whatever the host's ports,
+# firewall or network mode.
+ready() {
+  compose exec -T tracksmith node -e     "fetch('http://127.0.0.1:8080/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"     >/dev/null 2>&1
+}
 say "waiting for the backend"
 for _ in $(seq 1 120); do
-  if curl -fsS "http://127.0.0.1:$port/ready" >/dev/null 2>&1; then break; fi
+  if ready; then break; fi
   sleep 1
 done
-curl -fsS "http://127.0.0.1:$port/ready" >/dev/null 2>&1 || {
-  docker compose -f "$file" logs --tail 40 tracksmith
+ready || {
+  compose logs --tail 40 tracksmith
   die "the backend did not become ready in 2 minutes; the log above says why"
 }
 
 # The link line is absent once setup is complete; an empty match is the normal second run.
-link=$( (docker compose -f "$file" logs --no-log-prefix tracksmith 2>/dev/null || true) | grep -o '"link":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
+link=$( (compose logs --no-log-prefix tracksmith 2>/dev/null || true) | grep -o '"link":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
 say ""
 say "Tracksmith is running on port $port."
 if [ -n "$link" ]; then

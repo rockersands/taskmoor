@@ -3,7 +3,8 @@ name: Install matrix
 # Nightly install test (M0-028, OPS-001): the Compose kit's install.sh on fresh runners and,
 # for the distributions GitHub does not host, inside a fresh container of that distribution
 # using the runner's Docker daemon. Each job records the time from "nothing" to /ready in the
-# job summary. Real virtual machines per OS come when a VM budget exists.
+# job summary. Real virtual machines per OS come when a VM budget exists. The air-gap job
+# installs from the offline bundle on a network with no route out.
 on:
   schedule:
     - cron: "0 4 * * *"
@@ -44,3 +45,16 @@ jobs:
         run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
       - name: Install from inside a fresh ${{ matrix.image }} userland
         run: bash tools/install-matrix/container.sh "${{ matrix.image }}"
+
+  # OPS-005: build the air-gap bundle with a throwaway key, refuse a changed file and a wrong
+  # key, then install from it on an internal Docker network with no route out.
+  airgap:
+    name: air-gap bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the image
+        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+      - name: Bundle, verify and install offline
+        run: TAG=tracksmith:ci bash tools/airgap/test-offline.sh
