@@ -1,4 +1,34 @@
+import { existsSync, readdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { defineConfig } from 'vitest/config';
+
+/**
+ * Stories run in Playwright's Chromium. Where it is not installed (a CI job that only runs the
+ * database suites, a fresh machine) the stories project is left out, with a notice; the main CI
+ * job installs the browser and runs them.
+ */
+function chromiumInstalled(): boolean {
+  const root =
+    process.env.PLAYWRIGHT_BROWSERS_PATH ??
+    (process.platform === 'win32'
+      ? join(process.env.LOCALAPPDATA ?? homedir(), 'ms-playwright')
+      : process.platform === 'darwin'
+        ? join(homedir(), 'Library', 'Caches', 'ms-playwright')
+        : join(homedir(), '.cache', 'ms-playwright'));
+  try {
+    return existsSync(root) && readdirSync(root).some((d) => d.startsWith('chromium'));
+  } catch {
+    return false;
+  }
+}
+
+const storiesProject = chromiumInstalled() ? ['apps/web/vitest.stories.config.ts'] : [];
+if (storiesProject.length === 0) {
+  console.warn(
+    'Stories skipped: Playwright Chromium is not installed (pnpm --filter @tracksmith/web exec playwright install chromium).',
+  );
+}
 
 // One Vitest run covers every package. Each package keeps its own vitest.config.ts
 // (environment, setup files); this root file only lists them and starts the shared
@@ -10,7 +40,7 @@ export default defineConfig({
       'apps/server',
       'apps/web/vitest.config.ts',
       // Stories run as browser tests with axe checks (M0-031).
-      'apps/web/vitest.stories.config.ts',
+      ...storiesProject,
     ],
     globalSetup: ['./packages/testkit/src/pg/global-setup.ts'],
     // Lets pnpm verify print file:line for each failing test.

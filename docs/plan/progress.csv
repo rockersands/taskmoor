@@ -20,5 +20,5 @@ M0-020,done,2026-10-12,"@tracksmith/richtext schema and lossless format conversi
 M0-021,done,2026-10-12,"In-house SKIP LOCKED queue 18k jobs/s vs Graphile 1.4k; outbox exactly-once tests; ADR-015"
 M0-023,done,2026-10-12,"@tracksmith/ai gateway over Anthropic API, Bedrock, Vertex, Foundry and OpenAI-compatible; mocked contract tests; ADR-028"
 M0-031,done,2026-10-12,"Tokens, shell components, Storybook 10 builds; every story runs as a browser test with axe (serious/critical fail); ADR-024"
-M0-032,in-progress,2026-10-12,"Shell with hash routing; ICU MessageFormat via react-intl; en-XA pseudo-locale with zero-untranslated tests (component and e2e); command palette to do"
+M0-032,done,2026-10-12,"Shell with hash routing, session guard stub, Ctrl+K command palette (APG combobox), ICU i18n via react-intl, en-XA pseudo-locale checked by component and e2e tests"
 M0-035,done,2026-10-12,"AGPL-3.0-only LICENSE; DCO via git hooks, pnpm dco and the CI verify job; free GitHub plan, so no branch protection"

@@ -83,5 +83,9 @@ Read this first in every session, then update it before you stop.
 
 ### Waiting on the user
 
+- Run `gh auth refresh -s workflow` (browser sign-in as Rockersands) so pushes may change
+  `.github/workflows/*`. A ci.yml change (Chromium in every test job) is parked in
+  `git stash` as "ci: chromium in all jobs"; pop, commit and push it after the refresh.
+
 - Public name: pick from the shortlist in `docs/decisions/name.md` (issuetide, workrill,
   taskmoor) or propose another; the codename stays until then.

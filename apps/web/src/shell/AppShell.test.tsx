@@ -131,6 +131,8 @@ describe('pseudo-locale', () => {
     const texts: string[] = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      // Key names such as "Ctrl K" are hidden from assistive technology and not translated.
+      if (node.parentElement?.closest('[aria-hidden="true"]')) continue;
       const text = node.textContent?.trim();
       if (text) texts.push(text);
     }

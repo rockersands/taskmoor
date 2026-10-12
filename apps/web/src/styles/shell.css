@@ -151,6 +151,104 @@ body {
   color: var(--color-text-muted);
 }
 
+.shell-topbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Command palette */
+.palette-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-200);
+  cursor: pointer;
+}
+
+.palette {
+  position: fixed;
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: min(92vw, 560px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 30%);
+  overflow: hidden;
+}
+
+.palette-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+}
+
+.palette-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.palette-item,
+.palette-empty {
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--hit-target);
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+}
+
+.palette-item.is-active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.palette-empty {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+/* Sign-in prompt */
+.button-primary {
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: var(--color-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sign-in-prompt .button-primary {
+  margin-top: var(--space-4);
+}
+
 /* Compact: phones and narrow windows. */
 .shell[data-layout="compact"] {
   grid-template-columns: minmax(0, 1fr);
@@ -187,7 +285,9 @@ body {
 /* Touch screens get larger targets regardless of width. */
 @media (pointer: coarse) {
   .icon-button,
-  .nav-link {
+  .nav-link,
+  .palette-trigger,
+  .palette-item {
     min-height: var(--hit-target-touch);
   }
 

@@ -7,6 +7,7 @@ test('the pseudo-locale reaches every string in the shell', async ({ page }) => 
     const out: string[] = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (node.parentElement?.closest('[aria-hidden="true"]')) continue;
       const text = node.textContent?.trim();
       if (text) out.push(text);
     }

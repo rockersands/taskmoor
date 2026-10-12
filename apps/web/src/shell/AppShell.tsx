@@ -14,6 +14,8 @@ import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
 interface AppShellProps {
   items: readonly NavItem[];
   activeId: string;
+  /** Controls shown at the right end of the top bar, such as the command palette. */
+  topbarEnd?: ReactNode;
   children: ReactNode;
 }
 
@@ -23,7 +25,7 @@ interface AppShellProps {
  * Desktop first: on wide screens the sidebar is always there and can collapse to an icon rail.
  * Below 768px it becomes a drawer opened from the menu button, so the app still works on phones.
  */
-export function AppShell({ items, activeId, children }: AppShellProps) {
+export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps) {
   const t = useT();
   const compact = useMediaQuery(COMPACT_QUERY);
   const [collapsed, setCollapsed] = useState(false);
@@ -103,6 +105,7 @@ export function AppShell({ items, activeId, children }: AppShellProps) {
           </button>
         )}
         <span className="shell-brand">{t('app.name')}</span>
+        <div className="shell-topbar-end">{topbarEnd}</div>
       </header>
 
       {!compact && (
