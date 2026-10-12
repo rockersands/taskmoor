@@ -102,22 +102,62 @@ function licenceOf(manifest: Record<string, unknown>): string {
   return '';
 }
 
-/** Lists every installed third-party package from pnpm's store layout (node_modules/.pnpm). */
+/**
+ * Lists every installed third-party package from pnpm's store layout (node_modules/.pnpm).
+ * Each store folder holds its package as the one real directory under `node_modules` (its
+ * dependencies there are links). The folder name is not used: pnpm shortens long names and
+ * appends a hash (`@opentelemetry+sdk-trace-ba_d5c5…`), which an earlier version could not
+ * parse and silently skipped. A folder without a readable package is reported, not skipped.
+ */
 export function installedPackages(root: string): PackageLicence[] {
   const store = join(root, 'node_modules', '.pnpm');
   const out: PackageLicence[] = [];
-  for (const entry of readdirSync(store)) {
-    const at = entry.indexOf('@', entry.startsWith('@') ? 1 : 0);
-    if (at <= 0) continue;
-    const name = entry.slice(0, at).replace('+', '/');
-    const manifestPath = join(store, entry, 'node_modules', ...name.split('/'), 'package.json');
-    if (!existsSync(manifestPath)) continue;
-    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
-    out.push({
-      name: String(manifest.name ?? name),
-      version: String(manifest.version ?? ''),
-      licence: licenceOf(manifest),
-    });
+  for (const entry of readdirSync(store, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === 'node_modules') continue;
+    const modules = join(store, entry.name, 'node_modules');
+    // Fast path: the folder name is `name@version...` with `/` written as `+`.
+    const at = entry.name.indexOf('@', entry.name.startsWith('@') ? 1 : 0);
+    const guess =
+      at > 0 ? join(modules, ...entry.name.slice(0, at).replace('+', '/').split('/')) : '';
+    const found =
+      guess && existsSync(join(guess, 'package.json'))
+        ? [guess]
+        : existsSync(modules)
+          ? packageDirs(modules)
+          : [];
+    if (found.length === 0) {
+      out.push({ name: `.pnpm/${entry.name}`, version: '', licence: '' });
+      continue;
+    }
+    for (const dir of found) {
+      const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as Record<
+        string,
+        unknown
+      >;
+      out.push({
+        name: String(manifest.name ?? entry.name),
+        version: String(manifest.version ?? ''),
+        licence: licenceOf(manifest),
+      });
+    }
+  }
+  return out;
+}
+
+/** Real (not linked) package directories under a store folder's node_modules, scopes included. */
+function packageDirs(modules: string): string[] {
+  const out: string[] = [];
+  for (const child of readdirSync(modules, { withFileTypes: true })) {
+    const path = join(modules, child.name);
+    if (child.name.startsWith('@') && child.isDirectory()) {
+      for (const scoped of readdirSync(path, { withFileTypes: true })) {
+        if (scoped.isDirectory() && existsSync(join(path, scoped.name, 'package.json'))) {
+          out.push(join(path, scoped.name));
+        }
+      }
+    } else if (child.isDirectory() && existsSync(join(path, 'package.json'))) {
+      out.push(path);
+    }
   }
   return out;
 }

@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { deniedLicences, installedPackages, isAllowed } from './licences';
@@ -9,6 +11,18 @@ describe('dependency licences', () => {
     const packages = installedPackages(REPO);
     expect(packages.length).toBeGreaterThan(100);
     expect(deniedLicences(packages)).toEqual([]);
+  });
+
+  it('reads every store folder, including the ones pnpm shortens with a hash', () => {
+    const store = join(REPO, 'node_modules', '.pnpm');
+    const folders = readdirSync(store, { withFileTypes: true }).filter(
+      (d) => d.isDirectory() && d.name !== 'node_modules',
+    );
+    const names = new Set(installedPackages(REPO).map((p) => p.name));
+    expect(names.size).toBeGreaterThanOrEqual(folders.length * 0.9);
+    // Long names such as this one live in folders like "@opentelemetry+sdk-trace-ba_<hash>".
+    expect(names.has('@opentelemetry/sdk-trace-base')).toBe(true);
+    expect(names.has('@opentelemetry/exporter-trace-otlp-http')).toBe(true);
   });
 
   it('a fixture with denied or missing licences fails', () => {
