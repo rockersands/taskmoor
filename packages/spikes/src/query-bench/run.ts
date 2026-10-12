@@ -296,7 +296,10 @@ export async function runQueryBench(
   } finally {
     client.release();
   }
-  const count = await pool.query<{ n: string }>('SELECT count(*) AS n FROM fs_side.item');
+  // The loader's verified count: a count(*) over 10M rows outlives the statement timeout.
+  const count = await pool.query<{ n: string }>(
+    "SELECT (counts->>'items')::bigint AS n FROM gen.meta",
+  );
   const version = await pool.query<{ v: string }>(`SELECT current_setting('server_version') AS v`);
   return {
     spike: 'query-compiler',

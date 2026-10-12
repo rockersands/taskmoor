@@ -19,27 +19,74 @@ export interface Token {
   span: Span;
 }
 
+export interface QueryErrorOptions {
+  /** What the parser would have accepted at this point, for editor hints (QRY-001). */
+  expected?: readonly string[];
+  /** 1-based line and column; when given, the message names them instead of the position. */
+  line?: number;
+  column?: number;
+}
+
+/**
+ * A query the parser or resolver refuses. `position` is the 0-based offset of the offending
+ * text and `length` its extent; `detail` is the message without the location.
+ */
 export class QueryError extends Error {
-  constructor(
-    message: string,
-    readonly position: number,
-    readonly length = 1,
-  ) {
-    super(`${message} at position ${position + 1}`);
+  readonly detail: string;
+  readonly position: number;
+  readonly length: number;
+  readonly expected: readonly string[];
+  /** 1-based line of `position`. */
+  readonly line: number;
+  /** 1-based column of `position` on its line. */
+  readonly column: number;
+
+  constructor(message: string, position: number, length = 1, options: QueryErrorOptions = {}) {
+    const where =
+      options.line !== undefined
+        ? `line ${options.line}, column ${options.column ?? 1}`
+        : `position ${position + 1}`;
+    super(`${message} at ${where}`);
     this.name = 'QueryError';
+    this.detail = message;
+    this.position = position;
+    this.length = length;
+    this.expected = options.expected ?? [];
+    this.line = options.line ?? 1;
+    this.column = options.column ?? position + 1;
   }
 }
 
+/** A problem found while reading a query, before line and column are attached. */
+export interface RawDiagnostic {
+  message: string;
+  start: number;
+  end: number;
+  expected: string[];
+}
+
 const OPERATORS = ['!=', '!~', '<=', '>=', '=', '<', '>', '~'];
-const WORD_CHAR = /[\p{L}\p{N}_.-]/u;
+/** Characters that may start a word: `@` allows the relative sprint tokens (`@current`). */
+const WORD_START = /[\p{L}\p{N}_.@-]/u;
+/** Characters inside a word: `/` keeps slash dates (`2026/01/31`) whole. */
+const WORD_CHAR = /[\p{L}\p{N}_.@/-]/u;
+
+export interface ScanResult {
+  tokens: Token[];
+  /** Characters that cannot start a token and strings without a closing quote. */
+  errors: RawDiagnostic[];
+}
 
 /**
- * Splits query text into tokens. Words include letters, digits, `_`, `.` and `-`, so item keys
- * (`ABC-12`), dates (`2026-01-31`) and durations (`-1w`) stay whole. Keywords are plain words;
- * the parser recognises them without regard to case.
+ * Splits query text into tokens and never throws: an unexpected character is reported and
+ * skipped, and an unterminated string runs to the end of the text and is reported. Words
+ * include letters, digits, `_`, `.`, `-`, `@` and (inside a word) `/`, so item keys (`ABC-12`),
+ * dates (`2026-01-31`, `2026/01/31`), durations (`-1w`), e-mail addresses and sprint tokens
+ * stay whole. Keywords are plain words; the parser recognises them without regard to case.
  */
-export function tokenize(text: string): Token[] {
+export function scan(text: string): ScanResult {
   const tokens: Token[] = [];
+  const errors: RawDiagnostic[] = [];
   let i = 0;
   while (i < text.length) {
     const ch = text[i] as string;
@@ -82,7 +129,9 @@ export function tokenize(text: string): Token[] {
         value += c;
         i++;
       }
-      if (!closed) throw new QueryError('Unterminated string', start, text.length - start);
+      if (!closed) {
+        errors.push({ message: 'Unterminated string', start, end: text.length, expected: [ch] });
+      }
       tokens.push({ type: 'string', text: value, span: { start, end: i } });
       continue;
     }
@@ -94,7 +143,7 @@ export function tokenize(text: string): Token[] {
       i += op.length;
       continue;
     }
-    if (WORD_CHAR.test(ch) || signedNumber) {
+    if (WORD_START.test(ch) || signedNumber) {
       let j = i + 1;
       while (j < text.length && WORD_CHAR.test(text[j] as string)) j++;
       const word = text.slice(i, j);
@@ -103,8 +152,52 @@ export function tokenize(text: string): Token[] {
       i = j;
       continue;
     }
-    throw new QueryError(`Unexpected character "${ch}"`, start);
+    // One report for a run of characters that cannot start a token.
+    let j = i + 1;
+    while (j < text.length && !/\s/.test(text[j] as string) && !startsToken(text, j)) j++;
+    errors.push({ message: `Unexpected character "${ch}"`, start, end: j, expected: [] });
+    i = j;
   }
   tokens.push({ type: 'eof', text: '', span: { start: text.length, end: text.length } });
+  return { tokens, errors };
+}
+
+function startsToken(text: string, i: number): boolean {
+  const ch = text[i] as string;
+  if ('()[],"\''.includes(ch)) return true;
+  if (OPERATORS.some((o) => text.startsWith(o, i))) return true;
+  return WORD_START.test(ch);
+}
+
+/** Like `scan`, but throws the first error. */
+export function tokenize(text: string): Token[] {
+  const { tokens, errors } = scan(text);
+  const first = errors[0];
+  if (first) {
+    throw new QueryError(first.message, first.start, Math.max(1, first.end - first.start), {
+      expected: first.expected,
+    });
+  }
   return tokens;
+}
+
+/** 1-based line and column of a 0-based offset; a CRLF counts as one line break. */
+export function locate(text: string, offset: number): { line: number; column: number } {
+  return lineIndex(text)(offset);
+}
+
+/** A reusable `locate` for one text: the line starts are found once, then binary-searched. */
+export function lineIndex(text: string): (offset: number) => { line: number; column: number } {
+  const starts = [0];
+  for (let i = 0; i < text.length; i++) if (text[i] === '\n') starts.push(i + 1);
+  return (offset) => {
+    let lo = 0;
+    let hi = starts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if ((starts[mid] as number) <= offset) lo = mid;
+      else hi = mid - 1;
+    }
+    return { line: lo + 1, column: offset - (starts[lo] as number) + 1 };
+  };
 }

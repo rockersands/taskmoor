@@ -1,7 +1,7 @@
 {
   "dates": {
-    "pass": 226,
-    "rate": 86,
+    "pass": 227,
+    "rate": 87,
     "total": 262
   },
   "fields": {
@@ -40,8 +40,8 @@
     "total": 154
   },
   "sprints": {
-    "pass": 0,
-    "rate": 0,
+    "pass": 4,
+    "rate": 57,
     "total": 7
   },
   "text": {

@@ -25,7 +25,22 @@ export {
   SYSTEM_FIELDS,
   type SystemField,
 } from './fields';
-export { QueryError, type Token, tokenize } from './lexer';
-export { parseQuery } from './parser';
+export {
+  lineIndex,
+  locate,
+  QueryError,
+  type QueryErrorOptions,
+  type ScanResult,
+  scan,
+  type Token,
+  tokenize,
+} from './lexer';
+export {
+  type Diagnostic,
+  MAX_DEPTH,
+  type ParseResult,
+  parseQuery,
+  parseWithDiagnostics,
+} from './parser';
 export { printField, printQuery, printValue } from './print';
 export { type Plan, type Pred, type ResolveContext, resolveQuery, type Typed } from './resolve';

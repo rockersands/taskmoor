@@ -299,7 +299,10 @@ export async function runFilterOverhead(
   } finally {
     client.release();
   }
-  const count = await pool.query<{ n: string }>('SELECT count(*) AS n FROM fs_side.item');
+  // The loader's verified count: a count(*) over 10M rows outlives the statement timeout.
+  const count = await pool.query<{ n: string }>(
+    "SELECT (counts->>'items')::bigint AS n FROM gen.meta",
+  );
   return {
     spike: 'authz-overhead',
     at: new Date().toISOString(),

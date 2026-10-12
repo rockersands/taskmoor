@@ -55,6 +55,14 @@ Read this first in every session, then update it before you stop.
   resolution, filter), history on every field, user values by name, `@current` sprint tokens,
   slash dates, function arity, ordering comparisons on priorities and versions, ambiguous
   custom names, `=` accepted on text fields.
+- M1-034 (in progress, the one-hour fuzz is the last step): the native grammar spec
+  (`docs/specs/06-query-language-grammar.md`); the lexer and parser recover from errors
+  (`parseWithDiagnostics` reports every independent mistake with offsets, line, column and
+  expected tokens, and returns a partial tree that always prints as a valid query;
+  `parseQuery` throws the first); a nesting limit of 100 levels (20,000 nested parentheses
+  overflowed the stack before); `@current` tokens and slash dates lex. Tests: the 969 parse
+  cases of the conformance suite run as parser tests, plus recovery, position, hint, limit
+  and property tests. `pnpm fuzz query --minutes 60` is the fuzzer (`packages/devtools`).
 - Query compiler fixes found by the spike: id tiebreaker in the newest-first indexes and
   `NULLS LAST` only on nullable columns (41.7 ms to 0.65 ms); `WAS` as one history `EXISTS`
   (1.9 s to 0.65 ms for a value that never occurred); labels and word search use index-friendly
@@ -65,35 +73,42 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-0. **Session state at the hand-over (2026-10-12, about 12:20 local).** The previous session was
-   stopped on purpose while a background chain held the bench cluster. What is where:
-   - `pnpm gen --items 10000000` and `--items 1000000` are done and LOGGED (fingerprints
-     7ba375e3e818fa59 and a69a5408a72d5f27); `pnpm spike field-storage --items 10000000
-     --candidates side` is done (`docs/spikes/field-storage-10m.md`, uncommitted on purpose:
-     see item 1); `pnpm spike query --items 10000000 --runs 20` was building the history
-     indexes when the session ended. If the chain died with the session, rerun it: the
-     scripts are kept in `.cache/scripts/timings.sh` (the whole chain minus the loads; each
-     spike reuses what is built; `CREATE INDEX IF NOT EXISTS` makes the index step resumable).
-     `.cache/scripts/activity.mts` prints what the bench cluster is executing (reads the port
-     from `.cache/pg-test/bench/postmaster.pid`; run with `corepack pnpm exec tsx`).
-   - If the bench cluster is still running from the dead session, stop it cleanly before
-     starting a spike: `.cache/pg-test` holds `bench/postmaster.pid`; use the embedded
-     `pg_ctl -D .cache/pg-test/bench -m fast stop` from
-     `node_modules/.pnpm/@embedded-postgres+windows-x64@*/node_modules/@embedded-postgres/windows-x64/native/bin`.
-1. **The 10M run and ADR-008/010.** The field-storage 10M `side` timing found two bad plans
-   that 1M hid: the date-window-plus-status and option-plus-number queries (57 s and 13 s
-   medians). Both side queries are now semi-joins (`packages/spikes/src/field-storage/queries.ts`)
-   and the side tables get a `(field_id, created_at DESC) INCLUDE (value, item_id)` index
-   (`candidates.ts`). The built schemas in `bench_10m` and `bench_1m` lack that index: run
-   `corepack pnpm exec tsx .cache/scripts/side-indexes.mts bench_10m` (and `bench_1m`) when
-   the cluster is idle (a few minutes), then `pnpm spike field-storage --items 10000000
-   --candidates side --runs 20` again (the first run also overlapped an autovacuum of
-   `gen.item`, which inflated the edit p95 to 465 ms against a 50 ms budget; p50 was 58 ms).
-   Then `query` and `authz-overhead` at 10M and 1M if the chain did not finish them, and
-   `field-storage --items 1000000 --candidates jsonb,side`. Fill the tables into ADR-008 and
-   ADR-010 (both say "summarised here when it completes"), flip them to Accepted (README
-   too), mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline` with the 1M/10M
-   files if within budget, `pnpm bench:check`, commit the reports with the ADRs.
+0. **State of the 10M run (2026-10-12, 12:45 local).** The background chain
+   (`.cache/scripts/timings.sh`) finished `field-storage` and `authz-overhead` at 10M and is
+   running the 1M spikes (`query`, then `authz-overhead`, then `field-storage --candidates
+   jsonb,side`). `.cache/scripts/activity.mts` prints what the bench cluster executes (it reads
+   the port from `.cache/pg-test/bench/postmaster.pid`; run with `corepack pnpm exec tsx`). If
+   a bench cluster is left running by a dead process, stop it cleanly with the embedded
+   `pg_ctl -D .cache/pg-test/bench -m fast stop` (binary under
+   `node_modules/.pnpm/@embedded-postgres+windows-x64@*/node_modules/@embedded-postgres/windows-x64/native/bin`).
+1. **The 10M findings and what to do about them.** Uncommitted reports:
+   `docs/spikes/field-storage-10m.md`, `docs/spikes/authz-overhead-10m.md` (and their JSON).
+   - **Query compiler at 10M**: the system-field, history and permission queries stay under
+     15 ms, but four custom-field queries miss the 300 ms budget: `option-eq`, `date-window`
+     and `multi-in` timed out at 60 s, `user-field-mine` took 4.5 s. All four combine a
+     custom-field `EXISTS` with an `ORDER BY` on an item column, so the planner cannot walk
+     the side table's `(field_id, value, created_at DESC)` index in order. Next: on an idle
+     cluster, `VACUUM ANALYZE` the `bench_10m` side tables (bulk-loaded tables have no
+     visibility map, so index-only scans fetch the heap), `EXPLAIN` the four compiled
+     statements (`compileTemplate` in `packages/spikes/src/query-bench/run.ts`), then teach
+     the compiler to drive from the side table when the ORDER BY is `created` (copied to side
+     rows) or the same custom field: `FROM v_x v JOIN item i ... ORDER BY v.created_at`. The
+     query spike also crashed after the timings on a `count(*)` that outlived the 60 s
+     statement timeout; it now reads the count from `gen.meta` (committed), so rerun
+     `pnpm spike query --items 10000000 --runs 20` for the report.
+   - **Field storage at 10M**: two side-table query shapes were bad at 10M (fixed as
+     semi-joins plus a newest-first side index, committed). Add the index to the built
+     schemas with `corepack pnpm exec tsx .cache/scripts/side-indexes.mts bench_10m` (and
+     `bench_1m`) on an idle cluster, `VACUUM ANALYZE`, then rerun `pnpm spike field-storage
+     --items 10000000 --candidates side --runs 20`. The first run overlapped a 30-minute
+     autovacuum of `gen.item`, which inflated the edit p95 (465 ms against 50 ms; p50 58 ms).
+   - **Permission pre-filter at 10M**: every filtered query stays under 15 ms, but the
+     relative budget in `pnpm bench:check` (at most 20% where it costs more than 2 ms) fails
+     at up to 310% (2.6 ms to 10.7 ms). Waiting on the user: keep the relative budget, or
+     state it as an absolute one (for example at most 10 ms added).
+   - Then fill the 10M tables into ADR-008 and ADR-010, flip them to Accepted (README too),
+     mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline` with the 1M/10M files
+     if within budget, `pnpm bench:check`, commit the reports with the ADRs.
 2. M0-028 and M0-033 are done (see Done); nothing else waits on CI.
 3. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
    `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
