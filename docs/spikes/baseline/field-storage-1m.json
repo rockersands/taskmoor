@@ -1,0 +1,262 @@
+{
+  "spike": "field-storage",
+  "at": "2026-10-12T21:03:14.478Z",
+  "items": 1000000,
+  "fields": 1500,
+  "runs": 20,
+  "machine": {
+    "cpu": "AMD Ryzen 7 3700X 8-Core Processor",
+    "cores": 16,
+    "memoryGb": 64,
+    "postgres": "16.14"
+  },
+  "candidates": [
+    {
+      "id": "jsonb",
+      "title": "JSONB column with a GIN index",
+      "build": [],
+      "sizes": [
+        {
+          "table": "item",
+          "rows": 999988,
+          "totalBytes": 1653252096,
+          "tableBytes": 958562304,
+          "indexBytes": 694394880
+        }
+      ],
+      "queries": [
+        {
+          "name": "open",
+          "runs": 20,
+          "p50": 0.96,
+          "p95": 1.36,
+          "max": 1.38,
+          "mean": 0.95,
+          "rows": 1
+        },
+        {
+          "name": "select-in-space",
+          "runs": 20,
+          "p50": 3.83,
+          "p95": 245.94,
+          "max": 248.89,
+          "mean": 84.76,
+          "rows": 12
+        },
+        {
+          "name": "number-range",
+          "runs": 20,
+          "p50": 1.8,
+          "p95": 3.85,
+          "max": 5.52,
+          "mean": 2.33,
+          "rows": 50
+        },
+        {
+          "name": "date-and-status",
+          "runs": 20,
+          "p50": 300.85,
+          "p95": 437.3,
+          "max": 463.88,
+          "mean": 321.15,
+          "rows": 27
+        },
+        {
+          "name": "two-fields",
+          "runs": 20,
+          "p50": 3.43,
+          "p95": 5.12,
+          "max": 12.64,
+          "mean": 4.14,
+          "rows": 29
+        },
+        {
+          "name": "sort-by-number",
+          "runs": 20,
+          "p50": 41.62,
+          "p95": 187.88,
+          "max": 206.65,
+          "mean": 80.17,
+          "rows": 50
+        },
+        {
+          "name": "count-by-option",
+          "runs": 20,
+          "p50": 101.63,
+          "p95": 177.93,
+          "max": 195.42,
+          "mean": 96.03,
+          "rows": 17
+        },
+        {
+          "name": "user-field",
+          "runs": 20,
+          "p50": 1.8,
+          "p95": 9.29,
+          "max": 9.44,
+          "mean": 3.85,
+          "rows": 2
+        },
+        {
+          "name": "count-number-range",
+          "runs": 20,
+          "p50": 423.02,
+          "p95": 451.64,
+          "max": 474.23,
+          "mean": 426.82,
+          "rows": 1
+        },
+        {
+          "name": "edit-number",
+          "runs": 20,
+          "p50": 0.56,
+          "p95": 1.33,
+          "max": 1.36,
+          "mean": 0.67,
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "id": "side",
+      "title": "JSONB for reads plus typed side tables",
+      "build": [],
+      "sizes": [
+        {
+          "table": "item",
+          "rows": 999797,
+          "totalBytes": 1193426944,
+          "tableBytes": 958562304,
+          "indexBytes": 234569728
+        },
+        {
+          "table": "v_date",
+          "rows": 2378234,
+          "totalBytes": 550739968,
+          "tableBytes": 143261696,
+          "indexBytes": 407412736
+        },
+        {
+          "table": "v_number",
+          "rows": 3230578,
+          "totalBytes": 777289728,
+          "tableBytes": 194600960,
+          "indexBytes": 582606848
+        },
+        {
+          "table": "v_option",
+          "rows": 14705784,
+          "totalBytes": 3914145792,
+          "tableBytes": 964050944,
+          "indexBytes": 2949799936
+        },
+        {
+          "table": "v_text",
+          "rows": 6281222,
+          "totalBytes": 1861517312,
+          "tableBytes": 465518592,
+          "indexBytes": 1395843072
+        },
+        {
+          "table": "v_user",
+          "rows": 2526151,
+          "totalBytes": 585023488,
+          "tableBytes": 152166400,
+          "indexBytes": 432791552
+        }
+      ],
+      "queries": [
+        {
+          "name": "open",
+          "runs": 20,
+          "p50": 0.99,
+          "p95": 1.83,
+          "max": 2.33,
+          "mean": 1.06,
+          "rows": 1
+        },
+        {
+          "name": "select-in-space",
+          "runs": 20,
+          "p50": 5.44,
+          "p95": 6.88,
+          "max": 7.05,
+          "mean": 5.51,
+          "rows": 12
+        },
+        {
+          "name": "number-range",
+          "runs": 20,
+          "p50": 0.63,
+          "p95": 1.17,
+          "max": 1.25,
+          "mean": 0.75,
+          "rows": 50
+        },
+        {
+          "name": "date-and-status",
+          "runs": 20,
+          "p50": 53.09,
+          "p95": 97.2,
+          "max": 112.22,
+          "mean": 55.36,
+          "rows": 27
+        },
+        {
+          "name": "two-fields",
+          "runs": 20,
+          "p50": 8.3,
+          "p95": 11.35,
+          "max": 12.39,
+          "mean": 8.56,
+          "rows": 29
+        },
+        {
+          "name": "sort-by-number",
+          "runs": 20,
+          "p50": 0.62,
+          "p95": 1.2,
+          "max": 1.23,
+          "mean": 0.66,
+          "rows": 50
+        },
+        {
+          "name": "count-by-option",
+          "runs": 20,
+          "p50": 0.97,
+          "p95": 1.97,
+          "max": 2.22,
+          "mean": 1.12,
+          "rows": 17
+        },
+        {
+          "name": "user-field",
+          "runs": 20,
+          "p50": 2.1,
+          "p95": 2.71,
+          "max": 3.15,
+          "mean": 2.22,
+          "rows": 2
+        },
+        {
+          "name": "count-number-range",
+          "runs": 20,
+          "p50": 3.3,
+          "p95": 4.37,
+          "max": 5.19,
+          "mean": 2.95,
+          "rows": 1
+        },
+        {
+          "name": "edit-number",
+          "runs": 20,
+          "p50": 0.86,
+          "p95": 1.71,
+          "max": 12.01,
+          "mean": 1.49,
+          "rows": 1
+        }
+      ]
+    }
+  ]
+}

@@ -70,6 +70,11 @@ Read this first in every session, then update it before you stop.
   the order allows (10M results under Next); the licence gate now reads the 26 packages pnpm
   stores under hashed folder names (it skipped them before); the fuzzer found a numeral
   precision bug in the lexer (fixed).
+- Evening: the bench cluster moved to G: (NVMe) after E: turned out to be a hard disk; on
+  NVMe the 10M runs pass every field-storage and query budget (ADR-008 and ADR-010 accepted,
+  M0-016, M0-017 and M0-024 done); multi-select queries needed (field_id, value) statistics
+  with target 5000. M1-099 Helm chart green on kind in CI (55,271 requests, none failed during
+  a rolling upgrade). M1-100 air-gap bundle tooling and its offline install test.
 - Query compiler fixes found by the spike: id tiebreaker in the newest-first indexes and
   `NULLS LAST` only on nullable columns (41.7 ms to 0.65 ms); `WAS` as one history `EXISTS`
   (1.9 s to 0.65 ms for a value that never occurred); labels and word search use index-friendly
@@ -80,58 +85,26 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-0. **Where the benchmark data lives (2026-10-12, 14:30).** E: is a 5,400 rpm hard disk (see
-   Notes); the user made room on G: for the bench cluster. It is being copied from
-   `.cache/pg-test/bench` to C: and then moved to `G:/tracksmith-pg/bench` (137 GB after
-   dropping the ruled-out 10M JSONB and EAV schemas). From now on run benchmarks with
-   `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg`. Once G: has served a full run, delete the E:
-   copy. Helper scripts in `.cache/scripts/` (run with `corepack pnpm exec tsx`, with
-   `TRACKSMITH_PG_CACHE_DIR` set): `hold-bench.mts` keeps the cluster up between spikes
-   (create `.cache/scripts/release-bench` to stop it cleanly), `activity.mts` shows running
-   statements, `prepare-10m.mts` adds the newest-first side index and vacuums, `stats-10m.mts`
-   adds (field_id, value) extended statistics, `explain-multi.mts` explains the multi-select
-   query in both compiler forms, `sizes.mts` lists table sizes.
-1. **The 10M results and what is left (M0-016, M0-017, then ADR-008 and ADR-010).**
-   - **Query compiler at 10M with side-table anchoring (committed)**, measured on the E: hard
-     disk: 21 of 22 queries under 20 ms p95 (option-eq 1.2 ms, date-window 0.5 ms,
-     user-field-mine 0.7 ms, number-gt-sorted 0.8 ms; before: three timeouts and 4.5 s). Log:
-     `.cache/scripts/rerun-query-10m.log`; report `docs/spikes/query-compiler-10m.md`.
-   - **multi-in is still bad**: `"multi" IN (A, B) AND status != Done ORDER BY created DESC`
-     times out in both compiler forms. The planner estimates 121 matching side rows where there
-     are about 37,000 (two values of 18,600 rows each), because a 30,000-row ANALYZE sample of
-     a 147M-row table cannot see per-field option values; it then fetches every match and
-     sorts. Extended statistics on (field_id, value) (added to the spike schema, committed)
-     moved the estimate only from 58 to 121. Next, on C:: raise the statistics target of
-     `value` and of the extended statistics on the side tables (`ALTER TABLE ... ALTER COLUMN
-     value SET STATISTICS 5000`, `ALTER STATISTICS ... SET STATISTICS 5000`), ANALYZE, and
-     check that the plan walks `(field_id, created_at DESC)` and stops after 50. If estimates
-     stay unreliable, keep per-option counts in the app (they are cheap to maintain) and let
-     the compiler choose the plan shape from them; record the outcome in ADR-008 and ADR-010.
-   - **Field storage at 10M**: the semi-join rewrite and the newest-first index cut the date
-     window from 57 s to 1.8 s and option-plus-number from 13 s to 3.2 s on the hard disk;
-     rerun on C: (`pnpm spike field-storage --items 10000000 --candidates side --runs 20`).
-     `docs/spikes/field-storage-1m.md` was overwritten by a run without the new index;
-     rerun at 1M too (`--candidates jsonb,side` reuses the schemas).
-   - **Permission pre-filter at 10M**: every filtered query stays under 15 ms, but the
-     relative budget in `pnpm bench:check` (at most 20% where it costs more than 2 ms) fails
-     at up to 310% (2.6 ms to 10.7 ms). Waiting on the user (see below).
-   - Then fill the 10M tables into ADR-008 and ADR-010, flip them to Accepted (README too),
-     mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline`, `pnpm bench:check`,
-     commit the reports with the ADRs.
-2. **M1-099 Helm chart: done.** CI's helm.yml (kind) passed: helm test green, a rolling
-   upgrade under load with 55,271 requests and none failed. Locally, kind's etcd timed out
-   while robocopy saturated C: (Docker's disk); rerun `tools/helm/kind-test.sh` locally only
-   on a quiet disk. The upgrade rolls the same image; test two versions with the first release.
-3. **M1-034 and M1-035: done.** The second one-hour fuzz ran 6,365,749 inputs with no failure.
-   **M1-100 air-gap bundle (in progress, uncommitted):** `tools/airgap/` (bundle.sh, verify.sh,
-   install-offline.sh, test-offline.sh, README), install.sh gained `TRACKSMITH_PULL`,
-   `TRACKSMITH_COMPOSE_OVERRIDE` and in-container readiness, the Compose kit's Postgres image
-   is `POSTGRES_IMAGE`. Next: run `TAG=tracksmith:dev bash tools/airgap/test-offline.sh` on a
-   quiet disk, add it to a workflow, and ask the user where the release signing key lives.
-4. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
-   `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
-5. Next M1 work that does not wait on M0 acceptance: M1-100 (air-gap bundle), the catalogue
-   gaps the query suite lists; M1-001 once M0-034 is accepted.
+1. **M0 gate.** `pnpm gate M0 --ci` shows two items that only the user can move, and one
+   decision: the permission pre-filter budget (`docs/plan/decisions.csv`, "Permission
+   pre-filter budget"): at 10M it adds at most 3.6 ms (filtered queries under 4.5 ms) but fails
+   the relative 20% budget in `packages/devtools/src/bench.ts`. If the user picks an absolute
+   budget, change that entry (and its test fixtures) and the gate's budget line turns green.
+   Then counsel's sign-off and the user's "M0 acceptance" row in `decisions.csv`.
+2. **Benchmark data lives on G: now** (`G:/tracksmith-pg/bench`, 137 GB; set
+   `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg`). The identical copy on E: (`.cache/pg-test/bench`)
+   can be deleted once the user agrees; nothing uses it. Reruns: `.cache/scripts/rerun-g.sh`
+   (all six spikes in about four minutes on NVMe, logs in `.cache/scripts/g-*.log`).
+   `hold-bench.mts` keeps the cluster up (create `.cache/scripts/release-bench` to stop it);
+   it was left running at the end of this session.
+3. **M1-100 air-gap bundle**: `tools/airgap/test-offline.sh` passes locally (bundle, refused
+   tampering and wrong key, install on an internal network, no egress) and runs nightly in
+   `install-matrix.yml`. Waiting on the user: where the release signing key lives (a CI secret
+   with an ECDSA P-256 key, or cosign keyless). With it, add a release workflow that builds,
+   signs and publishes the bundle and the public key.
+4. Next M1 work that does not wait on M0 acceptance: the catalogue gaps the query suite lists
+   (fields like fixVersion, component, sprint, due; history on every field; user values by
+   name; function arity) as part of M1-036; M1-001 once M0-034 is accepted.
 
 ### Notes and gotchas
 

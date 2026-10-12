@@ -1,6 +1,6 @@
 # ADR-010: Query language: own grammar, AST, resolver and SQL compiler with a permission pre-filter
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-12
 - Backlog: M0-017
 
@@ -30,8 +30,15 @@ no injection possible (QRY-010).
   are one `EXISTS` on the change history, which holds the creation values too, so a rare
   value starts from the history index instead of scanning items; `ORDER BY` adds the id as a
   tiebreaker (stable cursors, QRY-009) and puts `NULLS LAST` only on nullable columns, so
-  newest-first lists walk the `(…, created_at DESC, id DESC)` indexes. Values are always
-  parameters; the compiler never interpolates text.
+  newest-first lists walk the `(…, created_at DESC, id DESC)` indexes. When the order is by
+  creation date or by a custom field the query also filters, the statement is **driven from
+  that field's side table**: side rows carry the item's `created_at` and `space_id`
+  (ADR-008), so the side index yields the page in order; other conditions on the same field,
+  `space` and the permission pre-filter apply to the side row, the rest to the joined item
+  (left out when nothing needs it); a multi-select condition that can match several rows of one
+  item keeps only the item's lowest matching value. Side-table comparisons are cast to the
+  value column's type (a user field compared as `numeric` against an `int` column could not
+  use its index). Values are always parameters; the compiler never interpolates text.
 - **The permission pre-filter** (ADR-012) is part of the statement: `space_id = ANY($allowed)`
   for ordinary users, inverted or omitted for users who see most or all spaces, plus the
   security-level predicate.
@@ -57,9 +64,48 @@ Two compiler changes came out of the spike: the id tiebreaker needs to be in the
 `EXISTS` so a value that never occurred (0 rows) does not walk the table (1.9 s down to
 0.65 ms at 1M).
 
-The 1,000,000- and 10,000,000-item runs (M0-017 gate) are recorded in
-`docs/spikes/query-compiler-1m.md` and `query-compiler-10m.md` and summarised here when they
-complete.
+**1,000,000 and 10,000,000 items** (M0-017 gate; NVMe, 64 GB RAM, `shared_buffers` 1 GB, 20
+runs; reports [1M](../spikes/query-compiler-1m.md), [10M](../spikes/query-compiler-10m.md)).
+Every query meets the 300 ms budget at both sizes:
+
+| Query | 1M p95 ms | 10M p95 ms |
+|---|---:|---:|
+| `space = X ORDER BY created DESC` | 0.59 | 0.62 |
+| `space = X AND status = "In Progress" ORDER BY updated DESC` | 1.68 | 2.44 |
+| `assignee = currentUser() AND statusCategory != done ORDER BY priority DESC, created DESC` | 0.72 | 0.89 |
+| `status IN (…) AND priority IN (…) ORDER BY created DESC` | 0.90 | 0.59 |
+| `labels IN (…) ORDER BY created DESC` | 0.80 | 0.88 |
+| `summary ~ "login" ORDER BY created DESC` | 7.02 | 6.62 |
+| `created >= -30d AND type = Bug ORDER BY created DESC` | 0.74 | 0.65 |
+| `resolved IS EMPTY AND updated < -90d ORDER BY updated ASC` | 0.59 | 0.95 |
+| `"{number}" > 500 AND space = X ORDER BY "{number}" DESC` | 0.84 | 0.81 |
+| `"{select}" = "{option}" AND statusCategory = todo ORDER BY created DESC` | 4.89 | 5.19 |
+| `"{date}" <= endOfMonth() AND "{date}" >= startOfMonth() ORDER BY "{date}" ASC` | 2.34 | 2.05 |
+| `"{user}" = currentUser() ORDER BY updated DESC` | 2.61 | 2.86 |
+| `"{multi}" IN (A, B) AND status != Done ORDER BY created DESC` | 8.72 | 10.31 |
+| `"{number}" IS EMPTY AND type IN (…) AND space = X ORDER BY created DESC` | 0.89 | 0.96 |
+| `parent = N ORDER BY created ASC` | 0.41 | 0.55 |
+| `(assignee = currentUser() OR reporter = currentUser()) AND … ORDER BY updated DESC` | 0.87 | 1.15 |
+| `status WAS "In Review" ORDER BY updated DESC` | 3.64 | 5.17 |
+| `status CHANGED TO Done AFTER -7d ORDER BY updated DESC` | 2.38 | 17.39 |
+| `assignee CHANGED BY u DURING (…) ORDER BY created DESC` | 0.70 | 0.70 |
+| `NOT (labels IN (…) OR type = Subtask) AND space IN (…) ORDER BY created DESC` | 0.83 | 0.91 |
+| `status WAS Cancelled AND status = Done ORDER BY updated DESC` (no rows) | 0.83 | 0.83 |
+| `status = Done ORDER BY created DESC`, permitted to half the spaces | 1.14 | 2.33 |
+
+The first 10M run, before driving from the side table, missed the budget on the four
+custom-field queries ordered by an item column: three timed out at 60 s and the user-field
+query took 4.5 s, because the planner either probed the side table for every item in date
+order or fetched every match and sorted. Driving from the side table fixed three; the
+multi-select one also needed the planner statistics of ADR-008 (its estimate was 121 rows for
+37,000 matches). An equivalence test runs every query of the set and fourteen aimed at the
+side-table paths in both forms, with and without the permission filter, and requires identical
+rows in identical order.
+
+The permission pre-filter (ADR-012) adds at most 3.6 ms at 10M items (filtered queries all
+under 4.5 ms; [report](../spikes/authz-overhead-10m.md)), which is within the query budget but
+above the relative "at most 20%" budget of `pnpm bench:check`; whether that budget is relative
+or absolute is open in `docs/plan/decisions.csv`.
 
 ## Options considered
 

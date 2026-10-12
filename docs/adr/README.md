@@ -13,9 +13,9 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [005](0005-typescript-end-to-end.md) | TypeScript end to end | Accepted |
 | [006](0006-postgres-only.md) | PostgreSQL 16+ as the only required service | Accepted |
 | [007](0007-sql-builder-and-migrations.md) | Typed SQL builder and SQL migrations | Accepted |
-| [008](0008-field-storage.md) | Custom field storage: JSONB on the item plus typed side tables | Proposed |
+| [008](0008-field-storage.md) | Custom field storage: JSONB on the item plus typed side tables | Accepted |
 | [009](0009-configuration-model.md) | One configuration model | Accepted |
-| [010](0010-query-compiler.md) | Query language: own grammar, AST, resolver and SQL compiler with a permission pre-filter | Proposed |
+| [010](0010-query-compiler.md) | Query language: own grammar, AST, resolver and SQL compiler with a permission pre-filter | Accepted |
 | [011](0011-search.md) | Search in Postgres, with an optional OpenSearch adapter | Accepted |
 | [012](0012-authorization-engine.md) | Authorization engine: in-process evaluator over Postgres with a permission cache | Accepted |
 | [013](0013-sync-engine.md) | Sync engine: in-house change log with a commit-ordered sequence | Accepted |

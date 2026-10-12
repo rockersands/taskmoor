@@ -1,6 +1,6 @@
 # ADR-008: Custom field storage: JSONB on the item plus typed side tables
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-12
 - Backlog: M0-016
 
@@ -23,12 +23,22 @@ every query p95 under 300 ms (NFR-001, ADR-010). Fields have contexts per space 
   `created_at` are copied from the item because they never change, so a space-scoped,
   newest-first list is served by one index on the side table without touching the item table.
   Indexes: primary key `(item_id, field_id[, value])`, `(field_id, value, created_at DESC)
-  INCLUDE (item_id)` and `(space_id, field_id, value, created_at DESC) INCLUDE (item_id)`.
+  INCLUDE (item_id)`, `(space_id, field_id, value, created_at DESC) INCLUDE (item_id)` and
+  `(field_id, created_at DESC) INCLUDE (value, item_id)`, the last for "any condition on this
+  field, newest first" (ranges, several values), which the 10M run showed is needed.
+- **Planner statistics**: each side table carries extended statistics on `(field_id, value)`
+  and a statistics target of 5,000 on both columns. Values belong to their field, so the
+  default independent estimates were off by a factor of 300 at 10M items (121 rows expected,
+  37,000 matched) and the planner fetched and sorted every match; with these it walks the
+  newest-first index and stops after one page. ANALYZE of the largest side table (147M rows)
+  takes 40 s on NVMe.
 - **Writes** update the JSONB column and the side rows in the same transaction; a property
   test (M1-011) keeps the two in step, and a repair job rebuilds side rows from JSONB.
-- **Query shape** (ADR-010): each custom-field condition is an `EXISTS` on its side table, so
-  the planner intersects by item id and uses the `(field, value)` indexes; sorting by a custom
-  field reads one side row per item.
+- **Query shape** (ADR-010): a custom-field condition is an `EXISTS` on its side table, so
+  the planner intersects by item id and uses the `(field, value)` indexes; when the order is by
+  creation date or by that field, the statement is driven from the side table instead (its
+  `created_at` copy and value give the order), and a status or other item condition becomes a
+  semi-join to the item.
 
 ## Measurements (spike, 2026-10-12)
 
@@ -56,20 +66,31 @@ denormalised `space_id` and `created_at` lost to JSONB on space-scoped queries
 row.
 
 At 200,000 items the same queries run in under 7 ms
-([report](../spikes/field-storage-200k.md)). The 10,000,000-item run (M0-016 gate) is recorded
-in `docs/spikes/field-storage-10m.md` and summarised here when it completes.
+([report](../spikes/field-storage-200k.md)). The table above is the second 1M run, with all
+three candidates ([report](../spikes/field-storage-1m-v2.md)).
 
-## Options considered
+**10,000,000 items** (M0-016 gate; 147M option rows and 291M side rows in all, 115 GB with history; NVMe,
+64 GB RAM, `shared_buffers` 1 GB, 20 runs; [report](../spikes/field-storage-10m.md)). Only the
+chosen candidate was built at this size: JSONB alone and EAV had already failed at 1M.
 
-| Option | For | Against |
-|---|---|---|
-| JSONB plus typed side tables (chosen) | Fast reads and fast typed filters, sorts and counts; indexes per field type | About 4x the storage of JSONB alone; two writes per edit (one transaction) |
-| JSONB with GIN and expression indexes only | Simplest; smallest | Range, sort and count queries scan; 555 ms date window at 1M, worse at 10M |
-| One EAV table with typed columns | One value table | Sorting and counting by a field take seconds at 1M; the hottest index is the largest |
-| One column per field (wide table) | Native SQL | 1,500 columns exceed Postgres limits; schema changes per field |
+| Query | p95 ms | Budget |
+|---|---:|---:|
+| Open one item with all values | 1.35 | 100 |
+| Select field = option in a space, newest 50 | 6.28 | 300 |
+| Number > x site-wide, newest 50 | 0.93 | 300 |
+| Date in a 30-day window and a status category | 123.36 | 300 |
+| Option = x and number > y | 95.30 | 300 |
+| Space sorted by a number field, top 50 | 1.71 | 300 |
+| Count per option in a space | 7.29 | 300 |
+| User field = person site-wide | 2.89 | 300 |
+| Count site-wide with number > x | 60.27 | 300 |
+| Set a number field on one item | 1.72 | 50 |
+| Storage (item plus side tables) | 89 GB | |
 
-## Consequences
-
-Storage grows with values, not with fields: an empty field costs nothing. Field deletion is a
-side-table delete plus a JSONB key removal, both batched. The importer (ADR-025) loads side
-tables with COPY after the items.
+Every query meets its budget. Three findings came from this size and are now part of the
+decision: the date-window and two-field queries need a semi-join to the item and the
+newest-first side index (the plain join took 57 s and 13 s); the planner needs the extended
+statistics above; and a bulk-loaded table needs `VACUUM` before index-only scans avoid the heap.
+The first 10M runs were taken on a 5,400 rpm hard disk by mistake: random reads there cost
+13 ms, which made single-item reads 30 ms and hid the plan problems behind the disk; the
+figures above are from NVMe.

@@ -30,15 +30,15 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-013 Spec import and IDs | Done | 347 requirements; spec lint in `pnpm verify` |
 | M0-014 Traceability | Done | `pnpm trace`; unknown IDs cited by tests fail |
 | M0-015 Synthetic data generator | Done | `pnpm gen --items N`; deterministic; COPY loader with verified counts |
-| M0-016 Field storage spike | In progress | 1M run done: side tables win; 10M run pending for ADR-008 |
-| M0-017 Query compiler spike | In progress | `@tracksmith/query` parser, resolver, compiler; 10M timing pending for ADR-010 |
+| M0-016 Field storage spike | Done | Side tables chosen; at 10M every query within budget (slowest 123 ms p95); ADR-008 accepted |
+| M0-017 Query compiler spike | Done | 22 queries under 18 ms p95 at 10M after side-table driving; ADR-010 accepted |
 | M0-020 Rich text spike | Done | `@tracksmith/richtext`, Yjs and Hocuspocus verified (ADR-014) |
 | M0-021 Queue spike | Done | In-house SKIP LOCKED queue chosen (ADR-015) |
 | M0-023 AI gateway skeleton | Done | `@tracksmith/ai` with contract tests (ADR-028) |
 | M0-018 Permission engine spike | Done | In-process evaluator 1.5 ms p95 vs OpenFGA 15.9 ms; pre-filter overhead measured (ADR-012) |
 | M0-019 Sync engine spike | Done | In-house change log: 52k-item bootstrap in 2.6 s, delta p95 1 ms, idempotent outbox (ADR-013) |
 | M0-022 XML parser spike | Done | 5 GB parsed in 2.6 min at 303 MB RSS, lossless after cleaning (ADR-025) |
-| M0-024 Remaining ADRs | In progress | 31 of 33 accepted; 008 and 010 wait for the 10M run |
+| M0-024 Remaining ADRs | Done | All 33 ADRs accepted |
 | M0-033 Nightly benchmarks and weekly report | Done | bench:check with budgets and a 20% regression check; status-report; nightly job green on main with its results as the CI baseline |
 | M0-011 GitHub Actions | Done | Lint, types, tests, e2e, Postgres 16 and 18, weekly Windows, security scan, multi-arch image build, nightly benchmarks |
 | M0-026 All-in-one image and Compose kits | Done | deploy/allinone and deploy/compose; smoke-kits.sh green locally and in CI |
@@ -63,3 +63,4 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-035 Jira-compatible dialect | Done | `toNative` and `toJira` rename fields and functions between the vocabularies on the shared tree; parse cases 100% green |
 | M1-103 Health page, metrics, traces | Done | /metrics on port 9464, OTLP traces when configured, admin System status page, example alerts and dashboard; CI green |
 | M1-099 Helm chart | Done | Chart with lint and render tests; on kind in CI: helm test green and a rolling upgrade with 55,271 requests and none failed |
+| M1-100 Air-gap bundle | In progress | Bundle, verify and offline install tested on an internal network; release signing key waits on the user |

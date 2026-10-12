@@ -7,11 +7,12 @@ import { deniedLicences, installedPackages, isAllowed } from './licences';
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 
 describe('dependency licences', () => {
+  // Reads every installed package.json: fast on an SSD, up to tens of seconds on a cold hard disk.
   it('are all on the allowlist', () => {
     const packages = installedPackages(REPO);
     expect(packages.length).toBeGreaterThan(100);
     expect(deniedLicences(packages)).toEqual([]);
-  });
+  }, 60_000);
 
   it('reads every store folder, including the ones pnpm shortens with a hash', () => {
     const store = join(REPO, 'node_modules', '.pnpm');
@@ -23,7 +24,7 @@ describe('dependency licences', () => {
     // Long names such as this one live in folders like "@opentelemetry+sdk-trace-ba_<hash>".
     expect(names.has('@opentelemetry/sdk-trace-base')).toBe(true);
     expect(names.has('@opentelemetry/exporter-trace-otlp-http')).toBe(true);
-  });
+  }, 60_000);
 
   it('a fixture with denied or missing licences fails', () => {
     expect(
