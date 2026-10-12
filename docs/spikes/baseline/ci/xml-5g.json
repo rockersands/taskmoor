@@ -1,0 +1,29 @@
+{
+  "spike": "xml",
+  "at": "2026-10-12T10:33:12.401Z",
+  "machine": {
+    "cpu": "AMD Ryzen 7 3700X 8-Core Processor",
+    "cores": 16,
+    "node": "v22.19.0"
+  },
+  "file": {
+    "path": "C:\\Users\\you\\AppData\\Local\\Temp\\tracksmith-xml\\entities-5g.xml",
+    "bytes": 5000011001,
+    "generateSeconds": 0.001,
+    "elements": 27420332
+  },
+  "parse": {
+    "seconds": 150.296,
+    "mbPerSecond": 33,
+    "maxRssMb": 284,
+    "rows": 27420332,
+    "textChars": 1677509209,
+    "removed": {
+      "nul": 1078,
+      "control": 810,
+      "noncharacter": 257,
+      "charRef": 551
+    }
+  },
+  "problems": []
+}

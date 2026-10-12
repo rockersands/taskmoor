@@ -1,0 +1,68 @@
+{
+  "spike": "authz",
+  "at": "2026-10-12T17:29:09.108Z",
+  "config": {
+    "seed": 7,
+    "users": 20000,
+    "groups": 1000,
+    "spaces": 3000,
+    "policies": 60
+  },
+  "counts": {
+    "memberships": 68334,
+    "grants": 4786,
+    "roleActors": 30793
+  },
+  "checks": 500,
+  "machine": {
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "cores": 2,
+    "postgres": "16.14"
+  },
+  "candidates": [
+    {
+      "id": "inprocess-cold",
+      "check": {
+        "name": "inprocess-cold",
+        "runs": 500,
+        "p50": 0.77,
+        "p95": 1.16,
+        "max": 5.33,
+        "mean": 0.83
+      },
+      "list": {
+        "name": "list",
+        "runs": 50,
+        "p50": 7.93,
+        "p95": 10.17,
+        "max": 12.05,
+        "mean": 8.11,
+        "medianSpaces": 2288
+      },
+      "loadSeconds": 0.626,
+      "mismatches": 0
+    },
+    {
+      "id": "inprocess-cached",
+      "check": {
+        "name": "inprocess-cached",
+        "runs": 500,
+        "p50": 0,
+        "p95": 0,
+        "max": 0.03,
+        "mean": 0
+      },
+      "list": {
+        "name": "list",
+        "runs": 50,
+        "p50": 7.93,
+        "p95": 10.17,
+        "max": 12.05,
+        "mean": 8.11,
+        "medianSpaces": 2288
+      },
+      "loadSeconds": 0.626,
+      "mismatches": 0
+    }
+  ]
+}

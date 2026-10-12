@@ -1,0 +1,301 @@
+{
+  "spike": "query-compiler",
+  "at": "2026-10-12T17:29:01.432Z",
+  "items": 200000,
+  "runs": 40,
+  "machine": {
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "cores": 2,
+    "postgres": "16.14"
+  },
+  "prepare": [
+    {
+      "step": "index item_created_id",
+      "seconds": 0.3
+    },
+    {
+      "step": "index item_space_created_id",
+      "seconds": 0.2
+    },
+    {
+      "step": "index item_updated_id",
+      "seconds": 0.2
+    },
+    {
+      "step": "index item_reporter",
+      "seconds": 0.1
+    },
+    {
+      "step": "index item_labels",
+      "seconds": 0.1
+    },
+    {
+      "step": "index item_summary_fts",
+      "seconds": 0.8
+    },
+    {
+      "step": "index history_item_field",
+      "seconds": 0.7
+    },
+    {
+      "step": "index history_field_to",
+      "seconds": 2.8
+    },
+    {
+      "step": "index history_field_from",
+      "seconds": 2.8
+    },
+    {
+      "step": "index history_actor_at",
+      "seconds": 1
+    },
+    {
+      "step": "analyze",
+      "seconds": 0.5
+    }
+  ],
+  "queries": [
+    {
+      "name": "space-newest",
+      "runs": 40,
+      "p50": 0.54,
+      "p95": 0.67,
+      "max": 1.08,
+      "mean": 0.52,
+      "rows": 50,
+      "id": "space-newest",
+      "text": "space = AA ORDER BY created DESC"
+    },
+    {
+      "name": "space-status",
+      "runs": 40,
+      "p50": 1.15,
+      "p95": 1.68,
+      "max": 2.12,
+      "mean": 1.23,
+      "rows": 50,
+      "id": "space-status",
+      "text": "space = AA AND status = \"In Progress\" ORDER BY updated DESC"
+    },
+    {
+      "name": "mine-open",
+      "runs": 40,
+      "p50": 0.51,
+      "p95": 0.58,
+      "max": 0.82,
+      "mean": 0.52,
+      "rows": 50,
+      "id": "mine-open",
+      "text": "assignee = currentUser() AND statusCategory != done ORDER BY priority DESC, created DESC"
+    },
+    {
+      "name": "status-priority-in",
+      "runs": 40,
+      "p50": 0.63,
+      "p95": 0.66,
+      "max": 1.32,
+      "mean": 0.65,
+      "rows": 50,
+      "id": "status-priority-in",
+      "text": "status IN (Backlog, \"To Do\") AND priority IN (High, Highest) ORDER BY created DESC"
+    },
+    {
+      "name": "labels-in",
+      "runs": 40,
+      "p50": 0.58,
+      "p95": 0.61,
+      "max": 0.61,
+      "mean": 0.58,
+      "rows": 50,
+      "id": "labels-in",
+      "text": "labels IN (security, regression) ORDER BY created DESC"
+    },
+    {
+      "name": "summary-contains",
+      "runs": 40,
+      "p50": 4.34,
+      "p95": 4.67,
+      "max": 5,
+      "mean": 4.39,
+      "rows": 50,
+      "id": "summary-contains",
+      "text": "summary ~ \"login\" ORDER BY created DESC"
+    },
+    {
+      "name": "recent-bugs",
+      "runs": 40,
+      "p50": 0.41,
+      "p95": 0.45,
+      "max": 1.23,
+      "mean": 0.43,
+      "rows": 50,
+      "id": "recent-bugs",
+      "text": "created >= -30d AND type = Bug ORDER BY created DESC"
+    },
+    {
+      "name": "stale-unresolved",
+      "runs": 40,
+      "p50": 0.41,
+      "p95": 0.47,
+      "max": 0.52,
+      "mean": 0.42,
+      "rows": 50,
+      "id": "stale-unresolved",
+      "text": "resolved IS EMPTY AND updated < -90d ORDER BY updated ASC"
+    },
+    {
+      "name": "number-gt-sorted",
+      "runs": 40,
+      "p50": 8.27,
+      "p95": 10.89,
+      "max": 11.13,
+      "mean": 8.63,
+      "rows": 50,
+      "id": "number-gt-sorted",
+      "text": "\"Ethhal number 8\" > 500 AND space = AA ORDER BY \"Ethhal number 8\" DESC"
+    },
+    {
+      "name": "option-eq",
+      "runs": 40,
+      "p50": 1.14,
+      "p95": 1.23,
+      "max": 1.38,
+      "mean": 1.16,
+      "rows": 50,
+      "id": "option-eq",
+      "text": "\"Xanpir select 2\" = \"Hintor 3\" AND statusCategory = todo ORDER BY created DESC"
+    },
+    {
+      "name": "date-window",
+      "runs": 40,
+      "p50": 2.3,
+      "p95": 2.54,
+      "max": 9.07,
+      "mean": 2.51,
+      "rows": 50,
+      "id": "date-window",
+      "text": "\"Ismor date 5\" <= endOfMonth() AND \"Ismor date 5\" >= startOfMonth() ORDER BY \"Ismor date 5\" ASC"
+    },
+    {
+      "name": "user-field-mine",
+      "runs": 40,
+      "p50": 3.31,
+      "p95": 3.4,
+      "max": 3.79,
+      "mean": 3.33,
+      "rows": 6,
+      "id": "user-field-mine",
+      "text": "\"Juneth user 11\" = currentUser() ORDER BY updated DESC"
+    },
+    {
+      "name": "multi-in",
+      "runs": 40,
+      "p50": 2.28,
+      "p95": 2.73,
+      "max": 3.7,
+      "mean": 2.36,
+      "rows": 50,
+      "id": "multi-in",
+      "text": "\"Wenvin multiselect 20\" IN (\"Jungor 1\", \"Xanvel 2\") AND status != Done ORDER BY created DESC"
+    },
+    {
+      "name": "number-empty",
+      "runs": 40,
+      "p50": 0.66,
+      "p95": 0.96,
+      "max": 1.04,
+      "mean": 0.7,
+      "rows": 50,
+      "id": "number-empty",
+      "text": "\"Ethhal number 8\" IS EMPTY AND type IN (Story, Task) AND space = AA ORDER BY created DESC"
+    },
+    {
+      "name": "children",
+      "runs": 40,
+      "p50": 0.33,
+      "p95": 0.36,
+      "max": 0.36,
+      "mean": 0.33,
+      "rows": 37,
+      "id": "children",
+      "text": "parent = 1 ORDER BY created ASC"
+    },
+    {
+      "name": "mine-or-reported",
+      "runs": 40,
+      "p50": 0.67,
+      "p95": 0.85,
+      "max": 1.08,
+      "mean": 0.69,
+      "rows": 50,
+      "id": "mine-or-reported",
+      "text": "(assignee = currentUser() OR reporter = currentUser()) AND statusCategory != done ORDER BY updated DESC"
+    },
+    {
+      "name": "was-status",
+      "runs": 40,
+      "p50": 2.43,
+      "p95": 2.72,
+      "max": 4.39,
+      "mean": 2.55,
+      "rows": 50,
+      "id": "was-status",
+      "text": "status WAS \"In Review\" ORDER BY updated DESC"
+    },
+    {
+      "name": "changed-to-after",
+      "runs": 40,
+      "p50": 0.81,
+      "p95": 1.33,
+      "max": 2.17,
+      "mean": 0.92,
+      "rows": 50,
+      "id": "changed-to-after",
+      "text": "status CHANGED TO Done AFTER -7d ORDER BY updated DESC"
+    },
+    {
+      "name": "changed-by-during",
+      "runs": 40,
+      "p50": 0.55,
+      "p95": 0.59,
+      "max": 1.42,
+      "mean": 0.58,
+      "rows": 7,
+      "id": "changed-by-during",
+      "text": "assignee CHANGED BY 105 DURING (2024-01-01, 2024-02-01) ORDER BY created DESC"
+    },
+    {
+      "name": "not-or-spaces",
+      "runs": 40,
+      "p50": 0.44,
+      "p95": 0.46,
+      "max": 2.12,
+      "mean": 0.48,
+      "rows": 50,
+      "id": "not-or-spaces",
+      "text": "NOT (labels IN (infra) OR type = Subtask) AND space IN (AA, AB) ORDER BY created DESC"
+    },
+    {
+      "name": "was-rare",
+      "runs": 40,
+      "p50": 0.52,
+      "p95": 0.55,
+      "max": 0.56,
+      "mean": 0.52,
+      "rows": 0,
+      "id": "was-rare",
+      "text": "status WAS Cancelled AND status = Done ORDER BY updated DESC"
+    },
+    {
+      "name": "permitted-half",
+      "runs": 40,
+      "p50": 0.49,
+      "p95": 0.76,
+      "max": 2.17,
+      "mean": 0.56,
+      "rows": 50,
+      "id": "permitted-half",
+      "text": "status = Done ORDER BY created DESC"
+    }
+  ]
+}

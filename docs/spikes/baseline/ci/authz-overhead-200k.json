@@ -1,0 +1,92 @@
+{
+  "spike": "authz-overhead",
+  "at": "2026-10-12T17:29:04.792Z",
+  "items": 200000,
+  "runs": 40,
+  "rows": [
+    {
+      "query": "space-newest",
+      "allowedShare": 0.1,
+      "unfilteredP95": 0.75,
+      "filteredP95": 0.57,
+      "overhead": -0.24
+    },
+    {
+      "query": "space-newest",
+      "allowedShare": 0.5,
+      "unfilteredP95": 0.75,
+      "filteredP95": 0.44,
+      "overhead": -0.41
+    },
+    {
+      "query": "space-newest",
+      "allowedShare": 0.9,
+      "unfilteredP95": 0.75,
+      "filteredP95": 0.57,
+      "overhead": -0.24
+    },
+    {
+      "query": "mine-open",
+      "allowedShare": 0.1,
+      "unfilteredP95": 0.65,
+      "filteredP95": 0.59,
+      "overhead": -0.09
+    },
+    {
+      "query": "mine-open",
+      "allowedShare": 0.5,
+      "unfilteredP95": 0.65,
+      "filteredP95": 0.78,
+      "overhead": 0.2
+    },
+    {
+      "query": "mine-open",
+      "allowedShare": 0.9,
+      "unfilteredP95": 0.65,
+      "filteredP95": 0.57,
+      "overhead": -0.12
+    },
+    {
+      "query": "status-priority-in",
+      "allowedShare": 0.1,
+      "unfilteredP95": 0.92,
+      "filteredP95": 1.08,
+      "overhead": 0.17
+    },
+    {
+      "query": "status-priority-in",
+      "allowedShare": 0.5,
+      "unfilteredP95": 0.92,
+      "filteredP95": 2.82,
+      "overhead": 2.07
+    },
+    {
+      "query": "status-priority-in",
+      "allowedShare": 0.9,
+      "unfilteredP95": 0.92,
+      "filteredP95": 1.06,
+      "overhead": 0.15
+    },
+    {
+      "query": "recent-bugs",
+      "allowedShare": 0.1,
+      "unfilteredP95": 0.44,
+      "filteredP95": 0.78,
+      "overhead": 0.77
+    },
+    {
+      "query": "recent-bugs",
+      "allowedShare": 0.5,
+      "unfilteredP95": 0.44,
+      "filteredP95": 0.48,
+      "overhead": 0.09
+    },
+    {
+      "query": "recent-bugs",
+      "allowedShare": 0.9,
+      "unfilteredP95": 0.44,
+      "filteredP95": 0.68,
+      "overhead": 0.55
+    }
+  ]
+}

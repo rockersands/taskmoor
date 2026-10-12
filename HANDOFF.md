@@ -6,7 +6,7 @@ Read this first in every session, then update it before you stop.
 
 ### Done
 
-- **M0 is 28 of 35 tasks done; 31 of 33 ADRs accepted.** `pnpm gate M0` prints the exit
+- **M0 is 30 of 35 tasks done; 31 of 33 ADRs accepted.** `pnpm gate M0` prints the exit
   checklist; `STATUS.md` has the task table; `docs/status/2026-10-12.md` is the first weekly
   report (also in the user's Drive folder as a Google Doc).
 - Foundation (earlier today): repo with the personal identity only, DCO hooks and CI (Postgres
@@ -34,7 +34,11 @@ Read this first in every session, then update it before you stop.
   operator CLI in the image (`node cli.mjs check-upgrade | migrate | status | backup | restore |
   checksum`), and the restore drill `tools/image/drill-backup.sh` (back up, wipe, restore,
   compare table checksums, sign in) in the CI image job. The nightly install matrix
-  (M0-028, `install-matrix.yml`) is written; its first run is the next step.
+  (M0-028, `install-matrix.yml`) is green on all five images: 17 to 18 s to `/ready` on the
+  Ubuntu 22.04, 24.04 and arm64 runners, 36 s inside Debian 12 and Rocky 9 containers.
+- Nightly benchmarks (M0-033): the first green run's results are the CI baseline in
+  `docs/spikes/baseline/ci` and `pnpm bench:check --size 200k --baseline docs/spikes/baseline/ci`
+  passes against it.
 - Query compiler fixes found by the spike: id tiebreaker in the newest-first indexes and
   `NULLS LAST` only on nullable columns (41.7 ms to 0.65 ms); `WAS` as one history `EXISTS`
   (1.9 s to 0.65 ms for a value that never occurred); labels and word search use index-friendly
@@ -54,15 +58,7 @@ Read this first in every session, then update it before you stop.
    and `data/`). Then fill the 10M tables into ADR-008 and ADR-010, flip both to Accepted (README
    too), mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline` with the new 1M/10M
    files if they are within budget, and run `pnpm bench:check`.
-2. **Install matrix (M0-028) and the nightly baseline (M0-033).** The first matrix run failed
-   on every row (port precedence in `install.sh`, curl on Rocky; both fixed and reproduced
-   locally with `tools/install-matrix/run.sh` and `container.sh debian:12`), and the first
-   nightly run failed on one noisy p95 (now 40 runs). After the push: `gh workflow run
-   install-matrix.yml` and `gh workflow run nightly.yml`, then `gh run watch`. When the matrix
-   is green, record the seconds per OS from the job summary in `progress.csv` and `STATUS.md`
-   and mark M0-028 done (the arm64 row is `continue-on-error`). When the nightly is green,
-   `gh run download <id> -n nightly-results` and copy its `data/*.json` into
-   `docs/spikes/baseline/ci/`, then mark M0-033 done.
+2. M0-028 and M0-033 are done (see Done); nothing else waits on CI.
 3. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
    `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
 

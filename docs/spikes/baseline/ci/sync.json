@@ -1,0 +1,46 @@
+{
+  "spike": "sync",
+  "at": "2026-10-12T17:29:29.441Z",
+  "items": 50000,
+  "machine": {
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "cores": 2,
+    "postgres": "16.14"
+  },
+  "bootstrap": {
+    "spaces": 10,
+    "rows": 50000,
+    "bytes": 48788503,
+    "seconds": 1.57,
+    "rowsPerSecond": 31847
+  },
+  "mutations": {
+    "count": 5000,
+    "writers": 4,
+    "seconds": 4.989,
+    "perSecond": 1002,
+    "gaps": 0
+  },
+  "deltaUnderLoad": {
+    "name": "delta-under-load",
+    "runs": 5000,
+    "p50": 1,
+    "p95": 2,
+    "max": 7,
+    "mean": 1.17
+  },
+  "deltaIdle": {
+    "name": "delta-idle",
+    "runs": 200,
+    "p50": 1,
+    "p95": 1,
+    "max": 2,
+    "mean": 0.73
+  },
+  "outbox": {
+    "queued": 1000,
+    "firstRunSeconds": 1.275,
+    "replaySeconds": 0.383,
+    "appliedTwice": 0
+  }
+}

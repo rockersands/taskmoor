@@ -39,7 +39,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-019 Sync engine spike | Done | In-house change log: 52k-item bootstrap in 2.6 s, delta p95 1 ms, idempotent outbox (ADR-013) |
 | M0-022 XML parser spike | Done | 5 GB parsed in 2.6 min at 303 MB RSS, lossless after cleaning (ADR-025) |
 | M0-024 Remaining ADRs | In progress | 31 of 33 accepted; 008 and 010 wait for the 10M run |
-| M0-033 Nightly benchmarks and weekly report | In progress | bench:check with budgets and a 20% regression check; status-report; nightly job live on main, CI baseline after its first green run |
+| M0-033 Nightly benchmarks and weekly report | Done | bench:check with budgets and a 20% regression check; status-report; nightly job green on main with its results as the CI baseline |
 | M0-011 GitHub Actions | Done | Lint, types, tests, e2e, Postgres 16 and 18, weekly Windows, security scan, multi-arch image build, nightly benchmarks |
 | M0-026 All-in-one image and Compose kits | Done | deploy/allinone and deploy/compose; smoke-kits.sh green locally and in CI |
 | M0-027 First-run setup | Done | Setup link with a one-time token, admin creation, cookie sessions and sign-in; e2e on the real backend |
@@ -49,6 +49,6 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-035 DCO enforcement | Done | Git hooks, `pnpm dco` and CI; no branch protection on the free plan |
 | M0-029 Migrations and upgrade harness | Done | Forward-only migrations, upgrade tests from the last three releases' schemas, `node cli.mjs check-upgrade`, `migrate` and `status` in the image |
 | M0-030 Backup and restore | Done | `node cli.mjs backup`, `restore --yes` and `checksum`; drill (back up, wipe, restore, compare) green locally and in CI |
-| M0-028 Install matrix | In progress | Nightly workflow: install.sh timed on Ubuntu 22.04, 24.04 and arm64 runners and in Debian 12 and Rocky 9 containers; first run pending |
+| M0-028 Install matrix | Done | Nightly workflow green on five images: 17 to 18 s to /ready on Ubuntu 22.04, 24.04 and arm64; 36 s in Debian 12 and Rocky 9 containers with prerequisites |
 | M0-034 M0 gate | In progress | pnpm gate M0 prints the exit checklist; waits on the 10M run, Docker items, counsel and user acceptance |
 | All other M0 tasks | Not started | |
