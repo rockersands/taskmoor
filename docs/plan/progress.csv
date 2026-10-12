@@ -5,6 +5,7 @@ M0-003,done,2026-10-12,pnpm next-task with progress.csv; backlog integrity check
 M0-004,done,2026-10-12,ADR-001 to 003 written (002 Proposed until the user confirms); link and ADR index checks run in pnpm verify
 M0-005,done,2026-10-12,docs/legal/clean-room.md; counsel review row added to decisions.csv
 M0-006,done,2026-10-12,Spec front matter plus provenance check in pnpm verify
+M0-007,waiting-on-user,2026-10-12,docs/decisions/name.md: Tracksmith is a registered apparel brand and its handles are taken; shortlist issuetide / workrill / taskmoor
 M0-008,done,2026-10-12,Biome instead of ESLint and Prettier (ADR-004)
 M0-009,done,2026-10-12,Embedded Postgres 16 harness; CI runs Postgres 16 and 18
 M0-010,done,2026-10-12,dependency-cruiser rules in packages/devtools/src/boundaries.ts; fixture that breaks each rule

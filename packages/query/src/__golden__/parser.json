@@ -1,0 +1,1407 @@
+{
+  "\"Story Points\" <= 8": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "Story Points",
+        "span": {
+          "end": 14,
+          "start": 0
+        }
+      },
+      "kind": "compare",
+      "op": "<=",
+      "span": {
+        "end": 19,
+        "start": 0
+      },
+      "value": {
+        "kind": "number",
+        "span": {
+          "end": 19,
+          "start": 18
+        },
+        "value": 8
+      }
+    }
+  },
+  "(a = 1 OR b = 2) AND NOT (c = 3 OR d = 4)": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "items": [
+            {
+              "field": {
+                "name": "a",
+                "span": {
+                  "end": 2,
+                  "start": 1
+                }
+              },
+              "kind": "compare",
+              "op": "=",
+              "span": {
+                "end": 6,
+                "start": 1
+              },
+              "value": {
+                "kind": "number",
+                "span": {
+                  "end": 6,
+                  "start": 5
+                },
+                "value": 1
+              }
+            },
+            {
+              "field": {
+                "name": "b",
+                "span": {
+                  "end": 11,
+                  "start": 10
+                }
+              },
+              "kind": "compare",
+              "op": "=",
+              "span": {
+                "end": 15,
+                "start": 10
+              },
+              "value": {
+                "kind": "number",
+                "span": {
+                  "end": 15,
+                  "start": 14
+                },
+                "value": 2
+              }
+            }
+          ],
+          "kind": "or",
+          "span": {
+            "end": 15,
+            "start": 1
+          }
+        },
+        {
+          "expr": {
+            "items": [
+              {
+                "field": {
+                  "name": "c",
+                  "span": {
+                    "end": 27,
+                    "start": 26
+                  }
+                },
+                "kind": "compare",
+                "op": "=",
+                "span": {
+                  "end": 31,
+                  "start": 26
+                },
+                "value": {
+                  "kind": "number",
+                  "span": {
+                    "end": 31,
+                    "start": 30
+                  },
+                  "value": 3
+                }
+              },
+              {
+                "field": {
+                  "name": "d",
+                  "span": {
+                    "end": 36,
+                    "start": 35
+                  }
+                },
+                "kind": "compare",
+                "op": "=",
+                "span": {
+                  "end": 40,
+                  "start": 35
+                },
+                "value": {
+                  "kind": "number",
+                  "span": {
+                    "end": 40,
+                    "start": 39
+                  },
+                  "value": 4
+                }
+              }
+            ],
+            "kind": "or",
+            "span": {
+              "end": 40,
+              "start": 26
+            }
+          },
+          "kind": "not",
+          "span": {
+            "end": 40,
+            "start": 21
+          }
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 40,
+        "start": 1
+      }
+    }
+  },
+  "NOT status = Closed": {
+    "orderBy": [],
+    "where": {
+      "expr": {
+        "field": {
+          "name": "status",
+          "span": {
+            "end": 10,
+            "start": 4
+          }
+        },
+        "kind": "compare",
+        "op": "=",
+        "span": {
+          "end": 19,
+          "start": 4
+        },
+        "value": {
+          "kind": "word",
+          "span": {
+            "end": 19,
+            "start": 13
+          },
+          "value": "Closed"
+        }
+      },
+      "kind": "not",
+      "span": {
+        "end": 19,
+        "start": 0
+      }
+    }
+  },
+  "ORDER BY created DESC": {
+    "orderBy": [
+      {
+        "direction": "desc",
+        "field": {
+          "name": "created",
+          "span": {
+            "end": 16,
+            "start": 9
+          }
+        },
+        "span": {
+          "end": 21,
+          "start": 9
+        }
+      }
+    ],
+    "where": null
+  },
+  "a = 1 AND b = 2 OR c = 3 AND d = 4": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "items": [
+            {
+              "field": {
+                "name": "a",
+                "span": {
+                  "end": 1,
+                  "start": 0
+                }
+              },
+              "kind": "compare",
+              "op": "=",
+              "span": {
+                "end": 5,
+                "start": 0
+              },
+              "value": {
+                "kind": "number",
+                "span": {
+                  "end": 5,
+                  "start": 4
+                },
+                "value": 1
+              }
+            },
+            {
+              "field": {
+                "name": "b",
+                "span": {
+                  "end": 11,
+                  "start": 10
+                }
+              },
+              "kind": "compare",
+              "op": "=",
+              "span": {
+                "end": 15,
+                "start": 10
+              },
+              "value": {
+                "kind": "number",
+                "span": {
+                  "end": 15,
+                  "start": 14
+                },
+                "value": 2
+              }
+            }
+          ],
+          "kind": "and",
+          "span": {
+            "end": 15,
+            "start": 0
+          }
+        },
+        {
+          "items": [
+            {
+              "field": {
+                "name": "c",
+                "span": {
+                  "end": 20,
+                  "start": 19
+                }
+              },
+              "kind": "compare",
+              "op": "=",
+              "span": {
+                "end": 24,
+                "start": 19
+              },
+              "value": {
+                "kind": "number",
+                "span": {
+                  "end": 24,
+                  "start": 23
+                },
+                "value": 3
+              }
+            },
+            {
+              "field": {
+                "name": "d",
+                "span": {
+                  "end": 30,
+                  "start": 29
+                }
+              },
+              "kind": "compare",
+              "op": "=",
+              "span": {
+                "end": 34,
+                "start": 29
+              },
+              "value": {
+                "kind": "number",
+                "span": {
+                  "end": 34,
+                  "start": 33
+                },
+                "value": 4
+              }
+            }
+          ],
+          "kind": "and",
+          "span": {
+            "end": 34,
+            "start": 19
+          }
+        }
+      ],
+      "kind": "or",
+      "span": {
+        "end": 34,
+        "start": 0
+      }
+    }
+  },
+  "assignee = 'single quoted'": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "assignee",
+        "span": {
+          "end": 8,
+          "start": 0
+        }
+      },
+      "kind": "compare",
+      "op": "=",
+      "span": {
+        "end": 26,
+        "start": 0
+      },
+      "value": {
+        "kind": "string",
+        "span": {
+          "end": 26,
+          "start": 11
+        },
+        "value": "single quoted"
+      }
+    }
+  },
+  "assignee = currentUser() OR reporter = currentUser()": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "assignee",
+            "span": {
+              "end": 8,
+              "start": 0
+            }
+          },
+          "kind": "compare",
+          "op": "=",
+          "span": {
+            "end": 24,
+            "start": 0
+          },
+          "value": {
+            "args": [],
+            "kind": "function",
+            "name": "currentUser",
+            "span": {
+              "end": 24,
+              "start": 11
+            }
+          }
+        },
+        {
+          "field": {
+            "name": "reporter",
+            "span": {
+              "end": 36,
+              "start": 28
+            }
+          },
+          "kind": "compare",
+          "op": "=",
+          "span": {
+            "end": 52,
+            "start": 28
+          },
+          "value": {
+            "args": [],
+            "kind": "function",
+            "name": "currentUser",
+            "span": {
+              "end": 52,
+              "start": 39
+            }
+          }
+        }
+      ],
+      "kind": "or",
+      "span": {
+        "end": 52,
+        "start": 0
+      }
+    }
+  },
+  "assignee CHANGED FROM EMPTY TO currentUser() AFTER startOfDay(-7d)": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "assignee",
+        "span": {
+          "end": 8,
+          "start": 0
+        }
+      },
+      "kind": "changed",
+      "predicates": [
+        {
+          "kind": "from",
+          "span": {
+            "end": 27,
+            "start": 17
+          },
+          "values": [
+            {
+              "kind": "empty",
+              "span": {
+                "end": 27,
+                "start": 22
+              }
+            }
+          ]
+        },
+        {
+          "kind": "to",
+          "span": {
+            "end": 44,
+            "start": 28
+          },
+          "values": [
+            {
+              "args": [],
+              "kind": "function",
+              "name": "currentUser",
+              "span": {
+                "end": 44,
+                "start": 31
+              }
+            }
+          ]
+        },
+        {
+          "kind": "after",
+          "span": {
+            "end": 66,
+            "start": 45
+          },
+          "values": [
+            {
+              "args": [
+                {
+                  "kind": "duration",
+                  "span": {
+                    "end": 65,
+                    "start": 62
+                  },
+                  "value": "-7d"
+                }
+              ],
+              "kind": "function",
+              "name": "startOfDay",
+              "span": {
+                "end": 66,
+                "start": 51
+              }
+            }
+          ]
+        }
+      ],
+      "span": {
+        "end": 66,
+        "start": 0
+      }
+    }
+  },
+  "cf[10042] > 3.5": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "custom": 10042,
+        "name": "cf",
+        "span": {
+          "end": 9,
+          "start": 0
+        }
+      },
+      "kind": "compare",
+      "op": ">",
+      "span": {
+        "end": 15,
+        "start": 0
+      },
+      "value": {
+        "kind": "number",
+        "span": {
+          "end": 15,
+          "start": 12
+        },
+        "value": 3.5
+      }
+    }
+  },
+  "cf[1] IS EMPTY AND cf[2] WAS IN (1, 2, 3) ON 2026-03-04": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "custom": 1,
+            "name": "cf",
+            "span": {
+              "end": 5,
+              "start": 0
+            }
+          },
+          "kind": "empty",
+          "negated": false,
+          "span": {
+            "end": 14,
+            "start": 0
+          }
+        },
+        {
+          "field": {
+            "custom": 2,
+            "name": "cf",
+            "span": {
+              "end": 24,
+              "start": 19
+            }
+          },
+          "kind": "was",
+          "negated": false,
+          "predicates": [
+            {
+              "kind": "on",
+              "span": {
+                "end": 55,
+                "start": 42
+              },
+              "values": [
+                {
+                  "kind": "word",
+                  "span": {
+                    "end": 55,
+                    "start": 45
+                  },
+                  "value": "2026-03-04"
+                }
+              ]
+            }
+          ],
+          "span": {
+            "end": 55,
+            "start": 19
+          },
+          "values": [
+            {
+              "kind": "number",
+              "span": {
+                "end": 34,
+                "start": 33
+              },
+              "value": 1
+            },
+            {
+              "kind": "number",
+              "span": {
+                "end": 37,
+                "start": 36
+              },
+              "value": 2
+            },
+            {
+              "kind": "number",
+              "span": {
+                "end": 40,
+                "start": 39
+              },
+              "value": 3
+            }
+          ]
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 55,
+        "start": 0
+      }
+    }
+  },
+  "created >= -1w AND updated <= now()": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "created",
+            "span": {
+              "end": 7,
+              "start": 0
+            }
+          },
+          "kind": "compare",
+          "op": ">=",
+          "span": {
+            "end": 14,
+            "start": 0
+          },
+          "value": {
+            "kind": "duration",
+            "span": {
+              "end": 14,
+              "start": 11
+            },
+            "value": "-1w"
+          }
+        },
+        {
+          "field": {
+            "name": "updated",
+            "span": {
+              "end": 26,
+              "start": 19
+            }
+          },
+          "kind": "compare",
+          "op": "<=",
+          "span": {
+            "end": 35,
+            "start": 19
+          },
+          "value": {
+            "args": [],
+            "kind": "function",
+            "name": "now",
+            "span": {
+              "end": 35,
+              "start": 30
+            }
+          }
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 35,
+        "start": 0
+      }
+    }
+  },
+  "due < endOfMonth() AND due > startOfWeek(1)": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "due",
+            "span": {
+              "end": 3,
+              "start": 0
+            }
+          },
+          "kind": "compare",
+          "op": "<",
+          "span": {
+            "end": 18,
+            "start": 0
+          },
+          "value": {
+            "args": [],
+            "kind": "function",
+            "name": "endOfMonth",
+            "span": {
+              "end": 18,
+              "start": 6
+            }
+          }
+        },
+        {
+          "field": {
+            "name": "due",
+            "span": {
+              "end": 26,
+              "start": 23
+            }
+          },
+          "kind": "compare",
+          "op": ">",
+          "span": {
+            "end": 43,
+            "start": 23
+          },
+          "value": {
+            "args": [
+              {
+                "kind": "number",
+                "span": {
+                  "end": 42,
+                  "start": 41
+                },
+                "value": 1
+              }
+            ],
+            "kind": "function",
+            "name": "startOfWeek",
+            "span": {
+              "end": 43,
+              "start": 29
+            }
+          }
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 43,
+        "start": 0
+      }
+    }
+  },
+  "fixVersion IS EMPTY": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "fixVersion",
+        "span": {
+          "end": 10,
+          "start": 0
+        }
+      },
+      "kind": "empty",
+      "negated": false,
+      "span": {
+        "end": 19,
+        "start": 0
+      }
+    }
+  },
+  "key = ABC-12 OR key in (ABC-13, ABC-14)": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "key",
+            "span": {
+              "end": 3,
+              "start": 0
+            }
+          },
+          "kind": "compare",
+          "op": "=",
+          "span": {
+            "end": 12,
+            "start": 0
+          },
+          "value": {
+            "kind": "word",
+            "span": {
+              "end": 12,
+              "start": 6
+            },
+            "value": "ABC-12"
+          }
+        },
+        {
+          "field": {
+            "name": "key",
+            "span": {
+              "end": 19,
+              "start": 16
+            }
+          },
+          "kind": "in",
+          "negated": false,
+          "span": {
+            "end": 39,
+            "start": 16
+          },
+          "values": [
+            {
+              "kind": "word",
+              "span": {
+                "end": 30,
+                "start": 24
+              },
+              "value": "ABC-13"
+            },
+            {
+              "kind": "word",
+              "span": {
+                "end": 38,
+                "start": 32
+              },
+              "value": "ABC-14"
+            }
+          ]
+        }
+      ],
+      "kind": "or",
+      "span": {
+        "end": 39,
+        "start": 0
+      }
+    }
+  },
+  "priority IN (High, Highest) AND labels NOT IN (\"tech-debt\", infra)": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "priority",
+            "span": {
+              "end": 8,
+              "start": 0
+            }
+          },
+          "kind": "in",
+          "negated": false,
+          "span": {
+            "end": 27,
+            "start": 0
+          },
+          "values": [
+            {
+              "kind": "word",
+              "span": {
+                "end": 17,
+                "start": 13
+              },
+              "value": "High"
+            },
+            {
+              "kind": "word",
+              "span": {
+                "end": 26,
+                "start": 19
+              },
+              "value": "Highest"
+            }
+          ]
+        },
+        {
+          "field": {
+            "name": "labels",
+            "span": {
+              "end": 38,
+              "start": 32
+            }
+          },
+          "kind": "in",
+          "negated": true,
+          "span": {
+            "end": 66,
+            "start": 32
+          },
+          "values": [
+            {
+              "kind": "string",
+              "span": {
+                "end": 58,
+                "start": 47
+              },
+              "value": "tech-debt"
+            },
+            {
+              "kind": "word",
+              "span": {
+                "end": 65,
+                "start": 60
+              },
+              "value": "infra"
+            }
+          ]
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 66,
+        "start": 0
+      }
+    }
+  },
+  "project = ABC AND status != \"In Progress\"": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "project",
+            "span": {
+              "end": 7,
+              "start": 0
+            }
+          },
+          "kind": "compare",
+          "op": "=",
+          "span": {
+            "end": 13,
+            "start": 0
+          },
+          "value": {
+            "kind": "word",
+            "span": {
+              "end": 13,
+              "start": 10
+            },
+            "value": "ABC"
+          }
+        },
+        {
+          "field": {
+            "name": "status",
+            "span": {
+              "end": 24,
+              "start": 18
+            }
+          },
+          "kind": "compare",
+          "op": "!=",
+          "span": {
+            "end": 41,
+            "start": 18
+          },
+          "value": {
+            "kind": "string",
+            "span": {
+              "end": 41,
+              "start": 28
+            },
+            "value": "In Progress"
+          }
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 41,
+        "start": 0
+      }
+    }
+  },
+  "project = ABC ORDER BY priority DESC, created ASC": {
+    "orderBy": [
+      {
+        "direction": "desc",
+        "field": {
+          "name": "priority",
+          "span": {
+            "end": 31,
+            "start": 23
+          }
+        },
+        "span": {
+          "end": 36,
+          "start": 23
+        }
+      },
+      {
+        "direction": "asc",
+        "field": {
+          "name": "created",
+          "span": {
+            "end": 45,
+            "start": 38
+          }
+        },
+        "span": {
+          "end": 49,
+          "start": 38
+        }
+      }
+    ],
+    "where": {
+      "field": {
+        "name": "project",
+        "span": {
+          "end": 7,
+          "start": 0
+        }
+      },
+      "kind": "compare",
+      "op": "=",
+      "span": {
+        "end": 13,
+        "start": 0
+      },
+      "value": {
+        "kind": "word",
+        "span": {
+          "end": 13,
+          "start": 10
+        },
+        "value": "ABC"
+      }
+    }
+  },
+  "resolution IS NOT NULL": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "resolution",
+        "span": {
+          "end": 10,
+          "start": 0
+        }
+      },
+      "kind": "empty",
+      "negated": true,
+      "span": {
+        "end": 22,
+        "start": 0
+      }
+    }
+  },
+  "sprint IN openSprints() OR sprint IN futureSprints()": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "sprint",
+            "span": {
+              "end": 6,
+              "start": 0
+            }
+          },
+          "kind": "in",
+          "negated": false,
+          "span": {
+            "end": 23,
+            "start": 0
+          },
+          "values": [
+            {
+              "args": [],
+              "kind": "function",
+              "name": "openSprints",
+              "span": {
+                "end": 23,
+                "start": 10
+              }
+            }
+          ]
+        },
+        {
+          "field": {
+            "name": "sprint",
+            "span": {
+              "end": 33,
+              "start": 27
+            }
+          },
+          "kind": "in",
+          "negated": false,
+          "span": {
+            "end": 52,
+            "start": 27
+          },
+          "values": [
+            {
+              "args": [],
+              "kind": "function",
+              "name": "futureSprints",
+              "span": {
+                "end": 52,
+                "start": 37
+              }
+            }
+          ]
+        }
+      ],
+      "kind": "or",
+      "span": {
+        "end": 52,
+        "start": 0
+      }
+    }
+  },
+  "status = Done": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "status",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      },
+      "kind": "compare",
+      "op": "=",
+      "span": {
+        "end": 13,
+        "start": 0
+      },
+      "value": {
+        "kind": "word",
+        "span": {
+          "end": 13,
+          "start": 9
+        },
+        "value": "Done"
+      }
+    }
+  },
+  "status CHANGED DURING (2026-01-01, 2026-02-01)": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "status",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      },
+      "kind": "changed",
+      "predicates": [
+        {
+          "kind": "during",
+          "span": {
+            "end": 46,
+            "start": 15
+          },
+          "values": [
+            {
+              "kind": "word",
+              "span": {
+                "end": 33,
+                "start": 23
+              },
+              "value": "2026-01-01"
+            },
+            {
+              "kind": "word",
+              "span": {
+                "end": 45,
+                "start": 35
+              },
+              "value": "2026-02-01"
+            }
+          ]
+        }
+      ],
+      "span": {
+        "end": 46,
+        "start": 0
+      }
+    }
+  },
+  "status WAS Done": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "status",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      },
+      "kind": "was",
+      "negated": false,
+      "predicates": [],
+      "span": {
+        "end": 15,
+        "start": 0
+      },
+      "values": [
+        {
+          "kind": "word",
+          "span": {
+            "end": 15,
+            "start": 11
+          },
+          "value": "Done"
+        }
+      ]
+    }
+  },
+  "status WAS NOT IN (Open, Reopened) BEFORE 2026-01-01 BY kalo": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "status",
+        "span": {
+          "end": 6,
+          "start": 0
+        }
+      },
+      "kind": "was",
+      "negated": true,
+      "predicates": [
+        {
+          "kind": "before",
+          "span": {
+            "end": 52,
+            "start": 35
+          },
+          "values": [
+            {
+              "kind": "word",
+              "span": {
+                "end": 52,
+                "start": 42
+              },
+              "value": "2026-01-01"
+            }
+          ]
+        },
+        {
+          "kind": "by",
+          "span": {
+            "end": 60,
+            "start": 53
+          },
+          "values": [
+            {
+              "kind": "word",
+              "span": {
+                "end": 60,
+                "start": 56
+              },
+              "value": "kalo"
+            }
+          ]
+        }
+      ],
+      "span": {
+        "end": 60,
+        "start": 0
+      },
+      "values": [
+        {
+          "kind": "word",
+          "span": {
+            "end": 23,
+            "start": 19
+          },
+          "value": "Open"
+        },
+        {
+          "kind": "word",
+          "span": {
+            "end": 33,
+            "start": 25
+          },
+          "value": "Reopened"
+        }
+      ]
+    }
+  },
+  "status changed and assignee was empty": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "status",
+            "span": {
+              "end": 6,
+              "start": 0
+            }
+          },
+          "kind": "changed",
+          "predicates": [],
+          "span": {
+            "end": 14,
+            "start": 0
+          }
+        },
+        {
+          "field": {
+            "name": "assignee",
+            "span": {
+              "end": 27,
+              "start": 19
+            }
+          },
+          "kind": "was",
+          "negated": false,
+          "predicates": [],
+          "span": {
+            "end": 37,
+            "start": 19
+          },
+          "values": [
+            {
+              "kind": "empty",
+              "span": {
+                "end": 37,
+                "start": 32
+              }
+            }
+          ]
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 37,
+        "start": 0
+      }
+    }
+  },
+  "summary ~ \"login page\" AND description !~ cache": {
+    "orderBy": [],
+    "where": {
+      "items": [
+        {
+          "field": {
+            "name": "summary",
+            "span": {
+              "end": 7,
+              "start": 0
+            }
+          },
+          "kind": "compare",
+          "op": "~",
+          "span": {
+            "end": 22,
+            "start": 0
+          },
+          "value": {
+            "kind": "string",
+            "span": {
+              "end": 22,
+              "start": 10
+            },
+            "value": "login page"
+          }
+        },
+        {
+          "field": {
+            "name": "description",
+            "span": {
+              "end": 38,
+              "start": 27
+            }
+          },
+          "kind": "compare",
+          "op": "!~",
+          "span": {
+            "end": 47,
+            "start": 27
+          },
+          "value": {
+            "kind": "word",
+            "span": {
+              "end": 47,
+              "start": 42
+            },
+            "value": "cache"
+          }
+        }
+      ],
+      "kind": "and",
+      "span": {
+        "end": 47,
+        "start": 0
+      }
+    }
+  },
+  "text ~ \"quoted \\\"inner\\\" words\"": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "text",
+        "span": {
+          "end": 4,
+          "start": 0
+        }
+      },
+      "kind": "compare",
+      "op": "~",
+      "span": {
+        "end": 31,
+        "start": 0
+      },
+      "value": {
+        "kind": "string",
+        "span": {
+          "end": 31,
+          "start": 7
+        },
+        "value": "quoted \"inner\" words"
+      }
+    }
+  }
+}

@@ -136,6 +136,12 @@ importers:
         specifier: ^18.6.0
         version: 18.6.0
 
+  packages/query:
+    devDependencies:
+      '@tracksmith/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+
   packages/richtext:
     dependencies:
       '@tiptap/core':

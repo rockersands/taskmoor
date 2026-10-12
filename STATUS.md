@@ -22,6 +22,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-004 ADR process, ADR-001 to 003 | Done | ADR-002 accepted: AGPL-3.0-only with DCO |
 | M0-005 Clean-room protocol | Done | `docs/legal/clean-room.md`; counsel review requested |
 | M0-006 Provenance check | Done | Spec front matter checked in `pnpm verify` |
+| M0-007 Public name screening | Waiting on the user | Shortlist in `docs/decisions/name.md` |
 | M0-008 Monorepo scaffold | Done | Biome instead of ESLint and Prettier (ADR-004) |
 | M0-009 Embedded Postgres harness | Done | CI runs the same suites on Postgres 16 and 18 |
 | M0-010 Module boundaries | Done | dependency-cruiser rules with a failing fixture |

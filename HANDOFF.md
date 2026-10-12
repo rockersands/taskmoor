@@ -73,4 +73,5 @@ Read this first in every session, then update it before you stop.
 
 ### Waiting on the user
 
-- Public name screening (M0-007) before any public release.
+- Public name: pick from the shortlist in `docs/decisions/name.md` (issuetide, workrill,
+  taskmoor) or propose another; the codename stays until then.
