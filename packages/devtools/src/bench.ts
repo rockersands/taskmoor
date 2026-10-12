@@ -81,19 +81,18 @@ export const BUDGETS: readonly Budget[] = [
         .map((c) => ({ name: `${c.id} check p95`, value: c.check.p95 })),
   },
   {
-    // QRY-008: the pre-filter costs at most 20% where it costs more than 2 ms at all.
+    // QRY-008: the pre-filter adds at most 10 ms to a query's p95. An absolute budget, decided
+    // by the user on 2026-10-12: a relative one on sub-millisecond queries measured noise and the
+    // extra rows a filtered walk reads, not the design (decisions.csv).
     spike: 'authz-overhead',
-    unit: 'ratio',
-    max: 0.2,
+    unit: 'ms',
+    max: 10,
     select: (r: {
       rows: { query: string; allowedShare: number; unfilteredP95: number; filteredP95: number }[];
     }) =>
       r.rows.map((row) => ({
         name: `${row.query} @${row.allowedShare} overhead`,
-        value:
-          row.filteredP95 - row.unfilteredP95 > 2
-            ? (row.filteredP95 - row.unfilteredP95) / Math.max(row.unfilteredP95, 0.01)
-            : 0,
+        value: Math.max(0, Math.round((row.filteredP95 - row.unfilteredP95) * 100) / 100),
       })),
   },
   {

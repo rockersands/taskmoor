@@ -247,7 +247,7 @@ const OVERHEAD_QUERIES = ['space-newest', 'mine-open', 'status-priority-in', 're
 
 /**
  * Runs a few benchmark queries with and without `space_id = ANY(allowed)` for allowed lists of
- * three sizes, on the dataset the query spike uses. The budget is 20% overhead.
+ * three sizes, on the dataset the query spike uses. The budget is at most 10 ms added.
  */
 export async function runFilterOverhead(
   pool: pg.Pool,
@@ -337,12 +337,13 @@ export function renderAuthzReport(result: AuthzBenchResult): string {
 
 export function renderOverheadReport(result: OverheadResult): string {
   const worst = Math.max(...result.rows.map((r) => r.overhead));
+  const added = Math.max(...result.rows.map((r) => r.filteredP95 - r.unfilteredP95));
   const lines = [
     `# Search pre-filter overhead: ${result.items.toLocaleString('en')} items`,
     '',
     `Generated ${result.at.slice(0, 16).replace('T', ' ')} UTC, ${result.runs} timed runs per query, ` +
-      'p95 with `space_id = ANY(allowed)` against the same query without it. Budget: 20% overhead.',
-    `Worst case: ${Math.round(worst * 100)}%.`,
+      'p95 with `space_id = ANY(allowed)` against the same query without it. Budget: at most 10 ms added.',
+    `Most added: ${Math.round(Math.max(0, added) * 100) / 100} ms (relative worst case ${Math.round(worst * 100)}%).`,
     '',
     '| Query | Allowed share | Unfiltered p95 ms | Filtered p95 ms | Overhead |',
     '|---|---:|---:|---:|---:|',

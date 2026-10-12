@@ -9,7 +9,9 @@
 Every request, search, notification, export and realtime push must answer "may this user do
 this here" (IAM-009 to IAM-012) and search must apply browse permission inside the query, not
 after it (QRY-008). The budget is a check p95 under 10 ms at 100,000 users and 30,000 spaces,
-and a search pre-filter that costs under 20% of the unfiltered query. Atlassian built a central
+and a search pre-filter that adds at most 10 ms to a query (first stated as under 20% of the
+unfiltered query; made absolute by the user on 2026-10-12, because a relative budget on
+sub-millisecond queries measures noise). Atlassian built a central
 authorization service for this; the research recommended an OpenFGA-style relationship model.
 
 ## Decision

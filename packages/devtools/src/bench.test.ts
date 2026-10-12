@@ -53,17 +53,20 @@ describe('budgets', () => {
     expect(problems[3]?.message).toContain('23.33 min, budget 20');
   });
 
-  it('[QRY-008] count pre-filter overhead only above the noise floor', () => {
+  it('[QRY-008] allow the pre-filter to add at most 10 ms, however fast the query', () => {
     const results = {
       'authz-overhead': {
         rows: [
           { query: 'a', allowedShare: 0.1, unfilteredP95: 0.8, filteredP95: 2.1 },
+          { query: 'c', allowedShare: 0.9, unfilteredP95: 0.56, filteredP95: 4.1 },
+          { query: 'd', allowedShare: 0.9, unfilteredP95: 3, filteredP95: 1 },
           { query: 'b', allowedShare: 0.5, unfilteredP95: 40, filteredP95: 58 },
         ],
       },
     };
-    const names = checkBudgets(results).map((p) => p.name);
-    expect(names).toEqual(['b @0.5 overhead']);
+    const problems = checkBudgets(results);
+    expect(problems.map((p) => p.name)).toEqual(['b @0.5 overhead']);
+    expect(problems[0]?.message).toContain('18 ms, budget 10');
   });
 });
 

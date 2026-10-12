@@ -103,9 +103,8 @@ side-table paths in both forms, with and without the permission filter, and requ
 rows in identical order.
 
 The permission pre-filter (ADR-012) adds at most 3.6 ms at 10M items (filtered queries all
-under 4.5 ms; [report](../spikes/authz-overhead-10m.md)), which is within the query budget but
-above the relative "at most 20%" budget of `pnpm bench:check`; whether that budget is relative
-or absolute is open in `docs/plan/decisions.csv`.
+under 4.5 ms; [report](../spikes/authz-overhead-10m.md)), within its budget of at most 10 ms
+added (absolute since 2026-10-12, `docs/plan/decisions.csv`).
 
 ## Options considered
 
