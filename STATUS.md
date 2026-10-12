@@ -62,4 +62,4 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-034 Native grammar and parser | In progress | Grammar spec (file 06), error recovery with line, column and hints, nesting limit, 1,000+ parser tests; the one-hour fuzz run is in progress |
 | M1-035 Jira-compatible dialect | In progress | `toNative` and `toJira` rename fields and functions between the vocabularies on the shared tree; parse cases 100% green |
 | M1-103 Health page, metrics, traces | Done | /metrics on port 9464, OTLP traces when configured, admin System status page, example alerts and dashboard; CI green |
-| M1-099 Helm chart | In progress | Chart, lint and render tests, kind test and workflow; install and helm test pass on kind, rolling-upgrade run pending |
+| M1-099 Helm chart | Done | Chart with lint and render tests; on kind in CI: helm test green and a rolling upgrade with 55,271 requests and none failed |

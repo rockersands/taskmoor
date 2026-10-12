@@ -118,15 +118,10 @@ Read this first in every session, then update it before you stop.
    - Then fill the 10M tables into ADR-008 and ADR-010, flip them to Accepted (README too),
      mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline`, `pnpm bench:check`,
      commit the reports with the ADRs.
-2. **M1-099 Helm chart (in progress, uncommitted):** `deploy/helm/tracksmith`, README,
-   `tools/helm/kind-test.sh` (+ `postgres.yaml`, `load.mjs`), `.github/workflows/helm.yml`,
-   `packages/devtools/src/helm-chart.test.ts` (skips without helm; Helm and kind are in
-   `.cache/tools`). First kind run: install and `helm test` passed; the rolling upgrade failed
-   on "etcdserver: request timed out" while robocopy saturated C: (Docker's disk). Rerun with
-   `PATH=.cache/tools/helm/windows-amd64:.cache/tools/kind:$PATH KEEP_CLUSTER=1 bash
-   tools/helm/kind-test.sh` once C: is quiet. If the load sees failures, add a drain phase on
-   SIGTERM (readiness 503 and `Connection: close` on responses for a few seconds before
-   closing), because clients keep idle connections to old pods.
+2. **M1-099 Helm chart: done.** CI's helm.yml (kind) passed: helm test green, a rolling
+   upgrade under load with 55,271 requests and none failed. Locally, kind's etcd timed out
+   while robocopy saturated C: (Docker's disk); rerun `tools/helm/kind-test.sh` locally only
+   on a quiet disk. The upgrade rolls the same image; test two versions with the first release.
 3. **M1-034**: a second one-hour fuzz (seed 20261013) runs on the fixed lexer; when it ends
    with no failures, mark M1-034 done and M1-035 with it (record inputs and the slowest time).
 4. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
