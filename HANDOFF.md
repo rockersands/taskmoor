@@ -39,6 +39,13 @@ Read this first in every session, then update it before you stop.
 - Nightly benchmarks (M0-033): the first green run's results are the CI baseline in
   `docs/spikes/baseline/ci` and `pnpm bench:check --size 200k --baseline docs/spikes/baseline/ci`
   passes against it.
+- M1-022 (started while the 10M run holds the bench cluster): `packages/workflow` holds the
+  workflow behaviour model, a data-only conformance case format with provenance, 374 cases for
+  WF-001 to WF-012, the runner (`pnpm conformance`) and an in-memory reference model that passes
+  every case. The engine (M1-023) implements the same `WorkflowEngine` interface and is checked
+  against the reference model. Open points are `verify` notes on the cases (history entry order,
+  "has been in" and the current status, parent-status validator without a parent, Jira class
+  names for the import mapping).
 - Query compiler fixes found by the spike: id tiebreaker in the newest-first indexes and
   `NULLS LAST` only on nullable columns (41.7 ms to 0.65 ms); `WAS` as one history `EXISTS`
   (1.9 s to 0.65 ms for a value that never occurred); labels and word search use index-friendly
@@ -61,6 +68,8 @@ Read this first in every session, then update it before you stop.
 2. M0-028 and M0-033 are done (see Done); nothing else waits on CI.
 3. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
    `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
+4. Next M1 work that does not wait on M0 acceptance: M1-033 (query conformance suite, the same
+   shape as M1-022 for the query language), then M1-001 once M0-034 is accepted.
 
 ### Notes and gotchas
 

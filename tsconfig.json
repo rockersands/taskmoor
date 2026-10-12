@@ -26,6 +26,9 @@
       "path": "packages/spikes"
     },
     {
+      "path": "packages/workflow"
+    },
+    {
       "path": "apps/server"
     },
     {

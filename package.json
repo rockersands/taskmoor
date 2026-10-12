@@ -27,6 +27,7 @@
     "bench:check": "tsx packages/devtools/src/cli/bench-check.ts",
     "status-report": "tsx packages/devtools/src/cli/status-report.ts",
     "gate": "tsx packages/devtools/src/cli/gate.ts",
+    "conformance": "tsx packages/workflow/src/cli/conformance.ts",
     "build": "pnpm --filter @tracksmith/web build && node tools/build/server.mjs",
     "build:server": "node tools/build/server.mjs"
   },

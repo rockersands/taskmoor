@@ -52,3 +52,9 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-028 Install matrix | Done | Nightly workflow green on five images: 17 to 18 s to /ready on Ubuntu 22.04, 24.04 and arm64; 36 s in Debian 12 and Rocky 9 containers with prerequisites |
 | M0-034 M0 gate | In progress | pnpm gate M0 prints the exit checklist; waits on the 10M run, Docker items, counsel and user acceptance |
 | All other M0 tasks | Not started | |
+
+## M1 tasks started early
+
+| Task | State | Notes |
+|---|---|---|
+| M1-022 Workflow behaviour spec and conformance suite | Done | `@tracksmith/workflow`: 374 data cases for WF-001 to WF-012, `pnpm conformance` reports per section; reference model passes all |
