@@ -34,6 +34,8 @@ jobs:
 
       - name: Dataset
         run: pnpm gen --items 200000
+      - name: Drop the committed results so the artifact holds only this run's
+        run: rm -f docs/spikes/data/*.json docs/spikes/*.md
       - name: Field storage
         run: pnpm spike field-storage --items 200000 --candidates side --runs 40
       - name: Query compiler

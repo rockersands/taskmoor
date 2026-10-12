@@ -130,7 +130,7 @@ export function m0Gate(input: GateInputs): GateCheck[] {
     name: 'Backend skeleton installs in under 10 minutes on 5 OS images (M0-028)',
     state: done('M0-028') ? 'ok' : 'waiting',
     detail: matrix
-      ? `M0-028 ${matrix.state}: ${matrix.note}`
+      ? `M0-028 ${matrix.state}: ${matrix.note.split('. ')[0]}`
       : 'M0-028 not started (install-matrix.yml, see tools/install-matrix)',
   });
 
