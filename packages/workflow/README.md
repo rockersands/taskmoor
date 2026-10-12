@@ -5,8 +5,8 @@ executes the suite today. The engine of M1-023 implements the same `WorkflowEngi
 and must pass every case; the reference model stays as the oracle it is compared with.
 
 ```
-pnpm conformance            # per-section pass, fail and unsupported counts on the reference model
-pnpm conformance --json     # the full report
+pnpm conformance workflow           # per-section pass, fail and unsupported counts on the reference model
+pnpm conformance workflow --json    # the full report
 ```
 
 ## What a case is

@@ -176,6 +176,13 @@ importers:
         version: 8.23.1
 
   packages/devtools:
+    dependencies:
+      '@tracksmith/query':
+        specifier: workspace:*
+        version: link:../query
+      '@tracksmith/workflow':
+        specifier: workspace:*
+        version: link:../workflow
     devDependencies:
       '@tracksmith/testkit':
         specifier: workspace:*

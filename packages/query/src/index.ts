@@ -12,6 +12,9 @@ export type {
 } from './ast';
 export { clauses } from './ast';
 export { type CompiledQuery, type CompileOptions, compilePlan } from './compile';
+export * from './conformance/case';
+export { QUERY_CASES } from './conformance/cases';
+export * from './conformance/run';
 export {
   type Catalogue,
   type CustomField,

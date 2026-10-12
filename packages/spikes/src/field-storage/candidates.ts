@@ -58,7 +58,8 @@ CREATE TABLE fs_side.${name} (
 const SIDE_INDEXES = (name: string, multi = false) => `
 ALTER TABLE fs_side.${name} ADD PRIMARY KEY (item_id, field_id${multi ? ', value' : ''});
 CREATE INDEX ON fs_side.${name} (field_id, value, created_at DESC) INCLUDE (item_id);
-CREATE INDEX ON fs_side.${name} (space_id, field_id, value, created_at DESC) INCLUDE (item_id);`;
+CREATE INDEX ON fs_side.${name} (space_id, field_id, value, created_at DESC) INCLUDE (item_id);
+CREATE INDEX ON fs_side.${name} (field_id, created_at DESC) INCLUDE (value, item_id);`;
 
 export const candidates: Record<CandidateId, Candidate> = {
   jsonb: {

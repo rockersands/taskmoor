@@ -3,7 +3,7 @@ import type { Expr, FieldRef, Predicate, Query, Value } from './ast';
 /** Writes a query back as text in a canonical form: keywords upper case, strings double-quoted. */
 export function printQuery(query: Query): string {
   const parts: string[] = [];
-  if (query.where) parts.push(printExpr(query.where, 'or'));
+  if (query.where) parts.push(printExpr(query.where, 'top'));
   if (query.orderBy.length > 0) {
     parts.push(
       `ORDER BY ${query.orderBy.map((o) => `${printField(o.field)} ${o.direction.toUpperCase()}`).join(', ')}`,
@@ -12,7 +12,8 @@ export function printQuery(query: Query): string {
   return parts.join(' ');
 }
 
-const LEVEL = { or: 0, and: 1, not: 2 } as const;
+/** Binding strength; `top` is the query itself, which never needs parentheses. */
+const LEVEL = { top: -1, or: 0, and: 1, not: 2 } as const;
 
 function printExpr(expr: Expr, parent: keyof typeof LEVEL): string {
   switch (expr.kind) {

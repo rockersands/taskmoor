@@ -105,9 +105,12 @@ export const QUERIES: readonly QueryDef[] = [
       jsonb: `SELECT id FROM fs_jsonb.item
               WHERE (fields->>$1::int::text)::date BETWEEN $2::date AND $3::date
                 AND status_category = $4 ${order('fs_jsonb.item')}`,
-      side: `SELECT i.id FROM fs_side.v_date v JOIN fs_side.item i ON i.id = v.item_id
+      // A semi-join keeps the newest-first walk on the side table's (field_id, created_at)
+      // index; the join form made the planner hash the whole date range at 10M items.
+      side: `SELECT v.item_id AS id FROM fs_side.v_date v
              WHERE v.field_id = $1 AND v.value BETWEEN $2::date AND $3::date
-               AND i.status_category = $4 ORDER BY v.created_at DESC LIMIT 50`,
+               AND EXISTS (SELECT 1 FROM fs_side.item i WHERE i.id = v.item_id AND i.status_category = $4)
+             ORDER BY v.created_at DESC LIMIT 50`,
       eav: `SELECT i.id FROM fs_eav.value v JOIN fs_eav.item i ON i.id = v.item_id
             WHERE v.field_id = $1 AND v.date_value BETWEEN $2::date AND $3::date
               AND i.status_category = $4 ORDER BY v.created_at DESC LIMIT 50`,
@@ -134,8 +137,10 @@ export const QUERIES: readonly QueryDef[] = [
               WHERE fields @> jsonb_build_object($1::int::text, $2::text)
                 AND (fields->>$3::int::text)::numeric > $4 ${order('fs_jsonb.item')}`,
       side: `SELECT o.item_id AS id FROM fs_side.v_option o
-             JOIN fs_side.v_number n ON n.item_id = o.item_id AND n.field_id = $3 AND n.value > $4
-             WHERE o.field_id = $1 AND o.value = $2 ORDER BY o.created_at DESC LIMIT 50`,
+             WHERE o.field_id = $1 AND o.value = $2
+               AND EXISTS (SELECT 1 FROM fs_side.v_number n
+                           WHERE n.item_id = o.item_id AND n.field_id = $3 AND n.value > $4)
+             ORDER BY o.created_at DESC LIMIT 50`,
       eav: `SELECT o.item_id AS id FROM fs_eav.value o
             JOIN fs_eav.value n ON n.item_id = o.item_id AND n.field_id = $3 AND n.num_value > $4
             WHERE o.field_id = $1 AND o.text_value = $2 ORDER BY o.created_at DESC LIMIT 50`,

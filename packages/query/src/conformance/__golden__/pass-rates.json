@@ -1,0 +1,52 @@
+{
+  "dates": {
+    "pass": 226,
+    "rate": 86,
+    "total": 262
+  },
+  "fields": {
+    "pass": 207,
+    "rate": 58,
+    "total": 356
+  },
+  "filters": {
+    "pass": 12,
+    "rate": 57,
+    "total": 21
+  },
+  "functions": {
+    "pass": 157,
+    "rate": 55,
+    "total": 284
+  },
+  "grammar": {
+    "pass": 92,
+    "rate": 100,
+    "total": 92
+  },
+  "history": {
+    "pass": 192,
+    "rate": 80,
+    "total": 239
+  },
+  "operators": {
+    "pass": 566,
+    "rate": 85,
+    "total": 665
+  },
+  "ordering": {
+    "pass": 136,
+    "rate": 88,
+    "total": 154
+  },
+  "sprints": {
+    "pass": 0,
+    "rate": 0,
+    "total": 7
+  },
+  "text": {
+    "pass": 100,
+    "rate": 71,
+    "total": 140
+  }
+}

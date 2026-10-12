@@ -58,3 +58,4 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | Task | State | Notes |
 |---|---|---|
 | M1-022 Workflow behaviour spec and conformance suite | Done | `@tracksmith/workflow`: 374 data cases for WF-001 to WF-012, `pnpm conformance` reports per section; reference model passes all |
+| M1-033 Query conformance suite | Done | 2,220 data cases for QRY-001 to QRY-013 in `@tracksmith/query`; `pnpm conformance query` reports the pass rate per section (grammar 100%, 76% overall); the rates are a golden |
