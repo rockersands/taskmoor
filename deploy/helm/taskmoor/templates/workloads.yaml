@@ -1,4 +1,4 @@
-{{- include "tracksmith.validate" . -}}
+{{- include "taskmoor.validate" . -}}
 {{- $root := . -}}
 {{- range $component := list "app" "worker" }}
 {{- $c := index $root.Values $component }}
@@ -7,9 +7,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+  name: {{ include "taskmoor.fullname" $root }}-{{ $component }}
   labels:
-    {{- include "tracksmith.labels" $root | nindent 4 }}
+    {{- include "taskmoor.labels" $root | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   {{- if not $c.autoscaling.enabled }}
@@ -22,18 +22,18 @@ spec:
     rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
   selector:
     matchLabels:
-      {{- include "tracksmith.selector" (dict "root" $root "component" $component) | nindent 6 }}
+      {{- include "taskmoor.selector" (dict "root" $root "component" $component) | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "tracksmith.selector" (dict "root" $root "component" $component) | nindent 8 }}
+        {{- include "taskmoor.selector" (dict "root" $root "component" $component) | nindent 8 }}
       annotations:
         {{- with $c.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
         checksum/database: {{ include (print $root.Template.BasePath "/secret.yaml") $root | sha256sum }}
     spec:
-      serviceAccountName: {{ include "tracksmith.serviceAccount" $root }}
+      serviceAccountName: {{ include "taskmoor.serviceAccount" $root }}
       automountServiceAccountToken: false
       {{- with $root.Values.imagePullSecrets }}
       imagePullSecrets:
@@ -43,13 +43,13 @@ spec:
         {{- toYaml $root.Values.podSecurityContext | nindent 8 }}
       terminationGracePeriodSeconds: {{ $root.Values.terminationGracePeriodSeconds }}
       containers:
-        - name: tracksmith
-          image: {{ include "tracksmith.image" $root }}
+        - name: taskmoor
+          image: {{ include "taskmoor.image" $root }}
           imagePullPolicy: {{ $root.Values.image.pullPolicy }}
           env:
-            - name: TRACKSMITH_ROLE
+            - name: TASKMOOR_ROLE
               value: {{ if eq $component "app" }}{{ $c.roles | quote }}{{ else }}"worker"{{ end }}
-            {{- include "tracksmith.env" $root | nindent 12 }}
+            {{- include "taskmoor.env" $root | nindent 12 }}
           ports:
             - { name: http, containerPort: 8080 }
             - { name: metrics, containerPort: {{ $root.Values.metrics.port }} }
@@ -85,7 +85,7 @@ spec:
         - name: data
           {{- if and (eq $component "app") (eq $root.Values.storage.type "local") }}
           persistentVolumeClaim:
-            claimName: {{ include "tracksmith.fullname" $root }}-data
+            claimName: {{ include "taskmoor.fullname" $root }}-data
           {{- else }}
           emptyDir: {}
           {{- end }}
@@ -106,15 +106,15 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+  name: {{ include "taskmoor.fullname" $root }}-{{ $component }}
   labels:
-    {{- include "tracksmith.labels" $root | nindent 4 }}
+    {{- include "taskmoor.labels" $root | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+    name: {{ include "taskmoor.fullname" $root }}-{{ $component }}
   minReplicas: {{ $c.autoscaling.minReplicas }}
   maxReplicas: {{ $c.autoscaling.maxReplicas }}
   metrics:
@@ -129,15 +129,15 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "tracksmith.fullname" $root }}-{{ $component }}
+  name: {{ include "taskmoor.fullname" $root }}-{{ $component }}
   labels:
-    {{- include "tracksmith.labels" $root | nindent 4 }}
+    {{- include "taskmoor.labels" $root | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
 spec:
   minAvailable: {{ $c.podDisruptionBudget.minAvailable }}
   selector:
     matchLabels:
-      {{- include "tracksmith.selector" (dict "root" $root "component" $component) | nindent 6 }}
+      {{- include "taskmoor.selector" (dict "root" $root "component" $component) | nindent 6 }}
 {{- end }}
 {{- end }}
 {{- end }}

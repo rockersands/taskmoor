@@ -1,5 +1,5 @@
-import type { Database } from '@tracksmith/db';
-import { newToken, tokenHash, tokenMatches } from '@tracksmith/iam';
+import type { Database } from '@taskmoor/db';
+import { newToken, tokenHash, tokenMatches } from '@taskmoor/iam';
 import type { Kysely } from 'kysely';
 
 /** Keys in instance_setting the setup flow owns. */
@@ -44,7 +44,7 @@ export async function setupState(db: Kysely<Database>): Promise<SetupState> {
 
 /**
  * Issues the setup token while setup is incomplete: a fresh one on every start (the previous
- * stops working), or the one from TRACKSMITH_SETUP_TOKEN for installers and tests. Only its
+ * stops working), or the one from TASKMOOR_SETUP_TOKEN for installers and tests. Only its
  * hash is stored; the caller prints the link once.
  */
 export async function issueSetupToken(

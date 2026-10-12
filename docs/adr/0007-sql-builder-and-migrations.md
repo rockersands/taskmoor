@@ -12,7 +12,7 @@ read in an `EXPLAIN`, and a schema whose every change is reviewed.
 
 ## Decision
 
-- **Kysely** is the query builder: typed against a `Database` interface in `@tracksmith/db`,
+- **Kysely** is the query builder: typed against a `Database` interface in `@taskmoor/db`,
   no runtime schema, no lazy loading, and the SQL it produces is the SQL that runs. Raw SQL
   through `sql` tagged templates is allowed where the builder gets in the way (window
   functions, partition DDL, the query compiler's output).

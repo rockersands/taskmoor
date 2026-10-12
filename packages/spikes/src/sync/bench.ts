@@ -5,7 +5,7 @@ import {
   loadedFingerprint,
   Rng,
   scaleConfig,
-} from '@tracksmith/testkit/gen';
+} from '@taskmoor/testkit/gen';
 import pg from 'pg';
 import { summarize, type Timing } from '../bench/stats';
 import { bootstrap, follow, mutate, SYNC_SQL } from './changelog';

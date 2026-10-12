@@ -3,7 +3,7 @@ import type { Expr, FieldRef, OrderBy, Predicate, Query, Value } from './ast';
 /**
  * The Jira-compatible dialect (M1-035, QRY-003). It shares the native grammar (file 06) and
  * differs only in vocabulary, so it maps onto the native tree by renaming fields and functions:
- * `toNative` reads either vocabulary and writes Tracksmith's names, `toJira` writes the names a
+ * `toNative` reads either vocabulary and writes Taskmoor's names, `toJira` writes the names a
  * Jira-compatible client expects. Names match without regard to case; names that are the same
  * in both vocabularies, custom fields and unknown names pass through unchanged.
  */
@@ -152,7 +152,7 @@ const TO_JIRA_FUNCTIONS: Names = new Map(
   ]),
 );
 
-/** Rewrites a query in either vocabulary to Tracksmith's names. Spans are kept. */
+/** Rewrites a query in either vocabulary to Taskmoor's names. Spans are kept. */
 export function toNative(query: Query): Query {
   return rename(query, TO_NATIVE_FIELDS, TO_NATIVE_FUNCTIONS);
 }

@@ -1,8 +1,8 @@
 {
-  "name": "@tracksmith/web",
+  "name": "@taskmoor/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Tracksmith frontend: a static React app that any web host can serve.",
+  "description": "Taskmoor frontend: a static React app that any web host can serve.",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
@@ -34,8 +34,8 @@
     "jsdom": "^27.4.0",
     "storybook": "10.6.1",
     "vite": "^7.3.7",
-    "@tracksmith/db": "workspace:*",
-    "@tracksmith/server": "workspace:*",
-    "@tracksmith/testkit": "workspace:*"
+    "@taskmoor/db": "workspace:*",
+    "@taskmoor/server": "workspace:*",
+    "@taskmoor/testkit": "workspace:*"
   }
 }

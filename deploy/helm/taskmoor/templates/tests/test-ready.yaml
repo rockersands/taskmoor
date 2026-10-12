@@ -3,9 +3,9 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ include "tracksmith.fullname" . }}-test
+  name: {{ include "taskmoor.fullname" . }}-test
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
     app.kubernetes.io/component: test
   annotations:
     helm.sh/hook: test
@@ -18,7 +18,7 @@ spec:
     {{- toYaml .Values.podSecurityContext | nindent 4 }}
   containers:
     - name: probe
-      image: {{ include "tracksmith.image" . }}
+      image: {{ include "taskmoor.image" . }}
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
@@ -26,8 +26,8 @@ spec:
         - node
         - -e
         - |
-          const base = 'http://{{ include "tracksmith.fullname" . }}:{{ .Values.service.port }}';
-          const metrics = 'http://{{ include "tracksmith.fullname" . }}-metrics:{{ .Values.metrics.port }}/metrics';
+          const base = 'http://{{ include "taskmoor.fullname" . }}:{{ .Values.service.port }}';
+          const metrics = 'http://{{ include "taskmoor.fullname" . }}-metrics:{{ .Values.metrics.port }}/metrics';
           const get = async (url) => {
             const res = await fetch(url);
             const text = await res.text();
@@ -40,7 +40,7 @@ spec:
             await get(`${base}/ready`);
             const setup = JSON.parse(await get(`${base}/api/v1/setup`));
             if (typeof setup.needed !== 'boolean') throw new Error(`setup: ${JSON.stringify(setup)}`);
-            if (!(await get(metrics)).includes('tracksmith_build_info')) throw new Error('no build info');
+            if (!(await get(metrics)).includes('taskmoor_build_info')) throw new Error('no build info');
             console.log(`ok: version ${health.version}, roles ${health.roles.join(',')}`);
           };
           main().catch((error) => { console.error(error.message); process.exit(1); });

@@ -1,4 +1,4 @@
-import { Rng, ZipfSampler } from '@tracksmith/testkit/gen';
+import { Rng, ZipfSampler } from '@taskmoor/testkit/gen';
 
 /**
  * Synthetic permission data for the M0-018 spike (ADR-012), shaped like the IAM spec, file 05a:

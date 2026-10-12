@@ -24,9 +24,9 @@ tens of millions of rows cannot be locked for minutes.
   that prints the plan. Failures stop before anything is written.
 - **Upgrade harness in CI** (M0-029): fixture databases from the last three minors are
   upgraded to the candidate and the full suite runs on each.
-- **Backup and restore CLI** (M0-030): `tracksmith backup` (database with `pg_dump` in
+- **Backup and restore CLI** (M0-030): `taskmoor backup` (database with `pg_dump` in
   directory format, files, configuration; encrypted; to disk, S3 or SFTP; retention rules;
-  optional WAL archiving for point-in-time recovery) and `tracksmith restore` to the same or a
+  optional WAL archiving for point-in-time recovery) and `taskmoor restore` to the same or a
   new host, into a sandbox, or a single space or deleted items into the live site. A scheduled
   verification restores into a scratch database and reports.
 - **Rolling upgrades** on Kubernetes: the backend serves API N-1 (ADR-032) and migrations are

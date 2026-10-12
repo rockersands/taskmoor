@@ -38,9 +38,7 @@ describe('setup page', () => {
   it('[OPS-003] explains that the installer link is needed without a token', async () => {
     window.location.hash = '#/setup';
     render(<App />);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Set up Tracksmith' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Set up Taskmoor' })).toBeVisible();
     expect(screen.getByText(/needs the setup link/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
   });

@@ -5,19 +5,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-TAG=${TAG:-tracksmith:dev}
-AIO=${AIO:-tracksmith-allinone:dev}
+TAG=${TAG:-taskmoor:dev}
+AIO=${AIO:-taskmoor-allinone:dev}
 ID=$$
-AIO_NAME=tracksmith-aio-$ID
-VOL=tracksmith-aio-data-$ID
-PG=tracksmith-ext-pg-$ID
-NET=tracksmith-ext-$ID
+AIO_NAME=taskmoor-aio-$ID
+VOL=taskmoor-aio-data-$ID
+PG=taskmoor-ext-pg-$ID
+NET=taskmoor-ext-$ID
 cleanup() {
   docker rm -f "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
   docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
-  docker rm -f "ts-smoke-$ID-tracksmith-1" "ts-smoke-$ID-postgres-1" "ts-smoke-ext-$ID-tracksmith-1" >/dev/null 2>&1 || true
-  docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_tracksmith-data" "ts-smoke-ext-${ID}_tracksmith-data" >/dev/null 2>&1 || true
+  docker rm -f "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
+  docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_taskmoor-data" "ts-smoke-ext-${ID}_taskmoor-data" >/dev/null 2>&1 || true
   docker network rm "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -47,10 +47,10 @@ docker rm -f "$AIO_NAME" >/dev/null
 echo "== compose kit with bundled Postgres"
 (
   cd deploy/compose
-  POSTGRES_PASSWORD=smoke-$ID TRACKSMITH_IMAGE=$TAG TRACKSMITH_PORT=18091 \
+  POSTGRES_PASSWORD=smoke-$ID TASKMOOR_IMAGE=$TAG TASKMOOR_PORT=18091 \
     docker compose -p "ts-smoke-$ID" up -d --quiet-pull >/dev/null
 )
-app="ts-smoke-$ID-tracksmith-1"
+app="ts-smoke-$ID-taskmoor-1"
 wait_for http://127.0.0.1:18091/ready 120 "$app"
 curl -fsS http://127.0.0.1:18091/ready; echo
 (cd deploy/compose && docker compose -p "ts-smoke-$ID" down -v >/dev/null)
@@ -61,11 +61,11 @@ docker run -d --name "$PG" --network "$NET" -e POSTGRES_PASSWORD=ext-$ID postgre
 for _ in $(seq 1 60); do docker exec "$PG" pg_isready -U postgres >/dev/null 2>&1 && break; sleep 1; done
 (
   cd deploy/compose
-  DATABASE_URL=postgres://postgres:ext-$ID@$PG:5432/postgres TRACKSMITH_IMAGE=$TAG TRACKSMITH_PORT=18092 \
+  DATABASE_URL=postgres://postgres:ext-$ID@$PG:5432/postgres TASKMOOR_IMAGE=$TAG TASKMOOR_PORT=18092 \
     docker compose -p "ts-smoke-ext-$ID" -f docker-compose.external.yml up -d --quiet-pull >/dev/null
 )
 # Compose names the container <project>-<service>-1; asking compose would need the env again.
-app="ts-smoke-ext-$ID-tracksmith-1"
+app="ts-smoke-ext-$ID-taskmoor-1"
 docker network connect "$NET" "$app"
 wait_for http://127.0.0.1:18092/ready 120 "$app"
 curl -fsS http://127.0.0.1:18092/ready; echo

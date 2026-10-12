@@ -36,11 +36,11 @@ if ($env:DATABASE_URL) {
 
 # The port as Compose resolves it: the environment first, then .env, then 8080.
 $port = 8080
-$portLine = Get-Content .env | Where-Object { $_ -match '^TRACKSMITH_PORT=' }
+$portLine = Get-Content .env | Where-Object { $_ -match '^TASKMOOR_PORT=' }
 if ($portLine) { $port = [int]($portLine -split '=')[1] }
-if ($env:TRACKSMITH_PORT) { $port = [int]$env:TRACKSMITH_PORT }
+if ($env:TASKMOOR_PORT) { $port = [int]$env:TASKMOOR_PORT }
 
-Write-Host "starting Tracksmith with $file"
+Write-Host "starting Taskmoor with $file"
 docker compose -f $file up -d --quiet-pull
 if ($LASTEXITCODE -ne 0) { Fail 'docker compose up failed' }
 
@@ -54,14 +54,14 @@ for ($i = 0; $i -lt 120; $i++) {
   Start-Sleep -Seconds 1
 }
 if (-not $ready) {
-  docker compose -f $file logs --tail 40 tracksmith
+  docker compose -f $file logs --tail 40 taskmoor
   Fail 'the backend did not become ready in 2 minutes; the log above says why'
 }
 
-$logs = docker compose -f $file logs --no-log-prefix tracksmith 2>$null | Out-String
+$logs = docker compose -f $file logs --no-log-prefix taskmoor 2>$null | Out-String
 $link = [regex]::Matches($logs, '"link":"([^"]*)"') | Select-Object -Last 1 | ForEach-Object { $_.Groups[1].Value }
 Write-Host ''
-Write-Host "Tracksmith is running on port $port."
+Write-Host "Taskmoor is running on port $port."
 if ($link) {
   Write-Host 'Open this link once to create the administrator:'
   Write-Host "  $link"

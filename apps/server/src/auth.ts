@@ -1,9 +1,9 @@
-import type { Database } from '@tracksmith/db';
-import { newToken } from '@tracksmith/iam';
+import type { Database } from '@taskmoor/db';
+import { newToken } from '@taskmoor/iam';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 
-export const SESSION_COOKIE = 'tracksmith_session';
+export const SESSION_COOKIE = 'taskmoor_session';
 /** IAM-004 makes this a policy; until then two weeks of inactivity signs a browser out. */
 export const SESSION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 

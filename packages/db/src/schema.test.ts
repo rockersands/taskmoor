@@ -1,4 +1,4 @@
-import { stableJson } from '@tracksmith/testkit';
+import { stableJson } from '@taskmoor/testkit';
 import { describe, expect, it } from 'vitest';
 import { snapshotSchema } from './snapshot';
 import { useMigratedDatabase } from './testing';

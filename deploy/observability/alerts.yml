@@ -2,59 +2,59 @@
 # plan (NFR-001: p95 under 300 ms for searches, 1 s for pages) and the backup policy of the
 # pre-upgrade check (a backup older than a day). Adjust them to your instance.
 groups:
-  - name: tracksmith
+  - name: taskmoor
     rules:
-      - alert: TracksmithDown
-        expr: up{job="tracksmith"} == 0
+      - alert: TaskmoorDown
+        expr: up{job="taskmoor"} == 0
         for: 2m
         labels: { severity: critical }
         annotations:
-          summary: "Tracksmith metrics endpoint {{ $labels.instance }} is not answering"
+          summary: "Taskmoor metrics endpoint {{ $labels.instance }} is not answering"
 
-      - alert: TracksmithServerErrors
+      - alert: TaskmoorServerErrors
         expr: |
-          sum(rate(tracksmith_http_request_duration_seconds_count{status_code=~"5.."}[5m]))
-            / sum(rate(tracksmith_http_request_duration_seconds_count[5m])) > 0.05
+          sum(rate(taskmoor_http_request_duration_seconds_count{status_code=~"5.."}[5m]))
+            / sum(rate(taskmoor_http_request_duration_seconds_count[5m])) > 0.05
         for: 10m
         labels: { severity: warning }
         annotations:
-          summary: "More than 5% of Tracksmith requests fail with a server error"
+          summary: "More than 5% of Taskmoor requests fail with a server error"
 
-      - alert: TracksmithSlowRequests
+      - alert: TaskmoorSlowRequests
         expr: |
           histogram_quantile(0.95,
-            sum by (le, route) (rate(tracksmith_http_request_duration_seconds_bucket[5m]))) > 1
+            sum by (le, route) (rate(taskmoor_http_request_duration_seconds_bucket[5m]))) > 1
         for: 15m
         labels: { severity: warning }
         annotations:
           summary: "p95 latency of {{ $labels.route }} is above 1 s"
 
-      - alert: TracksmithSlowStatements
+      - alert: TaskmoorSlowStatements
         expr: |
           histogram_quantile(0.95,
-            sum by (le) (rate(tracksmith_db_query_duration_seconds_bucket[5m]))) > 0.3
+            sum by (le) (rate(taskmoor_db_query_duration_seconds_bucket[5m]))) > 0.3
         for: 15m
         labels: { severity: warning }
         annotations:
           summary: "p95 database statement time is above 300 ms"
 
-      - alert: TracksmithDatabasePoolExhausted
-        expr: tracksmith_db_pool_connections{state="waiting"} > 0
+      - alert: TaskmoorDatabasePoolExhausted
+        expr: taskmoor_db_pool_connections{state="waiting"} > 0
         for: 5m
         labels: { severity: warning }
         annotations:
           summary: "Requests are queueing for a database connection on {{ $labels.instance }}"
 
-      - alert: TracksmithBackupTooOld
-        expr: tracksmith_backup_age_seconds > 26 * 3600
+      - alert: TaskmoorBackupTooOld
+        expr: taskmoor_backup_age_seconds > 26 * 3600
         for: 30m
         labels: { severity: warning }
         annotations:
-          summary: "The last Tracksmith backup is more than a day old"
+          summary: "The last Taskmoor backup is more than a day old"
 
-      - alert: TracksmithNoBackup
-        expr: absent(tracksmith_backup_age_seconds) and on() up{job="tracksmith"} == 1
+      - alert: TaskmoorNoBackup
+        expr: absent(taskmoor_backup_age_seconds) and on() up{job="taskmoor"} == 1
         for: 1d
         labels: { severity: info }
         annotations:
-          summary: "No Tracksmith backup has been recorded yet"
+          summary: "No Taskmoor backup has been recorded yet"

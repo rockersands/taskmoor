@@ -3,7 +3,7 @@ import { z } from 'zod';
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
 
 /**
- * What one process does (ADR-021). One image serves every role; `TRACKSMITH_ROLE` picks one or
+ * What one process does (ADR-021). One image serves every role; `TASKMOOR_ROLE` picks one or
  * several (comma-separated), and `all` (the default) runs everything in one process, which is
  * what a small install wants.
  */
@@ -18,16 +18,16 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   HOST: z.string().min(1).default('0.0.0.0'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
-  TRACKSMITH_VERSION: z.string().min(1).default('0.0.0-dev'),
-  TRACKSMITH_ROLE: z.string().min(1).default('all'),
+  TASKMOOR_VERSION: z.string().min(1).default('0.0.0-dev'),
+  TASKMOOR_ROLE: z.string().min(1).default('all'),
   /** Directory with the built frontend, served by the web role; unset means no static files. */
-  TRACKSMITH_WEB_DIR: z.string().min(1).optional(),
+  TASKMOOR_WEB_DIR: z.string().min(1).optional(),
   /** Where browsers reach this instance; the setup link and cookie security follow it. */
   PUBLIC_URL: z.string().url().optional(),
   /** Fixed setup token for installers and tests; otherwise one is generated per start. */
-  TRACKSMITH_SETUP_TOKEN: z.string().min(16).optional(),
+  TASKMOOR_SETUP_TOKEN: z.string().min(16).optional(),
   /** Files, backups and the backup marker (ADR-021); the image sets /data. */
-  TRACKSMITH_DATA: z.string().min(1).optional(),
+  TASKMOOR_DATA: z.string().min(1).optional(),
   /** Internal Prometheus port (ADR-023); 0 turns the metrics listener off. */
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
   /** Address of the metrics listener; defaults to HOST. */
@@ -61,7 +61,7 @@ export function parseRoles(text: string): Role[] {
   const unknown = names.filter((n) => !(ROLES as readonly string[]).includes(n));
   if (unknown.length > 0 || names.length === 0) {
     throw new Error(
-      `TRACKSMITH_ROLE must be "all" or a comma-separated list of ${ROLES.join(', ')}` +
+      `TASKMOOR_ROLE must be "all" or a comma-separated list of ${ROLES.join(', ')}` +
         (unknown.length ? ` (unknown: ${unknown.join(', ')})` : ''),
     );
   }
@@ -81,7 +81,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     throw new Error(`Invalid server configuration:\n- ${problems.join('\n- ')}`);
   }
   const e = parsed.data;
-  const roles = parseRoles(e.TRACKSMITH_ROLE);
+  const roles = parseRoles(e.TASKMOOR_ROLE);
   const needsDatabase = roles.some((r) => r !== 'web');
   if (needsDatabase && !e.DATABASE_URL) {
     throw new Error(
@@ -93,13 +93,13 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     port: e.PORT,
     host: e.HOST,
     logLevel: e.LOG_LEVEL,
-    version: e.TRACKSMITH_VERSION,
+    version: e.TASKMOOR_VERSION,
     roles,
-    webDir: e.TRACKSMITH_WEB_DIR,
+    webDir: e.TASKMOOR_WEB_DIR,
     publicUrl: e.PUBLIC_URL ?? `http://localhost:${e.PORT}`,
     secureCookies: (e.PUBLIC_URL ?? '').startsWith('https://'),
-    setupToken: e.TRACKSMITH_SETUP_TOKEN,
-    dataDir: e.TRACKSMITH_DATA,
+    setupToken: e.TASKMOOR_SETUP_TOKEN,
+    dataDir: e.TASKMOOR_DATA,
     metricsPort: e.METRICS_PORT,
     metricsHost: e.METRICS_HOST ?? e.HOST,
   };

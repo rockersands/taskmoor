@@ -1,4 +1,4 @@
-import { createDb, migrateToLatest, poolStats } from '@tracksmith/db';
+import { createDb, migrateToLatest, poolStats } from '@taskmoor/db';
 import { buildApp } from './app';
 import { loadConfig } from './config';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
@@ -19,7 +19,7 @@ const metrics = createMetrics({
 const db = config.databaseUrl
   ? createDb({
       connectionString: config.databaseUrl,
-      applicationName: `tracksmith-${config.roles.join('+')}`,
+      applicationName: `taskmoor-${config.roles.join('+')}`,
       onQuery: queryObserver({ metrics, ...(tracing ? { tracer: tracing.tracer } : {}) }),
     })
   : undefined;

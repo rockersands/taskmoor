@@ -1,7 +1,7 @@
-# Tracksmith: working agreement for Claude sessions
+# Taskmoor: working agreement for Claude sessions
 
-Tracksmith (working name) is an open-source, self-hostable work tracker with every premium
-feature included. Claude writes the code; the user decides product questions. Start every
+Taskmoor (written taskmoor in handles and identifiers; "Tracksmith" was the codename) is an
+open-source, self-hostable work tracker with every premium feature included. Claude writes the code; the user decides product questions. Start every
 session by reading `HANDOFF.md`, then `STATUS.md`.
 
 ## Identity (non-negotiable)
@@ -13,8 +13,9 @@ session by reading `HANDOFF.md`, then `STATUS.md`.
 - Every commit carries `Signed-off-by: Rockersands <42122514+rockersands@users.noreply.github.com>` (DCO, ADR-002). The
   hook in `.githooks/` adds it; enable it once per clone with `git config core.hooksPath .githooks`.
   The pre-push hook and CI run `pnpm dco`, and unsigned commits fail.
-- Remote: `https://github.com/Rockersands/tracksmith` (private until the public name is settled;
-  free GitHub plan, so there is no branch protection and CI is the gate).
+- Remote: `https://github.com/Rockersands/tracksmith` (private; it keeps the codename until the
+  user renames the repository; free GitHub plan, so there is no branch protection and CI is the
+  gate).
 
 ## Commands
 
@@ -41,16 +42,16 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm build` | Production build: the static frontend (`apps/web/dist`) and the bundled server (`apps/server/dist/server.mjs`) |
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
-| `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `migrate`, `status`); in the image: `docker compose exec tracksmith node cli.mjs check-upgrade` |
+| `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `migrate`, `status`); in the image: `docker compose exec taskmoor node cli.mjs check-upgrade` |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
-| `pnpm --filter @tracksmith/web storybook` | Storybook; every story also runs as a browser test with axe in `pnpm verify` |
+| `pnpm --filter @taskmoor/web storybook` | Storybook; every story also runs as a browser test with axe in `pnpm verify` |
 
 Full logs land in `.verify/<step>.log`; `.verify/summary.json` holds the last result.
 Tests need no Docker: the first run creates an embedded Postgres 16 cluster in
-`.cache/pg-test`, later runs start it in about a second. Set `TRACKSMITH_TEST_DATABASE_URL` to use
-another server instead (CI does this), or `TRACKSMITH_PG_CACHE_DIR` to keep the embedded clusters
+`.cache/pg-test`, later runs start it in about a second. Set `TASKMOOR_TEST_DATABASE_URL` to use
+another server instead (CI does this), or `TASKMOOR_PG_CACHE_DIR` to keep the embedded clusters
 on another disk (for example while a benchmark saturates this one).
 
 ## Definition of done
@@ -66,7 +67,7 @@ on another disk (for example while a benchmark saturates this one).
 
 | Path | Contents |
 |---|---|
-| `apps/server` | Fastify API (`buildApp` for in-process tests, `main.ts` to listen); roles by `TRACKSMITH_ROLE`; first-run setup and cookie sessions under `/api/v1` |
+| `apps/server` | Fastify API (`buildApp` for in-process tests, `main.ts` to listen); roles by `TASKMOOR_ROLE`; first-run setup and cookie sessions under `/api/v1` |
 | `apps/web` | Static React frontend (Vite); Playwright tests in `apps/web/e2e` |
 | `packages/ai` | AI gateway: `AiGateway`, provider adapters (Anthropic API, Bedrock, Vertex, Foundry, OpenAI-compatible), feature registry |
 | `packages/db` | Kysely client, `Database` types, forward-only migrations, `useMigratedDatabase()` |
@@ -93,7 +94,7 @@ on another disk (for example while a benchmark saturates this one).
 - Database tests call `useMigratedDatabase()` (own database per file, cloned from a migrated
   template). Never share state between test files; never call the network.
 - Golden files: `expect(stableJson(x)).toMatchFileSnapshot('./__golden__/name.json')`.
-- Property tests: `import { fc } from '@tracksmith/testkit/property'`.
+- Property tests: `import { fc } from '@taskmoor/testkit/property'`.
 - UI: desktop first, and it must still work on phones (ADR-033). Use design tokens from
   `apps/web/src/styles/tokens.css`; touch targets of at least 44px under `(pointer: coarse)`; no
   sideways scrolling. Component tests use `setViewportWidth()` for compact layouts.
@@ -110,6 +111,13 @@ on another disk (for example while a benchmark saturates this one).
 - Never sign in to or use an Atlassian product to build or test. Fixtures are synthetic.
 - The product name must not include "Jira". Compatibility is described as "Jira-compatible".
 
+## Terminology
+
+- Use the product's own names for structural concepts (`docs/specs/terminology.md`), never
+  the terms Atlassian products use for them, old or current. Jira-compatible names appear only
+  where compatibility needs them: import, export, the Jira-compatible API and query dialect.
+
 ## Open decisions owned by the user
 
-- Public name: "Tracksmith" may clash with an apparel brand; screening is task M0-007.
+- Release publishing (images on ghcr.io, the release signing key) and the GitHub repository
+  rename: see `docs/plan/decisions.csv` and HANDOFF.

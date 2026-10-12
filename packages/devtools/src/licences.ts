@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Licences a dependency may use (ADR-029). All are compatible with distributing Tracksmith
+ * Licences a dependency may use (ADR-029). All are compatible with distributing Taskmoor
  * under AGPL-3.0. Anything else, including a missing licence, fails `pnpm verify`.
  */
 export const ALLOWED_LICENCES = new Set([

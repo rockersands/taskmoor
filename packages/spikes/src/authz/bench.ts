@@ -1,5 +1,5 @@
 import { cpus } from 'node:os';
-import { Rng } from '@tracksmith/testkit/gen';
+import { Rng } from '@taskmoor/testkit/gen';
 import type pg from 'pg';
 import { summarize, type Timing } from '../bench/stats';
 import {

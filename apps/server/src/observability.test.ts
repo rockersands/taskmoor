@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { InMemorySpanExporter } from '@opentelemetry/sdk-trace-base';
-import { createDb, type Database, poolStats } from '@tracksmith/db';
-import { useMigratedDatabase } from '@tracksmith/db/testing';
-import { hashPassword } from '@tracksmith/iam';
+import { createDb, type Database, poolStats } from '@taskmoor/db';
+import { useMigratedDatabase } from '@taskmoor/db/testing';
+import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -33,7 +33,7 @@ describe('observability', () => {
   let dataDir: string;
 
   beforeAll(async () => {
-    dataDir = mkdtempSync(join(tmpdir(), 'tracksmith-obs-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'taskmoor-obs-'));
     mkdirSync(join(dataDir, 'backups'));
     writeFileSync(join(dataDir, 'backups', 'last'), 'x\n');
     tracing = startTracing({ version: 'test', roles: ['api'], exporter }) as Tracing;
@@ -75,13 +75,13 @@ describe('observability', () => {
     expect(res.headers['content-type']).toMatch(/^text\/plain/);
     const text = res.body;
     expect(text).toMatch(
-      /tracksmith_http_request_duration_seconds_count\{method="GET",route="\/api\/v1\/setup",status_code="200"\} 1/,
+      /taskmoor_http_request_duration_seconds_count\{method="GET",route="\/api\/v1\/setup",status_code="200"\} 1/,
     );
     expect(text).not.toMatch(/route="\/health"/);
-    expect(text).toMatch(/tracksmith_db_query_duration_seconds_count\{outcome="ok"\} [1-9]/);
-    expect(text).toMatch(/tracksmith_db_pool_connections\{state="max"\} 3/);
-    expect(text).toMatch(/tracksmith_backup_age_seconds \d/);
-    expect(text).toMatch(/tracksmith_build_info\{version="test",roles="api"\} 1/);
+    expect(text).toMatch(/taskmoor_db_query_duration_seconds_count\{outcome="ok"\} [1-9]/);
+    expect(text).toMatch(/taskmoor_db_pool_connections\{state="max"\} 3/);
+    expect(text).toMatch(/taskmoor_backup_age_seconds \d/);
+    expect(text).toMatch(/taskmoor_build_info\{version="test",roles="api"\} 1/);
   });
 
   it('[OPS-011] traces a request, continues an incoming trace and parents its statements', async () => {
@@ -134,7 +134,7 @@ describe('observability', () => {
     for (const file of ['alerts.yml', 'grafana-dashboard.json']) {
       const text = readFileSync(join(root, file), 'utf8');
       const used = new Set(
-        [...text.matchAll(/\b((?:tracksmith|process)_[a-z_]+)\b/g)].map((m) =>
+        [...text.matchAll(/\b((?:taskmoor|process)_[a-z_]+)\b/g)].map((m) =>
           (m[1] as string).replace(/_(bucket|sum|count)$/, ''),
         ),
       );

@@ -26,7 +26,7 @@ export interface TestDatabase {
 export function testPgAdminUrl(): string {
   let url: string | undefined;
   try {
-    url = inject('tracksmithPgAdminUrl');
+    url = inject('taskmoorPgAdminUrl');
   } catch {
     // inject() only works inside a Vitest worker; fall back to the environment.
   }
@@ -34,7 +34,7 @@ export function testPgAdminUrl(): string {
   if (!url) {
     throw new Error(
       'No test Postgres. Run tests through the root Vitest config (pnpm test or pnpm verify), ' +
-        'or set TRACKSMITH_TEST_DATABASE_URL.',
+        'or set TASKMOOR_TEST_DATABASE_URL.',
     );
   }
   return url;

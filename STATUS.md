@@ -32,9 +32,9 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-015 Synthetic data generator | Done | `pnpm gen --items N`; deterministic; COPY loader with verified counts |
 | M0-016 Field storage spike | Done | Side tables chosen; at 10M every query within budget (slowest 123 ms p95); ADR-008 accepted |
 | M0-017 Query compiler spike | Done | 22 queries under 18 ms p95 at 10M after side-table driving; ADR-010 accepted |
-| M0-020 Rich text spike | Done | `@tracksmith/richtext`, Yjs and Hocuspocus verified (ADR-014) |
+| M0-020 Rich text spike | Done | `@taskmoor/richtext`, Yjs and Hocuspocus verified (ADR-014) |
 | M0-021 Queue spike | Done | In-house SKIP LOCKED queue chosen (ADR-015) |
-| M0-023 AI gateway skeleton | Done | `@tracksmith/ai` with contract tests (ADR-028) |
+| M0-023 AI gateway skeleton | Done | `@taskmoor/ai` with contract tests (ADR-028) |
 | M0-018 Permission engine spike | Done | In-process evaluator 1.5 ms p95 vs OpenFGA 15.9 ms; pre-filter overhead measured (ADR-012) |
 | M0-019 Sync engine spike | Done | In-house change log: 52k-item bootstrap in 2.6 s, delta p95 1 ms, idempotent outbox (ADR-013) |
 | M0-022 XML parser spike | Done | 5 GB parsed in 2.6 min at 303 MB RSS, lossless after cleaning (ADR-025) |
@@ -43,7 +43,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-011 GitHub Actions | Done | Lint, types, tests, e2e, Postgres 16 and 18, weekly Windows, security scan, multi-arch image build, nightly benchmarks |
 | M0-026 All-in-one image and Compose kits | Done | deploy/allinone and deploy/compose; smoke-kits.sh green locally and in CI |
 | M0-027 First-run setup | Done | Setup link with a one-time token, admin creation, cookie sessions and sign-in; e2e on the real backend |
-| M0-025 Single image | Done | Roles by TRACKSMITH_ROLE, esbuild bundle, multi-arch Dockerfile; smoke test green on amd64 and arm64; CI builds both |
+| M0-025 Single image | Done | Roles by TASKMOOR_ROLE, esbuild bundle, multi-arch Dockerfile; smoke test green on amd64 and arm64; CI builds both |
 | M0-031 Design system | Done | Tokens, shell components, Storybook with axe on every story (ADR-024) |
 | M0-032 App shell | Done | Hash routing, session guard stub, command palette, ICU i18n, pseudo-locale checks |
 | M0-035 DCO enforcement | Done | Git hooks, `pnpm dco` and CI; no branch protection on the free plan |
@@ -57,8 +57,8 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 
 | Task | State | Notes |
 |---|---|---|
-| M1-022 Workflow behaviour spec and conformance suite | Done | `@tracksmith/workflow`: 374 data cases for WF-001 to WF-012, `pnpm conformance` reports per section; reference model passes all |
-| M1-033 Query conformance suite | Done | 2,220 data cases for QRY-001 to QRY-013 in `@tracksmith/query`; `pnpm conformance query` reports the pass rate per section (grammar 100%, 76% overall); the rates are a golden |
+| M1-022 Workflow behaviour spec and conformance suite | Done | `@taskmoor/workflow`: 374 data cases for WF-001 to WF-012, `pnpm conformance` reports per section; reference model passes all |
+| M1-033 Query conformance suite | Done | 2,220 data cases for QRY-001 to QRY-013 in `@taskmoor/query`; `pnpm conformance query` reports the pass rate per section (grammar 100%, 76% overall); the rates are a golden |
 | M1-034 Native grammar and parser | Done | Grammar spec (file 06), error recovery with line, column and hints, nesting limit, 1,000+ parser tests; two one-hour fuzz runs, the second with no failure in 6.4 million inputs |
 | M1-035 Jira-compatible dialect | Done | `toNative` and `toJira` rename fields and functions between the vocabularies on the shared tree; parse cases 100% green |
 | M1-103 Health page, metrics, traces | Done | /metrics on port 9464, OTLP traces when configured, admin System status page, example alerts and dashboard; CI green |

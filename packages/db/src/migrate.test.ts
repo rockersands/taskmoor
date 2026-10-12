@@ -1,5 +1,5 @@
 import { readdirSync } from 'node:fs';
-import { createDatabase, testPgAdminUrl, useTestDatabase } from '@tracksmith/testkit/pg';
+import { createDatabase, testPgAdminUrl, useTestDatabase } from '@taskmoor/testkit/pg';
 import { sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 import { createDb } from './client';

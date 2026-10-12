@@ -1,5 +1,5 @@
 {
-  "name": "@tracksmith/db",
+  "name": "@taskmoor/db",
   "version": "0.0.0",
   "private": true,
   "description": "Database access: Kysely client, typed schema and forward-only migrations.",
@@ -14,7 +14,7 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@tracksmith/testkit": "workspace:*",
+    "@taskmoor/testkit": "workspace:*",
     "@types/pg": "^8.23.1"
   }
 }

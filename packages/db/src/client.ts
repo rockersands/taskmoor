@@ -36,7 +36,7 @@ export function createDb(options: DbOptions): Kysely<Database> {
   const pool = new pg.Pool({
     connectionString: options.connectionString,
     max,
-    application_name: options.applicationName ?? 'tracksmith',
+    application_name: options.applicationName ?? 'taskmoor',
   });
   const onQuery = options.onQuery;
   const db = new Kysely<Database>({

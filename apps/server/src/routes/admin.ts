@@ -1,6 +1,6 @@
 import { existsSync, statfsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { type Database, migrationStatus, poolStats } from '@tracksmith/db';
+import { type Database, migrationStatus, poolStats } from '@taskmoor/db';
 import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 

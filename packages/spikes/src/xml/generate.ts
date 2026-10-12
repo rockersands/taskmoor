@@ -1,5 +1,5 @@
 import { createWriteStream, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { Rng } from '@tracksmith/testkit/gen';
+import { Rng } from '@taskmoor/testkit/gen';
 
 /**
  * A synthetic backup in the shape the importer must stream (IMP-001): one root element whose

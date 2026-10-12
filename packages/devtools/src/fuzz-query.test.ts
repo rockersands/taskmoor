@@ -1,4 +1,4 @@
-import { Rng } from '@tracksmith/testkit/gen';
+import { Rng } from '@taskmoor/testkit/gen';
 import { describe, expect, it } from 'vitest';
 import { checkQueryInput, corpus, fuzzQueryParser, generate } from './fuzz-query';
 

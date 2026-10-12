@@ -108,7 +108,7 @@ describe('regressions', () => {
 describe('result files', () => {
   let dir: string;
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'tracksmith-bench-'));
+    dir = await mkdtemp(join(tmpdir(), 'taskmoor-bench-'));
     await writeFile(join(dir, 'query-compiler-200k.json'), JSON.stringify(query({ a: 1 })));
     await writeFile(join(dir, 'query-compiler-1m.json'), JSON.stringify(query({ a: 2 })));
     await writeFile(join(dir, 'authz.json'), JSON.stringify(authz(3)));

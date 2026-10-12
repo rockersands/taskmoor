@@ -13,7 +13,7 @@ not know which one is in use, and credentials must never reach the browser or th
 
 ## Decision
 
-`@tracksmith/ai` exposes one `AiGateway` with `generate({ feature, system, messages, schema? })`.
+`@taskmoor/ai` exposes one `AiGateway` with `generate({ feature, system, messages, schema? })`.
 Product code names a feature; the gateway applies that feature's model, effort and output
 limit, asks for structured output when a Zod schema is given, validates the answer and reports
 refusals as data (`refused: true`), not exceptions.

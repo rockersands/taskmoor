@@ -1,21 +1,21 @@
-# Tracksmith against a PostgreSQL 16+ server you already run (managed or on-premises).
+# Taskmoor against a PostgreSQL 16+ server you already run (managed or on-premises).
 # Put DATABASE_URL in .env, then: docker compose -f docker-compose.external.yml up -d
-name: tracksmith
+name: taskmoor
 
 services:
-  tracksmith:
-    image: ${TRACKSMITH_IMAGE:-tracksmith:dev}
+  taskmoor:
+    image: ${TASKMOOR_IMAGE:-taskmoor:dev}
     environment:
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env, for example postgres://user:pass@host:5432/tracksmith}
-      TRACKSMITH_ROLE: ${TRACKSMITH_ROLE:-all}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env, for example postgres://user:pass@host:5432/taskmoor}
+      TASKMOOR_ROLE: ${TASKMOOR_ROLE:-all}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PUBLIC_URL: ${PUBLIC_URL:-}
-      TRACKSMITH_SETUP_TOKEN: ${TRACKSMITH_SETUP_TOKEN:-}
+      TASKMOOR_SETUP_TOKEN: ${TASKMOOR_SETUP_TOKEN:-}
     ports:
-      - "${TRACKSMITH_PORT:-8080}:8080"
+      - "${TASKMOOR_PORT:-8080}:8080"
     volumes:
-      - tracksmith-data:/data
+      - taskmoor-data:/data
     restart: unless-stopped
 
 volumes:
-  tracksmith-data:
+  taskmoor-data:

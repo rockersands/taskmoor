@@ -4,7 +4,7 @@ import { CATALOGUE, section } from './fixtures';
 const c = section('QRY-005', 'history', '01b 1.3');
 
 /**
- * Fields with a sample past value; Tracksmith keeps history on every field. Users are named by
+ * Fields with a sample past value; Taskmoor keeps history on every field. Users are named by
  * a quoted name, which a user directory resolves (verify: Jira Cloud wants account ids; the
  * spec accepts names and ids).
  */

@@ -7,7 +7,7 @@ attestation: own-words
 ---
 # 06 Native query language: grammar, canonical form and error recovery
 
-This is Tracksmith's own query language (M1-034, ADR-010). It is the language the product
+This is Taskmoor's own query language (M1-034, ADR-010). It is the language the product
 stores, prints and documents. The Jira-compatible dialect described in file 01b, section 1, is
 read by the same grammar: the dialect differs only in vocabulary (field and function names),
 which the resolver maps, so every query in the dialect is also a query in this grammar. The

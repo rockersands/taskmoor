@@ -6,6 +6,11 @@ Read this first in every session, then update it before you stop.
 
 ### Done
 
+- **Renamed to taskmoor** (the user's choice): packages `@taskmoor/*`, variables `TASKMOOR_*`,
+  images `taskmoor` and `taskmoor-allinone`, the chart in `deploy/helm/taskmoor`, metrics
+  `taskmoor_*`, UI and docs. Kept on purpose: the GitHub URL (until the repository is renamed),
+  the local folder, dated reports, recorded benchmark data and historical codename mentions.
+  The cluster folders moved with it: `G:/taskmoor-pg` (bench) and `G:/taskmoor-pg-test`.
 - **M0 accepted by the user (2026-10-12).** `pnpm gate M0 --ci` is all green; the counsel
   review is deferred to the first public release (`docs/plan/decisions.csv`). The local demo
   runs on port 8080 (see Local demo).
@@ -32,7 +37,7 @@ Read this first in every session, then update it before you stop.
   `docs/spikes/baseline`), `pnpm status-report`, the nightly workflow on the `ci-workflows`
   branch (see Waiting on the user).
 - Install skeleton (M0-025 to M0-027, M0-029, M0-030; M0-011's image build): one multi-arch
-  image with roles by `TRACKSMITH_ROLE`, the all-in-one image, two Compose kits with
+  image with roles by `TASKMOOR_ROLE`, the all-in-one image, two Compose kits with
   `install.sh`/`install.ps1`, first-run setup with cookie sessions, the upgrade harness and the
   operator CLI in the image (`node cli.mjs check-upgrade | migrate | status | backup | restore |
   checksum`), and the restore drill `tools/image/drill-backup.sh` (back up, wipe, restore,
@@ -82,33 +87,29 @@ Read this first in every session, then update it before you stop.
   `NULLS LAST` only on nullable columns (41.7 ms to 0.65 ms); `WAS` as one history `EXISTS`
   (1.9 s to 0.65 ms for a value that never occurred); labels and word search use index-friendly
   operators.
-- Test infrastructure: every Vitest project sets its own timeouts; `TRACKSMITH_PG_CACHE_DIR`
+- Test infrastructure: every Vitest project sets its own timeouts; `TASKMOOR_PG_CACHE_DIR`
   moves the embedded clusters to another disk; a second process attaches to the running
   bench cluster instead of starting an empty one.
 
 ### Next (in order)
 
-1. **Rename to taskmoor.** The user chose the public name (decisions.csv, "Final public name").
-   Rename packages (`@tracksmith/*`), environment variables (`TRACKSMITH_*`), images, the Helm
-   chart, metrics, UI strings and docs in one change; keep the GitHub URL until the user renames
-   the repository (GitHub redirects the old URL, not the reverse).
-2. **Own terminology.** The user asked for our own name for every structural term that is
+1. **Own terminology.** The user asked for our own name for every structural term that is
    specific to Atlassian products (decisions.csv, "Structural terminology"). Atlassian itself
    now says "space", "work item" and "work type", the terms the specs adopted, so those change
    too. Write `docs/specs/terminology.md`, then apply it to the specs, the native query
    vocabulary, code and UI; Jira-compatible names stay in import, export, the compatibility API
    and the query dialect.
-3. M1 work: the catalogue gaps the query suite lists (fixVersion, component, sprint, due;
+2. M1 work: the catalogue gaps the query suite lists (fixVersion, component, sprint, due;
    history on every field; user values by name; function arity) as part of M1-036, then
    M1-001 now that M0 is accepted.
-4. **Benchmark data lives on G:** (`G:/tracksmith-pg/bench`, 137 GB; set
-   `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
+3. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
+   `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
    spikes in about four minutes, logs in `.cache/scripts/g-*.log`). The copy on E: is deleted.
 
 ### Local demo
 
-The demo runs from a copy of the Compose kit in `G:/tracksmith-demo` with the locally built
-image (`docker build -t tracksmith:dev .` from the repository). Its `.env` pins the project
+The demo runs from a copy of the Compose kit in `G:/taskmoor-demo` with the locally built
+image (`docker build -t taskmoor:dev .` from the repository). Its `.env` pins the project
 name, image, port 8080 and `PUBLIC_URL=http://localhost:8080`. Start or update it with
 `bash install.sh` in that folder (it prints the one-time setup link until an administrator
 exists); stop it with `docker compose down` (add `-v` to delete its data). What it shows today:
@@ -121,7 +122,7 @@ status page. Boards, items and queries arrive with M1.
   (`git config --local credential.helper`); Git Credential Manager would otherwise open a
   sign-in window. The CLI is signed in as rockersands. The token lacks the `workflow` scope,
   so pushes that touch `.github/workflows/*` are refused (see Waiting on the user).
-- Bench datasets live in `G:/tracksmith-pg/bench` as UNLOGGED tables: stop that cluster cleanly
+- Bench datasets live in `G:/taskmoor-pg/bench` as UNLOGGED tables: stop that cluster cleanly
   (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
   The bench cluster is shared: a second process attaches to the running server; if the owner
   stops it (a `pnpm gen` finishing), attached benchmarks fail; rerun them.
@@ -130,9 +131,9 @@ status page. Boards, items and queries arrive with M1.
   and `.cache/pg-test` (the default place for test clusters). C: (Kingston NV1, 342 GB free) and G: (XPG
   S40G, 86 GB free) are NVMe; D: is another hard disk. The user confirmed this and said C:
   and G: are free to use: database clusters and benchmarks go there through
-  `TRACKSMITH_PG_CACHE_DIR`, the source tree stays on E:. Benchmarks on E: measure seeks, not
+  `TASKMOOR_PG_CACHE_DIR`, the source tree stays on E:. Benchmarks on E: measure seeks, not
   the design. Run the gate with the test clusters on an NVMe drive:
-  `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg-test pnpm verify`
+  `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg-test pnpm verify`
   (and `PLAYWRIGHT_BROWSERS_PATH=<empty dir>` skips the browser stories; CI runs them).
   Each Vitest project sets its own timeouts; the root config's are not inherited.
 - The OpenFGA server binary for the permission spike is in `.cache/tools/openfga` (v1.22.0,
@@ -140,7 +141,7 @@ status page. Boards, items and queries arrive with M1.
   needs it. CI has no binary, so that candidate and its test are skipped there. Its metrics
   port is disabled in the spike; an orphaned instance otherwise blocks the next one.
 - `pnpm spike xml` writes its synthetic file under `.cache/xml` unless `--dir` says otherwise
-  (use `--dir G:/tracksmith-xml` while E: is busy; the 5 GB file takes two minutes to make).
+  (use `--dir G:/taskmoor-xml` while E: is busy; the 5 GB file takes two minutes to make).
 - In `pnpm verify ... | grep`, use `set -o pipefail` before chaining a commit, or the grep
   status hides a failure. Editing TypeScript through `node -e` string replacement mangles
   `\n` escapes inside quoted strings; use the Edit tool for source edits.
@@ -151,7 +152,7 @@ status page. Boards, items and queries arrive with M1.
 - In Playwright, `getByRole(..., { name: 'Boards' })` also matches "Dashboards". Use
   `exact: true` for short names.
 - First-run setup (M0-027): the API role prints `{"msg":"first-run setup","link":...}` at every
-  start until setup completes; `TRACKSMITH_SETUP_TOKEN` fixes the token (the e2e suite uses
+  start until setup completes; `TASKMOOR_SETUP_TOKEN` fixes the token (the e2e suite uses
   `e2e-setup-token-0123456789`). `pnpm verify --e2e` starts `apps/web/e2e/api-server.ts` (embedded
   Postgres cluster `e2e`, port 8787) and the Vite preview proxies `/api` to it.
 - Docker drills from Git Bash: wrap docker so that `MSYS_NO_PATHCONV=1` applies to it alone
@@ -164,7 +165,7 @@ status page. Boards, items and queries arrive with M1.
 - PostgreSQL client versions: a pg_restore newer than the server fails on
   `SET transaction_timeout` (17+ emits it), so the image ships clients 16, 17 and 18 under
   `/usr/libexec/postgresql<major>` and `clientBinary()` in `apps/server/src/backup.ts` picks the
-  server's major; `TRACKSMITH_PG_BIN` points at another directory. The round-trip test
+  server's major; `TASKMOOR_PG_BIN` points at another directory. The round-trip test
   (`backup.roundtrip.test.ts`) skips when no matching client is on this machine; the CI image
   job runs the real drill.
 - Python's `Path.write_text` on Windows writes CRLF: Biome's format check then fails and git
@@ -175,7 +176,7 @@ status page. Boards, items and queries arrive with M1.
   filter writes `partial: true` into `.verify/summary.json` and the gate reports it.
 - Spike p95 is nearest-rank: with 10 runs it is the slowest sample. Use 40 or more runs for
   sub-millisecond queries on shared runners.
-- `install.sh` resolves the port as Compose does: `TRACKSMITH_PORT` in the environment first,
+- `install.sh` resolves the port as Compose does: `TASKMOOR_PORT` in the environment first,
   then `.env`, then 8080. The install-matrix scripts set it in the environment.
 - Record task state in `docs/plan/progress.csv` (in-progress, done, waiting-on-user) as you go;
   `pnpm next-task`, `pnpm status-report`, `pnpm gate` and a test read it.

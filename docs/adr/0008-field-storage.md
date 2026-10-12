@@ -7,7 +7,7 @@
 ## Context
 
 Jira's slowest sites are the ones with the most custom fields; Atlassian documents field count
-as the main latency driver and caps Data Center at 1,200 fields. Tracksmith must hold 1,500
+as the main latency driver and caps Data Center at 1,200 fields. Taskmoor must hold 1,500
 fields over 10M items (NFR-002) with a field edit p95 under 50 ms, item open under 100 ms and
 every query p95 under 300 ms (NFR-001, ADR-010). Fields have contexts per space and type
 (CORE-009) and every type in the catalogue must filter, sort and count (CORE-010).

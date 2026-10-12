@@ -50,7 +50,7 @@ describe('XmlCleaner', () => {
 describe('parseEntities', () => {
   let dir: string;
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'tracksmith-xml-'));
+    dir = await mkdtemp(join(tmpdir(), 'taskmoor-xml-'));
   });
   afterAll(async () => {
     await rm(dir, { recursive: true, force: true });

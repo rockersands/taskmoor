@@ -1,4 +1,4 @@
-# @tracksmith/query
+# @taskmoor/query
 
 The query language: lexer, parser, canonical printer, field resolution and SQL compilation, with
 a Jira-compatible dialect (spec `docs/specs/01b-core-work-tracking.md`, section 1).

@@ -6,7 +6,7 @@
 
 ## Context
 
-Tracksmith matches the behaviour of a commercial product. Copyright protects code, text and
+Taskmoor matches the behaviour of a commercial product. Copyright protects code, text and
 artwork, and Atlassian's terms restrict how its products and documents may be used. Interfaces
 and behaviour described in our own words are the safe path.
 
@@ -15,7 +15,7 @@ and behaviour described in our own words are the safe path.
 1. Specs in `docs/specs` describe behaviour in our own words and link the public pages they were
    based on. Code is written from the specs, never from Atlassian code, decompiled artefacts or
    copied documentation text.
-2. No Atlassian product, account or trial is used to build or test Tracksmith. Test fixtures and
+2. No Atlassian product, account or trial is used to build or test Taskmoor. Test fixtures and
    importer samples are synthetic, built from public format descriptions.
 3. No Atlassian names, logos, icons, colours or screenshots in the product. The name never
    contains "Jira"; compatibility is described as "Jira-compatible" (nominative use).

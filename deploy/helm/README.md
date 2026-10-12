@@ -1,28 +1,28 @@
 # Helm chart
 
-`tracksmith/` installs Tracksmith on Kubernetes 1.27 or later (ADR-021, OPS-018). One image runs
+`taskmoor/` installs Taskmoor on Kubernetes 1.27 or later (ADR-021, OPS-018). One image runs
 two deployments: **app** (API, frontend and realtime) and **worker** (background jobs). PostgreSQL
 16 or later is external.
 
 ```
 PW='the database password'
-kubectl create secret generic tracksmith-db \
-  --from-literal=DATABASE_URL="postgres://tracksmith:$PW@db.example.internal:5432/tracksmith"
-helm install tracksmith deploy/helm/tracksmith \
-  --set database.existingSecret=tracksmith-db \
+kubectl create secret generic taskmoor-db \
+  --from-literal=DATABASE_URL="postgres://taskmoor:$PW@db.example.internal:5432/taskmoor"
+helm install taskmoor deploy/helm/taskmoor \
+  --set database.existingSecret=taskmoor-db \
   --set publicUrl=https://tracker.example.com \
   --set ingress.enabled=true --set ingress.host=tracker.example.com
-kubectl logs deploy/tracksmith-app | grep first-run   # the one-time setup link
-helm test tracksmith
+kubectl logs deploy/taskmoor-app | grep first-run   # the one-time setup link
+helm test taskmoor
 ```
 
 ## Highly available
 
 ```
-helm install tracksmith deploy/helm/tracksmith \
-  --set database.existingSecret=tracksmith-db \
-  --set storage.type=s3 --set storage.s3.bucket=tracksmith-files \
-  --set storage.s3.existingSecret=tracksmith-s3 \
+helm install taskmoor deploy/helm/taskmoor \
+  --set database.existingSecret=taskmoor-db \
+  --set storage.type=s3 --set storage.s3.bucket=taskmoor-files \
+  --set storage.s3.existingSecret=taskmoor-s3 \
   --set app.autoscaling.enabled=true --set app.autoscaling.minReplicas=2 \
   --set worker.replicas=2 --set worker.podDisruptionBudget.enabled=true
 ```
@@ -55,8 +55,8 @@ rules and a dashboard.
 
 | Value | Default | Meaning |
 |---|---|---|
-| `image.repository`, `image.tag` | `ghcr.io/rockersands/tracksmith`, chart appVersion | The image |
-| `publicUrl` | `http://tracksmith.local` | Address people use; the setup link and secure cookies follow it |
+| `image.repository`, `image.tag` | `ghcr.io/rockersands/taskmoor`, chart appVersion | The image |
+| `publicUrl` | `http://taskmoor.local` | Address people use; the setup link and secure cookies follow it |
 | `database.existingSecret` / `database.url` | | Connection string from a Secret (recommended) or inline |
 | `setupToken.existingSecret` | | Fixed first-run token, for installers |
 | `storage.type` | `local` | `local` (a volume) or `s3` |

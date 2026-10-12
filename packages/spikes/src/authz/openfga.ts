@@ -216,7 +216,7 @@ export async function prepareOpenFga(
   log: (m: string) => void = () => {},
 ): Promise<{ client: OpenFgaClient; tuples: number; writeSeconds: number }> {
   const base = fgaClient({ apiUrl: url });
-  const store = await base.createStore({ name: 'tracksmith-spike' });
+  const store = await base.createStore({ name: 'taskmoor-spike' });
   const client = fgaClient({ apiUrl: url, storeId: store.id });
   const authorizationModel = transformer.transformDSLToJSONObject(openFgaModelDsl());
   const written = await client.writeAuthorizationModel({

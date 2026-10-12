@@ -1,6 +1,6 @@
 import { existsSync, statfsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { type Database, migrationStatus } from '@tracksmith/db';
+import { type Database, migrationStatus } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
 
 export type CheckState = 'ok' | 'warn' | 'block';
@@ -126,7 +126,7 @@ export async function checkUpgrade(
     checks.push({
       name: 'disk-space',
       state: 'warn',
-      detail: 'no data directory given (TRACKSMITH_DATA); disk and backup age not checked',
+      detail: 'no data directory given (TASKMOOR_DATA); disk and backup age not checked',
     });
   }
   return checks;

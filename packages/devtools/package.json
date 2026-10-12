@@ -1,5 +1,5 @@
 {
-  "name": "@tracksmith/devtools",
+  "name": "@taskmoor/devtools",
   "version": "0.0.0",
   "private": true,
   "description": "Repository tools: backlog navigation, governance and provenance checks.",
@@ -9,11 +9,11 @@
     ".": "./src/index.ts"
   },
   "devDependencies": {
-    "@tracksmith/testkit": "workspace:*",
+    "@taskmoor/testkit": "workspace:*",
     "dependency-cruiser": "^18.6.0"
   },
   "dependencies": {
-    "@tracksmith/query": "workspace:*",
-    "@tracksmith/workflow": "workspace:*"
+    "@taskmoor/query": "workspace:*",
+    "@taskmoor/workflow": "workspace:*"
   }
 }

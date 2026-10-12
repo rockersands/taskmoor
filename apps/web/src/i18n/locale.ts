@@ -4,7 +4,7 @@ import { pseudoLocalize } from './pseudo';
 /** `en-XA` is the pseudo-locale: every string accented, lengthened and bracketed. */
 export const SUPPORTED_LOCALES = ['en', 'en-XA'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
-export const STORAGE_KEY = 'tracksmith.locale';
+export const STORAGE_KEY = 'taskmoor.locale';
 
 function isLocale(value: string | null | undefined): value is Locale {
   return (SUPPORTED_LOCALES as readonly string[]).includes(value ?? '');

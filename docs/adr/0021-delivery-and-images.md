@@ -12,11 +12,11 @@ installs from a signed bundle (OPS-005); Docker, Podman and Kubernetes on amd64 
 
 ## Decision
 
-- **One backend image** (`tracksmith/tracksmith`), multi-arch, under 400 MB, running the role
-  named by `TRACKSMITH_ROLE`: `api`, `worker`, `realtime` or `all` (the default, for small
+- **One backend image** (`taskmoor/taskmoor`), multi-arch, under 400 MB, running the role
+  named by `TASKMOOR_ROLE`: `api`, `worker`, `realtime` or `all` (the default, for small
   installs). Every role has `/health` and `/ready`. Configuration is environment variables
   validated at start; secrets may come from files (`*_FILE`).
-- **An all-in-one image** (`tracksmith/allinone`) bundles Postgres for trials and single-box
+- **An all-in-one image** (`taskmoor/allinone`) bundles Postgres for trials and single-box
   installs, with the data on one volume; it is the same backend image plus a supervised
   Postgres, never a different codebase.
 - **The frontend is static files** built per release, published as a zip and a single-file

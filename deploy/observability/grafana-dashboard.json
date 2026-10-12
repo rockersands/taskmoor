@@ -1,11 +1,11 @@
 {
-  "title": "Tracksmith",
-  "uid": "tracksmith-overview",
+  "title": "Taskmoor",
+  "uid": "taskmoor-overview",
   "schemaVersion": 39,
   "version": 1,
   "time": { "from": "now-6h", "to": "now" },
   "refresh": "1m",
-  "tags": ["tracksmith"],
+  "tags": ["taskmoor"],
   "templating": {
     "list": [
       {
@@ -26,7 +26,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^version$/" } },
       "targets": [
         {
-          "expr": "tracksmith_build_info",
+          "expr": "taskmoor_build_info",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -47,7 +47,7 @@
           }
         }
       },
-      "targets": [{ "expr": "max(tracksmith_backup_age_seconds) / 3600", "refId": "A" }]
+      "targets": [{ "expr": "max(taskmoor_backup_age_seconds) / 3600", "refId": "A" }]
     },
     {
       "id": 3,
@@ -57,7 +57,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "targets": [
         {
-          "expr": "sum by (route) (rate(tracksmith_http_request_duration_seconds_count[5m]))",
+          "expr": "sum by (route) (rate(taskmoor_http_request_duration_seconds_count[5m]))",
           "legendFormat": "{{route}}",
           "refId": "A"
         }
@@ -71,7 +71,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(tracksmith_http_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(taskmoor_http_request_duration_seconds_bucket[5m])))",
           "legendFormat": "{{route}}",
           "refId": "A"
         }
@@ -85,7 +85,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "targets": [
         {
-          "expr": "sum(rate(tracksmith_http_request_duration_seconds_count{status_code=~\"5..\"}[5m])) / sum(rate(tracksmith_http_request_duration_seconds_count[5m]))",
+          "expr": "sum(rate(taskmoor_http_request_duration_seconds_count{status_code=~\"5..\"}[5m])) / sum(rate(taskmoor_http_request_duration_seconds_count[5m]))",
           "legendFormat": "5xx",
           "refId": "A"
         }
@@ -99,7 +99,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(tracksmith_db_query_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(taskmoor_db_query_duration_seconds_bucket[5m])))",
           "legendFormat": "p95",
           "refId": "A"
         }
@@ -113,7 +113,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "targets": [
         {
-          "expr": "sum by (state) (tracksmith_db_pool_connections)",
+          "expr": "sum by (state) (taskmoor_db_pool_connections)",
           "legendFormat": "{{state}}",
           "refId": "A"
         }
@@ -127,7 +127,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "targets": [
         {
-          "expr": "process_resident_memory_bytes{job=\"tracksmith\"}",
+          "expr": "process_resident_memory_bytes{job=\"taskmoor\"}",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }

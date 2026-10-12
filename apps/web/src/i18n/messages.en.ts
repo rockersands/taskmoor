@@ -3,7 +3,7 @@
  * under a stable ID; other locales are keyed the same way. Keep IDs grouped by screen.
  */
 export const messagesEn = {
-  'app.name': 'Tracksmith',
+  'app.name': 'Taskmoor',
   'shell.skipToContent': 'Skip to content',
   'shell.openNavigation': 'Open navigation',
   'shell.closeNavigation': 'Close navigation',
@@ -31,7 +31,7 @@ export const messagesEn = {
   'auth.password': 'Password',
   'auth.invalidCredentials': 'That email and password do not match.',
   'auth.failed': 'Sign-in failed. Try again in a moment.',
-  'setup.title': 'Set up Tracksmith',
+  'setup.title': 'Set up Taskmoor',
   'setup.intro':
     'This runs once. Create the first administrator account and give the instance a name; everything else can be changed later in Settings.',
   'setup.instance': 'Instance',
@@ -91,7 +91,7 @@ export const messagesEn = {
   'admin.system.backupValue': '{at} ({age} ago)',
   'admin.system.noBackup': 'No backup yet',
   'admin.system.staleBackup': 'Older than a day: take a backup before the next upgrade.',
-  'admin.system.noDataDir': 'Not configured (TRACKSMITH_DATA)',
+  'admin.system.noDataDir': 'Not configured (TASKMOOR_DATA)',
   'admin.system.runtime': 'Runtime',
   'admin.system.node': 'Node.js',
   'admin.system.platform': 'Platform',

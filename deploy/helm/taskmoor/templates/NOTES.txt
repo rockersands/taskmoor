@@ -1,14 +1,14 @@
-Tracksmith {{ .Values.image.tag | default .Chart.AppVersion }} is installed as "{{ .Release.Name }}".
+Taskmoor {{ .Values.image.tag | default .Chart.AppVersion }} is installed as "{{ .Release.Name }}".
 
 The app pods print a first-run setup link until an administrator exists:
 
-  kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "tracksmith.fullname" . }}-app | grep first-run
+  kubectl logs -n {{ .Release.Namespace }} deploy/{{ include "taskmoor.fullname" . }}-app | grep first-run
 
 Open it once to create the administrator. The link uses publicUrl ({{ .Values.publicUrl }});
 {{- if .Values.ingress.enabled }} the ingress serves {{ .Values.ingress.host }}.
 {{- else }} without an ingress, reach the app with:
 
-  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "tracksmith.fullname" . }} 8080:{{ .Values.service.port }}
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "taskmoor.fullname" . }} 8080:{{ .Values.service.port }}
 {{- end }}
 
 Check the installation with:

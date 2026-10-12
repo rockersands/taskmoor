@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "tracksmith.fullname" . }}
+  name: {{ include "taskmoor.fullname" . }}
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
     app.kubernetes.io/component: app
 spec:
   type: {{ .Values.service.type }}
   selector:
-    {{- include "tracksmith.selector" (dict "root" . "component" "app") | nindent 4 }}
+    {{- include "taskmoor.selector" (dict "root" . "component" "app") | nindent 4 }}
   ports:
     - { name: http, port: {{ .Values.service.port }}, targetPort: http }
 ---
@@ -16,9 +16,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "tracksmith.fullname" . }}-metrics
+  name: {{ include "taskmoor.fullname" . }}-metrics
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
     app.kubernetes.io/component: metrics
 spec:
   type: ClusterIP
@@ -32,9 +32,9 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "tracksmith.fullname" . }}
+  name: {{ include "taskmoor.fullname" . }}
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
     {{- with .Values.metrics.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -51,9 +51,9 @@ spec:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "tracksmith.serviceAccount" . }}
+  name: {{ include "taskmoor.serviceAccount" . }}
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
 automountServiceAccountToken: false
 {{- end }}
 {{- if eq .Values.storage.type "local" }}
@@ -61,9 +61,9 @@ automountServiceAccountToken: false
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "tracksmith.fullname" . }}-data
+  name: {{ include "taskmoor.fullname" . }}-data
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
   annotations:
     # Uninstalling the release keeps the files; delete the claim yourself to remove them.
     helm.sh/resource-policy: keep
@@ -81,9 +81,9 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "tracksmith.fullname" . }}
+  name: {{ include "taskmoor.fullname" . }}
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -104,6 +104,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "tracksmith.fullname" . }}
+                name: {{ include "taskmoor.fullname" . }}
                 port: { name: http }
 {{- end }}

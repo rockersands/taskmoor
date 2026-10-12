@@ -12,7 +12,7 @@ machine runs Windows without Docker.
 
 ## Decision
 
-- **Workspace:** pnpm workspaces (`apps/*`, `packages/*`), packages named `@tracksmith/*`,
+- **Workspace:** pnpm workspaces (`apps/*`, `packages/*`), packages named `@taskmoor/*`,
   consumed from source (`exports` point at `src/*.ts`), so nothing is built before tests run.
 - **Types:** TypeScript 6.0, strict, `module: preserve` with bundler resolution, one
   `tsconfig.json` per package and project references from the root; `tsc -b` is incremental.

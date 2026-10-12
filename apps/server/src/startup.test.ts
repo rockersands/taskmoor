@@ -1,5 +1,5 @@
-import { createDb } from '@tracksmith/db';
-import { useMigratedDatabase } from '@tracksmith/db/testing';
+import { createDb } from '@taskmoor/db';
+import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { describe, expect, it } from 'vitest';
 import { waitForDatabase } from './startup';
 

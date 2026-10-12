@@ -6,7 +6,7 @@ advice.
 
 ## Why
 
-Tracksmith offers behaviour that people know from a commercial product. Behaviour, data formats
+Taskmoor offers behaviour that people know from a commercial product. Behaviour, data formats
 and interfaces can be rebuilt independently. Code, documentation text, images and other
 expression cannot be copied. Product terms of service also limit what an account holder may do
 with a product. The protocol keeps the work on the safe side and leaves a record that shows it.
@@ -40,7 +40,7 @@ with a product. The protocol keeps the work on the safe side and leaves a record
    unclear, the session adds a "verify" note and asks for the spec to be completed.
 3. **Synthetic fixtures.** Test data, importer samples and screenshots in tests are generated.
    No fixture comes from a vendor account.
-4. **Original design.** The UI uses Tracksmith's own tokens, icons and layouts.
+4. **Original design.** The UI uses Taskmoor's own tokens, icons and layouts.
 5. **Provenance record.** `docs/research/sources.md` lists the pages consulted. Each commit is
    attributable to one identity (see `CLAUDE.md`).
 

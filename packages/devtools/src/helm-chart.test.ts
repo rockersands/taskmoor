@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
-const CHART = join(ROOT, 'deploy', 'helm', 'tracksmith');
+const CHART = join(ROOT, 'deploy', 'helm', 'taskmoor');
 
 /** Helm from PATH, or the copy tools download into .cache/tools; the tests skip without one. */
 function findHelm(): string | undefined {

@@ -14,7 +14,7 @@ const run = promisify(execFile);
 export interface PgServer {
   /** URL of the maintenance database (`postgres`), used to create and drop test databases. */
   adminUrl: string;
-  /** Where the server came from: `embedded` (started here) or `external` (TRACKSMITH_TEST_DATABASE_URL). */
+  /** Where the server came from: `embedded` (started here) or `external` (TASKMOOR_TEST_DATABASE_URL). */
   kind: 'embedded' | 'external';
   stop(): Promise<void>;
 }
@@ -26,10 +26,10 @@ interface Binaries {
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 /**
- * Where the embedded clusters live. TRACKSMITH_PG_CACHE_DIR moves them, for example to another
+ * Where the embedded clusters live. TASKMOOR_PG_CACHE_DIR moves them, for example to another
  * disk while a benchmark saturates the one the repository is on, or to a RAM disk.
  */
-const CACHE_DIR = process.env.TRACKSMITH_PG_CACHE_DIR ?? join(REPO_ROOT, '.cache', 'pg-test');
+const CACHE_DIR = process.env.TASKMOOR_PG_CACHE_DIR ?? join(REPO_ROOT, '.cache', 'pg-test');
 
 export interface EmbeddedOptions {
   /** Cluster name; its data lives in .cache/pg-test/<name> and is kept between runs. */
@@ -55,13 +55,13 @@ const DEFAULT_SETTINGS: Record<string, string | number> = {
 /**
  * Starts the Postgres server for a test run.
  *
- * - With TRACKSMITH_TEST_DATABASE_URL set (CI service containers), that server is used as is.
+ * - With TASKMOOR_TEST_DATABASE_URL set (CI service containers), that server is used as is.
  * - Otherwise an embedded Postgres 16 runs from the npm binaries, so no Docker is needed.
  *   The cluster in .cache/pg-test/pg16 is kept between runs so startup takes about a second.
  *   If another run already holds that cluster, this run gets a throwaway cluster instead.
  */
 export async function startTestPostgres(): Promise<PgServer> {
-  const external = process.env.TRACKSMITH_TEST_DATABASE_URL;
+  const external = process.env.TASKMOOR_TEST_DATABASE_URL;
   if (external) {
     return { adminUrl: external, kind: 'external', stop: async () => {} };
   }
@@ -174,7 +174,7 @@ function platformTag(): string {
   if (os === 'darwin' && (cpu === 'arm64' || cpu === 'x64')) return `darwin-${cpu}`;
   if (os === 'linux' && (cpu === 'x64' || cpu === 'arm64')) return `linux-${cpu}`;
   throw new Error(
-    `No embedded Postgres for ${os}-${cpu}. Set TRACKSMITH_TEST_DATABASE_URL to a Postgres 16+ server.`,
+    `No embedded Postgres for ${os}-${cpu}. Set TASKMOOR_TEST_DATABASE_URL to a Postgres 16+ server.`,
   );
 }
 

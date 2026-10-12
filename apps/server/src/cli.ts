@@ -7,7 +7,7 @@
 //   node cli.mjs checksum               one checksum per table, for restore drills
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { createDb, migrateToLatest, migrationStatus } from '@tracksmith/db';
+import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
 import { backup, backupSize, restore, tableChecksums } from './backup';
 import { loadConfig } from './config';
 import { checkUpgrade, formatChecks } from './upgrade-check';
@@ -27,19 +27,19 @@ if (command === 'help' || command === '--help') {
 
 const config = loadConfig({
   ...process.env,
-  TRACKSMITH_ROLE: process.env.TRACKSMITH_ROLE ?? 'api',
+  TASKMOOR_ROLE: process.env.TASKMOOR_ROLE ?? 'api',
 });
 if (!config.databaseUrl) {
   process.stderr.write('DATABASE_URL is required\n');
   process.exit(2);
 }
 const databaseUrl = config.databaseUrl;
-const dataDir = process.env.TRACKSMITH_DATA;
+const dataDir = process.env.TASKMOOR_DATA;
 const say = (message: string) => process.stdout.write(`${message}\n`);
 const db = createDb({
   connectionString: databaseUrl,
   maxConnections: 2,
-  applicationName: 'tracksmith-cli',
+  applicationName: 'taskmoor-cli',
 });
 
 try {
@@ -67,8 +67,8 @@ try {
         version: config.version,
         config: {
           PUBLIC_URL: config.publicUrl,
-          TRACKSMITH_ROLE: config.roles.join(','),
-          TRACKSMITH_VERSION: config.version,
+          TASKMOOR_ROLE: config.roles.join(','),
+          TASKMOOR_VERSION: config.version,
         },
         log: say,
       });

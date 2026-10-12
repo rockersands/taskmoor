@@ -1,8 +1,8 @@
 {
-  "name": "@tracksmith/server",
+  "name": "@taskmoor/server",
   "version": "0.0.0",
   "private": true,
-  "description": "Tracksmith backend: HTTP API, background workers and realtime, one process per role.",
+  "description": "Taskmoor backend: HTTP API, background workers and realtime, one process per role.",
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
@@ -22,15 +22,15 @@
     "@opentelemetry/resources": "^2.12.0",
     "@opentelemetry/sdk-trace-base": "^2.12.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
-    "@tracksmith/db": "workspace:*",
-    "@tracksmith/iam": "workspace:*",
+    "@taskmoor/db": "workspace:*",
+    "@taskmoor/iam": "workspace:*",
     "fastify": "^5.12.5",
     "kysely": "^0.28.17",
     "prom-client": "^15.1.3",
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@tracksmith/testkit": "workspace:*",
+    "@taskmoor/testkit": "workspace:*",
     "tsx": "^4.23.15"
   }
 }

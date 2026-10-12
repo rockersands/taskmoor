@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# One image for every role (ADR-021): TRACKSMITH_ROLE=api|worker|realtime|web|all picks what the
+# One image for every role (ADR-021): TASKMOOR_ROLE=api|worker|realtime|web|all picks what the
 # process does. The build runs on the build machine's architecture and only the runtime stage is
 # per-architecture, so a multi-arch build does not compile under emulation.
 ARG NODE_VERSION=22
@@ -19,21 +19,21 @@ COPY packages/richtext/package.json packages/richtext/
 COPY packages/spikes/package.json packages/spikes/
 COPY packages/testkit/package.json packages/testkit/
 RUN pnpm install --frozen-lockfile --ignore-scripts \
-      --filter @tracksmith/server... --filter @tracksmith/web...
+      --filter @taskmoor/server... --filter @taskmoor/web...
 COPY . .
-RUN pnpm --filter @tracksmith/web build && node tools/build/server.mjs
+RUN pnpm --filter @taskmoor/web build && node tools/build/server.mjs
 
 FROM node:${NODE_VERSION}-alpine AS runtime
-ARG TRACKSMITH_VERSION=0.0.0-dev
+ARG TASKMOOR_VERSION=0.0.0-dev
 # pg_dump and pg_restore for `node cli.mjs backup` and `restore` (OPS-008, OPS-009), one client
 # per supported server major (3 MB each): a dump is taken and loaded with the server's own
 # version, since a newer pg_restore emits settings an older server rejects.
 RUN apk add --no-cache postgresql16-client postgresql17-client postgresql18-client
 ENV NODE_ENV=production \
-    TRACKSMITH_VERSION=${TRACKSMITH_VERSION} \
-    TRACKSMITH_ROLE=all \
-    TRACKSMITH_WEB_DIR=/app/web \
-    TRACKSMITH_DATA=/data \
+    TASKMOOR_VERSION=${TASKMOOR_VERSION} \
+    TASKMOOR_ROLE=all \
+    TASKMOOR_WEB_DIR=/app/web \
+    TASKMOOR_DATA=/data \
     PORT=8080 \
     HOST=0.0.0.0
 # Files and backups live here; owned by the app user so a fresh volume is writable.

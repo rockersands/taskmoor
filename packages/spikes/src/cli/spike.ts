@@ -14,13 +14,13 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { loadedFingerprint, sizeLabel } from '@tracksmith/testkit/gen';
-import { databaseUrl, withAdminClient } from '@tracksmith/testkit/pg';
+import { loadedFingerprint, sizeLabel } from '@taskmoor/testkit/gen';
+import { databaseUrl, withAdminClient } from '@taskmoor/testkit/pg';
 import {
   benchDatabaseName,
   openBenchDatabase,
   startEmbeddedPostgres,
-} from '@tracksmith/testkit/server';
+} from '@taskmoor/testkit/server';
 import pg from 'pg';
 import {
   renderAuthzReport,

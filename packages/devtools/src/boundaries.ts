@@ -15,7 +15,7 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
   },
   {
     name: 'no-relative-import-into-another-package',
-    comment: 'Import another package by its name (@tracksmith/x), never by a relative path.',
+    comment: 'Import another package by its name (@taskmoor/x), never by a relative path.',
     severity: 'error',
     from: { path: '^(apps|packages)/([^/]+)/' },
     // Package-name imports resolve to the same files; only relative paths ("local") break the rule.

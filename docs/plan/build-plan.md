@@ -1,10 +1,10 @@
-# AI Build Plan: Tracksmith, an Open-Source, Self-Hostable Jira Replacement
+# AI Build Plan: Taskmoor, an Open-Source, Self-Hostable Jira Replacement
 
-*Prepared 11 October 2026. "Tracksmith" is the working codename; the public name is still open. Every effort, size and date figure is an estimate unless it carries a link to evidence from the research report.*
+*Prepared 11 October 2026 under the codename "Tracksmith"; the user chose the public name taskmoor on 12 October 2026. Every effort, size and date figure is an estimate unless it carries a link to evidence from the research report.*
 
 ## 1. Summary
 
-**Conclusion.** Claude can build Tracksmith alone, using the repository as its memory and CI as its judge, if the user supplies accounts, compute, a usage budget, legal sign-offs and about half a day of acceptance testing per release. The build follows the research's order: the Data Center exit core first (release 1.0), breadth second.
+**Conclusion.** Claude can build Taskmoor alone, using the repository as its memory and CI as its judge, if the user supplies accounts, compute, a usage budget, legal sign-offs and about half a day of acceptance testing per release. The build follows the research's order: the Data Center exit core first (release 1.0), breadth second.
 
 - **What gets built:** one product covering Jira Software, business spaces, Jira Service Management with on-call and Assets, Product Discovery, Align-style portfolio, Automation, JQL, a Jira-compatible REST API and AI features that run on the admin's own AI key. Every premium feature is free.
 - **How it ships:** a **Builder** turns one form into two packages: a backend kit the user runs on a server (Compose with PostgreSQL and automatic HTTPS) and a static frontend kit that can be uploaded to any web host and works at once.
@@ -66,7 +66,7 @@ Published sizing (estimate until M1 load tests replace it): up to 50 users on 2 
 
 ### Where things live
 
-- **Code:** a local git repo at `E:\programing\Projects\Web\Tracksmith`, pushed to `github.com/Rockersands/tracksmith` (personal account). Commits are authored as `Rockersands <42122514+rockersands@users.noreply.github.com>` through the repo's local git config. The user creates the repo or authorises access; GitHub CLI is not installed yet. Packages are named `@tracksmith/*`.
+- **Code:** a local git repo at `E:\programing\Projects\Web\Tracksmith`, pushed to `github.com/Rockersands/tracksmith` (personal account). Commits are authored as `Rockersands <42122514+rockersands@users.noreply.github.com>` through the repo's local git config. The user creates the repo or authorises access; GitHub CLI is not installed yet. Packages are named `@taskmoor/*`.
 - **Docs for the user, weekly reports and milestone release packages:** the user's Google Drive folder, written through the Drive connector or a folder synced by Google Drive for desktop. Engineering docs stay in the repo.
 - **Local environment:** the user's machine has Node 22 and git but no Docker, so local tests use an embedded Postgres (PGlite or embedded-postgres). Container builds and tests run on GitHub runners and the benchmark host. Docker Desktop or a Linux VM/VPS is needed before the M1 install and cross-origin gates.
 
@@ -305,14 +305,14 @@ The full register is risks.csv (22 rows). The most serious:
 
 ## 13. First steps (M0, in order)
 
-1. M0-001 Init the Tracksmith repo, push to `github.com/Rockersands/tracksmith`, DCO check (CI and hooks; no branch protection on the free plan).
+1. M0-001 Init the Taskmoor repo, push to `github.com/Rockersands/tracksmith`, DCO check (CI and hooks; no branch protection on the free plan).
 2. M0-002 Write CLAUDE.md, HANDOFF.md and STATUS.md.
 3. M0-003 Add the CSVs and `tools/next-task`.
 4. M0-004 ADR process plus ADR-001 to 003.
 5. M0-005 Clean-room protocol; request counsel review.
 6. M0-006 Provenance check in CI.
-7. M0-007 Public-name screening of Tracksmith and alternatives.
-8. M0-008 Monorepo scaffold with `@tracksmith/*` packages.
+7. M0-007 Public-name screening of Taskmoor and alternatives.
+8. M0-008 Monorepo scaffold with `@taskmoor/*` packages.
 9. M0-009 Embedded-Postgres test harness for Docker-free local work.
 10. M0-010 Module boundary rules and fitness tests.
 11. M0-011 GitHub Actions pipeline.

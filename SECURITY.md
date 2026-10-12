@@ -1,6 +1,6 @@
 # Security policy
 
-Tracksmith is pre-release software. No version is supported for production use yet.
+Taskmoor is pre-release software. No version is supported for production use yet.
 
 ## Reporting a vulnerability
 

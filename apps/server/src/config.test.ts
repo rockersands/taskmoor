@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from './config';
 
-const DB = 'postgres://tracksmith:s3cret@db:5432/tracksmith';
+const DB = 'postgres://taskmoor:s3cret@db:5432/taskmoor';
 
 describe('loadConfig', () => {
   it('applies defaults when only DATABASE_URL is set', () => {
@@ -28,7 +28,7 @@ describe('loadConfig', () => {
         DATABASE_URL: DB,
         METRICS_PORT: '0',
         HOST: '127.0.0.1',
-        TRACKSMITH_DATA: '/data',
+        TASKMOOR_DATA: '/data',
       }),
     ).toMatchObject({ metricsPort: 0, metricsHost: '127.0.0.1', dataDir: '/data' });
     expect(loadConfig({ DATABASE_URL: DB, METRICS_HOST: '10.0.0.5' }).metricsHost).toBe('10.0.0.5');
@@ -41,7 +41,7 @@ describe('loadConfig', () => {
       PORT: '9000',
       HOST: '127.0.0.1',
       LOG_LEVEL: 'debug',
-      TRACKSMITH_VERSION: '1.2.3',
+      TASKMOOR_VERSION: '1.2.3',
     });
     expect(config).toMatchObject({
       port: 9000,
@@ -62,8 +62,8 @@ describe('loadConfig', () => {
 
   it('requires DATABASE_URL for every role but web', () => {
     expect(() => loadConfig({})).toThrow(/DATABASE_URL is required for the api, worker/);
-    expect(() => loadConfig({ TRACKSMITH_ROLE: 'worker' })).toThrow(/DATABASE_URL is required/);
-    expect(loadConfig({ TRACKSMITH_ROLE: 'web', TRACKSMITH_WEB_DIR: '/app/web' })).toMatchObject({
+    expect(() => loadConfig({ TASKMOOR_ROLE: 'worker' })).toThrow(/DATABASE_URL is required/);
+    expect(loadConfig({ TASKMOOR_ROLE: 'web', TASKMOOR_WEB_DIR: '/app/web' })).toMatchObject({
       databaseUrl: undefined,
       roles: ['web'],
       webDir: '/app/web',
@@ -74,7 +74,7 @@ describe('loadConfig', () => {
     const config = loadConfig({
       DATABASE_URL: DB,
       PUBLIC_URL: 'https://tracker.example.com/',
-      TRACKSMITH_SETUP_TOKEN: 'fixed-token-for-the-installer',
+      TASKMOOR_SETUP_TOKEN: 'fixed-token-for-the-installer',
     });
     expect(config).toMatchObject({
       publicUrl: 'https://tracker.example.com/',
@@ -85,18 +85,18 @@ describe('loadConfig', () => {
   });
 
   it('treats empty variables as unset, which is what Compose passes for them', () => {
-    const config = loadConfig({ DATABASE_URL: DB, TRACKSMITH_SETUP_TOKEN: '', PUBLIC_URL: '' });
+    const config = loadConfig({ DATABASE_URL: DB, TASKMOOR_SETUP_TOKEN: '', PUBLIC_URL: '' });
     expect(config.setupToken).toBeUndefined();
     expect(config.publicUrl).toBe('http://localhost:8080');
   });
 
   it('[OPS-002] runs every role by default and accepts a comma-separated subset', () => {
     expect(loadConfig({ DATABASE_URL: DB }).roles).toEqual(['api', 'worker', 'realtime', 'web']);
-    expect(loadConfig({ DATABASE_URL: DB, TRACKSMITH_ROLE: 'realtime, API' }).roles).toEqual([
+    expect(loadConfig({ DATABASE_URL: DB, TASKMOOR_ROLE: 'realtime, API' }).roles).toEqual([
       'api',
       'realtime',
     ]);
-    expect(() => loadConfig({ DATABASE_URL: DB, TRACKSMITH_ROLE: 'api,cron' })).toThrow(
+    expect(() => loadConfig({ DATABASE_URL: DB, TASKMOOR_ROLE: 'api,cron' })).toThrow(
       /unknown: cron/,
     );
   });

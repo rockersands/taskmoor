@@ -1,4 +1,4 @@
-# Installing Tracksmith
+# Installing Taskmoor
 
 One image runs every role (ADR-021). Pick a kit:
 
@@ -14,10 +14,10 @@ Every kit ends the same way: the backend logs a line like
 {"msg":"first-run setup","link":"http://localhost:8080/#/setup?token=..."}
 ```
 
-Open that link (`docker compose logs tracksmith` shows it) to create the first administrator.
+Open that link (`docker compose logs taskmoor` shows it) to create the first administrator.
 The token works once and expires after 24 hours; restarting the backend prints a new one. Set
 `PUBLIC_URL` (for example `https://tracker.example.com`) so the link and the session cookies
-match the address people use, and `TRACKSMITH_SETUP_TOKEN` to choose the token yourself, as an
+match the address people use, and `TASKMOOR_SETUP_TOKEN` to choose the token yourself, as an
 installer or a test does.
 
 Before an upgrade, run the pre-upgrade check (ADR-022): it blocks on a database that is
@@ -25,7 +25,7 @@ unreachable, older than PostgreSQL 16 or migrated by a newer release, and warns 
 space and backup age:
 
 ```
-docker compose exec tracksmith node cli.mjs check-upgrade
+docker compose exec taskmoor node cli.mjs check-upgrade
 ```
 
 Then change the image tag and start again; migrations run at start (`node cli.mjs migrate`
@@ -37,16 +37,16 @@ A backup is a directory with the database (`pg_dump` custom format), the uploade
 non-secret configuration and a manifest with a checksum per entry (OPS-008):
 
 ```
-docker compose exec tracksmith node cli.mjs backup
+docker compose exec taskmoor node cli.mjs backup
 ```
 
-It lands under `/data/backups/<timestamp>` on the `tracksmith-data` volume (`--out <dir>` picks
+It lands under `/data/backups/<timestamp>` on the `taskmoor-data` volume (`--out <dir>` picks
 another place; copy it off the host afterwards) and refreshes the marker that the pre-upgrade
 check reads, which warns when the last backup is older than a day. To restore, stop everything
 but one backend, put the backup directory under `/data/backups`, then (OPS-009):
 
 ```
-docker compose exec tracksmith node cli.mjs restore /data/backups/<timestamp> --yes
+docker compose exec taskmoor node cli.mjs restore /data/backups/<timestamp> --yes
 ```
 
 The restore verifies the checksums first, replaces the database contents and the files, and
@@ -62,11 +62,11 @@ then, copy the examples and fill them by hand.
 
 Each process serves Prometheus metrics on an internal port, `9464` by default (`METRICS_PORT`,
 `0` turns it off; `METRICS_HOST` picks the address). The Compose kits do not publish it: a
-Prometheus on the same Docker network scrapes `tracksmith:9464/metrics`. The metrics cover
-request latency per route (`tracksmith_http_request_duration_seconds`), statement latency
-(`tracksmith_db_query_duration_seconds`), the database pool
-(`tracksmith_db_pool_connections`), the age of the last backup
-(`tracksmith_backup_age_seconds`), the version and roles (`tracksmith_build_info`) and the
+Prometheus on the same Docker network scrapes `taskmoor:9464/metrics`. The metrics cover
+request latency per route (`taskmoor_http_request_duration_seconds`), statement latency
+(`taskmoor_db_query_duration_seconds`), the database pool
+(`taskmoor_db_pool_connections`), the age of the last backup
+(`taskmoor_backup_age_seconds`), the version and roles (`taskmoor_build_info`) and the
 usual process metrics.
 `observability/` has an example Prometheus configuration (`prometheus.yml`), alert rules
 (`alerts.yml`: instance down, server errors, slow requests and statements, a queueing database

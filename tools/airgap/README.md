@@ -1,14 +1,14 @@
-# Tracksmith air-gap bundle
+# Taskmoor air-gap bundle
 
-Everything needed to install Tracksmith on a host with no internet access (OPS-005):
+Everything needed to install Taskmoor on a host with no internet access (OPS-005):
 
 | Path | Contents |
 |---|---|
-| `images/` | Image archives: Tracksmith and PostgreSQL (`images.txt` lists the references and image ids) |
+| `images/` | Image archives: Taskmoor and PostgreSQL (`images.txt` lists the references and image ids) |
 | `compose/` | The Compose kit and its installer |
 | `helm/` | The Helm chart, for Kubernetes clusters with a private registry |
 | `web/` | The frontend build, for serving from any static host |
-| `sbom.cdx.json` | Software bill of materials of the Tracksmith image (CycloneDX) |
+| `sbom.cdx.json` | Software bill of materials of the Taskmoor image (CycloneDX) |
 | `SHA256SUMS`, `SHA256SUMS.sig` | Checksums of every file, and their signature |
 | `cosign.pub` | The public key the signature verifies against |
 
@@ -29,7 +29,7 @@ configured.
 ## Kubernetes
 
 Push the two images to your private registry (`docker load` the archives, then `docker tag` and
-`docker push`), then install the chart from `helm/` with `--set image.repository=<registry>/tracksmith`.
+`docker push`), then install the chart from `helm/` with `--set image.repository=<registry>/taskmoor`.
 
 ## Verifying with cosign
 

@@ -21,7 +21,7 @@ import {
   type SpanExporter,
 } from '@opentelemetry/sdk-trace-base';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
-import type { PoolStats, QueryEvent } from '@tracksmith/db';
+import type { PoolStats, QueryEvent } from '@taskmoor/db';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import { collectDefaultMetrics, Gauge, Histogram, Registry } from 'prom-client';
 
@@ -59,20 +59,20 @@ export function createMetrics(options: MetricsOptions): Metrics {
   const registry = new Registry();
   if (options.processMetrics ?? true) collectDefaultMetrics({ register: registry });
   new Gauge({
-    name: 'tracksmith_build_info',
+    name: 'taskmoor_build_info',
     help: 'Version and roles of this process; always 1',
     labelNames: ['version', 'roles'],
     registers: [registry],
   }).set({ version: options.version, roles: options.roles.join(',') }, 1);
   const http = new Histogram({
-    name: 'tracksmith_http_request_duration_seconds',
+    name: 'taskmoor_http_request_duration_seconds',
     help: 'HTTP request latency by route pattern',
     labelNames: ['method', 'route', 'status_code'],
     buckets: SECONDS,
     registers: [registry],
   });
   const query = new Histogram({
-    name: 'tracksmith_db_query_duration_seconds',
+    name: 'taskmoor_db_query_duration_seconds',
     help: 'Database statement latency',
     labelNames: ['outcome'],
     buckets: SECONDS,
@@ -81,7 +81,7 @@ export function createMetrics(options: MetricsOptions): Metrics {
   const readPool = options.pool;
   if (readPool) {
     new Gauge({
-      name: 'tracksmith_db_pool_connections',
+      name: 'taskmoor_db_pool_connections',
       help: 'Database pool connections by state (total, idle, waiting callers, max)',
       labelNames: ['state'],
       registers: [registry],
@@ -97,7 +97,7 @@ export function createMetrics(options: MetricsOptions): Metrics {
   const dataDir = options.dataDir;
   if (dataDir) {
     new Gauge({
-      name: 'tracksmith_backup_age_seconds',
+      name: 'taskmoor_backup_age_seconds',
       help: 'Seconds since the last completed backup; absent before the first one',
       registers: [registry],
       collect() {
@@ -138,14 +138,14 @@ export function startTracing(options: {
       new BatchSpanProcessor(new OTLPTraceExporter());
   const provider = new BasicTracerProvider({
     resource: resourceFromAttributes({
-      [ATTR_SERVICE_NAME]: env.OTEL_SERVICE_NAME || 'tracksmith',
+      [ATTR_SERVICE_NAME]: env.OTEL_SERVICE_NAME || 'taskmoor',
       [ATTR_SERVICE_VERSION]: options.version,
-      'tracksmith.roles': options.roles.join(','),
+      'taskmoor.roles': options.roles.join(','),
     }),
     spanProcessors: [processor],
   });
   return {
-    tracer: provider.getTracer('tracksmith-server', options.version),
+    tracer: provider.getTracer('taskmoor-server', options.version),
     shutdown: () => provider.shutdown(),
   };
 }

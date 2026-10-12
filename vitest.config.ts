@@ -26,7 +26,7 @@ function chromiumInstalled(): boolean {
 const storiesProject = chromiumInstalled() ? ['apps/web/vitest.stories.config.ts'] : [];
 if (storiesProject.length === 0) {
   console.warn(
-    'Stories skipped: Playwright Chromium is not installed (pnpm --filter @tracksmith/web exec playwright install chromium).',
+    'Stories skipped: Playwright Chromium is not installed (pnpm --filter @taskmoor/web exec playwright install chromium).',
   );
 }
 

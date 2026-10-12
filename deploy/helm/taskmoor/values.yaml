@@ -1,15 +1,15 @@
-# Tracksmith Helm chart values (M1-099, OPS-018). The defaults suit a small cluster with an
+# Taskmoor Helm chart values (M1-099, OPS-018). The defaults suit a small cluster with an
 # external PostgreSQL; see deploy/helm/README.md for an HA example.
 
 image:
-  repository: ghcr.io/rockersands/tracksmith
+  repository: ghcr.io/rockersands/taskmoor
   # Defaults to the chart's appVersion.
   tag: ""
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
 # Where people reach the instance; the setup link and secure cookies follow it.
-publicUrl: "http://tracksmith.local"
+publicUrl: "http://taskmoor.local"
 
 database:
   # Name of an existing Secret holding the connection string (recommended).
@@ -22,7 +22,7 @@ database:
 # app logs a fresh one at every start: kubectl logs deploy/<release>-app | grep "first-run".
 setupToken:
   existingSecret: ""
-  existingSecretKey: TRACKSMITH_SETUP_TOKEN
+  existingSecretKey: TASKMOOR_SETUP_TOKEN
 
 # Attachments and backups (ADR-020). With more than one app replica, use S3 (or a
 # ReadWriteMany volume): a ReadWriteOnce volume can only be mounted by one pod.
@@ -46,7 +46,7 @@ extraEnv: []
 # OpenTelemetry traces (ADR-023); off unless an endpoint is set.
 otel:
   endpoint: ""
-  serviceName: tracksmith
+  serviceName: taskmoor
 
 metrics:
   port: 9464
@@ -56,7 +56,7 @@ metrics:
     interval: 30s
     labels: {}
 
-# The app deployment serves the API, the frontend and realtime (TRACKSMITH_ROLE).
+# The app deployment serves the API, the frontend and realtime (TASKMOOR_ROLE).
 app:
   roles: api,web,realtime
   # One pod with local storage; two or more with storage.type s3 (or a ReadWriteMany volume).
@@ -115,7 +115,7 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
-  host: tracksmith.local
+  host: taskmoor.local
   tls: []
 
 serviceAccount:

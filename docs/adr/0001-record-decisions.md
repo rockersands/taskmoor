@@ -6,7 +6,7 @@
 
 ## Context
 
-Tracksmith is built across hundreds of Claude sessions that do not remember each other. A
+Taskmoor is built across hundreds of Claude sessions that do not remember each other. A
 decision that lives only in a conversation is lost, and later sessions may undo it.
 
 ## Decision

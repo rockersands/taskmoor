@@ -45,4 +45,4 @@ required status check on `main`.
 ## Consequences
 
 Third-party dependencies must be compatible with AGPL-3.0 (enforced by the licence allowlist,
-ADR-029). Anyone hosting a modified Tracksmith for others must offer them its source.
+ADR-029). Anyone hosting a modified Taskmoor for others must offer them its source.

@@ -1,5 +1,5 @@
 {
-  "name": "@tracksmith/iam",
+  "name": "@taskmoor/iam",
   "version": "0.0.0",
   "private": true,
   "description": "Identity and access: password hashing, tokens, sessions and, later, the providers of ADR-019.",
@@ -10,6 +10,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@tracksmith/testkit": "workspace:*"
+    "@taskmoor/testkit": "workspace:*"
   }
 }

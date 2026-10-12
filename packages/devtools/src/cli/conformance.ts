@@ -7,13 +7,13 @@ import {
   nativeEngine,
   QUERY_CASES,
   runConformance as runQuery,
-} from '@tracksmith/query';
+} from '@taskmoor/query';
 import {
   formatReport as formatWorkflowReport,
   ReferenceEngine,
   runConformance as runWorkflow,
   WORKFLOW_CASES,
-} from '@tracksmith/workflow';
+} from '@taskmoor/workflow';
 
 const args = process.argv.slice(2);
 const suite = args.find((a) => !a.startsWith('--')) ?? 'workflow';

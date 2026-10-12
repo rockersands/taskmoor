@@ -1,5 +1,5 @@
-import { createDataset, loadDataset, scaleConfig } from '@tracksmith/testkit/gen';
-import { useTestDatabase } from '@tracksmith/testkit/pg';
+import { createDataset, loadDataset, scaleConfig } from '@taskmoor/testkit/gen';
+import { useTestDatabase } from '@taskmoor/testkit/pg';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { bootstrap, deltaSince, follow, mutate, SYNC_SQL } from './changelog';

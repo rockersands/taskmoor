@@ -9,7 +9,7 @@ import { formatTrace, trace, traceRepository } from './trace';
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 
 const ROW = (id: string, ms = 'M1', pri = 'M', criteria = '(1) It works.') =>
-  `| ${id} | **Thing ${id}.** Tracksmith shall do it. | ${criteria} | ${ms} | ${pri} | Jira Free |`;
+  `| ${id} | **Thing ${id}.** Taskmoor shall do it. | ${criteria} | ${ms} | ${pri} | Jira Free |`;
 
 describe('the requirements spec', () => {
   it('passes spec lint: unique IDs, valid fields, numbered criteria, index in step', () => {

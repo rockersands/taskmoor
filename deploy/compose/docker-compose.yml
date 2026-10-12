@@ -1,41 +1,41 @@
-# Tracksmith with a bundled PostgreSQL 16 (ADR-021). Copy .env.example to .env, set
+# Taskmoor with a bundled PostgreSQL 16 (ADR-021). Copy .env.example to .env, set
 # POSTGRES_PASSWORD, then: docker compose up -d. The app answers on http://localhost:8080.
 # For an existing Postgres server use docker-compose.external.yml instead.
-name: tracksmith
+name: taskmoor
 
 services:
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:16}
     environment:
-      POSTGRES_DB: tracksmith
-      POSTGRES_USER: tracksmith
+      POSTGRES_DB: taskmoor
+      POSTGRES_USER: taskmoor
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tracksmith -d tracksmith"]
+      test: ["CMD-SHELL", "pg_isready -U taskmoor -d taskmoor"]
       interval: 5s
       timeout: 5s
       retries: 24
     restart: unless-stopped
 
-  tracksmith:
-    image: ${TRACKSMITH_IMAGE:-tracksmith:dev}
+  taskmoor:
+    image: ${TASKMOOR_IMAGE:-taskmoor:dev}
     environment:
-      DATABASE_URL: postgres://tracksmith:${POSTGRES_PASSWORD}@postgres:5432/tracksmith # secret-scan: allow
-      TRACKSMITH_ROLE: ${TRACKSMITH_ROLE:-all}
+      DATABASE_URL: postgres://taskmoor:${POSTGRES_PASSWORD}@postgres:5432/taskmoor # secret-scan: allow
+      TASKMOOR_ROLE: ${TASKMOOR_ROLE:-all}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PUBLIC_URL: ${PUBLIC_URL:-}
-      TRACKSMITH_SETUP_TOKEN: ${TRACKSMITH_SETUP_TOKEN:-}
+      TASKMOOR_SETUP_TOKEN: ${TASKMOOR_SETUP_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "${TRACKSMITH_PORT:-8080}:8080"
+      - "${TASKMOOR_PORT:-8080}:8080"
     volumes:
-      - tracksmith-data:/data
+      - taskmoor-data:/data
     restart: unless-stopped
 
 volumes:
   postgres-data:
-  tracksmith-data:
+  taskmoor-data:

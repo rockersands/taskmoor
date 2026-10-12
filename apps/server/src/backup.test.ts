@@ -1,14 +1,14 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { useMigratedDatabase } from '@tracksmith/db/testing';
+import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { backupSize, sha256File, tableChecksums, verifyBackup } from './backup';
 
 describe('backup manifests', () => {
   let dir: string;
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), 'tracksmith-backup-'));
+    dir = mkdtempSync(join(tmpdir(), 'taskmoor-backup-'));
     writeFileSync(join(dir, 'db.dump'), 'pretend dump');
     writeFileSync(join(dir, 'config.json'), '{}\n');
   });

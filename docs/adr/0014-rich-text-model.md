@@ -13,7 +13,7 @@ model is ProseMirror, through Tiptap.
 
 ## Decision
 
-- **One schema** (`@tracksmith/richtext`), built with Tiptap 3 and shared by the browser editor,
+- **One schema** (`@taskmoor/richtext`), built with Tiptap 3 and shared by the browser editor,
   the server and the importer: StarterKit (paragraphs, headings, lists, code, quotes, rules,
   marks, links), mentions, tables, task lists, plus our own `panel`, `status`, `date`, `emoji`,
   `textColor` and `subsup`.

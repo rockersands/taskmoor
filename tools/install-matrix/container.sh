@@ -6,8 +6,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 image=${1:?distribution image}
-export TRACKSMITH_IMAGE=${TRACKSMITH_IMAGE:-tracksmith:ci}
-port=${TRACKSMITH_PORT:-18101}
+export TASKMOOR_IMAGE=${TASKMOOR_IMAGE:-taskmoor:ci}
+port=${TASKMOOR_PORT:-18101}
 
 case "$image" in
   debian:*|ubuntu:*)
@@ -28,7 +28,7 @@ start=$(date +%s)
 docker run --rm --network host \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$PWD/deploy/compose:/kit" \
-  -e TRACKSMITH_IMAGE -e TRACKSMITH_PORT="$port" -e COMPOSE_PROJECT_NAME=ts-matrix \
+  -e TASKMOOR_IMAGE -e TASKMOOR_PORT="$port" -e COMPOSE_PROJECT_NAME=ts-matrix \
   "$image" bash -c "$prepare && cd /kit && bash install.sh" | tee /tmp/install.log
 end=$(date +%s)
 grep -q "setup?token=" /tmp/install.log || { echo "no setup link printed"; exit 1; }

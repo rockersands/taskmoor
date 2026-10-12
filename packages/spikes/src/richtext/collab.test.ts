@@ -1,14 +1,8 @@
 import { createServer } from 'node:net';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { Server } from '@hocuspocus/server';
-import {
-  canonicalAdf,
-  fromAdfJson,
-  type PmJson,
-  schema,
-  toAdfFromJson,
-} from '@tracksmith/richtext';
-import { generateAdfDocuments } from '@tracksmith/richtext/testing';
+import { canonicalAdf, fromAdfJson, type PmJson, schema, toAdfFromJson } from '@taskmoor/richtext';
+import { generateAdfDocuments } from '@taskmoor/richtext/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
@@ -16,7 +10,7 @@ import * as Y from 'yjs';
 
 /**
  * ADR-014 spike, part 2: documents survive the collaboration layer. Part 1 (format round
- * trip) lives in @tracksmith/richtext.
+ * trip) lives in @taskmoor/richtext.
  */
 
 const FRAGMENT = 'prosemirror';

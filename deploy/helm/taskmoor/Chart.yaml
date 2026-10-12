@@ -1,5 +1,5 @@
 apiVersion: v2
-name: tracksmith
+name: taskmoor
 description: Self-hosted work tracker (ADR-021). One image; the app and worker roles run as separate deployments.
 type: application
 version: 0.1.0

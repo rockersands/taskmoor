@@ -32,8 +32,8 @@ jobs:
           chmod +x kind && sudo mv kind /usr/local/bin/kind
           helm version --short && kubectl version --client
       - name: Lint the chart
-        run: helm lint deploy/helm/tracksmith --set database.url=postgres://u:p@db/ts
+        run: helm lint deploy/helm/taskmoor --set database.url=postgres://u:p@db/ts
       - name: Build the image
-        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+        run: docker build --build-arg "TASKMOOR_VERSION=${GITHUB_SHA::12}" -t taskmoor:ci .
       - name: Install, helm test and a rolling upgrade under load
-        run: TAG=tracksmith:ci bash tools/helm/kind-test.sh
+        run: TAG=taskmoor:ci bash tools/helm/kind-test.sh

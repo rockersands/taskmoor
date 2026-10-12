@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { join, relative } from 'node:path';
 import { promisify } from 'node:util';
-import { type Database, migrationStatus } from '@tracksmith/db';
+import { type Database, migrationStatus } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
 
 const run = promisify(execFile);
@@ -21,7 +21,7 @@ const run = promisify(execFile);
  * the server it loads (a newer one emits settings the older server rejects, such as
  * `transaction_timeout` from 17 on). The image ships the client tools of every supported major
  * under /usr/libexec/postgresql<major> (Alpine's layout) and the tools matching the server are
- * chosen; `TRACKSMITH_PG_BIN` names another directory to look in first, and otherwise the tools
+ * chosen; `TASKMOOR_PG_BIN` names another directory to look in first, and otherwise the tools
  * on PATH are used.
  */
 export function clientBinary(
@@ -29,7 +29,7 @@ export function clientBinary(
   serverMajor: number,
   env: Record<string, string | undefined> = process.env,
 ): string {
-  const dirs = [env.TRACKSMITH_PG_BIN, `/usr/libexec/postgresql${serverMajor}`];
+  const dirs = [env.TASKMOOR_PG_BIN, `/usr/libexec/postgresql${serverMajor}`];
   for (const dir of dirs) {
     if (!dir) continue;
     for (const candidate of [join(dir, name), join(dir, `${name}.exe`)]) {

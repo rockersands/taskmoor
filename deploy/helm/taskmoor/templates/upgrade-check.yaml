@@ -5,9 +5,9 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "tracksmith.fullname" . }}-upgrade-check
+  name: {{ include "taskmoor.fullname" . }}-upgrade-check
   labels:
-    {{- include "tracksmith.labels" . | nindent 4 }}
+    {{- include "taskmoor.labels" . | nindent 4 }}
     app.kubernetes.io/component: upgrade-check
   annotations:
     helm.sh/hook: pre-upgrade
@@ -31,13 +31,13 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: check-upgrade
-          image: {{ include "tracksmith.image" . }}
+          image: {{ include "taskmoor.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command: ["node", "cli.mjs", "check-upgrade"]
           env:
-            - name: TRACKSMITH_ROLE
+            - name: TASKMOOR_ROLE
               value: api
-            {{- include "tracksmith.env" . | nindent 12 }}
+            {{- include "taskmoor.env" . | nindent 12 }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           volumeMounts:

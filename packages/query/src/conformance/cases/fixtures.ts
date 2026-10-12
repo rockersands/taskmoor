@@ -304,7 +304,7 @@ const TEXT: ReadonlySet<ValueType> = new Set(['text']);
  * Which operators a value type accepts (section 1.2 restated with the field notes of 1.5):
  * ordering comparisons for numbers, dates, versions and priorities; `~` and `!~` for text, which
  * takes no equality or list operators; attachments only IS and IS NOT; history operators on
- * every field (Tracksmith exceeds Jira's six).
+ * every field (Taskmoor exceeds Jira's six).
  */
 export function operatorAllowed(op: Operator, type: ValueType): boolean {
   if (type === 'attachments') return op === 'IS' || op === 'IS NOT';

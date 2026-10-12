@@ -34,28 +34,28 @@ fi
 
 # The port as Compose resolves it: the environment first, then .env, then 8080. grep finds
 # nothing on most installs; that must not trip set -e.
-port=${TRACKSMITH_PORT:-$(grep -E '^TRACKSMITH_PORT=' .env 2>/dev/null | cut -d= -f2 || true)}
+port=${TASKMOOR_PORT:-$(grep -E '^TASKMOOR_PORT=' .env 2>/dev/null | cut -d= -f2 || true)}
 port=${port:-8080}
 for p in "$port"; do
   if (command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$p ") || (command -v netstat >/dev/null 2>&1 && netstat -ltn 2>/dev/null | grep -q ":$p "); then
-    docker compose -f "$file" ps -q tracksmith >/dev/null 2>&1 || die "port $p is in use; set TRACKSMITH_PORT in .env"
+    docker compose -f "$file" ps -q taskmoor >/dev/null 2>&1 || die "port $p is in use; set TASKMOOR_PORT in .env"
   fi
 done
 
-# TRACKSMITH_COMPOSE_OVERRIDE adds compose files (space-separated), for example to put the
-# stack on an internal network; TRACKSMITH_PULL=never installs from images already loaded
+# TASKMOOR_COMPOSE_OVERRIDE adds compose files (space-separated), for example to put the
+# stack on an internal network; TASKMOOR_PULL=never installs from images already loaded
 # (the air-gap bundle) and never contacts a registry.
 files=(-f "$file")
-for extra in ${TRACKSMITH_COMPOSE_OVERRIDE:-}; do files+=(-f "$extra"); done
+for extra in ${TASKMOOR_COMPOSE_OVERRIDE:-}; do files+=(-f "$extra"); done
 compose() { docker compose "${files[@]}" "$@"; }
 
-say "starting Tracksmith with $file"
-compose up -d --quiet-pull --pull "${TRACKSMITH_PULL:-missing}"
+say "starting Taskmoor with $file"
+compose up -d --quiet-pull --pull "${TASKMOOR_PULL:-missing}"
 
 # Readiness is asked from inside the container, so it works whatever the host's ports,
 # firewall or network mode.
 ready() {
-  compose exec -T tracksmith node -e     "fetch('http://127.0.0.1:8080/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"     >/dev/null 2>&1
+  compose exec -T taskmoor node -e     "fetch('http://127.0.0.1:8080/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"     >/dev/null 2>&1
 }
 say "waiting for the backend"
 for _ in $(seq 1 120); do
@@ -63,14 +63,14 @@ for _ in $(seq 1 120); do
   sleep 1
 done
 ready || {
-  compose logs --tail 40 tracksmith
+  compose logs --tail 40 taskmoor
   die "the backend did not become ready in 2 minutes; the log above says why"
 }
 
 # The link line is absent once setup is complete; an empty match is the normal second run.
-link=$( (compose logs --no-log-prefix tracksmith 2>/dev/null || true) | grep -o '"link":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
+link=$( (compose logs --no-log-prefix taskmoor 2>/dev/null || true) | grep -o '"link":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
 say ""
-say "Tracksmith is running on port $port."
+say "Taskmoor is running on port $port."
 if [ -n "$link" ]; then
   say "Open this link once to create the administrator:"
   say "  $link"

@@ -1,10 +1,10 @@
-# Tracksmith
+# Taskmoor
 
 Open-source, self-hostable work tracking: Jira-class projects, boards, workflows, queries, service
 desk and planning, with every premium feature included and AI that runs on the administrator's
-own key. *Tracksmith is a working name.*
+own key.
 
-**Status:** M0 (foundation). Nothing here is ready for production use.
+**Status:** M0 (foundation) accepted; M1 (release 1.0) in progress. Nothing here is ready for production use.
 
 ## Develop
 
@@ -22,7 +22,7 @@ dependencies; the first run creates a local test cluster in `.cache/pg-test`.
 Browser tests need Playwright's Chromium once:
 
 ```bash
-corepack pnpm --filter @tracksmith/web exec playwright install chromium
+corepack pnpm --filter @taskmoor/web exec playwright install chromium
 ```
 
 ## Documentation
@@ -35,6 +35,6 @@ corepack pnpm --filter @tracksmith/web exec playwright install chromium
 
 ## Licence
 
-Tracksmith is free software under the [GNU Affero General Public License v3.0 only](LICENSE)
+Taskmoor is free software under the [GNU Affero General Public License v3.0 only](LICENSE)
 (`AGPL-3.0-only`). Contributions are accepted under the Developer Certificate of Origin; see
 [CONTRIBUTING.md](CONTRIBUTING.md) and [ADR-002](docs/adr/0002-licence-and-contributions.md).

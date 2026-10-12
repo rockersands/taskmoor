@@ -14,7 +14,7 @@ built-in MCP server with streamable HTTP and stdio transports, tool profiles and
 
 - **One server, two transports.** `packages/mcp` implements the Model Context Protocol with the
   official TypeScript SDK: streamable HTTP served by the backend under `/mcp` (OAuth 2.1 with
-  PKCE or a personal token, API-002), and a `tracksmith mcp` stdio command in the CLI for local
+  PKCE or a personal token, API-002), and a `taskmoor mcp` stdio command in the CLI for local
   clients, which talks to the same backend with a token.
 - **Tools are generated from the OpenAPI contract** (ADR-016), so every tool is a public
   endpoint with the caller's permissions, and nothing bypasses authorization. The tool list is

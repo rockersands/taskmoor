@@ -8,11 +8,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-TAG=${TAG:-tracksmith:dev}
+TAG=${TAG:-taskmoor:dev}
 VERSION=$(git describe --tags --always 2>/dev/null || echo 0.0.0-dev)
-NET=tracksmith-smoke-$$
-PG=tracksmith-smoke-pg-$$
-APP=tracksmith-smoke-app-$$
+NET=taskmoor-smoke-$$
+PG=taskmoor-smoke-pg-$$
+APP=taskmoor-smoke-app-$$
 cleanup() {
   docker rm -f "$APP" "$PG" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
@@ -28,13 +28,13 @@ wait_for() { # url, seconds
 }
 
 echo "== build $TAG ($VERSION)"
-docker build --build-arg "TRACKSMITH_VERSION=$VERSION" -t "$TAG" .
+docker build --build-arg "TASKMOOR_VERSION=$VERSION" -t "$TAG" .
 size=$(docker image inspect "$TAG" --format '{{.Size}}')
 echo "image size: $((size / 1000000)) MB"
 if [ "$size" -gt 400000000 ]; then echo "image over 400 MB"; exit 1; fi
 
 echo "== web-only container, no database"
-docker run -d --rm --name "$APP" -e TRACKSMITH_ROLE=web -p 18080:8080 "$TAG" >/dev/null
+docker run -d --rm --name "$APP" -e TASKMOOR_ROLE=web -p 18080:8080 "$TAG" >/dev/null
 wait_for http://127.0.0.1:18080/health 30
 curl -fsS http://127.0.0.1:18080/health; echo
 curl -fsS -H 'Accept: text/html' http://127.0.0.1:18080/browse/ABC-1 | grep -q '<div id="root">' && echo "deep link serves the app shell"
@@ -54,9 +54,9 @@ docker rm -f "$APP" "$PG" >/dev/null
 
 if [ "${SKIP_ARM64:-}" != "1" ]; then
   echo "== arm64 image under emulation"
-  docker buildx build --platform linux/arm64 --build-arg "TRACKSMITH_VERSION=$VERSION" \
+  docker buildx build --platform linux/arm64 --build-arg "TASKMOOR_VERSION=$VERSION" \
     -t "$TAG-arm64" --load . >/dev/null
-  docker run -d --rm --platform linux/arm64 --name "$APP" -e TRACKSMITH_ROLE=web -p 18082:8080 "$TAG-arm64" >/dev/null
+  docker run -d --rm --platform linux/arm64 --name "$APP" -e TASKMOOR_ROLE=web -p 18082:8080 "$TAG-arm64" >/dev/null
   wait_for http://127.0.0.1:18082/health 90
   curl -fsS http://127.0.0.1:18082/health; echo
   docker rm -f "$APP" >/dev/null

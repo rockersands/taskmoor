@@ -1,6 +1,6 @@
 # Contributing
 
-Tracksmith is licensed under [AGPL-3.0-only](LICENSE). By contributing you agree that your
+Taskmoor is licensed under [AGPL-3.0-only](LICENSE). By contributing you agree that your
 contribution is licensed under the same terms.
 
 ## Developer Certificate of Origin

@@ -1,4 +1,4 @@
-# @tracksmith/workflow
+# @taskmoor/workflow
 
 The workflow behaviour model and its conformance suite (M1-022), with a reference model that
 executes the suite today. The engine of M1-023 implements the same `WorkflowEngine` interface
@@ -37,6 +37,6 @@ Implement `WorkflowEngine` (`src/conformance/run.ts`); every method is optional 
 counts its cases as unsupported rather than failed. Then:
 
 ```ts
-import { runConformance, formatReport, WORKFLOW_CASES } from '@tracksmith/workflow';
+import { runConformance, formatReport, WORKFLOW_CASES } from '@taskmoor/workflow';
 console.log(formatReport(runConformance(myEngine, WORKFLOW_CASES)));
 ```

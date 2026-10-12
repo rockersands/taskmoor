@@ -1,5 +1,5 @@
 {
-  "name": "@tracksmith/workflow",
+  "name": "@taskmoor/workflow",
   "version": "0.0.0",
   "private": true,
   "description": "Workflows: the behaviour model and conformance suite (M1-022), the reference model, and later the engine (M1-023).",
@@ -10,6 +10,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@tracksmith/testkit": "workspace:*"
+    "@taskmoor/testkit": "workspace:*"
   }
 }

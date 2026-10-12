@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { createDatabase, testPgAdminUrl } from '@tracksmith/testkit/pg';
+import { createDatabase, testPgAdminUrl } from '@taskmoor/testkit/pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDb } from './client';
 import { knownMigrations, migrateTo, migrateToLatest, migrationStatus } from './migrate';

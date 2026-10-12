@@ -1,4 +1,4 @@
-import { useMigratedDatabase } from '@tracksmith/db/testing';
+import { useMigratedDatabase } from '@taskmoor/db/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';

@@ -1,4 +1,4 @@
-import { stableJson } from '@tracksmith/testkit';
+import { stableJson } from '@taskmoor/testkit';
 import { describe, expect, it } from 'vitest';
 import { compilePlan } from './compile';
 import { makeCatalogue } from './fields';

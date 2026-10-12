@@ -7,7 +7,7 @@ import {
   makeCatalogue,
   parseQuery,
   resolveQuery,
-} from '@tracksmith/query';
+} from '@taskmoor/query';
 import type pg from 'pg';
 import { type TimedResult, timeQuery } from '../bench/stats';
 

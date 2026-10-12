@@ -1,5 +1,5 @@
-import type { Database } from '@tracksmith/db';
-import { hashPassword, passwordProblems } from '@tracksmith/iam';
+import type { Database } from '@taskmoor/db';
+import { hashPassword, passwordProblems } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';

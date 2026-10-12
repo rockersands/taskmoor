@@ -1,5 +1,5 @@
-import { stableJson } from '@tracksmith/testkit';
-import { fc } from '@tracksmith/testkit/property';
+import { stableJson } from '@taskmoor/testkit';
+import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import type { Expr, FieldRef, Predicate, Query, Value } from './ast';
 import { QueryError } from './lexer';

@@ -1,4 +1,4 @@
-import { fc } from '@tracksmith/testkit/property';
+import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import { lineIndex, locate, QueryError } from './lexer';
 import { MAX_DEPTH, parseQuery, parseWithDiagnostics } from './parser';

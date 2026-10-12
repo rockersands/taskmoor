@@ -20,7 +20,7 @@ replay, and no expiry.
   (ADR-010) and evaluated against the affected item at relay time, so custom fields and
   functions work in filters exactly as in search.
 - **Delivery:** HTTPS only (HTTP allowed for localhost in development); headers carry the
-  delivery id, event type, timestamp and `X-Tracksmith-Signature: sha256=<hmac>` over
+  delivery id, event type, timestamp and `X-Taskmoor-Signature: sha256=<hmac>` over
   timestamp plus body; the shim adds `X-Hub-Signature`. Up to 5 retries with exponential
   backoff on 408, 409, 425, 429 and 5xx; other 4xx are failures without retry. Delivery
   timeout 10 s; receiver clock skew tolerated at 5 minutes for signature checks.

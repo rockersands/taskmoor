@@ -36,7 +36,7 @@ code 0 means done.
 Tests run against real PostgreSQL, never a mock. Locally the testkit starts Postgres 16 from the
 `embedded-postgres` npm binaries using `initdb` and `pg_ctl` directly, keeps the cluster in
 `.cache/pg-test` between runs (warm start about a second) and runs with `fsync=off`. A second
-concurrent run gets a throwaway cluster. With `TRACKSMITH_TEST_DATABASE_URL` set (CI service
+concurrent run gets a throwaway cluster. With `TASKMOOR_TEST_DATABASE_URL` set (CI service
 containers on Postgres 16 and 18) that server is used instead.
 
 Each test file gets `CREATE DATABASE ... TEMPLATE tpl_<migration hash>`, so files are isolated and

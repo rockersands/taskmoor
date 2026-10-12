@@ -1,4 +1,4 @@
-import type { Database } from '@tracksmith/db';
+import type { Database } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
 
 export interface WaitOptions {

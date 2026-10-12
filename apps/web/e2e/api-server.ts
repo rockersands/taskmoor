@@ -1,10 +1,10 @@
 // The backend for the end-to-end suite: an embedded Postgres with its own database, migrated,
 // and the API on a fixed port with a fixed setup token. Playwright starts it as a web server
 // and the Vite preview proxies /api to it. Started with: tsx apps/web/e2e/api-server.ts
-import { createDb, migrateToLatest } from '@tracksmith/db';
-import { buildApp, issueSetupToken } from '@tracksmith/server';
-import { createDatabase } from '@tracksmith/testkit/pg';
-import { startEmbeddedPostgres } from '@tracksmith/testkit/server';
+import { createDb, migrateToLatest } from '@taskmoor/db';
+import { buildApp, issueSetupToken } from '@taskmoor/server';
+import { createDatabase } from '@taskmoor/testkit/pg';
+import { startEmbeddedPostgres } from '@taskmoor/testkit/server';
 
 export const E2E_API_PORT = 8787;
 export const E2E_SETUP_TOKEN = 'e2e-setup-token-0123456789';

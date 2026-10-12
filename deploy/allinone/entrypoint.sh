@@ -1,11 +1,11 @@
 #!/bin/sh
-# Starts PostgreSQL in the container, then the Tracksmith server as the unprivileged node user.
+# Starts PostgreSQL in the container, then the Taskmoor server as the unprivileged node user.
 # Postgres listens on 127.0.0.1 only and trusts local connections, which is the container's own
-# process; nothing else can reach it. The database lives under $TRACKSMITH_DATA/postgres and
+# process; nothing else can reach it. The database lives under $TASKMOOR_DATA/postgres and
 # survives container restarts and image upgrades through the /data volume.
 set -eu
 
-DATA=${TRACKSMITH_DATA:-/data}
+DATA=${TASKMOOR_DATA:-/data}
 PGDATA="$DATA/postgres"
 LOG="$PGDATA/postgres.log"
 
@@ -24,11 +24,11 @@ if [ ! -f "$PGDATA/PG_VERSION" ]; then
 fi
 
 su-exec postgres pg_ctl -D "$PGDATA" -w -t 60 -l "$LOG" start
-if ! su-exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'tracksmith'" | grep -q 1; then
-  su-exec postgres createdb -U postgres tracksmith
+if ! su-exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'taskmoor'" | grep -q 1; then
+  su-exec postgres createdb -U postgres taskmoor
 fi
 
-export DATABASE_URL=${DATABASE_URL:-postgres://postgres@127.0.0.1:5432/tracksmith}
+export DATABASE_URL=${DATABASE_URL:-postgres://postgres@127.0.0.1:5432/taskmoor}
 cd /app
 su-exec node node server.mjs &
 APP=$!

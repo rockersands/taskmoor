@@ -25,7 +25,7 @@ admins (EXT-004), signed packages with scopes (EXT-005), storage (EXT-006) and o
   query operators, workflow validators, conditions and post functions, query functions,
   automation actions, REST endpoints under `/api/ext/<id>`, scheduled jobs, UI slots.
 - **UI extensions are iframes** with a strict CSP, a `postMessage` bridge that exposes only
-  permitted API calls, design tokens for theming and `@tracksmith/extension-sdk`.
+  permitted API calls, design tokens for theming and `@taskmoor/extension-sdk`.
 - **Admin scripting** (EXT-004) is TypeScript compiled by the server to WASM through the same
   runtime (QuickJS in WASM), so scripts and packaged extensions share one sandbox and one set of
   limits.

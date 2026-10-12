@@ -10,7 +10,7 @@ test.skip(({ isMobile }) => isMobile, 'one setup per backend; desktop runs it');
 
 test('[OPS-003] the setup link creates the administrator and signs them in', async ({ page }) => {
   await page.goto(`./#/setup?token=${TOKEN}`);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Set up Tracksmith');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Set up Taskmoor');
   await page.getByLabel('Instance name').fill('E2E Tracker');
   await page.getByLabel('Name', { exact: true }).fill(ADMIN.name);
   await page.getByLabel('Email').fill(ADMIN.email);

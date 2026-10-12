@@ -1,4 +1,4 @@
-import { useTestDatabase } from '@tracksmith/testkit/pg';
+import { useTestDatabase } from '@taskmoor/testkit/pg';
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { graphileEnqueue, graphileReset, graphileStart } from './graphile';

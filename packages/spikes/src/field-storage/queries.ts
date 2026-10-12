@@ -1,4 +1,4 @@
-import { Rng, ZipfSampler } from '@tracksmith/testkit/gen';
+import { Rng, ZipfSampler } from '@taskmoor/testkit/gen';
 import type pg from 'pg';
 import type { CandidateId } from './candidates';
 

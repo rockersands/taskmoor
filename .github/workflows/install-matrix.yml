@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build the image
-        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+        run: docker build --build-arg "TASKMOOR_VERSION=${GITHUB_SHA::12}" -t taskmoor:ci .
       - name: Install with the kit and time it
         run: bash tools/install-matrix/run.sh "${{ matrix.os }}"
 
@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build the image
-        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+        run: docker build --build-arg "TASKMOOR_VERSION=${GITHUB_SHA::12}" -t taskmoor:ci .
       - name: Install from inside a fresh ${{ matrix.image }} userland
         run: bash tools/install-matrix/container.sh "${{ matrix.image }}"
 
@@ -55,6 +55,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build the image
-        run: docker build --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" -t tracksmith:ci .
+        run: docker build --build-arg "TASKMOOR_VERSION=${GITHUB_SHA::12}" -t taskmoor:ci .
       - name: Bundle, verify and install offline
-        run: TAG=tracksmith:ci bash tools/airgap/test-offline.sh
+        run: TAG=taskmoor:ci bash tools/airgap/test-offline.sh

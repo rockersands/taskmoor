@@ -1,8 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb } from '@tracksmith/db';
-import { useMigratedDatabase } from '@tracksmith/db/testing';
+import { createDb } from '@taskmoor/db';
+import { useMigratedDatabase } from '@taskmoor/db/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from './app';
@@ -42,7 +42,7 @@ describe('web role', () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'tracksmith-web-'));
+    dir = await mkdtemp(join(tmpdir(), 'taskmoor-web-'));
     await mkdir(join(dir, 'assets'));
     await writeFile(join(dir, 'index.html'), '<!doctype html><div id="root"></div>');
     await writeFile(join(dir, 'assets', 'app.js'), 'console.log(1)');

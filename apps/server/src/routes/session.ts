@@ -1,5 +1,5 @@
-import type { Database } from '@tracksmith/db';
-import { verifyPassword } from '@tracksmith/iam';
+import type { Database } from '@taskmoor/db';
+import { verifyPassword } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';

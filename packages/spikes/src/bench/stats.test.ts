@@ -1,4 +1,4 @@
-import { fc } from '@tracksmith/testkit/property';
+import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import { percentile, summarize, timingsTable } from './stats';
 

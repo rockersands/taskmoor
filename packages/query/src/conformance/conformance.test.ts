@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { stableJson } from '@tracksmith/testkit';
+import { stableJson } from '@taskmoor/testkit';
 import { describe, expect, it } from 'vitest';
 import { SECTIONS } from './case';
 import { QUERY_CASES } from './cases';

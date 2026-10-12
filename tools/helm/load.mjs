@@ -1,7 +1,7 @@
 // In-cluster load for the rolling-upgrade test (M1-099): several clients call the app through
 // its Service for LOAD_SECONDS and report every request that did not succeed. Runs in the
-// Tracksmith image itself (Node 22), so the test needs no other image.
-const target = process.env.TARGET ?? 'http://tracksmith';
+// Taskmoor image itself (Node 22), so the test needs no other image.
+const target = process.env.TARGET ?? 'http://taskmoor';
 const seconds = Number(process.env.LOAD_SECONDS ?? 120);
 const clients = Number(process.env.CLIENTS ?? 8);
 const end = Date.now() + seconds * 1000;

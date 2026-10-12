@@ -35,7 +35,7 @@ jobs:
           --health-retries 12
     env:
       # Throwaway password of the CI service container.
-      TRACKSMITH_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres # secret-scan: allow
+      TASKMOOR_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres # secret-scan: allow
     steps:
       - uses: actions/checkout@v7
         with:
@@ -65,7 +65,7 @@ jobs:
           pnpm dco "$range"
 
       - name: Install Playwright browser
-        run: pnpm --filter @tracksmith/web exec playwright install --with-deps chromium
+        run: pnpm --filter @taskmoor/web exec playwright install --with-deps chromium
 
       - name: Verify (lint, types, tests, e2e)
         run: pnpm verify --ci
@@ -96,7 +96,7 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
-      TRACKSMITH_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres # secret-scan: allow
+      TASKMOOR_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres # secret-scan: allow
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -105,7 +105,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @tracksmith/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @taskmoor/web exec playwright install --with-deps chromium
       - run: pnpm verify --ci --only=tests
       - name: Keep logs
         if: failure()
@@ -130,7 +130,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @tracksmith/web exec playwright install chromium
+      - run: pnpm --filter @taskmoor/web exec playwright install chromium
       - run: pnpm verify --ci --only=types,tests
       - name: Keep logs
         if: failure()
@@ -181,20 +181,20 @@ jobs:
       - name: Build for both architectures
         run: |
           docker buildx build --platform linux/amd64,linux/arm64 \
-            --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" \
+            --build-arg "TASKMOOR_VERSION=${GITHUB_SHA::12}" \
             --cache-from type=gha --cache-to type=gha,mode=max \
-            -t tracksmith:ci .
+            -t taskmoor:ci .
       - name: Load the amd64 image and probe it
         run: |
-          docker buildx build --platform linux/amd64 --cache-from type=gha --load -t tracksmith:ci .
-          size=$(docker image inspect tracksmith:ci --format '{{.Size}}')
+          docker buildx build --platform linux/amd64 --cache-from type=gha --load -t taskmoor:ci .
+          size=$(docker image inspect taskmoor:ci --format '{{.Size}}')
           echo "image size: $((size / 1000000)) MB"
           test "$size" -le 400000000
-          docker run -d --rm --name app -e TRACKSMITH_ROLE=web -p 8080:8080 tracksmith:ci
+          docker run -d --rm --name app -e TASKMOOR_ROLE=web -p 8080:8080 taskmoor:ci
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/health && break; sleep 1; done
           curl -fsS http://127.0.0.1:8080/health | grep -q '"status":"ok"'
           docker rm -f app
       - name: All-in-one image and Compose kits
-        run: TAG=tracksmith:ci bash tools/image/smoke-kits.sh
+        run: TAG=taskmoor:ci bash tools/image/smoke-kits.sh
       - name: Backup and restore drill
-        run: TAG=tracksmith:ci bash tools/image/drill-backup.sh
+        run: TAG=taskmoor:ci bash tools/image/drill-backup.sh

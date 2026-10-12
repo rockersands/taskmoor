@@ -6,8 +6,8 @@ import {
   QUERY_CASES,
   QueryError,
   stripSpans,
-} from '@tracksmith/query';
-import { Rng } from '@tracksmith/testkit/gen';
+} from '@taskmoor/query';
+import { Rng } from '@taskmoor/testkit/gen';
 
 /**
  * Fuzzer for the query parser (M1-034: "parser fuzzed 1 h without crash"). It feeds the

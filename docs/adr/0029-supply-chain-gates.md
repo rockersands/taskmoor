@@ -6,7 +6,7 @@
 
 ## Context
 
-Tracksmith will be distributed under a copyleft licence (ADR-002) and run inside other
+Taskmoor will be distributed under a copyleft licence (ADR-002) and run inside other
 organisations' networks. A dependency under an incompatible licence, a committed credential or a
 known-vulnerable package would each be costly to discover late.
 

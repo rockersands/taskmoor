@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb } from '@tracksmith/db';
-import { useMigratedDatabase } from '@tracksmith/db/testing';
+import { createDb } from '@taskmoor/db';
+import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 
@@ -11,7 +11,7 @@ describe('pre-upgrade check', () => {
   let dataDir: string;
 
   beforeAll(() => {
-    dataDir = mkdtempSync(join(tmpdir(), 'tracksmith-data-'));
+    dataDir = mkdtempSync(join(tmpdir(), 'taskmoor-data-'));
     mkdirSync(join(dataDir, 'backups'));
   });
   afterAll(() => {

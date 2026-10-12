@@ -1,4 +1,4 @@
-import { type TemplateSpec, useTestDatabase } from '@tracksmith/testkit/pg';
+import { type TemplateSpec, useTestDatabase } from '@taskmoor/testkit/pg';
 import type { Kysely } from 'kysely';
 import { afterAll, beforeAll } from 'vitest';
 import { createDb } from './client';

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import type { Tracer } from '@opentelemetry/api';
-import type { Database } from '@tracksmith/db';
+import type { Database } from '@taskmoor/db';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { resolveSession, SESSION_COOKIE } from './auth';
@@ -92,7 +92,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 async function serveFrontend(app: FastifyInstance, webDir: string): Promise<void> {
   const root = resolve(webDir);
   if (!existsSync(resolve(root, 'index.html'))) {
-    throw new Error(`TRACKSMITH_WEB_DIR has no index.html: ${root}`);
+    throw new Error(`TASKMOOR_WEB_DIR has no index.html: ${root}`);
   }
   await app.register(fastifyStatic, { root, wildcard: false, index: ['index.html'] });
   app.setNotFoundHandler((request, reply) => {

@@ -8,7 +8,7 @@ cd "$(dirname "$0")/../.."
 # is, while curl and coreutils still need the conversion (/dev/null, $WORK).
 docker() { MSYS_NO_PATHCONV=1 command docker "$@"; }
 
-TAG=${TAG:-tracksmith:dev}
+TAG=${TAG:-taskmoor:dev}
 ID=$$
 PROJECT=ts-drill-$ID
 PORT=18095
@@ -17,13 +17,13 @@ WORK=$(mktemp -d)
 HOST_WORK=$WORK
 command -v cygpath >/dev/null 2>&1 && HOST_WORK=$(cygpath -w "$WORK")
 cleanup() {
-  (cd deploy/compose && POSTGRES_PASSWORD=x TRACKSMITH_IMAGE=$TAG docker compose -p "$PROJECT" down -v >/dev/null 2>&1) || true
+  (cd deploy/compose && POSTGRES_PASSWORD=x TASKMOOR_IMAGE=$TAG docker compose -p "$PROJECT" down -v >/dev/null 2>&1) || true
   rm -rf "$WORK"
 }
 trap cleanup EXIT
 
-compose() { (cd deploy/compose && POSTGRES_PASSWORD=drill-$ID TRACKSMITH_IMAGE=$TAG TRACKSMITH_PORT=$PORT TRACKSMITH_SETUP_TOKEN=drill-token-0123456789 docker compose -p "$PROJECT" "$@"); }
-app() { docker exec -e TRACKSMITH_SETUP_TOKEN=drill-token-0123456789 "$PROJECT-tracksmith-1" "$@"; }
+compose() { (cd deploy/compose && POSTGRES_PASSWORD=drill-$ID TASKMOOR_IMAGE=$TAG TASKMOOR_PORT=$PORT TASKMOOR_SETUP_TOKEN=drill-token-0123456789 docker compose -p "$PROJECT" "$@"); }
+app() { docker exec -e TASKMOOR_SETUP_TOKEN=drill-token-0123456789 "$PROJECT-taskmoor-1" "$@"; }
 # GNU grep stops reading at the first match when its output goes to /dev/null, and curl then
 # fails with a write error (exit 23), so the setup state is read into a variable instead.
 expect_setup() {
@@ -36,7 +36,7 @@ expect_setup() {
 }
 wait_ready() {
   for _ in $(seq 1 120); do curl -fsS "http://127.0.0.1:$PORT/ready" >/dev/null 2>&1 && return 0; sleep 1; done
-  docker logs "$PROJECT-tracksmith-1" 2>&1 | tail -20; return 1
+  docker logs "$PROJECT-taskmoor-1" 2>&1 | tail -20; return 1
 }
 
 echo "== start and set up"
@@ -51,7 +51,7 @@ echo "tables: $(grep -c ':' "$WORK/before.json")"
 echo "== backup"
 app node cli.mjs backup --out /data/backups/drill | tail -2
 app node cli.mjs check-upgrade | grep -E "^ok +backup"
-docker cp "$PROJECT-tracksmith-1:/data/backups/drill" "$HOST_WORK/backup" >/dev/null
+docker cp "$PROJECT-taskmoor-1:/data/backups/drill" "$HOST_WORK/backup" >/dev/null
 
 echo "== wipe and start empty"
 compose down -v >/dev/null
@@ -61,7 +61,7 @@ expect_setup true
 
 echo "== restore"
 app mkdir -p /data/backups
-docker cp "$HOST_WORK/backup" "$PROJECT-tracksmith-1:/data/backups/drill" >/dev/null
+docker cp "$HOST_WORK/backup" "$PROJECT-taskmoor-1:/data/backups/drill" >/dev/null
 app node cli.mjs restore /data/backups/drill --yes | tail -1
 app node cli.mjs checksum > "$WORK/after.json"
 if diff -q "$WORK/before.json" "$WORK/after.json" >/dev/null; then
