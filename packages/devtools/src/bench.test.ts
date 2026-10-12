@@ -9,6 +9,7 @@ import {
   loadResults,
   measurements,
   parseStem,
+  resultSizes,
 } from './bench';
 
 const query = (p95s: Record<string, number>) => ({
@@ -127,6 +128,12 @@ describe('result files', () => {
     expect(small['query-compiler'].queries[0]?.p95).toBe(1);
     expect(Object.keys(loadResults(dir, '10m'))).toEqual(['authz']);
     expect(loadResults(join(dir, 'missing'))).toEqual({});
+    // A baseline read at the sizes of the current results, spike by spike.
+    expect(resultSizes(dir)).toEqual({ 'query-compiler': '1m' });
+    const matched = loadResults(dir, { 'query-compiler': '200k' }) as {
+      'query-compiler': { queries: { p95: number }[] };
+    };
+    expect(matched['query-compiler'].queries[0]?.p95).toBe(1);
   });
 
   it('render a report with the problems listed', () => {

@@ -150,27 +150,49 @@ export function parseStem(stem: string): { spike: string; size?: string } {
 }
 
 /**
- * Reads the result files of a directory. Sized spikes keep only the requested size (or, with no
- * size given, the largest present), so one directory can hold several dataset sizes.
+ * The size each spike's result file would be chosen at: one size for every spike, a size per
+ * spike (so a baseline is read at the sizes the current results have), or, with nothing given,
+ * the largest present.
  */
-export function loadResults(dir: string, size?: string): Record<string, unknown> {
-  if (!existsSync(dir)) return {};
-  const out: Record<string, unknown> = {};
-  const sized = new Map<string, { size: string; stem: string }>();
+export type SizeChoice = string | Record<string, string | undefined> | undefined;
+
+function chooseFiles(dir: string, size: SizeChoice): Map<string, { size?: string; stem: string }> {
+  const chosen = new Map<string, { size?: string; stem: string }>();
+  if (!existsSync(dir)) return chosen;
   for (const file of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
     const stem = file.slice(0, -'.json'.length);
     const { spike, size: fileSize } = parseStem(stem);
     if (!fileSize) {
-      out[spike] = JSON.parse(readFileSync(join(dir, file), 'utf8'));
+      chosen.set(spike, { stem });
       continue;
     }
-    if (size && fileSize !== size) continue;
-    const current = sized.get(spike);
-    if (!current || sizeBytes(fileSize) > sizeBytes(current.size))
-      sized.set(spike, { size: fileSize, stem });
+    const wanted = typeof size === 'string' ? size : size?.[spike];
+    if (wanted && fileSize !== wanted) continue;
+    const current = chosen.get(spike);
+    if (!current?.size || sizeBytes(fileSize) > sizeBytes(current.size)) {
+      chosen.set(spike, { size: fileSize, stem });
+    }
   }
-  for (const [spike, { stem }] of sized) {
+  return chosen;
+}
+
+/**
+ * Reads the result files of a directory. Sized spikes keep only the chosen size (see
+ * SizeChoice), so one directory can hold several dataset sizes.
+ */
+export function loadResults(dir: string, size?: SizeChoice): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [spike, { stem }] of chooseFiles(dir, size)) {
     out[spike] = JSON.parse(readFileSync(join(dir, `${stem}.json`), 'utf8'));
+  }
+  return out;
+}
+
+/** The sizes `loadResults` picks per sized spike, to read a baseline at the same sizes. */
+export function resultSizes(dir: string, size?: SizeChoice): Record<string, string | undefined> {
+  const out: Record<string, string | undefined> = {};
+  for (const [spike, { size: chosen }] of chooseFiles(dir, size)) {
+    if (chosen) out[spike] = chosen;
   }
   return out;
 }

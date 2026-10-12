@@ -7,7 +7,13 @@
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { checkBudgets, checkRegressions, formatBenchReport, loadResults } from '../bench';
+import {
+  checkBudgets,
+  checkRegressions,
+  formatBenchReport,
+  loadResults,
+  resultSizes,
+} from '../bench';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const { values } = parseArgs({
@@ -20,7 +26,8 @@ const { values } = parseArgs({
 });
 
 const results = loadResults(values.results, values.size);
-const baseline = loadResults(values.baseline, values.size);
+// The baseline is read at the sizes the results have, so a 10M run is never judged against 200k.
+const baseline = loadResults(values.baseline, resultSizes(values.results, values.size));
 const problems = [
   ...checkBudgets(results),
   ...checkRegressions(results, baseline, Number(values.tolerance)),
