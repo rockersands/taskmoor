@@ -58,6 +58,7 @@ another server instead (CI does this).
 | `apps/web` | Static React frontend (Vite); Playwright tests in `apps/web/e2e` |
 | `packages/ai` | AI gateway: `AiGateway`, provider adapters (Anthropic API, Bedrock, Vertex, Foundry, OpenAI-compatible), feature registry |
 | `packages/db` | Kysely client, `Database` types, forward-only migrations, `useMigratedDatabase()` |
+| `packages/richtext` | Document schema (Tiptap/ProseMirror) and lossless conversion to and from the Jira-compatible document format |
 | `packages/spikes` | Throwaway benchmarks for ADRs (`pnpm spike`); results in `docs/spikes` |
 | `packages/testkit` | Embedded Postgres harness, per-file databases, `stableJson`, fast-check defaults |
 | `tools/verify` | `pnpm verify` and its Vitest reporter |

@@ -1,0 +1,59 @@
+{
+  "spike": "queue",
+  "at": "2026-10-12T08:00:15.845Z",
+  "jobs": 20000,
+  "workers": 8,
+  "batch": 25,
+  "durable": true,
+  "machine": {
+    "cpu": "AMD Ryzen 7 3700X 8-Core Processor",
+    "cores": 16,
+    "postgres": "16.14"
+  },
+  "candidates": [
+    {
+      "id": "inhouse",
+      "enqueueSeconds": 0.453,
+      "drainSeconds": 1.11,
+      "jobsPerSecond": 18018,
+      "latency": {
+        "name": "inhouse",
+        "runs": 20000,
+        "p50": 841,
+        "p95": 1150,
+        "max": 1203,
+        "mean": 868.74
+      },
+      "wake": {
+        "name": "inhouse wake",
+        "runs": 200,
+        "p50": 7,
+        "p95": 10,
+        "max": 45,
+        "mean": 7.81
+      }
+    },
+    {
+      "id": "graphile",
+      "enqueueSeconds": 0.756,
+      "drainSeconds": 14.629,
+      "jobsPerSecond": 1367,
+      "latency": {
+        "name": "graphile",
+        "runs": 20000,
+        "p50": 7780,
+        "p95": 14010,
+        "max": 14804,
+        "mean": 7789.71
+      },
+      "wake": {
+        "name": "graphile wake",
+        "runs": 200,
+        "p50": 8,
+        "p95": 12,
+        "max": 28,
+        "mean": 8
+      }
+    }
+  ]
+}

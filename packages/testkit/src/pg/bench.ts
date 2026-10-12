@@ -3,6 +3,8 @@ import { sizeLabel } from '../gen/model';
 import { databaseUrl, withAdminClient } from './databases';
 import { type PgServer, startEmbeddedPostgres } from './server';
 
+export { startEmbeddedPostgres } from './server';
+
 /** Settings for loading and benchmarking on one machine; the data can always be regenerated. */
 export const BENCH_SETTINGS = {
   shared_buffers: '1GB',

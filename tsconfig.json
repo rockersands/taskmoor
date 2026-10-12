@@ -14,6 +14,9 @@
       "path": "packages/devtools"
     },
     {
+      "path": "packages/richtext"
+    },
+    {
       "path": "packages/spikes"
     },
     {

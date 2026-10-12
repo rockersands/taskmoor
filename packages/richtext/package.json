@@ -1,0 +1,24 @@
+{
+  "name": "@tracksmith/richtext",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Rich text model: the ProseMirror schema shared by editor and server, and lossless conversion to and from the Jira-compatible document format.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-mention": "3.31.4",
+    "@tiptap/extension-table": "3.31.4",
+    "@tiptap/extension-task-item": "3.31.4",
+    "@tiptap/extension-task-list": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4"
+  },
+  "devDependencies": {
+    "@tracksmith/testkit": "workspace:*"
+  }
+}
