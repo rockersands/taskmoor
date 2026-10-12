@@ -48,7 +48,7 @@ export async function serverMajor(db: Kysely<Database>): Promise<number> {
  * Backup and restore (OPS-008, OPS-009, M0-030): the database through pg_dump's custom format,
  * the files directory as a copy, the non-secret configuration as JSON, and a manifest with
  * checksums so a restore can refuse a damaged archive. Scheduling, encryption, remote targets
- * and single-space restore come in M1.
+ * and single-track restore come in M1.
  */
 export interface BackupManifest {
   version: string;

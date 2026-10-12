@@ -17,12 +17,12 @@ admins (EXT-004), signed packages with scopes (EXT-005), storage (EXT-006) and o
 
 - **Server extensions are WebAssembly modules run by Extism** (`@extism/extism`,
   BSD-3-Clause) in the worker role, with host functions scoped by the capabilities the package
-  declares: item and space API as the extension's identity, key-value and SQL storage in the
+  declares: ticket and track API as the extension's identity, key-value and SQL storage in the
   extension's own schema, outbound HTTP to an allowlist, logging. CPU time, memory and
   wall-clock limits apply per invocation; a failing extension is disabled after repeated
   faults, never crashes the host.
 - **Extension points** are typed events and hooks in `packages/extensions`: field types with
-  query operators, workflow validators, conditions and post functions, query functions,
+  query operators, workflow checks, guards and effects, query functions,
   automation actions, REST endpoints under `/api/ext/<id>`, scheduled jobs, UI slots.
 - **UI extensions are iframes** with a strict CSP, a `postMessage` bridge that exposes only
   permitted API calls, design tokens for theming and `@taskmoor/extension-sdk`.
@@ -30,7 +30,7 @@ admins (EXT-004), signed packages with scopes (EXT-005), storage (EXT-006) and o
   runtime (QuickJS in WASM), so scripts and packaged extensions share one sandbox and one set of
   limits.
 - **Packages** are signed archives with a manifest (scopes, egress domains, points); admins
-  approve scopes on install; offline install from a file; per-space enablement; uninstall with
+  approve scopes on install; offline install from a file; per-track enablement; uninstall with
   data removal drops the schema.
 - **Observability** per extension: invocations, errors with stack traces, latency, resource
   use, log lines (EXT-007).

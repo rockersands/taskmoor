@@ -19,7 +19,7 @@ export const LINT_CASES: ConformanceCase[] = [
     title: 'A status no transition leads to is unreachable',
     workflow: {
       ...W1,
-      statuses: [...W1.statuses, { id: 'limbo', name: 'Limbo', category: 'in-progress' }],
+      statuses: [...W1.statuses, { id: 'limbo', name: 'Limbo', stage: 'active' }],
       transitions: [
         ...W1.transitions,
         { id: 'leave-limbo', name: 'Leave', from: ['limbo'], to: 'open' },
@@ -33,7 +33,7 @@ export const LINT_CASES: ConformanceCase[] = [
     title: 'A transition from a status to itself does not make it reachable',
     workflow: {
       ...W1,
-      statuses: [...W1.statuses, { id: 'limbo', name: 'Limbo', category: 'in-progress' }],
+      statuses: [...W1.statuses, { id: 'limbo', name: 'Limbo', stage: 'active' }],
       transitions: [
         ...W1.transitions,
         { id: 'spin', name: 'Spin', from: ['limbo'], to: 'limbo' },
@@ -50,9 +50,9 @@ export const LINT_CASES: ConformanceCase[] = [
     boards: [{ id: 'main', columns: allColumns }],
     expect: { warnings: [] },
   }),
-  c('no-exit-outside-done', {
+  c('no-exit-outside-closed-stage', {
     kind: 'lint',
-    title: 'A status outside the Done category with no exit is flagged',
+    title: 'A status outside the closed stage with no exit is flagged',
     workflow: {
       ...W1,
       transitions: W1.transitions.filter((t) => t.id !== 'cancel' && t.id !== 'review'),
@@ -66,9 +66,9 @@ export const LINT_CASES: ConformanceCase[] = [
       ],
     },
   }),
-  c('done-category-may-have-no-exit', {
+  c('closed-stage-may-have-no-exit', {
     kind: 'lint',
-    title: 'A Done-category status needs no exit',
+    title: 'A status in the closed stage needs no exit',
     workflow: {
       ...W1,
       transitions: W1.transitions.filter((t) => t.id !== 'reopen' && t.id !== 'cancel'),
@@ -127,24 +127,24 @@ export const LINT_CASES: ConformanceCase[] = [
   }),
   c('always-false-is-unsatisfiable', {
     kind: 'lint',
-    title: 'An always-false condition is one no user can satisfy',
-    workflow: withTransition(W1, 'start', { conditions: { type: 'always-false' } }),
+    title: 'An always-false guard is one no user can satisfy',
+    workflow: withTransition(W1, 'start', { guards: { type: 'always-false' } }),
     boards: [{ id: 'main', columns: allColumns }],
-    expect: { warnings: [{ kind: 'unsatisfiable-condition', at: 'start' }] },
+    expect: { warnings: [{ kind: 'unsatisfiable-guard', at: 'start' }] },
   }),
   c('always-false-inside-all', {
     kind: 'lint',
     title: 'Always false inside an all group makes the whole tree unsatisfiable',
     workflow: withTransition(W1, 'start', {
-      conditions: { all: [{ type: 'only-assignee' }, { type: 'always-false' }] },
+      guards: { all: [{ type: 'only-assignee' }, { type: 'always-false' }] },
     }),
-    expect: { warnings: [{ kind: 'unsatisfiable-condition', at: 'start' }] },
+    expect: { warnings: [{ kind: 'unsatisfiable-guard', at: 'start' }] },
   }),
   c('always-false-inside-any-is-fine', {
     kind: 'lint',
     title: 'Always false as one branch of an any group is satisfiable',
     workflow: withTransition(W1, 'start', {
-      conditions: { any: [{ type: 'only-assignee' }, { type: 'always-false' }] },
+      guards: { any: [{ type: 'only-assignee' }, { type: 'always-false' }] },
     }),
     expect: { warnings: [] },
   }),
@@ -152,28 +152,28 @@ export const LINT_CASES: ConformanceCase[] = [
     kind: 'lint',
     title: 'An any group of only always-false branches is unsatisfiable',
     workflow: withTransition(W1, 'start', {
-      conditions: { any: [{ type: 'always-false' }, { all: [{ type: 'always-false' }] }] },
+      guards: { any: [{ type: 'always-false' }, { all: [{ type: 'always-false' }] }] },
     }),
-    expect: { warnings: [{ kind: 'unsatisfiable-condition', at: 'start' }] },
+    expect: { warnings: [{ kind: 'unsatisfiable-guard', at: 'start' }] },
   }),
   c('contradictory-number-bounds', {
     kind: 'lint',
     title: 'Contradictory number comparisons on one field are unsatisfiable',
     workflow: withTransition(W1, 'start', {
-      conditions: {
+      guards: {
         all: [
           { type: 'compare-number', field: 'estimate', op: '>', value: 5 },
           { type: 'compare-number', field: 'estimate', op: '<', value: 3 },
         ],
       },
     }),
-    expect: { warnings: [{ kind: 'unsatisfiable-condition', at: 'start' }] },
+    expect: { warnings: [{ kind: 'unsatisfiable-guard', at: 'start' }] },
   }),
   c('compatible-number-bounds', {
     kind: 'lint',
     title: 'Compatible number comparisons are fine',
     workflow: withTransition(W1, 'start', {
-      conditions: {
+      guards: {
         all: [
           { type: 'compare-number', field: 'estimate', op: '>=', value: 3 },
           { type: 'compare-number', field: 'estimate', op: '<=', value: 5 },
@@ -186,7 +186,7 @@ export const LINT_CASES: ConformanceCase[] = [
     kind: 'lint',
     title: 'Bounds on different fields never contradict',
     workflow: withTransition(W1, 'start', {
-      conditions: {
+      guards: {
         all: [
           { type: 'compare-number', field: 'a', op: '>', value: 5 },
           { type: 'compare-number', field: 'b', op: '<', value: 3 },
@@ -199,17 +199,17 @@ export const LINT_CASES: ConformanceCase[] = [
     kind: 'lint',
     title: 'Every defect is reported, each by name',
     workflow: {
-      ...withTransition(W1, 'start', { conditions: { type: 'always-false' } }),
-      statuses: [...W1.statuses, { id: 'limbo', name: 'Limbo', category: 'in-progress' }],
+      ...withTransition(W1, 'start', { guards: { type: 'always-false' } }),
+      statuses: [...W1.statuses, { id: 'limbo', name: 'Limbo', stage: 'active' }],
       // Without the global Cancel, Limbo has no exit and Cancelled is no longer reachable.
       transitions: withTransition(W1, 'start', {
-        conditions: { type: 'always-false' },
+        guards: { type: 'always-false' },
       }).transitions.filter((t) => t.id !== 'cancel'),
     } satisfies WorkflowDef,
     boards: [{ id: 'main', columns: allColumns }],
     expect: {
       warnings: [
-        { kind: 'unsatisfiable-condition', at: 'start' },
+        { kind: 'unsatisfiable-guard', at: 'start' },
         { kind: 'unreachable-status', at: 'limbo' },
         { kind: 'no-exit', at: 'limbo' },
         { kind: 'unmapped-on-board', at: 'main:limbo' },

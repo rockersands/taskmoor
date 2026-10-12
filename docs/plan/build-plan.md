@@ -6,7 +6,7 @@
 
 **Conclusion.** Claude can build Taskmoor alone, using the repository as its memory and CI as its judge, if the user supplies accounts, compute, a usage budget, legal sign-offs and about half a day of acceptance testing per release. The build follows the research's order: the Data Center exit core first (release 1.0), breadth second.
 
-- **What gets built:** one product covering Jira Software, business spaces, Jira Service Management with on-call and Assets, Product Discovery, Align-style portfolio, Automation, JQL, a Jira-compatible REST API and AI features that run on the admin's own AI key. Every premium feature is free.
+- **What gets built:** one product covering Jira Software, business tracks, Jira Service Management with on-call and Assets, Product Discovery, Align-style portfolio, Automation, JQL, a Jira-compatible REST API and AI features that run on the admin's own AI key. Every premium feature is free.
 - **How it ships:** a **Builder** turns one form into two packages: a backend kit the user runs on a server (Compose with PostgreSQL and automatic HTTPS) and a static frontend kit that can be uploaded to any web host and works at once.
 - **Order:** M0 foundation; M1 Jira Software parity plus DC-exit core (1.0); M2 enterprise, automation and service desk (2.0); M3 ITSM, operations and CMDB (3.0); M4 discovery, portfolio, quality and ecosystem (4.0).
 - **Effort (estimate):** about 2,500 session-sized tasks and 3,000–3,800 sessions, producing about 700K lines of application code plus a similar volume of tests; about 230 person-years in human terms.
@@ -20,21 +20,21 @@
 
 | Area | What ships | When |
 |---|---|---|
-| Jira Software | Spaces, work types, unlimited hierarchy, typed fields with contexts and formulas, workflows with conditions, validators, post functions, boards, backlog, sprints, timeline, versions, dashboards, agile reports | M1 |
+| Jira Software | Tracks, ticket types, unlimited hierarchy, typed fields with contexts and formulas, workflows with guards, checks, effects, boards, backlog, sprints, timeline, releases, dashboards, agile reports | M1 |
 | Search | Native query language plus a JQL dialect (old and new vocabulary, history operators on every field) | M1 |
-| Business spaces | List, calendar, timeline, summary (M1); forms, approvals, templates (M2) | M1–M2 |
-| Admin and security (Guard) | SSO, SCIM, LDAP, 2FA, IP allowlists on the API, scoped tokens, audit, security levels (M1); BYOK, classification, SIEM, sandbox, HA (M2) | M1–M3 |
+| Business tracks | List, calendar, timeline, summary (M1); forms, approvals, templates (M2) | M1–M2 |
+| Admin and security (Guard) | SSO, SCIM, LDAP, 2FA, IP allowlists on the API, scoped tokens, audit, visibility levels (M1); BYOK, classification, SIEM, sandbox, HA (M2) | M1–M3 |
 | APIs and migration | Native REST, Jira-compatible shim, signed webhooks, MCP; DC XML and Cloud importer, CSV, full export | M1 |
-| AI (Rovo equivalent) | Summaries, NL to query, assisted creation, duplicates (M1); triage, NL automation, agents, semantic search (M2); virtual agent, incident AI (M3); insight clustering, customer-service AI (M4) | M1–M4 |
-| Automation and planning | Unmetered automation, Plans, approvals, capacity, hierarchy grid | M2 |
-| Service desk core | Portal, request types, queues, SLAs, email, forms, CSAT, KB basics | M2 |
+| AI (Rovo equivalent) | Summaries, NL to query, assisted creation, duplicates (M1); triage, NL automation, agents, semantic search (M2); virtual agent, incident AI (M3); evidence clustering, customer-service AI (M4) | M1–M4 |
+| Automation and planning | Unmetered automation, roadmaps, approvals, capacity, hierarchy grid | M2 |
+| Service desk core | Help portal, request forms, queues, SLAs, email, forms, CSAT, KB basics | M2 |
 | ITSM, Opsgenie, Assets | Incident, problem, change, alerting, on-call, heartbeats, SMS and voice, status pages; unmetered CMDB with discovery | M3 |
-| Discovery and Align | Ideas, insights, formulas, public idea portal; OKRs, PI planning, SAFe, WSJF, budgets | M4 |
+| Discovery and Align | Ideas, evidence, formulas, public idea portal; OKRs, PI planning, SAFe, WSJF, budgets | M4 |
 | Marketplace categories | Workflow functions (M1); scripting, time tracking, hierarchy, OData BI, dev integrations (M2); OLAP, test management (M4) | M1–M4 |
 
 **Devices:** desktop first. Every screen is designed and polished for desktop browsers; the same frontend stays responsive and usable on phones and tablets (navigation drawer, touch-sized targets, touch drag and drop, no sideways scrolling), but desktop wins any trade-off (ADR-033). Native mobile apps remain an M3 item.
 
-**Beyond parity:** item open under 100 ms; one configuration model, with legacy schemes mapped only by the importer, as Atlassian is itself simplifying ([Atlassian](https://support.atlassian.com/jira-cloud-administration/docs/what-are-field-configurations-and-field-configuration-schemes/)); no metering; no paywalls.
+**Beyond parity:** ticket open under 100 ms; one configuration model, with legacy schemes mapped only by the importer, as Atlassian is itself simplifying ([Atlassian](https://support.atlassian.com/jira-cloud-administration/docs/what-are-field-configurations-and-field-configuration-schemes/)); no metering; no paywalls.
 
 **Integrated, not rebuilt:** a Confluence-class wiki (link and embed XWiki, Outline, BookStack or Wiki.js; only service-desk KB articles are built, because a wiki is a separate product and the clearest route to the scope sprawl that sank Huly); chat (Slack, Teams, Mattermost, Matrix); a Backstage plugin instead of a Compass clone; source control, CI, BI tools, identity providers, SMTP, SMS, voice and LLMs as pluggable integrations. Out of scope: Loom-style video, Atlassian Talent, cross-tool enterprise search, running Forge or Connect apps.
 
@@ -56,7 +56,7 @@ Self-hosting is a release gate. The Builder (section 5) writes the connection se
 | Footprint | idle ≤ 1.5 GB RAM; 500 users on 4 vCPU / 8 GB within budgets | k6 load tests |
 | Air-gap | zero outbound connections by default; signed offline bundle | no-egress VM test |
 | Upgrades | 3 minor versions in one step, 0 manual steps; automatic backup; rollback; kits regenerated from the saved project file | upgrade matrix |
-| Backups | daily by default; one-command restore; 1M items < 30 min; 30-day trash | restore drill |
+| Backups | daily by default; one-command restore; 1M tickets < 30 min; 30-day trash | restore drill |
 | Health | /health, /ready, admin page (DB, queue lag, disk, backup age, certificates) | e2e |
 | Platforms | amd64, arm64; Ubuntu, Debian, RHEL; Docker, Podman, Kubernetes | nightly matrix |
 
@@ -100,7 +100,7 @@ Published sizing (estimate until M1 load tests replace it): up to 50 users on 2 
 
 - **Lanes:** each lane is a session in its own git worktree, one branch per task, on tasks from different modules. A coordinator session assigns lanes, merges green PRs in dependency order and resolves conflicts. 1 lane in M0, 3 from M1, more only while CI time and conflicts stay low.
 - **Subagents** explore code, write spec-derived tests without seeing the implementation, review and draft docs. The **Workflow tool** is used only after the user opts in, for batches of independent items (query functions, importer mappers, translations, the parity audit).
-- **Scheduled runs:** work sessions in hours the user approves; nightly full CI, benchmarks at 1M and 10M items (30M weekly), install, upgrade and cross-origin matrices, security scans and an AI smoke test. Failures become top-priority tasks.
+- **Scheduled runs:** work sessions in hours the user approves; nightly full CI, benchmarks at 1M and 10M tickets (30M weekly), install, upgrade and cross-origin matrices, security scans and an AI smoke test. Failures become top-priority tasks.
 - **Reporting:** a short weekly report (tasks done versus estimate, CI health, performance, risks, decisions needed with dates) in Drive; per milestone, a release package in Drive, a candidate on the demo host and a 1–2 hour acceptance script; urgent items as GitHub issues labelled `needs-owner`.
 
 ### Consistency across hundreds of sessions
@@ -154,10 +154,10 @@ Claude records these decisions as ADRs in M0; starred ones are confirmed by spik
 ### AI provider gateway (ADR-028, shipped in M1)
 
 - **One provider interface;** each adapter uses its vendor's official SDK. Anthropic Claude is first class through `@anthropic-ai/sdk`, plus `AnthropicBedrockMantle` (`@anthropic-ai/bedrock-sdk`), `AnthropicVertex` (`@anthropic-ai/vertex-sdk`) and `AnthropicFoundry` (`@anthropic-ai/foundry-sdk`) for existing cloud accounts. Other providers get adapters; an OpenAI-compatible adapter covers Ollama and vLLM for air-gapped installs.
-- **Admin "AI settings":** choose provider; paste a key (or supply `ANTHROPIC_API_KEY` or the backend kit's `.env`, imported into encrypted storage on first boot); "test connection" lists live models from the Models API; model and effort per feature; workspace and space switches; spend limits and usage dashboard.
+- **Admin "AI settings":** choose provider; paste a key (or supply `ANTHROPIC_API_KEY` or the backend kit's `.env`, imported into encrypted storage on first boot); "test connection" lists live models from the Models API; model and effort per feature; workspace and track switches; spend limits and usage dashboard.
 - **Models:** `claude-opus-5-5` for every feature by default; admins may pick `claude-sonnet-5-5` or `claude-haiku-5-5` per feature. Exact IDs, no date suffixes. Effort is set per feature (low for classification and summaries, medium for drafting, high for agents), because Opus 5.5 defaults to medium and its thinking cannot be disabled.
 - **Request policy:** streaming for long outputs; structured outputs (`output_config.format`) for triage, query and classification; strict tools with `tool_choice` auto (forced tool choice returns a 400 on Opus 5.5 and Sonnet 5.5); prompt caching with a stable system prompt and tool list first, verified by `usage.cache_read_input_tokens`; Message Batches (about 50% cheaper) for bulk jobs; `stop_reason: "refusal"` handled with server-side fallbacks where offered and SDK fallback middleware elsewhere; typed retries for 429 and 5xx; optional `inference_geo`; compaction and task budgets for long agent runs.
-- **Keys and privacy:** keys envelope-encrypted (kit master key, KMS or Vault), write-only in the UI (last 4 characters shown), never sent to browsers or logs, never placed in the frontend kit, rotated without downtime. An AI audit log records who, feature, model, tokens and cost, not content. Per-space off switch, field redaction, a plain notice of what leaves the server, and a strict (HIPAA) mode that keeps AI off unless the admin opts in; Atlassian's HIPAA customers must switch AI off entirely ([Atlassian](https://support.atlassian.com/organization-administration/docs/the-hipaa-implementation-guide)).
+- **Keys and privacy:** keys envelope-encrypted (kit master key, KMS or Vault), write-only in the UI (last 4 characters shown), never sent to browsers or logs, never placed in the frontend kit, rotated without downtime. An AI audit log records who, feature, model, tokens and cost, not content. Per-track off switch, field redaction, a plain notice of what leaves the server, and a strict (HIPAA) mode that keeps AI off unless the admin opts in; Atlassian's HIPAA customers must switch AI off entirely ([Atlassian](https://support.atlassian.com/organization-administration/docs/the-hipaa-implementation-guide)).
 - **No key, no AI controls.** Duplicates and semantic search use a bundled local embedding model with pgvector.
 
 ### Builder and two-kit delivery (ADR-031, ADR-032, shipped in M1)
@@ -180,7 +180,7 @@ packages/  core, workflow, query, agile, reporting, notify, iam, sync, richtext,
 deploy/    kits, allinone, helm, airgap      docs/ backlog/ bench/ e2e/ tools/
 ```
 
-**Core entities:** workspace; user, group, role, service account, token; space; work type and hierarchy level; work item; field definition, context, scheme, screen; workflow, status, transition, rule; board, sprint, version, component; filter, subscription, dashboard, gadget; comment, worklog, attachment, link, watcher, vote; permission scheme, grant, security level; audit event; change-log entry; sync-log entry; notification; webhook subscription; registered frontend origin; AI provider config and usage record; import job and external-ID map.
+**Core entities:** workspace; user, group, role, service account, token; track; ticket type and hierarchy level; ticket; field definition, context, field rules, layout; workflow, status, transition, rule; board, sprint, release, area; saved search, subscription, dashboard, widget; comment, time entry, attachment, link, follower, vote; access policy, grant, visibility level; audit event; change-log entry; sync-log entry; notification; webhook subscription; registered frontend origin; AI provider config and usage record; import job and external-ID map.
 
 **Boundaries:** each package owns its tables and exposes a typed service interface; others call it or consume domain events, never its tables. The Jira shim and importer are adapters over public services, removable without touching the core. Only `ai-gateway` can decrypt AI keys.
 
@@ -197,11 +197,11 @@ deploy/    kits, allinone, helm, airgap      docs/ backlog/ bench/ e2e/ tools/
 
 Sessions are tasks × 1.2–1.5 for rework and review fixes. KLOC ranges: M0 5–12, M1 90–120, M2 145–205, M3 180–260, M4 160–240.
 
-**M0 Foundation.** Goal: repo, governance, CI, clean-room protocol, spikes, AI gateway design, backend install skeleton. Gate: ADR-001 to 032 accepted; spikes meet budgets (query p95 < 300 ms and field edit p95 < 50 ms at 10M items, permission check p95 < 10 ms); tests green on embedded Postgres locally and PostgreSQL 16 in CI; scans and nightly benchmarks running; skeleton install < 10 min on 5 OS images. User provides: GitHub access, Drive folder, benchmark runner, budget, licence confirmation, counsel review. Acceptance: the user reads the first weekly report and tries the skeleton on a CI-built VM.
+**M0 Foundation.** Goal: repo, governance, CI, clean-room protocol, spikes, AI gateway design, backend install skeleton. Gate: ADR-001 to 032 accepted; spikes meet budgets (query p95 < 300 ms and field edit p95 < 50 ms at 10M tickets, permission check p95 < 10 ms); tests green on embedded Postgres locally and PostgreSQL 16 in CI; scans and nightly benchmarks running; skeleton install < 10 min on 5 OS images. User provides: GitHub access, Drive folder, benchmark runner, budget, licence confirmation, counsel review. Acceptance: the user reads the first weekly report and tries the skeleton on a CI-built VM.
 
-**M1 Jira Software parity and DC-exit core (1.0).** Goal: a team leaves Jira DC or Cloud with data, filters, scripts and integrations intact, deployed from Builder kits. Scope: CORE, WF, QRY, AGL, RPT, NTF, API, IMP, IAM, OPS (Builder), NFR, AI v1, worklogs. Gate: query conformance 100%; compat API suite 100% for in-scope endpoints and 3 client libraries pass; synthetic 1M-issue DC backup imported at ≥ 99.9% entity fidelity in < 4 h; query p95 < 300 ms at 10M items; item open < 100 ms warm; 5,000-card board < 1 s; the Builder emits both kits, `install.sh` brings the backend kit up on a fresh VM, and the frontend zip on a plain static server at another origin passes the full e2e suite (login, create item, board, query search, realtime update) with zero manual configuration; fresh VM to working app < 15 min; an N-1 bundle still works; 3-minor upgrade with 0 manual steps; AI evals met (NL to query ≥ 85% exact-result match) and AI hidden with no key; axe 0 serious; ASVS L2 complete; 0 high or critical findings. User provides: Docker or a VPS, test domain and static host, AI key with spend cap, design partners, signing keys, counsel review of shim and importer. Acceptance: the user and at least one design partner (target three) deploy the beta from the Builder and import their own data.
+**M1 Jira Software parity and DC-exit core (1.0).** Goal: a team leaves Jira DC or Cloud with data, filters, scripts and integrations intact, deployed from Builder kits. Scope: CORE, WF, QRY, AGL, RPT, NTF, API, IMP, IAM, OPS (Builder), NFR, AI v1, time entries. Gate: query conformance 100%; compat API suite 100% for in-scope endpoints and 3 client libraries pass; synthetic 1M-issue DC backup imported at ≥ 99.9% entity fidelity in < 4 h; query p95 < 300 ms at 10M tickets; ticket open < 100 ms warm; 5,000-card board < 1 s; the Builder emits both kits, `install.sh` brings the backend kit up on a fresh VM, and the frontend zip on a plain static server at another origin passes the full e2e suite (login, create ticket, board, query search, realtime update) with zero manual configuration; fresh VM to working app < 15 min; an N-1 bundle still works; 3-minor upgrade with 0 manual steps; AI evals met (NL to query ≥ 85% exact-result match) and AI hidden with no key; axe 0 serious; ASVS L2 complete; 0 high or critical findings. User provides: Docker or a VPS, test domain and static host, AI key with spend cap, design partners, signing keys, counsel review of shim and importer. Acceptance: the user and at least one design partner (target three) deploy the beta from the Builder and import their own data.
 
-**M2 Enterprise, automation and service-desk core (2.0).** Scope: AUT, PLN, TIM, EXT, OData, DEV, AI v2 and agents, SD, KB basics, HA, sandbox, BYOK, SIEM, offline PWA, single-binary backend, other importers. Gate: automation and SLA suites 100%; Plans golden tests; HA chaos recovery < 60 s with 0 lost writes; WASM sandbox suite clean; injection red-team 0 unauthorised writes; budgets at 30M items; pen test findings closed. Acceptance: a service-desk pilot.
+**M2 Enterprise, automation and service-desk core (2.0).** Scope: AUT, PLN, TIM, EXT, OData, DEV, AI v2 and agents, SD, KB basics, HA, sandbox, BYOK, SIEM, offline PWA, single-binary backend, other importers. Gate: automation and SLA suites 100%; roadmaps golden tests; HA chaos recovery < 60 s with 0 lost writes; WASM sandbox suite clean; injection red-team 0 unauthorised writes; budgets at 30M tickets; pen test findings closed. Acceptance: a service-desk pilot.
 
 **M3 ITSM, operations and CMDB (3.0).** Scope: ITSM, ONC, STS, CMDB, KB, AI (virtual agent, incident summaries, alert grouping), MOB. Gate: alert-to-page p95 < 30 s via provider sandboxes; escalation suite incl. DST 100%; CMDB 1M-object query p95 < 500 ms; status page 10k requests/s from cache; store builds approved; chaos and restore drills pass. Acceptance: an on-call rota trial.
 
@@ -219,7 +219,7 @@ CI decides "done"; tests come from the spec, not the code.
 | Importer golden fixtures: synthetic DC XML and Cloud API recordings from public format docs; design-partner fidelity reports | Migration fidelity | nightly; beta |
 | Property tests and fuzzing (parsers, permissions, formulas, WASM host) | Invariants, no crashes | nightly |
 | Mutation testing on core modules | Tests catch faults | weekly |
-| Benchmarks at 1M, 10M, 30M items | Performance budgets | nightly, weekly |
+| Benchmarks at 1M, 10M, 30M tickets | Performance budgets | nightly, weekly |
 | Upgrades N-3 to N with data; N-1 frontend against N backend | Zero manual steps, no skew breakage | every release |
 | Fresh-VM installs (Ubuntu, Debian, RHEL, arm64), air-gap | < 10 min, no egress | nightly |
 | Cross-origin harness: Builder kits, fresh VM, static host on another origin | Zero-config deployment, < 15 min | nightly |
@@ -243,7 +243,7 @@ Contracts and trademarks, not API copyright, set the perimeter. Claude follows t
 7. **Importer** ships inside the product, run by customers with their own backups or tokens; never a Marketplace, Forge or Connect app.
 8. **Real data** only from its owners under written permission; by default Claude sees fidelity reports, not content.
 9. **Licence:** AGPL-3.0 with DCO sign-off, as GitLab chose over a CLA ([GitLab](https://about.gitlab.com/blog/gitlab-switches-to-dco-license/)), plus an always-free charter. Confirmed by the user on 2026-10-12. The GitHub account stays on the free plan, so DCO is enforced by a CI check and local git hooks instead of branch protection.
-10. **Patents:** freedom-to-operate review before source-control integration and chat-to-issue AI ([Google Patents](https://patents.google.com/patent/US12032954)).
+10. **Patents:** freedom-to-operate review before source-control integration and chat-to-ticket AI ([Google Patents](https://patents.google.com/patent/US12032954)).
 11. **Contamination:** remove, rewrite from clean sources, log.
 
 **Lawyer sign-off (Claude prepares each brief):** clean-room protocol and licence (M0); public name clearance (before public release); compatibility shim, use of Atlassian's API descriptions, importer distribution and design-partner data agreements (before the M1 beta); AI data notice (M1); patent FTO (before M2 integrations); hosted-service terms (if any); export-control and FIPS claims (M4). This plan is not legal advice.
@@ -254,7 +254,7 @@ Contracts and trademarks, not API copyright, set the perimeter. Claude follows t
 |---|---|---|
 | Repo `github.com/Rockersands/tracksmith` created, or access authorised (install GitHub CLI and log in, or a token) | Push code, run CI | M0 |
 | Google Drive folder with connector access, or a synced local folder | Reports, docs, release packages | M0 |
-| Benchmark runner (16+ vCPU, 64 GB RAM, 1 TB NVMe) and cloud VM access | 10M-item benchmarks, install matrix | M0 |
+| Benchmark runner (16+ vCPU, 64 GB RAM, 1 TB NVMe) and cloud VM access | 10M-ticket benchmarks, install matrix | M0 |
 | Budget for Claude usage and CI; lane count and scheduled hours | Sets the pace | M0 |
 | Licence confirmation (AGPL-3.0, DCO, charter) | LICENSE file | Done (2026-10-12) |
 | Lawyer sign-offs (section 8) | Legal safety | M0, M1 beta, M2 |
@@ -301,7 +301,7 @@ The full register is risks.csv (22 rows). The most serious:
 - **Tests that mirror code; invented Jira behaviour:** spec-first tests by a separate subagent, mutation testing, sourced specs, design-partner data.
 - **AI leaks, injection and cost:** strict mode, redaction, content treated as data, confirmation before writes, spend caps, red-team suite.
 - **Deployment misconfiguration and version skew:** one Builder form for both kits, signed manifest, install checks for DNS and HTTPS, N-1 compatibility, update banner.
-- **Missing the DC window, scope sprawl, performance at scale:** importer-first scope, hard gates, nightly 10M-item benchmarks.
+- **Missing the DC window, scope sprawl, performance at scale:** importer-first scope, hard gates, nightly 10M-ticket benchmarks.
 
 ## 13. First steps (M0, in order)
 
@@ -319,4 +319,4 @@ The full register is risks.csv (22 rows). The most serious:
 12. M0-012 Security and licence gates, SBOM, Dependabot.
 13. M0-013 Import the requirements spec with IDs.
 14. M0-014 Traceability tool.
-15. M0-015 Synthetic data generator up to 30M items.
+15. M0-015 Synthetic data generator up to 30M tickets.

@@ -2,8 +2,9 @@ import type {
   Actor,
   Channel,
   HistoryEntry,
-  ItemState,
+  Stage,
   StatusPermissions,
+  TicketState,
   TransitionBlocked,
   TransitionRequest,
   WorkflowDef,
@@ -22,12 +23,12 @@ import type {
  */
 export type Section =
   | 'model'
-  | 'conditions'
-  | 'validators'
-  | 'post-functions'
+  | 'guards'
+  | 'checks'
+  | 'effects'
   | 'layouts-properties-events'
   | 'status-permissions'
-  | 'resolution'
+  | 'close-reason'
   | 'rules'
   | 'board'
   | 'editor'
@@ -36,12 +37,12 @@ export type Section =
 
 export const SECTIONS: readonly Section[] = [
   'model',
-  'conditions',
-  'validators',
-  'post-functions',
+  'guards',
+  'checks',
+  'effects',
   'layouts-properties-events',
   'status-permissions',
-  'resolution',
+  'close-reason',
   'rules',
   'board',
   'editor',
@@ -73,9 +74,9 @@ export type TransitionExpectation =
       outcome: 'ok';
       status?: string;
       assignee?: string | null;
-      resolution?: string | null;
-      resolvedAt?: string | null;
-      securityLevel?: string | null;
+      closeReason?: string | null;
+      closedAt?: string | null;
+      visibilityLevel?: string | null;
       fields?: Record<string, unknown>;
       /** The history entries the transition added, in order. */
       added?: HistoryEntry[];
@@ -86,16 +87,17 @@ export type TransitionExpectation =
     };
 
 export interface PublishChange {
-  /** Remove a status; items in it need a mapping entry or the publish is refused. */
+  /** Remove a status; tickets in it need a mapping entry or the publish is refused. */
   removeStatus?: string;
   /** Add a status (and a global transition into it, for simplicity of the model). */
-  addStatus?: { id: string; name: string; category: 'todo' | 'in-progress' | 'done' };
+  addStatus?: { id: string; name: string; stage: Stage };
   /** Restore an earlier published version. */
   rollbackTo?: number;
 }
 
 export interface Assignment {
-  space: string;
+  track: string;
+  /** The ticket type. */
   type: string;
 }
 
@@ -104,18 +106,22 @@ export interface PublishExpectation {
   /** Why a publish was refused, by name. */
   reason?: 'mapping-required' | 'unknown-version' | 'read-only';
   version?: number;
-  /** Items after the publish, in the same order as given. */
+  /** The status of each ticket after the publish, in the same order as given. */
   statuses?: string[];
-  /** History entries added to each moved item. */
+  /** History entries added to each moved ticket. */
   moved?: number;
   /** The impact panel: assignments that use this workflow. */
   impact?: Assignment[];
-  /** Whether the item's status can be changed while the editor has unpublished changes. */
+  /** Whether the ticket's status can be changed while the editor has unpublished changes. */
   downtime?: false;
 }
 
+/**
+ * One class from a Jira workflow definition and the kind it imports as: a Jira condition as a
+ * guard, a validator as a check, a post function as an effect.
+ */
 export interface ImportEntry {
-  kind: 'condition' | 'validator' | 'post-function';
+  kind: 'guard' | 'check' | 'effect';
   jiraClass: string;
 }
 
@@ -127,7 +133,7 @@ export interface ImportExpectation {
 }
 
 export interface LintWarning {
-  kind: 'unreachable-status' | 'no-exit' | 'unmapped-on-board' | 'unsatisfiable-condition';
+  kind: 'unreachable-status' | 'no-exit' | 'unmapped-on-board' | 'unsatisfiable-guard';
   /** The status, transition or board the warning points at. */
   at: string;
 }
@@ -137,7 +143,7 @@ export type ConformanceCase = CaseBase &
     | {
         kind: 'available';
         workflow: WorkflowDef;
-        item: ItemState;
+        ticket: TicketState;
         actor: Actor;
         channel?: Channel;
         expect: { transitions: string[] };
@@ -145,7 +151,7 @@ export type ConformanceCase = CaseBase &
     | {
         kind: 'transition';
         workflow: WorkflowDef;
-        item: ItemState;
+        ticket: TicketState;
         actor: Actor;
         request: TransitionRequest;
         expect: TransitionExpectation;
@@ -160,7 +166,7 @@ export type ConformanceCase = CaseBase &
     | {
         kind: 'permission';
         workflow: WorkflowDef;
-        item: ItemState;
+        ticket: TicketState;
         actor: Actor;
         permission: keyof StatusPermissions;
         expect: { allowed: boolean; reason?: string };
@@ -168,10 +174,10 @@ export type ConformanceCase = CaseBase &
     | {
         kind: 'board-move';
         workflow: WorkflowDef;
-        item: ItemState;
+        ticket: TicketState;
         actor: Actor;
         column: string;
-        expect: { status?: string; resolution?: string | null; outcome?: 'ok' | 'blocked' };
+        expect: { status?: string; closeReason?: string | null; outcome?: 'ok' | 'blocked' };
       }
     | {
         kind: 'publish';
@@ -180,7 +186,7 @@ export type ConformanceCase = CaseBase &
         versions?: WorkflowDef[];
         assignments?: Assignment[];
         change: PublishChange;
-        items?: ItemState[];
+        tickets?: TicketState[];
         mapping?: Record<string, string>;
         actor?: Actor;
         expect: PublishExpectation;

@@ -6,6 +6,14 @@ Read this first in every session, then update it before you stop.
 
 ### Done
 
+- **Own terminology** (the user's request; `docs/specs/00-terminology.md`): ticket, track,
+  ticket type, Outcome / Feature / Bug / Chore / Subticket, requester, followers, close reason,
+  stage, areas, releases, guards / checks / effects and the rest, in the specs, ADRs, plans,
+  the native query vocabulary (`track`, `closeReason`, `stage`, `targetRelease`, ...), the
+  workflow model and the UI ("Tracks" in the navigation). Jira's names, classic and 2025, stay
+  in the Jira-compatible dialect, import mappings and Source columns. The compiled SQL of the
+  query golden is byte-identical; the workflow suite still passes 374 of 374. The M0 spike
+  schema keeps `space_id` and `item_id` (rule 6 of the terminology file).
 - **Renamed to taskmoor** (the user's choice): packages `@taskmoor/*`, variables `TASKMOOR_*`,
   images `taskmoor` and `taskmoor-allinone`, the chart in `deploy/helm/taskmoor`, metrics
   `taskmoor_*`, UI and docs. Kept on purpose: the GitHub URL (until the repository is renamed),
@@ -52,7 +60,7 @@ Read this first in every session, then update it before you stop.
   WF-001 to WF-012, the runner (`pnpm conformance`) and an in-memory reference model that passes
   every case. The engine (M1-023) implements the same `WorkflowEngine` interface and is checked
   against the reference model. Open points are `verify` notes on the cases (history entry order,
-  "has been in" and the current status, parent-status validator without a parent, Jira class
+  "has been in" and the current status, parent-status check without a parent, Jira class
   names for the import mapping).
 - M1-033 (also while the 10M run holds the bench cluster): the query conformance suite in
   `packages/query/src/conformance`, 2,220 data cases for QRY-001 to QRY-013 with provenance,
@@ -93,16 +101,10 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. **Own terminology.** The user asked for our own name for every structural term that is
-   specific to Atlassian products (decisions.csv, "Structural terminology"). Atlassian itself
-   now says "space", "work item" and "work type", the terms the specs adopted, so those change
-   too. Write `docs/specs/terminology.md`, then apply it to the specs, the native query
-   vocabulary, code and UI; Jira-compatible names stay in import, export, the compatibility API
-   and the query dialect.
-2. M1 work: the catalogue gaps the query suite lists (fixVersion, component, sprint, due;
+1. M1 work: the catalogue gaps the query suite lists (targetRelease, area, sprint, due;
    history on every field; user values by name; function arity) as part of M1-036, then
    M1-001 now that M0 is accepted.
-3. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
+2. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
    `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
    spikes in about four minutes, logs in `.cache/scripts/g-*.log`). The copy on E: is deleted.
 

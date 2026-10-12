@@ -11,18 +11,23 @@ pnpm conformance workflow --json    # the full report
 
 ## What a case is
 
-A case is data (`src/conformance/case.ts`): a workflow definition, a starting item and actor, one
-action, and what spec `docs/specs/01a-core-work-tracking.md` says must come out. Kinds:
+A transition has guards (who may see or run it), checks (what must hold before it completes) and
+effects (what happens after it); Jira calls these conditions, validators and post functions. The
+sections of the suite follow spec 01a: model, guards, checks, effects, layouts, properties and
+events, status permissions, close reason, rules, board, editor, import and export, and lint.
 
-| Kind | Action | Checks |
+A case is data (`src/conformance/case.ts`): a workflow definition, a starting ticket and actor,
+one action, and what spec `docs/specs/01a-core-work-tracking.md` says must come out. Kinds:
+
+| Kind | Action | Compares |
 |---|---|---|
 | `available` | list the transitions offered to an actor through a channel | the ids, order-free |
-| `transition` | run a transition with layout values and a comment | blocked by which condition, validator, rule or permission (and that nothing changed), or the status, fields, assignee, resolution, Resolved stamp, history entries added, event, webhooks and the essential order |
-| `create` | create an item | initial status, event, webhooks, history |
+| `transition` | run a transition with layout values and a comment | blocked by which guard, check, rule or permission (and that nothing changed), or the status, fields, assignee, close reason, closed stamp, history entries added, event, webhooks and the essential order |
+| `create` | create a ticket | initial status, event, webhooks, history |
 | `permission` | may the actor edit, comment, attach, assign or transition in this status | allowed, and the reason when not |
-| `board-move` | move a card on a board-managed workflow | status and resolution |
-| `publish` | publish an editor change with a status mapping | published or refused and why, items moved, version, impact panel |
-| `import` | map Jira function classes to the catalogue | mapped types and the placeholder report |
+| `board-move` | move a card on a board-managed workflow | status and close reason |
+| `publish` | publish an editor change with a status mapping | published or refused and why, tickets moved, version, impact panel |
+| `import` | map Jira condition, validator and post function classes to guards, checks and effects | mapped types and the placeholder report |
 | `export-roundtrip` | export then import | identical definition |
 | `lint` | lint a workflow against its boards | the named warnings |
 

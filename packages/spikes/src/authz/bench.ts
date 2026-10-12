@@ -258,7 +258,7 @@ export async function runFilterOverhead(
   const runs = options.runs ?? 20;
   await prepareQueryIndexes(pool, log);
   const ctx = await datasetContext(pool);
-  const spaceIds = Object.values(ctx.catalogue.spaceKeys).sort((a, b) => a - b);
+  const spaceIds = Object.values(ctx.catalogue.trackKeys).sort((a, b) => a - b);
   const rng = new Rng(11);
   const subset = (share: number) =>
     spaceIds.filter(() => rng.chance(share)).concat(spaceIds[0] ?? 1);
@@ -268,7 +268,7 @@ export async function runFilterOverhead(
     for (const id of OVERHEAD_QUERIES) {
       const template = TEMPLATES.find((t) => t.id === id);
       if (!template) throw new Error(`No template ${id}`);
-      const plain = compileTemplate(template.text, ctx, { allowedSpaceIds: null });
+      const plain = compileTemplate(template.text, ctx, { allowedTrackIds: null });
       const base = await timeQuery(
         client,
         { name: id, sql: plain.sql.text, params: () => plain.sql.params },
@@ -276,7 +276,7 @@ export async function runFilterOverhead(
       );
       for (const share of [0.1, 0.5, 0.9]) {
         const allowed = subset(share);
-        const filtered = compileTemplate(template.text, ctx, { allowedSpaceIds: allowed });
+        const filtered = compileTemplate(template.text, ctx, { allowedTrackIds: allowed });
         const timed = await timeQuery(
           client,
           { name: id, sql: filtered.sql.text, params: () => filtered.sql.params },

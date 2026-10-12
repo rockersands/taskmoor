@@ -1,8 +1,9 @@
 # Taskmoor: working agreement for Claude sessions
 
 Taskmoor (written taskmoor in handles and identifiers; "Tracksmith" was the codename) is an
-open-source, self-hostable work tracker with every premium feature included. Claude writes the code; the user decides product questions. Start every
-session by reading `HANDOFF.md`, then `STATUS.md`.
+open-source, self-hostable work tracker with every premium feature included. Claude writes the
+code; the user decides product questions. Start every session by reading `HANDOFF.md`, then
+`STATUS.md`.
 
 ## Identity (non-negotiable)
 
@@ -113,7 +114,7 @@ on another disk (for example while a benchmark saturates this one).
 
 ## Terminology
 
-- Use the product's own names for structural concepts (`docs/specs/terminology.md`), never
+- Use the product's own names for structural concepts (`docs/specs/00-terminology.md`), never
   the terms Atlassian products use for them, old or current. Jira-compatible names appear only
   where compatibility needs them: import, export, the Jira-compatible API and query dialect.
 

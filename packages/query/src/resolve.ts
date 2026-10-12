@@ -169,11 +169,11 @@ class Resolver {
         return { type: 'date', value: this.datetime(v).value.toISOString().slice(0, 10) };
       case 'user':
         return this.user(v);
-      case 'space': {
+      case 'track': {
         if (v.kind === 'number') return { type: 'number', value: v.value };
         const key = this.text(v);
-        const id = this.catalogue.spaceKeys[key.toUpperCase()];
-        if (id === undefined) throw fail(`Unknown space "${key}"`, v.span);
+        const id = this.catalogue.trackKeys[key.toUpperCase()];
+        if (id === undefined) throw fail(`Unknown track "${key}"`, v.span);
         return { type: 'number', value: id };
       }
       default:

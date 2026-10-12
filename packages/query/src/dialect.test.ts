@@ -10,21 +10,21 @@ const jira = (text: string) => printQuery(toJira(parseQuery(text)));
 describe('Jira-compatible dialect', () => {
   it('[QRY-003] reads both vocabularies into the native names', () => {
     expect(native('project = ABC AND issuetype = Bug ORDER BY createdDate DESC')).toBe(
-      'space = ABC AND type = Bug ORDER BY created DESC',
+      'track = ABC AND type = Bug ORDER BY created DESC',
     );
     expect(native('issueKey IN linkedIssues(ABC-1, "blocks") AND "Epic link" = ABC-9')).toBe(
-      'key IN linkedWorkItems(ABC-1, "blocks") AND parent = ABC-9',
+      'key IN linkedTickets(ABC-1, "blocks") AND parent = ABC-9',
     );
-    expect(native('space IN projectsWhereUserHasRole("Developers")')).toBe(
-      'space IN spacesWhereUserHasRole("Developers")',
+    expect(native('track IN projectsWhereUserHasRole("Developers")')).toBe(
+      'track IN tracksWhereUserHasRole("Developers")',
     );
   });
 
   it('[QRY-003] writes the Jira-compatible names', () => {
-    expect(jira('space = ABC AND type = Bug ORDER BY created DESC')).toBe(
+    expect(jira('track = ABC AND type = Bug ORDER BY created DESC')).toBe(
       'project = ABC AND issuetype = Bug ORDER BY createdDate DESC',
     );
-    expect(jira('key IN linkedWorkItems(ABC-1) OR key IN watchedWorkItems()')).toBe(
+    expect(jira('key IN linkedTickets(ABC-1) OR key IN followedTickets()')).toBe(
       'issuekey IN linkedIssues(ABC-1) OR issuekey IN watchedIssues()',
     );
   });
@@ -46,16 +46,16 @@ describe('Jira-compatible dialect', () => {
           'AND issue IN updatedBy(CURRENTUSER(), startOfDay(-1d)) ORDER BY project ASC, issuetype DESC',
       ),
     ).toBe(
-      'NOT (type WAS Bug BY membersOf("qa") DURING (startOfMonth(), now()) OR space CHANGED) ' +
-        'AND type NOT IN standardWorkTypes() AND space IS NOT EMPTY ' +
-        'AND key IN updatedBy(currentUser(), startOfDay(-1d)) ORDER BY space ASC, type DESC',
+      'NOT (type WAS Bug BY membersOf("qa") DURING (startOfMonth(), now()) OR track CHANGED) ' +
+        'AND type NOT IN standardTicketTypes() AND track IS NOT EMPTY ' +
+        'AND key IN updatedBy(currentUser(), startOfDay(-1d)) ORDER BY track ASC, type DESC',
     );
   });
 
   it('[QRY-003] keeps spans so editor positions still point at the source text', () => {
     const query = parseQuery('project = ABC');
     const mapped = toNative(query);
-    expect(mapped.where).toMatchObject({ field: { name: 'space', span: { start: 0, end: 7 } } });
+    expect(mapped.where).toMatchObject({ field: { name: 'track', span: { start: 0, end: 7 } } });
   });
 
   it('[QRY-003] maps every alias of the spec field table and every legacy function name', () => {
@@ -67,7 +67,7 @@ describe('Jira-compatible dialect', () => {
         expect(fieldTable.has(f.canonical) || name === f.canonical, f.canonical).toBe(true);
       }
     }
-    const functionTable = new Map(FUNCTION_NAMES);
+    const functionTable = new Map(FUNCTION_NAMES.map(([native, jira]) => [native, jira]));
     for (const f of FUNCTIONS) {
       expect(functionTable.has(f.name), f.name).toBe(true);
       if (f.legacy) {
@@ -80,7 +80,7 @@ describe('Jira-compatible dialect', () => {
   it('[QRY-003] is idempotent and round-trips through the other vocabulary', () => {
     const samples = [
       'project = ABC AND issuetype IN (Bug, Story) ORDER BY createdDate DESC',
-      'space = ABC AND key IN linkedWorkItems(ABC-1) AND due < endOfWeek()',
+      'track = ABC AND key IN linkedTickets(ABC-1) AND due < endOfWeek()',
       'resolutionDate >= -1w OR filter = 10001 OR savedFilter = "Mine"',
       'parentProject = ABC AND projectType = software AND issueLinkType = blocks',
     ];

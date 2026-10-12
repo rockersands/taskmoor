@@ -15,16 +15,16 @@ describe('command palette', () => {
     expect(input).toHaveFocus();
     expect(within(dialog).getAllByRole('option')).toHaveLength(6);
 
-    await user.keyboard('proj');
+    await user.keyboard('trac');
     const options = within(dialog).getAllByRole('option');
-    expect(options.map((o) => o.textContent)).toEqual(['Projects']);
+    expect(options.map((o) => o.textContent)).toEqual(['Tracks']);
     expect(options[0]).toHaveAttribute('aria-selected', 'true');
     expect(input).toHaveAttribute('aria-activedescendant', options[0]?.id);
 
     await user.keyboard('{Enter}');
     expect(screen.queryByRole('dialog', { name: 'Command palette' })).toBeNull();
-    expect(window.location.hash).toBe('#/projects');
-    expect(await screen.findByRole('heading', { level: 1, name: 'Projects' })).toBeInTheDocument();
+    expect(window.location.hash).toBe('#/tracks');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Tracks' })).toBeInTheDocument();
   });
 
   it('moves with the arrow keys and closes with Escape, returning focus to the trigger', async () => {

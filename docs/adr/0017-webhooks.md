@@ -17,7 +17,7 @@ replay, and no expiry.
   the transaction that caused it; a relay fans each event out to the subscriptions whose filter
   matches, enqueuing one delivery job per subscription with the event id as the idempotency key.
 - **Filters are queries.** A subscription's filter is compiled by the query compiler
-  (ADR-010) and evaluated against the affected item at relay time, so custom fields and
+  (ADR-010) and evaluated against the affected ticket at relay time, so custom fields and
   functions work in filters exactly as in search.
 - **Delivery:** HTTPS only (HTTP allowed for localhost in development); headers carry the
   delivery id, event type, timestamp and `X-Taskmoor-Signature: sha256=<hmac>` over

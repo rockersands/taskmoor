@@ -59,8 +59,8 @@ export const GRAMMAR_CASES: QueryCase[] = [
   parse(
     'three-levels',
     'Three levels of nesting; parentheses that precedence implies are dropped',
-    'status = Done AND (priority = High OR (assignee = currentUser() AND reporter = currentUser()))',
-    'status = Done AND (priority = High OR assignee = currentUser() AND reporter = currentUser())',
+    'status = Done AND (priority = High OR (assignee = currentUser() AND requester = currentUser()))',
+    'status = Done AND (priority = High OR assignee = currentUser() AND requester = currentUser())',
   ),
   parse(
     'same-operator-flattens',
@@ -70,7 +70,7 @@ export const GRAMMAR_CASES: QueryCase[] = [
   parse(
     'mixed-chain',
     'A mixed chain keeps the precedence shape',
-    'status = Done OR priority = High OR assignee = currentUser() AND reporter = currentUser()',
+    'status = Done OR priority = High OR assignee = currentUser() AND requester = currentUser()',
   ),
   // Keywords and names are case-insensitive; the canonical form upper-cases keywords.
   parse(
@@ -156,7 +156,7 @@ export const GRAMMAR_CASES: QueryCase[] = [
   // Values.
   parse('number', 'A whole number', 'votes > 3'),
   parse('decimal', 'A decimal number', '"Story Points" = 0.5'),
-  parse('key-value', 'A work item key', 'key = ABC-12'),
+  parse('key-value', 'A ticket key', 'key = ABC-12'),
   parse('date-word', 'A date as a bare word', 'created > 2026-01-31'),
   parse('duration-negative', 'A negative duration', 'created > -1w'),
   parse('duration-positive', 'A positive duration', 'due < +2d'),
@@ -166,7 +166,7 @@ export const GRAMMAR_CASES: QueryCase[] = [
   parse(
     'function-two-args',
     'A function with two arguments',
-    'key IN linkedWorkItems(ABC-12, "blocks")',
+    'key IN linkedTickets(ABC-12, "blocks")',
   ),
   parse(
     'function-spacing',
@@ -174,7 +174,7 @@ export const GRAMMAR_CASES: QueryCase[] = [
     'created >= startOfDay( -1d )',
     'created >= startOfDay(-1d)',
   ),
-  parse('value-dots', 'A value with dots', 'fixVersion = 1.2.3'),
+  parse('value-dots', 'A value with dots', 'targetRelease = 1.2.3'),
   // Whole queries.
   parse('empty-query', 'An empty query', '', ''),
   parse('whitespace-only', 'Whitespace only is an empty query', '   ', ''),

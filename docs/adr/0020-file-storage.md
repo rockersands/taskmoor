@@ -20,7 +20,7 @@ installs want zero extra services (ADR-006); larger ones already have object sto
 - **S3-compatible is the second implementation** through `@aws-sdk/client-s3`: AWS S3, MinIO,
   Garage, SeaweedFS, Cloudflare R2 and others; presigned URLs for download and, for large
   files, multipart upload direct from the browser. Server-side encryption settings pass through.
-- **Metadata lives in Postgres** (name, size, type, hash, uploader, item); deduplication is by
+- **Metadata lives in Postgres** (name, size, type, hash, uploader, ticket); deduplication is by
   hash per workspace; deletion follows the trash retention (CORE-025) and then removes the
   object. Virus scanning is an optional hook (ClamAV) in M2.
 - **Migration between backends** is a CLI command that copies objects and flips the setting.

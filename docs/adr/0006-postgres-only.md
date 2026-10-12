@@ -10,7 +10,7 @@ Every extra stateful service multiplies the install matrix, the backup story and
 burden for self-hosters; the research report found Sentry's twenty containers and Huly's manual
 migration steps to be the main reasons people give up on self-hosting. The user confirmed
 "PostgreSQL only" in `docs/plan/decisions.csv` ("Data stores"). The scale envelope is 10M to
-30M items, 30,000 spaces and 100,000 users (NFR-002).
+30M tickets, 30,000 tracks and 100,000 users (NFR-002).
 
 ## Decision
 

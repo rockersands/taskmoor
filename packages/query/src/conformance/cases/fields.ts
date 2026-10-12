@@ -8,7 +8,7 @@ const c = section('QRY-003', 'fields', '01b 1.5');
 export function clauseFor(name: string, f: SpecField): string {
   if (f.type === 'attachments') return `${name} IS EMPTY`;
   if (f.type === 'text') return `${name} ~ ${f.sample}`;
-  if (f.type === 'sprint' || f.type === 'component' || f.type === 'version')
+  if (f.type === 'sprint' || f.type === 'area' || f.type === 'release')
     return `${name} = ${f.sample}`;
   return `${name} = ${f.sample}`;
 }
@@ -87,8 +87,8 @@ export const FIELD_CASES: QueryCase[] = [
   ...CUSTOM_FIELDS.flatMap((f) => casesFor(f, 'custom')),
   c('both-vocabularies', {
     kind: 'equivalent',
-    title: 'project = ABC AND issuetype = Bug is the same query as space = ABC AND type = Bug',
-    texts: ['project = ABC AND issuetype = Bug', 'space = ABC AND type = Bug'],
+    title: 'project = ABC AND issuetype = Bug is the same query as track = ABC AND type = Bug',
+    texts: ['project = ABC AND issuetype = Bug', 'track = ABC AND type = Bug'],
     catalogue: CATALOGUE,
   }),
   c('both-vocabularies-order', {
@@ -102,7 +102,7 @@ export const FIELD_CASES: QueryCase[] = [
     title: 'Legacy and new names mix in one query',
     texts: [
       'project = ABC AND type = Bug AND createdDate > -1w',
-      'space = ABC AND issuetype = Bug AND created > -1w',
+      'track = ABC AND issuetype = Bug AND created > -1w',
     ],
     catalogue: CATALOGUE,
   }),
@@ -147,17 +147,17 @@ export const FIELD_CASES: QueryCase[] = [
     catalogue: CATALOGUE,
     verify: 'the retired "Epic link" field is read as parent',
   }),
-  c('space-key-resolves', {
+  c('track-key-resolves', {
     kind: 'resolve',
-    title: 'A space key resolves to its id',
-    text: 'space = WEB',
+    title: 'A track key resolves to its id',
+    text: 'track = WEB',
     catalogue: CATALOGUE,
     expect: { ok: true },
   }),
-  c('unknown-space-key', {
+  c('unknown-track-key', {
     kind: 'resolve',
-    title: 'An unknown space key is refused',
-    text: 'space = NOPE',
+    title: 'An unknown track key is refused',
+    text: 'track = NOPE',
     catalogue: CATALOGUE,
     expect: { ok: false, message: 'NOPE' },
   }),

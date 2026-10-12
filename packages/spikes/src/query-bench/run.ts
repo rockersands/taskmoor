@@ -16,11 +16,11 @@ import { type TimedResult, timeQuery } from '../bench/stats';
  * names from the loaded dataset. The same strings with fixed names are the compiler's golden.
  */
 export const TEMPLATES: readonly { id: string; text: string }[] = [
-  { id: 'space-newest', text: 'space = {spaceA} ORDER BY created DESC' },
-  { id: 'space-status', text: 'space = {spaceA} AND status = "In Progress" ORDER BY updated DESC' },
+  { id: 'space-newest', text: 'track = {spaceA} ORDER BY created DESC' },
+  { id: 'space-status', text: 'track = {spaceA} AND status = "In Progress" ORDER BY updated DESC' },
   {
     id: 'mine-open',
-    text: 'assignee = currentUser() AND statusCategory != done ORDER BY priority DESC, created DESC',
+    text: 'assignee = currentUser() AND stage != done ORDER BY priority DESC, created DESC',
   },
   {
     id: 'status-priority-in',
@@ -29,14 +29,14 @@ export const TEMPLATES: readonly { id: string; text: string }[] = [
   { id: 'labels-in', text: 'labels IN (security, regression) ORDER BY created DESC' },
   { id: 'summary-contains', text: 'summary ~ "login" ORDER BY created DESC' },
   { id: 'recent-bugs', text: 'created >= -30d AND type = Bug ORDER BY created DESC' },
-  { id: 'stale-unresolved', text: 'resolved IS EMPTY AND updated < -90d ORDER BY updated ASC' },
+  { id: 'stale-unresolved', text: 'closed IS EMPTY AND updated < -90d ORDER BY updated ASC' },
   {
     id: 'number-gt-sorted',
-    text: '"{number}" > 500 AND space = {spaceA} ORDER BY "{number}" DESC',
+    text: '"{number}" > 500 AND track = {spaceA} ORDER BY "{number}" DESC',
   },
   {
     id: 'option-eq',
-    text: '"{option}" = "{optionValue}" AND statusCategory = todo ORDER BY created DESC',
+    text: '"{option}" = "{optionValue}" AND stage = todo ORDER BY created DESC',
   },
   {
     id: 'date-window',
@@ -49,12 +49,12 @@ export const TEMPLATES: readonly { id: string; text: string }[] = [
   },
   {
     id: 'number-empty',
-    text: '"{number}" IS EMPTY AND type IN (Story, Task) AND space = {spaceA} ORDER BY created DESC',
+    text: '"{number}" IS EMPTY AND type IN (Story, Task) AND track = {spaceA} ORDER BY created DESC',
   },
   { id: 'children', text: 'parent = {parentId} ORDER BY created ASC' },
   {
     id: 'mine-or-reported',
-    text: '(assignee = currentUser() OR reporter = currentUser()) AND statusCategory != done ORDER BY updated DESC',
+    text: '(assignee = currentUser() OR requester = currentUser()) AND stage != done ORDER BY updated DESC',
   },
   { id: 'was-status', text: 'status WAS "In Review" ORDER BY updated DESC' },
   { id: 'changed-to-after', text: 'status CHANGED TO Done AFTER -7d ORDER BY updated DESC' },
@@ -64,7 +64,7 @@ export const TEMPLATES: readonly { id: string; text: string }[] = [
   },
   {
     id: 'not-or-spaces',
-    text: 'NOT (labels IN (infra) OR type = Subtask) AND space IN ({spaceA}, {spaceB}) ORDER BY created DESC',
+    text: 'NOT (labels IN (infra) OR type = Subtask) AND track IN ({spaceA}, {spaceB}) ORDER BY created DESC',
   },
   // No item was ever Cancelled: the worst case for a newest-first scan, which must not walk
   // the whole table looking for a match.
@@ -218,7 +218,7 @@ export function compileTemplate(
   ctx: DatasetContext,
   options: {
     schema?: string;
-    allowedSpaceIds?: number[] | null;
+    allowedTrackIds?: number[] | null;
     limit?: number;
     anchor?: boolean;
   } = {},
@@ -231,7 +231,7 @@ export function compileTemplate(
   const sql = compilePlan(plan, {
     schema: options.schema ?? 'fs_side',
     historyTable: 'gen.history',
-    allowedSpaceIds: options.allowedSpaceIds ?? null,
+    allowedTrackIds: options.allowedTrackIds ?? null,
     limit: options.limit ?? 50,
     ...(options.anchor === undefined ? {} : { anchor: options.anchor }),
   });
@@ -261,9 +261,9 @@ export async function runQueryBench(
   const queries: QueryBenchResult['queries'] = [];
   try {
     await client.query(`SET statement_timeout = '${STATEMENT_TIMEOUT_S}s'`);
-    const permitted = Object.values(ctx.catalogue.spaceKeys).slice(
+    const permitted = Object.values(ctx.catalogue.trackKeys).slice(
       0,
-      Math.max(1, Math.floor(Object.keys(ctx.catalogue.spaceKeys).length / 2)),
+      Math.max(1, Math.floor(Object.keys(ctx.catalogue.trackKeys).length / 2)),
     );
     const cases: { id: string; text: string; allowed: number[] | null }[] = [
       ...TEMPLATES.map((t) => ({ ...t, allowed: null })),
@@ -271,7 +271,7 @@ export async function runQueryBench(
     ];
     log(`Timing ${cases.length} queries`);
     for (const c of cases) {
-      const { text, sql } = compileTemplate(c.text, ctx, { allowedSpaceIds: c.allowed });
+      const { text, sql } = compileTemplate(c.text, ctx, { allowedTrackIds: c.allowed });
       try {
         const timed = await timeQuery(
           client,

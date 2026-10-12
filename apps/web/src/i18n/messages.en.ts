@@ -12,7 +12,7 @@ export const messagesEn = {
   'shell.mainNavigation': 'Main',
   'shell.navigationDialog': 'Navigation',
   'nav.home': 'Home',
-  'nav.projects': 'Projects',
+  'nav.tracks': 'Tracks',
   'nav.boards': 'Boards',
   'nav.search': 'Search',
   'nav.dashboards': 'Dashboards',

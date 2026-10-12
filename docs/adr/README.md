@@ -13,7 +13,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [005](0005-typescript-end-to-end.md) | TypeScript end to end | Accepted |
 | [006](0006-postgres-only.md) | PostgreSQL 16+ as the only required service | Accepted |
 | [007](0007-sql-builder-and-migrations.md) | Typed SQL builder and SQL migrations | Accepted |
-| [008](0008-field-storage.md) | Custom field storage: JSONB on the item plus typed side tables | Accepted |
+| [008](0008-field-storage.md) | Custom field storage: JSONB on the ticket plus typed side tables | Accepted |
 | [009](0009-configuration-model.md) | One configuration model | Accepted |
 | [010](0010-query-compiler.md) | Query language: own grammar, AST, resolver and SQL compiler with a permission pre-filter | Accepted |
 | [011](0011-search.md) | Search in Postgres, with an optional OpenSearch adapter | Accepted |
@@ -40,4 +40,4 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [032](0032-cross-origin-auth-and-versioning.md) | Cross-origin authentication and frontend version compatibility | Accepted |
 | [033](0033-desktop-first-responsive-ui.md) | Desktop-first, responsive UI | Accepted |
 
-ADR-008 and ADR-010 become Accepted when the 10M-item runs (M0-016, M0-017) confirm their budgets.
+ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

@@ -1,38 +1,38 @@
 import type { WorkflowDef } from '../../model';
 import type { ConformanceCase } from '../case';
-import { actor, item, section, W1 } from './fixtures';
+import { actor, section, ticket, W1 } from './fixtures';
 
 const c = section('WF-002', 'editor', 'WF-002');
 
 const v1: WorkflowDef = { ...W1, name: 'Standard v1' };
 const v2: WorkflowDef = { ...W1, name: 'Standard v2' };
 const assignments = [
-  { space: 'PAY', type: 'Bug' },
-  { space: 'PAY', type: 'Task' },
-  { space: 'WEB', type: 'Bug' },
+  { track: 'PAY', type: 'Bug' },
+  { track: 'PAY', type: 'Chore' },
+  { track: 'WEB', type: 'Bug' },
 ];
 
-const inReview = (n: number) => Array.from({ length: n }, () => item({ status: 'review' }));
+const inReview = (n: number) => Array.from({ length: n }, () => ticket({ status: 'review' }));
 
 export const EDITOR_CASES: ConformanceCase[] = [
-  c('remove-status-with-items-needs-mapping', {
+  c('remove-status-with-tickets-needs-mapping', {
     kind: 'publish',
-    title: 'Removing a status that holds items is refused without a target status',
+    title: 'Removing a status that holds tickets is refused without a target status',
     workflow: W1,
     versions: [v1],
     assignments,
     change: { removeStatus: 'review' },
-    items: [...inReview(3), item({ status: 'open' })],
+    tickets: [...inReview(3), ticket({ status: 'open' })],
     expect: { outcome: 'refused', reason: 'mapping-required' },
   }),
-  c('remove-status-moves-every-item', {
+  c('remove-status-moves-every-ticket', {
     kind: 'publish',
-    title: 'With a target status every item moves before publish',
+    title: 'With a target status every ticket moves before publish',
     workflow: W1,
     versions: [v1],
     assignments,
     change: { removeStatus: 'review' },
-    items: [...inReview(120), item({ status: 'open' })],
+    tickets: [...inReview(120), ticket({ status: 'open' })],
     mapping: { review: 'in-progress' },
     expect: {
       outcome: 'published',
@@ -43,11 +43,11 @@ export const EDITOR_CASES: ConformanceCase[] = [
   }),
   c('remove-status-writes-history', {
     kind: 'publish',
-    title: 'Each moved item gets a history entry',
+    title: 'Each moved ticket gets a history entry',
     workflow: W1,
     versions: [v1],
     change: { removeStatus: 'review' },
-    items: inReview(2),
+    tickets: inReview(2),
     mapping: { review: 'done' },
     expect: { outcome: 'published', moved: 2, statuses: ['done', 'done'] },
   }),
@@ -57,7 +57,7 @@ export const EDITOR_CASES: ConformanceCase[] = [
     workflow: W1,
     versions: [v1],
     change: { removeStatus: 'review' },
-    items: [item({ status: 'open' }), item({ status: 'done' })],
+    tickets: [ticket({ status: 'open' }), ticket({ status: 'done' })],
     expect: { outcome: 'published', version: 2, moved: 0, statuses: ['open', 'done'] },
   }),
   c('mapping-for-other-status-ignored', {
@@ -66,17 +66,17 @@ export const EDITOR_CASES: ConformanceCase[] = [
     workflow: W1,
     versions: [v1],
     change: { removeStatus: 'review' },
-    items: [item({ status: 'open' })],
+    tickets: [ticket({ status: 'open' })],
     mapping: { open: 'done' },
     expect: { outcome: 'published', moved: 0, statuses: ['open'] },
   }),
   c('impact-panel-lists-assignments', {
     kind: 'publish',
-    title: 'The impact panel lists every space and type using the workflow',
+    title: 'The impact panel lists every track and ticket type using the workflow',
     workflow: W1,
     versions: [v1],
     assignments,
-    change: { addStatus: { id: 'qa', name: 'QA', category: 'in-progress' } },
+    change: { addStatus: { id: 'qa', name: 'QA', stage: 'active' } },
     expect: { outcome: 'published', impact: assignments },
   }),
   c('impact-panel-empty-when-unused', {
@@ -85,7 +85,7 @@ export const EDITOR_CASES: ConformanceCase[] = [
     workflow: W1,
     versions: [v1],
     assignments: [],
-    change: { addStatus: { id: 'qa', name: 'QA', category: 'in-progress' } },
+    change: { addStatus: { id: 'qa', name: 'QA', stage: 'active' } },
     expect: { outcome: 'published', impact: [] },
   }),
   c('publish-applies-without-downtime', {
@@ -93,7 +93,7 @@ export const EDITOR_CASES: ConformanceCase[] = [
     title: 'A published change applies to the next transition with no downtime',
     workflow: W1,
     versions: [v1],
-    change: { addStatus: { id: 'qa', name: 'QA', category: 'in-progress' } },
+    change: { addStatus: { id: 'qa', name: 'QA', stage: 'active' } },
     expect: { outcome: 'published', downtime: false },
   }),
   c('versions-increment', {
@@ -101,7 +101,7 @@ export const EDITOR_CASES: ConformanceCase[] = [
     title: 'Each publish creates the next version',
     workflow: W1,
     versions: [v1, v2],
-    change: { addStatus: { id: 'qa', name: 'QA', category: 'in-progress' } },
+    change: { addStatus: { id: 'qa', name: 'QA', stage: 'active' } },
     expect: { outcome: 'published', version: 3 },
   }),
   c('first-publish-is-version-one', {
@@ -109,7 +109,7 @@ export const EDITOR_CASES: ConformanceCase[] = [
     title: 'The first publish is version 1',
     workflow: W1,
     versions: [],
-    change: { addStatus: { id: 'qa', name: 'QA', category: 'in-progress' } },
+    change: { addStatus: { id: 'qa', name: 'QA', stage: 'active' } },
     expect: { outcome: 'published', version: 1 },
   }),
   c('rollback-restores-previous-version', {
@@ -142,7 +142,7 @@ export const EDITOR_CASES: ConformanceCase[] = [
     title: 'A user with the read-only workflow view cannot publish',
     workflow: W1,
     versions: [v1],
-    change: { addStatus: { id: 'qa', name: 'QA', category: 'in-progress' } },
+    change: { addStatus: { id: 'qa', name: 'QA', stage: 'active' } },
     actor: actor('alice', { permissions: ['view-workflows'] }),
     expect: { outcome: 'refused', reason: 'read-only' },
   }),
@@ -151,17 +151,17 @@ export const EDITOR_CASES: ConformanceCase[] = [
     title: 'A workflow administrator can publish',
     workflow: W1,
     versions: [v1],
-    change: { addStatus: { id: 'qa', name: 'QA', category: 'in-progress' } },
+    change: { addStatus: { id: 'qa', name: 'QA', stage: 'active' } },
     actor: actor('alice', { permissions: ['administer-workflows'] }),
     expect: { outcome: 'published', version: 2 },
   }),
   c('read-only-cannot-remove-even-with-mapping', {
     kind: 'publish',
-    title: 'Read-only users are refused before any item is moved',
+    title: 'Read-only users are refused before any ticket is moved',
     workflow: W1,
     versions: [v1],
     change: { removeStatus: 'review' },
-    items: inReview(2),
+    tickets: inReview(2),
     mapping: { review: 'done' },
     actor: actor('alice', { permissions: ['view-workflows'] }),
     expect: { outcome: 'refused', reason: 'read-only' },

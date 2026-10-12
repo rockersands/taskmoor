@@ -40,32 +40,32 @@ describe('query compiler against the side schema', () => {
   const ANCHORED = [
     '"{option}" = "{optionValue}" ORDER BY created DESC',
     '"{option}" = "{optionValue}" ORDER BY created ASC',
-    '"{option}" IN ("{optionValue}") AND statusCategory = todo ORDER BY created DESC',
+    '"{option}" IN ("{optionValue}") AND stage = todo ORDER BY created DESC',
     '"{multi}" = "{multiA}" ORDER BY created DESC',
-    '"{multi}" IN ("{multiA}") AND space = {spaceA} ORDER BY created DESC',
+    '"{multi}" IN ("{multiA}") AND track = {spaceA} ORDER BY created DESC',
     '"{number}" > 100 ORDER BY created DESC',
     '"{number}" >= 100 AND "{number}" < 700 ORDER BY "{number}" ASC',
     '"{date}" >= -365d ORDER BY "{date}" DESC',
     '"{user}" = currentUser() ORDER BY created DESC',
     '"{option}" = "{optionValue}" AND "{number}" > 300 ORDER BY created DESC',
-    '"{option}" = "{optionValue}" AND space IN ({spaceA}, {spaceB}) ORDER BY created DESC',
+    '"{option}" = "{optionValue}" AND track IN ({spaceA}, {spaceB}) ORDER BY created DESC',
     '"{multi}" IN ("{multiA}", "{multiB}") ORDER BY created DESC',
-    '"{multi}" IN ("{multiA}", "{multiB}") AND statusCategory != done ORDER BY created ASC',
+    '"{multi}" IN ("{multiA}", "{multiB}") AND stage != done ORDER BY created ASC',
     '"{multi}" IN ("{multiA}", "{multiB}") AND "{multi}" = "{multiA}" ORDER BY created DESC',
   ];
 
   it('[QRY-003] drives from the side table and returns exactly what the item-table form returns', async () => {
-    const spaces = Object.values(ctx.catalogue.spaceKeys);
+    const spaces = Object.values(ctx.catalogue.trackKeys);
     let anchored = 0;
     for (const template of [...TEMPLATES.map((t) => t.text), ...ANCHORED]) {
       for (const allowed of [null, spaces.slice(0, Math.ceil(spaces.length / 2))]) {
         for (const limit of [50, 500]) {
           const plain = compileTemplate(template, ctx, {
-            allowedSpaceIds: allowed,
+            allowedTrackIds: allowed,
             limit,
             anchor: false,
           });
-          const fast = compileTemplate(template, ctx, { allowedSpaceIds: allowed, limit });
+          const fast = compileTemplate(template, ctx, { allowedTrackIds: allowed, limit });
           if (fast.sql.text.startsWith('SELECT a.item_id')) anchored++;
           const a = await pool.query<{ id: string }>(plain.sql.text, plain.sql.params);
           const b = await pool.query<{ id: string }>(fast.sql.text, fast.sql.params);
@@ -84,7 +84,7 @@ describe('query compiler against the side schema', () => {
   });
 
   it('returns the right rows for a space filter and a custom number comparison', async () => {
-    const spaceId = ctx.catalogue.spaceKeys[ctx.names.spaceA];
+    const spaceId = ctx.catalogue.trackKeys[ctx.names.spaceA];
     const space = compileTemplate(TEMPLATES[0]?.text ?? '', ctx, { limit: 1000 });
     const ids = (await pool.query<{ id: string }>(space.sql.text, space.sql.params)).rows.map((r) =>
       Number(r.id),
@@ -111,9 +111,9 @@ describe('query compiler against the side schema', () => {
   });
 
   it('honours the allowed-space pre-filter', async () => {
-    const allowed = [ctx.catalogue.spaceKeys[ctx.names.spaceB] as number];
+    const allowed = [ctx.catalogue.trackKeys[ctx.names.spaceB] as number];
     const { sql } = compileTemplate('status != Nothing ORDER BY created DESC', ctx, {
-      allowedSpaceIds: allowed,
+      allowedTrackIds: allowed,
       limit: 500,
     });
     const ids = (await pool.query<{ id: string }>(sql.text, sql.params)).rows.map((r) =>

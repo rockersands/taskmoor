@@ -21,35 +21,35 @@ const ctx = { currentUserId: 42, now: new Date('2026-10-12T12:00:00Z') };
 
 /** The representative set the M0-017 benchmark runs; the same strings with dataset names. */
 export const BENCHMARK_QUERIES = [
-  'space = ABC ORDER BY created DESC',
-  'space = ABC AND status = "In Progress" ORDER BY updated DESC',
-  'assignee = currentUser() AND statusCategory != done ORDER BY priority DESC, created DESC',
+  'track = ABC ORDER BY created DESC',
+  'track = ABC AND status = "In Progress" ORDER BY updated DESC',
+  'assignee = currentUser() AND stage != done ORDER BY priority DESC, created DESC',
   'status IN (Backlog, "To Do") AND priority IN (High, Highest) ORDER BY created DESC',
   'labels IN (security, regression) ORDER BY created DESC',
   'summary ~ "login" ORDER BY created DESC',
   'created >= -30d AND type = Bug ORDER BY created DESC',
-  'resolved IS EMPTY AND updated < -90d ORDER BY updated ASC',
-  '"Story Points" > 5 AND space = ABC ORDER BY "Story Points" DESC',
-  'Team = "Option 3" AND statusCategory = todo ORDER BY created DESC',
+  'closed IS EMPTY AND updated < -90d ORDER BY updated ASC',
+  '"Story Points" > 5 AND track = ABC ORDER BY "Story Points" DESC',
+  'Team = "Option 3" AND stage = todo ORDER BY created DESC',
   'Due <= endOfMonth() AND Due >= startOfMonth() ORDER BY Due ASC',
   'Owner = currentUser() ORDER BY updated DESC',
   'Components IN (Alpha, Beta) AND status != Done ORDER BY created DESC',
-  '"Story Points" IS EMPTY AND type IN (Story, Task) AND space = ABC ORDER BY created DESC',
+  '"Story Points" IS EMPTY AND type IN (Story, Task) AND track = ABC ORDER BY created DESC',
   'parent = 12345 ORDER BY created ASC',
-  '(assignee = currentUser() OR reporter = currentUser()) AND statusCategory != done ORDER BY updated DESC',
+  '(assignee = currentUser() OR requester = currentUser()) AND stage != done ORDER BY updated DESC',
   'status WAS "In Review" ORDER BY updated DESC',
   'status CHANGED TO Done AFTER -7d ORDER BY updated DESC',
   'assignee CHANGED BY 42 DURING (2026-01-01, 2026-02-01) ORDER BY created DESC',
-  'NOT (labels IN (infra) OR type = Subtask) AND space IN (ABC, DEF) ORDER BY created DESC',
+  'NOT (labels IN (infra) OR type = Subtask) AND track IN (ABC, DEF) ORDER BY created DESC',
   'status WAS Cancelled AND status = Done ORDER BY updated DESC',
 ];
 
-function compile(text: string, allowedSpaceIds: number[] | null = [1, 2]) {
+function compile(text: string, allowedTrackIds: number[] | null = [1, 2]) {
   const plan = resolveQuery(parseQuery(text), catalogue, ctx);
   return compilePlan(plan, {
     schema: 'fs_side',
     historyTable: 'gen.history',
-    allowedSpaceIds,
+    allowedTrackIds,
     limit: 50,
   });
 }
@@ -72,7 +72,7 @@ describe('compilePlan', () => {
     expect(text).toMatch(/LIMIT \$7$/);
   });
 
-  it('skips the space filter for callers who may see everything', () => {
+  it('skips the track filter for callers who may see everything', () => {
     expect(compile('status = Done', null).text).not.toContain('space_id = ANY');
   });
 
@@ -92,7 +92,7 @@ describe('resolveQuery errors', () => {
     ['summary IN (a, b)', 'IN cannot be used on the text field "summary"'],
     ['"Story Points" > EMPTY', 'EMPTY is only allowed with =, != and IS'],
     ['created > 2026-13-45', '"2026-13-45" is not a valid date'],
-    ['space = ZZZ', 'Unknown space "ZZZ"'],
+    ['track = ZZZ', 'Unknown track "ZZZ"'],
     ['created WAS -1d', '"created" keeps no change history'],
     ['created > nextLeapYear()', 'Unknown date function nextLeapYear()'],
     ['assignee = kalo', 'Expected a user ID or currentUser()'],

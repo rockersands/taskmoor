@@ -10,7 +10,7 @@ const TEXT_FIELDS = [
   'comment',
   'environment',
   'Notes',
-  'worklogComment',
+  'timeEntryComment',
 ];
 
 /** Search syntax inside the string is opaque to the grammar; each form must survive printing. */

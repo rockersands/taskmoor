@@ -3,34 +3,37 @@
  * a workflow is made of and the state a transition reads and writes. The conformance cases are
  * written against these types; the reference model and, later, the engine implement them.
  *
- * Identifiers are the catalogue names from the spec in kebab-case. Nothing here depends on
- * storage; the engine (M1-023) maps these onto the database.
+ * A transition has guards (who may see or run it), checks (what must hold before it completes)
+ * and effects (what happens after it); Jira calls these conditions, validators and post
+ * functions. Identifiers are the catalogue names from the spec in kebab-case. Nothing here
+ * depends on storage; the engine (M1-023) maps these onto the database.
  */
 
-export type StatusCategory = 'todo' | 'in-progress' | 'done';
+/** The stage of a status (Jira: status category). */
+export type Stage = 'new' | 'active' | 'closed';
 
 export interface StatusDef {
   id: string;
   name: string;
-  category: StatusCategory;
+  stage: Stage;
 }
 
 export type CompareOp = '=' | '!=' | '>' | '>=' | '<' | '<=';
 
-/** Section 3.2. Conditions nest in all/any groups to any depth. */
-export type ConditionNode =
-  | { all: ConditionNode[] }
-  | { any: ConditionNode[] }
+/** Section 3.2. Guards (Jira: conditions) nest in all/any groups to any depth. */
+export type GuardNode =
+  | { all: GuardNode[] }
+  | { any: GuardNode[] }
   | { type: 'always-false' }
   | { type: 'block-until-approval' }
   | { type: 'compare-number'; field: string; op: CompareOp; value: number }
   | { type: 'hide-from-user' }
   | { type: 'only-assignee' }
-  | { type: 'only-reporter' }
+  | { type: 'only-requester' }
   | { type: 'permission'; permission: string }
   | { type: 'previous-status'; status: string; mostRecentOnly?: boolean }
   | { type: 'separation-of-duties'; transition: string }
-  | { type: 'subtask-blocking'; statuses: string[] }
+  | { type: 'subticket-blocking'; statuses: string[] }
   | { type: 'user-in-group'; group: string }
   | { type: 'user-in-any-group'; groups: string[] }
   | { type: 'user-in-role'; role: string }
@@ -39,8 +42,8 @@ export type ConditionNode =
   | { type: 'user-in-group-field'; field: string }
   | { type: 'value-field'; field: string; op: CompareOp; value: unknown };
 
-/** Section 3.3. Every validator takes an optional message shown when it blocks. */
-export type ValidatorDef = { message?: string } & (
+/** Section 3.3. Every check (Jira: validator) takes an optional message shown when it blocks. */
+export type CheckDef = { message?: string } & (
   | { type: 'field-required'; field: string }
   | { type: 'field-modified'; field: string }
   | { type: 'field-single-value'; field: string }
@@ -54,14 +57,17 @@ export type ValidatorDef = { message?: string } & (
   | { type: 'previous-state'; status: string; mostRecentOnly?: boolean }
 );
 
-/** Section 3.4, the optional post functions. The essential five are implied on every transition. */
-export type PostFunctionDef =
+/**
+ * Section 3.4, the optional effects (Jira: post functions). The essential five are implied on
+ * every transition.
+ */
+export type EffectDef =
   | { type: 'assign-to-current-user' }
-  | { type: 'assign-to-lead' }
-  | { type: 'assign-to-reporter' }
+  | { type: 'assign-to-owner' }
+  | { type: 'assign-to-requester' }
   | { type: 'clear-field'; field: string }
   | { type: 'copy-field'; from: string; to: string; fromParent?: boolean }
-  | { type: 'set-security-level-from-role'; levels: Record<string, string> }
+  | { type: 'set-visibility-level-from-role'; levels: Record<string, string> }
   | { type: 'webhook'; url: string }
   | { type: 'update-field'; field: string; value: unknown }
   | { type: 'update-system-field'; field: SystemField; value: unknown }
@@ -72,12 +78,12 @@ export type SystemField =
   | 'description'
   | 'environment'
   | 'priority'
-  | 'resolution'
+  | 'close-reason'
   | 'summary'
   | 'original-estimate'
   | 'remaining-estimate';
 
-/** The essential post functions, in the only order they run (section 3.4). */
+/** The essential effects, in the only order they run (section 3.4). */
 export const ESSENTIAL_ORDER = ['status', 'comment', 'history', 'index', 'event'] as const;
 
 export interface TransitionDef {
@@ -86,19 +92,19 @@ export interface TransitionDef {
   /** Source statuses, or 'any' for a global transition. */
   from: string[] | 'any';
   to: string;
-  /** Field ids shown on the transition layout (screen); empty means no layout. */
+  /** Field ids shown on the transition layout (Jira: transition screen); empty means none. */
   layout?: string[];
-  conditions?: ConditionNode;
-  validators?: ValidatorDef[];
-  postFunctions?: PostFunctionDef[];
+  guards?: GuardNode;
+  checks?: CheckDef[];
+  effects?: EffectDef[];
   properties?: Record<string, string>;
-  /** The event fired by the essential post function; 'generic' unless a custom event is named. */
+  /** The event fired by the essential effect; 'generic' unless a custom event is named. */
   event?: string;
 }
 
-/** Section 3.5 rules of space-local workflows. */
+/** Section 3.5 rules of local-mode workflows (Jira: team-managed). */
 export type RuleDef =
-  | { type: 'assign'; to: 'current-user' | 'reporter' | { user: string } }
+  | { type: 'assign'; to: 'current-user' | 'requester' | { user: string } }
   | { type: 'restrict-field-value'; field: string; value: unknown }
   | {
       type: 'restrict-been-through';
@@ -113,7 +119,7 @@ export type RuleDef =
   | { type: 'copy-field'; from: string; to: string }
   | { type: 'update-field'; field: string; value: unknown };
 
-/** WF-007: who may do what while an item sits in a status. */
+/** WF-007: who may do what while a ticket sits in a status. */
 export interface StatusPermissions {
   edit?: Principal[];
   comment?: Principal[];
@@ -130,14 +136,14 @@ export interface WorkflowDef {
   statuses: StatusDef[];
   initial: string;
   transitions: TransitionDef[];
-  /** Space-local rules keyed by the transition they apply to (section 3.5, WF-009). */
+  /** Local-mode rules keyed by the transition they apply to (section 3.5, WF-009). */
   rules?: Record<string, RuleDef[]>;
   statusPermissions?: Record<string, StatusPermissions>;
   /** A board-managed workflow: the columns are the statuses, in order (section 3.6). */
   board?: { columns: string[] };
 }
 
-/** One recorded change (section 3.4, essential post function 3). */
+/** One recorded change (section 3.4, essential effect 3). */
 export interface HistoryEntry {
   field: string;
   from: unknown;
@@ -147,23 +153,23 @@ export interface HistoryEntry {
   transition?: string;
 }
 
-export interface ItemState {
+export interface TicketState {
   status: string;
   assignee?: string | null;
-  reporter?: string;
-  resolution?: string | null;
-  /** Set when a resolution is set, cleared with it (WF-008). */
-  resolvedAt?: string | null;
-  securityLevel?: string | null;
+  requester?: string;
+  closeReason?: string | null;
+  /** The closed stamp: set when a close reason is set, cleared with it (WF-008). */
+  closedAt?: string | null;
+  visibilityLevel?: string | null;
   fields: Record<string, unknown>;
   history: HistoryEntry[];
   comments?: { by: string; text: string }[];
   parent?: { status: string; fields?: Record<string, unknown> };
-  subtasks?: { status: string }[];
-  /** Leads consulted by "assign to lead developer". */
-  componentLead?: string | null;
-  spaceLead?: string | null;
-  /** Forms attached to the item and whether each was submitted (validators of section 3.3). */
+  subtickets?: { status: string }[];
+  /** Owners consulted by "assign to owner" (Jira: assign to lead developer). */
+  areaOwner?: string | null;
+  trackOwner?: string | null;
+  /** Forms attached to the ticket and whether each was submitted (checks of section 3.3). */
   forms?: { submitted: boolean }[];
 }
 
@@ -175,7 +181,7 @@ export interface Actor {
 }
 
 /** How the transition was requested; "hide from user" only hides the UI path. */
-export type Channel = 'ui' | 'rest' | 'automation' | 'post-function';
+export type Channel = 'ui' | 'rest' | 'automation' | 'effect';
 
 export interface TransitionRequest {
   transition: string;
@@ -189,18 +195,18 @@ export interface TransitionRequest {
 
 export interface TransitionBlocked {
   outcome: 'blocked';
-  by: 'condition' | 'validator' | 'rule' | 'permission' | 'unknown-transition' | 'wrong-status';
-  /** The condition type, validator type or rule type that blocked, as named in the spec. */
+  by: 'guard' | 'check' | 'rule' | 'permission' | 'unknown-transition' | 'wrong-status';
+  /** The guard type, check type or rule type that blocked, as named in the spec. */
   name: string;
   message?: string;
-  /** The item as it stands after the refusal: identical to the input. */
-  item: ItemState;
+  /** The ticket as it stands after the refusal: identical to the input. */
+  ticket: TicketState;
 }
 
 export interface TransitionDone {
   outcome: 'ok';
-  item: ItemState;
-  /** The essential post functions, in the order they ran. */
+  ticket: TicketState;
+  /** The essential effects, in the order they ran. */
   order: string[];
   /** The event fired by the transition: 'generic' or the custom event id. */
   event: string;

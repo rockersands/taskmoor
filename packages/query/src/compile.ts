@@ -6,8 +6,8 @@ export interface CompileOptions {
   schema: string;
   /** Change history table with (item_id, at, actor_id, field, from_value, to_value). */
   historyTable: string;
-  /** Spaces the caller may see; `null` means every space (admin or a public site). */
-  allowedSpaceIds: readonly number[] | null;
+  /** Tracks the caller may see; `null` means every track (admin or a public site). */
+  allowedTrackIds: readonly number[] | null;
   limit: number;
   offset?: number;
   /**
@@ -62,8 +62,8 @@ export function compilePlan(plan: Plan, options: CompileOptions): CompiledQuery 
   if (anchor) return compileAnchored(anchor, options);
   const c = new Compiler(options);
   const conditions: string[] = [];
-  if (options.allowedSpaceIds !== null) {
-    conditions.push(`i.space_id = ANY(${c.param(options.allowedSpaceIds)}::int[])`);
+  if (options.allowedTrackIds !== null) {
+    conditions.push(`i.space_id = ANY(${c.param(options.allowedTrackIds)}::int[])`);
   }
   if (plan.where) conditions.push(c.pred(plan.where));
   const order = plan.orderBy.map(
@@ -261,8 +261,8 @@ interface Anchor {
   field: CustomField;
   /** Top-level conditions answered by the anchor row itself. */
   onValue: FieldPred[];
-  /** Top-level `space = x` and `space IN (...)`, answered by the side row's copy of the space. */
-  onSpace: FieldPred[];
+  /** Top-level `track = x` and `track IN (...)`, answered by the side row's copy of the track. */
+  onTrack: FieldPred[];
   /** Everything else, evaluated on the joined item row. */
   rest: Pred[];
   order: 'created' | 'value';
@@ -294,7 +294,7 @@ function oneRowPerItem(p: CustomPred): boolean {
 const isEquality = (p: CustomPred) => p.kind === 'in' || p.op === '=';
 
 /**
- * Side rows carry the item's `space_id` and `created_at` (ADR-008), so a query that filters a
+ * Side rows carry the ticket's track (`space_id` in the spike schema) and `created_at` (ADR-008), so a query that filters a
  * custom field and sorts by creation date, or by that same field, can walk the side table's
  * `(field_id, value, created_at)` or `(field_id, created_at)` index in order and stop after one
  * page, instead of walking every item and probing the side table for each (M0-017 at 10M).
@@ -326,7 +326,7 @@ function findAnchor(plan: Plan): Anchor | undefined {
   const anchor: Anchor = {
     field,
     onValue: [],
-    onSpace: [],
+    onTrack: [],
     rest: [],
     order,
     direction: sort.direction,
@@ -342,7 +342,7 @@ function findAnchor(plan: Plan): Anchor | undefined {
       p.field.column === 'space_id' &&
       (p.kind === 'in' || p.op === '=')
     ) {
-      anchor.onSpace.push(p);
+      anchor.onTrack.push(p);
     } else {
       anchor.rest.push(p);
     }
@@ -373,15 +373,15 @@ function compileAnchored(a: Anchor, options: CompileOptions): CompiledQuery {
         ` WHERE b.item_id = a.item_id AND b.field_id = a.field_id AND ${same} AND b.value < a.value)`,
     );
   }
-  for (const p of a.onSpace) {
+  for (const p of a.onTrack) {
     conditions.push(
       p.kind === 'compare'
         ? `a.space_id = ${c.param(p.value.value)}::int`
         : `a.space_id = ANY(${c.param(p.values.map((v) => v.value))}::int[])`,
     );
   }
-  if (options.allowedSpaceIds !== null) {
-    conditions.push(`a.space_id = ANY(${c.param(options.allowedSpaceIds)}::int[])`);
+  if (options.allowedTrackIds !== null) {
+    conditions.push(`a.space_id = ANY(${c.param(options.allowedTrackIds)}::int[])`);
   }
   const rest = a.rest.map((p) => c.pred(p));
   const dir = a.direction.toUpperCase();

@@ -1,10 +1,11 @@
 import type { QueryCase } from '../case';
 import { CATALOGUE, section } from './fixtures';
 
-const filters = section('QRY-011', 'filters', '01b 1.5, 1.7');
+const filters = section('QRY-011', 'saved-searches', '01b 1.5, 1.7');
 const sprints = section('QRY-013', 'sprints', 'QRY-013');
 
-const FILTER_NAMES = ['filter', 'request', 'savedFilter', 'searchRequest'];
+/** The native name, then the Jira-compatible names (`filter` first). */
+const FILTER_NAMES = ['savedSearch', 'filter', 'request', 'savedFilter', 'searchRequest'];
 
 export const FILTER_CASES: QueryCase[] = [
   ...FILTER_NAMES.flatMap((name) => [
@@ -27,45 +28,45 @@ export const FILTER_CASES: QueryCase[] = [
       catalogue: CATALOGUE,
       expect: { ok: true },
     }),
-    filters(`${name.toLowerCase()}-same-as-filter`, {
+    filters(`${name.toLowerCase()}-same-as-saved-search`, {
       kind: 'equivalent',
-      title: `${name} is filter`,
-      texts: ['filter = 10001', `${name} = 10001`],
+      title: `${name} is savedSearch`,
+      texts: ['savedSearch = 10001', `${name} = 10001`],
       catalogue: CATALOGUE,
     }),
   ]),
-  filters('filter-in-list', {
+  filters('saved-search-in-list', {
     kind: 'parse',
-    title: 'filter IN a list',
-    text: 'filter IN (10001, 10002)',
-    expect: { canonical: 'filter IN (10001, 10002)' },
+    title: 'savedSearch IN a list',
+    text: 'savedSearch IN (10001, 10002)',
+    expect: { canonical: 'savedSearch IN (10001, 10002)' },
   }),
-  filters('filter-not-in', {
+  filters('saved-search-not-in', {
     kind: 'parse',
-    title: 'filter NOT IN a list',
-    text: 'filter NOT IN (10001)',
-    expect: { canonical: 'filter NOT IN (10001)' },
+    title: 'savedSearch NOT IN a list',
+    text: 'savedSearch NOT IN (10001)',
+    expect: { canonical: 'savedSearch NOT IN (10001)' },
   }),
-  filters('filter-ne', {
+  filters('saved-search-ne', {
     kind: 'parse',
-    title: 'filter !=',
-    text: 'filter != 10001',
-    expect: { canonical: 'filter != 10001' },
+    title: 'savedSearch !=',
+    text: 'savedSearch != 10001',
+    expect: { canonical: 'savedSearch != 10001' },
   }),
-  filters('filter-combined', {
+  filters('saved-search-combined', {
     kind: 'parse',
-    title: 'A filter reference combined with clauses',
-    text: 'filter = 10001 AND status = Open ORDER BY created DESC',
-    expect: { canonical: 'filter = 10001 AND status = Open ORDER BY created DESC' },
+    title: 'A saved search reference combined with clauses',
+    text: 'savedSearch = 10001 AND status = Open ORDER BY created DESC',
+    expect: { canonical: 'savedSearch = 10001 AND status = Open ORDER BY created DESC' },
   }),
-  filters('filter-self-reference', {
+  filters('saved-search-self-reference', {
     kind: 'resolve',
-    title: 'A filter that references itself is refused on save',
-    text: 'filter = 10001',
+    title: 'A saved search that references itself is refused on save',
+    text: 'savedSearch = 10001',
     catalogue: CATALOGUE,
     expect: { ok: true },
     verify:
-      'cycle detection needs the saved filters themselves (QRY-011 acceptance 2); at resolution the reference is a plain value',
+      'cycle detection needs the saved searches themselves (QRY-011 acceptance 2); at resolution the reference is a plain value',
   }),
 ];
 

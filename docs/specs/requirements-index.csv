@@ -1,9 +1,9 @@
 ID,Module,Title,Milestone,Priority,Parity source
-CORE-001,CORE,Spaces and keys,M1,Must,Jira Free
-CORE-002,CORE,"Space types, templates and feature toggles",M1,Must,Jira Free; exceeds Jira (Jira locks company-managed spaces to template features)
+CORE-001,CORE,Tracks and keys,M1,Must,Jira Free
+CORE-002,CORE,"Track types, templates and feature toggles",M1,Must,Jira Free; exceeds Jira (Jira locks company-managed spaces to template features)
 CORE-003,CORE,Configuration modes,M1,Must,Jira Free; exceeds Jira (50-field cap)
-CORE-004,CORE,Custom space templates,M2,Must,Jira Enterprise
-CORE-005,CORE,Work types,M1,Must,Jira Free
+CORE-004,CORE,Custom track templates,M2,Must,Jira Enterprise
+CORE-005,CORE,Ticket types,M1,Must,Jira Free
 CORE-006,CORE,Hierarchy levels,M1,Must,Jira Premium; exceeds Jira (query field ignores custom levels)
 CORE-007,CORE,Safe hierarchy changes,M1,Should,exceeds Jira (change cannot be undone)
 CORE-008,CORE,"Create, view and edit",M1,Must,Jira Free
@@ -11,13 +11,13 @@ CORE-009,CORE,Field contexts and options,M1,Must,Jira Free
 CORE-010,CORE,Custom field type catalog,M1,Must,Jira Free
 CORE-011,CORE,Formula fields,M1,Must,Jira Free
 CORE-012,CORE,Read-only info fields,M1,Must,Jira Free; exceeds Jira (not searchable in Jira)
-CORE-013,CORE,Field schemes and layouts,M1,Must,Jira Free (2026 field schemes)
-CORE-014,CORE,"Statuses, priorities and resolutions",M1,Must,Jira Free
-CORE-015,CORE,Components,M1,Must,Jira Free
-CORE-016,CORE,Versions and releases,M1,Must,Jira Free
+CORE-013,CORE,Field rules and layouts,M1,Must,Jira Free (2026 field schemes)
+CORE-014,CORE,"Statuses, priorities and close reasons",M1,Must,Jira Free
+CORE-015,CORE,Areas,M1,Must,Jira Free
+CORE-016,CORE,Releases and shipping,M1,Must,Jira Free
 CORE-017,CORE,Labels,M1,Must,Jira Free
-CORE-018,CORE,Work item links and remote links,M1,Must,Jira Free
-CORE-019,CORE,Watchers and votes,M1,Must,Jira Free
+CORE-018,CORE,Ticket links and web links,M1,Must,Jira Free
+CORE-019,CORE,Followers and votes,M1,Must,Jira Free
 CORE-020,CORE,Comments,M1,Must,Jira Free
 CORE-021,CORE,Attachments,M1,Must,Jira Premium (unlimited storage); exceeds Jira (2 GB file cap)
 CORE-022,CORE,Change history and activity,M1,Must,"Jira Free; exceeds Jira (10,000-change window, DC 20,000 guardrail)"
@@ -29,13 +29,13 @@ CORE-027,CORE,Teams,M1,Must,Jira Free (Atlassian Teams)
 CORE-028,CORE,Work intake forms,M2,Must,Jira Free
 WF-001,WF,Workflow model,M1,Must,Jira Free
 WF-002,WF,Workflow editor,M1,Must,Jira Free (new editor); exceeds Jira (rollback)
-WF-003,WF,Conditions,M1,Must,Jira Free
-WF-004,WF,Validators,M1,Must,Jira Free
-WF-005,WF,Post functions,M1,Must,Jira Free; exceeds Jira (create-transition webhook gap)
+WF-003,WF,Guards,M1,Must,Jira Free
+WF-004,WF,Checks,M1,Must,Jira Free
+WF-005,WF,Effects,M1,Must,Jira Free; exceeds Jira (create-transition webhook gap)
 WF-006,WF,"Transition layouts, properties and events",M1,Must,Jira Free
 WF-007,WF,Per-status permissions,M1,Must,Jira Free (workflow properties); Linear lacks it
-WF-008,WF,Resolution and status categories,M1,Must,Jira Free
-WF-009,WF,Space-local rules,M1,Must,Jira Free
+WF-008,WF,Close reasons and stages,M1,Must,Jira Free
+WF-009,WF,Local-mode rules,M1,Must,Jira Free
 WF-010,WF,Board-managed workflow,M1,Must,Jira Free
 WF-011,WF,"Workflow import, export and Jira function mapping",M1,Must,Jira Free
 WF-012,WF,Workflow lint,M1,Should,exceeds Jira
@@ -52,16 +52,16 @@ QRY-007,QRY,Text search,M1,Must,Jira Free (syntax verify)
 QRY-008,QRY,Permission-aware execution,M1,Must,Jira Free
 QRY-009,QRY,Ordering and paging,M1,Must,Jira Free; exceeds Jira (no totals in new search API)
 QRY-010,QRY,Compiler and explain,M1,Must,exceeds Jira
-QRY-011,QRY,Saved filters and sharing,M1,Must,Jira Free
-QRY-012,QRY,Filter subscriptions,M1,Must,Jira Free (scheduling options verify)
+QRY-011,QRY,Saved searches and sharing,M1,Must,Jira Free
+QRY-012,QRY,Search subscriptions,M1,Must,Jira Free (scheduling options verify)
 QRY-013,QRY,Relative iteration tokens,M1,Should,GitHub Projects
 QRY-014,QRY,Search experience,M1,Must,Jira Free
 QRY-015,QRY,Result export,M1,Must,Jira Free; exceeds Jira
-AGL-001,AGL,Boards on filters,M1,Must,Jira Free
+AGL-001,AGL,Boards on saved searches,M1,Must,Jira Free
 AGL-002,AGL,Columns and status mapping,M1,Must,Jira Free
 AGL-003,AGL,WIP limits,M1,Must,Jira Free
 AGL-004,AGL,Swimlanes,M1,Must,Jira Free
-AGL-005,AGL,Quick filters,M1,Must,Jira Free
+AGL-005,AGL,Board filters,M1,Must,Jira Free
 AGL-006,AGL,Card layout,M1,Must,Jira Free; exceeds Jira (3 fields)
 AGL-007,AGL,Estimation and tracking,M1,Must,Jira Free
 AGL-008,AGL,Backlog,M1,Must,Jira Free
@@ -78,14 +78,14 @@ AGL-018,AGL,Navigation and command palette,M1,Must,Jira Free; Linear
 AGL-019,AGL,For you page,M1,Must,Jira Free
 AGL-020,AGL,Saved views,M1,Should,Plane
 AGL-021,AGL,Natural-language quick add,M2,Should,Vikunja
-AGL-022,AGL,Stale item auto-close,M2,Should,Fizzy
+AGL-022,AGL,Stale ticket auto-close,M2,Should,Fizzy
 AGL-023,AGL,Story maps and retrospectives,M4,Could,Easy Agile TeamRhythm app
 RPT-001,RPT,Agile reports,M1,Must,Jira Free
 RPT-002,RPT,General reports,M1,Must,Jira Free
 RPT-003,RPT,Report data foundation,M1,Must,Jira Free
 RPT-004,RPT,Dashboards,M1,Must,Jira Free; exceeds Jira (import)
-RPT-005,RPT,Gadget catalog,M1,Must,Jira Free
-RPT-006,RPT,Space insight dashboards,M1,Must,Jira Free; exceeds Jira (5 per space)
+RPT-005,RPT,Widget catalog,M1,Must,Jira Free
+RPT-006,RPT,Track insight dashboards,M1,Must,Jira Free; exceeds Jira (5 per space)
 RPT-007,RPT,Summary work pulse,M2,Should,Jira Free
 RPT-008,RPT,Analytics store and BI access,M2,Must,Azure DevOps Analytics; Power BI Connector app; exceeds Jira
 RPT-009,RPT,Report export and scheduling,M1,Should,Better Excel Exporter app
@@ -143,7 +143,7 @@ AUT-001,AUT,"Rule model, scopes and actors",M2,Must,Jira Automation; exceeds Jir
 AUT-002,AUT,Triggers,M2,Must,Jira Automation
 AUT-003,AUT,Conditions,M2,Must,Jira Automation (verify names)
 AUT-004,AUT,Actions,M2,Must,Jira Automation
-AUT-005,AUT,Branches,M2,Must,Jira Automation
+AUT-005,AUT,For each blocks,M2,Must,Jira Automation
 AUT-006,AUT,Template language,M2,Must,Jira Automation
 AUT-007,AUT,"Variables, lookups and web requests",M2,Must,Jira Automation; exceeds Jira (100-result lookup)
 AUT-008,AUT,Scheduled rules,M2,Must,Jira Automation; exceeds Jira
@@ -164,8 +164,8 @@ EXT-009,EXT,Extension registry,M4,Could,Atlassian Marketplace
 DEV-001,DEV,Tool connections,M2,Must,Jira Free; Kaneo
 DEV-002,DEV,Development panel,M2,Must,Jira Free; exceeds Jira
 DEV-003,DEV,Ingestion API,M2,Must,Jira Software ingestion APIs
-DEV-004,DEV,Create from item,M2,Must,Jira Free
-DEV-005,DEV,Smart commits,M2,Must,Jira Free
+DEV-004,DEV,Create from ticket,M2,Must,Jira Free
+DEV-005,DEV,Commit commands,M2,Must,Jira Free
 DEV-006,DEV,Status rules and release tracking,M2,Must,Kaneo; Linear Releases
 DEV-007,DEV,Development page and DORA metrics,M2,Must,Jira Free (Development page)
 DEV-008,DEV,Release hub and development queries,M2,Must,Jira Free
@@ -197,25 +197,25 @@ AI-023,AI,Virtual service agent,M3,Must,JSM virtual service agent; exceeds Jira 
 AI-024,AI,Operations AI,M3,Must,JSM Premium AIOps
 AI-025,AI,Custom agents and scheduled agent jobs,M3,Should,Rovo Studio; Linear Loops
 AI-026,AI,Discovery and customer-service AI,M4,Must,JPD; JSM customer service
-PLN-001,PLN,Plans,M2,Must,"Jira Premium; exceeds Jira (10,000 items, 200 spaces)"
+PLN-001,PLN,Roadmaps,M2,Must,"Jira Premium; exceeds Jira (10,000 items, 200 spaces)"
 PLN-002,PLN,Sandbox and selective commit,M2,Must,Jira Premium
 PLN-003,PLN,Scenarios,M2,Must,Jira Premium
 PLN-004,PLN,Auto-scheduler,M2,Must,Jira Premium
 PLN-005,PLN,Teams and capacity,M2,Must,Jira Premium
 PLN-006,PLN,Dependencies,M2,Must,Jira Premium
-PLN-007,PLN,Releases in plans,M2,Must,Jira Premium; exceeds Jira (plan-only)
+PLN-007,PLN,Releases in roadmaps,M2,Must,Jira Premium; exceeds Jira (plan-only)
 PLN-008,PLN,Program board,M2,Must,"Jira Premium; exceeds Jira (2 boards, not real-time)"
 PLN-009,PLN,Individual capacity,M2,Must,Jira Premium; exceeds Jira (fixed 40-hour week)
 PLN-010,PLN,Hierarchy grid,M2,Must,Structure app; JXL app
 PLN-011,PLN,Gantt baselines and resource levelling,M4,Should,OpenProject; BigPicture app
-TIM-001,TIM,Estimates and worklogs,M1,Must,Jira Free (needed by the M1 importer)
+TIM-001,TIM,Estimates and time entries,M1,Must,Jira Free (needed by the M1 importer)
 TIM-002,TIM,Timers,M2,Should,YouTrack; Jira Free events
 TIM-003,TIM,Timesheets and approvals,M2,Must,Tempo Timesheets app
 TIM-004,TIM,"Accounts, billing and cost",M2,Must,Tempo app; OpenProject
 TIM-005,TIM,Time reports and workload,M2,Must,Tempo app; Asana; ClickUp
-DSC-001,DSC,Discovery spaces and ideas,M4,Must,JPD; exceeds JPD (creator licences)
+DSC-001,DSC,Discovery tracks and ideas,M4,Must,JPD; exceeds JPD (creator licences)
 DSC-002,DSC,Discovery fields and formulas,M4,Must,JPD
-DSC-003,DSC,Insights and customer requests,M4,Must,JPD; Linear customer requests
+DSC-003,DSC,Evidence and customer requests,M4,Must,JPD; Linear customer requests
 DSC-004,DSC,Discovery views,M4,Must,"JPD Premium (view permissions, cross-space roadmaps)"
 DSC-005,DSC,Delivery linking,M4,Must,JPD; exceeds JPD (points only for company-managed)
 DSC-006,DSC,Published views,M4,Must,JPD
@@ -232,11 +232,11 @@ QA-002,QA,"Plans, executions and runner",M4,Must,"Xray, Zephyr apps"
 QA-003,QA,Coverage and traceability,M4,Must,Xray app
 QA-004,QA,CI result import,M4,Must,Xray app; Azure Test Plans
 QA-005,QA,Test reports,M4,Must,"Xray, Zephyr apps"
-SD-001,SD,Service spaces and work categories,M2,Must,JSM; exceeds JSM Premium (change and problem gated)
-SD-002,SD,Request types,M2,Must,JSM
-SD-003,SD,Help centres and branding,M2,Must,JSM Premium (multiple help centres); exceeds Jira
-SD-004,SD,Customer portal,M2,Must,JSM
-SD-005,SD,Customers and organizations,M2,Must,JSM; exceeds Jira (per-agent pricing)
+SD-001,SD,Service tracks and ticket categories,M2,Must,JSM; exceeds JSM Premium (change and problem gated)
+SD-002,SD,Request forms,M2,Must,JSM
+SD-003,SD,Help portals and branding,M2,Must,JSM Premium (multiple help centres); exceeds Jira
+SD-004,SD,Help portal for customers,M2,Must,JSM
+SD-005,SD,Customers and customer groups,M2,Must,JSM; exceeds Jira (per-agent pricing)
 SD-006,SD,Agent workspace,M2,Must,JSM
 SD-007,SD,Queues,M2,Must,JSM; exceeds Jira (300 per category)
 SD-008,SD,SLA engine and calendars,M2,Must,JSM
@@ -272,11 +272,11 @@ ONC-010,ONC,"ChatOps, edge runner and call routing",M3,Must,"JSM Premium (Jira E
 ONC-011,ONC,Infrastructure as code and analytics,M3,Must,Atlassian Operations Terraform provider; JSM Premium analytics
 STS-001,STS,"Public, private and audience status pages",M3,Must,"Atlassian Statuspage (separate product, $29 to $1,499 per month); exceeds Jira"
 STS-002,STS,"Subscribers, incident link and API",M3,Must,Statuspage; JSM automation
-CMDB-001,CMDB,Schemas and object types,M3,Must,JSM Assets
+CMDB-001,CMDB,Catalogs and object types,M3,Must,JSM Assets
 CMDB-002,CMDB,Attributes and references,M3,Must,JSM Assets (attribute list verify)
 CMDB-003,CMDB,Object management,M3,Must,JSM Assets
-CMDB-004,CMDB,Object query language,M3,Must,JSM Assets (AQL compatibility verify)
-CMDB-005,CMDB,Object fields on items,M3,Must,JSM Assets
+CMDB-004,CMDB,Inventory query language,M3,Must,JSM Assets (AQL compatibility verify)
+CMDB-005,CMDB,Object fields on tickets,M3,Must,JSM Assets
 CMDB-006,CMDB,Imports and reconciliation,M3,Must,JSM Assets Data Manager
 CMDB-007,CMDB,Discovery,M3,Must,JSM Assets Discovery
 CMDB-008,CMDB,"Object permissions, automation, lifecycle and scale",M3,Must,"JSM Assets; exceeds Jira (5k, 50k, 500k objects then $0.02 per object)"
@@ -292,8 +292,8 @@ IAM-006,IAM,SCIM 2.0 provisioning,M1,Must,Guard Standard; exceeds OpenProject (p
 IAM-007,IAM,API tokens and service accounts,M1,Must,"Guard Standard; exceeds Jira (1-year maximum, no central renewal)"
 IAM-008,IAM,"Users, groups, roles, guests and anonymous access",M1,Must,Jira Free; exceeds Jira (5 guests per paid user)
 IAM-009,IAM,Global permissions,M1,Must,Jira Free
-IAM-010,IAM,Space permissions and policies,M1,Must,Jira Standard
-IAM-011,IAM,Item security levels,M1,Must,Jira Standard
+IAM-010,IAM,Track permissions and policies,M1,Must,Jira Standard
+IAM-011,IAM,Ticket visibility levels,M1,Must,Jira Standard
 IAM-012,IAM,Authorization engine and explainer,M1,Must,Jira Cloud authorization service; exceeds Jira (no explainer)
 IAM-013,IAM,Audit log,M1,Must,Guard Standard; Jira Enterprise (user activity); exceeds Jira (180 days)
 IAM-014,IAM,SIEM streaming,M2,Must,Guard Premium

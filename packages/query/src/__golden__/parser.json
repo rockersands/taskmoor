@@ -354,7 +354,7 @@
       }
     }
   },
-  "assignee = currentUser() OR reporter = currentUser()": {
+  "assignee = currentUser() OR requester = currentUser()": {
     "orderBy": [],
     "where": {
       "items": [
@@ -384,16 +384,16 @@
         },
         {
           "field": {
-            "name": "reporter",
+            "name": "requester",
             "span": {
-              "end": 36,
+              "end": 37,
               "start": 28
             }
           },
           "kind": "compare",
           "op": "=",
           "span": {
-            "end": 52,
+            "end": 53,
             "start": 28
           },
           "value": {
@@ -401,15 +401,15 @@
             "kind": "function",
             "name": "currentUser",
             "span": {
-              "end": 52,
-              "start": 39
+              "end": 53,
+              "start": 40
             }
           }
         }
       ],
       "kind": "or",
       "span": {
-        "end": 52,
+        "end": 53,
         "start": 0
       }
     }
@@ -610,6 +610,24 @@
       }
     }
   },
+  "closeReason IS NOT NULL": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "closeReason",
+        "span": {
+          "end": 11,
+          "start": 0
+        }
+      },
+      "kind": "empty",
+      "negated": true,
+      "span": {
+        "end": 23,
+        "start": 0
+      }
+    }
+  },
   "created >= -1w AND updated <= now()": {
     "orderBy": [],
     "where": {
@@ -734,24 +752,6 @@
       "kind": "and",
       "span": {
         "end": 43,
-        "start": 0
-      }
-    }
-  },
-  "fixVersion IS EMPTY": {
-    "orderBy": [],
-    "where": {
-      "field": {
-        "name": "fixVersion",
-        "span": {
-          "end": 10,
-          "start": 0
-        }
-      },
-      "kind": "empty",
-      "negated": false,
-      "span": {
-        "end": 19,
         "start": 0
       }
     }
@@ -1012,24 +1012,6 @@
           "start": 10
         },
         "value": "ABC"
-      }
-    }
-  },
-  "resolution IS NOT NULL": {
-    "orderBy": [],
-    "where": {
-      "field": {
-        "name": "resolution",
-        "span": {
-          "end": 10,
-          "start": 0
-        }
-      },
-      "kind": "empty",
-      "negated": true,
-      "span": {
-        "end": 22,
-        "start": 0
       }
     }
   },
@@ -1374,6 +1356,24 @@
       "kind": "and",
       "span": {
         "end": 47,
+        "start": 0
+      }
+    }
+  },
+  "targetRelease IS EMPTY": {
+    "orderBy": [],
+    "where": {
+      "field": {
+        "name": "targetRelease",
+        "span": {
+          "end": 13,
+          "start": 0
+        }
+      },
+      "kind": "empty",
+      "negated": false,
+      "span": {
+        "end": 22,
         "start": 0
       }
     }

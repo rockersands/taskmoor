@@ -9,14 +9,14 @@ export interface FeatureSpec {
 
 /** Every AI feature the product offers, with its defaults. New features are added here first. */
 export const AI_FEATURES = {
-  summarize: { title: 'Summaries of items and threads', effort: 'medium', maxOutputTokens: 1024 },
+  summarize: { title: 'Summaries of tickets and threads', effort: 'medium', maxOutputTokens: 1024 },
   'query-from-text': {
     title: 'Plain-language search turned into a query',
     effort: 'high',
     maxOutputTokens: 1024,
   },
   'assisted-creation': {
-    title: 'Draft work items from a description',
+    title: 'Draft tickets from a description',
     effort: 'medium',
     maxOutputTokens: 4096,
   },

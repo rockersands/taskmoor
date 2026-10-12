@@ -19,16 +19,16 @@ const TYPES: { type: ValueType; field: string; sample: string }[] = [
   { type: 'option', field: 'Team', sample: 'Platform' },
   { type: 'multi', field: 'Platforms', sample: 'ios' },
   { type: 'labels', field: 'labels', sample: 'backend' },
-  { type: 'version', field: 'fixVersion', sample: '"1.0"' },
+  { type: 'release', field: 'targetRelease', sample: '"1.0"' },
   { type: 'priority', field: 'priority', sample: 'High' },
   { type: 'status', field: 'status', sample: 'Done' },
   { type: 'key', field: 'key', sample: 'ABC-12' },
-  { type: 'space', field: 'space', sample: 'ABC' },
+  { type: 'track', field: 'track', sample: 'ABC' },
   { type: 'type', field: 'type', sample: 'Bug' },
   { type: 'sprint', field: 'sprint', sample: '42' },
   { type: 'attachments', field: 'attachments', sample: 'EMPTY' },
-  { type: 'component', field: 'component', sample: '"API"' },
-  { type: 'filter', field: 'filter', sample: '10001' },
+  { type: 'area', field: 'area', sample: '"API"' },
+  { type: 'savedSearch', field: 'savedSearch', sample: '10001' },
 ];
 
 const opSlug: Record<Operator, string> = {

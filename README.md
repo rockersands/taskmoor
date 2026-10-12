@@ -1,6 +1,6 @@
 # Taskmoor
 
-Open-source, self-hostable work tracking: Jira-class projects, boards, workflows, queries, service
+Open-source, self-hostable work tracking: Jira-class tracks, boards, workflows, queries, service
 desk and planning, with every premium feature included and AI that runs on the administrator's
 own key.
 

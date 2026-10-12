@@ -1,6 +1,6 @@
 import type { WorkflowDef } from '../../model';
 import type { ConformanceCase } from '../case';
-import { actor, item, section } from './fixtures';
+import { actor, section, ticket } from './fixtures';
 
 const c = section('WF-010', 'board', '01a 3.6, WF-010');
 
@@ -8,26 +8,26 @@ const c = section('WF-010', 'board', '01a 3.6, WF-010');
 const scrum: WorkflowDef = {
   id: 'board-scrum',
   statuses: [
-    { id: 'to-do', name: 'To Do', category: 'todo' },
-    { id: 'in-progress', name: 'In Progress', category: 'in-progress' },
-    { id: 'done', name: 'Done', category: 'done' },
+    { id: 'new', name: 'New', stage: 'new' },
+    { id: 'active', name: 'Active', stage: 'active' },
+    { id: 'closed', name: 'Closed', stage: 'closed' },
   ],
-  initial: 'to-do',
+  initial: 'new',
   transitions: [],
-  board: { columns: ['to-do', 'in-progress', 'done'] },
+  board: { columns: ['new', 'active', 'closed'] },
 };
 
 const kanban: WorkflowDef = {
   id: 'board-kanban',
   statuses: [
-    { id: 'backlog', name: 'Backlog', category: 'todo' },
-    { id: 'selected', name: 'Selected for Development', category: 'todo' },
-    { id: 'in-progress', name: 'In Progress', category: 'in-progress' },
-    { id: 'done', name: 'Done', category: 'done' },
+    { id: 'backlog', name: 'Backlog', stage: 'new' },
+    { id: 'selected', name: 'Selected for Development', stage: 'new' },
+    { id: 'active', name: 'Active', stage: 'active' },
+    { id: 'closed', name: 'Closed', stage: 'closed' },
   ],
   initial: 'backlog',
   transitions: [],
-  board: { columns: ['backlog', 'selected', 'in-progress', 'done'] },
+  board: { columns: ['backlog', 'selected', 'active', 'closed'] },
 };
 
 const board = (w: WorkflowDef) =>
@@ -37,12 +37,12 @@ const board = (w: WorkflowDef) =>
         kind: 'board-move',
         title: `A card moves from ${from} to ${to}`,
         workflow: w,
-        item: item({ status: from, resolution: from === 'done' ? 'Done' : null }),
+        ticket: ticket({ status: from, closeReason: from === 'closed' ? 'Completed' : null }),
         actor: actor('alice'),
         column: to,
         expect: {
           status: to,
-          resolution: to === 'done' ? 'Done' : null,
+          closeReason: to === 'closed' ? 'Completed' : null,
         },
       }),
     ),
@@ -51,7 +51,7 @@ const board = (w: WorkflowDef) =>
 export const BOARD_CASES: ConformanceCase[] = [
   c('scrum-default-columns', {
     kind: 'lint',
-    title: 'Scrum default columns To Do, In Progress, Done are the statuses',
+    title: 'Scrum default columns New, Active, Closed are the statuses',
     workflow: scrum,
     boards: [{ id: 'scrum', columns: scrum.board?.columns ?? [] }],
     expect: { warnings: [] },
@@ -61,76 +61,80 @@ export const BOARD_CASES: ConformanceCase[] = [
   c('kanban-default-columns', {
     kind: 'lint',
     title:
-      'Kanban default columns Backlog, Selected for Development, In Progress, Done are the statuses',
+      'Kanban default columns Backlog, Selected for Development, Active, Closed are the statuses',
     workflow: kanban,
     boards: [{ id: 'kanban', columns: kanban.board?.columns ?? [] }],
     expect: { warnings: [] },
   }),
   ...board(scrum),
   ...board(kanban).filter((_, i) => i % 3 === 0),
-  c('rightmost-sets-resolution-done', {
+  c('rightmost-sets-close-reason-completed', {
     kind: 'board-move',
-    title: 'The rightmost column sets resolution Done',
+    title: 'The rightmost column sets close reason Completed',
     workflow: scrum,
-    item: item({ status: 'in-progress' }),
+    ticket: ticket({ status: 'active' }),
     actor: actor('alice'),
-    column: 'done',
-    expect: { status: 'done', resolution: 'Done' },
+    column: 'closed',
+    expect: { status: 'closed', closeReason: 'Completed' },
   }),
-  c('leaving-rightmost-clears-resolution', {
+  c('leaving-rightmost-clears-close-reason', {
     kind: 'board-move',
-    title: 'Leaving the rightmost column clears the resolution',
+    title: 'Leaving the rightmost column clears the close reason',
     workflow: scrum,
-    item: item({ status: 'done', resolution: 'Done', resolvedAt: '2026-10-01T00:00:00.000Z' }),
+    ticket: ticket({
+      status: 'closed',
+      closeReason: 'Completed',
+      closedAt: '2026-10-01T00:00:00.000Z',
+    }),
     actor: actor('alice'),
-    column: 'in-progress',
-    expect: { status: 'in-progress', resolution: null },
+    column: 'active',
+    expect: { status: 'active', closeReason: null },
   }),
-  c('middle-move-keeps-resolution-empty', {
+  c('middle-move-keeps-close-reason-empty', {
     kind: 'board-move',
-    title: 'A move between middle columns leaves the resolution empty',
+    title: 'A move between middle columns leaves the close reason empty',
     workflow: kanban,
-    item: item({ status: 'selected' }),
+    ticket: ticket({ status: 'selected' }),
     actor: actor('alice'),
-    column: 'in-progress',
-    expect: { status: 'in-progress', resolution: null },
+    column: 'active',
+    expect: { status: 'active', closeReason: null },
   }),
   c('unknown-column-refused', {
     kind: 'board-move',
     title: 'A column that is not on the board is refused',
     workflow: scrum,
-    item: item({ status: 'to-do' }),
+    ticket: ticket({ status: 'new' }),
     actor: actor('alice'),
     column: 'review',
-    expect: { outcome: 'blocked', status: 'to-do' },
+    expect: { outcome: 'blocked', status: 'new' },
   }),
   c('board-move-recorded', {
     kind: 'board-move',
     title: 'A board move is recorded in the history like a transition',
     workflow: scrum,
-    item: item({ status: 'to-do', history: [] }),
+    ticket: ticket({ status: 'new', history: [] }),
     actor: actor('alice'),
-    column: 'in-progress',
-    expect: { status: 'in-progress' },
+    column: 'active',
+    expect: { status: 'active' },
   }),
-  c('no-transition-screens', {
+  c('no-transition-layouts', {
     kind: 'board-move',
-    title: 'Board moves have no transition screens, so no fields are asked for',
+    title: 'Board moves have no transition layouts, so no fields are asked for',
     workflow: scrum,
-    item: item({ status: 'to-do' }),
+    ticket: ticket({ status: 'new' }),
     actor: actor('alice'),
-    column: 'done',
-    expect: { status: 'done', resolution: 'Done' },
+    column: 'closed',
+    expect: { status: 'closed', closeReason: 'Completed' },
   }),
   c('adding-a-column-adds-a-status', {
     kind: 'lint',
     title: 'Adding a column creates a status, and the board stays fully mapped',
     workflow: {
       ...scrum,
-      statuses: [...scrum.statuses, { id: 'qa', name: 'QA', category: 'in-progress' }],
-      board: { columns: ['to-do', 'in-progress', 'qa', 'done'] },
+      statuses: [...scrum.statuses, { id: 'qa', name: 'QA', stage: 'active' }],
+      board: { columns: ['new', 'active', 'qa', 'closed'] },
     },
-    boards: [{ id: 'scrum', columns: ['to-do', 'in-progress', 'qa', 'done'] }],
+    boards: [{ id: 'scrum', columns: ['new', 'active', 'qa', 'closed'] }],
     expect: { warnings: [] },
   }),
 ];

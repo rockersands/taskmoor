@@ -1,13 +1,13 @@
 import type { RuleDef, WorkflowDef } from '../../model';
 import type { ConformanceCase } from '../case';
-import { actor, item, NOW, reviewed, section, W1 } from './fixtures';
+import { actor, NOW, reviewed, section, ticket, W1 } from './fixtures';
 
 const c = section('WF-009', 'rules', '01a 3.5, WF-009');
 
-/** W1 as a space-local workflow with rules on Start. */
+/** W1 as a local-mode workflow with rules on Start. */
 const ruled = (rules: RuleDef[]): WorkflowDef => ({
   ...W1,
-  id: 'space-a',
+  id: 'track-a',
   rules: { start: rules },
 });
 
@@ -15,7 +15,7 @@ const run = (
   slug: string,
   title: string,
   rules: RuleDef[],
-  itemState: ReturnType<typeof item>,
+  ticketState: ReturnType<typeof ticket>,
   who: ReturnType<typeof actor>,
   expect: Extract<ConformanceCase, { kind: 'transition' }>['expect'],
   verify?: string,
@@ -24,7 +24,7 @@ const run = (
     kind: 'transition',
     title,
     workflow: ruled(rules),
-    item: itemState,
+    ticket: ticketState,
     actor: who,
     request: { transition: 'start', now: NOW },
     expect,
@@ -41,7 +41,7 @@ const blockedByRule = (
 
 /** open -> in-progress -> open -> in-progress -> open (current): a loop through in-progress twice. */
 const looped = () =>
-  item({
+  ticket({
     status: 'open',
     history: [
       { field: 'status', from: null, to: 'open', by: 'bob', transition: 'create' },
@@ -53,20 +53,20 @@ const looped = () =>
   });
 
 export const RULE_CASES: ConformanceCase[] = [
-  // Assign an item to someone.
+  // Assign a ticket to someone.
   run(
     'assign-current-user',
     'Assign to the current user',
     [{ type: 'assign', to: 'current-user' }],
-    item({ assignee: null }),
+    ticket({ assignee: null }),
     actor('alice'),
     { outcome: 'ok', assignee: 'alice' },
   ),
   run(
-    'assign-reporter',
-    'Assign to the reporter',
-    [{ type: 'assign', to: 'reporter' }],
-    item({ assignee: null, reporter: 'bob' }),
+    'assign-requester',
+    'Assign to the requester',
+    [{ type: 'assign', to: 'requester' }],
+    ticket({ assignee: null, requester: 'bob' }),
     actor('alice'),
     { outcome: 'ok', assignee: 'bob' },
   ),
@@ -74,7 +74,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'assign-named-user',
     'Assign to a named user',
     [{ type: 'assign', to: { user: 'carol' } }],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok', assignee: 'carol' },
   ),
@@ -83,7 +83,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'restrict-field-value-matches',
     'Restrict to a field value passes when it matches',
     [{ type: 'restrict-field-value', field: 'kind', value: 'bug' }],
-    item({ fields: { kind: 'bug' } }),
+    ticket({ fields: { kind: 'bug' } }),
     actor('alice'),
     { outcome: 'ok', status: 'in-progress' },
   ),
@@ -91,7 +91,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'restrict-field-value-differs',
     'Restrict to a field value blocks when it differs',
     [{ type: 'restrict-field-value', field: 'kind', value: 'bug' }],
-    item({ fields: { kind: 'task' } }),
+    ticket({ fields: { kind: 'task' } }),
     actor('alice'),
     blockedByRule('restrict-field-value'),
   ),
@@ -99,14 +99,14 @@ export const RULE_CASES: ConformanceCase[] = [
     'restrict-field-value-missing',
     'Restrict to a field value blocks when the field is empty',
     [{ type: 'restrict-field-value', field: 'kind', value: 'bug' }],
-    item(),
+    ticket(),
     actor('alice'),
     blockedByRule('restrict-field-value'),
   ),
-  // Restrict to when the item has been through a status, each option.
+  // Restrict to when the ticket has been through a status, each option.
   run(
     'been-through-plain-yes',
-    'Has been through review passes a travelled item',
+    'Has been through review passes a travelled ticket',
     [{ type: 'restrict-been-through', status: 'review' }],
     reviewed(),
     actor('alice'),
@@ -114,9 +114,9 @@ export const RULE_CASES: ConformanceCase[] = [
   ),
   run(
     'been-through-plain-no',
-    'Has been through review blocks a fresh item',
+    'Has been through review blocks a fresh ticket',
     [{ type: 'restrict-been-through', status: 'review' }],
-    item(),
+    ticket(),
     actor('alice'),
     blockedByRule('restrict-been-through'),
   ),
@@ -124,7 +124,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'been-through-current-excluded',
     'Without "include current status" the current status does not count',
     [{ type: 'restrict-been-through', status: 'open' }],
-    item(),
+    ticket(),
     actor('alice'),
     blockedByRule('restrict-been-through'),
   ),
@@ -132,13 +132,13 @@ export const RULE_CASES: ConformanceCase[] = [
     'been-through-include-current',
     'With "include current status" it does',
     [{ type: 'restrict-been-through', status: 'open', includeCurrent: true }],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok' },
   ),
   run(
     'been-through-reverse-blocks',
-    'Reverse blocks an item that has been through the status',
+    'Reverse blocks a ticket that has been through the status',
     [{ type: 'restrict-been-through', status: 'review', reverse: true }],
     reviewed(),
     actor('alice'),
@@ -146,9 +146,9 @@ export const RULE_CASES: ConformanceCase[] = [
   ),
   run(
     'been-through-reverse-passes',
-    'Reverse passes an item that has not',
+    'Reverse passes a ticket that has not',
     [{ type: 'restrict-been-through', status: 'review', reverse: true }],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok' },
   ),
@@ -212,16 +212,16 @@ export const RULE_CASES: ConformanceCase[] = [
     'been-through-reverse-and-current',
     'Reverse with include current blocks the current status',
     [{ type: 'restrict-been-through', status: 'open', reverse: true, includeCurrent: true }],
-    item(),
+    ticket(),
     actor('alice'),
     blockedByRule('restrict-been-through'),
   ),
-  // Restrict who can move the item.
+  // Restrict who can move the ticket.
   run(
     'restrict-who-user',
     'Restrict who: a named user passes',
     [{ type: 'restrict-who', users: ['alice'] }],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok' },
   ),
@@ -229,7 +229,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'restrict-who-group',
     'Restrict who: a group member passes',
     [{ type: 'restrict-who', groups: ['qa'] }],
-    item(),
+    ticket(),
     actor('alice', { groups: ['qa'] }),
     { outcome: 'ok' },
   ),
@@ -237,7 +237,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'restrict-who-role',
     'Restrict who: a role holder passes',
     [{ type: 'restrict-who', roles: ['developers'] }],
-    item(),
+    ticket(),
     actor('alice', { roles: ['developers'] }),
     { outcome: 'ok' },
   ),
@@ -245,7 +245,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'restrict-who-none',
     'Restrict who blocks everyone else',
     [{ type: 'restrict-who', users: ['bob'], groups: ['qa'], roles: ['developers'] }],
-    item(),
+    ticket(),
     actor('alice', { groups: ['dev'], roles: ['viewers'] }),
     blockedByRule('restrict-who'),
   ),
@@ -253,7 +253,7 @@ export const RULE_CASES: ConformanceCase[] = [
     kind: 'available',
     title: 'Restrict who hides the transition from others',
     workflow: ruled([{ type: 'restrict-who', users: ['bob'] }]),
-    item: item(),
+    ticket: ticket(),
     actor: actor('alice'),
     expect: { transitions: ['cancel'] },
   }),
@@ -261,22 +261,22 @@ export const RULE_CASES: ConformanceCase[] = [
   run(
     'validate-permission-holder',
     'Validate permission passes a holder',
-    [{ type: 'validate-permission', permission: 'resolve' }],
-    item(),
-    actor('alice', { permissions: ['resolve'] }),
+    [{ type: 'validate-permission', permission: 'close' }],
+    ticket(),
+    actor('alice', { permissions: ['close'] }),
     { outcome: 'ok' },
   ),
   run(
     'validate-permission-non-holder',
     'Validate permission blocks a non-holder with a message',
-    [{ type: 'validate-permission', permission: 'resolve' }],
-    item(),
+    [{ type: 'validate-permission', permission: 'close' }],
+    ticket(),
     actor('alice'),
     {
       outcome: 'blocked',
       by: 'rule',
       name: 'validate-permission',
-      message: 'needs the resolve permission',
+      message: 'needs the close permission',
     },
   ),
   // Copy one field's value to another.
@@ -284,7 +284,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'copy-field',
     'Copy one field to another',
     [{ type: 'copy-field', from: 'estimate', to: 'original-estimate' }],
-    item({ fields: { estimate: 5 } }),
+    ticket({ fields: { estimate: 5 } }),
     actor('alice'),
     { outcome: 'ok', fields: { estimate: 5, 'original-estimate': 5 } },
   ),
@@ -292,7 +292,7 @@ export const RULE_CASES: ConformanceCase[] = [
     'copy-field-empty-source',
     'Copy leaves the target alone when the source is empty',
     [{ type: 'copy-field', from: 'estimate', to: 'original-estimate' }],
-    item({ fields: { 'original-estimate': 2 } }),
+    ticket({ fields: { 'original-estimate': 2 } }),
     actor('alice'),
     { outcome: 'ok', fields: { 'original-estimate': 2 } },
   ),
@@ -300,26 +300,26 @@ export const RULE_CASES: ConformanceCase[] = [
   run(
     'update-field',
     'Update a field',
-    [{ type: 'update-field', field: 'stage', value: 'dev' }],
-    item(),
+    [{ type: 'update-field', field: 'phase', value: 'dev' }],
+    ticket(),
     actor('alice'),
-    { outcome: 'ok', fields: { stage: 'dev' } },
+    { outcome: 'ok', fields: { phase: 'dev' } },
   ),
   run(
     'update-field-recorded',
     'Update a field is recorded in the history',
-    [{ type: 'update-field', field: 'stage', value: 'dev' }],
-    item({ fields: { stage: 'triage' } }),
+    [{ type: 'update-field', field: 'phase', value: 'dev' }],
+    ticket({ fields: { phase: 'triage' } }),
     actor('alice'),
     {
       outcome: 'ok',
       added: [
         { field: 'status', from: 'open', to: 'in-progress', by: 'alice', transition: 'start' },
-        { field: 'stage', from: 'triage', to: 'dev', by: 'alice', transition: 'start' },
+        { field: 'phase', from: 'triage', to: 'dev', by: 'alice', transition: 'start' },
       ],
     },
   ),
-  // Rules combine and stay local to their space.
+  // Rules combine and stay local to their track.
   run(
     'rules-restrict-then-act',
     'A restriction is checked before the acting rules run',
@@ -327,7 +327,7 @@ export const RULE_CASES: ConformanceCase[] = [
       { type: 'assign', to: 'current-user' },
       { type: 'restrict-field-value', field: 'kind', value: 'bug' },
     ],
-    item({ assignee: null, fields: { kind: 'task' } }),
+    ticket({ assignee: null, fields: { kind: 'task' } }),
     actor('alice'),
     blockedByRule('restrict-field-value'),
   ),
@@ -336,22 +336,22 @@ export const RULE_CASES: ConformanceCase[] = [
     'Several rules act together',
     [
       { type: 'assign', to: 'current-user' },
-      { type: 'update-field', field: 'stage', value: 'dev' },
-      { type: 'copy-field', from: 'stage', to: 'last-stage' },
+      { type: 'update-field', field: 'phase', value: 'dev' },
+      { type: 'copy-field', from: 'phase', to: 'last-phase' },
     ],
-    item({ assignee: null }),
+    ticket({ assignee: null }),
     actor('alice'),
-    { outcome: 'ok', assignee: 'alice', fields: { stage: 'dev', 'last-stage': 'dev' } },
+    { outcome: 'ok', assignee: 'alice', fields: { phase: 'dev', 'last-phase': 'dev' } },
   ),
-  c('rules-local-to-space', {
+  c('rules-local-to-track', {
     kind: 'transition',
-    title: 'Rules created in one space do not appear in another',
+    title: 'Rules created in one track do not appear in another',
     workflow: {
       ...ruled([{ type: 'restrict-field-value', field: 'kind', value: 'bug' }]),
-      id: 'space-b',
+      id: 'track-b',
       rules: {},
     },
-    item: item({ fields: { kind: 'task' } }),
+    ticket: ticket({ fields: { kind: 'task' } }),
     actor: actor('alice'),
     request: { transition: 'start', now: NOW },
     expect: { outcome: 'ok', status: 'in-progress' },
@@ -360,7 +360,7 @@ export const RULE_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'Rules on Start do not apply to Cancel',
     workflow: ruled([{ type: 'restrict-who', users: ['bob'] }]),
-    item: item(),
+    ticket: ticket(),
     actor: actor('alice'),
     request: { transition: 'cancel', now: NOW },
     expect: { outcome: 'ok', status: 'cancelled' },

@@ -8,7 +8,7 @@
 
 Unattended upgrades are the promise: one command, three minor versions in one step, zero manual
 steps, automatic backup, rollback on failure (OPS-006). Backups and restores must be scheduled,
-verified and able to recover a single space or deleted items (OPS-008, OPS-009). Tables with
+verified and able to recover a single track or deleted tickets (OPS-008, OPS-009). Tables with
 tens of millions of rows cannot be locked for minutes.
 
 ## Decision
@@ -27,7 +27,7 @@ tens of millions of rows cannot be locked for minutes.
 - **Backup and restore CLI** (M0-030): `taskmoor backup` (database with `pg_dump` in
   directory format, files, configuration; encrypted; to disk, S3 or SFTP; retention rules;
   optional WAL archiving for point-in-time recovery) and `taskmoor restore` to the same or a
-  new host, into a sandbox, or a single space or deleted items into the live site. A scheduled
+  new host, into a sandbox, or a single track or deleted tickets into the live site. A scheduled
   verification restores into a scratch database and reports.
 - **Rolling upgrades** on Kubernetes: the backend serves API N-1 (ADR-032) and migrations are
   compatible with the previous version's code during expand, so old pods keep working.

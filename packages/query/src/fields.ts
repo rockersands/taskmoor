@@ -1,7 +1,7 @@
 /**
- * What a query can refer to. System fields map to item columns; custom fields live in typed
+ * What a query can refer to. System fields map to ticket columns; custom fields live in typed
  * side tables (ADR-008). Names are matched without regard to case; aliases keep the
- * Jira-compatible vocabulary working (`project`, `issuetype`, `fixVersion`, ...).
+ * Jira-compatible vocabulary working (`project`, `issuetype`, `reporter`, ...).
  */
 export type SystemType =
   | 'key'
@@ -10,11 +10,11 @@ export type SystemType =
   | 'datetime'
   | 'user'
   | 'labels'
-  | 'space'
+  | 'track'
   | 'status'
-  | 'statusCategory'
+  | 'stage'
   | 'priority'
-  | 'itemType';
+  | 'ticketType';
 
 export type CustomType = 'text' | 'number' | 'date' | 'user' | 'option' | 'multi' | 'labels';
 
@@ -23,7 +23,7 @@ export interface SystemField {
   name: string;
   aliases: readonly string[];
   type: SystemType;
-  /** Column on the item table. */
+  /** Column on the ticket table. */
   column: string;
   /** Name used in the change history for WAS and CHANGED. */
   history?: string;
@@ -43,19 +43,25 @@ export type Field = SystemField | CustomField;
 export interface Catalogue {
   systems: readonly SystemField[];
   customs: readonly CustomField[];
-  /** Space key to ID, so `project = ABC` becomes a number. */
-  spaceKeys: Readonly<Record<string, number>>;
+  /** Track key to ID, so `track = ABC` (Jira: `project = ABC`) becomes a number. */
+  trackKeys: Readonly<Record<string, number>>;
 }
 
 export const SYSTEM_FIELDS: readonly SystemField[] = [
   { kind: 'system', name: 'id', aliases: [], type: 'number', column: 'id' },
   { kind: 'system', name: 'key', aliases: ['issuekey', 'issue'], type: 'key', column: 'key' },
-  { kind: 'system', name: 'space', aliases: ['project'], type: 'space', column: 'space_id' },
+  {
+    kind: 'system',
+    name: 'track',
+    aliases: ['project', 'space'],
+    type: 'track',
+    column: 'space_id',
+  },
   {
     kind: 'system',
     name: 'type',
-    aliases: ['issuetype', 'worktype'],
-    type: 'itemType',
+    aliases: ['issuetype'],
+    type: 'ticketType',
     column: 'type',
   },
   {
@@ -68,9 +74,9 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
   },
   {
     kind: 'system',
-    name: 'statusCategory',
-    aliases: [],
-    type: 'statusCategory',
+    name: 'stage',
+    aliases: ['statusCategory'],
+    type: 'stage',
     column: 'status_category',
   },
   {
@@ -106,7 +112,7 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     nullable: true,
     history: 'assignee',
   },
-  { kind: 'system', name: 'reporter', aliases: [], type: 'user', column: 'reporter_id' },
+  { kind: 'system', name: 'requester', aliases: ['reporter'], type: 'user', column: 'reporter_id' },
   { kind: 'system', name: 'labels', aliases: ['label'], type: 'labels', column: 'labels' },
   {
     kind: 'system',
@@ -132,8 +138,8 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
   },
   {
     kind: 'system',
-    name: 'resolved',
-    aliases: ['resolutionDate'],
+    name: 'closed',
+    aliases: ['resolutionDate', 'resolved'],
     type: 'datetime',
     column: 'resolved_at',
     nullable: true,
@@ -142,9 +148,9 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
 
 export function makeCatalogue(
   customs: readonly CustomField[] = [],
-  spaceKeys: Readonly<Record<string, number>> = {},
+  trackKeys: Readonly<Record<string, number>> = {},
 ): Catalogue {
-  return { systems: SYSTEM_FIELDS, customs, spaceKeys };
+  return { systems: SYSTEM_FIELDS, customs, trackKeys };
 }
 
 /** Finds a field by name or alias (any case) or by custom field number. */

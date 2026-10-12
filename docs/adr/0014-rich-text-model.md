@@ -21,7 +21,7 @@ model is ProseMirror, through Tiptap.
   the editor does not know are kept whole in `unknownBlock`, `unknownInline` and `unknownMark`
   and written back unchanged. Every converted node keeps its original attributes in a hidden
   `adfAttrs` attribute; on export those come first and the editor's values overwrite only the
-  keys it owns. The original document is also stored next to the item (importer, M1), so a
+  keys it owns. The original document is also stored next to the ticket (importer, M1), so a
   future converter can redo the conversion.
 - **Collaboration**: Yjs with y-prosemirror for the editor state and Hocuspocus as the
   WebSocket server, running as the `realtime` role of the backend image. Documents persist in

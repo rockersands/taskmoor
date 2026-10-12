@@ -6,7 +6,7 @@
 
 ## Context
 
-The data model has hundreds of tables, hot queries that must stay within budget at 10M items,
+The data model has hundreds of tables, hot queries that must stay within budget at 10M tickets,
 and a query compiler (ADR-010) that emits SQL directly. Sessions need generated SQL they can
 read in an `EXPLAIN`, and a schema whose every change is reviewed.
 

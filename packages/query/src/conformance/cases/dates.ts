@@ -7,7 +7,7 @@ const DATE_FIELDS = [
   'created',
   'updated',
   'due',
-  'resolved',
+  'closed',
   'lastViewed',
   '"Target date"',
   'cf[10022]',

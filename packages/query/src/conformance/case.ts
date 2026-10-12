@@ -20,7 +20,7 @@ export type Section =
   | 'dates'
   | 'text'
   | 'ordering'
-  | 'filters'
+  | 'saved-searches'
   | 'sprints';
 
 export const SECTIONS: readonly Section[] = [
@@ -32,7 +32,7 @@ export const SECTIONS: readonly Section[] = [
   'dates',
   'text',
   'ordering',
-  'filters',
+  'saved-searches',
   'sprints',
 ];
 

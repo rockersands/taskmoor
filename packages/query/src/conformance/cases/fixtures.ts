@@ -27,16 +27,16 @@ export type ValueType =
   | 'option'
   | 'multi'
   | 'labels'
-  | 'version'
+  | 'release'
   | 'priority'
   | 'status'
   | 'key'
-  | 'space'
+  | 'track'
   | 'type'
   | 'sprint'
   | 'attachments'
-  | 'component'
-  | 'filter';
+  | 'area'
+  | 'savedSearch';
 
 export interface SpecField {
   canonical: string;
@@ -54,7 +54,13 @@ export interface SpecField {
 
 /** Section 1.5, restated: canonical identifier, accepted aliases, type and a sample value. */
 export const FIELDS: readonly SpecField[] = [
-  { canonical: 'affectedVersion', aliases: [], type: 'version', sample: '"1.0"', sortable: true },
+  {
+    canonical: 'foundInRelease',
+    aliases: ['affectedVersion'],
+    type: 'release',
+    sample: '"1.0"',
+    sortable: true,
+  },
   {
     canonical: 'approvals',
     aliases: [],
@@ -71,8 +77,8 @@ export const FIELDS: readonly SpecField[] = [
     known: true,
   },
   {
-    canonical: 'reporter',
-    aliases: [],
+    canonical: 'requester',
+    aliases: ['reporter'],
     type: 'user',
     sample: 'currentUser()',
     sortable: true,
@@ -80,7 +86,7 @@ export const FIELDS: readonly SpecField[] = [
   },
   { canonical: 'creator', aliases: [], type: 'user', sample: 'currentUser()', sortable: true },
   { canonical: 'attachments', aliases: [], type: 'attachments', sample: 'EMPTY' },
-  { canonical: 'category', aliases: [], type: 'option', sample: '"Internal"' },
+  { canonical: 'trackCategory', aliases: ['category'], type: 'option', sample: '"Internal"' },
   {
     canonical: 'changeGatingType',
     aliases: ['"Change gating type"'],
@@ -98,7 +104,7 @@ export const FIELDS: readonly SpecField[] = [
     sortable: true,
     known: true,
   },
-  { canonical: 'component', aliases: [], type: 'component', sample: '"API"', sortable: true },
+  { canonical: 'area', aliases: ['component'], type: 'area', sample: '"API"', sortable: true },
   {
     canonical: 'created',
     aliases: ['createdDate'],
@@ -117,8 +123,8 @@ export const FIELDS: readonly SpecField[] = [
   },
   { canonical: 'due', aliases: ['dueDate'], type: 'date', sample: '2026-12-31', sortable: true },
   {
-    canonical: 'resolved',
-    aliases: ['resolutionDate'],
+    canonical: 'closed',
+    aliases: ['resolved', 'resolutionDate'],
     type: 'date',
     sample: '-1w',
     sortable: true,
@@ -127,12 +133,18 @@ export const FIELDS: readonly SpecField[] = [
   { canonical: 'lastViewed', aliases: [], type: 'date', sample: '-1d', sortable: true },
   { canonical: 'parent', aliases: ['"Epic link"'], type: 'key', sample: 'ABC-1', known: true },
   {
-    canonical: 'filter',
-    aliases: ['request', 'savedFilter', 'searchRequest'],
-    type: 'filter',
+    canonical: 'savedSearch',
+    aliases: ['filter', 'request', 'savedFilter', 'searchRequest'],
+    type: 'savedSearch',
     sample: '10001',
   },
-  { canonical: 'fixVersion', aliases: [], type: 'version', sample: '"2.0"', sortable: true },
+  {
+    canonical: 'targetRelease',
+    aliases: ['fixVersion'],
+    type: 'release',
+    sample: '"2.0"',
+    sortable: true,
+  },
   { canonical: 'hierarchyLevel', aliases: [], type: 'number', sample: '1', sortable: true },
   {
     canonical: 'labels',
@@ -142,13 +154,19 @@ export const FIELDS: readonly SpecField[] = [
     sortable: true,
     known: true,
   },
-  { canonical: 'level', aliases: [], type: 'option', sample: '"Internal"', sortable: true },
-  { canonical: 'organization', aliases: [], type: 'option', sample: '"Acme"' },
-  { canonical: 'requestType', aliases: [], type: 'option', sample: '"Bug report"' },
-  { canonical: 'requestChannelType', aliases: [], type: 'option', sample: 'email' },
   {
-    canonical: 'requestLastActivityTime',
-    aliases: [],
+    canonical: 'visibilityLevel',
+    aliases: ['level'],
+    type: 'option',
+    sample: '"Internal"',
+    sortable: true,
+  },
+  { canonical: 'customerGroup', aliases: ['organization'], type: 'option', sample: '"Acme"' },
+  { canonical: 'requestForm', aliases: ['requestType'], type: 'option', sample: '"Bug report"' },
+  { canonical: 'requestChannel', aliases: ['requestChannelType'], type: 'option', sample: 'email' },
+  {
+    canonical: 'requestLastActivity',
+    aliases: ['requestLastActivityTime'],
     type: 'date',
     sample: '-1d',
     sortable: true,
@@ -156,17 +174,33 @@ export const FIELDS: readonly SpecField[] = [
   { canonical: 'originalEstimate', aliases: [], type: 'number', sample: '3600', sortable: true },
   { canonical: 'remainingEstimate', aliases: [], type: 'number', sample: '1800', sortable: true },
   { canonical: 'timeSpent', aliases: [], type: 'number', sample: '600', sortable: true },
-  { canonical: 'workRatio', aliases: [], type: 'number', sample: '50', sortable: true },
   {
-    canonical: 'space',
-    aliases: ['project'],
-    type: 'space',
+    canonical: 'effortRatio',
+    aliases: ['workRatio'],
+    type: 'number',
+    sample: '50',
+    sortable: true,
+  },
+  {
+    canonical: 'track',
+    aliases: ['project', 'space'],
+    type: 'track',
     sample: 'ABC',
     sortable: true,
     known: true,
   },
-  { canonical: 'parentSpace', aliases: ['parentProject'], type: 'space', sample: 'ABC' },
-  { canonical: 'spaceType', aliases: ['projectType'], type: 'option', sample: 'software' },
+  {
+    canonical: 'parentTrack',
+    aliases: ['parentProject', 'parentSpace'],
+    type: 'track',
+    sample: 'ABC',
+  },
+  {
+    canonical: 'trackType',
+    aliases: ['projectType', 'spaceType'],
+    type: 'option',
+    sample: 'software',
+  },
   {
     canonical: 'priority',
     aliases: [],
@@ -175,7 +209,13 @@ export const FIELDS: readonly SpecField[] = [
     sortable: true,
     known: true,
   },
-  { canonical: 'resolution', aliases: [], type: 'option', sample: 'Done', sortable: true },
+  {
+    canonical: 'closeReason',
+    aliases: ['resolution'],
+    type: 'option',
+    sample: 'Done',
+    sortable: true,
+  },
   {
     canonical: 'status',
     aliases: [],
@@ -185,8 +225,8 @@ export const FIELDS: readonly SpecField[] = [
     known: true,
   },
   {
-    canonical: 'statusCategory',
-    aliases: [],
+    canonical: 'stage',
+    aliases: ['statusCategory'],
     type: 'status',
     sample: 'Done',
     sortable: true,
@@ -212,12 +252,22 @@ export const FIELDS: readonly SpecField[] = [
   },
   { canonical: 'voter', aliases: [], type: 'user', sample: 'currentUser()' },
   { canonical: 'votes', aliases: [], type: 'number', sample: '3', sortable: true },
-  { canonical: 'watcher', aliases: [], type: 'user', sample: 'currentUser()' },
-  { canonical: 'watchers', aliases: [], type: 'number', sample: '3', sortable: true },
-  { canonical: 'workItemLink', aliases: ['issueLink'], type: 'key', sample: 'ABC-12' },
-  { canonical: 'workItemLinkType', aliases: ['issueLinkType'], type: 'option', sample: 'blocks' },
-  { canonical: 'worklogComment', aliases: [], type: 'text', sample: '"paired"' },
-  { canonical: 'worklogDate', aliases: [], type: 'date', sample: '-1w' },
+  { canonical: 'follower', aliases: ['watcher'], type: 'user', sample: 'currentUser()' },
+  { canonical: 'followers', aliases: ['watchers'], type: 'number', sample: '3', sortable: true },
+  {
+    canonical: 'ticketLink',
+    aliases: ['issueLink', 'workItemLink'],
+    type: 'key',
+    sample: 'ABC-12',
+  },
+  {
+    canonical: 'ticketLinkType',
+    aliases: ['issueLinkType', 'workItemLinkType'],
+    type: 'option',
+    sample: 'blocks',
+  },
+  { canonical: 'timeEntryComment', aliases: ['worklogComment'], type: 'text', sample: '"paired"' },
+  { canonical: 'timeEntryDate', aliases: ['worklogDate'], type: 'date', sample: '-1w' },
 ];
 
 /** The custom fields of the catalogue, by name and by id (section 1.1 and 1.5). */
@@ -297,7 +347,7 @@ export const OPERATORS: readonly Operator[] = [
   'CHANGED',
 ];
 
-const ORDERED: ReadonlySet<ValueType> = new Set(['number', 'date', 'version', 'priority']);
+const ORDERED: ReadonlySet<ValueType> = new Set(['number', 'date', 'release', 'priority']);
 const TEXT: ReadonlySet<ValueType> = new Set(['text']);
 
 /**
@@ -409,86 +459,91 @@ export const FUNCTIONS: readonly SpecFunction[] = [
   { name: 'closedSprints', args: [0, 0], sample: [], usage: { field: 'sprint', op: 'IN' } },
   { name: 'futureSprints', args: [0, 0], sample: [], usage: { field: 'sprint', op: 'IN' } },
   {
-    name: 'releasedVersions',
+    name: 'shippedReleases',
+    legacy: 'releasedVersions',
     args: [0, 1],
     sample: ['ABC'],
-    usage: { field: 'fixVersion', op: 'IN' },
+    usage: { field: 'targetRelease', op: 'IN' },
   },
   {
-    name: 'unreleasedVersions',
+    name: 'upcomingReleases',
+    legacy: 'unreleasedVersions',
     args: [0, 1],
     sample: ['ABC'],
-    usage: { field: 'fixVersion', op: 'IN' },
+    usage: { field: 'targetRelease', op: 'IN' },
   },
   {
-    name: 'latestReleasedVersion',
+    name: 'latestShippedRelease',
+    legacy: 'latestReleasedVersion',
     args: [1, 1],
     sample: ['ABC'],
-    usage: { field: 'fixVersion', op: '=' },
+    usage: { field: 'targetRelease', op: '=' },
   },
   {
-    name: 'earliestUnreleasedVersion',
+    name: 'earliestUpcomingRelease',
+    legacy: 'earliestUnreleasedVersion',
     args: [1, 1],
     sample: ['ABC'],
-    usage: { field: 'fixVersion', op: '=' },
+    usage: { field: 'targetRelease', op: '=' },
   },
   {
-    name: 'componentsLeadByUser',
+    name: 'areasOwnedByUser',
+    legacy: 'componentsLeadByUser',
     args: [0, 1],
     sample: ['"alice"'],
-    usage: { field: 'component', op: 'IN' },
+    usage: { field: 'area', op: 'IN' },
   },
   {
-    name: 'spacesLeadByUser',
+    name: 'tracksOwnedByUser',
     legacy: 'projectsLeadByUser',
     args: [0, 1],
     sample: ['"alice"'],
-    usage: { field: 'space', op: 'IN' },
+    usage: { field: 'track', op: 'IN' },
   },
   {
-    name: 'spacesWhereUserHasPermission',
+    name: 'tracksWhereUserHasPermission',
     legacy: 'projectsWhereUserHasPermission',
     args: [1, 1],
     sample: ['"Browse"'],
-    usage: { field: 'space', op: 'IN' },
+    usage: { field: 'track', op: 'IN' },
   },
   {
-    name: 'spacesWhereUserHasRole',
+    name: 'tracksWhereUserHasRole',
     legacy: 'projectsWhereUserHasRole',
     args: [1, 1],
     sample: ['"Developers"'],
-    usage: { field: 'space', op: 'IN' },
+    usage: { field: 'track', op: 'IN' },
   },
   {
-    name: 'linkedWorkItems',
+    name: 'linkedTickets',
     legacy: 'linkedIssues',
     args: [1, 3],
     sample: ['ABC-12', '"blocks"'],
     usage: { field: 'key', op: 'IN' },
   },
   {
-    name: 'workItemHistory',
+    name: 'ticketHistory',
     legacy: 'issueHistory',
     args: [0, 0],
     sample: [],
     usage: { field: 'key', op: 'IN' },
   },
   {
-    name: 'workItemsWithRemoteLinksByGlobalId',
+    name: 'ticketsWithWebLinksByGlobalId',
     legacy: 'issuesWithRemoteLinksByGlobalId',
     args: [1, 100],
     sample: ['"g1"', '"g2"'],
     usage: { field: 'key', op: 'IN' },
   },
   {
-    name: 'votedWorkItems',
+    name: 'votedTickets',
     legacy: 'votedIssues',
     args: [0, 0],
     sample: [],
     usage: { field: 'key', op: 'IN' },
   },
   {
-    name: 'watchedWorkItems',
+    name: 'followedTickets',
     legacy: 'watchedIssues',
     args: [0, 0],
     sample: [],
@@ -501,14 +556,14 @@ export const FUNCTIONS: readonly SpecFunction[] = [
     usage: { field: 'key', op: 'IN' },
   },
   {
-    name: 'standardWorkTypes',
+    name: 'standardTicketTypes',
     legacy: 'standardIssueTypes',
     args: [0, 0],
     sample: [],
     usage: { field: 'type', op: 'IN' },
   },
   {
-    name: 'subtaskWorkTypes',
+    name: 'subticketTypes',
     legacy: 'subTaskIssueTypes',
     args: [0, 0],
     sample: [],
@@ -539,19 +594,19 @@ export const FUNCTIONS: readonly SpecFunction[] = [
     name: 'customerDetail',
     args: [2, 2],
     sample: ['"Country"', '"Spain"'],
-    usage: { field: 'reporter', op: 'IN' },
+    usage: { field: 'requester', op: 'IN' },
   },
   {
     name: 'entitlementDetail',
     args: [2, 2],
     sample: ['"Tier"', '"Gold"'],
-    usage: { field: 'organization', op: 'IN' },
+    usage: { field: 'customerGroup', op: 'IN' },
   },
   {
     name: 'entitlementProduct',
     args: [1, 1],
     sample: ['"Cloud"'],
-    usage: { field: 'organization', op: 'IN' },
+    usage: { field: 'customerGroup', op: 'IN' },
   },
   {
     name: 'everBreached',
@@ -563,16 +618,18 @@ export const FUNCTIONS: readonly SpecFunction[] = [
   { name: 'myPendingApproval', args: [0, 0], sample: [], usage: { field: 'approvals', op: '=' } },
   { name: 'myPending', args: [0, 0], sample: [], usage: { field: 'approvals', op: '=' } },
   {
-    name: 'organizationDetail',
+    name: 'customerGroupDetail',
+    legacy: 'organizationDetail',
     args: [2, 2],
     sample: ['"Region"', '"EU"'],
-    usage: { field: 'organization', op: 'IN' },
+    usage: { field: 'customerGroup', op: 'IN' },
   },
   {
-    name: 'organizationMembers',
+    name: 'customerGroupMembers',
+    legacy: 'organizationMembers',
     args: [1, 1],
     sample: ['"Acme"'],
-    usage: { field: 'reporter', op: 'IN' },
+    usage: { field: 'requester', op: 'IN' },
   },
   { name: 'paused', args: [0, 0], sample: [], usage: { field: '"Time to resolution"', op: '=' } },
   { name: 'pending', args: [0, 0], sample: [], usage: { field: 'approvals', op: '=' } },

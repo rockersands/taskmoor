@@ -6,25 +6,25 @@
 
 ## Context
 
-Text search (`summary ~ "login"`, the master `text` field, QRY-007) must find an item within one
+Text search (`summary ~ "login"`, the master `text` field, QRY-007) must find a ticket within one
 second of saving it and must respect browse permissions inside the query (QRY-008). Atlassian
 moved Jira Cloud search to OpenSearch and cut Data Center p95 from 813 to 500 ms with it, but a
 required search cluster contradicts ADR-006 and the self-hosting targets.
 
 ## Decision
 
-- **Default: Postgres full-text.** Each item row keeps a `tsvector` of summary, description and
+- **Default: Postgres full-text.** Each ticket row keeps a `tsvector` of summary, description and
   comments (weighted), updated in the same transaction as the write, indexed with GIN; `pg_trgm`
   serves substring and "contains" matches on short text fields and autocomplete. Query text
   follows the spec's syntax (phrases, prefixes, AND/OR/NOT) and compiles to `tsquery`.
-- **One search interface.** `packages/core` exposes `index(item)` and a predicate the query
+- **One search interface.** `packages/core` exposes `index(ticket)` and a predicate the query
   compiler (ADR-010) embeds in SQL. The default implementation is the Postgres one.
 - **Optional OpenSearch adapter (M2)** for very large sites: an outbox consumer (ADR-015)
-  mirrors items into an index; the compiler then resolves the text predicate to an id set from
+  mirrors tickets into an index; the compiler then resolves the text predicate to an id set from
   OpenSearch and the rest of the query still runs in Postgres with the permission pre-filter.
   Consistency is eventual and shown in the admin page (index lag).
 - **Language support:** the text search configuration is chosen per instance (default
-  `simple` plus `english` stemming when the locale is English); per-space language is an M2
+  `simple` plus `english` stemming when the locale is English); per-track language is an M2
   item.
 
 ## Options considered

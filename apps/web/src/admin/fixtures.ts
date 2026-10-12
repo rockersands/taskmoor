@@ -36,7 +36,7 @@ export const STALE_BACKUP: SystemInfo = {
   ...HEALTHY,
   database: {
     ...HEALTHY.database,
-    migrations: { applied: 2, pending: ['0003_spaces'], unknown: [] },
+    migrations: { applied: 2, pending: ['0003_tracks'], unknown: [] },
   },
   backup: { lastAt: '2026-10-09T02:00:00.000Z', ageSeconds: 3 * 86_400 },
 };

@@ -12,15 +12,15 @@ import {
   BoardsIcon,
   DashboardsIcon,
   HomeIcon,
-  ProjectsIcon,
   SearchIcon,
   SettingsIcon,
+  TracksIcon,
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
 
 export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
   { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon },
-  { id: 'projects', labelId: 'nav.projects', href: '#/projects', icon: ProjectsIcon },
+  { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon },
   { id: 'boards', labelId: 'nav.boards', href: '#/boards', icon: BoardsIcon },
   { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon },
   { id: 'dashboards', labelId: 'nav.dashboards', href: '#/dashboards', icon: DashboardsIcon },
@@ -45,7 +45,7 @@ function useHash(): string {
   );
 }
 
-/** Current page id from the hash (#/projects -> "projects"). */
+/** Current page id from the hash (#/tracks -> "tracks"). */
 function routeFromHash(hash: string, fallback: string): string {
   const id = hash.replace(/^#\/?/, '').split(/[/?]/)[0];
   return NAV_ITEMS.some((item) => item.id === id) && id ? id : fallback;

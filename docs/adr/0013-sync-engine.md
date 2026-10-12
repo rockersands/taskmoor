@@ -17,15 +17,15 @@ ElectricSQL.
 ## Decision
 
 - **A change log in Postgres** (`sync.change_log`): every mutation appends one row per changed
-  entity with the space, entity, id, operation and a JSON delta, in the same transaction as the
+  entity with the track, entity, id, operation and a JSON delta, in the same transaction as the
   change. A sequence is taken under a short advisory lock immediately before the append, so
   sequence order is commit order and a client that has seen `seq` has seen everything below it.
   Permission tables write to the log too, which is what invalidates the caches of ADR-012.
-- **Bootstrap, then follow.** A client bootstraps the entities of its sync groups (the spaces
+- **Bootstrap, then follow.** A client bootstraps the entities of its sync groups (the tracks
   it may browse, plus its own user-scoped data) in id-ordered pages and records the log
   position it started from; afterwards it pulls `seq > last` for those groups, woken by
-  `NOTIFY` over the realtime connection, with a poll as fallback. Security levels and
-  item-level grantees are applied when the delta is read, so a client never receives a row it
+  `NOTIFY` over the realtime connection, with a poll as fallback. Visibility levels and
+  ticket-level grantees are applied when the delta is read, so a client never receives a row it
   may not see.
 - **Optimistic mutations with an outbox.** The client applies a mutation locally, queues it with
   a (client id, mutation id) pair, and sends it; the server applies each pair at most once and
@@ -39,11 +39,11 @@ ElectricSQL.
 
 ## Measurements (spike, 2026-10-12)
 
-200,000 items, the largest space holding 51,835 ([report](../spikes/sync.md)):
+200,000 tickets, the largest track holding 51,835 ([report](../spikes/sync.md)):
 
 | Measure | Result |
 |---|---:|
-| Bootstrap of 51,835 items (51 MB of JSON lines) | 2.6 s, 20,000 rows/s |
+| Bootstrap of 51,835 tickets (51 MB of JSON lines) | 2.6 s, 20,000 rows/s |
 | Mutations, 8 concurrent writers, lock-ordered log | 1,392 per second |
 | Sequence gaps or reordering | 0 |
 | Append-to-follower latency under that load, p50 / p95 / max | 0 / 1 / 724 ms |
@@ -59,7 +59,7 @@ mutations per second on one connection pool exceeds the plan's 1,000 jobs per se
 |---|---|---|
 | In-house change log (chosen) | Measured within budget; no extra service; permissions from ADR-012 applied in the same SQL; one schema we own | Client cache, delta application and conflict handling are ours to write (M1-031, M1-032) |
 | Zero (Rocicorp) | Mature client cache and query engine; Apache-2.0 | A `zero-cache` service with a SQLite replica fed by logical replication; permissions re-expressed in its own language, duplicating ADR-012; a second service in every install |
-| ElectricSQL | Shape-based partial replication over HTTP; Apache-2.0 | An Elixir sync service (Docker) as a second stateful service; row-level permissions through shapes do not express role, group and security-level rules without duplication |
+| ElectricSQL | Shape-based partial replication over HTTP; Apache-2.0 | An Elixir sync service (Docker) as a second stateful service; row-level permissions through shapes do not express role, group and visibility-level rules without duplication |
 | PowerSync | Polished SDKs | Core under FSL, not an OSI licence (ADR-002) |
 
 Zero and ElectricSQL were assessed on fit, not benchmarked: each adds a service that
@@ -72,4 +72,4 @@ revisited behind the same change log.
 Every write path must append to the log, enforced by a fitness test over the mutation
 functions. The realtime role (ADR-021) relays `NOTIFY` to WebSocket clients. The lock
 serialises the tail of mutating transactions; if a site ever exceeds the measured throughput,
-the log can be sharded by space with one sequence per shard.
+the log can be sharded by track with one sequence per shard.

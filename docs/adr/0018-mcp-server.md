@@ -21,7 +21,7 @@ built-in MCP server with streamable HTTP and stdio transports, tool profiles and
   curated into profiles: read-only (search, read, list), planner (plus create, update, comment,
   transition, link) and full (plus administration). Admins allowlist client ids and pick the
   profile per client or token.
-- **Resources** expose items, spaces, boards, sprints and knowledge articles as readable
+- **Resources** expose tickets, tracks, boards, sprints and knowledge articles as readable
   documents; prompts ship for triage and summarisation and can be edited by admins.
 - **Every call is audited** (who, client, tool, arguments digest, result status, latency) in
   the AI audit log (IAM-021), and rate-limited per token like any API client.

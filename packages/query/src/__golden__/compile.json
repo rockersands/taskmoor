@@ -1,5 +1,5 @@
 {
-  "\"Story Points\" > 5 AND space = ABC ORDER BY \"Story Points\" DESC": {
+  "\"Story Points\" > 5 AND track = ABC ORDER BY \"Story Points\" DESC": {
     "params": [
       1,
       5,
@@ -12,7 +12,7 @@
     ],
     "text": "SELECT a.item_id AS id FROM fs_side.v_number a\nWHERE a.field_id = $1\n  AND a.value > $2::numeric\n  AND a.space_id = $3::int\n  AND a.space_id = ANY($4::int[])\nORDER BY a.value DESC, a.item_id DESC\nLIMIT $5"
   },
-  "\"Story Points\" IS EMPTY AND type IN (Story, Task) AND space = ABC ORDER BY created DESC": {
+  "\"Story Points\" IS EMPTY AND type IN (Story, Task) AND track = ABC ORDER BY created DESC": {
     "params": [
       [
         1,
@@ -28,7 +28,7 @@
     ],
     "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (NOT EXISTS (SELECT 1 FROM fs_side.v_number v WHERE v.item_id = i.id AND v.field_id = $2) AND i.type = ANY($3::text[]) AND i.space_id = $4::int)\nORDER BY i.created_at DESC, i.id DESC\nLIMIT $5"
   },
-  "(assignee = currentUser() OR reporter = currentUser()) AND statusCategory != done ORDER BY updated DESC": {
+  "(assignee = currentUser() OR requester = currentUser()) AND stage != done ORDER BY updated DESC": {
     "params": [
       [
         1,
@@ -74,7 +74,7 @@
     ],
     "text": "SELECT a.item_id AS id FROM fs_side.v_date a\nWHERE a.field_id = $1\n  AND a.value <= $2::date\n  AND a.value >= $3::date\n  AND a.space_id = ANY($4::int[])\nORDER BY a.value ASC, a.item_id DESC\nLIMIT $5"
   },
-  "NOT (labels IN (infra) OR type = Subtask) AND space IN (ABC, DEF) ORDER BY created DESC": {
+  "NOT (labels IN (infra) OR type = Subtask) AND track IN (ABC, DEF) ORDER BY created DESC": {
     "params": [
       [
         1,
@@ -104,7 +104,7 @@
     ],
     "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND EXISTS (SELECT 1 FROM fs_side.v_user v WHERE v.item_id = i.id AND v.field_id = $2 AND v.value = $3::int)\nORDER BY i.updated_at DESC, i.id DESC\nLIMIT $4"
   },
-  "Team = \"Option 3\" AND statusCategory = todo ORDER BY created DESC": {
+  "Team = \"Option 3\" AND stage = todo ORDER BY created DESC": {
     "params": [
       2,
       "Option 3",
@@ -117,7 +117,7 @@
     ],
     "text": "SELECT a.item_id AS id FROM fs_side.v_option a\nJOIN fs_side.item i ON i.id = a.item_id\nWHERE a.field_id = $1\n  AND a.value = $2::text\n  AND a.space_id = ANY($3::int[])\n  AND i.status_category = $4::text\nORDER BY a.created_at DESC, a.item_id DESC\nLIMIT $5"
   },
-  "assignee = currentUser() AND statusCategory != done ORDER BY priority DESC, created DESC": {
+  "assignee = currentUser() AND stage != done ORDER BY priority DESC, created DESC": {
     "params": [
       [
         1,
@@ -144,6 +144,17 @@
       50
     ],
     "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND EXISTS (SELECT 1 FROM gen.history h WHERE h.item_id = i.id AND h.field = $2 AND h.actor_id = ANY($3::int[]) AND h.at >= $4::timestamptz AND h.at < $5::timestamptz)\nORDER BY i.created_at DESC, i.id DESC\nLIMIT $6"
+  },
+  "closed IS EMPTY AND updated < -90d ORDER BY updated ASC": {
+    "params": [
+      [
+        1,
+        2
+      ],
+      "2026-07-14T12:00:00.000Z",
+      50
+    ],
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.resolved_at IS NULL AND i.updated_at < $2::timestamptz)\nORDER BY i.updated_at ASC, i.id DESC\nLIMIT $3"
   },
   "created >= -30d AND type = Bug ORDER BY created DESC": {
     "params": [
@@ -181,40 +192,6 @@
       50
     ],
     "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND i.parent_id = $2::bigint\nORDER BY i.created_at ASC, i.id DESC\nLIMIT $3"
-  },
-  "resolved IS EMPTY AND updated < -90d ORDER BY updated ASC": {
-    "params": [
-      [
-        1,
-        2
-      ],
-      "2026-07-14T12:00:00.000Z",
-      50
-    ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.resolved_at IS NULL AND i.updated_at < $2::timestamptz)\nORDER BY i.updated_at ASC, i.id DESC\nLIMIT $3"
-  },
-  "space = ABC AND status = \"In Progress\" ORDER BY updated DESC": {
-    "params": [
-      [
-        1,
-        2
-      ],
-      1,
-      "In Progress",
-      50
-    ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.space_id = $2::int AND i.status = $3::text)\nORDER BY i.updated_at DESC, i.id DESC\nLIMIT $4"
-  },
-  "space = ABC ORDER BY created DESC": {
-    "params": [
-      [
-        1,
-        2
-      ],
-      1,
-      50
-    ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND i.space_id = $2::int\nORDER BY i.created_at DESC, i.id DESC\nLIMIT $3"
   },
   "status CHANGED TO Done AFTER -7d ORDER BY updated DESC": {
     "params": [
@@ -288,5 +265,28 @@
       50
     ],
     "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND to_tsvector('simple', i.summary) @@ plainto_tsquery('simple', $2)\nORDER BY i.created_at DESC, i.id DESC\nLIMIT $3"
+  },
+  "track = ABC AND status = \"In Progress\" ORDER BY updated DESC": {
+    "params": [
+      [
+        1,
+        2
+      ],
+      1,
+      "In Progress",
+      50
+    ],
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.space_id = $2::int AND i.status = $3::text)\nORDER BY i.updated_at DESC, i.id DESC\nLIMIT $4"
+  },
+  "track = ABC ORDER BY created DESC": {
+    "params": [
+      [
+        1,
+        2
+      ],
+      1,
+      50
+    ],
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND i.space_id = $2::int\nORDER BY i.created_at DESC, i.id DESC\nLIMIT $3"
   }
 }

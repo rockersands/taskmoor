@@ -2,7 +2,8 @@ import type { Expr, FieldRef, OrderBy, Predicate, Query, Value } from './ast';
 
 /**
  * The Jira-compatible dialect (M1-035, QRY-003). It shares the native grammar (file 06) and
- * differs only in vocabulary, so it maps onto the native tree by renaming fields and functions:
+ * differs only in vocabulary (docs/specs/00-terminology.md), so it maps onto the native tree by
+ * renaming fields and functions:
  * `toNative` reads either vocabulary and writes Taskmoor's names, `toJira` writes the names a
  * Jira-compatible client expects. Names match without regard to case; names that are the same
  * in both vocabularies, custom fields and unknown names pass through unchanged.
@@ -10,74 +11,96 @@ import type { Expr, FieldRef, OrderBy, Predicate, Query, Value } from './ast';
 
 /** Native field name and its Jira-compatible names, the first being the one `toJira` writes. */
 export const FIELD_NAMES: readonly (readonly [native: string, ...jira: string[]])[] = [
-  ['space', 'project'],
-  ['parentSpace', 'parentProject'],
-  ['spaceType', 'projectType'],
+  ['track', 'project', 'space'],
+  ['parentTrack', 'parentProject', 'parentSpace'],
+  ['trackType', 'projectType', 'spaceType'],
+  ['trackCategory', 'category'],
   ['type', 'issuetype', 'issueType'],
   ['key', 'issuekey', 'issue', 'issueKey'],
   ['created', 'createdDate'],
   ['updated', 'updatedDate'],
   ['due', 'duedate', 'dueDate'],
-  ['resolved', 'resolutiondate', 'resolutionDate'],
-  ['filter', 'filter', 'request', 'savedFilter', 'searchRequest'],
-  ['workItemLink', 'issueLink'],
-  ['workItemLinkType', 'issueLinkType'],
+  ['closed', 'resolutiondate', 'resolutionDate', 'resolved'],
+  ['closeReason', 'resolution'],
+  ['stage', 'statusCategory'],
+  ['requester', 'reporter'],
+  ['follower', 'watcher'],
+  ['followers', 'watchers'],
+  ['area', 'component'],
+  ['targetRelease', 'fixVersion'],
+  ['foundInRelease', 'affectedVersion'],
+  ['effortRatio', 'workRatio'],
+  ['timeEntryComment', 'worklogComment'],
+  ['timeEntryDate', 'worklogDate'],
+  ['visibilityLevel', 'level'],
+  ['savedSearch', 'filter', 'request', 'savedFilter', 'searchRequest'],
+  ['ticketLink', 'issueLink', 'workItemLink'],
+  ['ticketLinkType', 'issueLinkType', 'workItemLinkType'],
+  ['linkedTicket', 'linkedWorkItem'],
+  ['parentOutcome', 'parentEpic'],
+  ['journeyTicket', 'journeyWorkItem'],
+  ['customerGroup', 'organization'],
+  ['requestForm', 'requestType'],
+  ['requestChannel', 'requestChannelType'],
+  ['requestLastActivity', 'requestLastActivityTime'],
   ['parent', 'parent', 'Epic link'],
   ['changeGatingType', 'Change gating type'],
   ['labels', 'labels', 'label'],
   ['summary', 'summary', 'title'],
   // Same name in both vocabularies; listed so their case is normalised.
   ...[
-    'affectedVersion',
     'approvals',
     'assignee',
-    'reporter',
     'creator',
     'attachments',
-    'category',
     'comment',
     'description',
     'environment',
-    'component',
     'lastViewed',
-    'fixVersion',
     'hierarchyLevel',
-    'level',
-    'organization',
-    'requestType',
-    'requestChannelType',
-    'requestLastActivityTime',
     'originalEstimate',
     'remainingEstimate',
     'timeSpent',
-    'workRatio',
     'priority',
-    'resolution',
     'status',
-    'statusCategory',
     'sprint',
     'text',
     'voter',
     'votes',
-    'watcher',
-    'watchers',
-    'worklogComment',
-    'worklogDate',
   ].map((name) => [name, name] as const),
 ];
 
-/** Native function name and its Jira-compatible name. */
-export const FUNCTION_NAMES: readonly (readonly [native: string, jira: string])[] = [
-  ['spacesLeadByUser', 'projectsLeadByUser'],
-  ['spacesWhereUserHasPermission', 'projectsWhereUserHasPermission'],
-  ['spacesWhereUserHasRole', 'projectsWhereUserHasRole'],
-  ['linkedWorkItems', 'linkedIssues'],
-  ['workItemHistory', 'issueHistory'],
-  ['workItemsWithRemoteLinksByGlobalId', 'issuesWithRemoteLinksByGlobalId'],
-  ['votedWorkItems', 'votedIssues'],
-  ['watchedWorkItems', 'watchedIssues'],
-  ['standardWorkTypes', 'standardIssueTypes'],
-  ['subtaskWorkTypes', 'subTaskIssueTypes'],
+/** Native function name and its Jira-compatible names, the first being the one `toJira` writes. */
+export const FUNCTION_NAMES: readonly (readonly [
+  native: string,
+  jira: string,
+  ...more: string[],
+])[] = [
+  ['tracksOwnedByUser', 'projectsLeadByUser', 'spacesLeadByUser'],
+  [
+    'tracksWhereUserHasPermission',
+    'projectsWhereUserHasPermission',
+    'spacesWhereUserHasPermission',
+  ],
+  ['tracksWhereUserHasRole', 'projectsWhereUserHasRole', 'spacesWhereUserHasRole'],
+  ['areasOwnedByUser', 'componentsLeadByUser'],
+  ['linkedTickets', 'linkedIssues', 'linkedWorkItems'],
+  ['ticketHistory', 'issueHistory', 'workItemHistory'],
+  [
+    'ticketsWithWebLinksByGlobalId',
+    'issuesWithRemoteLinksByGlobalId',
+    'workItemsWithRemoteLinksByGlobalId',
+  ],
+  ['votedTickets', 'votedIssues', 'votedWorkItems'],
+  ['followedTickets', 'watchedIssues', 'watchedWorkItems'],
+  ['standardTicketTypes', 'standardIssueTypes', 'standardWorkTypes'],
+  ['subticketTypes', 'subTaskIssueTypes', 'subtaskWorkTypes'],
+  ['shippedReleases', 'releasedVersions'],
+  ['upcomingReleases', 'unreleasedVersions'],
+  ['latestShippedRelease', 'latestReleasedVersion'],
+  ['earliestUpcomingRelease', 'earliestUnreleasedVersion'],
+  ['customerGroupDetail', 'organizationDetail'],
+  ['customerGroupMembers', 'organizationMembers'],
   // Same name in both vocabularies; listed so their case is normalised.
   ...[
     'currentUser',
@@ -96,11 +119,6 @@ export const FUNCTION_NAMES: readonly (readonly [native: string, jira: string])[
     'openSprints',
     'closedSprints',
     'futureSprints',
-    'releasedVersions',
-    'unreleasedVersions',
-    'latestReleasedVersion',
-    'earliestUnreleasedVersion',
-    'componentsLeadByUser',
     'updatedBy',
     'cascadeOption',
     'choiceOption',
@@ -115,8 +133,6 @@ export const FUNCTION_NAMES: readonly (readonly [native: string, jira: string])[
     'myApproval',
     'myPendingApproval',
     'myPending',
-    'organizationDetail',
-    'organizationMembers',
     'paused',
     'pending',
     'pendingApprovalBy',
@@ -140,16 +156,12 @@ const TO_JIRA_FIELDS: Names = new Map(
   ),
 );
 const TO_NATIVE_FUNCTIONS: Names = new Map(
-  FUNCTION_NAMES.flatMap(([native, jira]) => [
-    [lower(native), native],
-    [lower(jira), native],
-  ]),
+  FUNCTION_NAMES.flatMap(([native, ...jira]) => [native, ...jira].map((n) => [lower(n), native])),
 );
 const TO_JIRA_FUNCTIONS: Names = new Map(
-  FUNCTION_NAMES.flatMap(([native, jira]) => [
-    [lower(native), jira],
-    [lower(jira), jira],
-  ]),
+  FUNCTION_NAMES.flatMap(([native, first, ...more]) =>
+    [native, first, ...more].map((n) => [lower(n), first]),
+  ),
 );
 
 /** Rewrites a query in either vocabulary to Taskmoor's names. Spans are kept. */

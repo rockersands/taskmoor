@@ -1,9 +1,9 @@
 import type { ConformanceCase } from '../case';
-import { actor, item, section, W1, W2 } from './fixtures';
+import { actor, section, ticket, W1, W2 } from './fixtures';
 
 const c = section('WF-001', 'model', '01a 3.1, WF-001');
 
-/** WF-001: statuses with categories, transitions from one, several or any status, one initial status. */
+/** WF-001: statuses with stages, transitions from one, several or any status, one initial status. */
 export const MODEL_CASES: ConformanceCase[] = [
   // A global transition is offered from every status.
   ...W1.statuses.map((s) =>
@@ -11,7 +11,7 @@ export const MODEL_CASES: ConformanceCase[] = [
       kind: 'available',
       title: `Cancel (from any status) is offered from ${s.name}`,
       workflow: W1,
-      item: item({ status: s.id }),
+      ticket: ticket({ status: s.id }),
       actor: actor('alice'),
       expect: {
         transitions: W1.transitions
@@ -24,7 +24,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'A global transition runs from a status it does not list',
     workflow: W1,
-    item: item({ status: 'review' }),
+    ticket: ticket({ status: 'review' }),
     actor: actor('alice'),
     request: { transition: 'cancel', now: '2026-10-12T12:00:00.000Z' },
     expect: { outcome: 'ok', status: 'cancelled' },
@@ -34,7 +34,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'available',
     title: 'Reopen (from done or cancelled) is offered from Done',
     workflow: W1,
-    item: item({ status: 'done' }),
+    ticket: ticket({ status: 'done' }),
     actor: actor('alice'),
     expect: { transitions: ['reopen', 'cancel'] },
   }),
@@ -42,7 +42,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'available',
     title: 'Reopen (from done or cancelled) is offered from Cancelled',
     workflow: W1,
-    item: item({ status: 'cancelled' }),
+    ticket: ticket({ status: 'cancelled' }),
     actor: actor('alice'),
     expect: { transitions: ['reopen', 'cancel'] },
   }),
@@ -50,7 +50,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'available',
     title: 'Reopen is not offered from Open',
     workflow: W1,
-    item: item({ status: 'open' }),
+    ticket: ticket({ status: 'open' }),
     actor: actor('alice'),
     expect: { transitions: ['start', 'cancel'] },
   }),
@@ -58,7 +58,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'Reopen runs from Cancelled',
     workflow: W1,
-    item: item({ status: 'cancelled' }),
+    ticket: ticket({ status: 'cancelled' }),
     actor: actor('alice'),
     request: { transition: 'reopen' },
     expect: { outcome: 'ok', status: 'open' },
@@ -67,7 +67,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'A transition is refused from a status it does not leave',
     workflow: W1,
-    item: item({ status: 'open' }),
+    ticket: ticket({ status: 'open' }),
     actor: actor('alice'),
     request: { transition: 'finish' },
     expect: { outcome: 'blocked', by: 'wrong-status', name: 'finish' },
@@ -76,7 +76,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'The REST channel is refused the same way',
     workflow: W1,
-    item: item({ status: 'done' }),
+    ticket: ticket({ status: 'done' }),
     actor: actor('alice'),
     request: { transition: 'start', channel: 'rest' },
     expect: { outcome: 'blocked', by: 'wrong-status', name: 'start' },
@@ -85,7 +85,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'An unknown transition id is refused by name',
     workflow: W1,
-    item: item(),
+    ticket: ticket(),
     actor: actor('alice'),
     request: { transition: 'teleport' },
     expect: { outcome: 'blocked', by: 'unknown-transition', name: 'teleport' },
@@ -100,7 +100,7 @@ export const MODEL_CASES: ConformanceCase[] = [
   }),
   c('create-starts-in-initial-w2', {
     kind: 'create',
-    title: 'A Task on W2 starts in Backlog',
+    title: 'A Chore on W2 starts in Backlog',
     workflow: W2,
     actor: actor('bob'),
     expect: { status: 'backlog', event: 'generic' },
@@ -119,7 +119,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'available',
     title: 'W2 offers its own transitions, not those of W1',
     workflow: W2,
-    item: item({ status: 'backlog' }),
+    ticket: ticket({ status: 'backlog' }),
     actor: actor('alice'),
     expect: { transitions: ['take'] },
   }),
@@ -127,7 +127,7 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'available',
     title: 'W2 offers nothing from Closed',
     workflow: W2,
-    item: item({ status: 'closed' }),
+    ticket: ticket({ status: 'closed' }),
     actor: actor('alice'),
     expect: { transitions: [] },
   }),
@@ -135,23 +135,23 @@ export const MODEL_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'A plain transition changes the status and nothing else',
     workflow: W1,
-    item: item({ fields: { summary: 'Fix the login' } }),
+    ticket: ticket({ fields: { summary: 'Fix the login' } }),
     actor: actor('alice'),
     request: { transition: 'start' },
     expect: {
       outcome: 'ok',
       status: 'in-progress',
       assignee: 'alice',
-      resolution: null,
+      closeReason: null,
       fields: { summary: 'Fix the login' },
       added: [
         { field: 'status', from: 'open', to: 'in-progress', by: 'alice', transition: 'start' },
       ],
     },
   }),
-  c('status-categories-in-definition', {
+  c('stages-in-definition', {
     kind: 'export-roundtrip',
-    title: 'Statuses carry a category of todo, in-progress or done',
+    title: 'Statuses carry a stage of new, active or closed',
     workflow: W1,
     expect: { identical: true },
   }),

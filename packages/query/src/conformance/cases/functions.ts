@@ -141,10 +141,10 @@ export const FUNCTION_CASES: QueryCase[] = [
     text: 'sprint IN openSprints() OR sprint IN futureSprints()',
     expect: { canonical: 'sprint IN openSprints() OR sprint IN futureSprints()' },
   }),
-  c('released-versions-no-space', {
+  c('shipped-releases-no-track', {
     kind: 'parse',
-    title: 'releasedVersions() without a space argument',
-    text: 'fixVersion IN releasedVersions()',
-    expect: { canonical: 'fixVersion IN releasedVersions()' },
+    title: 'shippedReleases() without a track argument',
+    text: 'targetRelease IN shippedReleases()',
+    expect: { canonical: 'targetRelease IN shippedReleases()' },
   }),
 ];

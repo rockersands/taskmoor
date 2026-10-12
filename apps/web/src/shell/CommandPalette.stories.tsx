@@ -4,7 +4,7 @@ import { type Command, CommandPalette } from './CommandPalette';
 
 const commands: Command[] = [
   { id: 'go-home', labelId: 'nav.home', run: () => {} },
-  { id: 'go-projects', labelId: 'nav.projects', run: () => {} },
+  { id: 'go-tracks', labelId: 'nav.tracks', run: () => {} },
   { id: 'go-boards', labelId: 'nav.boards', run: () => {} },
   { id: 'go-settings', labelId: 'nav.settings', run: () => {} },
 ];
@@ -39,7 +39,7 @@ export const Filtered: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /Search or jump to/ }));
-    await userEvent.keyboard('proj');
+    await userEvent.keyboard('trac');
     await expect(canvas.getAllByRole('option')).toHaveLength(1);
   },
 };

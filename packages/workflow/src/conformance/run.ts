@@ -2,8 +2,8 @@ import type {
   Actor,
   Channel,
   HistoryEntry,
-  ItemState,
   StatusPermissions,
+  TicketState,
   TransitionRequest,
   TransitionResult,
   WorkflowDef,
@@ -27,13 +27,13 @@ import {
 export interface WorkflowEngine {
   availableTransitions?(
     workflow: WorkflowDef,
-    item: ItemState,
+    ticket: TicketState,
     actor: Actor,
     channel: Channel,
   ): string[];
   transition?(
     workflow: WorkflowDef,
-    item: ItemState,
+    ticket: TicketState,
     actor: Actor,
     request: TransitionRequest,
   ): TransitionResult;
@@ -41,25 +41,25 @@ export interface WorkflowEngine {
     workflow: WorkflowDef,
     actor: Actor,
     fields: Record<string, unknown>,
-  ): { item: ItemState; event: string; webhooks: string[] };
+  ): { ticket: TicketState; event: string; webhooks: string[] };
   checkPermission?(
     workflow: WorkflowDef,
-    item: ItemState,
+    ticket: TicketState,
     actor: Actor,
     permission: keyof StatusPermissions,
   ): { allowed: boolean; reason?: string };
   boardMove?(
     workflow: WorkflowDef,
-    item: ItemState,
+    ticket: TicketState,
     actor: Actor,
     column: string,
-  ): { outcome: 'ok' | 'blocked'; item: ItemState };
+  ): { outcome: 'ok' | 'blocked'; ticket: TicketState };
   publish?(input: {
     draft: WorkflowDef;
     versions: WorkflowDef[];
     assignments: Assignment[];
     change: PublishChange;
-    items: ItemState[];
+    tickets: TicketState[];
     mapping: Record<string, string>;
     actor?: Actor;
   }): PublishExpectation;
@@ -152,7 +152,7 @@ export function runCase(engine: WorkflowEngine, c: ConformanceCase): CaseResult 
         if (!engine.availableTransitions) return unsupported('availableTransitions');
         const got = engine.availableTransitions(
           clone(c.workflow),
-          clone(c.item),
+          clone(c.ticket),
           clone(c.actor),
           c.channel ?? 'ui',
         );
@@ -160,21 +160,23 @@ export function runCase(engine: WorkflowEngine, c: ConformanceCase): CaseResult 
       }
       case 'transition': {
         if (!engine.transition) return unsupported('transition');
-        const before = clone(c.item);
-        const result = engine.transition(clone(c.workflow), clone(c.item), clone(c.actor), {
+        const before = clone(c.ticket);
+        const result = engine.transition(clone(c.workflow), clone(c.ticket), clone(c.actor), {
           ...c.request,
         });
         if (c.expect.outcome === 'blocked') {
           if (result.outcome !== 'blocked') {
-            return verdict(`outcome: expected "blocked", got "ok" (status ${result.item.status})`);
+            return verdict(
+              `outcome: expected "blocked", got "ok" (status ${result.ticket.status})`,
+            );
           }
           const m = mismatch(result, c.expect);
           if (m) return verdict(m);
           // A blocked transition changes nothing: no field, no history, no status (WF-004).
           // Both directions, because a subset match alone would miss an added key.
           return verdict(
-            mismatch(result.item, before, 'item (must be unchanged)') ??
-              mismatch(before, result.item, 'item (must be unchanged)'),
+            mismatch(result.ticket, before, 'ticket (must be unchanged)') ??
+              mismatch(before, result.ticket, 'ticket (must be unchanged)'),
           );
         }
         if (result.outcome !== 'ok') {
@@ -185,12 +187,12 @@ export function runCase(engine: WorkflowEngine, c: ConformanceCase): CaseResult 
         const { added, ...rest } = c.expect;
         const flat = {
           outcome: result.outcome,
-          status: result.item.status,
-          assignee: result.item.assignee,
-          resolution: result.item.resolution,
-          resolvedAt: result.item.resolvedAt,
-          securityLevel: result.item.securityLevel,
-          fields: result.item.fields,
+          status: result.ticket.status,
+          assignee: result.ticket.assignee,
+          closeReason: result.ticket.closeReason,
+          closedAt: result.ticket.closedAt,
+          visibilityLevel: result.ticket.visibilityLevel,
+          fields: result.ticket.fields,
           event: result.event,
           webhooks: result.webhooks,
           order: result.order,
@@ -200,7 +202,7 @@ export function runCase(engine: WorkflowEngine, c: ConformanceCase): CaseResult 
         if (m) return verdict(m);
         if (added) {
           return verdict(
-            mismatch(historyAdded(before.history, result.item.history), added, 'added'),
+            mismatch(historyAdded(before.history, result.ticket.history), added, 'added'),
           );
         }
         return verdict(undefined);
@@ -210,17 +212,17 @@ export function runCase(engine: WorkflowEngine, c: ConformanceCase): CaseResult 
         const made = engine.create(clone(c.workflow), clone(c.actor), clone(c.fields ?? {}));
         const { history, ...rest } = c.expect;
         const m = mismatch(
-          { status: made.item.status, event: made.event, webhooks: made.webhooks },
+          { status: made.ticket.status, event: made.event, webhooks: made.webhooks },
           rest,
         );
         if (m) return verdict(m);
-        return verdict(history ? mismatch(made.item.history, history, 'history') : undefined);
+        return verdict(history ? mismatch(made.ticket.history, history, 'history') : undefined);
       }
       case 'permission': {
         if (!engine.checkPermission) return unsupported('checkPermission');
         const got = engine.checkPermission(
           clone(c.workflow),
-          clone(c.item),
+          clone(c.ticket),
           clone(c.actor),
           c.permission,
         );
@@ -228,11 +230,11 @@ export function runCase(engine: WorkflowEngine, c: ConformanceCase): CaseResult 
       }
       case 'board-move': {
         if (!engine.boardMove) return unsupported('boardMove');
-        const got = engine.boardMove(clone(c.workflow), clone(c.item), clone(c.actor), c.column);
+        const got = engine.boardMove(clone(c.workflow), clone(c.ticket), clone(c.actor), c.column);
         const { outcome, ...rest } = c.expect;
         const m = mismatch(got.outcome, outcome ?? 'ok', 'outcome');
         if (m) return verdict(m);
-        return verdict(mismatch(got.item, rest, 'item'));
+        return verdict(mismatch(got.ticket, rest, 'ticket'));
       }
       case 'publish': {
         if (!engine.publish) return unsupported('publish');
@@ -241,7 +243,7 @@ export function runCase(engine: WorkflowEngine, c: ConformanceCase): CaseResult 
           versions: clone(c.versions ?? []),
           assignments: clone(c.assignments ?? []),
           change: clone(c.change),
-          items: clone(c.items ?? []),
+          tickets: clone(c.tickets ?? []),
           mapping: clone(c.mapping ?? {}),
           ...(c.actor ? { actor: clone(c.actor) } : {}),
         });

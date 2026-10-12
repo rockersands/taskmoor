@@ -6,7 +6,7 @@
 
 ## Context
 
-Reports and BI need history that live tables do not keep in a queryable shape: how many items
+Reports and BI need history that live tables do not keep in a queryable shape: how many tickets
 were in each status on each day, cycle and lead times, and full revisions (RPT-008, RPT-011).
 Power BI and Excel load OData; analysts want SQL. Another database for analytics contradicts
 ADR-006.
@@ -14,8 +14,8 @@ ADR-006.
 ## Decision
 
 - **An append-only analytics schema in Postgres**, range-partitioned by month (ADR-006):
-  `analytics.item_day` (one row per item per day with status, assignee, points, every custom
-  field as typed columns through a view), `analytics.item_revision` (one row per change, from
+  `analytics.ticket_day` (one row per ticket per day with status, assignee, points, every custom
+  field as typed columns through a view), `analytics.ticket_revision` (one row per change, from
   the history), `analytics.board_day` (column counts, WIP, sprint state). A nightly job
   computes the day rows; revisions are written by the history writer in the same transaction.
 - **OData v4 read-only endpoint** (`/odata/v1`) with `$filter`, `$select`, `$orderby`, `$top`,
@@ -32,12 +32,12 @@ ADR-006.
 
 | Option | For | Against |
 |---|---|---|
-| Snapshot schema in Postgres with OData and SQL (chosen) | No second store; typed custom fields; works with Power BI, Excel, Metabase | Day rows grow by items per day (10M items for 5 years is about 18 billion rows; partitions, compression and aggregation tiers handle it, and admins can set retention) |
+| Snapshot schema in Postgres with OData and SQL (chosen) | No second store; typed custom fields; works with Power BI, Excel, Metabase | Day rows grow by tickets per day (10M tickets for 5 years is about 18 billion rows; partitions, compression and aggregation tiers handle it, and admins can set retention) |
 | External warehouse required | Scales without limit | Another service and a sync pipeline for every install |
 | Ad-hoc queries on live tables | Nothing to build | No "as of" history; heavy reports hurt the interactive path |
 
 ## Consequences
 
-Report gadgets (RPT-009, cumulative flow, control charts) read the analytics schema, not live
+Report widgets (RPT-009, cumulative flow, control charts) read the analytics schema, not live
 tables, so dashboards cannot slow editing. The OData subset is documented with the endpoint and
 tested with the Power BI and Excel connectors.

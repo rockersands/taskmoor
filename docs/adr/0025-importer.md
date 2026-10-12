@@ -29,7 +29,7 @@ IMP-004 to IMP-011, IMP-013). A 50 GB backup must import in under 4 GB of memory
   the public services, upserting by source key, so a rerun updates instead of duplicating, a
   crash resumes from the last checkpoint, and a cutover window syncs `updated >= last run`
   (IMP-009). Every stage records counts for the fidelity report (IMP-010).
-- **Keys survive.** Space keys, item numbers and moved-item aliases are kept and Jira URL
+- **Keys survive.** Track keys, ticket numbers and moved-ticket aliases are kept and Jira URL
   patterns redirect (IMP-011).
 - **Runs as jobs** (ADR-015) from a wizard and the CLI with progress, pause, resume, cancel and
   logs (IMP-013), and only against the customer's own site with the customer's own token.

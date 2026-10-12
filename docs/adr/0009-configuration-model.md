@@ -10,21 +10,21 @@ Jira configures a project through a hierarchy of schemes: issue type schemes, fi
 configuration schemes, screen schemes, issue type screen schemes, workflow schemes, permission
 schemes and notification schemes, each an indirection between projects and the objects they
 use. Administrators find it the hardest part of Jira; imports must preserve it. The spec asks
-for shared and space-local configuration on one model (CORE-003), unified field schemes and
-layouts (CORE-013) and space templates (CORE-004).
+for shared and track-local configuration on one model (CORE-003), unified field rules and
+layouts (CORE-013) and track templates (CORE-004).
 
 ## Decision
 
-- **A space's configuration is one object graph:** work types and hierarchy levels; fields
+- **A track's configuration is one object graph:** ticket types and hierarchy levels; fields
   with contexts, layouts (create, edit, view, transition; with tabs) and validation; workflows
-  with statuses, transitions and rules; permission policy; notification policy; boards,
+  with statuses, transitions and rules; access policy; notification policy; boards,
   automation rules and SLA definitions where the module applies. The same graph serves
-  company-managed and team-managed styles: a space either references shared objects or owns
+  shared mode and local mode: a track either references shared objects or owns
   local copies, element by element.
-- **Sharing is explicit and visible.** A shared object lists the spaces that use it; saving it
+- **Sharing is explicit and visible.** A shared object lists the tracks that use it; saving it
   shows that list before commit. Converting between shared and local is a copy or a link, not
-  a scheme swap.
-- **Templates are serialised configuration graphs** (CORE-004), with optional sample items,
+  a configuration set swap.
+- **Templates are serialised configuration graphs** (CORE-004), with optional sample tickets,
   exportable as files.
 - **Jira's scheme hierarchy is mapped by the importer** (IMP-004): each project's effective
   configuration is resolved through its schemes and written as shared objects where several
@@ -37,7 +37,7 @@ layouts (CORE-013) and space templates (CORE-004).
 |---|---|---|
 | One configuration graph with explicit sharing (chosen) | Understandable admin UI; templates and export fall out of it; one model for the query engine and API | Importer does the resolution work |
 | Replicate Jira's schemes one to one | Lossless import | Reproduces the main administration complaint; the shim can still present schemes |
-| Per-space configuration with no sharing | Simplest | Large sites need one change to reach many spaces; the spec requires shared configuration |
+| Per-track configuration with no sharing | Simplest | Large sites need one change to reach many tracks; the spec requires shared configuration |
 
 ## Consequences
 

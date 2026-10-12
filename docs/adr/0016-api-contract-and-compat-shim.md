@@ -19,7 +19,7 @@ review ask that compatibility code stays legally separable from the product.
   (CLI, SDK, MCP tools, Builder) are generated from the document, never hand-written.
 - **Shape:** `/api/v1/...`; cursor pagination with an optional approximate total (QRY-009);
   `Idempotency-Key` on creates; RFC 9457 problem details; field names from the native
-  vocabulary (space, work item, type) with the legacy names accepted in queries (QRY-003);
+  vocabulary (track, ticket, type) with the legacy names accepted in queries (QRY-003);
   rate limits returned as headers, never as surprise 429s on reads.
 - **Versioning:** the backend serves N and N-1 (API-018); breaking changes wait for a major.
   Additive changes do not bump the version.

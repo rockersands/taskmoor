@@ -1,19 +1,14 @@
-import {
-  ESSENTIAL_ORDER,
-  type PostFunctionDef,
-  type SystemField,
-  type WorkflowDef,
-} from '../../model';
+import { type EffectDef, ESSENTIAL_ORDER, type SystemField, type WorkflowDef } from '../../model';
 import type { ConformanceCase } from '../case';
-import { actor, item, NOW, posted, section, W1, withTransition } from './fixtures';
+import { actor, NOW, section, ticket, W1, withEffects, withTransition } from './fixtures';
 
-const c = section('WF-005', 'post-functions', '01a 3.4, WF-005');
+const c = section('WF-005', 'effects', '01a 3.4, WF-005');
 
 const run = (
   slug: string,
   title: string,
-  postFunctions: PostFunctionDef[],
-  itemState: ReturnType<typeof item>,
+  effects: EffectDef[],
+  ticketState: ReturnType<typeof ticket>,
   who: ReturnType<typeof actor>,
   expect: Extract<ConformanceCase, { kind: 'transition' }>['expect'],
   verify?: string,
@@ -21,8 +16,8 @@ const run = (
   c(slug, {
     kind: 'transition',
     title,
-    workflow: posted(postFunctions),
-    item: itemState,
+    workflow: withEffects(effects),
+    ticket: ticketState,
     actor: who,
     request: { transition: 'start', now: NOW },
     expect,
@@ -34,7 +29,7 @@ const SYSTEM_FIELDS: { field: SystemField; value: unknown }[] = [
   { field: 'description', value: 'Updated by the transition' },
   { field: 'environment', value: 'staging' },
   { field: 'priority', value: 'High' },
-  { field: 'resolution', value: 'Done' },
+  { field: 'close-reason', value: 'Done' },
   { field: 'summary', value: 'New title' },
   { field: 'original-estimate', value: 3600 },
   { field: 'remaining-estimate', value: 1800 },
@@ -48,23 +43,23 @@ const createWithWebhook: WorkflowDef = {
       name: 'Create',
       from: [],
       to: 'open',
-      postFunctions: [{ type: 'webhook', url: 'https://hooks.example/created' }],
-      event: 'item-created',
+      effects: [{ type: 'webhook', url: 'https://hooks.example/created' }],
+      event: 'ticket-created',
     },
     ...W1.transitions,
   ],
 };
 
-export const POST_FUNCTION_CASES: ConformanceCase[] = [
+export const EFFECT_CASES: ConformanceCase[] = [
   // Essential sequence.
   ...W1.transitions
     .filter((t) => t.from !== 'any' && t.from.length > 0)
     .map((t) =>
       c('essential-order-on-every-transition', {
         kind: 'transition',
-        title: `${t.name} runs the essential post functions in the fixed order`,
+        title: `${t.name} runs the essential effects in the fixed order`,
         workflow: W1,
-        item: item({ status: (t.from as string[])[0] as string }),
+        ticket: ticket({ status: (t.from as string[])[0] as string }),
         actor: actor('alice'),
         request: { transition: t.id, now: NOW },
         expect: { outcome: 'ok', order: ESSENTIAL_ORDER, notificationsAfterSequence: true },
@@ -74,7 +69,7 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
     kind: 'transition',
     title: 'The comment entered on the transition is added',
     workflow: W1,
-    item: item(),
+    ticket: ticket(),
     actor: actor('alice'),
     request: { transition: 'start', now: NOW, comment: 'Starting now' },
     expect: {
@@ -90,7 +85,7 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
     'no-comment-no-entry',
     'Without a comment nothing but the status is recorded',
     [],
-    item(),
+    ticket(),
     actor('alice'),
     {
       outcome: 'ok',
@@ -103,16 +98,16 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
     'event-generic-by-default',
     'The transition fires the generic event unless one is chosen',
     [],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok', event: 'generic' },
   ),
-  // Assign to current user, lead, reporter.
+  // Assign to current user, owner, requester.
   run(
     'assign-to-current-user',
     'Assign to current user',
     [{ type: 'assign-to-current-user' }],
-    item({ assignee: 'bob' }),
+    ticket({ assignee: 'bob' }),
     actor('alice'),
     {
       outcome: 'ok',
@@ -127,7 +122,7 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
     'assign-to-current-user-already',
     'Assign to current user records nothing when already assigned',
     [{ type: 'assign-to-current-user' }],
-    item({ assignee: 'alice' }),
+    ticket({ assignee: 'alice' }),
     actor('alice'),
     {
       outcome: 'ok',
@@ -138,35 +133,35 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
     },
   ),
   run(
-    'assign-to-lead-component',
-    'Assign to lead developer picks the component lead',
-    [{ type: 'assign-to-lead' }],
-    item({ componentLead: 'carol', spaceLead: 'dave' }),
+    'assign-to-owner-area',
+    'Assign to owner picks the area owner',
+    [{ type: 'assign-to-owner' }],
+    ticket({ areaOwner: 'carol', trackOwner: 'dave' }),
     actor('alice'),
     { outcome: 'ok', assignee: 'carol' },
   ),
   run(
-    'assign-to-lead-space',
-    'Assign to lead developer falls back to the space lead',
-    [{ type: 'assign-to-lead' }],
-    item({ componentLead: null, spaceLead: 'dave' }),
+    'assign-to-owner-track',
+    'Assign to owner falls back to the track owner',
+    [{ type: 'assign-to-owner' }],
+    ticket({ areaOwner: null, trackOwner: 'dave' }),
     actor('alice'),
     { outcome: 'ok', assignee: 'dave' },
   ),
   run(
-    'assign-to-lead-none',
-    'Assign to lead developer unassigns when there is no lead',
-    [{ type: 'assign-to-lead' }],
-    item({ assignee: 'alice', componentLead: null, spaceLead: null }),
+    'assign-to-owner-none',
+    'Assign to owner unassigns when there is no owner',
+    [{ type: 'assign-to-owner' }],
+    ticket({ assignee: 'alice', areaOwner: null, trackOwner: null }),
     actor('alice'),
     { outcome: 'ok', assignee: null },
-    'the public description does not say what happens without any lead; this suite expects the item to become unassigned',
+    'the public description (Jira: assign to lead developer) does not say what happens without any lead; this suite expects the ticket to become unassigned',
   ),
   run(
-    'assign-to-reporter',
-    'Assign to reporter',
-    [{ type: 'assign-to-reporter' }],
-    item({ assignee: 'alice', reporter: 'bob' }),
+    'assign-to-requester',
+    'Assign to requester',
+    [{ type: 'assign-to-requester' }],
+    ticket({ assignee: 'alice', requester: 'bob' }),
     actor('alice'),
     { outcome: 'ok', assignee: 'bob' },
   ),
@@ -175,7 +170,7 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
     'clear-field-custom',
     'Clear field value empties a custom field',
     [{ type: 'clear-field', field: 'sprint' }],
-    item({ fields: { sprint: 'S12', summary: 'x' } }),
+    ticket({ fields: { sprint: 'S12', summary: 'x' } }),
     actor('alice'),
     {
       outcome: 'ok',
@@ -187,18 +182,18 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
     },
   ),
   run(
-    'clear-field-resolution',
-    'Clear field value on resolution also clears Resolved',
-    [{ type: 'clear-field', field: 'resolution' }],
-    item({ resolution: 'Done', resolvedAt: '2026-10-01T00:00:00.000Z' }),
+    'clear-field-close-reason',
+    'Clear field value on the close reason also clears the closed stamp',
+    [{ type: 'clear-field', field: 'close-reason' }],
+    ticket({ closeReason: 'Done', closedAt: '2026-10-01T00:00:00.000Z' }),
     actor('alice'),
-    { outcome: 'ok', resolution: null, resolvedAt: null },
+    { outcome: 'ok', closeReason: null, closedAt: null },
   ),
   run(
     'clear-field-already-empty',
     'Clearing an empty field records nothing',
     [{ type: 'clear-field', field: 'sprint' }],
-    item(),
+    ticket(),
     actor('alice'),
     {
       outcome: 'ok',
@@ -209,60 +204,60 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
   ),
   // Copy value from another field.
   run(
-    'copy-field-same-item',
-    'Copy value from another field on the same item',
+    'copy-field-same-ticket',
+    'Copy value from another field on the same ticket',
     [{ type: 'copy-field', from: 'estimate', to: 'original-estimate' }],
-    item({ fields: { estimate: 5 } }),
+    ticket({ fields: { estimate: 5 } }),
     actor('alice'),
     { outcome: 'ok', fields: { estimate: 5, 'original-estimate': 5 } },
   ),
   run(
     'copy-field-from-parent',
-    'Copy from parent sets a subtask field from its parent',
-    [{ type: 'copy-field', from: 'fix-version', to: 'fix-version', fromParent: true }],
-    item({ parent: { status: 'open', fields: { 'fix-version': '2.0' } } }),
+    'Copy from parent sets a subticket field from its parent',
+    [{ type: 'copy-field', from: 'target-release', to: 'target-release', fromParent: true }],
+    ticket({ parent: { status: 'open', fields: { 'target-release': '2.0' } } }),
     actor('alice'),
-    { outcome: 'ok', fields: { 'fix-version': '2.0' } },
+    { outcome: 'ok', fields: { 'target-release': '2.0' } },
   ),
   run(
     'copy-field-missing-source',
     'Copy value leaves the target alone when the source is empty',
     [{ type: 'copy-field', from: 'estimate', to: 'original-estimate' }],
-    item({ fields: { 'original-estimate': 8 } }),
+    ticket({ fields: { 'original-estimate': 8 } }),
     actor('alice'),
     { outcome: 'ok', fields: { 'original-estimate': 8 } },
   ),
   run(
     'copy-field-no-parent',
-    'Copy from parent does nothing on an item without a parent',
-    [{ type: 'copy-field', from: 'fix-version', to: 'fix-version', fromParent: true }],
-    item(),
+    'Copy from parent does nothing on a ticket without a parent',
+    [{ type: 'copy-field', from: 'target-release', to: 'target-release', fromParent: true }],
+    ticket(),
     actor('alice'),
     { outcome: 'ok', fields: {} },
   ),
-  // Security level from role.
+  // Visibility level from role.
   run(
-    'security-level-from-role',
-    'Set security level from the user’s space role',
-    [{ type: 'set-security-level-from-role', levels: { contractors: 'internal', staff: 'all' } }],
-    item(),
+    'visibility-level-from-role',
+    'Set visibility level from the user’s track role',
+    [{ type: 'set-visibility-level-from-role', levels: { contractors: 'internal', staff: 'all' } }],
+    ticket(),
     actor('alice', { roles: ['contractors'] }),
-    { outcome: 'ok', securityLevel: 'internal' },
+    { outcome: 'ok', visibilityLevel: 'internal' },
   ),
   run(
-    'security-level-no-matching-role',
-    'No matching role leaves the security level unchanged',
-    [{ type: 'set-security-level-from-role', levels: { contractors: 'internal' } }],
-    item({ securityLevel: 'all' }),
+    'visibility-level-no-matching-role',
+    'No matching role leaves the visibility level unchanged',
+    [{ type: 'set-visibility-level-from-role', levels: { contractors: 'internal' } }],
+    ticket({ visibilityLevel: 'all' }),
     actor('alice', { roles: ['staff'] }),
-    { outcome: 'ok', securityLevel: 'all' },
+    { outcome: 'ok', visibilityLevel: 'all' },
   ),
   // Webhooks.
   run(
     'webhook-fires',
     'Trigger webhook posts to the configured URL',
     [{ type: 'webhook', url: 'https://hooks.example/start' }],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok', webhooks: ['https://hooks.example/start'] },
   ),
@@ -273,16 +268,20 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
       { type: 'webhook', url: 'https://hooks.example/a' },
       { type: 'webhook', url: 'https://hooks.example/b' },
     ],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok', webhooks: ['https://hooks.example/a', 'https://hooks.example/b'] },
   ),
   c('webhook-on-create', {
     kind: 'create',
-    title: 'The webhook post function also fires on the create transition',
+    title: 'The webhook effect also fires on the create transition',
     workflow: createWithWebhook,
     actor: actor('bob'),
-    expect: { status: 'open', event: 'item-created', webhooks: ['https://hooks.example/created'] },
+    expect: {
+      status: 'open',
+      event: 'ticket-created',
+      webhooks: ['https://hooks.example/created'],
+    },
   }),
   c('no-webhook-on-create-without-one', {
     kind: 'create',
@@ -295,22 +294,22 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
   run(
     'update-custom-field',
     'Update a custom field',
-    [{ type: 'update-field', field: 'stage', value: 'development' }],
-    item(),
+    [{ type: 'update-field', field: 'phase', value: 'development' }],
+    ticket(),
     actor('alice'),
-    { outcome: 'ok', fields: { stage: 'development' } },
+    { outcome: 'ok', fields: { phase: 'development' } },
   ),
   run(
     'update-custom-field-overwrites',
     'Update a custom field overwrites and records the old value',
-    [{ type: 'update-field', field: 'stage', value: 'development' }],
-    item({ fields: { stage: 'triage' } }),
+    [{ type: 'update-field', field: 'phase', value: 'development' }],
+    ticket({ fields: { phase: 'triage' } }),
     actor('alice'),
     {
       outcome: 'ok',
       added: [
         { field: 'status', from: 'open', to: 'in-progress', by: 'alice', transition: 'start' },
-        { field: 'stage', from: 'triage', to: 'development', by: 'alice', transition: 'start' },
+        { field: 'phase', from: 'triage', to: 'development', by: 'alice', transition: 'start' },
       ],
     },
   ),
@@ -319,25 +318,25 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
       `update-system-field-${field}`,
       `Update system field ${field}`,
       [{ type: 'update-system-field', field, value }],
-      item(),
+      ticket(),
       actor('alice'),
       field === 'assignee'
         ? { outcome: 'ok', assignee: 'carol' }
-        : field === 'resolution'
-          ? { outcome: 'ok', resolution: 'Done', resolvedAt: NOW }
+        : field === 'close-reason'
+          ? { outcome: 'ok', closeReason: 'Done', closedAt: NOW }
           : { outcome: 'ok', fields: { [field]: value } },
     ),
   ),
-  // Several post functions, in order, each recorded.
+  // Several effects, in order, each recorded.
   run(
     'several-in-order',
-    'Optional post functions run in list order and each change is recorded',
+    'Optional effects run in list order and each change is recorded',
     [
       { type: 'update-field', field: 'a', value: 1 },
       { type: 'copy-field', from: 'a', to: 'b' },
-      { type: 'assign-to-reporter' },
+      { type: 'assign-to-requester' },
     ],
-    item({ assignee: 'alice', reporter: 'bob' }),
+    ticket({ assignee: 'alice', requester: 'bob' }),
     actor('alice'),
     {
       outcome: 'ok',
@@ -350,7 +349,7 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
         { field: 'assignee', from: 'alice', to: 'bob', by: 'alice', transition: 'start' },
       ],
     },
-    'the public description fixes the order of the essential functions only; this suite records optional changes in list order after the status',
+    'the public description fixes the order of the essential effects (Jira: post functions) only; this suite records optional changes in list order after the status',
   ),
   run(
     'placeholder-does-nothing',
@@ -359,15 +358,15 @@ export const POST_FUNCTION_CASES: ConformanceCase[] = [
       { type: 'placeholder', jiraClass: 'com.example.CustomFunction' },
       { type: 'update-field', field: 'a', value: 1 },
     ],
-    item(),
+    ticket(),
     actor('alice'),
     { outcome: 'ok', fields: { a: 1 } },
   ),
-  c('post-functions-per-transition', {
+  c('effects-per-transition', {
     kind: 'transition',
-    title: 'Post functions on Start do not run on Cancel',
-    workflow: withTransition(posted([{ type: 'assign-to-current-user' }]), 'cancel', {}),
-    item: item({ assignee: 'bob' }),
+    title: 'Effects on Start do not run on Cancel',
+    workflow: withTransition(withEffects([{ type: 'assign-to-current-user' }]), 'cancel', {}),
+    ticket: ticket({ assignee: 'bob' }),
     actor: actor('alice'),
     request: { transition: 'cancel', now: NOW },
     expect: { outcome: 'ok', status: 'cancelled', assignee: 'bob' },

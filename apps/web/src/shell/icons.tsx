@@ -35,7 +35,7 @@ export const HomeIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const ProjectsIcon = (p: IconProps) => (
+export const TracksIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M3.5 7a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" />
   </Icon>

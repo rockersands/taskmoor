@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ConformanceCase } from './case';
-import { actor, item, W1 } from './cases/fixtures';
+import { actor, ticket, W1 } from './cases/fixtures';
 import { formatReport, mismatch, runCase, runConformance, type WorkflowEngine } from './run';
 
 const available: ConformanceCase = {
@@ -11,7 +11,7 @@ const available: ConformanceCase = {
   spec: '01a 3.1',
   kind: 'available',
   workflow: W1,
-  item: item(),
+  ticket: ticket(),
   actor: actor('alice'),
   expect: { transitions: ['start', 'cancel'] },
 };
@@ -19,15 +19,15 @@ const available: ConformanceCase = {
 const transition: ConformanceCase = {
   id: 'WF-004-y-01',
   requirement: 'WF-004',
-  section: 'validators',
+  section: 'checks',
   title: 'y',
   spec: '01a 3.3',
   kind: 'transition',
   workflow: W1,
-  item: item(),
+  ticket: ticket(),
   actor: actor('alice'),
   request: { transition: 'start' },
-  expect: { outcome: 'blocked', by: 'validator', name: 'field-required' },
+  expect: { outcome: 'blocked', by: 'check', name: 'field-required' },
 };
 
 describe('subset matching', () => {
@@ -46,7 +46,7 @@ describe('runner', () => {
     const report = runConformance({}, [available, transition]);
     expect(report.unsupported).toBe(2);
     expect(report.fail).toBe(0);
-    expect(report.sections.map((s) => s.section)).toEqual(['model', 'validators']);
+    expect(report.sections.map((s) => s.section)).toEqual(['model', 'checks']);
     expect(formatReport(report)).toContain('model');
     expect(formatReport(report)).not.toContain('Failures');
   });
@@ -55,7 +55,7 @@ describe('runner', () => {
     const engine: WorkflowEngine = {
       transition: (_w, i) => ({
         outcome: 'ok',
-        item: { ...i, status: 'in-progress' },
+        ticket: { ...i, status: 'in-progress' },
         order: [],
         event: 'generic',
         webhooks: [],
@@ -68,13 +68,13 @@ describe('runner', () => {
     expect(formatReport(runConformance(engine, [transition]))).toContain('Failures:');
   });
 
-  it('[WF-004] fails a blocked transition that changed the item anyway', () => {
+  it('[WF-004] fails a blocked transition that changed the ticket anyway', () => {
     const engine: WorkflowEngine = {
       transition: (_w, i) => ({
         outcome: 'blocked',
-        by: 'validator',
+        by: 'check',
         name: 'field-required',
-        item: { ...i, fields: { leaked: true } },
+        ticket: { ...i, fields: { leaked: true } },
       }),
     };
     const result = runCase(engine, transition);

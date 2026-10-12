@@ -23,8 +23,8 @@ describe('desktop layout', () => {
       'false',
     );
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    expect(within(nav).getByRole('link', { name: 'Projects' })).toBeInTheDocument();
-    expect(within(nav).queryByText('Projects')).toBeNull();
+    expect(within(nav).getByRole('link', { name: 'Tracks' })).toBeInTheDocument();
+    expect(within(nav).queryByText('Tracks')).toBeNull();
   });
 
   it('shows the page named in the URL hash', () => {
@@ -83,12 +83,12 @@ describe('compact layout (phones)', () => {
     await user.click(screen.getByRole('button', { name: 'Open navigation' }));
     await user.click(
       within(screen.getByRole('dialog')).getByRole('link', {
-        name: 'Projects',
+        name: 'Tracks',
       }),
     );
 
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(await screen.findByRole('heading', { level: 1, name: 'Projects' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Tracks' })).toBeInTheDocument();
   });
 
   it('closes when the backdrop is tapped', async () => {
