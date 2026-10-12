@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createDb } from '@tracksmith/db';
 import { useMigratedDatabase } from '@tracksmith/db/testing';
 import type { FastifyInstance } from 'fastify';
@@ -18,7 +21,7 @@ describe('probes with a working database', () => {
   it('GET /health reports the version', async () => {
     const res = await app.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ status: 'ok', version: '1.0.0-test' });
+    expect(res.json()).toEqual({ status: 'ok', version: '1.0.0-test', roles: ['api'] });
   });
 
   it('GET /ready is 200 when the database answers', async () => {
@@ -31,6 +34,62 @@ describe('probes with a working database', () => {
     const res = await app.inject({ method: 'GET', url: '/nope' });
     expect(res.statusCode).toBe(404);
     expect(res.headers['content-type']).toMatch(/application\/json/);
+  });
+});
+
+describe('web role', () => {
+  let dir: string;
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'tracksmith-web-'));
+    await mkdir(join(dir, 'assets'));
+    await writeFile(join(dir, 'index.html'), '<!doctype html><div id="root"></div>');
+    await writeFile(join(dir, 'assets', 'app.js'), 'console.log(1)');
+    app = await buildApp({ version: '1.0.0-test', roles: ['web'], webDir: dir });
+  });
+  afterAll(async () => {
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('[OPS-013] serves the built files and the app shell for deep links', async () => {
+    const index = await app.inject({ method: 'GET', url: '/' });
+    expect(index.statusCode).toBe(200);
+    expect(index.body).toContain('id="root"');
+    const asset = await app.inject({ method: 'GET', url: '/assets/app.js' });
+    expect(asset.statusCode).toBe(200);
+    expect(asset.headers['content-type']).toMatch(/javascript/);
+    const deep = await app.inject({
+      method: 'GET',
+      url: '/browse/ABC-1',
+      headers: { accept: 'text/html,*/*' },
+    });
+    expect(deep.statusCode).toBe(200);
+    expect(deep.body).toContain('id="root"');
+  });
+
+  it('keeps JSON 404s for API paths and non-HTML clients', async () => {
+    const api = await app.inject({ method: 'GET', url: '/api/v1/nope' });
+    expect(api.statusCode).toBe(404);
+    expect(api.json()).toMatchObject({ error: 'Not Found', statusCode: 404 });
+    const fetchLike = await app.inject({ method: 'GET', url: '/browse/ABC-1' });
+    expect(fetchLike.statusCode).toBe(404);
+  });
+
+  it('is ready without a database and names its roles on /health', async () => {
+    expect((await app.inject({ method: 'GET', url: '/ready' })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/health' })).json()).toEqual({
+      status: 'ok',
+      version: '1.0.0-test',
+      roles: ['web'],
+    });
+  });
+
+  it('refuses a web directory without an index.html', async () => {
+    await expect(
+      buildApp({ version: 'x', roles: ['web'], webDir: join(dir, 'assets') }),
+    ).rejects.toThrow(/no index.html/);
   });
 });
 

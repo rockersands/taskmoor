@@ -39,8 +39,9 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-019 Sync engine spike | Done | In-house change log: 52k-item bootstrap in 2.6 s, delta p95 1 ms, idempotent outbox (ADR-013) |
 | M0-022 XML parser spike | Done | 5 GB parsed in 2.6 min at 303 MB RSS, lossless after cleaning (ADR-025) |
 | M0-024 Remaining ADRs | In progress | 31 of 33 accepted; 008 and 010 wait for the 10M run |
-| M0-033 Nightly benchmarks and weekly report | In progress | bench:check with budgets and a 20% regression check; status-report; nightly job on the ci-workflows branch |
-| M0-011 GitHub Actions | Partial | Lint, types, tests, e2e; image build comes with M0-025 |
+| M0-033 Nightly benchmarks and weekly report | In progress | bench:check with budgets and a 20% regression check; status-report; nightly job live on main, CI baseline after its first green run |
+| M0-011 GitHub Actions | Done | Lint, types, tests, e2e, Postgres 16 and 18, weekly Windows, security scan, multi-arch image build, nightly benchmarks |
+| M0-025 Single image | Done | Roles by TRACKSMITH_ROLE, esbuild bundle, multi-arch Dockerfile; smoke test green on amd64 and arm64; CI builds both |
 | M0-031 Design system | Done | Tokens, shell components, Storybook with axe on every story (ADR-024) |
 | M0-032 App shell | Done | Hash routing, session guard stub, command palette, ICU i18n, pseudo-locale checks |
 | M0-035 DCO enforcement | Done | Git hooks, `pnpm dco` and CI; no branch protection on the free plan |

@@ -26,7 +26,9 @@
     "spike": "tsx packages/spikes/src/cli/spike.ts",
     "bench:check": "tsx packages/devtools/src/cli/bench-check.ts",
     "status-report": "tsx packages/devtools/src/cli/status-report.ts",
-    "gate": "tsx packages/devtools/src/cli/gate.ts"
+    "gate": "tsx packages/devtools/src/cli/gate.ts",
+    "build": "pnpm --filter @tracksmith/web build && node tools/build/server.mjs",
+    "build:server": "node tools/build/server.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
@@ -34,6 +36,7 @@
     "@vitest/browser": "4.1.11",
     "@vitest/browser-playwright": "4.1.11",
     "@vitest/coverage-v8": "^4.1.11",
+    "esbuild": "0.28.2",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "vitest": "^4.1.11"

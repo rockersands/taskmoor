@@ -69,6 +69,13 @@ ALTER TABLE gen.items ADD PRIMARY KEY (id), ADD UNIQUE (space_id, number), ADD U
 CREATE INDEX ON gen.history (item_id);
 ALTER TABLE gen.history ADD FOREIGN KEY (item_id) REFERENCES gen.items (id),
   ADD FOREIGN KEY (actor_id) REFERENCES gen.users (id);
+-- Loaded UNLOGGED for speed, kept LOGGED so a crash (a killed session, a power cut) does not
+-- empty a dataset that took half an hour to build. The rewrite costs minutes, a reload costs more.
+ALTER TABLE gen.users SET LOGGED;
+ALTER TABLE gen.spaces SET LOGGED;
+ALTER TABLE gen.fields SET LOGGED;
+ALTER TABLE gen.items SET LOGGED;
+ALTER TABLE gen.history SET LOGGED;
 ANALYZE gen.users, gen.spaces, gen.fields, gen.items, gen.history;`;
 
 /** Escapes one value for COPY's text format; null becomes \N. */

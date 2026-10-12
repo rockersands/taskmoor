@@ -13,6 +13,7 @@
     "start": "tsx src/main.ts"
   },
   "dependencies": {
+    "@fastify/static": "10.1.6",
     "@tracksmith/db": "workspace:*",
     "fastify": "^5.12.5",
     "kysely": "^0.28.17",

@@ -39,6 +39,22 @@ describe('loadDataset', () => {
     expect(result.history).toBeGreaterThan(5_000);
   });
 
+  it('leaves every table logged, so a crash does not empty the dataset', async () => {
+    const { rows } = await pool.query<{ relname: string; relpersistence: string }>(
+      `SELECT c.relname, c.relpersistence FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'gen' AND c.relkind = 'r' ORDER BY c.relname`,
+    );
+    expect(rows.map((r) => r.relname)).toEqual([
+      'fields',
+      'history',
+      'items',
+      'meta',
+      'spaces',
+      'users',
+    ]);
+    expect(rows.every((r) => r.relpersistence === 'p')).toBe(true);
+  });
+
   it('round-trips values exactly, including JSON fields and labels', async () => {
     const first = dataset.items().next().value?.item;
     const { rows } = await pool.query(

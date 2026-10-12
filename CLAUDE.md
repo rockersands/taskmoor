@@ -36,6 +36,8 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm bench:check [--size 1m]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression) |
 | `pnpm status-report [--date D]` | Weekly status report to `docs/status/<date>.md`; copy it to the user's Drive folder |
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
+| `pnpm build` | Production build: the static frontend (`apps/web/dist`) and the bundled server (`apps/server/dist/server.mjs`) |
+| `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |

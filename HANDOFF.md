@@ -63,17 +63,18 @@ Read this first in every session, then update it before you stop.
   (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
   The bench cluster is shared: a second process attaches to the running server; if the owner
   stops it (a `pnpm gen` finishing), attached benchmarks fail; rerun them.
-- While a big spike saturates the repository's disk, database tests time out. Run the gate
-  with the test clusters on another disk:
-  `TRACKSMITH_PG_CACHE_DIR=C:/Users/you/AppData/Local/Temp/tracksmith-pg-test pnpm verify`
+- Disks on this machine: E: and G: are NVMe, C: is a hard disk (the user asked that C: not be
+  used for heavy work). The repository and its `.cache` live on E:. While a big spike
+  saturates E:, run the gate with the test clusters on G:
+  `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg-test pnpm verify`
   (and `PLAYWRIGHT_BROWSERS_PATH=<empty dir>` skips the browser stories; CI runs them).
   Each Vitest project sets its own timeouts; the root config's are not inherited.
 - The OpenFGA server binary for the permission spike is in `.cache/tools/openfga` (v1.22.0,
   downloaded from its GitHub release and checksum-verified); `pnpm spike authz --openfga`
   needs it. CI has no binary, so that candidate and its test are skipped there. Its metrics
   port is disabled in the spike; an orphaned instance otherwise blocks the next one.
-- `pnpm spike xml` writes its synthetic file under `.cache/xml` unless `--dir` says otherwise;
-  the 5 GB file was generated on C: (`C:/Users/you/AppData/Local/Temp/tracksmith-xml`).
+- `pnpm spike xml` writes its synthetic file under `.cache/xml` unless `--dir` says otherwise
+  (use `--dir G:/tracksmith-xml` while E: is busy; the 5 GB file takes two minutes to make).
 - In `pnpm verify ... | grep`, use `set -o pipefail` before chaining a commit, or the grep
   status hides a failure. Editing TypeScript through `node -e` string replacement mangles
   `\n` escapes inside quoted strings; use the Edit tool for source edits.
@@ -88,15 +89,12 @@ Read this first in every session, then update it before you stop.
 
 ### Waiting on the user
 
-- Run `gh auth refresh -s workflow` (browser sign-in as Rockersands) so pushes may change
-  `.github/workflows/*`. The local branch `ci-workflows` holds the nightly benchmark job
-  (`nightly.yml`, M0-033) and Chromium in every test job (`ci.yml`); after the refresh:
-  `git push origin ci-workflows`, then merge it into main (or `git merge ci-workflows` and push).
-  After the first green nightly run, copy its `nightly-results` artifact's JSON files into
-  `docs/spikes/baseline/ci/` so later runs catch regressions.
-- Docker Desktop is installed but needs WSL: run `wsl --install` as administrator and reboot.
-  M0-025 to M0-030 (images, install kits, migrations, backup drill) wait for it.
 - Public name: pick from the shortlist in `docs/decisions/name.md` (issuetide, workrill,
   taskmoor) or propose another; the codename stays until then.
+- After the first green nightly run (03:00 UTC, or "Run workflow" on the Actions tab), copy
+  the `nightly-results` artifact's JSON files into `docs/spikes/baseline/ci/` so later runs
+  catch regressions. (Done on the user's side: the GitHub token now carries the `workflow`
+  scope and Docker Desktop runs on WSL 2; Docker's disk image sits on C:, the hard disk, and
+  can be moved from Docker Desktop's settings.)
 - The other open decisions are listed at the end of `docs/status/2026-10-12.md`; none blocks
   M0 except the name and, before the first public release, counsel's review.

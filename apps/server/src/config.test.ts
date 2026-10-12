@@ -11,6 +11,8 @@ describe('loadConfig', () => {
       host: '0.0.0.0',
       logLevel: 'info',
       version: '0.0.0-dev',
+      roles: ['api', 'worker', 'realtime', 'web'],
+      webDir: undefined,
     });
   });
 
@@ -39,7 +41,24 @@ describe('loadConfig', () => {
     expect(run).not.toThrow(/hunter2/);
   });
 
-  it('requires DATABASE_URL', () => {
-    expect(() => loadConfig({})).toThrow(/DATABASE_URL is required/);
+  it('requires DATABASE_URL for every role but web', () => {
+    expect(() => loadConfig({})).toThrow(/DATABASE_URL is required for the api, worker/);
+    expect(() => loadConfig({ TRACKSMITH_ROLE: 'worker' })).toThrow(/DATABASE_URL is required/);
+    expect(loadConfig({ TRACKSMITH_ROLE: 'web', TRACKSMITH_WEB_DIR: '/app/web' })).toMatchObject({
+      databaseUrl: undefined,
+      roles: ['web'],
+      webDir: '/app/web',
+    });
+  });
+
+  it('[OPS-002] runs every role by default and accepts a comma-separated subset', () => {
+    expect(loadConfig({ DATABASE_URL: DB }).roles).toEqual(['api', 'worker', 'realtime', 'web']);
+    expect(loadConfig({ DATABASE_URL: DB, TRACKSMITH_ROLE: 'realtime, API' }).roles).toEqual([
+      'api',
+      'realtime',
+    ]);
+    expect(() => loadConfig({ DATABASE_URL: DB, TRACKSMITH_ROLE: 'api,cron' })).toThrow(
+      /unknown: cron/,
+    );
   });
 });

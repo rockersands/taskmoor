@@ -165,3 +165,32 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+
+  # The one image of ADR-021, built for both architectures (M0-025, M0-011). The build stage
+  # runs natively; only the runtime stage is per-architecture. The amd64 image answers /health
+  # with no database, which is the acceptance check; registry pushes come with the release task.
+  image:
+    name: image (amd64, arm64)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build for both architectures
+        run: |
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            --build-arg "TRACKSMITH_VERSION=${GITHUB_SHA::12}" \
+            --cache-from type=gha --cache-to type=gha,mode=max \
+            -t tracksmith:ci .
+      - name: Load the amd64 image and probe it
+        run: |
+          docker buildx build --platform linux/amd64 --cache-from type=gha --load -t tracksmith:ci .
+          size=$(docker image inspect tracksmith:ci --format '{{.Size}}')
+          echo "image size: $((size / 1000000)) MB"
+          test "$size" -le 400000000
+          docker run -d --rm --name app -e TRACKSMITH_ROLE=web -p 8080:8080 tracksmith:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/health && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8080/health | grep -q '"status":"ok"'
+          docker rm -f app
