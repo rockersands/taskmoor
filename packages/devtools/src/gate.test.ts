@@ -100,6 +100,23 @@ describe('M0 gate', () => {
     expect(formatGate('M0', checks)).toContain('0 failing, 4 waiting on the user.');
   });
 
+  it('accepts a counsel review the user deferred to the first public release', () => {
+    const checks = m0Gate({
+      ...green,
+      decisions: [
+        {
+          Decision: 'Counsel review of the clean-room protocol',
+          "Claude's recommendation":
+            'Deferred by the user on 2026-10-12 to the first public release',
+        },
+        { Decision: 'M0 acceptance', "Claude's recommendation": 'Decided by the user' },
+      ],
+    });
+    const counsel = checks.find((c) => c.name.startsWith('Counsel'));
+    expect(counsel?.state).toBe('ok');
+    expect(counsel?.detail).toContain('deferred by the user');
+  });
+
   it('reads the real repository and refuses unknown milestones', () => {
     const inputs = loadGateInputs(ROOT, 'M0');
     expect(runGate(inputs).length).toBe(8);

@@ -138,12 +138,21 @@ export function m0Gate(input: GateInputs): GateCheck[] {
     input.decisions.some(
       (d) => d.Decision?.startsWith(prefix) && /decided/i.test(d["Claude's recommendation"] ?? ''),
     );
+  // The user may move the review to the release gate; M0 then only needs that choice on record.
+  const deferred = (prefix: string) =>
+    input.decisions.some(
+      (d) =>
+        d.Decision?.startsWith(prefix) &&
+        /deferred by the user/i.test(d["Claude's recommendation"] ?? ''),
+    );
   checks.push({
     name: 'Counsel sign-off on the clean-room protocol recorded',
-    state: decided('Counsel review') ? 'ok' : 'waiting',
+    state: decided('Counsel review') || deferred('Counsel review') ? 'ok' : 'waiting',
     detail: decided('Counsel review')
       ? 'recorded in decisions.csv'
-      : 'decisions.csv: "Counsel review" row',
+      : deferred('Counsel review')
+        ? 'deferred by the user to the first public release (decisions.csv)'
+        : 'decisions.csv: "Counsel review" row',
   });
   checks.push({
     name: 'User acceptance of M0 recorded',

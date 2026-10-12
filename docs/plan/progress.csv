@@ -1,22 +1,22 @@
 Task ID,State,Date,Note
-M0-001,done,2026-10-12,"Repo pushed; CI green on main; SECURITY.md; DCO via M0-035 (no branch protection on the free plan)"
+M0-001,done,2026-10-12,Repo pushed; CI green on main; SECURITY.md; DCO via M0-035 (no branch protection on the free plan)
 M0-002,done,2026-10-12,Governance sections checked by packages/devtools/src/docs-check.ts in pnpm verify
 M0-003,done,2026-10-12,pnpm next-task with progress.csv; backlog integrity checked in pnpm verify
 M0-004,done,2026-10-12,ADR-001 to 003 written (002 Proposed until the user confirms); link and ADR index checks run in pnpm verify
 M0-005,done,2026-10-12,docs/legal/clean-room.md; counsel review row added to decisions.csv
 M0-006,done,2026-10-12,Spec front matter plus provenance check in pnpm verify
-M0-007,waiting-on-user,2026-10-12,docs/decisions/name.md: Tracksmith is a registered apparel brand and its handles are taken; shortlist issuetide / workrill / taskmoor
+M0-007,done,2026-10-12,"The user chose taskmoor on 2026-10-12 from the screened shortlist (docs/decisions/name.md); the rename of packages, images and docs follows"
 M0-008,done,2026-10-12,Biome instead of ESLint and Prettier (ADR-004)
 M0-009,done,2026-10-12,Embedded Postgres 16 harness; CI runs Postgres 16 and 18
 M0-010,done,2026-10-12,dependency-cruiser rules in packages/devtools/src/boundaries.ts; fixture that breaks each rule
-M0-012,done,2026-10-12,"Licence allowlist and secret scan in pnpm verify with failing fixtures; CI SBOM (CycloneDX) and Trivy; Dependabot instead of Renovate (no app install); CodeQL once public"
+M0-012,done,2026-10-12,Licence allowlist and secret scan in pnpm verify with failing fixtures; CI SBOM (CycloneDX) and Trivy; Dependabot instead of Renovate (no app install); CodeQL once public
 M0-013,done,2026-10-12,"347 requirements with stable IDs, provenance and index; spec lint in pnpm verify"
 M0-014,done,2026-10-12,pnpm trace prints coverage per milestone; unknown citations fail pnpm verify
 M0-015,done,2026-10-12,"pnpm gen --items N loads the gen schema via COPY into the embedded bench cluster; about 5,400 items/s; counts and keys verified"
 M0-016,done,2026-10-12,"JSONB plus typed side tables chosen (ADR-008 Accepted): at 1M the side tables beat JSONB-only and EAV; at 10M items on NVMe every query meets its budget (open 1.4 ms, edit 1.7 ms, slowest the date window at 123 ms p95); the 10M run added the newest-first side index, semi-joins to the item and (field_id, value) statistics with target 5000 to the decision (docs/spikes/field-storage-10m.md)"
 M0-017,done,2026-10-12,"@tracksmith/query parser, resolver and SQL compiler (ADR-010 Accepted): all 22 queries of the set under 18 ms p95 at 10M and under 9 ms at 1M (budget 300 ms) after the compiler learned to drive custom-field queries from their side table; an equivalence test pins identical results in both forms; reports docs/spikes/query-compiler-1m.md and -10m.md"
-M0-020,done,2026-10-12,"@tracksmith/richtext schema and lossless format conversion; 50 docs plus property test; Yjs and Hocuspocus sync verified; ADR-014"
-M0-021,done,2026-10-12,"In-house SKIP LOCKED queue 18k jobs/s vs Graphile 1.4k; outbox exactly-once tests; ADR-015"
+M0-020,done,2026-10-12,@tracksmith/richtext schema and lossless format conversion; 50 docs plus property test; Yjs and Hocuspocus sync verified; ADR-014
+M0-021,done,2026-10-12,In-house SKIP LOCKED queue 18k jobs/s vs Graphile 1.4k; outbox exactly-once tests; ADR-015
 M0-023,done,2026-10-12,"@tracksmith/ai gateway over Anthropic API, Bedrock, Vertex, Foundry and OpenAI-compatible; mocked contract tests; ADR-028"
 M0-031,done,2026-10-12,"Tokens, shell components, Storybook 10 builds; every story runs as a browser test with axe (serious/critical fail); ADR-024"
 M0-032,done,2026-10-12,"Shell with hash routing, session guard stub, Ctrl+K command palette (APG combobox), ICU i18n via react-intl, en-XA pseudo-locale checked by component and e2e tests"
@@ -26,7 +26,7 @@ M0-019,done,2026-10-12,"In-house change log measured at 200k items: bootstrap 52
 M0-022,done,2026-10-12,"Streaming saxes parser with a byte-level cleaner: 5 GB synthetic backup (27.4M rows) in 2.6 min at 303 MB RSS, lossless, 2,696 forbidden characters removed and logged (docs/spikes/xml-5g.md); ADR-025 Accepted"
 M0-018,done,2026-10-12,"In-process SQL evaluator p95 1.47 ms cold / 0 ms cached vs OpenFGA 15.9 ms at 100k users and 30k spaces (docs/spikes/authz.md); pre-filter overhead at most 1.3 ms absolute at 200k items, repeated in the 10M run; ADR-012 Accepted"
 M0-033,done,2026-10-12,"pnpm bench:check (budgets from the plan plus a 20% regression check against docs/spikes/baseline, fixture-tested) and pnpm status-report (docs/status/<date>.md); first report written and copied to Drive; nightly.yml live on main (03:00 UTC), 200k items on a 4-vCPU runner in under 3 min with 40 runs per query; run 38284284912 green and its results are the CI baseline in docs/spikes/baseline/ci. The first run had failed on a 10-run p95 that was one slow sample"
-M0-034,in-progress,2026-10-12,"pnpm gate M0 evaluates the exit criteria (ADRs, budgets at 10M, local verify, CI, nightly baseline, install matrix, counsel sign-off, user acceptance); currently 4 failing (ADR-008/010 and the 10M run pending, CI in progress, nightly workflow on the ci-workflows branch) and 3 waiting on the user"
+M0-034,done,2026-10-12,"pnpm gate M0 checks the exit criteria (ADRs, budgets at 10M, local verify, CI, nightly baseline, install matrix, counsel, user acceptance). All green on 2026-10-12: the user accepted M0 and deferred the counsel review to the first public release. Demo build: one image serves the API and the web app; it runs locally from the Compose kit (HANDOFF: Local demo). Publishing images and the release signing key wait on the user (decisions.csv: Release publishing)"
 M0-011,done,2026-10-12,"CI: lint, types, tests and e2e on Postgres 16, tests on Postgres 18, weekly Windows run, SBOM and Trivy, multi-arch image build with a /health probe, nightly benchmark workflow; the gh token now carries the workflow scope"
 M0-025,done,2026-10-12,"One image with roles by TRACKSMITH_ROLE (api, worker, realtime, web, all), /health on every role, web role serves the built frontend with deep-link fallback, startup waits for the database; esbuild bundle; multi-stage multi-arch Dockerfile; tools/image/smoke.sh green on amd64 and arm64 (emulated): image under 400 MB, /health and /ready 200; CI builds both architectures"
 M0-026,done,2026-10-12,"All-in-one image (node:22-alpine plus PostgreSQL 16, one /data volume, data kept across restarts) and two Compose kits (bundled Postgres with a health-gated start; external Postgres); tools/image/smoke-kits.sh green locally and in the CI image job; the fresh-VM install timing is the nightly matrix task (M0-028)"

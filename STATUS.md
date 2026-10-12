@@ -6,8 +6,8 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 
 | Milestone | Scope | State |
 |---|---|---|
-| M0 Foundation | Repo, test backbone, CI, ADRs, spikes, install skeleton | In progress |
-| M1 Release 1.0 | Jira Software parity, query language, importer, SSO, Builder, AI gateway | Not started |
+| M0 Foundation | Repo, test backbone, CI, ADRs, spikes, install skeleton | Accepted by the user on 2026-10-12 |
+| M1 Release 1.0 | Jira Software parity, query language, importer, SSO, Builder, AI gateway | In progress |
 | M2 Release 2.0 | Enterprise, automation, Plans, service desk core | Not started |
 | M3 Release 3.0 | ITSM, on-call, status pages, CMDB, mobile apps | Not started |
 | M4 Release 4.0 | Discovery, portfolio, test management | Not started |
@@ -20,9 +20,9 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-002 CLAUDE.md, HANDOFF.md, STATUS.md | Done | Required sections checked in `pnpm verify` |
 | M0-003 Backlog CSVs and next-task | Done | `pnpm next-task`; progress in `docs/plan/progress.csv` |
 | M0-004 ADR process, ADR-001 to 003 | Done | ADR-002 accepted: AGPL-3.0-only with DCO |
-| M0-005 Clean-room protocol | Done | `docs/legal/clean-room.md`; counsel review requested |
+| M0-005 Clean-room protocol | Done | `docs/legal/clean-room.md`; counsel review deferred by the user to the first public release |
 | M0-006 Provenance check | Done | Spec front matter checked in `pnpm verify` |
-| M0-007 Public name screening | Waiting on the user | Shortlist in `docs/decisions/name.md` |
+| M0-007 Public name screening | Done | The user chose taskmoor (`docs/decisions/name.md`); the rename is next |
 | M0-008 Monorepo scaffold | Done | Biome instead of ESLint and Prettier (ADR-004) |
 | M0-009 Embedded Postgres harness | Done | CI runs the same suites on Postgres 16 and 18 |
 | M0-010 Module boundaries | Done | dependency-cruiser rules with a failing fixture |
@@ -50,7 +50,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-029 Migrations and upgrade harness | Done | Forward-only migrations, upgrade tests from the last three releases' schemas, `node cli.mjs check-upgrade`, `migrate` and `status` in the image |
 | M0-030 Backup and restore | Done | `node cli.mjs backup`, `restore --yes` and `checksum`; drill (back up, wipe, restore, compare) green locally and in CI |
 | M0-028 Install matrix | Done | Nightly workflow green on five images: 17 to 18 s to /ready on Ubuntu 22.04, 24.04 and arm64; 36 s in Debian 12 and Rocky 9 containers with prerequisites |
-| M0-034 M0 gate | In progress | pnpm gate M0 prints the exit checklist; waits on the 10M run, Docker items, counsel and user acceptance |
+| M0-034 M0 gate | Done | `pnpm gate M0 --ci` all green; the user accepted M0; local demo from the Compose kit (HANDOFF: Local demo) |
 | All other M0 tasks | Not started | |
 
 ## M1 tasks started early

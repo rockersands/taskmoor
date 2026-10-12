@@ -1,7 +1,8 @@
 # Public name screening
 
-Task M0-007. "Tracksmith" is a working codename; the user chooses the public name before any
-public release. This file records what was checked and what remains for a lawyer.
+Task M0-007. "Tracksmith" was the working codename. **On 2026-10-12 the user chose taskmoor**
+(written Taskmoor at the start of a sentence and in titles) from the shortlist below. This file
+records what was checked and what remains for a lawyer.
 
 ## Method
 
@@ -45,7 +46,14 @@ Checked and set aside:
 | milestoner, backlogger, issuary | npm package exists |
 | ticketloom, trackvale, boardwright, tallyard, ticketwright, boardlane | .com taken |
 
-## Recommendation
+## Decision
+
+The user chose **taskmoor** on 2026-10-12. Checked again that day: the npm name and the GitHub
+user are still free. Still to do before the first public release: register the .com and the
+GitHub organisation, and counsel's knock-out search (USPTO, EUIPO, WIPO; classes 9 and 42),
+which the user moved to the counsel review before release.
+
+## Recommendation (before the choice)
 
 Shortlist **issuetide** first, then **workrill** and **taskmoor**. Before choosing: register
 the .com and the GitHub organisation, run a USPTO/EUIPO/WIPO knock-out search (class 9 and

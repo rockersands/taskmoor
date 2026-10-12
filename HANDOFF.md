@@ -6,7 +6,10 @@ Read this first in every session, then update it before you stop.
 
 ### Done
 
-- **M0 is 30 of 35 tasks done; 31 of 33 ADRs accepted.** `pnpm gate M0` prints the exit
+- **M0 accepted by the user (2026-10-12).** `pnpm gate M0 --ci` is all green; the counsel
+  review is deferred to the first public release (`docs/plan/decisions.csv`). The local demo
+  runs on port 8080 (see Local demo).
+- **M0 was 30 of 35 tasks done; 31 of 33 ADRs accepted** at the start of the day. `pnpm gate M0` prints the exit
   checklist; `STATUS.md` has the task table; `docs/status/2026-10-12.md` is the first weekly
   report (also in the user's Drive folder as a Google Doc).
 - Foundation (earlier today): repo with the personal identity only, DCO hooks and CI (Postgres
@@ -85,26 +88,32 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. **M0 gate.** `pnpm gate M0 --ci` shows two items that only the user can move, and one
-   decision: the permission pre-filter budget (`docs/plan/decisions.csv`, "Permission
-   pre-filter budget"): at 10M it adds at most 3.6 ms (filtered queries under 4.5 ms) but fails
-   the relative 20% budget in `packages/devtools/src/bench.ts`. If the user picks an absolute
-   budget, change that entry (and its test fixtures) and the gate's budget line turns green.
-   Then counsel's sign-off and the user's "M0 acceptance" row in `decisions.csv`.
-2. **Benchmark data lives on G: now** (`G:/tracksmith-pg/bench`, 137 GB; set
-   `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg`). The identical copy on E: (`.cache/pg-test/bench`)
-   can be deleted once the user agrees; nothing uses it. Reruns: `.cache/scripts/rerun-g.sh`
-   (all six spikes in about four minutes on NVMe, logs in `.cache/scripts/g-*.log`).
-   `hold-bench.mts` keeps the cluster up (create `.cache/scripts/release-bench` to stop it);
-   it was left running at the end of this session.
-3. **M1-100 air-gap bundle**: `tools/airgap/test-offline.sh` passes locally (bundle, refused
-   tampering and wrong key, install on an internal network, no egress) and runs nightly in
-   `install-matrix.yml`. Waiting on the user: where the release signing key lives (a CI secret
-   with an ECDSA P-256 key, or cosign keyless). With it, add a release workflow that builds,
-   signs and publishes the bundle and the public key.
-4. Next M1 work that does not wait on M0 acceptance: the catalogue gaps the query suite lists
-   (fields like fixVersion, component, sprint, due; history on every field; user values by
-   name; function arity) as part of M1-036; M1-001 once M0-034 is accepted.
+1. **Rename to taskmoor.** The user chose the public name (decisions.csv, "Final public name").
+   Rename packages (`@tracksmith/*`), environment variables (`TRACKSMITH_*`), images, the Helm
+   chart, metrics, UI strings and docs in one change; keep the GitHub URL until the user renames
+   the repository (GitHub redirects the old URL, not the reverse).
+2. **Own terminology.** The user asked for our own name for every structural term that is
+   specific to Atlassian products (decisions.csv, "Structural terminology"). Atlassian itself
+   now says "space", "work item" and "work type", the terms the specs adopted, so those change
+   too. Write `docs/specs/terminology.md`, then apply it to the specs, the native query
+   vocabulary, code and UI; Jira-compatible names stay in import, export, the compatibility API
+   and the query dialect.
+3. M1 work: the catalogue gaps the query suite lists (fixVersion, component, sprint, due;
+   history on every field; user values by name; function arity) as part of M1-036, then
+   M1-001 now that M0 is accepted.
+4. **Benchmark data lives on G:** (`G:/tracksmith-pg/bench`, 137 GB; set
+   `TRACKSMITH_PG_CACHE_DIR=G:/tracksmith-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
+   spikes in about four minutes, logs in `.cache/scripts/g-*.log`). The copy on E: is deleted.
+
+### Local demo
+
+The demo runs from a copy of the Compose kit in `G:/tracksmith-demo` with the locally built
+image (`docker build -t tracksmith:dev .` from the repository). Its `.env` pins the project
+name, image, port 8080 and `PUBLIC_URL=http://localhost:8080`. Start or update it with
+`bash install.sh` in that folder (it prints the one-time setup link until an administrator
+exists); stop it with `docker compose down` (add `-v` to delete its data). What it shows today:
+first-run setup, sign-in, the app shell with the command palette, Settings and the admin System
+status page. Boards, items and queries arrive with M1.
 
 ### Notes and gotchas
 
@@ -112,13 +121,13 @@ Read this first in every session, then update it before you stop.
   (`git config --local credential.helper`); Git Credential Manager would otherwise open a
   sign-in window. The CLI is signed in as rockersands. The token lacks the `workflow` scope,
   so pushes that touch `.github/workflows/*` are refused (see Waiting on the user).
-- Bench datasets live in `.cache/pg-test/bench` as UNLOGGED tables: stop that cluster cleanly
+- Bench datasets live in `G:/tracksmith-pg/bench` as UNLOGGED tables: stop that cluster cleanly
   (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
   The bench cluster is shared: a second process attaches to the running server; if the owner
   stops it (a `pnpm gen` finishing), attached benchmarks fail; rerun them.
 - **Disks on this machine (measured 2026-10-12 with Get-PhysicalDisk):** E: is a Seagate
   ST4000DM004, a 5,400 rpm hard disk (random 8 KB reads 13 ms p50), and holds the repository
-  and `.cache/pg-test`, so every bench cluster. C: (Kingston NV1, 342 GB free) and G: (XPG
+  and `.cache/pg-test` (the default place for test clusters). C: (Kingston NV1, 342 GB free) and G: (XPG
   S40G, 86 GB free) are NVMe; D: is another hard disk. The user confirmed this and said C:
   and G: are free to use: database clusters and benchmarks go there through
   `TRACKSMITH_PG_CACHE_DIR`, the source tree stays on E:. Benchmarks on E: measure seeks, not
@@ -173,13 +182,9 @@ Read this first in every session, then update it before you stop.
 
 ### Waiting on the user
 
-- Public name: pick from the shortlist in `docs/decisions/name.md` (issuetide, workrill,
-  taskmoor) or propose another; the codename stays until then.
-- After the first green nightly run (03:00 UTC, or "Run workflow" on the Actions tab), copy
-  the `nightly-results` artifact's JSON files into `docs/spikes/baseline/ci/` so later runs
-  catch regressions. (Done: the CI baseline is in `docs/spikes/baseline/ci`.)
-- Permission pre-filter budget: at 10M every filtered query stays under 15 ms, but the
-  overhead is up to 310% of a 2.6 ms query. Keep the relative budget (and optimise the
-  pre-filter), or state it as an absolute one (for example at most 10 ms added)?
-- The other open decisions are listed at the end of `docs/status/2026-10-12.md`; none blocks
-  M0 except the name and, before the first public release, counsel's review.
+- **Release publishing** (decisions.csv): pushing images to ghcr.io and the release signing key
+  for the air-gap bundle (M1-100). The user first wanted a local demo; it runs (see Local demo).
+- **Repository rename** on GitHub to match the new name; outward-facing, so it waits for the
+  user's go-ahead.
+- **Counsel review**: deferred by the user to the first public release; it covers the
+  clean-room protocol, ADR-002, ADR-003, the terminology and the name screening.
