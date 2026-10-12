@@ -1,10 +1,14 @@
 // pnpm spike field-storage --items <n> [--runs <n>] [--rebuild] [--candidates a,b]
 // pnpm spike queue [--jobs <n>] [--workers <n>] [--batch <n>] [--no-durable]
 // pnpm spike query --items <n> [--runs <n>]
+// pnpm spike authz [--users <n>] [--spaces <n>] [--checks <n>] [--openfga]
+// pnpm spike authz-overhead --items <n> [--runs <n>]
+// pnpm spike xml [--size 5G] [--seed <n>] [--dir <path>]
 //
 // Runs an architecture spike and writes its results to docs/spikes/data/<name>.json and
-// docs/spikes/<name>.md. The field-storage spike needs the dataset that
-// `pnpm gen --items <n>` loaded; the queue spike uses its own embedded cluster.
+// docs/spikes/<name>.md. The field-storage, query and authz-overhead spikes need the dataset
+// that `pnpm gen --items <n>` loaded; the queue and authz spikes use their own embedded
+// clusters.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,16 +21,27 @@ import {
   startEmbeddedPostgres,
 } from '@tracksmith/testkit/server';
 import pg from 'pg';
+import {
+  renderAuthzReport,
+  renderOverheadReport,
+  runAuthzSpike,
+  runFilterOverhead,
+} from '../authz/bench';
+import { scaleAuthz } from '../authz/model';
 import type { CandidateId } from '../field-storage/candidates';
 import { renderReport, runFieldStorageSpike } from '../field-storage/run';
 import { renderQueryReport, runQueryBench } from '../query-bench/run';
 import { renderQueueReport, runQueueSpike } from '../queue/bench';
+import { parseSize, renderXmlReport, runXmlSpike, sizeLabel as xmlSizeLabel } from '../xml/bench';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const USAGE =
   'Usage: pnpm spike field-storage --items <n> [--runs <n>] [--rebuild] [--candidates jsonb,side,eav]\n' +
   '       pnpm spike queue [--jobs <n>] [--workers <n>] [--batch <n>] [--no-durable]\n' +
-  '       pnpm spike query --items <n> [--runs <n>]';
+  '       pnpm spike query --items <n> [--runs <n>]\n' +
+  '       pnpm spike authz [--users <n>] [--spaces <n>] [--checks <n>] [--openfga]\n' +
+  '       pnpm spike authz-overhead --items <n> [--runs <n>]\n' +
+  '       pnpm spike xml [--size 5G] [--seed <n>] [--dir <path>]';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -39,6 +54,13 @@ const { positionals, values } = parseArgs({
     workers: { type: 'string', default: '8' },
     batch: { type: 'string', default: '25' },
     durable: { type: 'boolean', default: true },
+    users: { type: 'string', default: '100000' },
+    spaces: { type: 'string', default: '30000' },
+    checks: { type: 'string', default: '2000' },
+    openfga: { type: 'boolean', default: false },
+    size: { type: 'string', default: '5G' },
+    seed: { type: 'string', default: '1' },
+    dir: { type: 'string' },
   },
 });
 
@@ -62,7 +84,8 @@ switch (positionals[0]) {
     try {
       if (!(await loadedFingerprint(bench.pool))) {
         console.error(`No dataset in ${bench.name}. Run: pnpm gen --items ${items}`);
-        process.exit(1);
+        process.exitCode = 1;
+        break;
       }
       const result = await runFieldStorageSpike(bench.pool, {
         runs: Number(values.runs),
@@ -89,7 +112,8 @@ switch (positionals[0]) {
         console.error(
           `No side schema in ${bench.name}. Run: pnpm spike field-storage --items ${items}`,
         );
-        process.exit(1);
+        process.exitCode = 1;
+        break;
       }
       const result = await runQueryBench(bench.pool, {
         runs: Number(values.runs),
@@ -134,6 +158,66 @@ switch (positionals[0]) {
     } finally {
       await server.stop();
     }
+    break;
+  }
+  case 'authz': {
+    const server = await startEmbeddedPostgres({ name: 'authz' });
+    try {
+      await withAdminClient(server.adminUrl, async (client) => {
+        for (const name of ['authz', 'openfga']) {
+          const { rowCount } = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
+            name,
+          ]);
+          if (!rowCount) await client.query(`CREATE DATABASE ${name}`);
+        }
+      });
+      const pool = new pg.Pool({ connectionString: databaseUrl(server.adminUrl, 'authz'), max: 4 });
+      try {
+        const result = await runAuthzSpike(pool, {
+          config: scaleAuthz(Number(values.users), Number(values.spaces)),
+          checks: Number(values.checks),
+          listUsers: 50,
+          ...(values.openfga
+            ? { openFgaDatastore: `${databaseUrl(server.adminUrl, 'openfga')}?sslmode=disable` }
+            : {}),
+          log: (m) => console.log(m),
+        });
+        writeResults('authz', result, renderAuthzReport(result));
+      } finally {
+        await pool.end();
+      }
+    } finally {
+      await server.stop();
+    }
+    break;
+  }
+  case 'authz-overhead': {
+    const items = Number(values.items?.replaceAll('_', ''));
+    if (!Number.isInteger(items) || items < 1) {
+      console.error(USAGE);
+      process.exit(2);
+    }
+    const bench = await openBenchDatabase(benchDatabaseName(items));
+    try {
+      const result = await runFilterOverhead(bench.pool, {
+        runs: Number(values.runs),
+        log: (m) => console.log(m),
+      });
+      writeResults(`authz-overhead-${sizeLabel(items)}`, result, renderOverheadReport(result));
+    } finally {
+      await bench.close();
+    }
+    break;
+  }
+  case 'xml': {
+    const bytes = parseSize(values.size);
+    const result = await runXmlSpike({
+      bytes,
+      seed: Number(values.seed),
+      ...(values.dir ? { dir: values.dir } : {}),
+      log: (m) => console.log(m),
+    });
+    writeResults(`xml-${xmlSizeLabel(bytes)}`, result, renderXmlReport(result));
     break;
   }
   default:

@@ -56,9 +56,12 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. M0-001 rest: the first push waits on a one-time Git Credential Manager sign-in as
-   Rockersands. After it lands, check that the first CI run is green on GitHub.
-2. Spikes M0-016 to M0-023, in the order `pnpm next-task` prints them.
+1. M0-016 and M0-017: when the 10M field-storage spike finishes (`docs/spikes/field-storage-10m.md`),
+   run `pnpm spike query --items 10000000` and `--items 1000000` on an idle machine, then write
+   ADR-008 and ADR-010 with the measured p95 figures and mark both tasks done.
+2. M0-018 (permission engine spike, ADR-012), M0-019 (sync engine spike, ADR-013), M0-022
+   (XML parser spike, ADR-025), in the order `pnpm next-task` prints them.
+3. M0-033 nightly benchmark job; M0-025 to M0-030 once Docker works (WSL install pending).
 
 ### Notes and gotchas
 
@@ -67,8 +70,15 @@ Read this first in every session, then update it before you stop.
   sign-in window. The CLI is signed in as rockersands.
 - Bench datasets live in `.cache/pg-test/bench` as UNLOGGED tables: stop that cluster cleanly
   (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
-- While a big spike runs, database tests are slow; the root Vitest config allows 60 s for
-  hooks. Run `pnpm verify` when the machine is idle before trusting a failure.
+- While a big spike saturates the repository's disk, database tests time out. Run the gate
+  with the test clusters on another disk: `TRACKSMITH_PG_CACHE_DIR=C:/Users/you/AppData/Local/Temp/tracksmith-pg-test pnpm verify`
+  (and `PLAYWRIGHT_BROWSERS_PATH=<empty dir>` skips the browser stories). Each Vitest project
+  sets its own timeouts; the root config's are not inherited.
+- The OpenFGA server binary for the permission spike is in `.cache/tools/openfga` (v1.22.0,
+  downloaded from its GitHub release and checksum-verified); `pnpm spike authz --openfga`
+  needs it. CI has no binary, so that candidate and its test are skipped there.
+- The bench cluster is shared: a second process attaches to the running server. If the owner
+  stops the server (a `pnpm gen` finishing), attached benchmarks fail; rerun them.
 - In `pnpm verify ... | grep`, use `set -o pipefail` before chaining a commit, or the grep
   status hides a failure.
 

@@ -16,7 +16,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 
 | Task | State | Notes |
 |---|---|---|
-| M0-001 Repo and governance | Partial | Repo, remote, SECURITY.md done; first push waits on the GitHub sign-in |
+| M0-001 Repo and governance | Done | Repo pushed through the GitHub CLI token; CI green on main |
 | M0-002 CLAUDE.md, HANDOFF.md, STATUS.md | Done | Required sections checked in `pnpm verify` |
 | M0-003 Backlog CSVs and next-task | Done | `pnpm next-task`; progress in `docs/plan/progress.csv` |
 | M0-004 ADR process, ADR-001 to 003 | Done | ADR-002 accepted: AGPL-3.0-only with DCO |
@@ -35,6 +35,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-020 Rich text spike | Done | `@tracksmith/richtext`, Yjs and Hocuspocus verified (ADR-014) |
 | M0-021 Queue spike | Done | In-house SKIP LOCKED queue chosen (ADR-015) |
 | M0-023 AI gateway skeleton | Done | `@tracksmith/ai` with contract tests (ADR-028) |
+| M0-024 Remaining ADRs | In progress | 28 of 33 accepted; 008, 010, 012, 013 and 025 wait for their spikes |
 | M0-011 GitHub Actions | Partial | Lint, types, tests, e2e; image build comes with M0-025 |
 | M0-031 Design system | Done | Tokens, shell components, Storybook with axe on every story (ADR-024) |
 | M0-032 App shell | Done | Hash routing, session guard stub, command palette, ICU i18n, pseudo-locale checks |

@@ -37,10 +37,11 @@ export const BENCHMARK_QUERIES = [
   '"Story Points" IS EMPTY AND type IN (Story, Task) AND space = ABC ORDER BY created DESC',
   'parent = 12345 ORDER BY created ASC',
   '(assignee = currentUser() OR reporter = currentUser()) AND statusCategory != done ORDER BY updated DESC',
-  'status WAS "In Review" AND status = Done ORDER BY updated DESC',
+  'status WAS "In Review" ORDER BY updated DESC',
   'status CHANGED TO Done AFTER -7d ORDER BY updated DESC',
   'assignee CHANGED BY 42 DURING (2026-01-01, 2026-02-01) ORDER BY created DESC',
   'NOT (labels IN (infra) OR type = Subtask) AND space IN (ABC, DEF) ORDER BY created DESC',
+  'status WAS Cancelled AND status = Done ORDER BY updated DESC',
 ];
 
 function compile(text: string, allowedSpaceIds: number[] | null = [1, 2]) {
@@ -60,11 +61,15 @@ describe('compilePlan', () => {
   });
 
   it('numbers parameters in order and never inlines values', () => {
-    const { text, params } = compile('summary ~ "50% off; DROP TABLE" AND "Story Points" > 3');
+    const { text, params } = compile(
+      'summary ~ "50% off; DROP TABLE" AND Notes ~ "a_b" AND "Story Points" > 3',
+    );
     expect(text).not.toContain('DROP');
-    expect(params).toEqual([[1, 2], '%50\\% off; DROP TABLE%', 1, 3, 50]);
+    // Word search on system text; ILIKE with escaped metacharacters on custom text.
+    expect(params).toEqual([[1, 2], '50% off; DROP TABLE', 6, '%a\\_b%', 1, 3, 50]);
+    expect(text).toContain('plainto_tsquery');
     expect(text).toContain('$2');
-    expect(text).toMatch(/LIMIT \$5$/);
+    expect(text).toMatch(/LIMIT \$7$/);
   });
 
   it('skips the space filter for callers who may see everything', () => {

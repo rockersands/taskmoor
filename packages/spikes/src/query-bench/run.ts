@@ -56,7 +56,7 @@ export const TEMPLATES: readonly { id: string; text: string }[] = [
     id: 'mine-or-reported',
     text: '(assignee = currentUser() OR reporter = currentUser()) AND statusCategory != done ORDER BY updated DESC',
   },
-  { id: 'was-status', text: 'status WAS "In Review" AND status = Done ORDER BY updated DESC' },
+  { id: 'was-status', text: 'status WAS "In Review" ORDER BY updated DESC' },
   { id: 'changed-to-after', text: 'status CHANGED TO Done AFTER -7d ORDER BY updated DESC' },
   {
     id: 'changed-by-during',
@@ -66,7 +66,54 @@ export const TEMPLATES: readonly { id: string; text: string }[] = [
     id: 'not-or-spaces',
     text: 'NOT (labels IN (infra) OR type = Subtask) AND space IN ({spaceA}, {spaceB}) ORDER BY created DESC',
   },
+  // No item was ever Cancelled: the worst case for a newest-first scan, which must not walk
+  // the whole table looking for a match.
+  { id: 'was-rare', text: 'status WAS Cancelled AND status = Done ORDER BY updated DESC' },
 ];
+
+/**
+ * Indexes the product schema will carry (ADR-008, ADR-010, ADR-011) beyond the side-table ones
+ * the field-storage spike builds: newest-first lists, reporter, labels, word search and the
+ * change history by item, by value and by actor. Idempotent, so reruns skip them.
+ */
+export const QUERY_INDEXES: readonly { name: string; sql: string }[] = [
+  { name: 'item_updated', sql: 'ON fs_side.item (updated_at DESC)' },
+  { name: 'item_reporter', sql: 'ON fs_side.item (reporter_id)' },
+  { name: 'item_labels', sql: 'ON fs_side.item USING GIN (labels)' },
+  {
+    name: 'item_summary_fts',
+    sql: "ON fs_side.item USING GIN (to_tsvector('simple', summary))",
+  },
+  { name: 'history_item_field', sql: 'ON gen.history (item_id, field)' },
+  { name: 'history_field_to', sql: 'ON gen.history (field, to_value, at) INCLUDE (item_id)' },
+  {
+    name: 'history_field_from',
+    sql: 'ON gen.history (field, from_value, at) INCLUDE (item_id)',
+  },
+  { name: 'history_actor_at', sql: 'ON gen.history (actor_id, at) INCLUDE (item_id)' },
+];
+
+/** Seconds per statement before the benchmark gives up on a query and records a timeout. */
+export const STATEMENT_TIMEOUT_S = 60;
+
+export async function prepareQueryIndexes(
+  pool: pg.Pool,
+  log: (m: string) => void = () => {},
+): Promise<{ step: string; seconds: number }[]> {
+  const steps: { step: string; seconds: number }[] = [];
+  const timed = async (step: string, sql: string) => {
+    const t0 = Date.now();
+    await pool.query(sql);
+    const seconds = Math.round((Date.now() - t0) / 100) / 10;
+    steps.push({ step, seconds });
+    log(`  ${step}: ${seconds}s`);
+  };
+  for (const index of QUERY_INDEXES) {
+    await timed(`index ${index.name}`, `CREATE INDEX IF NOT EXISTS ${index.name} ${index.sql}`);
+  }
+  await timed('analyze', 'ANALYZE fs_side.item, gen.history');
+  return steps;
+}
 
 export interface DatasetNames {
   spaceA: string;
@@ -180,7 +227,8 @@ export interface QueryBenchResult {
   items: number;
   runs: number;
   machine: { cpu: string; cores: number; postgres: string };
-  queries: (TimedResult & { id: string; text: string })[];
+  prepare: { step: string; seconds: number }[];
+  queries: (TimedResult & { id: string; text: string; timedOut?: boolean })[];
 }
 
 /** Times every template on the side schema; `permitted` adds a space pre-filter variant. */
@@ -189,10 +237,13 @@ export async function runQueryBench(
   options: { runs?: number; warmup?: number; log?: (m: string) => void } = {},
 ): Promise<QueryBenchResult> {
   const log = options.log ?? (() => {});
+  log('Preparing indexes');
+  const prepare = await prepareQueryIndexes(pool, log);
   const ctx = await datasetContext(pool);
   const client = await pool.connect();
   const queries: QueryBenchResult['queries'] = [];
   try {
+    await client.query(`SET statement_timeout = '${STATEMENT_TIMEOUT_S}s'`);
     const permitted = Object.values(ctx.catalogue.spaceKeys).slice(
       0,
       Math.max(1, Math.floor(Object.keys(ctx.catalogue.spaceKeys).length / 2)),
@@ -201,15 +252,35 @@ export async function runQueryBench(
       ...TEMPLATES.map((t) => ({ ...t, allowed: null })),
       { id: 'permitted-half', text: 'status = Done ORDER BY created DESC', allowed: permitted },
     ];
+    log(`Timing ${cases.length} queries`);
     for (const c of cases) {
       const { text, sql } = compileTemplate(c.text, ctx, { allowedSpaceIds: c.allowed });
-      const timed = await timeQuery(
-        client,
-        { name: c.id, sql: sql.text, params: () => sql.params },
-        { runs: options.runs ?? 20, warmup: options.warmup ?? 3 },
-      );
-      log(`  ${c.id}: p50 ${timed.p50} ms, p95 ${timed.p95} ms (${timed.rows} rows)`);
-      queries.push({ ...timed, id: c.id, text });
+      try {
+        const timed = await timeQuery(
+          client,
+          { name: c.id, sql: sql.text, params: () => sql.params },
+          { runs: options.runs ?? 20, warmup: options.warmup ?? 3 },
+        );
+        log(`  ${c.id}: p50 ${timed.p50} ms, p95 ${timed.p95} ms (${timed.rows} rows)`);
+        queries.push({ ...timed, id: c.id, text });
+      } catch (error) {
+        // 57014 is query_canceled: the statement timeout fired. Record it and move on.
+        if ((error as { code?: string }).code !== '57014') throw error;
+        const ms = STATEMENT_TIMEOUT_S * 1000;
+        log(`  ${c.id}: timed out after ${STATEMENT_TIMEOUT_S}s`);
+        queries.push({
+          name: c.id,
+          id: c.id,
+          text,
+          runs: 0,
+          p50: ms,
+          p95: ms,
+          max: ms,
+          mean: ms,
+          rows: 0,
+          timedOut: true,
+        });
+      }
     }
   } finally {
     client.release();
@@ -226,12 +297,18 @@ export async function runQueryBench(
       cores: cpus().length,
       postgres: version.rows[0]?.v ?? 'unknown',
     },
+    prepare,
     queries,
   };
 }
 
 export function renderQueryReport(result: QueryBenchResult): string {
   const over = result.queries.filter((q) => q.p95 > 300);
+  const cell = (q: QueryBenchResult['queries'][number], value: number) =>
+    q.timedOut ? `> ${STATEMENT_TIMEOUT_S * 1000} (timed out)` : String(value);
+  const indexSeconds = result.prepare
+    .filter((s) => s.step.startsWith('index'))
+    .reduce((a, s) => a + s.seconds, 0);
   const lines = [
     `# Query compiler spike: ${result.items.toLocaleString('en')} items`,
     '',
@@ -244,8 +321,16 @@ export function renderQueryReport(result: QueryBenchResult): string {
     '|---|---|---:|---:|---:|---:|',
     ...result.queries.map(
       (q) =>
-        `| ${q.id} | \`${q.text.replace(/\|/g, '\\|')}\` | ${q.rows} | ${q.p50} | ${q.p95} | ${q.max} |`,
+        `| ${q.id} | \`${q.text.replace(/\|/g, '\\|')}\` | ${q.rows} | ${cell(q, q.p50)} | ${cell(q, q.p95)} | ${cell(q, q.max)} |`,
     ),
+    '',
+    '## Indexes added for the query set',
+    '',
+    `Built in ${Math.round(indexSeconds)}s on top of the side-table indexes (skipped when present).`,
+    '',
+    '| Index | Definition |',
+    '|---|---|',
+    ...QUERY_INDEXES.map((i) => `| ${i.name} | \`${i.sql}\` |`),
   ];
   return `${lines.join('\n')}\n`;
 }

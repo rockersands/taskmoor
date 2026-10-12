@@ -248,7 +248,7 @@
     ],
     "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.status = ANY($2::text[]) AND i.priority = ANY($3::text[]))\nORDER BY i.created_at DESC NULLS LAST, i.id DESC\nLIMIT $4"
   },
-  "status WAS \"In Review\" AND status = Done ORDER BY updated DESC": {
+  "status WAS \"In Review\" ORDER BY updated DESC": {
     "params": [
       [
         1,
@@ -258,13 +258,24 @@
       [
         "In Review"
       ],
+      50
+    ],
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND EXISTS (SELECT 1 FROM gen.history h WHERE h.item_id = i.id AND h.field = $2 AND (h.to_value = ANY($3::text[]) OR h.from_value = ANY($3::text[])))\nORDER BY i.updated_at DESC NULLS LAST, i.id DESC\nLIMIT $4"
+  },
+  "status WAS Cancelled AND status = Done ORDER BY updated DESC": {
+    "params": [
       [
-        "In Review"
+        1,
+        2
+      ],
+      "status",
+      [
+        "Cancelled"
       ],
       "Done",
       50
     ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND ((EXISTS (SELECT 1 FROM gen.history h WHERE h.item_id = i.id AND h.field = $2 AND (h.to_value = ANY($3::text[]) OR h.from_value = ANY($3::text[]))) OR i.status::text = ANY($4::text[])) AND i.status = $5::text)\nORDER BY i.updated_at DESC NULLS LAST, i.id DESC\nLIMIT $6"
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (EXISTS (SELECT 1 FROM gen.history h WHERE h.item_id = i.id AND h.field = $2 AND (h.to_value = ANY($3::text[]) OR h.from_value = ANY($3::text[]))) AND i.status = $4::text)\nORDER BY i.updated_at DESC NULLS LAST, i.id DESC\nLIMIT $5"
   },
   "summary ~ \"login\" ORDER BY created DESC": {
     "params": [
@@ -272,9 +283,9 @@
         1,
         2
       ],
-      "%login%",
+      "login",
       50
     ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND i.summary ILIKE $2\nORDER BY i.created_at DESC NULLS LAST, i.id DESC\nLIMIT $3"
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND to_tsvector('simple', i.summary) @@ plainto_tsquery('simple', $2)\nORDER BY i.created_at DESC NULLS LAST, i.id DESC\nLIMIT $3"
   }
 }

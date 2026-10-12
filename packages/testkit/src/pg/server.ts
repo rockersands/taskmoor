@@ -25,13 +25,22 @@ interface Binaries {
 }
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
-const CACHE_DIR = join(REPO_ROOT, '.cache', 'pg-test');
+/**
+ * Where the embedded clusters live. TRACKSMITH_PG_CACHE_DIR moves them, for example to another
+ * disk while a benchmark saturates the one the repository is on, or to a RAM disk.
+ */
+const CACHE_DIR = process.env.TRACKSMITH_PG_CACHE_DIR ?? join(REPO_ROOT, '.cache', 'pg-test');
 
 export interface EmbeddedOptions {
   /** Cluster name; its data lives in .cache/pg-test/<name> and is kept between runs. */
   name: string;
   /** Extra `-c key=value` server settings, applied after the defaults. */
   settings?: Record<string, string | number>;
+  /**
+   * When another process already owns the cluster, connect to its running server instead of
+   * starting a throwaway cluster. Right for shared datasets (bench), wrong for isolated test runs.
+   */
+  shared?: boolean;
 }
 
 const DEFAULT_SETTINGS: Record<string, string | number> = {
@@ -66,6 +75,15 @@ export async function startEmbeddedPostgres(options: EmbeddedOptions): Promise<P
 
   const lockFile = join(CACHE_DIR, `${options.name}.lock`);
   const ownsPersistent = await acquireLock(lockFile);
+  if (!ownsPersistent && options.shared) {
+    const port = await waitForRunning(bins, join(CACHE_DIR, options.name));
+    return {
+      adminUrl: `postgres://postgres@localhost:${port}/postgres`,
+      kind: 'embedded',
+      // The owner stops the server.
+      stop: async () => {},
+    };
+  }
   const dataDir = join(
     CACHE_DIR,
     ownsPersistent ? options.name : `tmp-${options.name}-${process.pid}`,
@@ -190,6 +208,34 @@ async function stopIfRunning(bins: Binaries, dataDir: string): Promise<void> {
     }
   } else {
     await unlink(pidFile).catch(() => {});
+  }
+}
+
+/** Port of the server running on `dataDir`, from its pid file; undefined when none runs. */
+export async function runningPort(dataDir: string): Promise<number | undefined> {
+  const pidFile = await readFile(join(dataDir, 'postmaster.pid'), 'utf8').catch(() => '');
+  // Line 1 is the pid, line 2 the data directory, line 3 the start time and line 4 the port.
+  const [pid, , , port] = pidFile.split('\n').map((line) => Number.parseInt(line.trim(), 10));
+  if (!pid || !port || !isAlive(pid)) return undefined;
+  return port;
+}
+
+/** The owner may still be starting the server; give it a minute. */
+async function waitForRunning(bins: Binaries, dataDir: string): Promise<number> {
+  const deadline = Date.now() + 60_000;
+  for (;;) {
+    const port = await runningPort(dataDir);
+    if (port !== undefined) {
+      const ready = await run(bins.pg_ctl, ['status', '-D', dataDir]).then(
+        () => true,
+        () => false,
+      );
+      if (ready) return port;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(`Another process holds the cluster in ${dataDir} but no server is running.`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }
 

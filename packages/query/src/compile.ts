@@ -114,8 +114,14 @@ class Compiler {
   private systemCompare(field: SystemField, op: Comparison, value: Typed): string {
     const column = `i.${field.column}`;
     if (field.type === 'labels') {
-      const has = `${this.param(value.value)}::text = ANY(i.labels)`;
+      // Array containment, so a GIN index on labels serves it.
+      const has = `i.labels @> ARRAY[${this.param(value.value)}::text]`;
       return op === '!=' ? `NOT (${has})` : has;
+    }
+    if (field.type === 'text' && (op === '~' || op === '!~')) {
+      // Word search through the full-text index (ADR-011); custom text fields use ILIKE.
+      const match = `to_tsvector('simple', ${column}) @@ plainto_tsquery('simple', ${this.param(String(value.value))})`;
+      return op === '!~' ? `NOT (${match})` : match;
     }
     return this.valueCondition(column, field.type, op, value);
   }
@@ -153,9 +159,10 @@ class Compiler {
   }
 
   /**
-   * WAS x: the value is x now, or some change set it to or from x. CHANGED: a change exists.
-   * Predicates narrow the change rows. Good enough for the prototype; M1 refines WAS to a
-   * point-in-time reading of the history.
+   * WAS x: some change set the value to or from x. CHANGED: a change exists. Predicates narrow
+   * the change rows. The current value needs no extra clause because creating an item writes a
+   * history row for each initial value, and a single EXISTS lets the planner start from the
+   * history index when the value is rare. M1 refines WAS to a point-in-time reading.
    */
   private history(p: Extract<Pred, { kind: 'history' }>): string {
     const h = `${this.options.historyTable}`;
@@ -166,19 +173,7 @@ class Compiler {
       conditions.push(`(h.to_value = ${list} OR h.from_value = ${list})`);
     }
     for (const pred of p.predicates) conditions.push(this.historyPredicate(pred));
-    let expr = `EXISTS (SELECT 1 FROM ${h} h WHERE ${conditions.join(' AND ')})`;
-    if (p.op === 'was' && p.values.length > 0 && p.predicates.length === 0) {
-      // The current value counts as well.
-      const current =
-        p.field.kind === 'system'
-          ? `i.${p.field.column}::text = ANY(${this.param(p.values.map((v) => String(v.value)))}::text[])`
-          : this.customExists(
-              p.field,
-              () =>
-                `v.value::text = ANY(${this.param(p.values.map((v) => String(v.value)))}::text[])`,
-            );
-      expr = `(${expr} OR ${current})`;
-    }
+    const expr = `EXISTS (SELECT 1 FROM ${h} h WHERE ${conditions.join(' AND ')})`;
     return p.negated ? `NOT ${expr}` : expr;
   }
 

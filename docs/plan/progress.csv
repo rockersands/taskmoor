@@ -22,3 +22,4 @@ M0-023,done,2026-10-12,"@tracksmith/ai gateway over Anthropic API, Bedrock, Vert
 M0-031,done,2026-10-12,"Tokens, shell components, Storybook 10 builds; every story runs as a browser test with axe (serious/critical fail); ADR-024"
 M0-032,done,2026-10-12,"Shell with hash routing, session guard stub, Ctrl+K command palette (APG combobox), ICU i18n via react-intl, en-XA pseudo-locale checked by component and e2e tests"
 M0-035,done,2026-10-12,"AGPL-3.0-only LICENSE; DCO via git hooks, pnpm dco and the CI verify job; free GitHub plan, so no branch protection"
+M0-024,in-progress,2026-10-12,"ADR-005, 006, 007, 009, 011, 016 to 023, 026, 027, 031 and 032 written and indexed; 008, 010, 012, 013 and 025 wait for their spikes"

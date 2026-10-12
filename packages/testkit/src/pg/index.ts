@@ -56,9 +56,10 @@ export function useTestDatabase(options: { template?: TemplateSpec } = {}): Test
     created = await createDatabase(adminUrl, template ? { template: template.name } : {});
   }, 120_000);
 
+  // Dropping waits for a checkpoint, which is slow while a benchmark saturates the disk.
   afterAll(async () => {
     await created?.drop();
-  });
+  }, 120_000);
 
   const current = (): CreatedDatabase => {
     if (!created) {

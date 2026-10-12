@@ -30,13 +30,18 @@ export function benchDatabaseName(items: number): string {
 
 /**
  * Starts the persistent embedded "bench" cluster (.cache/pg-test/bench) and opens a pool on the
- * named database, creating it on first use.
+ * named database, creating it on first use. While another process (a long load, say) owns the
+ * cluster, this one connects to the same running server, so the datasets are shared.
  */
 export async function openBenchDatabase(
   name: string,
   options: { maxConnections?: number } = {},
 ): Promise<BenchDatabase> {
-  const server = await startEmbeddedPostgres({ name: 'bench', settings: BENCH_SETTINGS });
+  const server = await startEmbeddedPostgres({
+    name: 'bench',
+    settings: BENCH_SETTINGS,
+    shared: true,
+  });
   try {
     await withAdminClient(server.adminUrl, async (client) => {
       const { rowCount } = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
