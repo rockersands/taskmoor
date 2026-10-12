@@ -194,3 +194,5 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/health && break; sleep 1; done
           curl -fsS http://127.0.0.1:8080/health | grep -q '"status":"ok"'
           docker rm -f app
+      - name: All-in-one image and Compose kits
+        run: TAG=tracksmith:ci bash tools/image/smoke-kits.sh

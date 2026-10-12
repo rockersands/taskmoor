@@ -1,0 +1,15 @@
+{
+  "name": "@tracksmith/iam",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Identity and access: password hashing, tokens, sessions and, later, the providers of ADR-019.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@tracksmith/testkit": "workspace:*"
+  }
+}

@@ -5,5 +5,15 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/db" }, { "path": "../../packages/testkit" }]
+  "references": [
+    {
+      "path": "../../packages/db"
+    },
+    {
+      "path": "../../packages/testkit"
+    },
+    {
+      "path": "../../packages/iam"
+    }
+  ]
 }

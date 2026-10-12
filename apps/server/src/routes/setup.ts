@@ -1,0 +1,105 @@
+import type { Database } from '@tracksmith/db';
+import { hashPassword, passwordProblems } from '@tracksmith/iam';
+import type { FastifyInstance } from 'fastify';
+import type { Kysely } from 'kysely';
+import { z } from 'zod';
+import { startSession } from '../auth';
+import {
+  INSTANCE_KEY,
+  SETUP_KEY,
+  SETUP_TOKEN_KEY,
+  SMTP_KEY,
+  setupState,
+  setupTokenIsValid,
+  writeSetting,
+} from '../setup';
+
+const setupBody = z.object({
+  token: z.string().min(1),
+  instanceName: z.string().trim().min(1).max(100),
+  admin: z.object({
+    name: z.string().trim().min(1).max(200),
+    email: z.string().trim().email().max(320),
+    password: z.string(),
+  }),
+  // Mail settings without the password: secrets come from the environment (OPS-004), the
+  // wizard keeps configuration. The password is SMTP_PASSWORD on the backend.
+  smtp: z
+    .object({
+      host: z.string().trim().min(1).max(253),
+      port: z.coerce.number().int().min(1).max(65535).default(587),
+      secure: z.boolean().default(false),
+      user: z.string().trim().max(320).optional(),
+      from: z.string().trim().email().max(320),
+    })
+    .optional(),
+});
+
+export type SetupBody = z.infer<typeof setupBody>;
+
+/**
+ * First-run setup (OPS-003, M0-027): one request, protected by the one-time token, creates the
+ * first site administrator, records the instance name and optional mail settings, marks setup
+ * complete and signs the admin in. A second request, with any token, is refused.
+ */
+export function registerSetupRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  options: { secureCookies: boolean },
+): void {
+  app.get('/api/v1/setup', async () => {
+    const state = await setupState(db);
+    return { needed: !state.completed };
+  });
+
+  app.post('/api/v1/setup', async (request, reply) => {
+    const parsed = setupBody.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        problems: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+      });
+    }
+    const body = parsed.data;
+    const problems = passwordProblems(body.admin.password);
+    if (problems.length > 0) {
+      return reply.code(400).send({
+        error: 'weak_password',
+        problems: problems.map((p) => `admin.password: ${p}`),
+      });
+    }
+    if ((await setupState(db)).completed) {
+      return reply.code(409).send({ error: 'setup_completed' });
+    }
+    if (!(await setupTokenIsValid(db, body.token))) {
+      return reply.code(403).send({ error: 'invalid_setup_token' });
+    }
+
+    const passwordHash = await hashPassword(body.admin.password);
+    const user = await db.transaction().execute(async (trx) => {
+      const created = await trx
+        .insertInto('app_user')
+        .values({
+          email: body.admin.email.toLowerCase(),
+          name: body.admin.name,
+          password_hash: passwordHash,
+          is_site_admin: true,
+        })
+        .returning(['id', 'email', 'name'])
+        .executeTakeFirstOrThrow();
+      await writeSetting(trx, INSTANCE_KEY, { name: body.instanceName });
+      if (body.smtp) await writeSetting(trx, SMTP_KEY, body.smtp);
+      await writeSetting(trx, SETUP_KEY, {
+        completed: true,
+        completedAt: new Date().toISOString(),
+      });
+      // The token has done its one job.
+      await trx.deleteFrom('instance_setting').where('key', '=', SETUP_TOKEN_KEY).execute();
+      return created;
+    });
+    await startSession(db, reply, user.id, { secure: options.secureCookies });
+    return reply.code(201).send({
+      user: { id: user.id, email: user.email, name: user.name, isSiteAdmin: true },
+    });
+  });
+}

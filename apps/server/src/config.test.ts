@@ -13,6 +13,9 @@ describe('loadConfig', () => {
       version: '0.0.0-dev',
       roles: ['api', 'worker', 'realtime', 'web'],
       webDir: undefined,
+      publicUrl: 'http://localhost:8080',
+      secureCookies: false,
+      setupToken: undefined,
     });
   });
 
@@ -49,6 +52,20 @@ describe('loadConfig', () => {
       roles: ['web'],
       webDir: '/app/web',
     });
+  });
+
+  it('[OPS-003] derives the setup link base and cookie security from PUBLIC_URL', () => {
+    const config = loadConfig({
+      DATABASE_URL: DB,
+      PUBLIC_URL: 'https://tracker.example.com/',
+      TRACKSMITH_SETUP_TOKEN: 'fixed-token-for-the-installer',
+    });
+    expect(config).toMatchObject({
+      publicUrl: 'https://tracker.example.com/',
+      secureCookies: true,
+      setupToken: 'fixed-token-for-the-installer',
+    });
+    expect(() => loadConfig({ DATABASE_URL: DB, PUBLIC_URL: 'tracker' })).toThrow(/PUBLIC_URL/);
   });
 
   it('[OPS-002] runs every role by default and accepts a comma-separated subset', () => {

@@ -1,6 +1,7 @@
 import { createDb, migrateToLatest } from '@tracksmith/db';
 import { buildApp } from './app';
 import { loadConfig } from './config';
+import { issueSetupToken, setupLink } from './setup';
 import { waitForDatabase } from './startup';
 
 const config = loadConfig();
@@ -19,6 +20,13 @@ if (db) {
 if (db && config.roles.includes('api')) {
   const applied = await migrateToLatest(db);
   if (applied.length > 0) console.log(JSON.stringify({ msg: 'database migrated', applied }));
+  // OPS-001: the installer prints the setup link; the token is shown here and nowhere else.
+  const token = await issueSetupToken(db, config.setupToken);
+  if (token) {
+    console.log(
+      JSON.stringify({ msg: 'first-run setup', link: setupLink(config.publicUrl, token) }),
+    );
+  }
 }
 
 const app = await buildApp({
@@ -26,6 +34,7 @@ const app = await buildApp({
   version: config.version,
   logLevel: config.logLevel,
   roles: config.roles,
+  secureCookies: config.secureCookies,
   ...(config.webDir ? { webDir: config.webDir } : {}),
 });
 

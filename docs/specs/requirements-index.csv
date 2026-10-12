@@ -160,7 +160,7 @@ EXT-005,EXT,Packaging and lifecycle,M2,Must,Forge; exceeds Jira (offline install
 EXT-006,EXT,Extension storage,M2,Must,Forge storage; exceeds Forge (1 GiB SQL cap)
 EXT-007,EXT,Extension observability,M2,Must,exceeds Jira
 EXT-008,EXT,Integration connectors,M4,Should,YouTrack n8n node; Exalate app
-EXT-009,EXT,Extension registry,M4,Must,Atlassian Marketplace
+EXT-009,EXT,Extension registry,M4,Could,Atlassian Marketplace
 DEV-001,DEV,Tool connections,M2,Must,Jira Free; Kaneo
 DEV-002,DEV,Development panel,M2,Must,Jira Free; exceeds Jira
 DEV-003,DEV,Ingestion API,M2,Must,Jira Software ingestion APIs

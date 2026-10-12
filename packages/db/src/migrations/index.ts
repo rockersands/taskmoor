@@ -1,5 +1,6 @@
 import type { Migration } from 'kysely';
 import * as m0001 from './0001_foundation';
+import * as m0002 from './0002_users_and_sessions';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -8,4 +9,5 @@ import * as m0001 from './0001_foundation';
  */
 export const migrations: Record<string, Migration> = {
   '0001_foundation': m0001,
+  '0002_users_and_sessions': m0002,
 };

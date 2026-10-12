@@ -31,6 +31,8 @@
   --color-accent-soft: #e3f2f0;
   --color-focus: #2563eb;
   --color-backdrop: rgb(15 23 42 / 45%);
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
 
   color-scheme: light;
 }
@@ -46,6 +48,8 @@
     --color-accent-soft: #123532;
     --color-focus: #60a5fa;
     --color-backdrop: rgb(0 0 0 / 60%);
+    --color-danger: #fca5a5;
+    --color-danger-soft: #3b1513;
 
     color-scheme: dark;
   }

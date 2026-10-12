@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { RequireSession, SessionProvider } from './SessionProvider';
+import { RequireSession } from './RequireSession';
+import { SessionProvider } from './SessionProvider';
 
 function Guarded() {
   return (
@@ -37,7 +38,12 @@ export const Anonymous: Story = {
 export const SignedIn: Story = {
   decorators: [
     (Story) => (
-      <SessionProvider session={{ status: 'signed-in', user: { id: 1, name: 'Kalo' } }}>
+      <SessionProvider
+        session={{
+          status: 'signed-in',
+          user: { id: 1, name: 'Kalo', email: 'kalo@example.com', isSiteAdmin: true },
+        }}
+      >
         <Story />
       </SessionProvider>
     ),

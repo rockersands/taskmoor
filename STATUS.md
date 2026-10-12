@@ -41,6 +41,8 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-024 Remaining ADRs | In progress | 31 of 33 accepted; 008 and 010 wait for the 10M run |
 | M0-033 Nightly benchmarks and weekly report | In progress | bench:check with budgets and a 20% regression check; status-report; nightly job live on main, CI baseline after its first green run |
 | M0-011 GitHub Actions | Done | Lint, types, tests, e2e, Postgres 16 and 18, weekly Windows, security scan, multi-arch image build, nightly benchmarks |
+| M0-026 All-in-one image and Compose kits | Done | deploy/allinone and deploy/compose; smoke-kits.sh green locally and in CI |
+| M0-027 First-run setup | Done | Setup link with a one-time token, admin creation, cookie sessions and sign-in; e2e on the real backend |
 | M0-025 Single image | Done | Roles by TRACKSMITH_ROLE, esbuild bundle, multi-arch Dockerfile; smoke test green on amd64 and arm64; CI builds both |
 | M0-031 Design system | Done | Tokens, shell components, Storybook with axe on every story (ADR-024) |
 | M0-032 App shell | Done | Hash routing, session guard stub, command palette, ICU i18n, pseudo-locale checks |

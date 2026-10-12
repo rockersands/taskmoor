@@ -1,0 +1,102 @@
+/* Forms: setup, sign-in and, later, every editor. Desktop first; 44px targets on touch. */
+.form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 32rem;
+}
+
+.form fieldset {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  background: var(--color-surface);
+}
+
+.form legend {
+  padding: 0 var(--space-2);
+  font-weight: 600;
+}
+
+.form-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.form-field label {
+  font-size: var(--font-size-200);
+  font-weight: 600;
+}
+
+.form-field input:not([type="checkbox"]) {
+  min-height: var(--hit-target);
+  box-sizing: border-box;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.form-field input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.form-field-inline {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.form-field-inline input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.form-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.form-error {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-1);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.form-error p,
+.form-error ul {
+  margin: 0;
+}
+
+.form-error ul {
+  padding-left: var(--space-4);
+}
+
+.setup {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4);
+}
+
+.setup-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: var(--space-4);
+  text-decoration: none;
+}
+
+@media (pointer: coarse) {
+  .form-field-inline input[type="checkbox"] {
+    width: 28px;
+    height: 28px;
+  }
+}

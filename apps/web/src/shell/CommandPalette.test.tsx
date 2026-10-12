@@ -55,18 +55,25 @@ describe('command palette', () => {
 });
 
 describe('session guard', () => {
-  it('shows a sign-in prompt on a protected page to anonymous users', () => {
+  it('shows a sign-in form on a protected page once the backend says anonymous', async () => {
     window.location.hash = '#/settings';
     render(<App />);
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Sign in to continue' }),
+      await screen.findByRole('heading', { level: 1, name: 'Sign in to continue' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
   });
 
   it('shows the page to signed-in users', () => {
     window.location.hash = '#/settings';
-    render(<App session={{ status: 'signed-in', user: { id: 1, name: 'Kalo' } }} />);
+    render(
+      <App
+        session={{
+          status: 'signed-in',
+          user: { id: 1, name: 'Kalo', email: 'kalo@example.com', isSiteAdmin: true },
+        }}
+      />,
+    );
     expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument();
   });
 

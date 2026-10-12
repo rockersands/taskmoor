@@ -1,4 +1,19 @@
 {
+  "app_user": {
+    "columns": [
+      "id integer not null default nextval('app_user_id_seq'::regclass)",
+      "email text not null",
+      "name text not null",
+      "password_hash text",
+      "is_site_admin boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "deactivated_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX app_user_email_key ON public.app_user USING btree (email)",
+      "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)"
+    ]
+  },
   "instance_setting": {
     "columns": [
       "key text not null",
@@ -25,6 +40,20 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX schema_migration_lock_pkey ON public.schema_migration_lock USING btree (id)"
+    ]
+  },
+  "session": {
+    "columns": [
+      "id text not null",
+      "user_id integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "last_seen_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX session_expires_at_idx ON public.session USING btree (expires_at)",
+      "CREATE UNIQUE INDEX session_pkey ON public.session USING btree (id)",
+      "CREATE INDEX session_user_id_idx ON public.session USING btree (user_id)"
     ]
   }
 }

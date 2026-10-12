@@ -33,6 +33,9 @@
     "@vitejs/plugin-react": "^5.2.0",
     "jsdom": "^27.4.0",
     "storybook": "10.6.1",
-    "vite": "^7.3.7"
+    "vite": "^7.3.7",
+    "@tracksmith/db": "workspace:*",
+    "@tracksmith/server": "workspace:*",
+    "@tracksmith/testkit": "workspace:*"
   }
 }

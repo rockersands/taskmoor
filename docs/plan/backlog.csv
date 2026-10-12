@@ -199,7 +199,7 @@ M4-006,M4,Test management,"Test cases, plans, executions, coverage, traceability
 M4-007,M4,Reporting,"OLAP cubes, time in status, spreadsheet export, BI connectors",M3-015,Cube query golden tests green; 10M-item cube refresh within budget,L,RPT
 M4-008,M4,Collaboration,Whiteboards linked to work items (collaborative canvas),M3-015,Two-user co-editing converges; item card sync e2e green,M,NTF
 M4-009,M4,Customer service,"Omnichannel customer service: chat widget, email, customer profiles, AI-assisted replies through the AI gateway",M3-010,Channel e2e green; AI reply eval results published,L,SD
-M4-010,M4,Ecosystem,"Extension registry: signed packages, automated review, compatibility checks, offline install",M3-015,Unsigned package rejected; compatibility matrix tests green,M,EXT
+M4-010,M4,Ecosystem,"Extension registry: signed packages, automated review, compatibility checks, offline install (nice-to-have after the core is finished; user decision 2026-10-12, EXT-009 is Could)",M3-015,Unsigned package rejected; compatibility matrix tests green,M,EXT
 M4-011,M4,Compliance,"FIPS-mode crypto build, CIS and STIG hardening guides, SSP templates, control-mapping packs",M3-015,FIPS build passes crypto self-tests; hardening benchmark scan clean,M,NFR; OPS
 M4-012,M4,Parity audit,Parity audit against the requirements traceability matrix; close remaining gaps,M4-001..M4-011,Traceability report: 100% of parity requirements covered by passing tests,M,NFR
 M4-013,M4,Release,4.0 gate and user acceptance,M4-012,tools/gate M4 green; user acceptance recorded,S,OPS

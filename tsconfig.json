@@ -8,6 +8,9 @@
       "path": "packages/db"
     },
     {
+      "path": "packages/iam"
+    },
+    {
       "path": "packages/ai"
     },
     {

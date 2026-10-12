@@ -1,10 +1,14 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import type { Database } from '@tracksmith/db';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
+import { resolveSession, SESSION_COOKIE } from './auth';
 import type { Role, ServerConfig } from './config';
+import { registerSessionRoutes } from './routes/session';
+import { registerSetupRoutes } from './routes/setup';
 
 export interface AppDeps {
   /** Absent only for a process that serves nothing but the frontend. */
@@ -15,6 +19,8 @@ export interface AppDeps {
   roles?: readonly Role[];
   /** Built frontend to serve under `/` when the web role is on. */
   webDir?: string;
+  /** Mark session cookies Secure (true behind HTTPS; tests and plain-HTTP trials say false). */
+  secureCookies?: boolean;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -22,6 +28,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const level = deps.logLevel ?? 'silent';
   const roles = deps.roles ?? ['api'];
   const app = Fastify({ logger: level === 'silent' ? false : { level } });
+  await app.register(fastifyCookie);
 
   // Liveness: the process is up. Never touches dependencies, so restarts are not triggered by
   // a slow database. Every role answers it, which is what the image's health check calls.
@@ -37,6 +44,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       return reply.code(503).send({ status: 'unavailable', reason: 'database' });
     }
   });
+
+  if (roles.includes('api') && deps.db) {
+    const db = deps.db;
+    app.decorateRequest('user', null);
+    app.addHook('onRequest', async (request) => {
+      request.user = await resolveSession(db, request.cookies[SESSION_COOKIE]);
+    });
+    const cookieOptions = { secureCookies: deps.secureCookies ?? false };
+    registerSetupRoutes(app, db, cookieOptions);
+    registerSessionRoutes(app, db, cookieOptions);
+  }
 
   if (roles.includes('web') && deps.webDir) {
     await serveFrontend(app, deps.webDir);

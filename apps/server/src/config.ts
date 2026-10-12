@@ -22,6 +22,10 @@ const envSchema = z.object({
   TRACKSMITH_ROLE: z.string().min(1).default('all'),
   /** Directory with the built frontend, served by the web role; unset means no static files. */
   TRACKSMITH_WEB_DIR: z.string().min(1).optional(),
+  /** Where browsers reach this instance; the setup link and cookie security follow it. */
+  PUBLIC_URL: z.string().url().optional(),
+  /** Fixed setup token for installers and tests; otherwise one is generated per start. */
+  TRACKSMITH_SETUP_TOKEN: z.string().min(16).optional(),
 });
 
 export interface ServerConfig {
@@ -33,6 +37,9 @@ export interface ServerConfig {
   version: string;
   roles: readonly Role[];
   webDir: string | undefined;
+  publicUrl: string;
+  secureCookies: boolean;
+  setupToken: string | undefined;
 }
 
 export function parseRoles(text: string): Role[] {
@@ -77,5 +84,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     version: e.TRACKSMITH_VERSION,
     roles,
     webDir: e.TRACKSMITH_WEB_DIR,
+    publicUrl: e.PUBLIC_URL ?? `http://localhost:${e.PORT}`,
+    secureCookies: (e.PUBLIC_URL ?? '').startsWith('https://'),
+    setupToken: e.TRACKSMITH_SETUP_TOKEN,
   };
 }

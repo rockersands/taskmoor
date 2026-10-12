@@ -38,6 +38,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
 | `pnpm build` | Production build: the static frontend (`apps/web/dist`) and the bundled server (`apps/server/dist/server.mjs`) |
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
+| `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
@@ -62,10 +63,12 @@ on another disk (for example while a benchmark saturates this one).
 
 | Path | Contents |
 |---|---|
-| `apps/server` | Fastify API (`buildApp` for in-process tests, `main.ts` to listen) |
+| `apps/server` | Fastify API (`buildApp` for in-process tests, `main.ts` to listen); roles by `TRACKSMITH_ROLE`; first-run setup and cookie sessions under `/api/v1` |
 | `apps/web` | Static React frontend (Vite); Playwright tests in `apps/web/e2e` |
 | `packages/ai` | AI gateway: `AiGateway`, provider adapters (Anthropic API, Bedrock, Vertex, Foundry, OpenAI-compatible), feature registry |
 | `packages/db` | Kysely client, `Database` types, forward-only migrations, `useMigratedDatabase()` |
+| `packages/iam` | Identity and access: password hashing (scrypt), one-time and session tokens; the providers of ADR-019 join in M1 |
+| `deploy/` | Install kits: `compose/` (bundled or external Postgres) and `allinone/` (image with Postgres inside) |
 | `packages/richtext` | Document schema (Tiptap/ProseMirror) and lossless conversion to and from the Jira-compatible document format |
 | `packages/spikes` | Throwaway benchmarks for ADRs (`pnpm spike`); results in `docs/spikes` |
 | `packages/testkit` | Embedded Postgres harness, per-file databases, `stableJson`, fast-check defaults |

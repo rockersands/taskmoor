@@ -23,8 +23,9 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   - SCIM 2.0 server (users, groups, PATCH), tested against the Entra ID and Okta suites.
   - Scoped expiring personal tokens, service accounts, token inventory with last use.
 - **Candidate libraries** (all MIT or Apache-2.0, pending the licence gate when added):
-  `openid-client`, `@node-saml/node-saml`, `ldapts`, `@simplewebauthn/server`, `otplib`,
-  `argon2` or the Web Crypto fallback.
+  `openid-client`, `@node-saml/node-saml`, `ldapts`, `@simplewebauthn/server`, `otplib`.
+  Passwords use Node's built-in scrypt (`packages/iam`, no native addon in the image) with the
+  parameters stored in the hash, so a move to Argon2id in M1 re-hashes on sign-in.
 - **Policies** apply per group or email domain: allowed methods, SSO enforcement, 2FA
   requirement, session lifetime and idle timeout. Deactivation keeps attribution; erasure
   replaces personal data with a tombstone (IAM-008).

@@ -1,0 +1,19 @@
+# Tracksmith against a PostgreSQL 16+ server you already run (managed or on-premises).
+# Put DATABASE_URL in .env, then: docker compose -f docker-compose.external.yml up -d
+name: tracksmith
+
+services:
+  tracksmith:
+    image: ${TRACKSMITH_IMAGE:-tracksmith:dev}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env, for example postgres://user:pass@host:5432/tracksmith}
+      TRACKSMITH_ROLE: ${TRACKSMITH_ROLE:-all}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${TRACKSMITH_PORT:-8080}:8080"
+    volumes:
+      - tracksmith-data:/data
+    restart: unless-stopped
+
+volumes:
+  tracksmith-data:

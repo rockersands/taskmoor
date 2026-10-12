@@ -84,6 +84,10 @@ Read this first in every session, then update it before you stop.
   (see `runWithoutPipes` in `packages/testkit/src/pg/server.ts`).
 - In Playwright, `getByRole(..., { name: 'Boards' })` also matches "Dashboards". Use
   `exact: true` for short names.
+- First-run setup (M0-027): the API role prints `{"msg":"first-run setup","link":...}` at every
+  start until setup completes; `TRACKSMITH_SETUP_TOKEN` fixes the token (the e2e suite uses
+  `e2e-setup-token-0123456789`). `pnpm verify --e2e` starts `apps/web/e2e/api-server.ts` (embedded
+  Postgres cluster `e2e`, port 8787) and the Vite preview proxies `/api` to it.
 - Record task state in `docs/plan/progress.csv` (in-progress, done, waiting-on-user) as you go;
   `pnpm next-task`, `pnpm status-report`, `pnpm gate` and a test read it.
 

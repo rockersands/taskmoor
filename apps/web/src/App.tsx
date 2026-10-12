@@ -1,7 +1,9 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
-import { RequireSession, type Session, SessionProvider } from './session/SessionProvider';
+import { RequireSession } from './session/RequireSession';
+import { type Session, SessionProvider } from './session/SessionProvider';
+import { SetupPage } from './setup/SetupPage';
 import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
 import {
@@ -29,9 +31,9 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
   },
 ];
 
-/** Current page id from the URL hash (#/projects -> "projects"); hash routes need no server rules. */
-function useHashRoute(fallback: string): string {
-  const hash = useSyncExternalStore(
+/** The URL hash, re-rendered on change; hash routes need no server rules. */
+function useHash(): string {
+  return useSyncExternalStore(
     (onChange) => {
       window.addEventListener('hashchange', onChange);
       return () => window.removeEventListener('hashchange', onChange);
@@ -39,13 +41,18 @@ function useHashRoute(fallback: string): string {
     () => window.location.hash,
     () => '',
   );
+}
+
+/** Current page id from the hash (#/projects -> "projects"). */
+function routeFromHash(hash: string, fallback: string): string {
   const id = hash.replace(/^#\/?/, '').split(/[/?]/)[0];
   return NAV_ITEMS.some((item) => item.id === id) && id ? id : fallback;
 }
 
 function Pages() {
   const t = useT();
-  const active = useHashRoute('home');
+  const hash = useHash();
+  const active = routeFromHash(hash, 'home');
   const page = NAV_ITEMS.find((item) => item.id === active);
   const commands = useMemo<Command[]>(
     () =>
@@ -58,6 +65,17 @@ function Pages() {
       })),
     [],
   );
+
+  // First-run setup stands alone: no shell until there is an administrator.
+  if (hash.startsWith('#/setup')) {
+    return (
+      <SetupPage
+        onDone={() => {
+          window.location.hash = '#/home';
+        }}
+      />
+    );
+  }
 
   const content = (
     <>
@@ -80,6 +98,7 @@ function Pages() {
 export interface AppProps {
   /** Overrides the locale detection; tests use it for the pseudo-locale. */
   locale?: Locale;
+  /** A fixed session skips the backend check; tests and stories start where they need to. */
   session?: Session;
   onI18nError?: (error: Error) => void;
 }
@@ -90,7 +109,7 @@ export function App({ locale, session, onI18nError }: AppProps) {
       locale={locale ?? resolveLocale()}
       {...(onI18nError ? { onError: onI18nError } : {})}
     >
-      <SessionProvider session={session ?? { status: 'anonymous' }}>
+      <SessionProvider {...(session ? { session } : {})}>
         <Pages />
       </SessionProvider>
     </I18nProvider>

@@ -1,0 +1,122 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { App } from '../App';
+import { jsonResponse } from '../test/setup';
+import { setupTokenFromHash } from './SetupPage';
+
+type Call = { url: string; init?: RequestInit };
+
+function stubApi(answer: (call: Call) => Response) {
+  const calls: Call[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const call = { url, ...(init ? { init } : {}) };
+      calls.push(call);
+      return answer(call);
+    }),
+  );
+  return calls;
+}
+
+async function fillAdminForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Instance name'), 'Acme Tracker');
+  await user.type(screen.getByLabelText('Name'), 'Kalo');
+  await user.type(screen.getByLabelText('Email'), 'kalo@example.com');
+  await user.type(screen.getByLabelText('Password'), 'a long enough passphrase');
+  await user.type(screen.getByLabelText('Confirm password'), 'a long enough passphrase');
+}
+
+describe('setup page', () => {
+  it('reads the one-time token from the setup link', () => {
+    expect(setupTokenFromHash('#/setup?token=abc-123')).toBe('abc-123');
+    expect(setupTokenFromHash('#/setup')).toBeNull();
+    expect(setupTokenFromHash('#/setup?other=1')).toBeNull();
+  });
+
+  it('[OPS-003] explains that the installer link is needed without a token', async () => {
+    window.location.hash = '#/setup';
+    render(<App />);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Set up Tracksmith' }),
+    ).toBeVisible();
+    expect(screen.getByText(/needs the setup link/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
+  });
+
+  it('[OPS-003] creates the administrator, signs in and leaves for the home page', async () => {
+    const user = userEvent.setup();
+    const calls = stubApi(({ url, init }) => {
+      if (url.endsWith('/setup') && init?.method === 'POST') {
+        return jsonResponse(201, {
+          user: { id: 1, name: 'Kalo', email: 'kalo@example.com', isSiteAdmin: true },
+        });
+      }
+      if (url.endsWith('/setup')) return jsonResponse(200, { needed: true });
+      if (url.endsWith('/session')) {
+        return jsonResponse(200, {
+          user: { id: 1, name: 'Kalo', email: 'kalo@example.com', isSiteAdmin: true },
+        });
+      }
+      return jsonResponse(404, {});
+    });
+    window.location.hash = '#/setup?token=one-time';
+    render(<App />);
+    await screen.findByRole('button', { name: 'Finish setup' });
+    await fillAdminForm(user);
+    await user.click(screen.getByRole('button', { name: 'Finish setup' }));
+
+    const post = calls.find((c) => c.init?.method === 'POST');
+    expect(JSON.parse(String(post?.init?.body))).toEqual({
+      token: 'one-time',
+      instanceName: 'Acme Tracker',
+      admin: { name: 'Kalo', email: 'kalo@example.com', password: 'a long enough passphrase' },
+    });
+    expect(await screen.findByRole('heading', { level: 1, name: 'Home' })).toBeVisible();
+    expect(window.location.hash).toBe('#/home');
+  });
+
+  it('[OPS-003] shows the backend refusals: a used token and an already set-up instance', async () => {
+    const user = userEvent.setup();
+    let status = 403;
+    stubApi(({ url, init }) => {
+      if (url.endsWith('/setup') && init?.method === 'POST') {
+        return jsonResponse(status, {
+          error: status === 403 ? 'invalid_setup_token' : 'setup_completed',
+        });
+      }
+      if (url.endsWith('/setup')) return jsonResponse(200, { needed: true });
+      return jsonResponse(401, { error: 'not_signed_in' });
+    });
+    window.location.hash = '#/setup?token=stale';
+    render(<App />);
+    await screen.findByRole('button', { name: 'Finish setup' });
+    await fillAdminForm(user);
+    await user.click(screen.getByRole('button', { name: 'Finish setup' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/invalid or has expired/);
+
+    status = 409;
+    await user.click(screen.getByRole('button', { name: 'Finish setup' }));
+    expect(await screen.findByText(/already set up/)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '#/settings');
+  });
+
+  it('catches a password mismatch before calling the backend', async () => {
+    const user = userEvent.setup();
+    const calls = stubApi(({ url }) =>
+      url.endsWith('/setup') ? jsonResponse(200, { needed: true }) : jsonResponse(401, {}),
+    );
+    window.location.hash = '#/setup?token=t';
+    render(<App />);
+    await screen.findByRole('button', { name: 'Finish setup' });
+    await user.type(screen.getByLabelText('Instance name'), 'Acme');
+    await user.type(screen.getByLabelText('Name'), 'Kalo');
+    await user.type(screen.getByLabelText('Email'), 'kalo@example.com');
+    await user.type(screen.getByLabelText('Password'), 'a long enough passphrase');
+    await user.type(screen.getByLabelText('Confirm password'), 'a different passphrase');
+    await user.click(screen.getByRole('button', { name: 'Finish setup' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The two passwords differ.');
+    expect(calls.some((c) => c.init?.method === 'POST')).toBe(false);
+  });
+});
