@@ -37,11 +37,11 @@ jobs:
       # Throwaway password of the CI service container.
       TRACKSMITH_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres # secret-scan: allow
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -72,7 +72,7 @@ jobs:
 
       - name: Keep logs and traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-pg16
           path: .verify/
@@ -98,9 +98,9 @@ jobs:
     env:
       TRACKSMITH_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres # secret-scan: allow
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -108,7 +108,7 @@ jobs:
       - run: pnpm verify --ci --only=tests
       - name: Keep logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-pg18
           path: .verify/
@@ -122,9 +122,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: pnpm
@@ -132,7 +132,7 @@ jobs:
       - run: pnpm verify --ci --only=types,tests
       - name: Keep logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verify-windows
           path: .verify/
@@ -146,7 +146,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: SBOM (CycloneDX)
         uses: anchore/sbom-action@v0
         with:
@@ -155,7 +155,7 @@ jobs:
           output-file: sbom.cdx.json
           artifact-name: sbom.cdx.json
       - name: Vulnerability scan (fixable high and critical fail the build)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: fs
           scanners: vuln

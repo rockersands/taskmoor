@@ -16,11 +16,22 @@ export function signOffs(message: string): string[] {
   return [...message.matchAll(/^Signed-off-by:\s*(.+?)\s*$/gim)].map((m) => m[1] ?? '');
 }
 
-/** Returns one problem per commit that lacks its author's sign-off. Merge commits are skipped. */
+/** Bot accounts (Dependabot and similar) cannot certify origin, so their commits are exempt. */
+export function isBot(commit: CommitInfo): boolean {
+  return (
+    /\[bot\]$/.test(commit.authorName) ||
+    /\[bot\]@users\.noreply\.github\.com$/.test(commit.authorEmail)
+  );
+}
+
+/**
+ * Returns one problem per commit that lacks its author's sign-off. Merge commits and bot commits
+ * are skipped.
+ */
 export function checkDco(commits: readonly CommitInfo[]): string[] {
   const problems: string[] = [];
   for (const c of commits) {
-    if (c.parents > 1) continue;
+    if (c.parents > 1 || isBot(c)) continue;
     const expected = `${c.authorName} <${c.authorEmail}>`;
     const found = signOffs(c.message);
     if (!found.some((s) => s.toLowerCase() === expected.toLowerCase())) {

@@ -37,6 +37,14 @@ describe('checkDco', () => {
   it('skips merge commits', () => {
     expect(checkDco([commit('Merge pull request #1', { parents: 2 })])).toEqual([]);
   });
+
+  it('skips commits by bot accounts such as Dependabot', () => {
+    const bot = {
+      authorName: 'dependabot[bot]',
+      authorEmail: '49699333+dependabot[bot]@users.noreply.github.com',
+    };
+    expect(checkDco([commit('Bump vite from 7.3.7 to 7.3.8', bot)])).toEqual([]);
+  });
 });
 
 describe('signOffs', () => {
