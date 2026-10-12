@@ -13,7 +13,9 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [005](0005-typescript-end-to-end.md) | TypeScript end to end | Accepted |
 | [006](0006-postgres-only.md) | PostgreSQL 16+ as the only required service | Accepted |
 | [007](0007-sql-builder-and-migrations.md) | Typed SQL builder and SQL migrations | Accepted |
+| [008](0008-field-storage.md) | Custom field storage: JSONB on the item plus typed side tables | Proposed |
 | [009](0009-configuration-model.md) | One configuration model | Accepted |
+| [010](0010-query-compiler.md) | Query language: own grammar, AST, resolver and SQL compiler with a permission pre-filter | Proposed |
 | [011](0011-search.md) | Search in Postgres, with an optional OpenSearch adapter | Accepted |
 | [012](0012-authorization-engine.md) | Authorization engine: in-process evaluator over Postgres with a permission cache | Accepted |
 | [013](0013-sync-engine.md) | Sync engine: in-house change log with a commit-ordered sequence | Accepted |
@@ -38,4 +40,4 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [032](0032-cross-origin-auth-and-versioning.md) | Cross-origin authentication and frontend version compatibility | Accepted |
 | [033](0033-desktop-first-responsive-ui.md) | Desktop-first, responsive UI | Accepted |
 
-Waiting for their spikes: 008 (field storage, M0-016) and 010 (query compiler, M0-017).
+ADR-008 and ADR-010 become Accepted when the 10M-item runs (M0-016, M0-017) confirm their budgets.
