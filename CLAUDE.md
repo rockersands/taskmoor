@@ -26,6 +26,8 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm verify --only=tests -- <filter>` | A subset; anything after `--` goes to Vitest (`--project=db`, a file path) |
 | `pnpm verify --update` | Rewrite golden files after an intended change; review the diff |
 | `pnpm test:watch` | Vitest watch mode |
+| `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
+| `pnpm trace` | Requirements cited by tests, per milestone |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
 
@@ -40,7 +42,8 @@ another server instead (CI does this).
 2. Behaviour comes from the spec in `docs/specs`. Test names cite requirement IDs, for example
    `it('[CORE-028] creates a Form label on submission', ...)`.
 3. New decisions get an ADR in `docs/adr`; changed decisions update the ADR and the plan.
-4. `HANDOFF.md` says what changed, what is next and anything half-done.
+4. `docs/plan/progress.csv` records the task state; `HANDOFF.md` says what changed, what is
+   next and anything half-done.
 
 ## Layout
 

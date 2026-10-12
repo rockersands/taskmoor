@@ -18,7 +18,8 @@
     "e2e": "pnpm --filter @tracksmith/web e2e",
     "dev:web": "pnpm --filter @tracksmith/web dev",
     "dev:server": "pnpm --filter @tracksmith/server dev",
-    "next-task": "tsx packages/devtools/src/cli/next-task.ts"
+    "next-task": "tsx packages/devtools/src/cli/next-task.ts",
+    "trace": "tsx packages/devtools/src/cli/trace.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

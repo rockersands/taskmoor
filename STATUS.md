@@ -26,6 +26,8 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-009 Embedded Postgres harness | Done | CI runs the same suites on Postgres 16 and 18 |
 | M0-010 Module boundaries | Done | dependency-cruiser rules with a failing fixture |
 | M0-012 Security and licence gates | Done | Licence allowlist and secret scan in `pnpm verify`; SBOM and Trivy in CI (ADR-029) |
+| M0-013 Spec import and IDs | Done | 347 requirements; spec lint in `pnpm verify` |
+| M0-014 Traceability | Done | `pnpm trace`; unknown IDs cited by tests fail |
 | M0-011 GitHub Actions | Partial | Lint, types, tests, e2e; image build comes with M0-025 |
 | M0-031 and M0-032 Design system and shell | Started | Tokens and responsive shell; Storybook, axe and i18n still to do |
 | M0-035 DCO and branch protection | Waiting on the user | Needs the licence decision |

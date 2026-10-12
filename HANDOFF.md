@@ -40,6 +40,8 @@ Read this first in every session, then update it before you stop.
 - Clean-room protocol in `docs/legal/clean-room.md`; source list in `docs/research/sources.md`.
 - Supply-chain gates (ADR-029): licence allowlist and secret scan in `pnpm verify`; SBOM,
   Trivy and Dependabot in CI.
+- Spec lint (M0-013) and `pnpm trace` (M0-014): tests cite requirements as `[CORE-028]` in
+  their names; unknown IDs fail `pnpm verify`.
 - Task M0-035 added for the DCO and branch protection, which wait on the licence decision.
 - Last result: `pnpm verify` passes with 78 tests in about 11s. `pnpm verify --e2e` passed
   earlier with 6 checks.
@@ -48,9 +50,8 @@ Read this first in every session, then update it before you stop.
 
 1. M0-001 rest: the first push waits on a one-time Git Credential Manager sign-in as
    Rockersands. After it lands, check that the first CI run is green on GitHub.
-2. M0-013 and M0-014: spec IDs and a traceability check, so tests can cite requirement IDs.
-3. M0-015: synthetic data generator in the testkit (fixed seeds; 1M, 10M and 30M items).
-4. Spikes M0-016 to M0-023, in the order `pnpm next-task` prints them.
+2. M0-015: synthetic data generator in the testkit (fixed seeds; 1M, 10M and 30M items).
+3. Spikes M0-016 to M0-023, in the order `pnpm next-task` prints them.
 
 ### Notes and gotchas
 
