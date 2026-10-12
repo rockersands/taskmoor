@@ -1,0 +1,30 @@
+{
+  "instance_setting": {
+    "columns": [
+      "key text not null",
+      "value jsonb not null",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX instance_setting_pkey ON public.instance_setting USING btree (key)"
+    ]
+  },
+  "schema_migration": {
+    "columns": [
+      "name character varying not null",
+      "timestamp character varying not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX schema_migration_pkey ON public.schema_migration USING btree (name)"
+    ]
+  },
+  "schema_migration_lock": {
+    "columns": [
+      "id character varying not null",
+      "is_locked integer not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX schema_migration_lock_pkey ON public.schema_migration_lock USING btree (id)"
+    ]
+  }
+}

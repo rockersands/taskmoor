@@ -1,0 +1,25 @@
+{
+  "name": "@tracksmith/testkit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared test harness: embedded Postgres, per-file databases, golden files and property-test defaults.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pg": "./src/pg/index.ts",
+    "./golden": "./src/golden.ts",
+    "./property": "./src/property.ts"
+  },
+  "dependencies": {
+    "embedded-postgres": "16.14.0-beta.17",
+    "fast-check": "^4.10.2",
+    "kysely": "^0.28.17",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.11"
+  }
+}

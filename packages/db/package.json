@@ -1,0 +1,19 @@
+{
+  "name": "@tracksmith/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Database access: Kysely client, typed schema and forward-only migrations.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "dependencies": {
+    "kysely": "^0.28.17",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@tracksmith/testkit": "workspace:*",
+    "@types/pg": "^8.23.1"
+  }
+}

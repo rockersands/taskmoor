@@ -1,0 +1,1 @@
+export { stableJson } from './golden';

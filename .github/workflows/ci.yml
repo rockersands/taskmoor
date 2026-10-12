@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify (Postgres ${{ matrix.postgres }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # 16 is the oldest supported version; the newest catches upcoming behaviour changes.
+        postgres: ["16", "18"]
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TRACKSMITH_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        if: matrix.postgres == '16'
+        run: pnpm --filter @tracksmith/web exec playwright install --with-deps chromium
+
+      - name: Verify (lint, types, tests, e2e)
+        if: matrix.postgres == '16'
+        run: pnpm verify --ci
+
+      - name: Verify (tests only)
+        if: matrix.postgres != '16'
+        run: pnpm verify --ci --only=tests
+
+      - name: Keep logs and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-pg${{ matrix.postgres }}
+          path: .verify/
+          retention-days: 7
+
+  # The embedded Postgres harness is what runs on developer machines without Docker.
+  windows:
+    name: verify (Windows, embedded Postgres)
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify --ci --only=types,tests
+      - name: Keep logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-windows
+          path: .verify/
+          retention-days: 7

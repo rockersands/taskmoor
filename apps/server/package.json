@@ -1,0 +1,24 @@
+{
+  "name": "@tracksmith/server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Tracksmith backend: HTTP API, background workers and realtime, one process per role.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@tracksmith/db": "workspace:*",
+    "fastify": "^5.12.5",
+    "kysely": "^0.28.17",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@tracksmith/testkit": "workspace:*",
+    "tsx": "^4.23.15"
+  }
+}
