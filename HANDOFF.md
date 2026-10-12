@@ -114,7 +114,9 @@ The demo runs from a copy of the Compose kit in `G:/taskmoor-demo` with the loca
 image (`docker build -t taskmoor:dev .` from the repository). Its `.env` pins the project
 name, image, port 8080 and `PUBLIC_URL=http://localhost:8080`. Start or update it with
 `bash install.sh` in that folder (it prints the one-time setup link until an administrator
-exists); stop it with `docker compose down` (add `-v` to delete its data). What it shows today:
+exists; each restart issues a new link, so use the latest one); stop it with
+`docker compose down` (add `-v` to delete its data). The old `G:/tracksmith-demo` folder is
+unused and can be deleted by the user. What it shows today:
 first-run setup, sign-in, the app shell with the command palette, Settings and the admin System
 status page. Boards, items and queries arrive with M1.
 
