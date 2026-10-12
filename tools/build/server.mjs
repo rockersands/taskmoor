@@ -10,25 +10,34 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const outfile = join(ROOT, 'apps', 'server', 'dist', 'server.mjs');
-mkdirSync(join(ROOT, 'apps', 'server', 'dist'), { recursive: true });
+const dist = join(ROOT, 'apps', 'server', 'dist');
+mkdirSync(dist, { recursive: true });
 
-await build({
-  entryPoints: [join(ROOT, 'apps', 'server', 'src', 'main.ts')],
-  outfile,
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  target: 'node22',
-  sourcemap: true,
-  legalComments: 'linked',
-  external: ['pg-native'],
-  // CommonJS dependencies (pg, fastify's plugins) call require(); give the ES module one.
-  banner: {
-    js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
-  },
-  logLevel: 'info',
-});
+// server.mjs runs the roles; cli.mjs is the operator's command line (check-upgrade, migrate).
+for (const [entry, name] of [
+  ['main.ts', 'server.mjs'],
+  ['cli.ts', 'cli.mjs'],
+]) {
+  await bundle(join(ROOT, 'apps', 'server', 'src', entry), join(dist, name));
+}
 
-const kb = Math.round(statSync(outfile).size / 1024);
-console.log(`apps/server/dist/server.mjs: ${kb} KB`);
+async function bundle(entry, outfile) {
+  await build({
+    entryPoints: [entry],
+    outfile,
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    target: 'node22',
+    sourcemap: true,
+    legalComments: 'linked',
+    external: ['pg-native'],
+    // CommonJS dependencies (pg, fastify's plugins) call require(); give the ES module one.
+    banner: {
+      js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
+    },
+    logLevel: 'info',
+  });
+  const kb = Math.round(statSync(outfile).size / 1024);
+  console.log(`${outfile}: ${kb} KB`);
+}

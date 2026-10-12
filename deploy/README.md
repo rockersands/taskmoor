@@ -20,5 +20,16 @@ The token works once and expires after 24 hours; restarting the backend prints a
 match the address people use, and `TRACKSMITH_SETUP_TOKEN` to choose the token yourself, as an
 installer or a test does.
 
+Before an upgrade, run the pre-upgrade check (ADR-022): it blocks on a database that is
+unreachable, older than PostgreSQL 16 or migrated by a newer release, and warns about disk
+space and backup age:
+
+```
+docker compose exec tracksmith node cli.mjs check-upgrade
+```
+
+Then change the image tag and start again; migrations run at start (`node cli.mjs migrate`
+runs them on their own, `node cli.mjs status` shows what is pending).
+
 The Builder (M1) generates these files with fresh secrets and a reverse proxy with HTTPS; until
 then, copy the examples and fill them by hand.
