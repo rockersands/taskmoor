@@ -10,12 +10,37 @@ export interface CompileOptions {
   allowedSpaceIds: readonly number[] | null;
   limit: number;
   offset?: number;
+  /**
+   * Drive the statement from a custom field's side table when the order allows it (default
+   * true); false keeps the plain item-table form, which tests compare against.
+   */
+  anchor?: boolean;
 }
 
 export interface CompiledQuery {
   text: string;
   params: unknown[];
 }
+
+/** The SQL type of each side table's value column, so comparisons can use its indexes. */
+const SIDE_CAST: Record<CustomField['type'], string> = {
+  text: 'text',
+  number: 'numeric',
+  date: 'date',
+  user: 'int',
+  option: 'text',
+  multi: 'text',
+  labels: 'text',
+};
+
+/** Types with at most one side row per item and field. */
+const SINGLE_VALUED: ReadonlySet<CustomField['type']> = new Set([
+  'text',
+  'number',
+  'date',
+  'user',
+  'option',
+]);
 
 const SIDE_TABLE: Record<CustomField['type'], string> = {
   text: 'v_text',
@@ -33,6 +58,8 @@ const SIDE_TABLE: Record<CustomField['type'], string> = {
  * the planner can use the (field, value) indexes and intersect by item ID.
  */
 export function compilePlan(plan: Plan, options: CompileOptions): CompiledQuery {
+  const anchor = options.anchor === false ? undefined : findAnchor(plan);
+  if (anchor) return compileAnchored(anchor, options);
   const c = new Compiler(options);
   const conditions: string[] = [];
   if (options.allowedSpaceIds !== null) {
@@ -78,9 +105,7 @@ class Compiler {
       case 'compare': {
         if (p.field.kind === 'system') return this.systemCompare(p.field, p.op, p.value);
         const field = p.field;
-        return this.customExists(field, () =>
-          this.valueCondition('v.value', field.type, p.op, p.value),
-        );
+        return this.customExists(field, () => this.sideValue('v.value', field, p.op, p.value));
       }
       case 'in': {
         if (p.field.kind === 'system') {
@@ -91,9 +116,11 @@ class Compiler {
           return `i.${p.field.column} ${p.negated ? '<> ALL' : '= ANY'}(${this.param(p.values.map((v) => v.value))}::${arrayType(p.values)})`;
         }
         const values = p.values;
+        const field = p.field;
         const exists = this.customExists(
-          p.field,
-          () => `v.value = ANY(${this.param(values.map((v) => v.value))}::${arrayType(values)})`,
+          field,
+          () =>
+            `v.value = ANY(${this.param(values.map((v) => v.value))}::${SIDE_CAST[field.type]}[])`,
         );
         return p.negated ? `NOT ${exists}` : exists;
       }
@@ -129,6 +156,13 @@ class Compiler {
       return op === '!~' ? `NOT (${match})` : match;
     }
     return this.valueCondition(column, field.type, op, value);
+  }
+
+  /** A condition on a side table's value column, cast to that column's type. */
+  sideValue(column: string, field: CustomField, op: Comparison, value: Typed): string {
+    if (op === '~' || op === '!~') return this.valueCondition(column, field.type, op, value);
+    const v = value.type === 'datetime' ? value.value.toISOString() : value.value;
+    return `${column} ${op} ${this.param(v)}::${SIDE_CAST[field.type]}`;
   }
 
   /** `column op value`: ILIKE for ~, and a cast that matches the column so indexes apply. */
@@ -217,4 +251,150 @@ function arrayType(values: Typed[]): string {
       : t === 'date'
         ? 'date[]'
         : 'text[]';
+}
+
+type FieldPred = Extract<Pred, { kind: 'compare' }> | Extract<Pred, { kind: 'in' }>;
+type CustomPred = FieldPred & { field: CustomField };
+
+/** A custom-field condition that can drive the statement from its side table. */
+interface Anchor {
+  field: CustomField;
+  /** Top-level conditions answered by the anchor row itself. */
+  onValue: FieldPred[];
+  /** Top-level `space = x` and `space IN (...)`, answered by the side row's copy of the space. */
+  onSpace: FieldPred[];
+  /** Everything else, evaluated on the joined item row. */
+  rest: Pred[];
+  order: 'created' | 'value';
+  direction: 'asc' | 'desc';
+  /**
+   * The anchor condition can match several rows of one item (a multi-select or labels field
+   * with several values), so only the item's lowest matching value is kept.
+   */
+  dedupe: boolean;
+}
+
+const POSITIVE_OPS: ReadonlySet<Comparison> = new Set(['=', '<', '<=', '>', '>=']);
+
+function positive(p: Pred): p is FieldPred {
+  if (p.kind === 'compare') return POSITIVE_OPS.has(p.op);
+  return p.kind === 'in' && !p.negated;
+}
+
+function anchorable(p: Pred): p is CustomPred {
+  return positive(p) && p.field.kind === 'custom';
+}
+
+/** At most one side row per item matches, so joining adds no duplicate rows. */
+function oneRowPerItem(p: CustomPred): boolean {
+  if (SINGLE_VALUED.has(p.field.type)) return true;
+  return p.kind === 'compare' ? p.op === '=' : p.values.length === 1;
+}
+
+const isEquality = (p: CustomPred) => p.kind === 'in' || p.op === '=';
+
+/**
+ * Side rows carry the item's `space_id` and `created_at` (ADR-008), so a query that filters a
+ * custom field and sorts by creation date, or by that same field, can walk the side table's
+ * `(field_id, value, created_at)` or `(field_id, created_at)` index in order and stop after one
+ * page, instead of walking every item and probing the side table for each (M0-017 at 10M).
+ */
+function findAnchor(plan: Plan): Anchor | undefined {
+  const sort = plan.orderBy[0];
+  if (!plan.where || !sort || plan.orderBy.length !== 1) return undefined;
+  const items = plan.where.kind === 'and' ? plan.where.items : [plan.where];
+  let pick: CustomPred | undefined;
+  let order: Anchor['order'];
+  if (sort.field.kind === 'system' && sort.field.column === 'created_at') {
+    order = 'created';
+    // Prefer an equality, where one value's rows are already in creation order in the index,
+    // then any condition with one row per item, then one that needs de-duplicating.
+    const single = (p: Pred): p is CustomPred => anchorable(p) && oneRowPerItem(p);
+    pick =
+      items.find((p): p is CustomPred => single(p) && isEquality(p)) ??
+      items.find(single) ??
+      items.find(anchorable);
+  } else if (sort.field.kind === 'custom' && SINGLE_VALUED.has(sort.field.type)) {
+    order = 'value';
+    const id = sort.field.id;
+    pick = items.find((p): p is CustomPred => anchorable(p) && p.field.id === id);
+  } else {
+    return undefined;
+  }
+  if (!pick) return undefined;
+  const field = pick.field;
+  const anchor: Anchor = {
+    field,
+    onValue: [],
+    onSpace: [],
+    rest: [],
+    order,
+    direction: sort.direction,
+    dedupe: !oneRowPerItem(pick),
+  };
+  for (const p of items) {
+    const sameField = positive(p) && p.field.kind === 'custom' && p.field.id === field.id;
+    if (p === pick || (SINGLE_VALUED.has(field.type) && sameField)) {
+      anchor.onValue.push(p as FieldPred);
+    } else if (
+      positive(p) &&
+      p.field.kind === 'system' &&
+      p.field.column === 'space_id' &&
+      (p.kind === 'in' || p.op === '=')
+    ) {
+      anchor.onSpace.push(p);
+    } else {
+      anchor.rest.push(p);
+    }
+  }
+  return anchor;
+}
+
+function compileAnchored(a: Anchor, options: CompileOptions): CompiledQuery {
+  const c = new Compiler(options);
+  const cast = SIDE_CAST[a.field.type];
+  const conditions = [`a.field_id = ${c.param(a.field.id)}`];
+  for (const p of a.onValue) {
+    conditions.push(
+      p.kind === 'compare'
+        ? c.sideValue('a.value', a.field, p.op, p.value)
+        : `a.value = ANY(${c.param(p.values.map((v) => v.value))}::${cast}[])`,
+    );
+  }
+  const first = a.onValue[0];
+  if (a.dedupe && first) {
+    // Keep one row per item: the one with the lowest matching value.
+    const same =
+      first.kind === 'compare'
+        ? c.sideValue('b.value', a.field, first.op, first.value)
+        : `b.value = ANY(${c.param(first.values.map((v) => v.value))}::${cast}[])`;
+    conditions.push(
+      `NOT EXISTS (SELECT 1 FROM ${options.schema}.${SIDE_TABLE[a.field.type]} b` +
+        ` WHERE b.item_id = a.item_id AND b.field_id = a.field_id AND ${same} AND b.value < a.value)`,
+    );
+  }
+  for (const p of a.onSpace) {
+    conditions.push(
+      p.kind === 'compare'
+        ? `a.space_id = ${c.param(p.value.value)}::int`
+        : `a.space_id = ANY(${c.param(p.values.map((v) => v.value))}::int[])`,
+    );
+  }
+  if (options.allowedSpaceIds !== null) {
+    conditions.push(`a.space_id = ANY(${c.param(options.allowedSpaceIds)}::int[])`);
+  }
+  const rest = a.rest.map((p) => c.pred(p));
+  const dir = a.direction.toUpperCase();
+  const order =
+    a.order === 'created'
+      ? `a.created_at ${dir}, a.item_id DESC`
+      : `a.value ${dir}, a.item_id DESC`;
+  const join = rest.length > 0 ? `\nJOIN ${options.schema}.item i ON i.id = a.item_id` : '';
+  const text =
+    `SELECT a.item_id AS id FROM ${options.schema}.${SIDE_TABLE[a.field.type]} a${join}` +
+    `\nWHERE ${[...conditions, ...rest].join('\n  AND ')}` +
+    `\nORDER BY ${order}` +
+    `\nLIMIT ${c.param(options.limit)}` +
+    (options.offset ? ` OFFSET ${c.param(options.offset)}` : '');
+  return { text, params: c.params };
 }

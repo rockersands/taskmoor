@@ -216,7 +216,12 @@ export function instantiate(template: string, names: DatasetNames): string {
 export function compileTemplate(
   template: string,
   ctx: DatasetContext,
-  options: { schema?: string; allowedSpaceIds?: number[] | null; limit?: number } = {},
+  options: {
+    schema?: string;
+    allowedSpaceIds?: number[] | null;
+    limit?: number;
+    anchor?: boolean;
+  } = {},
 ): { text: string; sql: CompiledQuery } {
   const text = instantiate(template, ctx.names);
   const plan = resolveQuery(parseQuery(text), ctx.catalogue, {
@@ -228,6 +233,7 @@ export function compileTemplate(
     historyTable: 'gen.history',
     allowedSpaceIds: options.allowedSpaceIds ?? null,
     limit: options.limit ?? 50,
+    ...(options.anchor === undefined ? {} : { anchor: options.anchor }),
   });
   return { text, sql };
 }

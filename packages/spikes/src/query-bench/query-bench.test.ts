@@ -36,6 +36,53 @@ describe('query compiler against the side schema', () => {
     });
   }
 
+  /** Queries aimed at each way the compiler can drive from a side table. */
+  const ANCHORED = [
+    '"{option}" = "{optionValue}" ORDER BY created DESC',
+    '"{option}" = "{optionValue}" ORDER BY created ASC',
+    '"{option}" IN ("{optionValue}") AND statusCategory = todo ORDER BY created DESC',
+    '"{multi}" = "{multiA}" ORDER BY created DESC',
+    '"{multi}" IN ("{multiA}") AND space = {spaceA} ORDER BY created DESC',
+    '"{number}" > 100 ORDER BY created DESC',
+    '"{number}" >= 100 AND "{number}" < 700 ORDER BY "{number}" ASC',
+    '"{date}" >= -365d ORDER BY "{date}" DESC',
+    '"{user}" = currentUser() ORDER BY created DESC',
+    '"{option}" = "{optionValue}" AND "{number}" > 300 ORDER BY created DESC',
+    '"{option}" = "{optionValue}" AND space IN ({spaceA}, {spaceB}) ORDER BY created DESC',
+    '"{multi}" IN ("{multiA}", "{multiB}") ORDER BY created DESC',
+    '"{multi}" IN ("{multiA}", "{multiB}") AND statusCategory != done ORDER BY created ASC',
+    '"{multi}" IN ("{multiA}", "{multiB}") AND "{multi}" = "{multiA}" ORDER BY created DESC',
+  ];
+
+  it('[QRY-003] drives from the side table and returns exactly what the item-table form returns', async () => {
+    const spaces = Object.values(ctx.catalogue.spaceKeys);
+    let anchored = 0;
+    for (const template of [...TEMPLATES.map((t) => t.text), ...ANCHORED]) {
+      for (const allowed of [null, spaces.slice(0, Math.ceil(spaces.length / 2))]) {
+        for (const limit of [50, 500]) {
+          const plain = compileTemplate(template, ctx, {
+            allowedSpaceIds: allowed,
+            limit,
+            anchor: false,
+          });
+          const fast = compileTemplate(template, ctx, { allowedSpaceIds: allowed, limit });
+          if (fast.sql.text.startsWith('SELECT a.item_id')) anchored++;
+          const a = await pool.query<{ id: string }>(plain.sql.text, plain.sql.params);
+          const b = await pool.query<{ id: string }>(fast.sql.text, fast.sql.params);
+          expect(
+            b.rows.map((r) => String(r.id)),
+            `${template} (${allowed ? 'filtered' : 'all spaces'}, ${limit})`,
+          ).toEqual(a.rows.map((r) => String(r.id)));
+        }
+      }
+    }
+    // Every ANCHORED query, and the benchmark's custom-field queries, take the side-table route.
+    expect(anchored).toBeGreaterThanOrEqual(ANCHORED.length * 4);
+    for (const template of ANCHORED) {
+      expect(compileTemplate(template, ctx).sql.text, template).toMatch(/^SELECT a\.item_id/);
+    }
+  });
+
   it('returns the right rows for a space filter and a custom number comparison', async () => {
     const spaceId = ctx.catalogue.spaceKeys[ctx.names.spaceA];
     const space = compileTemplate(TEMPLATES[0]?.text ?? '', ctx, { limit: 1000 });

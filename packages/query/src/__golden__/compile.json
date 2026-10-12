@@ -1,17 +1,16 @@
 {
   "\"Story Points\" > 5 AND space = ABC ORDER BY \"Story Points\" DESC": {
     "params": [
+      1,
+      5,
+      1,
       [
         1,
         2
       ],
-      1,
-      5,
-      1,
-      1,
       50
     ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (EXISTS (SELECT 1 FROM fs_side.v_number v WHERE v.item_id = i.id AND v.field_id = $2 AND v.value > $3::numeric) AND i.space_id = $4::int)\nORDER BY (SELECT v.value FROM fs_side.v_number v WHERE v.item_id = i.id AND v.field_id = $5 LIMIT 1) DESC NULLS LAST, i.id DESC\nLIMIT $6"
+    "text": "SELECT a.item_id AS id FROM fs_side.v_number a\nWHERE a.field_id = $1\n  AND a.value > $2::numeric\n  AND a.space_id = $3::int\n  AND a.space_id = ANY($4::int[])\nORDER BY a.value DESC, a.item_id DESC\nLIMIT $5"
   },
   "\"Story Points\" IS EMPTY AND type IN (Story, Task) AND space = ABC ORDER BY created DESC": {
     "params": [
@@ -44,34 +43,36 @@
   },
   "Components IN (Alpha, Beta) AND status != Done ORDER BY created DESC": {
     "params": [
-      [
-        1,
-        2
-      ],
       5,
       [
         "Alpha",
         "Beta"
       ],
-      "Done",
-      50
-    ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (EXISTS (SELECT 1 FROM fs_side.v_option v WHERE v.item_id = i.id AND v.field_id = $2 AND v.value = ANY($3::text[])) AND i.status != $4::text)\nORDER BY i.created_at DESC, i.id DESC\nLIMIT $5"
-  },
-  "Due <= endOfMonth() AND Due >= startOfMonth() ORDER BY Due ASC": {
-    "params": [
+      [
+        "Alpha",
+        "Beta"
+      ],
       [
         1,
         2
       ],
-      3,
-      "2026-10-31",
-      3,
-      "2026-10-01",
-      3,
+      "Done",
       50
     ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (EXISTS (SELECT 1 FROM fs_side.v_date v WHERE v.item_id = i.id AND v.field_id = $2 AND v.value <= $3::date) AND EXISTS (SELECT 1 FROM fs_side.v_date v WHERE v.item_id = i.id AND v.field_id = $4 AND v.value >= $5::date))\nORDER BY (SELECT v.value FROM fs_side.v_date v WHERE v.item_id = i.id AND v.field_id = $6 LIMIT 1) ASC NULLS LAST, i.id DESC\nLIMIT $7"
+    "text": "SELECT a.item_id AS id FROM fs_side.v_option a\nJOIN fs_side.item i ON i.id = a.item_id\nWHERE a.field_id = $1\n  AND a.value = ANY($2::text[])\n  AND NOT EXISTS (SELECT 1 FROM fs_side.v_option b WHERE b.item_id = a.item_id AND b.field_id = a.field_id AND b.value = ANY($3::text[]) AND b.value < a.value)\n  AND a.space_id = ANY($4::int[])\n  AND i.status != $5::text\nORDER BY a.created_at DESC, a.item_id DESC\nLIMIT $6"
+  },
+  "Due <= endOfMonth() AND Due >= startOfMonth() ORDER BY Due ASC": {
+    "params": [
+      3,
+      "2026-10-31",
+      "2026-10-01",
+      [
+        1,
+        2
+      ],
+      50
+    ],
+    "text": "SELECT a.item_id AS id FROM fs_side.v_date a\nWHERE a.field_id = $1\n  AND a.value <= $2::date\n  AND a.value >= $3::date\n  AND a.space_id = ANY($4::int[])\nORDER BY a.value ASC, a.item_id DESC\nLIMIT $5"
   },
   "NOT (labels IN (infra) OR type = Subtask) AND space IN (ABC, DEF) ORDER BY created DESC": {
     "params": [
@@ -101,20 +102,20 @@
       42,
       50
     ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND EXISTS (SELECT 1 FROM fs_side.v_user v WHERE v.item_id = i.id AND v.field_id = $2 AND v.value = $3::numeric)\nORDER BY i.updated_at DESC, i.id DESC\nLIMIT $4"
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND EXISTS (SELECT 1 FROM fs_side.v_user v WHERE v.item_id = i.id AND v.field_id = $2 AND v.value = $3::int)\nORDER BY i.updated_at DESC, i.id DESC\nLIMIT $4"
   },
   "Team = \"Option 3\" AND statusCategory = todo ORDER BY created DESC": {
     "params": [
+      2,
+      "Option 3",
       [
         1,
         2
       ],
-      2,
-      "Option 3",
       "todo",
       50
     ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (EXISTS (SELECT 1 FROM fs_side.v_option v WHERE v.item_id = i.id AND v.field_id = $2 AND v.value = $3::text) AND i.status_category = $4::text)\nORDER BY i.created_at DESC, i.id DESC\nLIMIT $5"
+    "text": "SELECT a.item_id AS id FROM fs_side.v_option a\nJOIN fs_side.item i ON i.id = a.item_id\nWHERE a.field_id = $1\n  AND a.value = $2::text\n  AND a.space_id = ANY($3::int[])\n  AND i.status_category = $4::text\nORDER BY a.created_at DESC, a.item_id DESC\nLIMIT $5"
   },
   "assignee = currentUser() AND statusCategory != done ORDER BY priority DESC, created DESC": {
     "params": [
