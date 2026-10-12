@@ -77,7 +77,10 @@ export const TEMPLATES: readonly { id: string; text: string }[] = [
  * change history by item, by value and by actor. Idempotent, so reruns skip them.
  */
 export const QUERY_INDEXES: readonly { name: string; sql: string }[] = [
-  { name: 'item_updated', sql: 'ON fs_side.item (updated_at DESC)' },
+  // Newest-first lists with the id tiebreaker the compiler adds, so no sort is needed.
+  { name: 'item_created_id', sql: 'ON fs_side.item (created_at DESC, id DESC)' },
+  { name: 'item_space_created_id', sql: 'ON fs_side.item (space_id, created_at DESC, id DESC)' },
+  { name: 'item_updated_id', sql: 'ON fs_side.item (updated_at DESC, id DESC)' },
   { name: 'item_reporter', sql: 'ON fs_side.item (reporter_id)' },
   { name: 'item_labels', sql: 'ON fs_side.item USING GIN (labels)' },
   {

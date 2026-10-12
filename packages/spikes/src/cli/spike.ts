@@ -4,6 +4,7 @@
 // pnpm spike authz [--users <n>] [--spaces <n>] [--checks <n>] [--openfga]
 // pnpm spike authz-overhead --items <n> [--runs <n>]
 // pnpm spike xml [--size 5G] [--seed <n>] [--dir <path>]
+// pnpm spike sync [--items <n>] [--writers <n>] [--mutations <n>]
 //
 // Runs an architecture spike and writes its results to docs/spikes/data/<name>.json and
 // docs/spikes/<name>.md. The field-storage, query and authz-overhead spikes need the dataset
@@ -32,6 +33,7 @@ import type { CandidateId } from '../field-storage/candidates';
 import { renderReport, runFieldStorageSpike } from '../field-storage/run';
 import { renderQueryReport, runQueryBench } from '../query-bench/run';
 import { renderQueueReport, runQueueSpike } from '../queue/bench';
+import { renderSyncReport, runSyncSpike } from '../sync/bench';
 import { parseSize, renderXmlReport, runXmlSpike, sizeLabel as xmlSizeLabel } from '../xml/bench';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
@@ -41,7 +43,8 @@ const USAGE =
   '       pnpm spike query --items <n> [--runs <n>]\n' +
   '       pnpm spike authz [--users <n>] [--spaces <n>] [--checks <n>] [--openfga]\n' +
   '       pnpm spike authz-overhead --items <n> [--runs <n>]\n' +
-  '       pnpm spike xml [--size 5G] [--seed <n>] [--dir <path>]';
+  '       pnpm spike xml [--size 5G] [--seed <n>] [--dir <path>]\n' +
+  '       pnpm spike sync [--items <n>] [--writers <n>] [--mutations <n>]';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -61,6 +64,7 @@ const { positionals, values } = parseArgs({
     size: { type: 'string', default: '5G' },
     seed: { type: 'string', default: '1' },
     dir: { type: 'string' },
+    mutations: { type: 'string', default: '20000' },
   },
 });
 
@@ -218,6 +222,30 @@ switch (positionals[0]) {
       log: (m) => console.log(m),
     });
     writeResults(`xml-${xmlSizeLabel(bytes)}`, result, renderXmlReport(result));
+    break;
+  }
+  case 'sync': {
+    const server = await startEmbeddedPostgres({ name: 'sync' });
+    try {
+      await withAdminClient(server.adminUrl, async (client) => {
+        const { rowCount } = await client.query("SELECT 1 FROM pg_database WHERE datname = 'sync'");
+        if (!rowCount) await client.query('CREATE DATABASE sync');
+      });
+      const pool = new pg.Pool({ connectionString: databaseUrl(server.adminUrl, 'sync'), max: 16 });
+      try {
+        const result = await runSyncSpike(pool, {
+          items: Number((values.items ?? '200000').replaceAll('_', '')),
+          writers: Number(values.workers),
+          mutations: Number(values.mutations),
+          log: (m) => console.log(m),
+        });
+        writeResults('sync', result, renderSyncReport(result));
+      } finally {
+        await pool.end();
+      }
+    } finally {
+      await server.stop();
+    }
     break;
   }
   default:

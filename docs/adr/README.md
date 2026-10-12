@@ -15,6 +15,8 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [007](0007-sql-builder-and-migrations.md) | Typed SQL builder and SQL migrations | Accepted |
 | [009](0009-configuration-model.md) | One configuration model | Accepted |
 | [011](0011-search.md) | Search in Postgres, with an optional OpenSearch adapter | Accepted |
+| [012](0012-authorization-engine.md) | Authorization engine: in-process evaluator over Postgres with a permission cache | Accepted |
+| [013](0013-sync-engine.md) | Sync engine: in-house change log with a commit-ordered sequence | Accepted |
 | [014](0014-rich-text-model.md) | Rich text model and collaboration | Accepted |
 | [015](0015-job-queue-and-outbox.md) | Job queue and transactional outbox in Postgres | Accepted |
 | [016](0016-api-contract-and-compat-shim.md) | Contract-first native API and a separate Jira-compatible shim | Accepted |
@@ -26,6 +28,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [022](0022-upgrades-and-migrations.md) | Forward-only expand/contract migrations, pre-flight checks and automatic backup | Accepted |
 | [023](0023-observability.md) | Observability with OpenTelemetry, Prometheus and structured logs | Accepted |
 | [024](0024-i18n-and-accessibility.md) | Internationalisation and accessibility | Accepted |
+| [025](0025-importer.md) | Importer: staged and idempotent, streaming DC XML, Cloud REST with the customer's token | Accepted |
 | [026](0026-extensions.md) | Extensions as WASM in Extism, UI slots in sandboxed iframes | Accepted |
 | [027](0027-analytics-store.md) | Analytics store with daily snapshots over OData | Accepted |
 | [028](0028-ai-provider-gateway.md) | AI provider gateway | Accepted |
@@ -35,5 +38,4 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [032](0032-cross-origin-auth-and-versioning.md) | Cross-origin authentication and frontend version compatibility | Accepted |
 | [033](0033-desktop-first-responsive-ui.md) | Desktop-first, responsive UI | Accepted |
 
-Waiting for their spikes: 008 (field storage, M0-016), 010 (query compiler, M0-017), 012
-(permissions, M0-018), 013 (sync engine, M0-019) and 025 (importer, M0-022).
+Waiting for their spikes: 008 (field storage, M0-016) and 010 (query compiler, M0-017).

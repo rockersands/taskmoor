@@ -27,6 +27,8 @@ export interface SystemField {
   column: string;
   /** Name used in the change history for WAS and CHANGED. */
   history?: string;
+  /** The column may be null (sorting then puts empties last). */
+  nullable?: boolean;
 }
 
 export interface CustomField {
@@ -87,18 +89,33 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     column: 'summary',
     history: 'summary',
   },
-  { kind: 'system', name: 'description', aliases: [], type: 'text', column: 'description' },
+  {
+    kind: 'system',
+    name: 'description',
+    aliases: [],
+    type: 'text',
+    column: 'description',
+    nullable: true,
+  },
   {
     kind: 'system',
     name: 'assignee',
     aliases: [],
     type: 'user',
     column: 'assignee_id',
+    nullable: true,
     history: 'assignee',
   },
   { kind: 'system', name: 'reporter', aliases: [], type: 'user', column: 'reporter_id' },
   { kind: 'system', name: 'labels', aliases: ['label'], type: 'labels', column: 'labels' },
-  { kind: 'system', name: 'parent', aliases: [], type: 'number', column: 'parent_id' },
+  {
+    kind: 'system',
+    name: 'parent',
+    aliases: [],
+    type: 'number',
+    column: 'parent_id',
+    nullable: true,
+  },
   {
     kind: 'system',
     name: 'created',
@@ -119,6 +136,7 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     aliases: ['resolutionDate'],
     type: 'datetime',
     column: 'resolved_at',
+    nullable: true,
   },
 ];
 

@@ -2,7 +2,12 @@ import { cpus } from 'node:os';
 import { Rng } from '@tracksmith/testkit/gen';
 import type pg from 'pg';
 import { summarize, type Timing } from '../bench/stats';
-import { compileTemplate, datasetContext, TEMPLATES } from '../query-bench/run';
+import {
+  compileTemplate,
+  datasetContext,
+  prepareQueryIndexes,
+  TEMPLATES,
+} from '../query-bench/run';
 import { allowedSpaces, loadAuthz, PermissionCache, permissionsFor } from './evaluator';
 import { type AuthzConfig, type AuthzModel, createAuthzModel, PERMISSIONS } from './model';
 import { openFgaAvailable, prepareOpenFga, startOpenFga } from './openfga';
@@ -251,6 +256,7 @@ export async function runFilterOverhead(
   const { timeQuery } = await import('../bench/stats');
   const log = options.log ?? (() => {});
   const runs = options.runs ?? 20;
+  await prepareQueryIndexes(pool, log);
   const ctx = await datasetContext(pool);
   const spaceIds = Object.values(ctx.catalogue.spaceKeys).sort((a, b) => a - b);
   const rng = new Rng(11);

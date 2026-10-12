@@ -45,6 +45,9 @@
       "@embedded-postgres/windows-x64",
       "embedded-postgres",
       "esbuild"
-    ]
+    ],
+    "overrides": {
+      "axios": "1.20.0"
+    }
   }
 }

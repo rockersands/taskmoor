@@ -40,7 +40,12 @@ export function compilePlan(plan: Plan, options: CompileOptions): CompiledQuery 
   }
   if (plan.where) conditions.push(c.pred(plan.where));
   const order = plan.orderBy.map(
-    (o) => `${c.orderExpr(o.field)} ${o.direction.toUpperCase()} NULLS LAST`,
+    // NULLS LAST only where a value can be null: on a NOT NULL column it would stop the
+    // planner from walking a plain DESC index, which sorts nulls first.
+    (o) =>
+      `${c.orderExpr(o.field)} ${o.direction.toUpperCase()}${
+        o.field.kind === 'custom' || o.field.nullable ? ' NULLS LAST' : ''
+      }`,
   );
   order.push('i.id DESC');
   const text =

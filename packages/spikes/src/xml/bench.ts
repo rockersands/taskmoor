@@ -56,15 +56,19 @@ export async function runXmlSpike(options: {
   const counts: Record<string, number> = {};
   t0 = Date.now();
   let lastLog = t0;
-  const stream = createReadStream(path, { highWaterMark: 1 << 20 }).pipe(cleaner);
+  let bytesRead = 0;
+  const stream = createReadStream(path, { highWaterMark: 1 << 20 })
+    .on('data', (chunk: string | Buffer) => {
+      bytesRead += chunk.length;
+    })
+    .pipe(cleaner);
   const parsed = await parseEntities(stream, (row) => {
     counts[row.entity] = (counts[row.entity] ?? 0) + 1;
     if (Date.now() - lastLog > 10_000) {
-      log(`  ${(parsed0.bytes() / 1e9).toFixed(2)} GB parsed`);
+      log(`  ${(bytesRead / 1e9).toFixed(2)} GB parsed`);
       lastLog = Date.now();
     }
   });
-  const parsed0 = { bytes: () => parsed.bytes };
   const seconds = (Date.now() - t0) / 1000;
   clearInterval(sampler);
 
