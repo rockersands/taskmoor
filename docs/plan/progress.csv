@@ -14,6 +14,7 @@ M0-013,done,2026-10-12,"347 requirements with stable IDs, provenance and index; 
 M0-014,done,2026-10-12,pnpm trace prints coverage per milestone; unknown citations fail pnpm verify
 M0-015,done,2026-10-12,"pnpm gen --items N loads the gen schema via COPY into the embedded bench cluster; about 5,400 items/s; counts and keys verified"
 M0-016,in-progress,2026-10-12,Harness and 1M v2 run; 10M dataset loading
+M0-020,done,2026-10-12,"@tracksmith/richtext schema and lossless format conversion; 50 docs plus property test; Yjs and Hocuspocus sync verified; ADR-014"
 M0-021,done,2026-10-12,"In-house SKIP LOCKED queue 18k jobs/s vs Graphile 1.4k; outbox exactly-once tests; ADR-015"
 M0-023,done,2026-10-12,"@tracksmith/ai gateway over Anthropic API, Bedrock, Vertex, Foundry and OpenAI-compatible; mocked contract tests; ADR-028"
 M0-031,in-progress,2026-10-12,Tokens and responsive shell; Storybook and axe to do

@@ -30,6 +30,7 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M0-014 Traceability | Done | `pnpm trace`; unknown IDs cited by tests fail |
 | M0-015 Synthetic data generator | Done | `pnpm gen --items N`; deterministic; COPY loader with verified counts |
 | M0-016 Field storage spike | In progress | Harness done; 1M and 10M runs pending for ADR-008 |
+| M0-020 Rich text spike | Done | `@tracksmith/richtext`, Yjs and Hocuspocus verified (ADR-014) |
 | M0-021 Queue spike | Done | In-house SKIP LOCKED queue chosen (ADR-015) |
 | M0-023 AI gateway skeleton | Done | `@tracksmith/ai` with contract tests (ADR-028) |
 | M0-011 GitHub Actions | Partial | Lint, types, tests, e2e; image build comes with M0-025 |

@@ -10,6 +10,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [002](0002-licence-and-contributions.md) | Licence and contribution model | Accepted |
 | [003](0003-clean-room.md) | Clean-room rules | Accepted |
 | [004](0004-monorepo-and-toolchain.md) | Monorepo layout and toolchain | Accepted |
+| [014](0014-rich-text-model.md) | Rich text model and collaboration | Accepted |
 | [015](0015-job-queue-and-outbox.md) | Job queue and transactional outbox in Postgres | Accepted |
 | [028](0028-ai-provider-gateway.md) | AI provider gateway | Accepted |
 | [029](0029-supply-chain-gates.md) | Supply-chain gates | Accepted |

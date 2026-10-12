@@ -16,11 +16,16 @@ export function datasetFingerprint(config: GenConfig): string {
     .slice(0, 16);
 }
 
-/** The fingerprint of the dataset already loaded into `gen`, if any. */
+/**
+ * The fingerprint of the dataset already loaded into `gen`, if any. The staging tables are
+ * UNLOGGED and come back empty after a crash, so the rows are checked, not only the record.
+ */
 export async function loadedFingerprint(pool: pg.Pool): Promise<string | undefined> {
   const exists = await pool.query(`SELECT to_regclass('gen.meta') IS NOT NULL AS ok`);
   if (!exists.rows[0]?.ok) return undefined;
-  const { rows } = await pool.query<{ fingerprint: string }>('SELECT fingerprint FROM gen.meta');
+  const { rows } = await pool.query<{ fingerprint: string }>(
+    'SELECT fingerprint FROM gen.meta WHERE EXISTS (SELECT 1 FROM gen.items)',
+  );
   return rows[0]?.fingerprint;
 }
 
@@ -80,25 +85,52 @@ export function arrayLiteral(values: readonly string[]): string {
   return `{${values.map((v) => `"${v.replace(/["\\]/g, (c) => `\\${c}`)}"`).join(',')}}`;
 }
 
+const CHUNK_CHARS = 1 << 16;
+const MAX_BUFFERED_BYTES = 4 << 20;
+const STALL_MS = 120_000;
+
 const row = (values: (string | number | boolean | null)[]) =>
   `${values.map(copyValue).join('\t')}\n`;
 
+/**
+ * Streams rows into COPY. Backpressure is handled by polling the stream's buffered length
+ * rather than waiting for a 'drain' event: a 10M-row load once stalled for good on a missed
+ * drain, and polling cannot miss anything.
+ */
 class CopyWriter {
   private buffer = '';
   private readonly stream: copyStreams.CopyStreamQuery;
   private readonly done: Promise<unknown>;
 
-  constructor(client: pg.PoolClient | pg.Client, table: string) {
+  constructor(
+    client: pg.PoolClient | pg.Client,
+    private readonly table: string,
+  ) {
     this.stream = client.query(copyStreams.from(`COPY ${table} FROM STDIN`));
     this.done = once(this.stream, 'finish');
   }
 
   async write(line: string): Promise<void> {
     this.buffer += line;
-    if (this.buffer.length < 1 << 16) return;
+    if (this.buffer.length < CHUNK_CHARS) return;
     const chunk = this.buffer;
     this.buffer = '';
-    if (!this.stream.write(chunk)) await once(this.stream, 'drain');
+    this.stream.write(chunk);
+    await this.settle();
+  }
+
+  /** Waits until the stream has flushed most of what was written; fails loudly if it never does. */
+  private async settle(): Promise<void> {
+    const started = Date.now();
+    while (this.stream.writableLength > MAX_BUFFERED_BYTES) {
+      if (Date.now() - started > STALL_MS) {
+        throw new Error(
+          `COPY ${this.table} made no progress for ${STALL_MS / 1000}s ` +
+            `(${this.stream.writableLength} bytes buffered)`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
   }
 
   async end(): Promise<void> {

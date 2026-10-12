@@ -168,9 +168,26 @@ async function stopIfRunning(bins: Binaries, dataDir: string): Promise<void> {
     () => false,
   );
   if (running) {
-    await run(bins.pg_ctl, ['stop', '-D', dataDir, '-m', 'immediate', '-w', '-t', '60']).catch(
-      () => {},
+    // A clean stop first: an immediate stop counts as a crash and empties UNLOGGED tables,
+    // which is where the bench datasets live.
+    const fast = await run(bins.pg_ctl, [
+      'stop',
+      '-D',
+      dataDir,
+      '-m',
+      'fast',
+      '-w',
+      '-t',
+      '300',
+    ]).then(
+      () => true,
+      () => false,
     );
+    if (!fast) {
+      await run(bins.pg_ctl, ['stop', '-D', dataDir, '-m', 'immediate', '-w', '-t', '60']).catch(
+        () => {},
+      );
+    }
   } else {
     await unlink(pidFile).catch(() => {});
   }
