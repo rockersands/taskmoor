@@ -15,6 +15,7 @@ export { type CompiledQuery, type CompileOptions, compilePlan } from './compile'
 export * from './conformance/case';
 export { QUERY_CASES } from './conformance/cases';
 export * from './conformance/run';
+export { FIELD_NAMES, FUNCTION_NAMES, toJira, toNative } from './dialect';
 export {
   type Catalogue,
   type CustomField,

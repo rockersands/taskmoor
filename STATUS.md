@@ -60,3 +60,4 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-022 Workflow behaviour spec and conformance suite | Done | `@tracksmith/workflow`: 374 data cases for WF-001 to WF-012, `pnpm conformance` reports per section; reference model passes all |
 | M1-033 Query conformance suite | Done | 2,220 data cases for QRY-001 to QRY-013 in `@tracksmith/query`; `pnpm conformance query` reports the pass rate per section (grammar 100%, 76% overall); the rates are a golden |
 | M1-034 Native grammar and parser | In progress | Grammar spec (file 06), error recovery with line, column and hints, nesting limit, 1,000+ parser tests; the one-hour fuzz run is in progress |
+| M1-035 Jira-compatible dialect | In progress | `toNative` and `toJira` rename fields and functions between the vocabularies on the shared tree; parse cases 100% green |
