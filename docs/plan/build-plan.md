@@ -109,7 +109,7 @@ ADRs are binding and change only through a superseding ADR. Lint enforces module
 
 ### Dependency and licence hygiene
 
-Allowed: MIT, BSD, Apache-2.0, ISC, MPL-2.0, PostgreSQL, CC0 and other AGPL-compatible licences. Denied: SSPL, BSL, FSL, Commons Clause, GPL-2.0-only, non-commercial and unlicensed code. Each new runtime dependency needs a PR note (purpose, licence, maintenance); large ones need an ADR. CycloneDX SBOM per release, weekly Renovate, pinned lockfile, ScanCode snippet scan before releases, no code pasted from the web.
+Allowed: MIT, BSD, Apache-2.0, ISC, MPL-2.0, PostgreSQL, CC0 and other AGPL-compatible licences. Denied: SSPL, BSL, FSL, Commons Clause, GPL-2.0-only, non-commercial and unlicensed code. Each new runtime dependency needs a PR note (purpose, licence, maintenance); large ones need an ADR. CycloneDX SBOM per release, weekly Dependabot (ADR-029), pinned lockfile, ScanCode snippet scan before releases, no code pasted from the web.
 
 ## 5. Architecture and stack
 
@@ -118,7 +118,7 @@ Claude records these decisions as ADRs in M0; starred ones are confirmed by spik
 | ADR | Decision | Why |
 |---|---|---|
 | 001 | Decisions recorded as ADRs (MADR) | Sessions forget |
-| 002 | AGPL-3.0, DCO, always-free charter (pending user confirmation) | OSI licence for public buyers |
+| 002 | AGPL-3.0, DCO, always-free charter (confirmed by the user on 2026-10-12) | OSI licence for public buyers |
 | 003 | Clean-room rules enforced in CI | Contracts are the main legal risk |
 | 004 | Modular monolith, pnpm workspaces with TypeScript project references, enforced boundaries; Turborepo added when build caching pays off | One image, clear modules |
 | 005 | TypeScript end to end: Node.js LTS, React | Shared code for optimistic sync |
@@ -242,7 +242,7 @@ Contracts and trademarks, not API copyright, set the perimeter. Claude follows t
 6. **Trademark:** no "Jira" or "Atlassian" in the name, repo, domains, packages or logo; "compatible with Jira" with a non-affiliation note is allowed ([Atlassian](https://www.atlassian.com/legal/trademark)). The codename Tracksmith also needs screening before public release.
 7. **Importer** ships inside the product, run by customers with their own backups or tokens; never a Marketplace, Forge or Connect app.
 8. **Real data** only from its owners under written permission; by default Claude sees fidelity reports, not content.
-9. **Licence:** AGPL-3.0 with DCO sign-off, as GitLab chose over a CLA ([GitLab](https://about.gitlab.com/blog/gitlab-switches-to-dco-license/)), plus an always-free charter. Recommended; awaiting the user's confirmation.
+9. **Licence:** AGPL-3.0 with DCO sign-off, as GitLab chose over a CLA ([GitLab](https://about.gitlab.com/blog/gitlab-switches-to-dco-license/)), plus an always-free charter. Confirmed by the user on 2026-10-12. The GitHub account stays on the free plan, so DCO is enforced by a CI check and local git hooks instead of branch protection.
 10. **Patents:** freedom-to-operate review before source-control integration and chat-to-issue AI ([Google Patents](https://patents.google.com/patent/US12032954)).
 11. **Contamination:** remove, rewrite from clean sources, log.
 
@@ -256,7 +256,7 @@ Contracts and trademarks, not API copyright, set the perimeter. Claude follows t
 | Google Drive folder with connector access, or a synced local folder | Reports, docs, release packages | M0 |
 | Benchmark runner (16+ vCPU, 64 GB RAM, 1 TB NVMe) and cloud VM access | 10M-item benchmarks, install matrix | M0 |
 | Budget for Claude usage and CI; lane count and scheduled hours | Sets the pace | M0 |
-| Licence confirmation (AGPL-3.0, DCO, charter) | LICENSE file | M0 |
+| Licence confirmation (AGPL-3.0, DCO, charter) | LICENSE file | Done (2026-10-12) |
 | Lawyer sign-offs (section 8) | Legal safety | M0, M1 beta, M2 |
 | Workflow tool opt-in | Fan-out batches | M1 |
 | Docker Desktop or a Linux VM/VPS | Install and cross-origin gates | M1 |
@@ -305,7 +305,7 @@ The full register is risks.csv (22 rows). The most serious:
 
 ## 13. First steps (M0, in order)
 
-1. M0-001 Init the Tracksmith repo, push to `github.com/Rockersands/tracksmith`, DCO check, branch protection.
+1. M0-001 Init the Tracksmith repo, push to `github.com/Rockersands/tracksmith`, DCO check (CI and hooks; no branch protection on the free plan).
 2. M0-002 Write CLAUDE.md, HANDOFF.md and STATUS.md.
 3. M0-003 Add the CSVs and `tools/next-task`.
 4. M0-004 ADR process plus ADR-001 to 003.
@@ -316,7 +316,7 @@ The full register is risks.csv (22 rows). The most serious:
 9. M0-009 Embedded-Postgres test harness for Docker-free local work.
 10. M0-010 Module boundary rules and fitness tests.
 11. M0-011 GitHub Actions pipeline.
-12. M0-012 Security and licence gates, SBOM, Renovate.
+12. M0-012 Security and licence gates, SBOM, Dependabot.
 13. M0-013 Import the requirements spec with IDs.
 14. M0-014 Traceability tool.
 15. M0-015 Synthetic data generator up to 30M items.

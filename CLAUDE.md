@@ -10,8 +10,11 @@ session by reading `HANDOFF.md`, then `STATUS.md`.
   Never read from, change or fall back to the global git config or any other identity.
 - Before every push, check `git log --format='%an <%ae> | %cn <%ce>' origin/main..HEAD`: every
   line must be the identity above.
-- Remote: `https://github.com/Rockersands/tracksmith` (private until the name and licence are
-  settled).
+- Every commit carries `Signed-off-by: Rockersands <42122514+rockersands@users.noreply.github.com>` (DCO, ADR-002). The
+  hook in `.githooks/` adds it; enable it once per clone with `git config core.hooksPath .githooks`.
+  The pre-push hook and CI run `pnpm dco`, and unsigned commits fail.
+- Remote: `https://github.com/Rockersands/tracksmith` (private until the public name is settled;
+  free GitHub plan, so there is no branch protection and CI is the gate).
 
 ## Commands
 
@@ -28,6 +31,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm test:watch` | Vitest watch mode |
 | `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
 | `pnpm trace` | Requirements cited by tests, per milestone |
+| `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
 
@@ -87,6 +91,4 @@ another server instead (CI does this).
 
 ## Open decisions owned by the user
 
-- Licence: AGPL-3.0 with DCO is recommended (ADR-002, Proposed). Do not add a LICENSE file
-  until the user confirms.
 - Public name: "Tracksmith" may clash with an apparel brand; screening is task M0-007.

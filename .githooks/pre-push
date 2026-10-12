@@ -1,0 +1,4 @@
+#!/bin/sh
+# Refuses to push commits without a DCO sign-off (ADR-002).
+# Enable once per clone: git config core.hooksPath .githooks
+exec node node_modules/tsx/dist/cli.mjs packages/devtools/src/cli/dco.ts

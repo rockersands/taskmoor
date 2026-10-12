@@ -7,7 +7,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | ADR | Title | Status |
 |---|---|---|
 | [001](0001-record-decisions.md) | Record architecture decisions as ADRs | Accepted |
-| [002](0002-licence-and-contributions.md) | Licence and contribution model | Proposed |
+| [002](0002-licence-and-contributions.md) | Licence and contribution model | Accepted |
 | [003](0003-clean-room.md) | Clean-room rules | Accepted |
 | [004](0004-monorepo-and-toolchain.md) | Monorepo layout and toolchain | Accepted |
 | [029](0029-supply-chain-gates.md) | Supply-chain gates | Accepted |

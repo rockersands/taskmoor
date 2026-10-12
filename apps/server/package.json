@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Tracksmith backend: HTTP API, background workers and realtime, one process per role.",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

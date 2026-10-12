@@ -29,7 +29,7 @@ Read this first in every session, then update it before you stop.
     - Windows with embedded Postgres runs types and tests on pushes to main.
 - Docs imported into the repo: plan, backlog and CSVs (`docs/plan`), requirements spec
   (`docs/specs`) and the research report (`docs/research`).
-- ADRs written: 001, 002 (Proposed: licence), 003, 004, 030 and 033 (desktop first, mobile must
+- ADRs written: 001, 002 (AGPL-3.0-only with DCO, accepted), 003, 004, 030 and 033 (desktop first, mobile must
   work).
 - Repo tooling in `@tracksmith/devtools`, enforced by tests in `pnpm verify`:
   - `pnpm next-task` (reads `docs/plan/backlog.csv` and `progress.csv`; checks dependencies and
@@ -42,7 +42,10 @@ Read this first in every session, then update it before you stop.
   Trivy and Dependabot in CI.
 - Spec lint (M0-013) and `pnpm trace` (M0-014): tests cite requirements as `[CORE-028]` in
   their names; unknown IDs fail `pnpm verify`.
-- Task M0-035 added for the DCO and branch protection, which wait on the licence decision.
+- Licence decided (AGPL-3.0-only with DCO). `LICENSE` added; the sign-off is added by
+  `.githooks/prepare-commit-msg` and checked by the pre-push hook, `pnpm dco` and CI. The user
+  stays on GitHub's free plan: no branch protection, so CI is the gate, and CI is trimmed to fit
+  the free minutes (PRs run one Linux job; Windows runs weekly).
 - Last result: `pnpm verify` passes with 78 tests in about 11s. `pnpm verify --e2e` passed
   earlier with 6 checks.
 
@@ -66,5 +69,4 @@ Read this first in every session, then update it before you stop.
 
 ### Waiting on the user
 
-- Licence confirmation (AGPL-3.0 + DCO recommended).
 - Public name screening (M0-007) before any public release.

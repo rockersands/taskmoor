@@ -13,4 +13,4 @@ M0-012,done,2026-10-12,"Licence allowlist and secret scan in pnpm verify with fa
 M0-013,done,2026-10-12,"347 requirements with stable IDs, provenance and index; spec lint in pnpm verify"
 M0-014,done,2026-10-12,pnpm trace prints coverage per milestone; unknown citations fail pnpm verify
 M0-031,in-progress,2026-10-12,Tokens and responsive shell; Storybook and axe to do
-M0-035,waiting-on-user,2026-10-12,Needs the licence decision (ADR-002)
+M0-035,done,2026-10-12,"AGPL-3.0-only LICENSE; DCO via git hooks, pnpm dco and the CI verify job; free GitHub plan, so no branch protection"

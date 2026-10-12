@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Open-source, self-hostable work tracking with every premium feature included.",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "packageManager": "pnpm@10.34.7",
   "engines": {
@@ -19,7 +20,8 @@
     "dev:web": "pnpm --filter @tracksmith/web dev",
     "dev:server": "pnpm --filter @tracksmith/server dev",
     "next-task": "tsx packages/devtools/src/cli/next-task.ts",
-    "trace": "tsx packages/devtools/src/cli/trace.ts"
+    "trace": "tsx packages/devtools/src/cli/trace.ts",
+    "dco": "tsx packages/devtools/src/cli/dco.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

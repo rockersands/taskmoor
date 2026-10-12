@@ -35,5 +35,6 @@ corepack pnpm --filter @tracksmith/web exec playwright install chromium
 
 ## Licence
 
-Not yet chosen; see [ADR-002](docs/adr/0002-licence-and-contributions.md). Until a licence is
-added, all rights are reserved.
+Tracksmith is free software under the [GNU Affero General Public License v3.0 only](LICENSE)
+(`AGPL-3.0-only`). Contributions are accepted under the Developer Certificate of Origin; see
+[CONTRIBUTING.md](CONTRIBUTING.md) and [ADR-002](docs/adr/0002-licence-and-contributions.md).
