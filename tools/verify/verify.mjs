@@ -116,7 +116,18 @@ console.log(`\n${ok ? 'PASS' : 'FAIL'} in ${total}`);
 
 writeFileSync(
   join(OUT, 'summary.json'),
-  `${JSON.stringify({ ok, seconds: (Date.now() - started) / 1000, at: new Date().toISOString(), results }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      ok,
+      // A narrowed run (--only, --changed, a vitest filter) is not the gate; pnpm gate reads this.
+      partial: Boolean(only || flag('changed') || passthrough.length > 0),
+      seconds: (Date.now() - started) / 1000,
+      at: new Date().toISOString(),
+      results,
+    },
+    null,
+    2,
+  )}\n`,
 );
 process.exit(ok ? 0 : 1);
 

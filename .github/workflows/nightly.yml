@@ -4,6 +4,8 @@ name: Nightly benchmarks
 # results against the budgets (docs/plan and ADRs) and against the committed CI baseline. A
 # regression over 20% or a missed budget fails the job, which emails the owner. The 1M and 10M
 # runs stay on the benchmark machine (pnpm spike ... --items 10000000).
+# Sub-millisecond queries need 40 runs for a p95 that ignores a runner's hiccups: with 10
+# runs the p95 is the slowest sample.
 on:
   schedule:
     - cron: "0 3 * * *"
@@ -33,11 +35,11 @@ jobs:
       - name: Dataset
         run: pnpm gen --items 200000
       - name: Field storage
-        run: pnpm spike field-storage --items 200000 --candidates side --runs 10
+        run: pnpm spike field-storage --items 200000 --candidates side --runs 40
       - name: Query compiler
-        run: pnpm spike query --items 200000 --runs 10
+        run: pnpm spike query --items 200000 --runs 40
       - name: Pre-filter overhead
-        run: pnpm spike authz-overhead --items 200000 --runs 10
+        run: pnpm spike authz-overhead --items 200000 --runs 40
       - name: Permissions
         run: pnpm spike authz --users 20000 --spaces 3000 --checks 500
       - name: Sync

@@ -34,9 +34,11 @@ if ($env:DATABASE_URL) {
   }
 }
 
+# The port as Compose resolves it: the environment first, then .env, then 8080.
 $port = 8080
 $portLine = Get-Content .env | Where-Object { $_ -match '^TRACKSMITH_PORT=' }
 if ($portLine) { $port = [int]($portLine -split '=')[1] }
+if ($env:TRACKSMITH_PORT) { $port = [int]$env:TRACKSMITH_PORT }
 
 Write-Host "starting Tracksmith with $file"
 docker compose -f $file up -d --quiet-pull

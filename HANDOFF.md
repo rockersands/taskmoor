@@ -54,10 +54,15 @@ Read this first in every session, then update it before you stop.
    and `data/`). Then fill the 10M tables into ADR-008 and ADR-010, flip both to Accepted (README
    too), mark M0-016, M0-017 and M0-024 done, refresh `docs/spikes/baseline` with the new 1M/10M
    files if they are within budget, and run `pnpm bench:check`.
-2. **Install matrix (M0-028).** After the push: `gh workflow run install-matrix.yml`, then
-   `gh run watch`; record the seconds per OS from the job summary in `progress.csv` and
-   `STATUS.md` and mark the task done when every required row is green (the arm64 row may be
-   unavailable on the free plan; it is `continue-on-error`).
+2. **Install matrix (M0-028) and the nightly baseline (M0-033).** The first matrix run failed
+   on every row (port precedence in `install.sh`, curl on Rocky; both fixed and reproduced
+   locally with `tools/install-matrix/run.sh` and `container.sh debian:12`), and the first
+   nightly run failed on one noisy p95 (now 40 runs). After the push: `gh workflow run
+   install-matrix.yml` and `gh workflow run nightly.yml`, then `gh run watch`. When the matrix
+   is green, record the seconds per OS from the job summary in `progress.csv` and `STATUS.md`
+   and mark M0-028 done (the arm64 row is `continue-on-error`). When the nightly is green,
+   `gh run download <id> -n nightly-results` and copy its `data/*.json` into
+   `docs/spikes/baseline/ci/`, then mark M0-033 done.
 3. M0-034: `pnpm gate M0 --ci` all green, then the user's acceptance recorded in
    `docs/plan/decisions.csv` as an "M0 acceptance" row marked Decided.
 
@@ -113,6 +118,12 @@ Read this first in every session, then update it before you stop.
   shows whole-file diffs. Open files with `newline='\n'` or run `sed -i 's/\r$//'` afterwards.
 - Commit 5ffe3ad carries the message of the commit before it; it holds the upgrade harness and
   the operator CLI (M0-029). Noted in the body of the commit that followed.
+- `pnpm gate` only counts a full `pnpm verify`: a run narrowed with `--only`, `--changed` or a
+  filter writes `partial: true` into `.verify/summary.json` and the gate reports it.
+- Spike p95 is nearest-rank: with 10 runs it is the slowest sample. Use 40 or more runs for
+  sub-millisecond queries on shared runners.
+- `install.sh` resolves the port as Compose does: `TRACKSMITH_PORT` in the environment first,
+  then `.env`, then 8080. The install-matrix scripts set it in the environment.
 - Record task state in `docs/plan/progress.csv` (in-progress, done, waiting-on-user) as you go;
   `pnpm next-task`, `pnpm status-report`, `pnpm gate` and a test read it.
 

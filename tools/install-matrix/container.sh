@@ -13,7 +13,8 @@ case "$image" in
   debian:*|ubuntu:*)
     prepare='apt-get update -q && apt-get install -y -q curl ca-certificates gnupg >/dev/null && install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && . /etc/os-release && echo "deb [signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/$ID $VERSION_CODENAME stable" > /etc/apt/sources.list.d/docker.list && apt-get update -q && apt-get install -y -q docker-ce-cli docker-compose-plugin >/dev/null' ;;
   rockylinux:*|almalinux:*|*ubi9*)
-    prepare='dnf install -y -q dnf-plugins-core curl >/dev/null && dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && dnf install -y -q docker-ce-cli docker-compose-plugin >/dev/null' ;;
+    # curl-minimal already provides curl on these images and conflicts with the full package.
+    prepare='dnf install -y -q dnf-plugins-core >/dev/null && dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && dnf install -y -q docker-ce-cli docker-compose-plugin >/dev/null' ;;
   *) echo "no prerequisite recipe for $image"; exit 1 ;;
 esac
 

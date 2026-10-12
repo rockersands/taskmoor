@@ -32,8 +32,9 @@ else
   fi
 fi
 
-# grep finds nothing on most installs; that must not trip set -e.
-port=$(grep -E '^TRACKSMITH_PORT=' .env 2>/dev/null | cut -d= -f2 || true)
+# The port as Compose resolves it: the environment first, then .env, then 8080. grep finds
+# nothing on most installs; that must not trip set -e.
+port=${TRACKSMITH_PORT:-$(grep -E '^TRACKSMITH_PORT=' .env 2>/dev/null | cut -d= -f2 || true)}
 port=${port:-8080}
 for p in "$port"; do
   if (command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$p ") || (command -v netstat >/dev/null 2>&1 && netstat -ltn 2>/dev/null | grep -q ":$p "); then

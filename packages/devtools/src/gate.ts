@@ -23,7 +23,13 @@ export interface GateInputs {
   progress: ProgressEntry[];
   decisions: Record<string, string>[];
   results: Record<string, unknown>;
-  verifySummary?: { ok: boolean; at: string; results: { id: string; headline: string }[] };
+  verifySummary?: {
+    ok: boolean;
+    at: string;
+    /** True when the run was narrowed with --only, --changed or a filter; such a run is not the gate. */
+    partial?: boolean;
+    results: { id: string; headline: string }[];
+  };
   /** The latest CI conclusion on main, when known. */
   ci?: { conclusion: string; title: string };
   workflows: string[];
@@ -92,9 +98,11 @@ export function m0Gate(input: GateInputs): GateCheck[] {
   const summary = input.verifySummary;
   checks.push({
     name: 'pnpm verify green locally (embedded Postgres), AI gateway contract tests included',
-    state: summary?.ok ? 'ok' : 'fail',
+    state: summary?.ok && !summary.partial ? 'ok' : 'fail',
     detail: summary
-      ? `${summary.ok ? 'passed' : 'failed'} at ${summary.at}: ${summary.results.map((r) => `${r.id} ${r.headline}`).join(', ')}`
+      ? summary.partial
+        ? `the last run at ${summary.at} was narrowed (--only, --changed or a filter); run a full pnpm verify`
+        : `${summary.ok ? 'passed' : 'failed'} at ${summary.at}: ${summary.results.map((r) => `${r.id} ${r.headline}`).join(', ')}`
       : 'no .verify/summary.json; run pnpm verify',
   });
 
@@ -117,10 +125,13 @@ export function m0Gate(input: GateInputs): GateCheck[] {
       : 'nightly.yml is not on this branch (see HANDOFF: ci-workflows)',
   });
 
+  const matrix = input.progress.find((p) => p.id === 'M0-028');
   checks.push({
     name: 'Backend skeleton installs in under 10 minutes on 5 OS images (M0-028)',
     state: done('M0-028') ? 'ok' : 'waiting',
-    detail: done('M0-028') ? 'M0-028 done' : 'M0-025 to M0-028 wait for Docker',
+    detail: matrix
+      ? `M0-028 ${matrix.state}: ${matrix.note}`
+      : 'M0-028 not started (install-matrix.yml, see tools/install-matrix)',
   });
 
   const decided = (prefix: string) =>

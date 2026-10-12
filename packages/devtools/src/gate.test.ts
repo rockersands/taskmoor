@@ -60,6 +60,28 @@ describe('M0 gate', () => {
     expect(checks[1]?.detail).toContain('slow p95 is 450 ms, budget 300');
   });
 
+  it('does not count a narrowed verify run as the gate', () => {
+    const checks = m0Gate({
+      ...green,
+      verifySummary: { ok: true, at: '2026-10-21T00:00:00Z', partial: true, results: [] },
+    });
+    const local = checks.find((c) => c.name.startsWith('pnpm verify green locally'));
+    expect(local?.state).toBe('fail');
+    expect(local?.detail).toContain('narrowed');
+  });
+
+  it('shows the install matrix task state while it is in progress', () => {
+    const checks = m0Gate({
+      ...green,
+      progress: [
+        { id: 'M0-028', state: 'in-progress', date: '2026-10-12', note: 'first run pending' },
+      ],
+    });
+    const matrix = checks.find((c) => c.name.includes('M0-028'));
+    expect(matrix?.state).toBe('waiting');
+    expect(matrix?.detail).toBe('M0-028 in-progress: first run pending');
+  });
+
   it('marks the human items as waiting rather than failing', () => {
     const checks = m0Gate({
       ...green,
