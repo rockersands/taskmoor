@@ -9,5 +9,6 @@ M0-008,done,2026-10-12,Biome instead of ESLint and Prettier (ADR-004)
 M0-009,done,2026-10-12,Embedded Postgres 16 harness; CI runs Postgres 16 and 18
 M0-010,done,2026-10-12,dependency-cruiser rules in packages/devtools/src/boundaries.ts; fixture that breaks each rule
 M0-011,in-progress,2026-10-12,"Lint, types, tests and e2e in CI; image build comes with M0-025"
+M0-012,done,2026-10-12,"Licence allowlist and secret scan in pnpm verify with failing fixtures; CI SBOM (CycloneDX) and Trivy; Dependabot instead of Renovate (no app install); CodeQL once public"
 M0-031,in-progress,2026-10-12,Tokens and responsive shell; Storybook and axe to do
 M0-035,waiting-on-user,2026-10-12,Needs the licence decision (ADR-002)

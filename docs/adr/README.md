@@ -10,5 +10,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [002](0002-licence-and-contributions.md) | Licence and contribution model | Proposed |
 | [003](0003-clean-room.md) | Clean-room rules | Accepted |
 | [004](0004-monorepo-and-toolchain.md) | Monorepo layout and toolchain | Accepted |
+| [029](0029-supply-chain-gates.md) | Supply-chain gates | Accepted |
 | [030](0030-test-strategy.md) | Test strategy and the verify gate | Accepted |
 | [033](0033-desktop-first-responsive-ui.md) | Desktop-first, responsive UI | Accepted |
