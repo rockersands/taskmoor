@@ -1,0 +1,61 @@
+name: Nightly benchmarks
+
+# Runs the spikes at a size a 4-vCPU runner finishes in about ten minutes and checks the
+# results against the budgets (docs/plan and ADRs) and against the committed CI baseline. A
+# regression over 20% or a missed budget fails the job, which emails the owner. The 1M and 10M
+# runs stay on the benchmark machine (pnpm spike ... --items 10000000).
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bench:
+    name: budgets and regressions (200k items)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Dataset
+        run: pnpm gen --items 200000
+      - name: Field storage
+        run: pnpm spike field-storage --items 200000 --candidates side --runs 10
+      - name: Query compiler
+        run: pnpm spike query --items 200000 --runs 10
+      - name: Pre-filter overhead
+        run: pnpm spike authz-overhead --items 200000 --runs 10
+      - name: Permissions
+        run: pnpm spike authz --users 20000 --spaces 3000 --checks 500
+      - name: Sync
+        run: pnpm spike sync --items 50000 --mutations 5000 --workers 4
+      - name: Queue
+        run: pnpm spike queue --jobs 20000 --workers 4
+      - name: Backup XML
+        run: pnpm spike xml --size 500M --dir /tmp/xml
+
+      - name: Budgets and regressions
+        run: pnpm bench:check --size 200k --baseline docs/spikes/baseline/ci
+
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results
+          path: |
+            docs/spikes/*.md
+            docs/spikes/data/*.json
+          retention-days: 30

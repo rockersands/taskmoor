@@ -105,6 +105,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tracksmith/web exec playwright install --with-deps chromium
       - run: pnpm verify --ci --only=tests
       - name: Keep logs
         if: failure()
@@ -129,6 +130,7 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @tracksmith/web exec playwright install chromium
       - run: pnpm verify --ci --only=types,tests
       - name: Keep logs
         if: failure()
