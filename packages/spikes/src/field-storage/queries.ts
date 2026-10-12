@@ -66,12 +66,12 @@ export const QUERIES: readonly QueryDef[] = [
       jsonb: `SELECT id FROM fs_jsonb.item
               WHERE space_id = $1 AND fields @> jsonb_build_object($2::int::text, $3::text)
               ${order('fs_jsonb.item')}`,
-      side: `SELECT i.id FROM fs_side.item i
-             JOIN fs_side.v_option v ON v.item_id = i.id
-             WHERE i.space_id = $1 AND v.field_id = $2 AND v.value = $3 ${order('i')}`,
-      eav: `SELECT i.id FROM fs_eav.item i
-            JOIN fs_eav.value v ON v.item_id = i.id
-            WHERE i.space_id = $1 AND v.field_id = $2 AND v.text_value = $3 ${order('i')}`,
+      side: `SELECT item_id AS id FROM fs_side.v_option
+             WHERE space_id = $1 AND field_id = $2 AND value = $3
+             ORDER BY created_at DESC LIMIT 50`,
+      eav: `SELECT item_id AS id FROM fs_eav.value
+            WHERE space_id = $1 AND field_id = $2 AND text_value = $3
+            ORDER BY created_at DESC LIMIT 50`,
     },
     params: (ctx, run) => {
       const rng = Rng.derive(ctx.seed, 'select-in-space', run);
@@ -86,10 +86,10 @@ export const QUERIES: readonly QueryDef[] = [
     sql: {
       jsonb: `SELECT id FROM fs_jsonb.item WHERE (fields->>$1::int::text)::numeric > $2
               ${order('fs_jsonb.item')}`,
-      side: `SELECT i.id FROM fs_side.v_number v JOIN fs_side.item i ON i.id = v.item_id
-             WHERE v.field_id = $1 AND v.value > $2 ${order('i')}`,
-      eav: `SELECT i.id FROM fs_eav.value v JOIN fs_eav.item i ON i.id = v.item_id
-            WHERE v.field_id = $1 AND v.num_value > $2 ${order('i')}`,
+      side: `SELECT item_id AS id FROM fs_side.v_number WHERE field_id = $1 AND value > $2
+             ORDER BY created_at DESC LIMIT 50`,
+      eav: `SELECT item_id AS id FROM fs_eav.value WHERE field_id = $1 AND num_value > $2
+            ORDER BY created_at DESC LIMIT 50`,
     },
     params: (ctx, run) => [
       ctx.fields.number,
@@ -107,14 +107,15 @@ export const QUERIES: readonly QueryDef[] = [
                 AND status_category = $4 ${order('fs_jsonb.item')}`,
       side: `SELECT i.id FROM fs_side.v_date v JOIN fs_side.item i ON i.id = v.item_id
              WHERE v.field_id = $1 AND v.value BETWEEN $2::date AND $3::date
-               AND i.status_category = $4 ${order('i')}`,
+               AND i.status_category = $4 ORDER BY v.created_at DESC LIMIT 50`,
       eav: `SELECT i.id FROM fs_eav.value v JOIN fs_eav.item i ON i.id = v.item_id
             WHERE v.field_id = $1 AND v.date_value BETWEEN $2::date AND $3::date
-              AND i.status_category = $4 ${order('i')}`,
+              AND i.status_category = $4 ORDER BY v.created_at DESC LIMIT 50`,
     },
     params: (ctx, run) => {
       const rng = Rng.derive(ctx.seed, 'date-and-status', run);
-      const from = Date.UTC(2018, 0, 1) + rng.int(0, 8 * 365) * DAY;
+      // Field dates are spread between each item's creation and 2026, so later windows are denser.
+      const from = Date.UTC(2022, 0, 1) + rng.int(0, 4 * 365) * DAY;
       return [
         ctx.fields.date,
         isoDate(from),
@@ -132,14 +133,12 @@ export const QUERIES: readonly QueryDef[] = [
       jsonb: `SELECT id FROM fs_jsonb.item
               WHERE fields @> jsonb_build_object($1::int::text, $2::text)
                 AND (fields->>$3::int::text)::numeric > $4 ${order('fs_jsonb.item')}`,
-      side: `SELECT i.id FROM fs_side.item i
-             JOIN fs_side.v_option o ON o.item_id = i.id AND o.field_id = $1 AND o.value = $2
-             JOIN fs_side.v_number n ON n.item_id = i.id AND n.field_id = $3 AND n.value > $4
-             ${order('i')}`,
-      eav: `SELECT i.id FROM fs_eav.item i
-            JOIN fs_eav.value o ON o.item_id = i.id AND o.field_id = $1 AND o.text_value = $2
-            JOIN fs_eav.value n ON n.item_id = i.id AND n.field_id = $3 AND n.num_value > $4
-            ${order('i')}`,
+      side: `SELECT o.item_id AS id FROM fs_side.v_option o
+             JOIN fs_side.v_number n ON n.item_id = o.item_id AND n.field_id = $3 AND n.value > $4
+             WHERE o.field_id = $1 AND o.value = $2 ORDER BY o.created_at DESC LIMIT 50`,
+      eav: `SELECT o.item_id AS id FROM fs_eav.value o
+            JOIN fs_eav.value n ON n.item_id = o.item_id AND n.field_id = $3 AND n.num_value > $4
+            WHERE o.field_id = $1 AND o.text_value = $2 ORDER BY o.created_at DESC LIMIT 50`,
     },
     params: (ctx, run) => {
       const rng = Rng.derive(ctx.seed, 'two-fields', run);
@@ -159,10 +158,10 @@ export const QUERIES: readonly QueryDef[] = [
     sql: {
       jsonb: `SELECT id FROM fs_jsonb.item WHERE space_id = $1 AND fields ? $2::int::text
               ORDER BY (fields->>$2::int::text)::numeric DESC, id LIMIT 50`,
-      side: `SELECT i.id FROM fs_side.v_number v JOIN fs_side.item i ON i.id = v.item_id
-             WHERE i.space_id = $1 AND v.field_id = $2 ORDER BY v.value DESC, i.id LIMIT 50`,
-      eav: `SELECT i.id FROM fs_eav.value v JOIN fs_eav.item i ON i.id = v.item_id
-            WHERE i.space_id = $1 AND v.field_id = $2 ORDER BY v.num_value DESC, i.id LIMIT 50`,
+      side: `SELECT item_id AS id FROM fs_side.v_number WHERE space_id = $1 AND field_id = $2
+             ORDER BY value DESC, item_id LIMIT 50`,
+      eav: `SELECT item_id AS id FROM fs_eav.value WHERE space_id = $1 AND field_id = $2
+            ORDER BY num_value DESC, item_id LIMIT 50`,
     },
     params: (ctx, run) => [
       space(ctx, Rng.derive(ctx.seed, 'sort-by-number', run)),
@@ -177,12 +176,10 @@ export const QUERIES: readonly QueryDef[] = [
     sql: {
       jsonb: `SELECT fields->>$2::int::text AS value, count(*)::int AS n FROM fs_jsonb.item
               WHERE space_id = $1 AND fields ? $2::int::text GROUP BY 1 ORDER BY 1`,
-      side: `SELECT v.value, count(*)::int AS n FROM fs_side.v_option v
-             JOIN fs_side.item i ON i.id = v.item_id
-             WHERE i.space_id = $1 AND v.field_id = $2 GROUP BY 1 ORDER BY 1`,
-      eav: `SELECT v.text_value AS value, count(*)::int AS n FROM fs_eav.value v
-            JOIN fs_eav.item i ON i.id = v.item_id
-            WHERE i.space_id = $1 AND v.field_id = $2 GROUP BY 1 ORDER BY 1`,
+      side: `SELECT value, count(*)::int AS n FROM fs_side.v_option
+             WHERE space_id = $1 AND field_id = $2 GROUP BY 1 ORDER BY 1`,
+      eav: `SELECT text_value AS value, count(*)::int AS n FROM fs_eav.value
+            WHERE space_id = $1 AND field_id = $2 GROUP BY 1 ORDER BY 1`,
     },
     params: (ctx, run) => [
       space(ctx, Rng.derive(ctx.seed, 'count-by-option', run)),
@@ -197,10 +194,10 @@ export const QUERIES: readonly QueryDef[] = [
     sql: {
       jsonb: `SELECT id FROM fs_jsonb.item
               WHERE fields @> jsonb_build_object($1::int::text, $2::int) ${order('fs_jsonb.item')}`,
-      side: `SELECT i.id FROM fs_side.v_user v JOIN fs_side.item i ON i.id = v.item_id
-             WHERE v.field_id = $1 AND v.value = $2 ${order('i')}`,
-      eav: `SELECT i.id FROM fs_eav.value v JOIN fs_eav.item i ON i.id = v.item_id
-            WHERE v.field_id = $1 AND v.user_value = $2 ${order('i')}`,
+      side: `SELECT item_id AS id FROM fs_side.v_user WHERE field_id = $1 AND value = $2
+             ORDER BY created_at DESC LIMIT 50`,
+      eav: `SELECT item_id AS id FROM fs_eav.value WHERE field_id = $1 AND user_value = $2
+            ORDER BY created_at DESC LIMIT 50`,
     },
     params: (ctx, run) => {
       const rng = Rng.derive(ctx.seed, 'user-field', run);
@@ -233,11 +230,12 @@ export const QUERIES: readonly QueryDef[] = [
               WHERE id = $1`,
       side: `WITH u AS (
                UPDATE fs_side.item SET fields = fields || jsonb_build_object($2::int::text, $3::numeric)
-               WHERE id = $1 RETURNING id)
-             INSERT INTO fs_side.v_number (item_id, field_id, value)
-             SELECT id, $2::int, $3::numeric FROM u
+               WHERE id = $1 RETURNING id, space_id, created_at)
+             INSERT INTO fs_side.v_number (item_id, space_id, field_id, value, created_at)
+             SELECT id, space_id, $2::int, $3::numeric, created_at FROM u
              ON CONFLICT (item_id, field_id) DO UPDATE SET value = EXCLUDED.value`,
-      eav: `INSERT INTO fs_eav.value (item_id, field_id, seq, num_value) VALUES ($1, $2, 0, $3)
+      eav: `INSERT INTO fs_eav.value (item_id, space_id, field_id, seq, created_at, num_value)
+            SELECT id, space_id, $2::int, 0, created_at, $3::numeric FROM fs_eav.item WHERE id = $1
             ON CONFLICT (item_id, field_id, seq) DO UPDATE SET num_value = EXCLUDED.num_value`,
     },
     params: (ctx, run) => {

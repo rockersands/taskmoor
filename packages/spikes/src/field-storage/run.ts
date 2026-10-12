@@ -134,7 +134,7 @@ export async function runFieldStorageSpike(
   const log = options.log ?? (() => {});
   const ids = options.candidates ?? (Object.keys(candidates) as CandidateId[]);
   const ctx = await loadContext(pool);
-  const version = await pool.query<{ v: string }>('SHOW server_version');
+  const version = await pool.query<{ v: string }>(`SELECT current_setting('server_version') AS v`);
   const fieldCount = await pool.query<{ n: string }>('SELECT count(*) AS n FROM gen.fields');
   const results: CandidateResult[] = [];
 
