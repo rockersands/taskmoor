@@ -19,8 +19,10 @@ describe('dependency licences', () => {
     const folders = readdirSync(store, { withFileTypes: true }).filter(
       (d) => d.isDirectory() && d.name !== 'node_modules',
     );
-    const names = new Set(installedPackages(REPO).map((p) => p.name));
-    expect(names.size).toBeGreaterThanOrEqual(folders.length * 0.9);
+    const packages = installedPackages(REPO);
+    // One package per folder; unique names are fewer when several versions are installed.
+    expect(packages.length).toBeGreaterThanOrEqual(folders.length * 0.98);
+    const names = new Set(packages.map((p) => p.name));
     // Long names such as this one live in folders like "@opentelemetry+sdk-trace-ba_<hash>".
     expect(names.has('@opentelemetry/sdk-trace-base')).toBe(true);
     expect(names.has('@opentelemetry/exporter-trace-otlp-http')).toBe(true);

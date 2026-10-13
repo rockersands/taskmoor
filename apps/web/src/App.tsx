@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { AccountPage } from './account/AccountPage';
+import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
@@ -66,6 +67,7 @@ function isRoute(hash: string, route: string): boolean {
 const ADMIN_SYSTEM = '#/admin/system';
 const ADMIN_TOKENS = '#/admin/tokens';
 const ADMIN_SERVICE_ACCOUNTS = '#/admin/service-accounts';
+const ADMIN_SECURITY = '#/admin/security';
 const ACCOUNT = '#/account';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
@@ -132,6 +134,14 @@ function Pages() {
                 window.location.hash = ADMIN_SERVICE_ACCOUNTS;
               },
             },
+            {
+              id: 'go-security',
+              labelId: 'admin.security.title' as const,
+              keywords: ['two-factor', '2fa', 'policy'],
+              run: () => {
+                window.location.hash = ADMIN_SECURITY;
+              },
+            },
           ]
         : []),
     ],
@@ -153,6 +163,8 @@ function Pages() {
     content = <AdminTokensPage />;
   } else if (isRoute(hash, ADMIN_SERVICE_ACCOUNTS)) {
     content = <ServiceAccountsPage />;
+  } else if (isRoute(hash, ADMIN_SECURITY)) {
+    content = <SecurityPage />;
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
   } else if (isRoute(hash, SIGN_IN)) {

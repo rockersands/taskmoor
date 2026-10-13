@@ -1,0 +1,122 @@
+/* Two-factor sign-in (M1-084): the second step, app setup, recovery codes, the Account section. */
+.second-factor .facts-title,
+.enrollment .facts-title,
+.recovery-codes-title {
+  margin: 0;
+}
+
+.enrollment,
+.recovery-codes {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 32rem;
+  min-width: 0;
+}
+
+/* Headings take focus when a step replaces the form that had it; no ring for that. */
+.enrollment .facts-title:focus,
+.recovery-codes-title:focus {
+  outline: none;
+}
+
+.recovery-codes-title {
+  font-size: var(--font-size-300);
+}
+
+.totp-setup-step {
+  margin: 0;
+}
+
+/* Never wider than the screen: phones get a code that fills the column. */
+.qr-code {
+  display: block;
+  width: min(12rem, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+.qr-code-light {
+  fill: var(--color-qr-light);
+}
+
+.qr-code-dark {
+  fill: var(--color-qr-dark);
+}
+
+.totp-key {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.totp-key-value,
+.recovery-code-list code {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-300);
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+.totp-key-value {
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-bg);
+  user-select: all;
+}
+
+.recovery-code-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-bg);
+  list-style: none;
+}
+
+/* The Account section: one group per kind of factor. */
+.two-factor-state {
+  margin: 0;
+  font-weight: 600;
+}
+
+.two-factor-on {
+  color: var(--color-accent);
+}
+
+.two-factor-group {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.two-factor-heading {
+  margin: 0;
+  font-size: var(--font-size-300);
+}
+
+.two-factor-group .form,
+.two-factor .recovery-codes {
+  max-width: 28rem;
+}
+
+/* A password confirmation inside a key's row takes the whole row. */
+.two-factor-inline-form {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.security-page {
+  max-width: 40rem;
+}
+
+.security-page .facts-title {
+  margin: 0;
+}

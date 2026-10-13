@@ -6,6 +6,7 @@ import '../src/styles/forms.css';
 import '../src/styles/admin.css';
 import '../src/styles/account.css';
 import '../src/styles/api-tokens.css';
+import '../src/styles/twofactor.css';
 
 const preview: Preview = {
   parameters: {

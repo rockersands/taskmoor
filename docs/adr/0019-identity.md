@@ -83,6 +83,12 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
 - **Setup without stored state:** a TOTP secret waiting for its first code and a WebAuthn
   registration challenge travel in a sealed setup token (ten minutes), so starting a setup writes
   nothing. Without a pepper (development) the seal uses a key that lives as long as the process.
+- **Frontend:** the second step and the enrolment a policy requires replace the password form
+  in place (an expired challenge returns to it with the email kept). The QR code of the
+  otpauth URI is drawn in the browser as SVG with `qrcode` (MIT), so the secret never reaches
+  an image service; security keys go through `@simplewebauthn/browser` (MIT). New recovery
+  codes are shown once, with copy and a text-file download, and the person confirms saving
+  them before going on. Site administrators set the policy on Settings > Security.
 - Passwordless sign-in with passkeys can build on the same credentials later.
 
 ## Single sign-on with OpenID Connect (M1-080)

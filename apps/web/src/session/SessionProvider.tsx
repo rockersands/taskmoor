@@ -17,9 +17,22 @@ export type Session =
   | { status: 'anonymous' }
   | { status: 'signed-in'; user: SessionUser };
 
+/** A second factor the backend accepts from this person at sign-in (M1-084). */
+export type SecondFactorMethod = 'totp' | 'webauthn' | 'recovery_code';
+
+/**
+ * Where a correct password leads (IAM-001): straight in, to the second factor, or to the
+ * enrolment a two-factor policy requires. The two challenges last five minutes.
+ */
+export type SignInOutcome =
+  | { status: 'signed_in'; user: SessionUser }
+  | { status: 'second_factor'; challenge: string; methods: SecondFactorMethod[] }
+  | { status: 'enrollment_required'; challenge: string };
+
 interface SessionContextValue {
   session: Session;
-  signIn: (email: string, password: string) => Promise<void>;
+  /** Checks the password; only a `signed_in` outcome starts the session. */
+  signIn: (email: string, password: string) => Promise<SignInOutcome>;
   signOut: () => Promise<void>;
   /** Re-reads the session from the backend, for example after setup created it. */
   refresh: () => Promise<void>;
@@ -29,7 +42,9 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue>({
   session: { status: 'anonymous' },
-  signIn: async () => {},
+  signIn: async () => {
+    throw new Error('SessionProvider is missing');
+  },
   signOut: async () => {},
   refresh: async () => {},
   setUser: () => {},
@@ -65,12 +80,16 @@ export function SessionProvider({
     if (!fixed) void refresh();
   }, [fixed, refresh]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { user } = await api<{ user: SessionUser }>('/session', {
-      method: 'POST',
-      body: { email, password },
-    });
-    setSession({ status: 'signed-in', user });
+  const signIn = useCallback(async (email: string, password: string): Promise<SignInOutcome> => {
+    const answer = await api<SignInOutcome | { status?: undefined; user: SessionUser }>(
+      '/session',
+      { method: 'POST', body: { email, password } },
+    );
+    if (answer.status === 'second_factor' || answer.status === 'enrollment_required') {
+      return answer;
+    }
+    setSession({ status: 'signed-in', user: answer.user });
+    return { status: 'signed_in', user: answer.user };
   }, []);
 
   const signOut = useCallback(async () => {

@@ -41,6 +41,10 @@ export function SettingsPage() {
               <a href="#/admin/service-accounts">{t('settings.serviceAccounts')}</a>
               <p className="page-note">{t('settings.serviceAccountsHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/security">{t('settings.security')}</a>
+              <p className="page-note">{t('settings.securityHint')}</p>
+            </li>
           </ul>
         </section>
       )}

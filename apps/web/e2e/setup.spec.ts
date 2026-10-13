@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { type APIRequestContext, devices, expect, type Page, test } from '@playwright/test';
 
 const TOKEN = 'e2e-setup-token-0123456789';
@@ -33,6 +34,75 @@ async function signInThroughForm(page: Page, who: { email: string; password: str
 const at = (baseURL: string | undefined) => (baseURL ? { baseURL } : {});
 
 const heading = (page: Page) => page.getByRole('heading', { level: 1 });
+
+async function signOutThroughMenu(page: Page, name: string) {
+  await page.getByRole('button', { name, exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Sign out' }).click();
+  await expect(heading(page)).toHaveText('Sign in');
+}
+
+/** Creates a person with a password, as the administrator, and leaves nobody signed in. */
+async function createPerson(
+  request: APIRequestContext,
+  who: { name: string; email: string; password: string },
+) {
+  await signInThroughApi(request, ADMIN);
+  const created = await request.post('/api/v1/users', {
+    data: { email: who.email, name: who.name, password: who.password },
+  });
+  expect(created.status()).toBe(201);
+  expect((await request.delete('/api/v1/session')).status()).toBe(204);
+}
+
+// An authenticator app, in a few lines: RFC 6238 with HMAC-SHA-1, 6 digits, 30-second steps.
+const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function base32Decode(text: string): Buffer {
+  let bits = 0;
+  let value = 0;
+  const bytes: number[] = [];
+  for (const char of text.replace(/[\s=]/g, '').toUpperCase()) {
+    value = (value << 5) | BASE32.indexOf(char);
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function totp(secret: string, step: number): string {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const mac = createHmac('sha1', base32Decode(secret)).update(counter).digest();
+  const offset = (mac[mac.length - 1] ?? 0) & 15;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
+
+const usedSteps = new Map<string, number>();
+const currentStep = () => Math.floor(Date.now() / 30_000);
+
+/**
+ * A code the backend has not accepted yet: each time step works once, and the backend allows
+ * one step of clock drift, so the next code may come from the step ahead. Waits only when even
+ * that one is used up.
+ */
+async function freshCode(secret: string): Promise<string> {
+  const step = Math.max(currentStep(), (usedSteps.get(secret) ?? -1) + 1);
+  while (step > currentStep() + 1) await new Promise((resolve) => setTimeout(resolve, 500));
+  usedSteps.set(secret, step);
+  return totp(secret, step);
+}
+
+/** The setup key shown next to the QR code, in groups of four. */
+const SETUP_KEY = /^[A-Z2-7]{4}( [A-Z2-7]{1,4})+$/;
+
+async function readSetupKey(page: Page): Promise<string> {
+  const key = page.getByText(SETUP_KEY);
+  await expect(key).toBeVisible();
+  return ((await key.textContent()) ?? '').replace(/\s/g, '');
+}
 
 test('[OPS-003] the setup link creates the administrator and signs them in', async ({ page }) => {
   await page.goto(`./#/setup?token=${TOKEN}`);
@@ -481,4 +551,215 @@ test('[IAM-007] a service-account token rotates with an overlap, so the program 
     });
   }
   await program.dispose();
+});
+
+test('[IAM-001] a person turns on an authenticator app and signs in with a code, then a recovery code', async ({
+  page,
+}) => {
+  const INES = { name: 'Ines Duarte', email: 'ines@example.com', password: 'a tidy row of mint' };
+  await createPerson(page.request, INES);
+  await page.goto('./#/sign-in');
+  await signInThroughForm(page, INES);
+  await expect(heading(page)).toHaveText('Home');
+
+  await page.goto('./#/account');
+  const twoFactor = page.getByRole('region', { name: 'Two-factor authentication' });
+  await expect(twoFactor.getByText('Two-factor authentication is off.')).toBeVisible();
+  await twoFactor.getByRole('button', { name: 'Set up authenticator app' }).click();
+  await expect(
+    twoFactor.getByRole('img', { name: 'QR code for your authenticator app' }),
+  ).toBeVisible();
+  const secret = await readSetupKey(page);
+  await twoFactor.getByLabel('Code from the app').fill(await freshCode(secret));
+  await twoFactor.getByRole('button', { name: 'Turn on' }).click();
+
+  // The recovery codes are shown once, with the first factor.
+  const saveCodes = twoFactor.getByRole('region', { name: 'Save your recovery codes' });
+  const codeList = saveCodes.getByRole('list', { name: 'Recovery codes' }).getByRole('listitem');
+  await expect(codeList).toHaveCount(10);
+  const recoveryCodes = await codeList.allTextContents();
+  for (const code of recoveryCodes) expect(code).toMatch(/^[A-Z2-7]{5}-[A-Z2-7]{5}$/);
+  await expect(saveCodes.getByRole('button', { name: 'Done' })).toBeDisabled();
+  await saveCodes.getByRole('checkbox', { name: 'I have saved these codes' }).check();
+  await saveCodes.getByRole('button', { name: 'Done' }).click();
+  await expect(twoFactor.getByText('Two-factor authentication is on.')).toBeVisible();
+  await expect(twoFactor.getByText('10 recovery codes left.')).toBeVisible();
+
+  // The password alone no longer starts a session.
+  await signOutThroughMenu(page, INES.name);
+  await signInThroughForm(page, INES);
+  const step = page.getByRole('form', { name: 'Two-factor authentication' });
+  const code = step.getByLabel('Authentication code');
+  await expect(code).toBeFocused();
+  await expect(code).toHaveAttribute('autocomplete', 'one-time-code');
+  expect((await page.request.get('/api/v1/session')).status()).toBe(401);
+  await code.fill(await freshCode(secret));
+  await step.getByRole('button', { name: 'Verify' }).click();
+  await expect(heading(page)).toHaveText('Home');
+
+  // A recovery code signs in once.
+  const [first, second] = recoveryCodes as [string, string];
+  await signOutThroughMenu(page, INES.name);
+  await signInThroughForm(page, INES);
+  await step.getByRole('button', { name: 'Use a recovery code' }).click();
+  await step.getByLabel('Recovery code', { exact: true }).fill(first);
+  await step.getByRole('button', { name: 'Verify' }).click();
+  await expect(heading(page)).toHaveText('Home');
+  await page.goto('./#/account');
+  await expect(twoFactor.getByText('9 recovery codes left.')).toBeVisible();
+
+  await signOutThroughMenu(page, INES.name);
+  await signInThroughForm(page, INES);
+  await step.getByRole('button', { name: 'Use a recovery code' }).click();
+  await step.getByLabel('Recovery code', { exact: true }).fill(first);
+  await step.getByRole('button', { name: 'Verify' }).click();
+  await expect(step.getByRole('alert')).toHaveText(
+    'That recovery code is not valid or was already used.',
+  );
+  await step.getByLabel('Recovery code', { exact: true }).fill(second.toLowerCase());
+  await step.getByRole('button', { name: 'Verify' }).click();
+  await expect(heading(page)).toHaveText('Home');
+});
+
+test('[IAM-001] a person registers a security key and signs in with it', async ({ page }) => {
+  // Chromium's virtual authenticator stands in for a USB key that is touched at once.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: {
+      protocol: 'ctap2',
+      transport: 'usb',
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+    },
+  });
+
+  const OMAR = {
+    name: 'Omar Haddad',
+    email: 'omar@example.com',
+    password: 'lanterns over the bay',
+  };
+  await createPerson(page.request, OMAR);
+  await page.goto('./#/sign-in');
+  await signInThroughForm(page, OMAR);
+  await expect(heading(page)).toHaveText('Home');
+
+  await page.goto('./#/account');
+  const twoFactor = page.getByRole('region', { name: 'Two-factor authentication' });
+  await twoFactor.getByRole('button', { name: 'Add a security key' }).click();
+  await twoFactor.getByLabel('Name of the key').fill('Desk key');
+  await twoFactor.getByRole('button', { name: 'Register key' }).click();
+
+  // The key is the first factor, so recovery codes come with it.
+  const saveCodes = twoFactor.getByRole('region', { name: 'Save your recovery codes' });
+  await expect(saveCodes.getByRole('listitem')).toHaveCount(10);
+  await saveCodes.getByRole('checkbox', { name: 'I have saved these codes' }).check();
+  await saveCodes.getByRole('button', { name: 'Done' }).click();
+  await expect(twoFactor.getByText('Two-factor authentication is on.')).toBeVisible();
+  const key = twoFactor.getByRole('listitem').filter({ hasText: 'Desk key' });
+  await expect(key).toContainText('Not used yet');
+
+  await signOutThroughMenu(page, OMAR.name);
+  await signInThroughForm(page, OMAR);
+  const step = page.getByRole('form', { name: 'Two-factor authentication' });
+  await expect(step.getByText('Use your security key to finish signing in.')).toBeVisible();
+  await expect(step.getByLabel('Authentication code')).toHaveCount(0);
+  await step.getByRole('button', { name: 'Use a security key' }).click();
+  await expect(heading(page)).toHaveText('Home');
+
+  // Removing the key asks for the password; without a factor, two-factor is off again.
+  await page.goto('./#/account');
+  await expect(key).toContainText('Last used');
+  await twoFactor.getByRole('button', { name: 'Remove Desk key' }).click();
+  const confirm = twoFactor.getByRole('form', { name: 'Remove Desk key' });
+  await confirm.getByLabel('Current password', { exact: true }).fill(OMAR.password);
+  await confirm.getByRole('button', { name: 'Remove' }).click();
+  await expect(twoFactor.getByText('Removed Desk key.')).toBeVisible();
+  await expect(twoFactor.getByText('Two-factor authentication is off.')).toBeVisible();
+  await expect(twoFactor.getByText('No security keys yet.')).toBeVisible();
+});
+
+test('[IAM-001] when the policy covers everyone, a person without a second factor enrols at sign-in', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const THEO = {
+    name: 'Theo Lindqvist',
+    email: 'theo@example.com',
+    password: 'copper kettles hum',
+  };
+  await createPerson(page.request, THEO);
+  await signInThroughApi(page.request, ADMIN);
+  const savePolicy = () =>
+    page.waitForResponse(
+      (r) => r.url().endsWith('/api/v1/security/two-factor') && r.request().method() === 'PUT',
+    );
+  try {
+    await page.goto('./#/settings');
+    await page.getByRole('link', { name: 'Security' }).click();
+    await expect(heading(page)).toHaveText('Security');
+    const policy = page.getByRole('form', { name: 'Two-factor authentication' });
+    const nobody = policy.getByRole('radio', { name: 'Nobody: everyone decides for themselves' });
+    await expect(nobody).toBeChecked();
+    await policy.getByRole('radio', { name: 'Everyone', exact: true }).check();
+    const saved = savePolicy();
+    await policy.getByRole('button', { name: 'Save policy' }).click();
+    expect((await saved).status()).toBe(200);
+    await expect(policy.getByRole('status')).toHaveText('Policy saved.');
+
+    // Theo signs in on a phone: the app must be set up before the session starts.
+    const context = await browser.newContext({
+      ...devices['Pixel 7'],
+      viewport: { width: 360, height: 740 },
+      ...at(baseURL),
+    });
+    const phone = await context.newPage();
+    await phone.goto('./#/sign-in');
+    await signInThroughForm(phone, THEO);
+    await expect(
+      phone.getByRole('heading', { level: 2, name: 'Set up two-factor authentication' }),
+    ).toBeVisible();
+    await expect(
+      phone.getByText(/Your administrator requires two-factor authentication/),
+    ).toBeVisible();
+    expect((await context.request.get('/api/v1/session')).status()).toBe(401);
+    await expect(
+      phone.getByRole('img', { name: 'QR code for your authenticator app' }),
+    ).toBeVisible();
+    expect(
+      await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+    ).toBeLessThanOrEqual(0);
+    const secret = await readSetupKey(phone);
+    await phone.getByLabel('Code from the app').fill(await freshCode(secret));
+    await phone.getByRole('button', { name: 'Verify and continue' }).click();
+
+    const saveCodes = phone.getByRole('region', { name: 'Save your recovery codes' });
+    await expect(saveCodes.getByRole('listitem')).toHaveCount(10);
+    await expect(saveCodes.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await saveCodes.getByRole('checkbox', { name: 'I have saved these codes' }).check();
+    await saveCodes.getByRole('button', { name: 'Continue' }).click();
+    await expect(heading(phone)).toHaveText('Home');
+    expect((await context.request.get('/api/v1/session')).status()).toBe(200);
+
+    // The app is Theo's only factor and the policy requires one: it stays on.
+    await phone.goto('./#/account');
+    const twoFactor = phone.getByRole('region', { name: 'Two-factor authentication' });
+    await expect(twoFactor.getByRole('button', { name: 'Switch off the app' })).toBeDisabled();
+    await expect(twoFactor.getByText(/so your last method cannot be switched off/)).toBeVisible();
+    await context.close();
+
+    // Back to nobody, through the page.
+    await nobody.check();
+    const reset = savePolicy();
+    await policy.getByRole('button', { name: 'Save policy' }).click();
+    expect((await reset).status()).toBe(200);
+  } finally {
+    // Whatever happened above, later tests sign the administrator in with a password alone.
+    const reset = await page.request.put('/api/v1/security/two-factor', {
+      data: { required: 'none', groupIds: [] },
+    });
+    expect(reset.status()).toBe(200);
+  }
 });

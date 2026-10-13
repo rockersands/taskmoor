@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { type Ref, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { EyeIcon, EyeOffIcon } from '../shell/icons';
 
@@ -14,6 +14,8 @@ export interface PasswordFieldProps {
   describedBy?: string | undefined;
   invalid?: boolean | undefined;
   required?: boolean;
+  /** The input element, for forms that move the cursor into it. */
+  inputRef?: Ref<HTMLInputElement> | undefined;
 }
 
 /**
@@ -31,6 +33,7 @@ export function PasswordField({
   describedBy,
   invalid = false,
   required = true,
+  inputRef,
 }: PasswordFieldProps) {
   const t = useT();
   const id = useId();
@@ -44,6 +47,7 @@ export function PasswordField({
       <label htmlFor={id}>{label}</label>
       <div className="password-control">
         <input
+          ref={inputRef}
           id={id}
           type={visible ? 'text' : 'password'}
           autoComplete={autoComplete}

@@ -7,6 +7,7 @@ import { type AccountClient, accountClient } from './client';
 import { PasswordSection } from './PasswordSection';
 import { ProfileSection } from './ProfileSection';
 import { SessionsSection } from './SessionsSection';
+import { TwoFactorSection } from './TwoFactorSection';
 
 export interface AccountPageProps {
   /** Stories and tests pass their own endpoints; the page calls the backend otherwise. */
@@ -16,8 +17,9 @@ export interface AccountPageProps {
 }
 
 /**
- * The signed-in person's own settings (#/account): profile (IAM-008), password (IAM-001),
- * sessions (IAM-004) and API tokens (IAM-007). The route sits behind RequireSession.
+ * The signed-in person's own settings (#/account): profile (IAM-008), password and two-factor
+ * authentication (IAM-001, M1-084), sessions (IAM-004) and API tokens (IAM-007). The route
+ * sits behind RequireSession.
  */
 export function AccountPage({
   client = accountClient,
@@ -41,6 +43,7 @@ export function AccountPage({
           client={client}
           onChanged={() => setSessionsVersion((version) => version + 1)}
         />
+        <TwoFactorSection client={client} email={user.email} timeZone={user.timeZone} />
         <SessionsSection key={sessionsVersion} client={client} timeZone={user.timeZone} />
         <TokensSection client={tokens} allowAdmin={user.isSiteAdmin} timeZone={user.timeZone} />
       </div>
