@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  chmodSync,
   copyFileSync,
   cpSync,
   existsSync,
@@ -111,6 +112,9 @@ export async function backup(
     log('copying the password keyring');
     mkdirSync(join(out, 'secrets'), { recursive: true });
     copyFileSync(keyring, join(out, PEPPER_FILE));
+    // Same permissions as the dump next to it: whoever restores (often another user, after a
+    // copy between hosts) must read the whole directory, which is protected as one unit.
+    chmodSync(join(out, PEPPER_FILE), 0o644);
   }
   writeFileSync(join(out, 'config.json'), `${JSON.stringify(options.config ?? {}, null, 2)}\n`);
   const checksums: Record<string, string> = {};
@@ -154,6 +158,14 @@ export async function restore(
 ): Promise<BackupManifest> {
   const log = options.log ?? (() => {});
   const manifest = verifyBackup(dir);
+  // Read the keyring before anything changes: an unreadable one stops the restore here.
+  const keyring = join(dir, PEPPER_FILE);
+  const keyringSecrets = existsSync(keyring)
+    ? readFileSync(keyring, 'utf8')
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith('#'))
+    : [];
   const pgRestore = clientBinary('pg_restore', await serverMajor(db));
   log(
     `restoring the database from ${join(dir, 'db.dump')} (${manifest.createdAt}) with ${pgRestore}`,
@@ -174,13 +186,8 @@ export async function restore(
   }
   // Merge, never replace: this install's own key stays active, the backup's keys verify the
   // restored passwords until sign-in moves them over.
-  const keyring = join(dir, PEPPER_FILE);
-  if (options.dataDir && existsSync(keyring)) {
-    const secrets = readFileSync(keyring, 'utf8')
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l && !l.startsWith('#'));
-    const added = mergePepperFile(pepperFile(options.dataDir), secrets);
+  if (options.dataDir && keyringSecrets.length > 0) {
+    const added = mergePepperFile(pepperFile(options.dataDir), keyringSecrets);
     log(`password keyring: ${added} key(s) added`);
   }
   log('restore complete');
