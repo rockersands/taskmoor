@@ -1,10 +1,11 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
-import { hashPassword } from '@taskmoor/iam';
+import { hashPassword, totpCode, totpStep } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { issueSetupToken } from '../setup';
+import { SoftAuthenticator } from '../testing/webauthn';
 import { EVENT_TYPES, type EventType } from './catalogue';
 
 /**
@@ -18,6 +19,11 @@ const MUTATING = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const EXEMPT: Record<string, string> = {
   'POST /api/v1/password-check': 'reads only: checks a candidate password, stores nothing',
   'POST /api/v1/password-links/inspect': 'reads only: shows who a link is for',
+  'POST /api/v1/account/two-factor/totp': 'reads only: proposes a secret, stored at confirmation',
+  'POST /api/v1/account/two-factor/webauthn/options': 'reads only: registration options',
+  'POST /api/v1/session/enroll/totp': 'reads only: proposes a secret, stored at confirmation',
+  'POST /api/v1/session/second-factor/webauthn':
+    'transient sign-in state: the WebAuthn challenge of a sign-in in progress',
 };
 const PASSWORD = 'ladder violet harbour';
 
@@ -423,6 +429,178 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         admin({
           method: 'DELETE',
           url: `/api/v1/tracks/${state.track}/roles/${state.role}/groups/${state.parent}`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/account/two-factor/totp/confirm',
+      expect: 'user.two_factor_enabled',
+      prepare: async () => {
+        await database.db
+          .insertInto('app_user')
+          .values({
+            workspace_id: 1,
+            email: 'dee@example.com',
+            name: 'Dee',
+            password_hash: await hashPassword(PASSWORD),
+          })
+          .execute();
+        state.dee = sessionCookie(
+          await call(undefined, {
+            method: 'POST',
+            url: '/api/v1/session',
+            payload: { email: 'dee@example.com', password: PASSWORD },
+          }),
+        );
+        const setup = (
+          await call(String(state.dee), { method: 'POST', url: '/api/v1/account/two-factor/totp' })
+        ).json();
+        state.deeSecret = setup.secret;
+        state.deeSetup = setup.setupToken;
+      },
+      run: () =>
+        call(String(state.dee), {
+          method: 'POST',
+          url: '/api/v1/account/two-factor/totp/confirm',
+          payload: {
+            setupToken: state.deeSetup,
+            code: totpCode(String(state.deeSecret), totpStep(new Date())),
+          },
+        }),
+    },
+    {
+      route: 'POST /api/v1/session/second-factor',
+      expect: 'session.started',
+      prepare: async () => {
+        const res = await call(undefined, {
+          method: 'POST',
+          url: '/api/v1/session',
+          payload: { email: 'dee@example.com', password: PASSWORD },
+        });
+        state.deeChallenge = res.json().challenge;
+      },
+      run: () =>
+        call(undefined, {
+          method: 'POST',
+          url: '/api/v1/session/second-factor',
+          payload: {
+            challenge: state.deeChallenge,
+            method: 'totp',
+            code: totpCode(String(state.deeSecret), totpStep(new Date()) + 1),
+          },
+        }),
+    },
+    {
+      route: 'POST /api/v1/account/two-factor/recovery-codes',
+      expect: 'user.recovery_codes_regenerated',
+      run: () =>
+        call(String(state.dee), {
+          method: 'POST',
+          url: '/api/v1/account/two-factor/recovery-codes',
+          payload: { password: PASSWORD },
+        }),
+    },
+    {
+      route: 'POST /api/v1/account/two-factor/webauthn',
+      expect: 'user.two_factor_enabled',
+      prepare: async () => {
+        const begin = (
+          await call(String(state.dee), {
+            method: 'POST',
+            url: '/api/v1/account/two-factor/webauthn/options',
+          })
+        ).json();
+        state.deeRegistration = begin.registrationToken;
+        state.deeKey = JSON.stringify(
+          new SoftAuthenticator('http://localhost:8080', 'localhost').register(begin.options),
+        );
+      },
+      run: async () => {
+        const res = await call(String(state.dee), {
+          method: 'POST',
+          url: '/api/v1/account/two-factor/webauthn',
+          payload: {
+            registrationToken: state.deeRegistration,
+            name: 'Key',
+            response: JSON.parse(String(state.deeKey)),
+          },
+        });
+        state.deeKeyId = res.json().securityKey.id;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/account/two-factor/webauthn/:id/remove',
+      expect: 'user.two_factor_disabled',
+      run: () =>
+        call(String(state.dee), {
+          method: 'POST',
+          url: `/api/v1/account/two-factor/webauthn/${state.deeKeyId}/remove`,
+          payload: { password: PASSWORD },
+        }),
+    },
+    {
+      route: 'POST /api/v1/account/two-factor/totp/disable',
+      expect: 'user.two_factor_disabled',
+      run: () =>
+        call(String(state.dee), {
+          method: 'POST',
+          url: '/api/v1/account/two-factor/totp/disable',
+          payload: { password: PASSWORD },
+        }),
+    },
+    {
+      route: 'POST /api/v1/users/:id/two-factor/reset',
+      expect: 'user.two_factor_reset',
+      run: () => admin({ method: 'POST', url: `/api/v1/users/${state.bo}/two-factor/reset` }),
+    },
+    {
+      route: 'PUT /api/v1/security/two-factor',
+      expect: 'two_factor_policy.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/security/two-factor',
+          payload: { required: 'everyone' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/session/enroll/totp/confirm',
+      expect: 'user.two_factor_enabled',
+      prepare: async () => {
+        await database.db
+          .insertInto('app_user')
+          .values({
+            workspace_id: 1,
+            email: 'eve@example.com',
+            name: 'Eve',
+            password_hash: await hashPassword(PASSWORD),
+          })
+          .execute();
+        const res = await call(undefined, {
+          method: 'POST',
+          url: '/api/v1/session',
+          payload: { email: 'eve@example.com', password: PASSWORD },
+        });
+        state.eveChallenge = res.json().challenge;
+        const setup = (
+          await call(undefined, {
+            method: 'POST',
+            url: '/api/v1/session/enroll/totp',
+            payload: { challenge: state.eveChallenge },
+          })
+        ).json();
+        state.eveSecret = setup.secret;
+        state.eveSetup = setup.setupToken;
+      },
+      run: () =>
+        call(undefined, {
+          method: 'POST',
+          url: '/api/v1/session/enroll/totp/confirm',
+          payload: {
+            challenge: state.eveChallenge,
+            setupToken: state.eveSetup,
+            code: totpCode(String(state.eveSecret), totpStep(new Date())),
+          },
         }),
     },
   ];

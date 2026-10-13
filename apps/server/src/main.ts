@@ -58,6 +58,7 @@ if (!peppers?.active && config.roles.includes('api')) {
 
 const app = await buildApp({
   passwords: passwordHasher(peppers),
+  ...(peppers ? { peppers } : {}),
   ...(db ? { db } : {}),
   version: config.version,
   logLevel: config.logLevel,

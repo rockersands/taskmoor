@@ -4,7 +4,7 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import type { Tracer } from '@opentelemetry/api';
 import type { Database } from '@taskmoor/db';
-import { type PasswordHasher, passwordHasher } from '@taskmoor/iam';
+import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/iam';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { presentedToken, resolveSession } from './auth';
@@ -18,6 +18,7 @@ import { registerGroupRoutes } from './routes/groups';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
+import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
 import { pruneIdentityData } from './throttle';
 import { defaultWorkspaceId } from './workspace';
@@ -51,6 +52,8 @@ export interface AppDeps {
   passwords?: PasswordHasher;
   /** The authorization service (ADR-012); built from the database when left out. */
   authorizer?: Authorizer;
+  /** The install's password peppers; they also seal second-factor secrets (M1-084). */
+  peppers?: PepperRing;
   /** Request latency goes here (ADR-023). */
   metrics?: Metrics;
   /** Requests open server spans with it (ADR-023); absent when tracing is off. */
@@ -110,10 +113,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       request.user = request.authSession?.user ?? null;
       request.authz = authorizer.context(request.workspaceId, { userId: request.user?.id ?? null });
     });
-    const passwords = deps.passwords ?? passwordHasher();
+    const passwords = deps.passwords ?? passwordHasher(deps.peppers);
     const cookieOptions = { secureCookies: deps.secureCookies ?? false, passwords };
     registerSetupRoutes(app, db, cookieOptions);
-    registerSessionRoutes(app, db, cookieOptions);
+    registerSessionRoutes(app, db, { ...cookieOptions, authorizer });
     registerAccountRoutes(app, db, { passwords });
     registerUserRoutes(app, db, {
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
@@ -123,6 +126,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);
+    registerTwoFactorRoutes(app, db, {
+      ...cookieOptions,
+      peppers: deps.peppers,
+      authorizer,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+    });
     // Expired sessions, used links and stale counters go at start and every six hours.
     const prune = () =>
       pruneIdentityData(db).catch((error) => app.log.warn({ error }, 'prune failed'));

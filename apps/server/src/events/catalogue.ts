@@ -19,7 +19,10 @@ export const EVENT_TYPES = {
   },
   'session.started': {
     subject: 'user',
-    payload: z.object({ sessionId: id, method: z.enum(['password', 'password_link', 'setup']) }),
+    payload: z.object({
+      sessionId: id,
+      method: z.enum(['password', 'password_link', 'setup', 'totp', 'webauthn', 'recovery_code']),
+    }),
   },
   'session.ended': { subject: 'user', payload: z.object({ sessionId: id.nullable() }) },
   'session.revoked': {
@@ -50,6 +53,24 @@ export const EVENT_TYPES = {
   'user.password_link_created': {
     subject: 'user',
     payload: z.object({ purpose: z.enum(['activate', 'reset']), expiresAt: z.string() }),
+  },
+
+  'user.two_factor_enabled': {
+    subject: 'user',
+    payload: z.object({ method: z.enum(['totp', 'webauthn']), sessionId: id.nullable() }),
+  },
+  'user.two_factor_disabled': {
+    subject: 'user',
+    payload: z.object({ method: z.enum(['totp', 'webauthn']) }),
+  },
+  'user.recovery_codes_regenerated': { subject: 'user', payload: z.object({}) },
+  'user.two_factor_reset': { subject: 'user', payload: z.object({}) },
+  'two_factor_policy.updated': {
+    subject: 'workspace',
+    payload: z.object({
+      required: z.enum(['none', 'site_admins', 'everyone']),
+      groupIds: z.array(id),
+    }),
   },
 
   // Groups

@@ -64,6 +64,26 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   days, single use, stored as a hash) for a new account or a reset; redeeming it signs every
   other session out. The CLI makes the same link for an administrator who is locked out.
 
+## Two-factor sign-in (M1-084)
+
+- **Factors:** authenticator-app codes (TOTP, RFC 6238: SHA-1, 6 digits, 30-second steps, one
+  step of drift, each step usable once), WebAuthn security keys and passkeys through
+  `@simplewebauthn/server` (MIT; "none" attestation, counters checked), and ten single-use
+  recovery codes stored as hashes. TOTP is implemented in `packages/iam/src/totp.ts` against the
+  RFC's test vectors; `otplib` was not needed. TOTP secrets are sealed with AES-256-GCM under a
+  key derived (HKDF) from the active password pepper, so the database alone does not reveal them.
+- **Sign-in:** a correct password with a second factor enrolled answers `second_factor` with a
+  five-minute challenge (five tries); the session starts only after the second factor. Wrong
+  factors count against the account's lockout like wrong passwords, and failures clear only when
+  the whole sign-in succeeds.
+- **Policy:** nobody, site administrators, or everyone, plus chosen groups. A person the policy
+  covers who has no factor gets `enrollment_required` and enrols during the challenge; the last
+  required factor cannot be switched off. Administrators reset a person who lost every factor.
+- **Setup without stored state:** a TOTP secret waiting for its first code and a WebAuthn
+  registration challenge travel in a sealed setup token (ten minutes), so starting a setup writes
+  nothing. Without a pepper (development) the seal uses a key that lives as long as the process.
+- Passwordless sign-in with passkeys can build on the same credentials later.
+
 ## Options considered
 
 Argon2id: Node 22 has no built-in Argon2 (Node 24 adds an experimental one). Native addons

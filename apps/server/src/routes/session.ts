@@ -10,8 +10,15 @@ import {
   revokeUserSessions,
   startSession,
 } from '../auth';
+import type { Authorizer } from '../authz/authorizer';
 import { withEvent } from '../events/bus';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
+import {
+  hasSecondFactor,
+  issueChallenge,
+  secondFactorRequired,
+  twoFactorStatus,
+} from '../two-factor';
 
 const signInBody = z.object({
   email: z.string().trim().min(1).max(320),
@@ -32,7 +39,7 @@ const sessionId = z.object({ id: z.coerce.number().int().positive() });
 export function registerSessionRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { secureCookies: boolean; passwords: PasswordHasher },
+  options: { secureCookies: boolean; passwords: PasswordHasher; authorizer: Authorizer },
 ): void {
   app.get('/api/v1/session', async (request, reply) => {
     if (!request.user) return reply.code(401).send({ error: 'not_signed_in' });
@@ -72,14 +79,39 @@ export function registerSessionRoutes(
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
-    await clearFailures(db, workspaceId, keys.account);
     // Older schemes (M0's scrypt, no pepper, a lower cost) are replaced at the first sign-in.
     const rehash = user.password_hash && passwords.needsRehash(user.password_hash);
     const newHash = rehash ? await passwords.hash(password) : undefined;
+    if (newHash) {
+      await db
+        .updateTable('app_user')
+        .set({ password_hash: newHash })
+        .where('id', '=', user.id)
+        .execute();
+    }
+
+    // M1-084: with a second factor (or a policy that demands one) the password only opens a
+    // challenge; failures are cleared when the whole sign-in succeeds.
+    const factors = await twoFactorStatus(db, user.id);
+    if (hasSecondFactor(factors)) {
+      const challenge = await issueChallenge(db, workspaceId, user.id, 'second_factor');
+      const methods = [
+        ...(factors.totp ? ['totp'] : []),
+        ...(factors.webauthn > 0 ? ['webauthn'] : []),
+        ...(factors.recoveryRemaining > 0 ? ['recovery_code'] : []),
+      ];
+      return { status: 'second_factor', challenge, methods };
+    }
+    if (await secondFactorRequired(db, options.authorizer, workspaceId, user.id)) {
+      const challenge = await issueChallenge(db, workspaceId, user.id, 'enrollment');
+      return { status: 'enrollment_required', challenge };
+    }
+
+    await clearFailures(db, workspaceId, keys.account);
     await withEvent(db, { workspaceId, actorId: user.id }, async (trx) => {
       await trx
         .updateTable('app_user')
-        .set({ last_sign_in_at: now, ...(newHash ? { password_hash: newHash } : {}) })
+        .set({ last_sign_in_at: now })
         .where('id', '=', user.id)
         .execute();
       const sessionId = await startSession(trx, request, reply, {
@@ -96,6 +128,7 @@ export function registerSessionRoutes(
       };
     });
     return {
+      status: 'signed_in',
       user: {
         id: user.id,
         email: user.email,

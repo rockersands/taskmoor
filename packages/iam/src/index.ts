@@ -25,3 +25,16 @@ export {
 } from './policy';
 export { LOCKOUT, lockoutSeconds, throttleKeys } from './throttle';
 export { newToken, tokenHash, tokenMatches } from './token';
+export {
+  base32Decode,
+  base32Encode,
+  generateRecoveryCodes,
+  generateTotpSecret,
+  normaliseRecoveryCode,
+  openSecret,
+  otpauthUri,
+  sealSecret,
+  totpCode,
+  totpStep,
+  verifyTotp,
+} from './totp';

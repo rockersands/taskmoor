@@ -232,6 +232,63 @@ export interface JobTable {
   done_at: Timestamp | null;
 }
 
+/** An authenticator-app secret, sealed under the password pepper (M1-084). */
+export interface TotpCredentialTable {
+  user_id: number;
+  workspace_id: number;
+  secret_sealed: string;
+  /** The last time step used, so a code works once. */
+  last_step: string | null;
+  created_at: DefaultTimestamp;
+}
+
+/** A WebAuthn security key or passkey used as a second factor. */
+export interface WebauthnCredentialTable {
+  id: Generated<number>;
+  workspace_id: number;
+  user_id: number;
+  credential_id: string;
+  /** The COSE public key, base64url. */
+  public_key: string;
+  counter: ColumnType<string, string | number | undefined, string | number>;
+  transports: Generated<string[]>;
+  name: string;
+  created_at: DefaultTimestamp;
+  last_used_at: Timestamp | null;
+}
+
+export interface RecoveryCodeTable {
+  id: Generated<number>;
+  workspace_id: number;
+  user_id: number;
+  code_hash: string;
+  used_at: Timestamp | null;
+}
+
+/** The step between a correct password and the second factor or a required enrolment. */
+export interface SignInChallengeTable {
+  id: Generated<number>;
+  workspace_id: number;
+  user_id: number;
+  token_hash: string;
+  purpose: 'second_factor' | 'enrollment';
+  webauthn_challenge: string | null;
+  attempts: Generated<number>;
+  expires_at: Timestamp;
+  created_at: DefaultTimestamp;
+}
+
+export interface TwoFactorPolicyTable {
+  workspace_id: number;
+  required: 'none' | 'site_admins' | 'everyone';
+  updated_at: DefaultTimestamp;
+}
+
+export interface TwoFactorPolicyGroupTable {
+  workspace_id: number;
+  group_id: number;
+}
+
 /**
  * The M0 session table, replaced by user_session. Kept until a later release so the previous
  * release keeps working during a rolling upgrade (ADR-022); nothing in this release uses it.
@@ -264,5 +321,11 @@ export interface Database {
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;
   job: JobTable;
+  totp_credential: TotpCredentialTable;
+  webauthn_credential: WebauthnCredentialTable;
+  recovery_code: RecoveryCodeTable;
+  sign_in_challenge: SignInChallengeTable;
+  two_factor_policy: TwoFactorPolicyTable;
+  two_factor_policy_group: TwoFactorPolicyGroupTable;
   session: SessionTable;
 }

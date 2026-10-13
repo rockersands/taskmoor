@@ -101,6 +101,34 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
+  '0009_two_factor': {
+    tables: {
+      totp_credential: "secret_sealed = 'plain:SEED'",
+      webauthn_credential: "credential_id = 'seed-credential'",
+      recovery_code: "code_hash = 'seed-code'",
+      sign_in_challenge: "token_hash = 'seed-challenge'",
+      two_factor_policy: 'workspace_id = 1',
+      two_factor_policy_group: 'workspace_id = 1',
+    },
+    seed: async (db) => {
+      const user = sql`(SELECT id FROM app_user WHERE email = 'seed@example.com')`;
+      await sql`INSERT INTO totp_credential (user_id, workspace_id, secret_sealed)
+        VALUES (${user}, 1, 'plain:SEED')`.execute(db);
+      await sql`INSERT INTO webauthn_credential (workspace_id, user_id, credential_id, public_key, name)
+        VALUES (1, ${user}, 'seed-credential', 'AAAA', 'Seed key')`.execute(db);
+      await sql`INSERT INTO recovery_code (workspace_id, user_id, code_hash)
+        VALUES (1, ${user}, 'seed-code')`.execute(db);
+      await sql`INSERT INTO sign_in_challenge (workspace_id, user_id, token_hash, purpose, expires_at)
+        VALUES (1, ${user}, 'seed-challenge', 'second_factor', now() + interval '5 minutes')`.execute(
+        db,
+      );
+      await sql`INSERT INTO two_factor_policy (workspace_id, required) VALUES (1, 'site_admins')`.execute(
+        db,
+      );
+      await sql`INSERT INTO two_factor_policy_group (workspace_id, group_id)
+        SELECT 1, id FROM user_group WHERE name = 'seed-group'`.execute(db);
+    },
+  },
 };
 
 /** How many of the rows the named seeds wrote are still there: one per table when nothing was lost. */

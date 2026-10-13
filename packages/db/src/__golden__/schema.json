@@ -168,6 +168,19 @@
       "CREATE INDEX password_link_user_idx ON public.password_link USING btree (user_id)"
     ]
   },
+  "recovery_code": {
+    "columns": [
+      "id integer not null default nextval('recovery_code_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "code_hash text not null",
+      "used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX recovery_code_pkey ON public.recovery_code USING btree (id)",
+      "CREATE INDEX recovery_code_user_idx ON public.recovery_code USING btree (user_id)"
+    ]
+  },
   "role": {
     "columns": [
       "id integer not null default nextval('role_id_seq'::regclass)",
@@ -213,6 +226,24 @@
       "CREATE INDEX session_user_id_idx ON public.session USING btree (user_id)"
     ]
   },
+  "sign_in_challenge": {
+    "columns": [
+      "id integer not null default nextval('sign_in_challenge_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "token_hash text not null",
+      "purpose text not null",
+      "webauthn_challenge text",
+      "attempts integer not null default 0",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sign_in_challenge_pkey ON public.sign_in_challenge USING btree (id)",
+      "CREATE UNIQUE INDEX sign_in_challenge_token_hash_key ON public.sign_in_challenge USING btree (token_hash)",
+      "CREATE INDEX sign_in_challenge_user_idx ON public.sign_in_challenge USING btree (user_id)"
+    ]
+  },
   "sign_in_throttle": {
     "columns": [
       "workspace_id integer not null",
@@ -224,6 +255,18 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
+    ]
+  },
+  "totp_credential": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "secret_sealed text not null",
+      "last_step bigint",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX totp_credential_pkey ON public.totp_credential USING btree (user_id)"
     ]
   },
   "track": {
@@ -257,6 +300,25 @@
       "CREATE INDEX track_role_actor_user_idx ON public.track_role_actor USING btree (user_id) WHERE (user_id IS NOT NULL)"
     ]
   },
+  "two_factor_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "required text not null default 'none'::text",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX two_factor_policy_pkey ON public.two_factor_policy USING btree (workspace_id)"
+    ]
+  },
+  "two_factor_policy_group": {
+    "columns": [
+      "workspace_id integer not null",
+      "group_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX two_factor_policy_group_pkey ON public.two_factor_policy_group USING btree (workspace_id, group_id)"
+    ]
+  },
   "user_group": {
     "columns": [
       "id integer not null default nextval('user_group_id_seq'::regclass)",
@@ -287,6 +349,25 @@
       "CREATE UNIQUE INDEX user_session_pkey ON public.user_session USING btree (id)",
       "CREATE UNIQUE INDEX user_session_token_hash_key ON public.user_session USING btree (token_hash)",
       "CREATE INDEX user_session_user_idx ON public.user_session USING btree (user_id)"
+    ]
+  },
+  "webauthn_credential": {
+    "columns": [
+      "id integer not null default nextval('webauthn_credential_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "credential_id text not null",
+      "public_key text not null",
+      "counter bigint not null default 0",
+      "transports ARRAY not null default '{}'::text[]",
+      "name text not null",
+      "created_at timestamp with time zone not null default now()",
+      "last_used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX webauthn_credential_credential_id_key ON public.webauthn_credential USING btree (credential_id)",
+      "CREATE UNIQUE INDEX webauthn_credential_pkey ON public.webauthn_credential USING btree (id)",
+      "CREATE INDEX webauthn_credential_user_idx ON public.webauthn_credential USING btree (user_id)"
     ]
   },
   "workspace": {
