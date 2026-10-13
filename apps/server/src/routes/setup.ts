@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { startSession } from '../auth';
+import { emit } from '../events/bus';
 import {
   INSTANCE_KEY,
   SETUP_KEY,
@@ -100,9 +101,21 @@ export function registerSetupRoutes(
       });
       // The token has done its one job.
       await trx.deleteFrom('instance_setting').where('key', '=', SETUP_TOKEN_KEY).execute();
+      await startSession(trx, request, reply, {
+        userId: created.id,
+        secure: options.secureCookies,
+      });
+      await emit(
+        trx,
+        { workspaceId: request.workspaceId, actorId: created.id },
+        {
+          type: 'setup.completed',
+          subjectId: request.workspaceId,
+          payload: { adminId: created.id, instanceName: body.instanceName },
+        },
+      );
       return created;
     });
-    await startSession(db, request, reply, { userId: user.id, secure: options.secureCookies });
     return reply.code(201).send({
       user: {
         id: user.id,

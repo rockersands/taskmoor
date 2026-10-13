@@ -1,7 +1,7 @@
 import type { Database } from '@taskmoor/db';
 import { newToken, tokenHash } from '@taskmoor/iam';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { Kysely } from 'kysely';
+import type { Kysely, Transaction } from 'kysely';
 import type { AuthzContext } from './authz/authorizer';
 import type { GlobalPermission } from './authz/permissions';
 
@@ -108,7 +108,7 @@ export async function resolveSession(
 
 /** Starts a session with a fresh token (ASVS 3.2.1) and sets the cookie. Returns the row id. */
 export async function startSession(
-  db: Kysely<Database>,
+  db: Kysely<Database> | Transaction<Database>,
   request: FastifyRequest,
   reply: FastifyReply,
   options: { userId: number; secure: boolean },
@@ -143,21 +143,29 @@ export function clearSessionCookies(reply: FastifyReply): void {
   reply.clearCookie(SECURE_SESSION_COOKIE, { path: '/', secure: true });
 }
 
-/** Signs this browser out: the row goes, so the token is worthless even if it was copied. */
+/**
+ * Signs this browser out: the row goes, so the token is worthless even if it was copied.
+ * Returns the ended session's id, or null when there was none.
+ */
 export async function endSession(
-  db: Kysely<Database>,
+  db: Kysely<Database> | Transaction<Database>,
   request: FastifyRequest,
   reply: FastifyReply,
-): Promise<void> {
+): Promise<number | null> {
   const token = presentedToken(request);
-  if (token)
-    await db.deleteFrom('user_session').where('token_hash', '=', tokenHash(token)).execute();
   clearSessionCookies(reply);
+  if (!token) return null;
+  const row = await db
+    .deleteFrom('user_session')
+    .where('token_hash', '=', tokenHash(token))
+    .returning('id')
+    .executeTakeFirst();
+  return row?.id ?? null;
 }
 
 /** Ends every session of a user, except one when given (the browser that asked). */
 export async function revokeUserSessions(
-  db: Kysely<Database>,
+  db: Kysely<Database> | Transaction<Database>,
   workspaceId: number,
   userId: number,
   except?: number,

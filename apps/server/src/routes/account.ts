@@ -10,6 +10,7 @@ import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { requireUser, revokeUserSessions } from '../auth';
 import { canonicalTimeZone, validLocale, validTimeZone } from '../directory';
+import { diff, withEvent } from '../events/bus';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 
 const profileBody = z
@@ -45,22 +46,41 @@ export function registerAccountRoutes(
       return reply.code(400).send({ error: 'invalid_time_zone' });
     }
     if (locale && !validLocale(locale)) return reply.code(400).send({ error: 'invalid_locale' });
-    const row = await db
-      .updateTable('app_user')
-      .set({
-        ...(name !== undefined ? { name } : {}),
-        ...(timeZone !== undefined
-          ? { time_zone: timeZone ? canonicalTimeZone(timeZone) : null }
-          : {}),
-        ...(locale !== undefined
-          ? { locale: locale ? Intl.getCanonicalLocales(locale)[0] : null }
-          : {}),
-        updated_at: new Date(),
-      })
-      .where('id', '=', user.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .returning(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale'])
-      .executeTakeFirstOrThrow();
+    const changes = {
+      ...(name !== undefined ? { name } : {}),
+      ...(timeZone !== undefined
+        ? { time_zone: timeZone ? canonicalTimeZone(timeZone) : null }
+        : {}),
+      ...(locale !== undefined
+        ? { locale: locale ? (Intl.getCanonicalLocales(locale)[0] ?? null) : null }
+        : {}),
+    };
+    const row = await withEvent(
+      db,
+      { workspaceId: request.workspaceId, actorId: user.id },
+      async (trx) => {
+        const before = await trx
+          .selectFrom('app_user')
+          .select(['name', 'time_zone', 'locale'])
+          .where('id', '=', user.id)
+          .executeTakeFirstOrThrow();
+        const updated = await trx
+          .updateTable('app_user')
+          .set({ ...changes, updated_at: new Date() })
+          .where('id', '=', user.id)
+          .where('workspace_id', '=', request.workspaceId)
+          .returning(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale'])
+          .executeTakeFirstOrThrow();
+        const changed = diff(before, changes);
+        return {
+          result: updated,
+          event:
+            Object.keys(changed).length > 0
+              ? { type: 'user.updated', subjectId: user.id, payload: { changes: changed } }
+              : null,
+        };
+      },
+    );
     return {
       user: {
         id: row.id,
@@ -110,16 +130,23 @@ export function registerAccountRoutes(
         problems: problems.map((p) => `newPassword: ${describePasswordProblem(p)}`),
       });
     }
-    await db
-      .updateTable('app_user')
-      .set({
-        password_hash: await passwords.hash(newPassword),
-        password_changed_at: now,
-        updated_at: now,
-      })
-      .where('id', '=', user.id)
-      .execute();
-    const signedOut = await revokeUserSessions(db, workspaceId, user.id, request.authSession?.id);
+    const newHash = await passwords.hash(newPassword);
+    const signedOut = await withEvent(db, { workspaceId, actorId: user.id }, async (trx) => {
+      await trx
+        .updateTable('app_user')
+        .set({ password_hash: newHash, password_changed_at: now, updated_at: now })
+        .where('id', '=', user.id)
+        .execute();
+      const ended = await revokeUserSessions(trx, workspaceId, user.id, request.authSession?.id);
+      return {
+        result: ended,
+        event: {
+          type: 'user.password_changed',
+          subjectId: user.id,
+          payload: { via: 'self', endedSessions: ended },
+        },
+      };
+    });
     return { signedOutSessions: signedOut };
   });
 }

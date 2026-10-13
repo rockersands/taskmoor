@@ -13,6 +13,7 @@ import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
 import { backup, backupSize, restore, tableChecksums } from './backup';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
+import { emit } from './events/bus';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 import { defaultWorkspaceId } from './workspace';
 
@@ -125,11 +126,24 @@ try {
         process.exitCode = 1;
         break;
       }
-      const link = await createPasswordLink(db, {
-        workspaceId,
-        userId: user.id,
-        purpose: user.password_hash ? 'reset' : 'activate',
-        createdBy: null,
+      const purpose = user.password_hash ? 'reset' : 'activate';
+      const link = await db.transaction().execute(async (trx) => {
+        const created = await createPasswordLink(trx, {
+          workspaceId,
+          userId: user.id,
+          purpose,
+          createdBy: null,
+        });
+        await emit(
+          trx,
+          { workspaceId, actorId: null },
+          {
+            type: 'user.password_link_created',
+            subjectId: user.id,
+            payload: { purpose, expiresAt: created.expiresAt.toISOString() },
+          },
+        );
+        return created;
       });
       say(passwordLinkUrl(config.publicUrl, link.token));
       say(`valid until ${link.expiresAt.toISOString()}; it works once`);

@@ -52,6 +52,24 @@ budget of 1,000 jobs per second holds with a wide margin on one machine.
 | pgmq | Queue semantics in SQL | Needs an extension that standard images and most managed Postgres offerings lack |
 | Redis, RabbitMQ, NATS | Proven brokers | A second stateful service for every self-hoster |
 
+## Implementation (M1-005)
+
+`apps/server/src/events`: tables `domain_event` and `job` (migration 0005).
+
+- **One domain event per mutation**, written with `emit` in the mutation's own transaction and
+  typed by the catalogue (`catalogue.ts`: type, subject kind, zod payload). Payloads never carry
+  secrets. A changed payload is a new version of the type, not an edit, because events outlive
+  releases.
+- **The outbox is the event table.** `EventBus.relayOnce` claims unpublished events with SKIP
+  LOCKED and enqueues one job per interested subscriber keyed `event:<subscriber>:<event id>`,
+  then marks them published, in one transaction; a relay run twice enqueues nothing twice.
+- **The worker role** loops: relay, run a batch of jobs, release jobs locked for more than ten
+  minutes (a dead worker), then wait half a second when idle. LISTEN/NOTIFY can replace the
+  wait when latency matters.
+- **Fitness test** (`contract.test.ts`): every POST, PUT, PATCH and DELETE route has a scenario
+  that must leave exactly one event of its declared type with a valid payload, or a stated
+  exemption (read-only POSTs); every catalogue type must be produced by some route.
+
 ## Consequences
 
 Queue depth, failures and latency become ordinary SQL for the admin pages and the Prometheus

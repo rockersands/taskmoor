@@ -9,6 +9,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { revokeUserSessions, startSession } from '../auth';
+import { emit } from '../events/bus';
 import { lockedUntil, recordFailure, secondsUntil } from '../throttle';
 
 const inspectBody = z.object({ token: z.string().min(1).max(200) });
@@ -93,11 +94,24 @@ export function registerPasswordLinkRoutes(
         .set({ password_hash: passwordHash, password_changed_at: now, updated_at: now })
         .where('id', '=', link.userId)
         .execute();
+      // Every other session ends; this browser starts a fresh one.
+      const ended = await revokeUserSessions(trx, request.workspaceId, link.userId);
+      await startSession(trx, request, reply, {
+        userId: link.userId,
+        secure: options.secureCookies,
+      });
+      await emit(
+        trx,
+        { workspaceId: request.workspaceId, actorId: link.userId },
+        {
+          type: 'user.password_changed',
+          subjectId: link.userId,
+          payload: { via: 'link', endedSessions: ended },
+        },
+      );
       return true;
     });
     if (!used) return invalid(request, reply);
-    await revokeUserSessions(db, request.workspaceId, link.userId);
-    await startSession(db, request, reply, { userId: link.userId, secure: options.secureCookies });
     const user = await db
       .selectFrom('app_user')
       .select(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale'])

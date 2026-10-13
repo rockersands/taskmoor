@@ -65,4 +65,5 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-099 Helm chart | Done | Chart with lint and render tests; on kind in CI: helm test green and a rolling upgrade with 55,271 requests and none failed |
 | M1-001 Identity foundation | Done | Workspaces, users, nested groups, Argon2id with a pepper keyring, lockout and rate limits, hashed sessions, password links, account UI; ASVS L2 authentication checks as tests |
 | M1-002 Roles and authorization | Done | Roles, access policies, global grants, track role actors; authorization service with cache, list filter and explainer; 10k-grant property test, check p95 under 10 ms |
+| M1-005 Domain event bus | Done | One typed event per mutation in its transaction, relay to subscriber jobs, queue with backoff; fitness test over every mutating route |
 | M1-100 Air-gap bundle | In progress | Bundle, verify and offline install tested on an internal network; release signing key waits on the user |

@@ -2,6 +2,9 @@ import { createDb, migrateToLatest, poolStats } from '@taskmoor/db';
 import { passwordHasher } from '@taskmoor/iam';
 import { buildApp } from './app';
 import { loadConfig } from './config';
+import { EventBus, startWorker } from './events/bus';
+import { JobRunner } from './events/queue';
+import { registerSubscribers } from './events/subscribers';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
 import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
@@ -71,11 +74,21 @@ const app = await buildApp({
 const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
 
 const timers: NodeJS.Timeout[] = [];
-if (config.roles.includes('worker')) {
-  // The queue (ADR-015) moves into the server in M1; until then the role only proves the image
-  // and the process model, and says so.
-  app.log.info('worker role: no job types registered yet (ADR-015, M1)');
-  timers.push(setInterval(() => app.log.debug('worker idle'), 60_000));
+let worker: { stop: () => Promise<void> } | undefined;
+if (config.roles.includes('worker') && db) {
+  // The domain event bus and job queue (ADR-015, M1-005): relay new events to subscribers'
+  // queues and run their jobs.
+  const bus = new EventBus(db);
+  registerSubscribers(bus, { db });
+  const runner = new JobRunner(db, `worker-${process.pid}`);
+  bus.attach(runner);
+  worker = startWorker({
+    bus,
+    runner,
+    db,
+    onError: (error) => app.log.error({ error }, 'worker loop failed'),
+  });
+  app.log.info('worker role: relaying events and running jobs');
 }
 if (config.roles.includes('realtime')) {
   app.log.info('realtime role: no channels yet (ADR-013, M1-031)');
@@ -95,6 +108,7 @@ async function shutdown(signal: string): Promise<void> {
   closing = true;
   app.log.info({ signal }, 'shutting down');
   for (const t of timers) clearInterval(t);
+  await worker?.stop();
   await app.close();
   await metricsServer?.close();
   await tracing?.shutdown();

@@ -6,6 +6,10 @@ Read this first in every session, then update it before you stop.
 
 ### Done
 
+- **M1-005 event bus** (ADR-015 implemented): `apps/server/src/events` (catalogue, emit,
+  relay, job queue, worker loop in the worker role). Every new mutating route must emit one
+  event in its transaction and get a scenario in `events/contract.test.ts`, or the test fails.
+  Subscribers register in `events/subscribers.ts` (none yet; audit is first).
 - **M1-002 authorization** (ADR-012 implemented): roles, access policies and grants, global grants,
   track role actors, and `apps/server/src/authz/authorizer.ts` (per-track permission sets, list
   filter for search, explainer, epoch-checked cache). Routes check `request.authz`; site
@@ -117,7 +121,8 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. `pnpm next-task`: M1-003 (audit events), M1-005 (event bus) and M1-006 (tracks) are ready. The query catalogue gaps (targetRelease,
+1. `pnpm next-task`: M1-003 (audit, the first event subscriber), M1-004 (API tokens) and M1-006
+   (tracks) are ready and independent of each other. The query catalogue gaps (targetRelease,
    area, sprint, due; history on every field; user values by name; function arity) belong to
    M1-036.
 2. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and

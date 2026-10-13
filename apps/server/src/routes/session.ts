@@ -10,6 +10,7 @@ import {
   revokeUserSessions,
   startSession,
 } from '../auth';
+import { withEvent } from '../events/bus';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 
 const signInBody = z.object({
@@ -74,15 +75,26 @@ export function registerSessionRoutes(
     await clearFailures(db, workspaceId, keys.account);
     // Older schemes (M0's scrypt, no pepper, a lower cost) are replaced at the first sign-in.
     const rehash = user.password_hash && passwords.needsRehash(user.password_hash);
-    await db
-      .updateTable('app_user')
-      .set({
-        last_sign_in_at: now,
-        ...(rehash ? { password_hash: await passwords.hash(password) } : {}),
-      })
-      .where('id', '=', user.id)
-      .execute();
-    await startSession(db, request, reply, { userId: user.id, secure: options.secureCookies });
+    const newHash = rehash ? await passwords.hash(password) : undefined;
+    await withEvent(db, { workspaceId, actorId: user.id }, async (trx) => {
+      await trx
+        .updateTable('app_user')
+        .set({ last_sign_in_at: now, ...(newHash ? { password_hash: newHash } : {}) })
+        .where('id', '=', user.id)
+        .execute();
+      const sessionId = await startSession(trx, request, reply, {
+        userId: user.id,
+        secure: options.secureCookies,
+      });
+      return {
+        result: sessionId,
+        event: {
+          type: 'session.started',
+          subjectId: user.id,
+          payload: { sessionId, method: 'password' },
+        },
+      };
+    });
     return {
       user: {
         id: user.id,
@@ -96,7 +108,18 @@ export function registerSessionRoutes(
   });
 
   app.delete('/api/v1/session', async (request, reply) => {
-    await endSession(db, request, reply);
+    const userId = request.user?.id ?? null;
+    await withEvent(db, { workspaceId: request.workspaceId, actorId: userId }, async (trx) => {
+      const ended = await endSession(trx, request, reply);
+      // Only a live session's end is an event; a stale cookie just gets cleared.
+      return {
+        result: ended,
+        event:
+          ended !== null && userId !== null
+            ? { type: 'session.ended', subjectId: userId, payload: { sessionId: ended } }
+            : null,
+      };
+    });
     return reply.code(204).send();
   });
 
@@ -130,11 +153,24 @@ export function registerSessionRoutes(
   app.delete('/api/v1/sessions/others', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
-    const revoked = await revokeUserSessions(
+    const revoked = await withEvent(
       db,
-      request.workspaceId,
-      user.id,
-      request.authSession?.id,
+      { workspaceId: request.workspaceId, actorId: user.id },
+      async (trx) => {
+        const count = await revokeUserSessions(
+          trx,
+          request.workspaceId,
+          user.id,
+          request.authSession?.id,
+        );
+        return {
+          result: count,
+          event:
+            count > 0
+              ? { type: 'session.revoked', subjectId: user.id, payload: { count, by: 'self' } }
+              : null,
+        };
+      },
     );
     return { revoked };
   });
@@ -144,13 +180,27 @@ export function registerSessionRoutes(
     if (!user) return reply;
     const parsed = sessionId.safeParse(request.params);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const result = await db
-      .deleteFrom('user_session')
-      .where('id', '=', parsed.data.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .where('user_id', '=', user.id)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const deleted = await withEvent(
+      db,
+      { workspaceId: request.workspaceId, actorId: user.id },
+      async (trx) => {
+        const result = await trx
+          .deleteFrom('user_session')
+          .where('id', '=', parsed.data.id)
+          .where('workspace_id', '=', request.workspaceId)
+          .where('user_id', '=', user.id)
+          .executeTakeFirst();
+        const count = Number(result.numDeletedRows);
+        return {
+          result: count,
+          event:
+            count > 0
+              ? { type: 'session.revoked', subjectId: user.id, payload: { count, by: 'self' } }
+              : null,
+        };
+      },
+    );
+    if (deleted === 0) return reply.code(404).send({ error: 'not_found' });
     if (parsed.data.id === request.authSession?.id) clearSessionCookies(reply);
     return reply.code(204).send();
   });

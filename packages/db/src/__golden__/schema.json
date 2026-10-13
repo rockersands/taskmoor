@@ -60,6 +60,25 @@
       "CREATE UNIQUE INDEX authz_epoch_pkey ON public.authz_epoch USING btree (workspace_id)"
     ]
   },
+  "domain_event": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "type text not null",
+      "version smallint not null default 1",
+      "actor_id integer",
+      "subject_type text not null",
+      "subject_id text not null",
+      "payload jsonb not null default '{}'::jsonb",
+      "occurred_at timestamp with time zone not null default clock_timestamp()",
+      "published_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX domain_event_pkey ON public.domain_event USING btree (id)",
+      "CREATE INDEX domain_event_subject_idx ON public.domain_event USING btree (workspace_id, subject_type, subject_id, id)",
+      "CREATE INDEX domain_event_unpublished_idx ON public.domain_event USING btree (id) WHERE (published_at IS NULL)"
+    ]
+  },
   "global_grant": {
     "columns": [
       "id integer not null default nextval('global_grant_id_seq'::regclass)",
@@ -105,6 +124,30 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX instance_setting_pkey ON public.instance_setting USING btree (key)"
+    ]
+  },
+  "job": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "task text not null",
+      "payload jsonb not null default '{}'::jsonb",
+      "key text",
+      "run_at timestamp with time zone not null default now()",
+      "attempts integer not null default 0",
+      "max_attempts integer not null default 25",
+      "locked_at timestamp with time zone",
+      "locked_by text",
+      "last_error text",
+      "created_at timestamp with time zone not null default clock_timestamp()",
+      "started_at timestamp with time zone",
+      "done_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX job_key_key ON public.job USING btree (key)",
+      "CREATE INDEX job_locked_idx ON public.job USING btree (locked_at) WHERE ((locked_at IS NOT NULL) AND (done_at IS NULL))",
+      "CREATE UNIQUE INDEX job_pkey ON public.job USING btree (id)",
+      "CREATE INDEX job_ready_idx ON public.job USING btree (run_at, id) WHERE ((done_at IS NULL) AND (locked_at IS NULL))"
     ]
   },
   "password_link": {

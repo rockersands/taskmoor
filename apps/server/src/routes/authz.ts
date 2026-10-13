@@ -12,6 +12,7 @@ import {
   TRACK_LEVEL_GRANTEES,
   TRACK_PERMISSION_GROUPS,
 } from '../authz/permissions';
+import { diff, emit } from '../events/bus';
 
 const id = z.coerce.number().int().positive();
 const nameBody = z
@@ -59,6 +60,11 @@ export function registerAuthzRoutes(
 ): void {
   const configAdmin = (request: FastifyRequest, reply: FastifyReply) =>
     requireGlobal(request, reply, 'site_admin', 'configuration_admin');
+  /** Who the event names: the signed-in person of the request. */
+  const by = (request: FastifyRequest) => ({
+    workspaceId: request.workspaceId,
+    actorId: request.user?.id ?? null,
+  });
 
   async function inWorkspace(
     table: 'role' | 'user_group' | 'app_user' | 'access_policy' | 'track',
@@ -133,15 +139,23 @@ export function registerAuthzRoutes(
     const parsed = nameBody.safeParse(request.body);
     if (!parsed.success) return invalid(reply);
     try {
-      const role = await db
-        .insertInto('role')
-        .values({
-          workspace_id: request.workspaceId,
-          name: parsed.data.name,
-          description: parsed.data.description ?? '',
-        })
-        .returning(['id', 'name', 'description'])
-        .executeTakeFirstOrThrow();
+      const role = await db.transaction().execute(async (trx) => {
+        const row = await trx
+          .insertInto('role')
+          .values({
+            workspace_id: request.workspaceId,
+            name: parsed.data.name,
+            description: parsed.data.description ?? '',
+          })
+          .returning(['id', 'name', 'description'])
+          .executeTakeFirstOrThrow();
+        await emit(trx, by(request), {
+          type: 'role.created',
+          subjectId: row.id,
+          payload: { name: row.name },
+        });
+        return row;
+      });
       return reply.code(201).send({ role });
     } catch (error) {
       if (isUniqueViolation(error)) return reply.code(409).send({ error: 'name_taken' });
@@ -155,18 +169,37 @@ export function registerAuthzRoutes(
     const parsed = nameBody.partial().strict().safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
     try {
-      const role = await db
-        .updateTable('role')
-        .set({
+      const role = await db.transaction().execute(async (trx) => {
+        const before = await trx
+          .selectFrom('role')
+          .select(['name', 'description'])
+          .where('id', '=', params.data.id)
+          .where('workspace_id', '=', request.workspaceId)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!before) return undefined;
+        const next = {
           ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
           ...(parsed.data.description !== undefined
             ? { description: parsed.data.description }
             : {}),
-        })
-        .where('id', '=', params.data.id)
-        .where('workspace_id', '=', request.workspaceId)
-        .returning(['id', 'name', 'description'])
-        .executeTakeFirst();
+        };
+        const row = await trx
+          .updateTable('role')
+          .set(next)
+          .where('id', '=', params.data.id)
+          .returning(['id', 'name', 'description'])
+          .executeTakeFirstOrThrow();
+        const changes = diff(before, next);
+        if (Object.keys(changes).length > 0) {
+          await emit(trx, by(request), {
+            type: 'role.updated',
+            subjectId: row.id,
+            payload: { changes },
+          });
+        }
+        return row;
+      });
       if (!role) return reply.code(404).send({ error: 'not_found' });
       return { role };
     } catch (error) {
@@ -186,12 +219,23 @@ export function registerAuthzRoutes(
       .where('role_id', '=', params.data.id)
       .executeTakeFirst();
     if (used) return reply.code(409).send({ error: 'role_in_use' });
-    const result = await db
-      .deleteFrom('role')
-      .where('id', '=', params.data.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const deleted = await db.transaction().execute(async (trx) => {
+      const row = await trx
+        .deleteFrom('role')
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .returning(['id', 'name'])
+        .executeTakeFirst();
+      if (row) {
+        await emit(trx, by(request), {
+          type: 'role.deleted',
+          subjectId: row.id,
+          payload: { name: row.name },
+        });
+      }
+      return row;
+    });
+    if (!deleted) return reply.code(404).send({ error: 'not_found' });
     return reply.code(204).send();
   });
 
@@ -255,6 +299,11 @@ export function registerAuthzRoutes(
             SELECT workspace_id, ${row.id}, permission, grantee, role_id, group_id, user_id, field_key
               FROM access_grant WHERE policy_id = ${parsed.data.copyFrom}`.execute(trx);
         }
+        await emit(trx, by(request), {
+          type: 'access_policy.created',
+          subjectId: row.id,
+          payload: { name: row.name, copiedFrom: parsed.data.copyFrom ?? null },
+        });
         return row;
       });
       return reply.code(201).send({ policy });
@@ -314,18 +363,37 @@ export function registerAuthzRoutes(
     const parsed = nameBody.partial().strict().safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
     try {
-      const policy = await db
-        .updateTable('access_policy')
-        .set({
+      const policy = await db.transaction().execute(async (trx) => {
+        const before = await trx
+          .selectFrom('access_policy')
+          .select(['name', 'description'])
+          .where('id', '=', params.data.id)
+          .where('workspace_id', '=', request.workspaceId)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!before) return undefined;
+        const next = {
           ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
           ...(parsed.data.description !== undefined
             ? { description: parsed.data.description }
             : {}),
-        })
-        .where('id', '=', params.data.id)
-        .where('workspace_id', '=', request.workspaceId)
-        .returning(['id', 'name', 'description'])
-        .executeTakeFirst();
+        };
+        const row = await trx
+          .updateTable('access_policy')
+          .set(next)
+          .where('id', '=', params.data.id)
+          .returning(['id', 'name', 'description'])
+          .executeTakeFirstOrThrow();
+        const changes = diff(before, next);
+        if (Object.keys(changes).length > 0) {
+          await emit(trx, by(request), {
+            type: 'access_policy.updated',
+            subjectId: row.id,
+            payload: { changes },
+          });
+        }
+        return row;
+      });
       if (!policy) return reply.code(404).send({ error: 'not_found' });
       return { policy };
     } catch (error) {
@@ -344,12 +412,23 @@ export function registerAuthzRoutes(
       .where('access_policy_id', '=', params.data.id)
       .executeTakeFirst();
     if (used) return reply.code(409).send({ error: 'policy_in_use' });
-    const result = await db
-      .deleteFrom('access_policy')
-      .where('id', '=', params.data.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const deleted = await db.transaction().execute(async (trx) => {
+      const row = await trx
+        .deleteFrom('access_policy')
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .returning(['id', 'name'])
+        .executeTakeFirst();
+      if (row) {
+        await emit(trx, by(request), {
+          type: 'access_policy.deleted',
+          subjectId: row.id,
+          payload: { name: row.name },
+        });
+      }
+      return row;
+    });
+    if (!deleted) return reply.code(404).send({ error: 'not_found' });
     return reply.code(204).send();
   });
 
@@ -381,20 +460,36 @@ export function registerAuthzRoutes(
     ]);
     if (exist.includes(false)) return reply.code(404).send({ error: 'not_found' });
     try {
-      const grant = await db
-        .insertInto('access_grant')
-        .values({
-          workspace_id: ws,
-          policy_id: params.data.id,
-          permission: g.permission,
-          grantee: g.grantee,
-          role_id: g.roleId ?? null,
-          group_id: g.groupId ?? null,
-          user_id: g.userId ?? null,
-          field_key: g.fieldKey ?? null,
-        })
-        .returning(['id', 'permission', 'grantee'])
-        .executeTakeFirstOrThrow();
+      const grant = await db.transaction().execute(async (trx) => {
+        const row = await trx
+          .insertInto('access_grant')
+          .values({
+            workspace_id: ws,
+            policy_id: params.data.id,
+            permission: g.permission,
+            grantee: g.grantee,
+            role_id: g.roleId ?? null,
+            group_id: g.groupId ?? null,
+            user_id: g.userId ?? null,
+            field_key: g.fieldKey ?? null,
+          })
+          .returning(['id', 'permission', 'grantee'])
+          .executeTakeFirstOrThrow();
+        await emit(trx, by(request), {
+          type: 'access_grant.added',
+          subjectId: params.data.id,
+          payload: {
+            grantId: row.id,
+            permission: g.permission,
+            grantee: g.grantee,
+            roleId: g.roleId ?? null,
+            groupId: g.groupId ?? null,
+            userId: g.userId ?? null,
+            fieldKey: g.fieldKey ?? null,
+          },
+        });
+        return row;
+      });
       return reply.code(201).send({ grant });
     } catch (error) {
       if (isUniqueViolation(error)) return reply.code(409).send({ error: 'grant_exists' });
@@ -406,13 +501,24 @@ export function registerAuthzRoutes(
     if (!(await configAdmin(request, reply))) return reply;
     const params = z.object({ id, grantId: id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
-    const result = await db
-      .deleteFrom('access_grant')
-      .where('id', '=', params.data.grantId)
-      .where('policy_id', '=', params.data.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const deleted = await db.transaction().execute(async (trx) => {
+      const row = await trx
+        .deleteFrom('access_grant')
+        .where('id', '=', params.data.grantId)
+        .where('policy_id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .returning('id')
+        .executeTakeFirst();
+      if (row) {
+        await emit(trx, by(request), {
+          type: 'access_grant.removed',
+          subjectId: params.data.id,
+          payload: { grantId: row.id },
+        });
+      }
+      return row;
+    });
+    if (!deleted) return reply.code(404).send({ error: 'not_found' });
     return reply.code(204).send();
   });
 
@@ -457,17 +563,31 @@ export function registerAuthzRoutes(
     ]);
     if (exist.includes(false)) return reply.code(404).send({ error: 'not_found' });
     try {
-      const grant = await db
-        .insertInto('global_grant')
-        .values({
-          workspace_id: ws,
-          permission: g.permission,
-          grantee: g.grantee,
-          group_id: g.groupId ?? null,
-          user_id: g.userId ?? null,
-        })
-        .returning(['id', 'permission', 'grantee'])
-        .executeTakeFirstOrThrow();
+      const grant = await db.transaction().execute(async (trx) => {
+        const row = await trx
+          .insertInto('global_grant')
+          .values({
+            workspace_id: ws,
+            permission: g.permission,
+            grantee: g.grantee,
+            group_id: g.groupId ?? null,
+            user_id: g.userId ?? null,
+          })
+          .returning(['id', 'permission', 'grantee'])
+          .executeTakeFirstOrThrow();
+        await emit(trx, by(request), {
+          type: 'global_grant.added',
+          subjectId: ws,
+          payload: {
+            grantId: row.id,
+            permission: g.permission,
+            grantee: g.grantee,
+            groupId: g.groupId ?? null,
+            userId: g.userId ?? null,
+          },
+        });
+        return row;
+      });
       return reply.code(201).send({ grant });
     } catch (error) {
       if (isUniqueViolation(error)) return reply.code(409).send({ error: 'grant_exists' });
@@ -479,12 +599,23 @@ export function registerAuthzRoutes(
     if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
-    const result = await db
-      .deleteFrom('global_grant')
-      .where('id', '=', params.data.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const deleted = await db.transaction().execute(async (trx) => {
+      const row = await trx
+        .deleteFrom('global_grant')
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .returning('id')
+        .executeTakeFirst();
+      if (row) {
+        await emit(trx, by(request), {
+          type: 'global_grant.removed',
+          subjectId: request.workspaceId,
+          payload: { grantId: row.id },
+        });
+      }
+      return row;
+    });
+    if (!deleted) return reply.code(404).send({ error: 'not_found' });
     return reply.code(204).send();
   });
 
@@ -559,17 +690,30 @@ export function registerAuthzRoutes(
         inWorkspace(kind === 'users' ? 'app_user' : 'user_group', ws, actorId),
       ]);
       if (exist.includes(false)) return reply.code(404).send({ error: 'not_found' });
-      await db
-        .insertInto('track_role_actor')
-        .values({
-          workspace_id: ws,
-          track_id: trackId,
-          role_id: roleId,
-          user_id: kind === 'users' ? actorId : null,
-          group_id: kind === 'groups' ? actorId : null,
-        })
-        .onConflict((oc) => oc.doNothing())
-        .execute();
+      await db.transaction().execute(async (trx) => {
+        const added = await trx
+          .insertInto('track_role_actor')
+          .values({
+            workspace_id: ws,
+            track_id: trackId,
+            role_id: roleId,
+            user_id: kind === 'users' ? actorId : null,
+            group_id: kind === 'groups' ? actorId : null,
+          })
+          .onConflict((oc) => oc.doNothing())
+          .executeTakeFirst();
+        if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) {
+          await emit(trx, by(request), {
+            type: 'track_role.actor_added',
+            subjectId: trackId,
+            payload: {
+              roleId,
+              userId: kind === 'users' ? actorId : null,
+              groupId: kind === 'groups' ? actorId : null,
+            },
+          });
+        }
+      });
       return reply.code(204).send();
     });
     app.delete(path, async (request, reply) => {
@@ -577,13 +721,28 @@ export function registerAuthzRoutes(
       if (!params.success) return invalid(reply);
       const { id: trackId, roleId, actorId } = params.data;
       if (!(await trackAdmin(request, reply, trackId))) return reply;
-      const result = await db
-        .deleteFrom('track_role_actor')
-        .where('track_id', '=', trackId)
-        .where('role_id', '=', roleId)
-        .where(kind === 'users' ? 'user_id' : 'group_id', '=', actorId)
-        .executeTakeFirst();
-      if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+      const removed = await db.transaction().execute(async (trx) => {
+        const result = await trx
+          .deleteFrom('track_role_actor')
+          .where('track_id', '=', trackId)
+          .where('role_id', '=', roleId)
+          .where(kind === 'users' ? 'user_id' : 'group_id', '=', actorId)
+          .executeTakeFirst();
+        const count = Number(result.numDeletedRows);
+        if (count > 0) {
+          await emit(trx, by(request), {
+            type: 'track_role.actor_removed',
+            subjectId: trackId,
+            payload: {
+              roleId,
+              userId: kind === 'users' ? actorId : null,
+              groupId: kind === 'groups' ? actorId : null,
+            },
+          });
+        }
+        return count;
+      });
+      if (removed === 0) return reply.code(404).send({ error: 'not_found' });
       return reply.code(204).send();
     });
   }

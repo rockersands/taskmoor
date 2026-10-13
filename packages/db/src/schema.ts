@@ -198,6 +198,41 @@ export interface AuthzEpochTable {
 }
 
 /**
+ * One domain event per mutation (M1-005, ADR-015), written in the mutation's transaction.
+ * The catalogue in apps/server/src/events/catalogue.ts types `type` and `payload`.
+ */
+export interface DomainEventTable {
+  id: Generated<string>;
+  workspace_id: number;
+  type: string;
+  version: Generated<number>;
+  actor_id: number | null;
+  subject_type: string;
+  subject_id: string;
+  payload: Json;
+  occurred_at: DefaultTimestamp;
+  published_at: Timestamp | null;
+}
+
+/** Background work (ADR-015): claimed with SKIP LOCKED, retried with backoff, keyed forever. */
+export interface JobTable {
+  id: Generated<string>;
+  workspace_id: number;
+  task: string;
+  payload: Json;
+  key: string | null;
+  run_at: DefaultTimestamp;
+  attempts: Generated<number>;
+  max_attempts: Generated<number>;
+  locked_at: Timestamp | null;
+  locked_by: string | null;
+  last_error: string | null;
+  created_at: DefaultTimestamp;
+  started_at: Timestamp | null;
+  done_at: Timestamp | null;
+}
+
+/**
  * The M0 session table, replaced by user_session. Kept until a later release so the previous
  * release keeps working during a rolling upgrade (ADR-022); nothing in this release uses it.
  */
@@ -227,5 +262,7 @@ export interface Database {
   track_role_actor: TrackRoleActorTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
+  domain_event: DomainEventTable;
+  job: JobTable;
   session: SessionTable;
 }

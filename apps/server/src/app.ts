@@ -22,6 +22,13 @@ import { registerUserRoutes } from './routes/users';
 import { pruneIdentityData } from './throttle';
 import { defaultWorkspaceId } from './workspace';
 
+declare module 'fastify' {
+  interface FastifyInstance {
+    /** Every registered route as "METHOD /path". */
+    routeTable: string[];
+  }
+}
+
 export interface AppDeps {
   /** Absent only for a process that serves nothing but the frontend. */
   db?: Kysely<Database>;
@@ -61,6 +68,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: level === 'silent' ? false : { level },
     ...(deps.trustedProxies ? { trustProxy: deps.trustedProxies } : {}),
+  });
+  // Every route as "METHOD /path", for fitness tests (every mutation emits one event).
+  const routes: string[] = [];
+  app.decorate('routeTable', routes);
+  app.addHook('onRoute', (route) => {
+    for (const method of [route.method].flat()) routes.push(`${method} ${route.url}`);
   });
   instrumentApp(app, {
     ...(deps.metrics ? { metrics: deps.metrics } : {}),

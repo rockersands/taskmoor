@@ -4,6 +4,7 @@ import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireSiteAdmin } from '../auth';
 import { effectiveMemberIds, nestingWouldCycle, toUserView, USER_COLUMNS } from '../directory';
+import { diff, emit } from '../events/bus';
 
 const listQuery = z.object({ query: z.string().trim().max(200).optional() });
 const groupBody = z
@@ -80,19 +81,28 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.post('/api/v1/groups', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const parsed = groupBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     try {
-      const row = await db
-        .insertInto('user_group')
-        .values({
-          workspace_id: request.workspaceId,
-          name: parsed.data.name,
-          description: parsed.data.description ?? '',
-        })
-        .returning(['id', 'name', 'description'])
-        .executeTakeFirstOrThrow();
+      const row = await db.transaction().execute(async (trx) => {
+        const created = await trx
+          .insertInto('user_group')
+          .values({
+            workspace_id: request.workspaceId,
+            name: parsed.data.name,
+            description: parsed.data.description ?? '',
+          })
+          .returning(['id', 'name', 'description'])
+          .executeTakeFirstOrThrow();
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          { type: 'group.created', subjectId: created.id, payload: { name: created.name } },
+        );
+        return created;
+      });
       return reply.code(201).send({ group: row });
     } catch (error) {
       if (isUniqueViolation(error)) return reply.code(409).send({ error: 'name_taken' });
@@ -152,25 +162,45 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.patch('/api/v1/groups/:id', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     const parsed = patchBody.safeParse(request.body);
     if (!params.success || !parsed.success) {
       return reply.code(400).send({ error: 'invalid_request' });
     }
     try {
-      const row = await db
-        .updateTable('user_group')
-        .set({
+      const row = await db.transaction().execute(async (trx) => {
+        const before = await trx
+          .selectFrom('user_group')
+          .select(['name', 'description'])
+          .where('id', '=', params.data.id)
+          .where('workspace_id', '=', request.workspaceId)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!before) return undefined;
+        const next = {
           ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
           ...(parsed.data.description !== undefined
             ? { description: parsed.data.description }
             : {}),
-        })
-        .where('id', '=', params.data.id)
-        .where('workspace_id', '=', request.workspaceId)
-        .returning(['id', 'name', 'description'])
-        .executeTakeFirst();
+        };
+        const updated = await trx
+          .updateTable('user_group')
+          .set(next)
+          .where('id', '=', params.data.id)
+          .returning(['id', 'name', 'description'])
+          .executeTakeFirstOrThrow();
+        const changes = diff(before, next);
+        if (Object.keys(changes).length > 0) {
+          await emit(
+            trx,
+            { workspaceId: request.workspaceId, actorId: admin.id },
+            { type: 'group.updated', subjectId: updated.id, payload: { changes } },
+          );
+        }
+        return updated;
+      });
       if (!row) return reply.code(404).send({ error: 'not_found' });
       return { group: row };
     } catch (error) {
@@ -180,20 +210,33 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.delete('/api/v1/groups/:id', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
-    const result = await db
-      .deleteFrom('user_group')
-      .where('id', '=', params.data.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const deleted = await db.transaction().execute(async (trx) => {
+      const row = await trx
+        .deleteFrom('user_group')
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .returning(['id', 'name'])
+        .executeTakeFirst();
+      if (row) {
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          { type: 'group.deleted', subjectId: row.id, payload: { name: row.name } },
+        );
+      }
+      return row;
+    });
+    if (!deleted) return reply.code(404).send({ error: 'not_found' });
     return reply.code(204).send();
   });
 
   app.put('/api/v1/groups/:id/members/:userId', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = memberParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const ws = request.workspaceId;
@@ -207,30 +250,57 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
         .executeTakeFirst(),
     ]);
     if (!group || !user) return reply.code(404).send({ error: 'not_found' });
-    await db
-      .insertInto('group_member')
-      .values({ workspace_id: ws, group_id: group.id, user_id: user.id })
-      .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
-      .execute();
+    await db.transaction().execute(async (trx) => {
+      const added = await trx
+        .insertInto('group_member')
+        .values({ workspace_id: ws, group_id: group.id, user_id: user.id })
+        .onConflict((oc) => oc.columns(['group_id', 'user_id']).doNothing())
+        .executeTakeFirst();
+      // Adding someone who is already a member changes nothing and tells nobody.
+      if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) {
+        await emit(
+          trx,
+          { workspaceId: ws, actorId: admin.id },
+          { type: 'group.member_added', subjectId: group.id, payload: { userId: user.id } },
+        );
+      }
+    });
     return reply.code(204).send();
   });
 
   app.delete('/api/v1/groups/:id/members/:userId', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = memberParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
-    const result = await db
-      .deleteFrom('group_member')
-      .where('group_id', '=', params.data.id)
-      .where('user_id', '=', params.data.userId)
-      .where('workspace_id', '=', request.workspaceId)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const removed = await db.transaction().execute(async (trx) => {
+      const result = await trx
+        .deleteFrom('group_member')
+        .where('group_id', '=', params.data.id)
+        .where('user_id', '=', params.data.userId)
+        .where('workspace_id', '=', request.workspaceId)
+        .executeTakeFirst();
+      const count = Number(result.numDeletedRows);
+      if (count > 0) {
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          {
+            type: 'group.member_removed',
+            subjectId: params.data.id,
+            payload: { userId: params.data.userId },
+          },
+        );
+      }
+      return count;
+    });
+    if (removed === 0) return reply.code(404).send({ error: 'not_found' });
     return reply.code(204).send();
   });
 
   app.put('/api/v1/groups/:id/children/:childId', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = childParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const ws = request.workspaceId;
@@ -248,11 +318,22 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
       if (await nestingWouldCycle(trx, ws, params.data.id, params.data.childId)) {
         return 'cycle' as const;
       }
-      await trx
+      const added = await trx
         .insertInto('group_nesting')
         .values({ workspace_id: ws, parent_id: params.data.id, child_id: params.data.childId })
         .onConflict((oc) => oc.columns(['parent_id', 'child_id']).doNothing())
-        .execute();
+        .executeTakeFirst();
+      if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) {
+        await emit(
+          trx,
+          { workspaceId: ws, actorId: admin.id },
+          {
+            type: 'group.nested',
+            subjectId: params.data.id,
+            payload: { childId: params.data.childId },
+          },
+        );
+      }
       return 'ok' as const;
     });
     if (outcome === 'not_found') return reply.code(404).send({ error: 'not_found' });
@@ -261,16 +342,32 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.delete('/api/v1/groups/:id/children/:childId', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = childParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
-    const result = await db
-      .deleteFrom('group_nesting')
-      .where('parent_id', '=', params.data.id)
-      .where('child_id', '=', params.data.childId)
-      .where('workspace_id', '=', request.workspaceId)
-      .executeTakeFirst();
-    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    const removed = await db.transaction().execute(async (trx) => {
+      const result = await trx
+        .deleteFrom('group_nesting')
+        .where('parent_id', '=', params.data.id)
+        .where('child_id', '=', params.data.childId)
+        .where('workspace_id', '=', request.workspaceId)
+        .executeTakeFirst();
+      const count = Number(result.numDeletedRows);
+      if (count > 0) {
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          {
+            type: 'group.unnested',
+            subjectId: params.data.id,
+            payload: { childId: params.data.childId },
+          },
+        );
+      }
+      return count;
+    });
+    if (removed === 0) return reply.code(404).send({ error: 'not_found' });
     return reply.code(204).send();
   });
 }

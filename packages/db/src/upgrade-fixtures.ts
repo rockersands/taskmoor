@@ -91,6 +91,16 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 'seed_global', 'any_user')`.execute(db);
     },
   },
+  '0005_events': {
+    tables: { domain_event: "type = 'seed.happened'", job: "key = 'seed-job'" },
+    seed: async (db) => {
+      await sql`INSERT INTO domain_event (workspace_id, type, subject_type, subject_id, payload)
+        VALUES (1, 'seed.happened', 'seed', '1', '{"from": "0005"}')`.execute(db);
+      await sql`INSERT INTO job (workspace_id, task, key) VALUES (1, 'seed', 'seed-job')`.execute(
+        db,
+      );
+    },
+  },
 };
 
 /** How many of the rows the named seeds wrote are still there: one per table when nothing was lost. */

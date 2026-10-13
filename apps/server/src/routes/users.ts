@@ -15,6 +15,7 @@ import {
   validLocale,
   validTimeZone,
 } from '../directory';
+import { diff, emit } from '../events/bus';
 
 const listQuery = z.object({
   query: z.string().trim().max(200).optional(),
@@ -143,6 +144,20 @@ export function registerUserRoutes(
               purpose: 'activate',
               createdBy: admin.id,
             });
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          {
+            type: 'user.created',
+            subjectId: row.id,
+            payload: {
+              email: row.email,
+              name: row.name,
+              isSiteAdmin: row.is_site_admin,
+              activationLink: link !== null,
+            },
+          },
+        );
         return { row, link };
       });
       return reply.code(201).send({
@@ -184,7 +199,8 @@ export function registerUserRoutes(
   });
 
   app.patch('/api/v1/users/:id', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     const parsed = updateBody.safeParse(request.body);
     if (!params.success || !parsed.success) {
@@ -201,7 +217,7 @@ export function registerUserRoutes(
       const outcome = await db.transaction().execute(async (trx) => {
         const current = await trx
           .selectFrom('app_user')
-          .select(['id', 'is_site_admin', 'deactivated_at'])
+          .select(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale', 'deactivated_at'])
           .where('id', '=', params.data.id)
           .where('workspace_id', '=', request.workspaceId)
           .forUpdate()
@@ -211,23 +227,48 @@ export function registerUserRoutes(
         if (demoting && current.deactivated_at === null) {
           if ((await activeAdminCount(trx, request.workspaceId)) <= 1) return 'last_admin' as const;
         }
-        return trx
+        const next = {
+          ...(body.email !== undefined ? { email: body.email.toLowerCase() } : {}),
+          ...(body.name !== undefined ? { name: body.name } : {}),
+          ...(body.isSiteAdmin !== undefined ? { isSiteAdmin: body.isSiteAdmin } : {}),
+          ...(body.timeZone !== undefined
+            ? { timeZone: body.timeZone ? canonicalTimeZone(body.timeZone) : null }
+            : {}),
+          ...(body.locale !== undefined
+            ? { locale: body.locale ? (Intl.getCanonicalLocales(body.locale)[0] ?? null) : null }
+            : {}),
+        };
+        const row = await trx
           .updateTable('app_user')
           .set({
-            ...(body.email !== undefined ? { email: body.email.toLowerCase() } : {}),
-            ...(body.name !== undefined ? { name: body.name } : {}),
-            ...(body.isSiteAdmin !== undefined ? { is_site_admin: body.isSiteAdmin } : {}),
-            ...(body.timeZone !== undefined
-              ? { time_zone: body.timeZone ? canonicalTimeZone(body.timeZone) : null }
-              : {}),
-            ...(body.locale !== undefined
-              ? { locale: body.locale ? (Intl.getCanonicalLocales(body.locale)[0] ?? null) : null }
-              : {}),
+            ...(next.email !== undefined ? { email: next.email } : {}),
+            ...(next.name !== undefined ? { name: next.name } : {}),
+            ...(next.isSiteAdmin !== undefined ? { is_site_admin: next.isSiteAdmin } : {}),
+            ...(next.timeZone !== undefined ? { time_zone: next.timeZone } : {}),
+            ...(next.locale !== undefined ? { locale: next.locale } : {}),
             updated_at: new Date(),
           })
           .where('id', '=', current.id)
           .returning([...USER_COLUMNS])
           .executeTakeFirstOrThrow();
+        const changes = diff(
+          {
+            email: current.email,
+            name: current.name,
+            isSiteAdmin: current.is_site_admin,
+            timeZone: current.time_zone,
+            locale: current.locale,
+          },
+          next,
+        );
+        if (Object.keys(changes).length > 0) {
+          await emit(
+            trx,
+            { workspaceId: request.workspaceId, actorId: admin.id },
+            { type: 'user.updated', subjectId: current.id, payload: { changes } },
+          );
+        }
+        return row;
       });
       if (outcome === 'not_found') return reply.code(404).send({ error: 'not_found' });
       if (outcome === 'last_admin') return reply.code(409).send({ error: 'last_admin' });
@@ -266,12 +307,26 @@ export function registerUserRoutes(
         .where('id', '=', current.id)
         .returning([...USER_COLUMNS])
         .executeTakeFirstOrThrow();
-      await trx.deleteFrom('user_session').where('user_id', '=', current.id).execute();
+      const ended = await trx
+        .deleteFrom('user_session')
+        .where('user_id', '=', current.id)
+        .executeTakeFirst();
       await trx
         .deleteFrom('password_link')
         .where('user_id', '=', current.id)
         .where('used_at', 'is', null)
         .execute();
+      if (current.deactivated_at === null) {
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          {
+            type: 'user.deactivated',
+            subjectId: current.id,
+            payload: { endedSessions: Number(ended.numDeletedRows) },
+          },
+        );
+      }
       return row;
     });
     if (outcome === 'not_found') return reply.code(404).send({ error: 'not_found' });
@@ -280,16 +335,34 @@ export function registerUserRoutes(
   });
 
   app.post('/api/v1/users/:id/reactivate', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
-    const row = await db
-      .updateTable('app_user')
-      .set({ deactivated_at: null, updated_at: new Date() })
-      .where('id', '=', params.data.id)
-      .where('workspace_id', '=', request.workspaceId)
-      .returning([...USER_COLUMNS])
-      .executeTakeFirst();
+    const row = await db.transaction().execute(async (trx) => {
+      const before = await trx
+        .selectFrom('app_user')
+        .select('deactivated_at')
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!before) return undefined;
+      const updated = await trx
+        .updateTable('app_user')
+        .set({ deactivated_at: null, updated_at: new Date() })
+        .where('id', '=', params.data.id)
+        .returning([...USER_COLUMNS])
+        .executeTakeFirstOrThrow();
+      if (before.deactivated_at !== null) {
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          { type: 'user.reactivated', subjectId: updated.id, payload: {} },
+        );
+      }
+      return updated;
+    });
     if (!row) return reply.code(404).send({ error: 'not_found' });
     return { user: toUserView(row) };
   });
@@ -309,11 +382,23 @@ export function registerUserRoutes(
     if (!row) return reply.code(404).send({ error: 'not_found' });
     if (row.deactivated_at) return reply.code(409).send({ error: 'user_deactivated' });
     const purpose = row.password_hash ? 'reset' : 'activate';
-    const link = await createPasswordLink(db, {
-      workspaceId: request.workspaceId,
-      userId: row.id,
-      purpose,
-      createdBy: admin.id,
+    const link = await db.transaction().execute(async (trx) => {
+      const created = await createPasswordLink(trx, {
+        workspaceId: request.workspaceId,
+        userId: row.id,
+        purpose,
+        createdBy: admin.id,
+      });
+      await emit(
+        trx,
+        { workspaceId: request.workspaceId, actorId: admin.id },
+        {
+          type: 'user.password_link_created',
+          subjectId: row.id,
+          payload: { purpose, expiresAt: created.expiresAt.toISOString() },
+        },
+      );
+      return created;
     });
     return reply.code(201).send({
       purpose,
@@ -323,10 +408,21 @@ export function registerUserRoutes(
   });
 
   app.delete('/api/v1/users/:id/sessions', async (request, reply) => {
-    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
-    const revoked = await revokeUserSessions(db, request.workspaceId, params.data.id);
+    const revoked = await db.transaction().execute(async (trx) => {
+      const count = await revokeUserSessions(trx, request.workspaceId, params.data.id);
+      if (count > 0) {
+        await emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: admin.id },
+          { type: 'session.revoked', subjectId: params.data.id, payload: { count, by: 'admin' } },
+        );
+      }
+      return count;
+    });
     return { revoked };
   });
 }
