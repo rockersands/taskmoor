@@ -22,6 +22,8 @@ export const SECRET_RULES: SecretRule[] = [
   { id: 'google-api-key', pattern: /\bAIza[0-9A-Za-z_-]{35}\b/ },
   { id: 'stripe-live-key', pattern: /\b(?:sk|rk)_live_[0-9A-Za-z]{20,}/ },
   { id: 'private-key', pattern: /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/ },
+  // Taskmoor's own API tokens (ADR-035): prefix, 40 random and 6 checksum characters.
+  { id: 'taskmoor-api-token', pattern: /\btmk_[0-9A-Za-z]{46}\b/ },
   {
     id: 'url-credentials',
     pattern: /\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/'"`]+:[^\s@/'"`]{8,}@[^\s'"`]+/,

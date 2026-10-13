@@ -20,6 +20,18 @@ export const GLOBAL_PERMISSIONS = [
 ] as const;
 export type GlobalPermission = (typeof GLOBAL_PERMISSIONS)[number];
 
+/**
+ * The administrator permissions: an API token without the admin scope acts without them, as
+ * an ordinary user would (IAM-007, ADR-035).
+ */
+export const ADMIN_GLOBAL_PERMISSIONS: readonly GlobalPermission[] = [
+  'site_admin',
+  'configuration_admin',
+  'automation_admin',
+  'ai_admin',
+  'extension_admin',
+];
+
 /** Track permissions: granted per access policy (access_grant), grouped as in section 1.2. */
 export const TRACK_PERMISSION_GROUPS = {
   administration: ['administer_track', 'manage_layouts', 'edit_workflows'],

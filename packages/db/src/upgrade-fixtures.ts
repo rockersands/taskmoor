@@ -121,6 +121,24 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 1, repeat('a', 64), '2000-01-15 00:00:00+00')`.execute(db);
     },
   },
+  '0007_tokens': {
+    // The service account is checked through its token, so app_user keeps 0002's check.
+    tables: {
+      api_token: `token_hash = 'seed-api-token' AND user_id IN
+        (SELECT id FROM app_user WHERE kind = 'service' AND description = 'Upgrade seed')`,
+      token_policy: 'workspace_id = 1 AND max_lifetime_days = 400',
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO app_user (workspace_id, email, name, kind, description)
+        VALUES (1, 'seed-robot@service.invalid', 'Seed robot', 'service', 'Upgrade seed')`.execute(
+        db,
+      );
+      await sql`INSERT INTO api_token (workspace_id, user_id, name, token_hash, scopes, expires_at)
+        SELECT 1, id, 'Seed', 'seed-api-token', ARRAY['read', 'write'], now() + interval '30 days'
+          FROM app_user WHERE email = 'seed-robot@service.invalid'`.execute(db);
+      await sql`UPDATE token_policy SET max_lifetime_days = 400 WHERE workspace_id = 1`.execute(db);
+    },
+  },
   '0008_tracks': {
     tables: {
       track_category: "name = 'Seed category'",

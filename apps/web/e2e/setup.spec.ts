@@ -319,3 +319,166 @@ test('[OPS-010] the administrator opens the system status from Settings', async 
   await page.request.delete('/api/v1/session');
   expect((await page.request.get('/api/v1/admin/system')).status()).toBe(401);
 });
+
+test('[IAM-007] a person creates an API token on the Account page, uses it and revokes it', async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  await page.goto('./#/account');
+  await expect(heading(page)).toHaveText('Account');
+  const tokens = page.getByRole('region', { name: 'API tokens' });
+  await tokens.getByLabel('Token name').fill('E2E script');
+  await expect(tokens.getByRole('checkbox', { name: 'Read' })).toBeChecked();
+  await tokens.getByLabel('Expires after').selectOption('7');
+  await tokens.getByRole('button', { name: 'Create token' }).click();
+
+  // Shown once, focused, shaped for secret scanners.
+  const secret = tokens.getByLabel('New token', { exact: true });
+  await expect(secret).toBeFocused();
+  const token = await secret.inputValue();
+  expect(token).toMatch(/^tmk_[0-9A-Za-z]{46}$/);
+
+  // A program without cookies uses it, within its read scope.
+  const program = await playwright.request.newContext({
+    ...at(baseURL),
+    extraHTTPHeaders: { authorization: `Bearer ${token}` },
+  });
+  const me = await program.get('/api/v1/session');
+  expect(me.status()).toBe(200);
+  expect((await me.json()).user.email).toBe(ADMIN.email);
+  const write = await program.patch('/api/v1/account', { data: { name: 'Changed by a script' } });
+  expect(write.status()).toBe(403);
+  expect(await write.json()).toEqual({ error: 'insufficient_scope', requiredScope: 'write' });
+  expect((await program.get('/api/v1/users')).status()).toBe(403);
+
+  await tokens.getByRole('button', { name: 'Done' }).click();
+  await expect(tokens.getByLabel('New token', { exact: true })).toHaveCount(0);
+  await tokens.getByRole('button', { name: 'Revoke E2E script' }).click();
+  await expect(tokens.getByText('Revoked E2E script.')).toBeVisible();
+  const item = tokens.getByRole('listitem').filter({ hasText: 'E2E script' });
+  await expect(item).toContainText('Revoked');
+  await expect(item).toContainText('Last used');
+  const refused = await program.get('/api/v1/session');
+  expect(refused.status()).toBe(401);
+  expect(await refused.json()).toEqual({ error: 'invalid_token', reason: 'revoked' });
+  await program.dispose();
+});
+
+test('[IAM-007] the administrator revokes every token of a person at once from the token page', async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  const SAGE = {
+    name: 'Sage Rivera',
+    email: 'sage@example.com',
+    password: 'a third long passphrase',
+  };
+  await signInThroughApi(page.request, ADMIN);
+  const created = await page.request.post('/api/v1/users', { data: SAGE });
+  expect(created.status()).toBe(201);
+  const sageId = (await created.json()).user.id as number;
+
+  // Sage gives two scripts a token each.
+  const sage = await playwright.request.newContext(at(baseURL));
+  await signInThroughApi(sage, SAGE);
+  const secrets: string[] = [];
+  for (const name of ['Backup script', 'Chat bot']) {
+    const res = await sage.post('/api/v1/account/tokens', {
+      data: { name, scopes: ['read'], expiresInDays: 30 },
+    });
+    expect(res.status()).toBe(201);
+    secrets.push((await res.json()).token);
+  }
+  await sage.dispose();
+  const program = await playwright.request.newContext(at(baseURL));
+  const use = (token: string) =>
+    program.get('/api/v1/session', { headers: { authorization: `Bearer ${token}` } });
+  for (const token of secrets) expect((await use(token)).status()).toBe(200);
+
+  await page.goto('./#/settings');
+  await page.getByRole('link', { name: 'API tokens' }).click();
+  await expect(heading(page)).toHaveText('API tokens');
+  const list = page.getByRole('region', { name: 'Tokens', exact: true });
+  await expect(list.getByRole('listitem').filter({ hasText: 'Backup script' })).toContainText(
+    'Sage Rivera (sage@example.com)',
+  );
+  const bulk = page.getByRole('region', { name: 'Revoke in bulk' });
+  await bulk.getByLabel('Owner', { exact: true }).selectOption(String(sageId));
+  await bulk.getByRole('button', { name: 'Revoke tokens' }).click();
+  await expect(
+    bulk.getByText('This revokes 2 active tokens. Programs using them stop working at once.'),
+  ).toBeVisible();
+  await bulk.getByRole('button', { name: 'Confirm revocation' }).click();
+  await expect(bulk.getByText('Revoked 2 tokens.')).toBeVisible();
+  for (const token of secrets) {
+    const res = await use(token);
+    expect(res.status()).toBe(401);
+    expect(await res.json()).toEqual({ error: 'invalid_token', reason: 'revoked' });
+  }
+  await expect(list.getByRole('listitem').filter({ hasText: 'Chat bot' })).toContainText('Revoked');
+  await program.dispose();
+
+  // Only site administrators reach the inventory.
+  await page.request.delete('/api/v1/session');
+  expect((await page.request.get('/api/v1/admin/tokens')).status()).toBe(401);
+});
+
+test('[IAM-007] a service-account token rotates with an overlap, so the program never stops', async ({
+  page,
+  playwright,
+  baseURL,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  await page.goto('./#/settings');
+  await page.getByRole('link', { name: 'Service accounts' }).click();
+  await expect(heading(page)).toHaveText('Service accounts');
+  const create = page.getByRole('region', { name: 'New service account' });
+  await create.getByLabel('Name').fill('E2E robot');
+  await create.getByLabel('What it is for').fill('Publishes release notes');
+  await create.getByRole('button', { name: 'Create service account' }).click();
+  await expect(create.getByText('Created E2E robot.')).toBeVisible();
+
+  const panel = page.getByRole('region', { name: 'Tokens of E2E robot' });
+  await panel.getByLabel('Token name').fill('Release key');
+  await panel.getByRole('checkbox', { name: 'Write' }).check();
+  await panel.getByRole('button', { name: 'Create token' }).click();
+  const first = await panel.getByLabel('New token', { exact: true }).inputValue();
+  expect(first).toMatch(/^tmk_[0-9A-Za-z]{46}$/);
+  await panel.getByRole('button', { name: 'Done' }).click();
+
+  const program = await playwright.request.newContext(at(baseURL));
+  const use = (token: string) =>
+    program.get('/api/v1/session', { headers: { authorization: `Bearer ${token}` } });
+  const me = await use(first);
+  expect(me.status()).toBe(200);
+  expect((await me.json()).user).toMatchObject({ name: 'E2E robot', isSiteAdmin: false });
+  // A service account never signs in with a password.
+  const signIn = await program.post('/api/v1/session', {
+    data: { email: 'e2e-robot@service.invalid', password: 'a long enough passphrase' },
+  });
+  expect(signIn.status()).toBe(401);
+
+  await panel.getByLabel('After rotating, the old token keeps working for').selectOption('1');
+  await panel.getByRole('button', { name: 'Rotate Release key' }).click();
+  await expect(panel.getByText('Rotated Release key. Copy the new token now.')).toBeVisible();
+  const second = await panel.getByLabel('New token', { exact: true }).inputValue();
+  expect(second).not.toBe(first);
+  // During the overlap both work; the old one is marked as replaced.
+  expect((await use(first)).status()).toBe(200);
+  expect((await use(second)).status()).toBe(200);
+  await expect(panel.getByRole('listitem').filter({ hasText: 'Replaced' })).toHaveCount(1);
+
+  // Deactivating the service account stops every token at once.
+  await page.getByRole('button', { name: 'Deactivate E2E robot' }).click();
+  await expect(page.getByRole('button', { name: 'Reactivate E2E robot' })).toBeVisible();
+  for (const token of [first, second]) {
+    expect(await (await use(token)).json()).toEqual({
+      error: 'invalid_token',
+      reason: 'owner_deactivated',
+    });
+  }
+  await program.dispose();
+});

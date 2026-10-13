@@ -34,7 +34,8 @@ export interface WorkspaceTable {
 }
 
 /**
- * People who can sign in. Email is stored lower-cased and is unique within a workspace; the hash
+ * People who can sign in, and service accounts that cannot (IAM-007: no password, no session,
+ * not counted as users). Email is stored lower-cased and is unique within a workspace; the hash
  * format is the iam package's. Deactivation keeps the row, so attribution survives (IAM-008).
  */
 export interface AppUserTable {
@@ -44,6 +45,9 @@ export interface AppUserTable {
   name: string;
   password_hash: string | null;
   is_site_admin: Generated<boolean>;
+  kind: Generated<'person' | 'service'>;
+  /** What a service account is for; empty for people. */
+  description: Generated<string>;
   time_zone: string | null;
   locale: string | null;
   password_changed_at: Timestamp | null;
@@ -441,6 +445,39 @@ export interface OidcLoginTable {
   created_at: DefaultTimestamp;
 }
 
+export type ApiTokenScope = 'read' | 'write' | 'admin';
+
+/**
+ * Personal and service-account API tokens (IAM-007, ADR-035): the holder keeps the token, the
+ * row keeps its SHA-256. Revoked and expired tokens stay listed until pruning removes them.
+ */
+export interface ApiTokenTable {
+  id: Generated<number>;
+  workspace_id: number;
+  user_id: number;
+  name: string;
+  token_hash: string;
+  scopes: ColumnType<ApiTokenScope[], ApiTokenScope[], ApiTokenScope[]>;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  expires_at: Timestamp;
+  /** Written at most once a minute, so ordinary requests stay read-only. */
+  last_used_at: Timestamp | null;
+  last_used_ip: string | null;
+  revoked_at: Timestamp | null;
+  revoked_by: number | null;
+  /** The token that replaced this one when it was rotated. */
+  replaced_by: number | null;
+}
+
+/** Per-workspace limits on tokens: the longest lifetime and the rotation reminder window. */
+export interface TokenPolicyTable {
+  workspace_id: number;
+  max_lifetime_days: Generated<number>;
+  reminder_days: Generated<number>;
+  updated_at: DefaultTimestamp;
+}
+
 /**
  * The M0 session table, replaced by user_session. Kept until a later release so the previous
  * release keeps working during a rolling upgrade (ADR-022); nothing in this release uses it.
@@ -487,5 +524,7 @@ export interface Database {
   oidc_login: OidcLoginTable;
   audit_event: AuditEventTable;
   audit_chain: AuditChainTable;
+  api_token: ApiTokenTable;
+  token_policy: TokenPolicyTable;
   session: SessionTable;
 }

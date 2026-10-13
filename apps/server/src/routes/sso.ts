@@ -28,7 +28,9 @@ const domainList = z
       .string()
       .trim()
       .toLowerCase()
-      .regex(/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/),
+      .regex(/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/)
+      // Service accounts live under the reserved .invalid name; no provider may claim it.
+      .refine((d) => !d.endsWith('.invalid')),
   )
   .max(100);
 const groupMap = z
@@ -237,12 +239,14 @@ export function registerSsoRoutes(
       const linked = await trx
         .selectFrom('user_identity as i')
         .innerJoin('app_user as u', 'u.id', 'i.user_id')
-        .select(['u.id', 'u.deactivated_at'])
+        .select(['u.id', 'u.deactivated_at', 'u.kind'])
         .where('i.provider_id', '=', provider.id)
         .where('i.subject', '=', identity.subject)
         .executeTakeFirst();
       let userId = linked?.id;
       let created = false;
+      // Service accounts never sign in, through a provider or otherwise (IAM-007).
+      if (linked?.kind === 'service') return { error: 'no_account' as const };
       if (linked?.deactivated_at)
         return { error: 'account_deactivated' as const, userId: linked.id };
       if (!userId) {
@@ -255,10 +259,11 @@ export function registerSsoRoutes(
         }
         const existing = await trx
           .selectFrom('app_user')
-          .select(['id', 'deactivated_at'])
+          .select(['id', 'deactivated_at', 'kind'])
           .where('workspace_id', '=', ws)
           .where(sql<string>`lower(email)`, '=', identity.email)
           .executeTakeFirst();
+        if (existing?.kind === 'service') return { error: 'no_account' as const };
         if (existing?.deactivated_at) {
           return { error: 'account_deactivated' as const, userId: existing.id };
         }

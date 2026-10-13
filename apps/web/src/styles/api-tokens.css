@@ -1,0 +1,225 @@
+/* API tokens and service accounts: the Account section and the admin pages. Desktop first;
+   lists of cards rather than tables, so phones never scroll sideways. */
+.tokens-page {
+  max-width: 60rem;
+}
+
+.tokens-page-sections {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.token-list,
+.service-account-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.token-item,
+.service-account-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.token-item {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+.token-item[data-status="expired"],
+.token-item[data-status="revoked"] {
+  background: var(--color-bg);
+}
+
+.service-account-item {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+.token-main {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.token-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.token-owner,
+.token-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.token-owner {
+  gap: var(--space-1) var(--space-2);
+  color: var(--color-text);
+}
+
+.token-badge {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+.token-badge-expired,
+.token-badge-revoked {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.token-badge-replaced {
+  background: var(--color-bg);
+  color: var(--color-warning);
+}
+
+.token-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.token-form-title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-300);
+}
+
+.token-form-title:focus {
+  outline: none;
+}
+
+.token-scopes {
+  min-width: 0;
+}
+
+.token-scope {
+  row-gap: 0;
+}
+
+.token-scope-hint {
+  grid-column: 2;
+}
+
+.token-secret {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-2);
+  background: var(--color-accent-soft);
+}
+
+.token-secret-title {
+  margin: 0;
+  font-size: var(--font-size-300);
+}
+
+.token-secret .page-note {
+  margin: 0;
+}
+
+.token-secret-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.form-field .token-secret-value {
+  flex: 1 1 16rem;
+  min-width: 0;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.tokens-filter {
+  max-width: 20rem;
+}
+
+.token-confirm {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-1);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.token-confirm p {
+  margin: 0;
+}
+
+.token-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button-danger {
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: var(--color-danger);
+  color: var(--color-surface);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-field-inline input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.service-account-tokens {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+@media (pointer: coarse) {
+  .button-danger {
+    min-height: var(--hit-target-touch);
+  }
+
+  .form-field-inline input[type="radio"] {
+    width: 28px;
+    height: 28px;
+  }
+}

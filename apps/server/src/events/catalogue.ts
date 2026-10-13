@@ -189,6 +189,48 @@ export const EVENT_TYPES = {
   },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
+  // API tokens and service accounts (IAM-007). Never the token or its hash.
+  'token.created': {
+    subject: 'api_token',
+    payload: z.object({
+      ownerId: id,
+      ownerKind: z.enum(['person', 'service']),
+      name: z.string(),
+      scopes: z.array(z.enum(['read', 'write', 'admin'])),
+      expiresAt: z.string(),
+    }),
+  },
+  'token.revoked': {
+    subject: 'api_token',
+    payload: z.object({ ownerId: id, by: z.enum(['self', 'admin']) }),
+  },
+  'token.rotated': {
+    subject: 'api_token',
+    payload: z.object({
+      ownerId: id,
+      replaces: id,
+      overlapHours: z.number().int().min(0),
+      expiresAt: z.string(),
+      by: z.enum(['self', 'admin']),
+    }),
+  },
+  'token.bulk_revoked': {
+    subject: 'workspace',
+    payload: z.object({
+      count: z.number().int().min(1),
+      ownerId: id.nullable(),
+      createdBefore: z.string().nullable(),
+      all: z.boolean(),
+    }),
+  },
+  'token_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  'service_account.created': {
+    subject: 'user',
+    payload: z.object({ name: z.string(), email: z.string(), description: z.string() }),
+  },
+  'service_account.updated': { subject: 'user', payload: z.object({ changes }) },
+  'service_account.deactivated': { subject: 'user', payload: z.object({}) },
+  'service_account.reactivated': { subject: 'user', payload: z.object({}) },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

@@ -130,6 +130,7 @@ export async function activeAdminCount(db: Db, workspaceId: number): Promise<num
     .where('workspace_id', '=', workspaceId)
     .where('is_site_admin', '=', true)
     .where('deactivated_at', 'is', null)
+    .where('kind', '=', 'person')
     .executeTakeFirstOrThrow();
   return Number(row.n);
 }

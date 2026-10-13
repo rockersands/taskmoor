@@ -57,6 +57,15 @@ export const AUDITED_EVENTS = [
   'track_category.updated',
   'track_category.deleted',
   'audit.settings_updated',
+  'token.created',
+  'token.revoked',
+  'token.rotated',
+  'token.bulk_revoked',
+  'token_policy.updated',
+  'service_account.created',
+  'service_account.updated',
+  'service_account.deactivated',
+  'service_account.reactivated',
 ] as const satisfies readonly EventType[];
 
 export const NOT_AUDITED: Partial<Record<EventType, string>> = {};

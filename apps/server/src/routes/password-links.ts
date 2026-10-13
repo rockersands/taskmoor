@@ -36,6 +36,7 @@ export function registerPasswordLinkRoutes(
       .where('l.used_at', 'is', null)
       .where('l.expires_at', '>', new Date())
       .where('u.deactivated_at', 'is', null)
+      .where('u.kind', '=', 'person')
       .executeTakeFirst();
   }
 

@@ -129,6 +129,7 @@ try {
         .select(['id', 'password_hash', 'deactivated_at'])
         .where('workspace_id', '=', workspaceId)
         .where('email', '=', email)
+        .where('kind', '=', 'person')
         .executeTakeFirst();
       if (!user || user.deactivated_at) {
         process.stderr.write(`no active account for ${email}\n`);

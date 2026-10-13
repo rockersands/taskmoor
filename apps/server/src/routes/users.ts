@@ -70,7 +70,11 @@ export function registerUserRoutes(
     const parsed = listQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     const { query, status, limit, offset } = parsed.data;
-    let base = db.selectFrom('app_user').where('workspace_id', '=', request.workspaceId);
+    let base = db
+      .selectFrom('app_user')
+      .where('workspace_id', '=', request.workspaceId)
+      // Service accounts are not users (IAM-007): they have their own list.
+      .where('kind', '=', 'person');
     if (status === 'active') base = base.where('deactivated_at', 'is', null);
     if (status === 'deactivated') base = base.where('deactivated_at', 'is not', null);
     if (query) {
@@ -185,6 +189,7 @@ export function registerUserRoutes(
       .select([...USER_COLUMNS])
       .where('id', '=', parsed.data.id)
       .where('workspace_id', '=', request.workspaceId)
+      .where('kind', '=', 'person')
       .executeTakeFirst();
     if (!row) return reply.code(404).send({ error: 'not_found' });
     const direct = await db
@@ -230,6 +235,7 @@ export function registerUserRoutes(
           ])
           .where('id', '=', params.data.id)
           .where('workspace_id', '=', request.workspaceId)
+          .where('kind', '=', 'person')
           .forUpdate()
           .executeTakeFirst();
         if (!current) return 'not_found' as const;
@@ -305,6 +311,7 @@ export function registerUserRoutes(
         .select(['id', 'is_site_admin', 'deactivated_at'])
         .where('id', '=', params.data.id)
         .where('workspace_id', '=', request.workspaceId)
+        .where('kind', '=', 'person')
         .forUpdate()
         .executeTakeFirst();
       if (!current) return 'not_found' as const;
@@ -358,6 +365,7 @@ export function registerUserRoutes(
         .select('deactivated_at')
         .where('id', '=', params.data.id)
         .where('workspace_id', '=', request.workspaceId)
+        .where('kind', '=', 'person')
         .forUpdate()
         .executeTakeFirst();
       if (!before) return undefined;
@@ -391,6 +399,7 @@ export function registerUserRoutes(
       .select(['id', 'password_hash', 'deactivated_at'])
       .where('id', '=', params.data.id)
       .where('workspace_id', '=', request.workspaceId)
+      .where('kind', '=', 'person')
       .executeTakeFirst();
     if (!row) return reply.code(404).send({ error: 'not_found' });
     if (row.deactivated_at) return reply.code(409).send({ error: 'user_deactivated' });

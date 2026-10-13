@@ -34,6 +34,31 @@
       "CREATE UNIQUE INDEX access_policy_workspace_name_idx ON public.access_policy USING btree (workspace_id, lower(name))"
     ]
   },
+  "api_token": {
+    "columns": [
+      "id integer not null default nextval('api_token_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "name text not null",
+      "token_hash text not null",
+      "scopes ARRAY not null",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "last_used_at timestamp with time zone",
+      "last_used_ip text",
+      "revoked_at timestamp with time zone",
+      "revoked_by integer",
+      "replaced_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX api_token_live_expiry_idx ON public.api_token USING btree (workspace_id, expires_at) WHERE (revoked_at IS NULL)",
+      "CREATE UNIQUE INDEX api_token_pkey ON public.api_token USING btree (id)",
+      "CREATE UNIQUE INDEX api_token_token_hash_key ON public.api_token USING btree (token_hash)",
+      "CREATE INDEX api_token_user_idx ON public.api_token USING btree (user_id)",
+      "CREATE INDEX api_token_workspace_created_idx ON public.api_token USING btree (workspace_id, created_at, id)"
+    ]
+  },
   "app_user": {
     "columns": [
       "id integer not null default nextval('app_user_id_seq'::regclass)",
@@ -49,6 +74,8 @@
       "password_changed_at timestamp with time zone",
       "last_sign_in_at timestamp with time zone",
       "updated_at timestamp with time zone not null default now()",
+      "kind text not null default 'person'::text",
+      "description text not null default ''::text",
       "break_glass boolean not null default false"
     ],
     "indexes": [
@@ -351,6 +378,17 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
+    ]
+  },
+  "token_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "max_lifetime_days integer not null default 365",
+      "reminder_days integer not null default 14",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX token_policy_pkey ON public.token_policy USING btree (workspace_id)"
     ]
   },
   "totp_credential": {

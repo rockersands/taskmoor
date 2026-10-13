@@ -11,6 +11,7 @@ const fake = {
   anthropic: `sk-ant-${'x'.repeat(30)}`,
   privateKey: `-----BEGIN ${'RSA '}PRIVATE KEY-----`,
   dbUrl: `postgres://admin:${'p'.repeat(12)}@db.example.com/prod`,
+  taskmoor: `tmk_${'Ab3'.repeat(15)}x`,
 };
 
 describe('secret scan', () => {
@@ -40,6 +41,15 @@ describe('secret scan', () => {
       { file: 'deploy/compose.yml', line: 1, rule: 'url-credentials' },
     ]);
     expect(scanText('src/config.test.ts', `const url = '${fake.dbUrl}';`)).toEqual([]);
+  });
+
+  it('[IAM-007] catches a Taskmoor API token, in test files too', () => {
+    expect(scanText('scripts/deploy.sh', `export TASKMOOR_TOKEN=${fake.taskmoor}`)).toEqual([
+      { file: 'scripts/deploy.sh', line: 1, rule: 'taskmoor-api-token' },
+    ]);
+    expect(scanText('src/api.test.ts', `const t = '${fake.taskmoor}';`)).toHaveLength(1);
+    // Shorter look-alikes are left alone.
+    expect(scanText('src/a.ts', `tmk_${'Ab3'.repeat(10)}`)).toEqual([]);
   });
 
   it('accepts a line marked as reviewed', () => {

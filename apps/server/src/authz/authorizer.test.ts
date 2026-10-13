@@ -5,6 +5,7 @@ import { type Kysely, sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 import { Authorizer } from './authorizer';
 import {
+  ADMIN_GLOBAL_PERMISSIONS,
   ARCHIVED_TRACK_PERMISSIONS,
   CONFIGURATION_PERMISSIONS,
   GLOBAL_PERMISSIONS,
@@ -492,6 +493,50 @@ describe('authorization service against the reference model (M1-002)', () => {
     expect(sorted(await ownerHeld())).toEqual(sorted(TRACK_PERMISSIONS));
     expect(await authorizer.allowedTracks(world.ws, { userId: owner })).toEqual([track.id]);
     expect(await authorizer.allowedTracks(world.ws, { userId: admin })).toBe('all');
+  });
+
+  it('[IAM-007] gives a principal without administrator rights only what its grants say', async () => {
+    const db = database.db;
+    const world = await buildWorld(db, mulberry32(4711), {
+      users: 30,
+      groups: 10,
+      tracks: 12,
+      policies: 4,
+      grants: 2_000,
+    });
+    // The same world as an ordinary user sees it: no admin flag, no administrator grants.
+    const ordinary = reference({
+      ...world,
+      users: world.users.map((u) => ({ ...u, siteAdmin: false })),
+      globals: world.globals.filter(
+        (g) => !ADMIN_GLOBAL_PERMISSIONS.includes(g.permission as never),
+      ),
+    });
+    const full = reference(world);
+    const authorizer = new Authorizer(db);
+    let administrators = 0;
+    for (const user of world.users.map((u) => u.id)) {
+      const limited = { userId: user, withoutAdminRights: true };
+      const fullGlobal = full.globalOf(user);
+      if (fullGlobal.has('site_admin') || fullGlobal.has('configuration_admin')) administrators++;
+      const context = authorizer.context(world.ws, limited);
+      expect(sorted(await context.global())).toEqual(
+        sorted([...fullGlobal].filter((p) => !ADMIN_GLOBAL_PERMISSIONS.includes(p as never))),
+      );
+      for (const track of world.tracks) {
+        expect(
+          sorted(await authorizer.trackPermissions(world.ws, limited, track.id)),
+          `user ${user} track ${track.id}`,
+        ).toEqual(sorted(ordinary.trackOf(user, track.id)));
+        // The cache keeps the two answers apart.
+        expect(
+          sorted(await authorizer.trackPermissions(world.ws, { userId: user }, track.id)),
+        ).toEqual(sorted(full.trackOf(user, track.id)));
+      }
+      const allowed = await authorizer.allowedTracks(world.ws, limited, 'administer_track');
+      expect(allowed).not.toBe('all');
+    }
+    expect(administrators).toBeGreaterThan(0);
   });
 
   it('[IAM-012] checks a permission in under 10 ms at p95 without the cache', async () => {

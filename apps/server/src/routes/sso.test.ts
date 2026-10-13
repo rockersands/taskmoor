@@ -155,6 +155,13 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
     });
     expect(forbidden.statusCode).toBe(403);
 
+    const reserved = await call(adminCookie, {
+      method: 'POST',
+      url: '/api/v1/identity-providers',
+      payload: { name: 'Robots', issuer: idp.issuer, clientId: 'x', domains: ['service.invalid'] },
+    });
+    expect(reserved.statusCode).toBe(400);
+
     const insecure = await call(adminCookie, {
       method: 'POST',
       url: '/api/v1/identity-providers',

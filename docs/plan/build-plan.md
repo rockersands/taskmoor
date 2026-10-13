@@ -151,6 +151,7 @@ Claude records these decisions as ADRs in M0; starred ones are confirmed by spik
 | 032 | Cross-origin auth and versioning: SameSite cookies or OAuth 2.1 PKCE; meta endpoint; N-1 compatibility | Frontend anywhere |
 | 033 | Desktop-first responsive UI: desktop is the primary target; phones and tablets must work; e2e runs on a desktop and a mobile viewport | User priority: PC first, mobile must work |
 | 034 | Audit log: append-only monthly partitions, one SHA-256 hash chain per workspace, retention that drops whole months behind a checkpoint | Tamper-evident audit without a 180-day ceiling (IAM-013) |
+| 035 | API tokens and service accounts: `tmk_` prefix and checksum, SHA-256 at rest, read / write / admin scopes checked per route, mandatory capped expiry, rotation with overlap, service accounts as non-person users | Programs get the people's permission model; leaked tokens findable and revocable |
 
 ### AI provider gateway (ADR-028, shipped in M1)
 
