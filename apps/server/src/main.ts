@@ -9,6 +9,7 @@ import { registerSubscribers } from './events/subscribers';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
 import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
+import { gracefulShutdown } from './shutdown';
 import { waitForDatabase } from './startup';
 
 const config = loadConfig();
@@ -105,6 +106,7 @@ if (config.roles.includes('realtime')) {
   app.log.info('realtime role: no channels yet (ADR-013, M1-031)');
 }
 
+const closeApp = gracefulShutdown(app);
 await app.listen({ port: config.port, host: config.host });
 app.log.info({ roles: config.roles, version: config.version }, 'listening');
 if (metricsServer) {
@@ -120,7 +122,7 @@ async function shutdown(signal: string): Promise<void> {
   app.log.info({ signal }, 'shutting down');
   for (const t of timers) clearInterval(t);
   await worker?.stop();
-  await app.close();
+  await closeApp(config.shutdownDrainMs);
   await metricsServer?.close();
   await tracing?.shutdown();
   await db?.destroy();

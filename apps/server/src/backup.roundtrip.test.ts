@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { appendAudit } from './audit/chain';
 import { backup, clientBinary, restore, serverMajor, tableChecksums } from './backup';
 
 /**
@@ -37,6 +38,8 @@ describe('backup and restore round trip', () => {
       .insertInto('instance_setting')
       .values({ key: 'drill', value: '{"kept":true}' })
       .execute();
+    // A partitioned table with a partition: plain pg_restore --clean cannot drop those.
+    await appendAudit(database.db, [{ workspaceId: 1, actorId: null, action: 'drill.recorded' }]);
     const before = await tableChecksums(database.db);
 
     const out = join(dir, 'backup');

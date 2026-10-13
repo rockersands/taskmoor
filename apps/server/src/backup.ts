@@ -170,6 +170,10 @@ export async function restore(
   log(
     `restoring the database from ${join(dir, 'db.dump')} (${manifest.createdAt}) with ${pgRestore}`,
   );
+  // pg_restore --clean drops each partition's constraints before the parent's, which Postgres
+  // refuses ("cannot drop inherited constraint"). Partitioned tables go first, with their
+  // partitions; the restore's own drops for them then find nothing (--if-exists).
+  await dropPartitionedTables(db);
   await run(pgRestore, [
     '--clean',
     '--if-exists',
@@ -192,6 +196,18 @@ export async function restore(
   }
   log('restore complete');
   return manifest;
+}
+
+/** Drops every top-level partitioned table outside the system schemas, partitions included. */
+async function dropPartitionedTables(db: Kysely<Database>): Promise<void> {
+  const { rows } = await sql<{ name: string }>`
+    SELECT format('%I.%I', n.nspname, c.relname) AS name
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE c.relkind = 'p' AND NOT c.relispartition
+       AND n.nspname <> 'information_schema' AND n.nspname !~ '^pg_'`.execute(db);
+  for (const { name } of rows) {
+    await sql`DROP TABLE IF EXISTS ${sql.raw(name)} CASCADE`.execute(db);
+  }
 }
 
 /**

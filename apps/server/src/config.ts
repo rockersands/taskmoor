@@ -30,6 +30,7 @@ const envSchema = z.object({
   TASKMOOR_DATA: z.string().min(1).optional(),
   /** Internal Prometheus port (ADR-023); 0 turns the metrics listener off. */
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
+  TASKMOOR_SHUTDOWN_DRAIN_MS: z.coerce.number().int().min(0).max(60_000).default(2000),
   /** Address of the metrics listener; defaults to HOST. */
   METRICS_HOST: z.string().min(1).optional(),
   /**
@@ -63,6 +64,11 @@ export interface ServerConfig {
   metricsHost: string;
   trustedProxies: string | undefined;
   passwordPepper: string | undefined;
+  /**
+   * After SIGTERM, how long the server keeps answering (each answer closing its connection)
+   * before it stops: keep-alive clients hang up cleanly instead of losing a request.
+   */
+  shutdownDrainMs: number;
 }
 
 export function parseRoles(text: string): Role[] {
@@ -117,5 +123,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     metricsHost: e.METRICS_HOST ?? e.HOST,
     trustedProxies: e.TASKMOOR_TRUSTED_PROXIES,
     passwordPepper: e.TASKMOOR_PASSWORD_PEPPER,
+    shutdownDrainMs: e.TASKMOOR_SHUTDOWN_DRAIN_MS,
   };
 }

@@ -110,7 +110,9 @@ worker:
   podAnnotations: {}
 
 # Seconds a stopping pod keeps serving while it leaves the Service, so a rolling upgrade drops
-# no requests; the app then finishes in-flight requests before it exits.
+# no requests. After that the app answers for TASKMOOR_SHUTDOWN_DRAIN_MS more (2 s by default)
+# with every answer closing its connection, so keep-alive clients reconnect to another pod, and
+# then finishes in-flight requests before it exits.
 drainSeconds: 10
 terminationGracePeriodSeconds: 40
 

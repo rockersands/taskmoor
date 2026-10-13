@@ -19,6 +19,7 @@ describe('loadConfig', () => {
       dataDir: undefined,
       metricsPort: 9464,
       metricsHost: '0.0.0.0',
+      shutdownDrainMs: 2000,
     });
   });
 
