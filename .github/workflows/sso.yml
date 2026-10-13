@@ -1,0 +1,38 @@
+name: Single sign-on
+
+# OpenID Connect sign-in against a real Keycloak (M1-080): tools/sso/keycloak-test.sh starts it
+# with the test realm and runs apps/server/src/sso/keycloak.e2e.test.ts. Runs when sign-in code
+# changes, weekly, and on demand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/server/src/sso/**"
+      - "apps/server/src/routes/sso.ts"
+      - "apps/server/src/routes/session.ts"
+      - "apps/server/src/auth.ts"
+      - "packages/iam/**"
+      - "tools/sso/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/sso.yml"
+  schedule:
+    - cron: "0 5 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keycloak:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Sign in through Keycloak
+        run: bash tools/sso/keycloak-test.sh

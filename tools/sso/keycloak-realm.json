@@ -1,0 +1,62 @@
+{
+  "realm": "taskmoor",
+  "enabled": true,
+  "sslRequired": "none",
+  "loginWithEmailAllowed": true,
+  "groups": [{ "name": "engineers" }, { "name": "managers" }],
+  "users": [
+    {
+      "username": "kim",
+      "email": "kim@keycloak.test",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Kim",
+      "lastName": "Park",
+      "credentials": [
+        { "type": "password", "value": "kim-password-for-tests", "temporary": false }
+      ],
+      "groups": ["/engineers", "/managers"]
+    },
+    {
+      "username": "lou",
+      "email": "lou@keycloak.test",
+      "emailVerified": false,
+      "enabled": true,
+      "firstName": "Lou",
+      "lastName": "Reed",
+      "credentials": [{ "type": "password", "value": "lou-password-for-tests", "temporary": false }]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "taskmoor",
+      "name": "Taskmoor end-to-end test",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "keycloak-client-secret-for-tests",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": ["http://tracker.test/api/v1/auth/oidc/callback"],
+      "webOrigins": [],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    }
+  ]
+}
