@@ -2,6 +2,8 @@ import type { Database } from '@taskmoor/db';
 import { newToken, tokenHash } from '@taskmoor/iam';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
+import type { AuthzContext } from './authz/authorizer';
+import type { GlobalPermission } from './authz/permissions';
 
 /**
  * Cookie sessions (ADR-032, IAM-004). The browser holds a random 256-bit token; the database
@@ -44,6 +46,8 @@ declare module 'fastify' {
     authSession: CurrentSession | null;
     /** Shortcut for `authSession?.user`. */
     user: SessionUser | null;
+    /** Permission checks for this request's person (ADR-012). */
+    authz: AuthzContext;
   }
 }
 
@@ -176,13 +180,28 @@ export function requireUser(request: FastifyRequest, reply: FastifyReply): Sessi
   return request.user;
 }
 
-/** 401 for anonymous callers, 403 for everyone but site administrators. */
-export function requireSiteAdmin(request: FastifyRequest, reply: FastifyReply): SessionUser | null {
+/**
+ * 401 for anonymous callers, 403 for everyone without the global permission. Site
+ * administrators (by the account flag or a global grant, also through a group) hold them all.
+ */
+export async function requireGlobal(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  ...permissions: GlobalPermission[]
+): Promise<SessionUser | null> {
   const user = requireUser(request, reply);
   if (!user) return null;
-  if (!user.isSiteAdmin) {
+  const held = await request.authz.global();
+  if (!permissions.some((p) => held.has(p))) {
     void reply.code(403).send({ error: 'forbidden' });
     return null;
   }
   return user;
+}
+
+export function requireSiteAdmin(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<SessionUser | null> {
+  return requireGlobal(request, reply, 'site_admin');
 }

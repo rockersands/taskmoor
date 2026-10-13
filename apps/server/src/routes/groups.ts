@@ -42,7 +42,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
       .executeTakeFirst();
 
   app.get('/api/v1/groups', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const parsed = listQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     let query = db
@@ -80,7 +80,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.post('/api/v1/groups', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const parsed = groupBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     try {
@@ -101,7 +101,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.get('/api/v1/groups/:id', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const ws = request.workspaceId;
@@ -142,7 +142,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.get('/api/v1/groups/:id/effective-members', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     if (!(await findGroup(request.workspaceId, params.data.id))) {
@@ -152,7 +152,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.patch('/api/v1/groups/:id', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = idParams.safeParse(request.params);
     const parsed = patchBody.safeParse(request.body);
     if (!params.success || !parsed.success) {
@@ -180,7 +180,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.delete('/api/v1/groups/:id', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const result = await db
@@ -193,7 +193,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.put('/api/v1/groups/:id/members/:userId', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = memberParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const ws = request.workspaceId;
@@ -216,7 +216,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.delete('/api/v1/groups/:id/members/:userId', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = memberParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const result = await db
@@ -230,7 +230,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.put('/api/v1/groups/:id/children/:childId', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = childParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const ws = request.workspaceId;
@@ -261,7 +261,7 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
   });
 
   app.delete('/api/v1/groups/:id/children/:childId', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = childParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const result = await db

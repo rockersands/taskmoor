@@ -35,7 +35,7 @@ export function registerSessionRoutes(
 ): void {
   app.get('/api/v1/session', async (request, reply) => {
     if (!request.user) return reply.code(401).send({ error: 'not_signed_in' });
-    return { user: request.user };
+    return { user: { ...request.user, isSiteAdmin: await request.authz.isSiteAdmin() } };
   });
 
   app.post('/api/v1/session', async (request, reply) => {

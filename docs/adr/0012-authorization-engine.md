@@ -68,6 +68,27 @@ one when the filter is selective (`mine-open` -44%), equal within noise otherwis
 with 10% of tracks allowed, where the planner switches to the track index). On every query
 above 2 ms the 20% budget holds. The 10M run repeats the measurement.
 
+## Implementation (M1-002)
+
+`apps/server/src/authz/authorizer.ts` with tables `role`, `access_policy`, `access_grant`,
+`track` (its permission columns), `track_role_actor` and `global_grant`. Two choices differ from
+the spike:
+
+- **Nested groups are resolved in the query** with a recursive CTE rather than flattened on
+  write; nesting is shallow and the check stays within budget (test: p95 under 10 ms uncached
+  with 10,000 grants, 400 users and 300 tracks). Flattening remains the fallback if a real
+  directory makes the recursion slow.
+- **Cache invalidation uses an epoch per workspace** (`authz_epoch`), moved by triggers on every
+  permission-relevant table, until the change log (M1-031) can carry finer signals. A request
+  reads the epoch once; cached sets from an older epoch are ignored, so a revoked grant takes
+  effect at the next request.
+
+Site administrators (the account flag, or a `site_admin` global grant, also through a group)
+hold every permission in every track and need no search filter; configuration administrators
+hold `administer_track`, `manage_layouts`, `edit_workflows` and `view_readonly_workflow`
+everywhere. Ticket-level grantees never grant at track level; M1-020 applies them per ticket.
+A property test checks the service against a plain reference model on 10,000 random grants.
+
 ## Consequences
 
 Policies, roles and memberships are ordinary tables, so imports (IMP-005) and the admin UI

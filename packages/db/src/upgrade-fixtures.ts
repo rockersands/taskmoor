@@ -62,6 +62,35 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0004_authorization': {
+    tables: {
+      role: "name = 'Seed role'",
+      access_policy: "name = 'Seed policy'",
+      access_grant: "permission = 'seed_permission'",
+      track: "key = 'SEED'",
+      track_role_actor: "track_id IN (SELECT id FROM track WHERE key = 'SEED')",
+      global_grant: "permission = 'seed_global'",
+      authz_epoch: 'workspace_id = 1',
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO role (workspace_id, name) VALUES (1, 'Seed role')`.execute(db);
+      await sql`INSERT INTO access_policy (workspace_id, name) VALUES (1, 'Seed policy')`.execute(
+        db,
+      );
+      await sql`INSERT INTO access_grant (workspace_id, policy_id, permission, grantee, role_id)
+        SELECT 1, p.id, 'seed_permission', 'role', r.id FROM access_policy p, role r
+         WHERE p.name = 'Seed policy' AND r.name = 'Seed role'`.execute(db);
+      await sql`INSERT INTO track (workspace_id, key, name, access_policy_id)
+        SELECT 1, 'SEED', 'Seed', id FROM access_policy WHERE name = 'Seed policy'`.execute(db);
+      await sql`INSERT INTO track_role_actor (workspace_id, track_id, role_id, user_id)
+        SELECT 1, t.id, r.id, u.id FROM track t, role r, app_user u
+         WHERE t.key = 'SEED' AND r.name = 'Seed role' AND u.email = 'seed@example.com'`.execute(
+        db,
+      );
+      await sql`INSERT INTO global_grant (workspace_id, permission, grantee)
+        VALUES (1, 'seed_global', 'any_user')`.execute(db);
+    },
+  },
 };
 
 /** How many of the rows the named seeds wrote are still there: one per table when nothing was lost. */

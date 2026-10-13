@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { type Database, migrationStatus, poolStats } from '@taskmoor/db';
 import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
+import { requireSiteAdmin } from '../auth';
 
 /** What the admin status page shows (OPS-010, M1-103). Never includes settings or secrets. */
 export interface SystemInfo {
@@ -102,8 +103,7 @@ export function registerAdminRoutes(
   options: SystemInfoOptions,
 ): void {
   app.get('/api/v1/admin/system', async (request, reply) => {
-    if (!request.user) return reply.code(401).send({ error: 'not_signed_in' });
-    if (!request.user.isSiteAdmin) return reply.code(403).send({ error: 'forbidden' });
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     return systemInfo(db, options);
   });
 }

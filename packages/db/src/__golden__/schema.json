@@ -1,4 +1,35 @@
 {
+  "access_grant": {
+    "columns": [
+      "id integer not null default nextval('access_grant_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "policy_id integer not null",
+      "permission text not null",
+      "grantee text not null",
+      "role_id integer",
+      "group_id integer",
+      "user_id integer",
+      "field_key text"
+    ],
+    "indexes": [
+      "CREATE INDEX access_grant_permission_idx ON public.access_grant USING btree (permission, grantee)",
+      "CREATE UNIQUE INDEX access_grant_pkey ON public.access_grant USING btree (id)",
+      "CREATE UNIQUE INDEX access_grant_unique_idx ON public.access_grant USING btree (policy_id, permission, grantee, COALESCE(role_id, 0), COALESCE(group_id, 0), COALESCE(user_id, 0), COALESCE(field_key, ''::text))"
+    ]
+  },
+  "access_policy": {
+    "columns": [
+      "id integer not null default nextval('access_policy_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX access_policy_pkey ON public.access_policy USING btree (id)",
+      "CREATE UNIQUE INDEX access_policy_workspace_name_idx ON public.access_policy USING btree (workspace_id, lower(name))"
+    ]
+  },
   "app_user": {
     "columns": [
       "id integer not null default nextval('app_user_id_seq'::regclass)",
@@ -18,6 +49,29 @@
     "indexes": [
       "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)",
       "CREATE UNIQUE INDEX app_user_workspace_email_idx ON public.app_user USING btree (workspace_id, lower(email))"
+    ]
+  },
+  "authz_epoch": {
+    "columns": [
+      "workspace_id integer not null",
+      "epoch bigint not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX authz_epoch_pkey ON public.authz_epoch USING btree (workspace_id)"
+    ]
+  },
+  "global_grant": {
+    "columns": [
+      "id integer not null default nextval('global_grant_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "permission text not null",
+      "grantee text not null",
+      "group_id integer",
+      "user_id integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX global_grant_pkey ON public.global_grant USING btree (id)",
+      "CREATE UNIQUE INDEX global_grant_unique_idx ON public.global_grant USING btree (workspace_id, permission, grantee, COALESCE(group_id, 0), COALESCE(user_id, 0))"
     ]
   },
   "group_member": {
@@ -71,6 +125,19 @@
       "CREATE INDEX password_link_user_idx ON public.password_link USING btree (user_id)"
     ]
   },
+  "role": {
+    "columns": [
+      "id integer not null default nextval('role_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX role_pkey ON public.role USING btree (id)",
+      "CREATE UNIQUE INDEX role_workspace_name_idx ON public.role USING btree (workspace_id, lower(name))"
+    ]
+  },
   "schema_migration": {
     "columns": [
       "name character varying not null",
@@ -114,6 +181,37 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
+    ]
+  },
+  "track": {
+    "columns": [
+      "id integer not null default nextval('track_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "key text not null",
+      "name text not null",
+      "owner_id integer",
+      "access_policy_id integer not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX track_owner_idx ON public.track USING btree (owner_id)",
+      "CREATE UNIQUE INDEX track_pkey ON public.track USING btree (id)",
+      "CREATE INDEX track_policy_idx ON public.track USING btree (access_policy_id)",
+      "CREATE UNIQUE INDEX track_workspace_key_idx ON public.track USING btree (workspace_id, upper(key))"
+    ]
+  },
+  "track_role_actor": {
+    "columns": [
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "role_id integer not null",
+      "user_id integer",
+      "group_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX track_role_actor_group_idx ON public.track_role_actor USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX track_role_actor_unique_idx ON public.track_role_actor USING btree (track_id, role_id, COALESCE(user_id, 0), COALESCE(group_id, 0))",
+      "CREATE INDEX track_role_actor_user_idx ON public.track_role_actor USING btree (user_id) WHERE (user_id IS NOT NULL)"
     ]
   },
   "user_group": {

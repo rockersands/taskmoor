@@ -64,7 +64,7 @@ export function registerUserRoutes(
   options: { publicUrl: string; passwords: PasswordHasher },
 ): void {
   app.get('/api/v1/users', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const parsed = listQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     const { query, status, limit, offset } = parsed.data;
@@ -91,7 +91,7 @@ export function registerUserRoutes(
   });
 
   app.post('/api/v1/users', async (request, reply) => {
-    const admin = requireSiteAdmin(request, reply);
+    const admin = await requireSiteAdmin(request, reply);
     if (!admin) return reply;
     const parsed = createBody.safeParse(request.body);
     if (!parsed.success) {
@@ -161,7 +161,7 @@ export function registerUserRoutes(
   });
 
   app.get('/api/v1/users/:id', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const parsed = idParams.safeParse(request.params);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     const row = await db
@@ -184,7 +184,7 @@ export function registerUserRoutes(
   });
 
   app.patch('/api/v1/users/:id', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = idParams.safeParse(request.params);
     const parsed = updateBody.safeParse(request.body);
     if (!params.success || !parsed.success) {
@@ -239,7 +239,7 @@ export function registerUserRoutes(
   });
 
   app.post('/api/v1/users/:id/deactivate', async (request, reply) => {
-    const admin = requireSiteAdmin(request, reply);
+    const admin = await requireSiteAdmin(request, reply);
     if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
@@ -280,7 +280,7 @@ export function registerUserRoutes(
   });
 
   app.post('/api/v1/users/:id/reactivate', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const row = await db
@@ -296,7 +296,7 @@ export function registerUserRoutes(
 
   // A one-time link the administrator hands over (email delivery arrives with M1-057).
   app.post('/api/v1/users/:id/password-link', async (request, reply) => {
-    const admin = requireSiteAdmin(request, reply);
+    const admin = await requireSiteAdmin(request, reply);
     if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
@@ -323,7 +323,7 @@ export function registerUserRoutes(
   });
 
   app.delete('/api/v1/users/:id/sessions', async (request, reply) => {
-    if (!requireSiteAdmin(request, reply)) return reply;
+    if (!(await requireSiteAdmin(request, reply))) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const revoked = await revokeUserSessions(db, request.workspaceId, params.data.id);

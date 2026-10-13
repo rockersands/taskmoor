@@ -115,6 +115,88 @@ export interface PasswordLinkTable {
   used_at: Timestamp | null;
 }
 
+/** Track roles (Administrators, Members, Viewers by default); tracks name their actors. */
+export interface RoleTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  created_at: DefaultTimestamp;
+}
+
+/** A set of grants that tracks share (Jira: permission scheme). */
+export interface AccessPolicyTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  created_at: DefaultTimestamp;
+}
+
+export type GranteeKind =
+  | 'role'
+  | 'group'
+  | 'user'
+  | 'track_owner'
+  | 'any_user'
+  | 'anyone'
+  | 'requester'
+  | 'assignee'
+  | 'user_field'
+  | 'group_field';
+
+/** One track permission granted to one grantee by a policy. */
+export interface AccessGrantTable {
+  id: Generated<number>;
+  workspace_id: number;
+  policy_id: number;
+  permission: string;
+  grantee: GranteeKind;
+  role_id: number | null;
+  group_id: number | null;
+  user_id: number | null;
+  field_key: string | null;
+}
+
+/**
+ * A track as a permission scope (M1-002); M1-006 adds category, archiving and configuration
+ * mode. Keys are unique within a workspace, ignoring case.
+ */
+export interface TrackTable {
+  id: Generated<number>;
+  workspace_id: number;
+  key: string;
+  name: string;
+  owner_id: number | null;
+  access_policy_id: number;
+  created_at: DefaultTimestamp;
+}
+
+/** A user or a group acting in a role on one track. */
+export interface TrackRoleActorTable {
+  workspace_id: number;
+  track_id: number;
+  role_id: number;
+  user_id: number | null;
+  group_id: number | null;
+}
+
+/** A global permission (spec 05a section 1.1) granted to a group, a user or everyone signed in. */
+export interface GlobalGrantTable {
+  id: Generated<number>;
+  workspace_id: number;
+  permission: string;
+  grantee: 'group' | 'user' | 'any_user';
+  group_id: number | null;
+  user_id: number | null;
+}
+
+/** Moves on every change that can alter a permission; cached permission sets carry it. */
+export interface AuthzEpochTable {
+  workspace_id: number;
+  epoch: ColumnType<string, string | number | undefined, string | number>;
+}
+
 /**
  * The M0 session table, replaced by user_session. Kept until a later release so the previous
  * release keeps working during a rolling upgrade (ADR-022); nothing in this release uses it.
@@ -138,5 +220,12 @@ export interface Database {
   user_session: UserSessionTable;
   sign_in_throttle: SignInThrottleTable;
   password_link: PasswordLinkTable;
+  role: RoleTable;
+  access_policy: AccessPolicyTable;
+  access_grant: AccessGrantTable;
+  track: TrackTable;
+  track_role_actor: TrackRoleActorTable;
+  global_grant: GlobalGrantTable;
+  authz_epoch: AuthzEpochTable;
   session: SessionTable;
 }

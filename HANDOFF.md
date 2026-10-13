@@ -6,6 +6,11 @@ Read this first in every session, then update it before you stop.
 
 ### Done
 
+- **M1-002 authorization** (ADR-012 implemented): roles, access policies and grants, global grants,
+  track role actors, and `apps/server/src/authz/authorizer.ts` (per-track permission sets, list
+  filter for search, explainer, epoch-checked cache). Routes check `request.authz`; site
+  administration can now come from a group. The track table exists with its permission columns;
+  M1-006 adds the rest.
 - **M1-001 identity foundation** (after the user tested the demo): `workspace` table and
   `workspace_id` on every table (fitness test `packages/db/src/workspace-scope.test.ts`), users
   with profiles, nested groups, Argon2id (`hash-wasm`) keyed with a pepper from
@@ -112,9 +117,7 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. M1-002 (roles, track roles, access policies, global permissions, the authorization service;
-   it reuses `effectiveGroupIds` in `apps/server/src/directory.ts`), then M1-003 (audit events)
-   and M1-005 (event bus), which M1-001 unblocked. The query catalogue gaps (targetRelease,
+1. `pnpm next-task`: M1-003 (audit events), M1-005 (event bus) and M1-006 (tracks) are ready. The query catalogue gaps (targetRelease,
    area, sprint, due; history on every field; user values by name; function arity) belong to
    M1-036.
 2. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and

@@ -8,10 +8,12 @@ import { type PasswordHasher, passwordHasher } from '@taskmoor/iam';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { presentedToken, resolveSession } from './auth';
+import { Authorizer } from './authz/authorizer';
 import type { Role, ServerConfig } from './config';
 import { instrumentApp, type Metrics } from './observability';
 import { registerAccountRoutes } from './routes/account';
 import { registerAdminRoutes } from './routes/admin';
+import { registerAuthzRoutes } from './routes/authz';
 import { registerGroupRoutes } from './routes/groups';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerSessionRoutes } from './routes/session';
@@ -40,6 +42,8 @@ export interface AppDeps {
   trustedProxies?: string;
   /** Password hashing with the install's pepper (ASVS 2.4.5); tests may leave it out. */
   passwords?: PasswordHasher;
+  /** The authorization service (ADR-012); built from the database when left out. */
+  authorizer?: Authorizer;
   /** Request latency goes here (ADR-023). */
   metrics?: Metrics;
   /** Requests open server spans with it (ADR-023); absent when tracing is off. */
@@ -84,11 +88,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     app.decorateRequest('user', null);
     app.decorateRequest('authSession', null);
     app.decorateRequest('workspaceId', 0);
+    app.decorateRequest('authz', null as unknown as never);
+    const authorizer = deps.authorizer ?? new Authorizer(db);
     app.addHook('onRequest', async (request) => {
       if (!request.url.startsWith('/api/')) return;
       request.workspaceId = await defaultWorkspaceId(db);
       request.authSession = await resolveSession(db, request.workspaceId, presentedToken(request));
       request.user = request.authSession?.user ?? null;
+      request.authz = authorizer.context(request.workspaceId, { userId: request.user?.id ?? null });
     });
     const passwords = deps.passwords ?? passwordHasher();
     const cookieOptions = { secureCookies: deps.secureCookies ?? false, passwords };
@@ -102,6 +109,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerGroupRoutes(app, db);
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
+    registerAuthzRoutes(app, db, authorizer);
     // Expired sessions, used links and stale counters go at start and every six hours.
     const prune = () =>
       pruneIdentityData(db).catch((error) => app.log.warn({ error }, 'prune failed'));
