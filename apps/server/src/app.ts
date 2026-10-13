@@ -19,8 +19,8 @@ import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSsoRoutes } from './routes/sso';
-import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerTrackRoutes } from './routes/tracks';
+import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
 import { pruneIdentityData } from './throttle';
 import { defaultWorkspaceId } from './workspace';
