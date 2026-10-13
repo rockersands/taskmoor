@@ -214,6 +214,24 @@ export async function tableChecksums(db: Kysely<Database>): Promise<Record<strin
   return out;
 }
 
+/**
+ * Waits until every event is published and no ready job is left (at most a minute), so a
+ * checksum taken afterwards does not change under the worker's feet.
+ */
+export async function waitForIdleQueue(db: Kysely<Database>, timeoutMs = 60_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const { rows } = await sql<{ busy: string }>`
+      SELECT (SELECT count(*) FROM domain_event WHERE published_at IS NULL)
+           + (SELECT count(*) FROM job WHERE done_at IS NULL AND run_at <= now()) AS busy`.execute(
+      db,
+    );
+    if (Number(rows[0]?.busy ?? 0) === 0) return true;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  return false;
+}
+
 /** Sizes, for the backup listing. */
 export function backupSize(dir: string): number {
   return walk(dir).reduce((n, entry) => n + statSync(join(dir, entry)).size, 0);

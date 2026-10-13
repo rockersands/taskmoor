@@ -4,13 +4,14 @@
 //   node cli.mjs status                 migration status as JSON
 //   node cli.mjs backup [--out <dir>]   database, files and config into <dir> (OPS-008)
 //   node cli.mjs restore <dir> --yes    put a backup back; stop the other roles first (OPS-009)
-//   node cli.mjs checksum               one checksum per table, for restore drills
+//   node cli.mjs checksum [--wait]      one checksum per table, for restore drills; --wait first
+//                                       lets the worker finish relaying events and running jobs
 //   node cli.mjs password-link <email>  a one-time link to set a password (an administrator who
 //                                       is locked out, or after a lost password keyring)
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
-import { backup, backupSize, restore, tableChecksums } from './backup';
+import { backup, backupSize, restore, tableChecksums, waitForIdleQueue } from './backup';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
 import { emit } from './events/bus';
@@ -19,7 +20,11 @@ import { defaultWorkspaceId } from './workspace';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
-  options: { out: { type: 'string' }, yes: { type: 'boolean', default: false } },
+  options: {
+    out: { type: 'string' },
+    yes: { type: 'boolean', default: false },
+    wait: { type: 'boolean', default: false },
+  },
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
@@ -105,6 +110,7 @@ try {
       break;
     }
     case 'checksum':
+      if (values.wait) await waitForIdleQueue(db);
       say(JSON.stringify(await tableChecksums(db), null, 2));
       break;
     case 'password-link': {

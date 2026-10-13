@@ -45,7 +45,7 @@ wait_ready
 curl -fsS -X POST "http://127.0.0.1:$PORT/api/v1/setup" -H 'content-type: application/json' \
   -d '{"token":"drill-token-0123456789","instanceName":"Drill","admin":{"name":"Drill","email":"drill@example.com","password":"a long enough passphrase"}}' >/dev/null
 expect_setup false
-app node cli.mjs checksum > "$WORK/before.json"
+app node cli.mjs checksum --wait > "$WORK/before.json"
 echo "tables: $(grep -c ':' "$WORK/before.json")"
 
 echo "== backup"
@@ -63,7 +63,7 @@ echo "== restore"
 app mkdir -p /data/backups
 docker cp "$HOST_WORK/backup" "$PROJECT-taskmoor-1:/data/backups/drill" >/dev/null
 app node cli.mjs restore /data/backups/drill --yes | tail -1
-app node cli.mjs checksum > "$WORK/after.json"
+app node cli.mjs checksum --wait > "$WORK/after.json"
 if diff -q "$WORK/before.json" "$WORK/after.json" >/dev/null; then
   echo "table checksums match"
 else
