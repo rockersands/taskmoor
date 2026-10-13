@@ -2,9 +2,35 @@
 
 Read this first in every session, then update it before you stop.
 
-## Last session: 2026-10-12 (overnight and morning)
+## Last session: 2026-10-12 to 13 (night)
 
 ### Done
+
+- **Four parallel branches merged** (each built in its own worktree, then merged in migration
+  order 0006 to 0010): M1-003 audit log (ADR-034), M1-004 API tokens and service accounts
+  (ADR-035; its ADR was renumbered from 034), M1-006 tracks, M1-084 two-factor UI. Merge rules
+  that keep coming up: union the migration index, upgrade seeds and catalogue in number order;
+  rebuild `events/contract.test.ts` from main plus each branch's added scenarios (order matters:
+  the two-factor policy scenario demands a second factor of later users); regenerate the schema
+  golden with `pnpm verify --update --only=tests -- --project=db`; every new event type needs a
+  decision in `audit/subscriber.ts`, and every new route a class in `tokens/scopes.ts`.
+- **M1-080 single sign-on, backend** (ADR-019 "Single sign-on with OpenID Connect"):
+  `apps/server/src/sso/oidc.ts`, `routes/sso.ts`, migration 0010. Providers with sealed client
+  secrets, domains and group maps; code flow with PKCE, state and nonce bound to the starting
+  browser; JIT and linking only for verified addresses of served domains (never service
+  accounts); group sync; enforced single sign-on with break-glass accounts (`breakGlass` on
+  `PATCH /users/:id`); refusals in the audit log. Tests use the in-process
+  `testing/fake-idp.ts`; `bash tools/sso/keycloak-test.sh` runs the real flow against
+  Keycloak 26.7.4 (also `sso.yml` in CI).
+- **Fixes found by CI after the merges:** restore now drops partitioned tables before
+  `pg_restore --clean` (it cannot drop a partition's inherited primary key); shutdown answers
+  with `Connection: close` for `TASKMOOR_SHUTDOWN_DRAIN_MS` before closing, so keep-alive clients
+  lose no request during a rolling upgrade (kind lost 1 in 55k before); the licence test counts
+  packages per store folder.
+- **Skins requested by the user:** light and dark first, in the soft pastel style of their
+  reference image. Plan: ADR-036 and M1-122 (see Next).
+
+## Earlier: 2026-10-12 (overnight and morning)
 
 - **M1-005 event bus** (ADR-015 implemented): `apps/server/src/events` (catalogue, emit,
   relay, job queue, worker loop in the worker role). Every new mutating route must emit one
@@ -121,13 +147,16 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. `pnpm next-task`: M1-003 (audit, the first event subscriber), M1-004 (API tokens) and M1-006
-   (tracks) are ready and independent of each other. The query catalogue gaps (targetRelease,
-   area, sprint, due; history on every field; user values by name; function arity) belong to
-   M1-036.
-2. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
+1. **M1-122 skins** (the user's request): ADR-036, semantic tokens per skin, `data-skin` on the
+   root, System / Light / Dark under Account and saved to the account, the soft pastel look,
+   stories checked with axe in both skins.
+2. **M1-080 rest:** provider buttons and `sso_error` messages on the sign-in page, the discover
+   step (email first), the identity provider admin page, break-glass in the user admin UI.
+3. `pnpm next-task` for the rest. The query catalogue gaps (targetRelease, area, sprint, due;
+   history on every field; user values by name; function arity) belong to M1-036.
+4. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
    the default on `app_user.workspace_id` (ADR-022).
-3. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
+5. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
    `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
    spikes in about four minutes, logs in `.cache/scripts/g-*.log`). The copy on E: is deleted.
 
@@ -147,8 +176,8 @@ status page. Boards, items and queries arrive with M1.
 
 - Pushes use the GitHub CLI token through a repo-local credential helper
   (`git config --local credential.helper`); Git Credential Manager would otherwise open a
-  sign-in window. The CLI is signed in as rockersands. The token lacks the `workflow` scope,
-  so pushes that touch `.github/workflows/*` are refused (see Waiting on the user).
+  sign-in window. The CLI is signed in as rockersands; its token has the `workflow` scope, so
+  pushes that change `.github/workflows/*` go through.
 - Bench datasets live in `G:/taskmoor-pg/bench` as UNLOGGED tables: stop that cluster cleanly
   (`pg_ctl -m fast`); an immediate stop empties them. `pnpm gen` checks for rows before reuse.
   The bench cluster is shared: a second process attaches to the running server; if the owner
@@ -193,8 +222,10 @@ status page. Boards, items and queries arrive with M1.
   `SET transaction_timeout` (17+ emits it), so the image ships clients 16, 17 and 18 under
   `/usr/libexec/postgresql<major>` and `clientBinary()` in `apps/server/src/backup.ts` picks the
   server's major; `TASKMOOR_PG_BIN` points at another directory. The round-trip test
-  (`backup.roundtrip.test.ts`) skips when no matching client is on this machine; the CI image
-  job runs the real drill.
+  (`backup.roundtrip.test.ts`) skips when no matching client is on this machine; PostgreSQL
+  16.14 client tools are at `G:/tools/pgsql/bin`, so run it with
+  `TASKMOOR_PG_BIN=G:/tools/pgsql/bin` after schema or backup changes. The CI image job runs the
+  real drill.
 - Python's `Path.write_text` on Windows writes CRLF: Biome's format check then fails and git
   shows whole-file diffs. Open files with `newline='\n'` or run `sed -i 's/\r$//'` afterwards.
 - Commit 5ffe3ad carries the message of the commit before it; it holds the upgrade harness and

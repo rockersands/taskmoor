@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
+Updated 2026-10-13. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
 
 ## Milestones
 
@@ -66,4 +66,9 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-001 Identity foundation | Done | Workspaces, users, nested groups, Argon2id with a pepper keyring, lockout and rate limits, hashed sessions, password links, account UI; ASVS L2 authentication checks as tests |
 | M1-002 Roles and authorization | Done | Roles, access policies, global grants, track role actors; authorization service with cache, list filter and explainer; 10k-grant property test, check p95 under 10 ms |
 | M1-005 Domain event bus | Done | One typed event per mutation in its transaction, relay to subscriber jobs, queue with backoff; fitness test over every mutating route |
+| M1-003 Audit log | Done | Monthly partitions, one hash chain per workspace, verify, retention in whole months, search and streamed export; refused sign-ins and single sign-ons recorded |
+| M1-004 API tokens and service accounts | Done | Prefixed, hashed, scoped, expiring tokens with rotation; service accounts; admin inventory and bulk revoke; UI and e2e |
+| M1-006 Tracks | Done | Keys with history, categories, feature toggles, shared or local mode, archive and restore |
+| M1-084 Two-factor sign-in | Done | Authenticator apps, security keys, recovery codes, policy with enrolment at sign-in; UI and e2e |
+| M1-080 OpenID Connect sign-in | In progress | Backend, enforcement with break-glass accounts and Keycloak e2e done; sign-in buttons and provider admin UI next |
 | M1-100 Air-gap bundle | In progress | Bundle, verify and offline install tested on an internal network; release signing key waits on the user |
