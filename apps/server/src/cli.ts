@@ -8,9 +8,12 @@
 //                                       lets the worker finish relaying events and running jobs
 //   node cli.mjs password-link <email>  a one-time link to set a password (an administrator who
 //                                       is locked out, or after a lost password keyring)
+//   node cli.mjs audit-verify           checks every workspace's audit hash chain (IAM-013);
+//                                       exit 1 when one is broken
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
+import { verifyChain } from './audit/chain';
 import { backup, backupSize, restore, tableChecksums, waitForIdleQueue } from './backup';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
@@ -28,7 +31,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | checksum | password-link <email>>';
+  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | checksum | password-link <email> | audit-verify>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -153,6 +156,19 @@ try {
       });
       say(passwordLinkUrl(config.publicUrl, link.token));
       say(`valid until ${link.expiresAt.toISOString()}; it works once`);
+      break;
+    }
+    case 'audit-verify': {
+      const workspaces = await db
+        .selectFrom('workspace')
+        .select(['id', 'key'])
+        .orderBy('id')
+        .execute();
+      for (const workspace of workspaces) {
+        const status = await verifyChain(db, workspace.id);
+        say(JSON.stringify({ workspace: workspace.key, ...status }));
+        if (!status.ok) process.exitCode = 1;
+      }
       break;
     }
     default:

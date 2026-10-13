@@ -1,6 +1,7 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { openSecret, passwordHasher, pepperFromSecret, pepperRing } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -291,6 +292,22 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
     expect((await ssoSignIn(provider.id)).location).toBe(
       `${ORIGIN}/#/sign-in?sso_error=account_deactivated`,
     );
+
+    // Each refusal the provider vouched for is in the audit log (IAM-013).
+    const refusals = await database.db
+      .selectFrom('audit_event')
+      .select(['subject_id', 'details'])
+      .where('action', '=', 'sso.sign_in_refused')
+      .where(sql<boolean>`details->>'providerId' = ${String(provider.id)}`)
+      .orderBy('seq')
+      .execute();
+    expect(refusals.map((r) => (r.details as { reason: string }).reason)).toEqual([
+      'email_unverified',
+      'domain_not_allowed',
+      'no_account',
+      'account_deactivated',
+    ]);
+    expect(refusals.at(-1)?.subject_id).toBe(String(existing));
   });
 
   it('[IAM-003] a sign-in completes only in the browser that started it, once', async () => {
@@ -449,6 +466,14 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
       { key: 'email:ghost@umbrella.example', failures: 1 },
       { key: 'email:root@umbrella.example', failures: 1 },
     ]);
+
+    const audited = await database.db
+      .selectFrom('audit_event')
+      .select('details')
+      .where('action', '=', 'session.sign_in_failed')
+      .where(sql<boolean>`details->>'reason' = 'sso_required'`)
+      .execute();
+    expect(audited).toHaveLength(4);
 
     const ok = await passwordSignIn('root@umbrella.example');
     expect(ok.json()).toMatchObject({ status: 'signed_in', user: { id: glass } });

@@ -11,8 +11,10 @@ import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
 import type { Role, ServerConfig } from './config';
 import { instrumentApp, type Metrics } from './observability';
+import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
 import { registerAdminRoutes } from './routes/admin';
+import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerGroupRoutes } from './routes/groups';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
@@ -115,6 +117,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       request.user = request.authSession?.user ?? null;
       request.authz = authorizer.context(request.workspaceId, { userId: request.user?.id ?? null });
     });
+    // Events emitted while handling a request record its client address.
+    registerRequestScope(app);
     const passwords = deps.passwords ?? passwordHasher(deps.peppers);
     const cookieOptions = { secureCookies: deps.secureCookies ?? false, passwords };
     registerSetupRoutes(app, db, cookieOptions);
@@ -140,6 +144,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     });
     registerTrackRoutes(app, db);
+    registerAuditRoutes(app, db);
     // Expired sessions, used links and stale counters go at start and every six hours.
     const prune = () =>
       pruneIdentityData(db).catch((error) => app.log.warn({ error }, 'prune failed'));

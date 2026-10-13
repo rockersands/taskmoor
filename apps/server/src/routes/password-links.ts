@@ -8,6 +8,7 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
+import { recordRejectedLink } from '../audit/record';
 import { revokeUserSessions, startSession } from '../auth';
 import { emit } from '../events/bus';
 import { lockedUntil, recordFailure, secondsUntil } from '../throttle';
@@ -51,7 +52,14 @@ export function registerPasswordLinkRoutes(
   }
 
   async function invalid(request: FastifyRequest, reply: FastifyReply) {
-    await recordFailure(db, request.workspaceId, { address: `ip:${request.ip}` });
+    const lock = await recordFailure(db, request.workspaceId, {
+      address: `ip:${request.ip}`,
+    });
+    await recordRejectedLink(db, {
+      workspaceId: request.workspaceId,
+      ip: request.ip,
+      lockedUntil: lock,
+    });
     return reply.code(404).send({ error: 'invalid_link' });
   }
 

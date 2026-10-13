@@ -187,6 +187,8 @@ export const EVENT_TYPES = {
     /** Tracks that used it are left without a category. */
     payload: z.object({ name: z.string(), trackCount: z.number().int().min(0) }),
   },
+  // Audit log
+  'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;
@@ -212,6 +214,8 @@ export interface DomainEvent {
   subjectId: string;
   payload: unknown;
   occurredAt: Date;
+  /** Client address of the request that caused it; null outside a request. */
+  ip: string | null;
 }
 
 export function isEventType(value: string): value is EventType {

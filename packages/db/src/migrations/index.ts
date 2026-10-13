@@ -4,6 +4,7 @@ import * as m0002 from './0002_users_and_sessions';
 import * as m0003 from './0003_identity';
 import * as m0004 from './0004_authorization';
 import * as m0005 from './0005_events';
+import * as m0006 from './0006_audit';
 import * as m0008 from './0008_tracks';
 import * as m0009 from './0009_two_factor';
 import * as m0010 from './0010_identity_providers';
@@ -19,6 +20,7 @@ export const migrations: Record<string, Migration> = {
   '0003_identity': m0003,
   '0004_authorization': m0004,
   '0005_events': m0005,
+  '0006_audit': m0006,
   '0008_tracks': m0008,
   '0009_two_factor': m0009,
   '0010_identity_providers': m0010,

@@ -747,6 +747,12 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'identity_provider.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/identity-providers/${state.idp}` }),
     },
+    {
+      route: 'PUT /api/v1/audit/settings',
+      expect: 'audit.settings_updated',
+      run: () =>
+        admin({ method: 'PUT', url: '/api/v1/audit/settings', payload: { retentionMonths: 84 } }),
+    },
   ];
 
   it('covers every mutating route with a scenario or a stated exemption', () => {

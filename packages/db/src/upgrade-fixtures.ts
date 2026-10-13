@@ -101,6 +101,26 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
+  '0006_audit': {
+    tables: {
+      domain_event: "ip = '192.0.2.6'",
+      audit_event: "action = 'seed.recorded'",
+      audit_chain: 'workspace_id = 1',
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO domain_event (workspace_id, type, subject_type, subject_id, ip)
+        VALUES (1, 'seed.audited', 'seed', '1', '192.0.2.6')`.execute(db);
+      // Partitions follow the application's naming (audit_event_pYYYYMM), months in UTC.
+      await sql`CREATE TABLE audit_event_p200001 PARTITION OF audit_event
+        FOR VALUES FROM ('2000-01-01 00:00:00+00') TO ('2000-02-01 00:00:00+00')`.execute(db);
+      await sql`INSERT INTO audit_event (workspace_id, seq, recorded_at, occurred_at, action,
+          details, prev_hash, hash)
+        VALUES (1, 1, '2000-01-15 00:00:00+00', '2000-01-15 00:00:00+00', 'seed.recorded',
+          '{"from": "0006"}', repeat('0', 64), repeat('a', 64))`.execute(db);
+      await sql`INSERT INTO audit_chain (workspace_id, head_seq, head_hash, head_recorded_at)
+        VALUES (1, 1, repeat('a', 64), '2000-01-15 00:00:00+00')`.execute(db);
+    },
+  },
   '0008_tracks': {
     tables: {
       track_category: "name = 'Seed category'",
@@ -184,7 +204,10 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
   },
 };
 
-/** How many of the rows the named seeds wrote are still there: one per table when nothing was lost. */
+/**
+ * How many of the rows the named seeds wrote are still there: one per seed and table when
+ * nothing was lost.
+ */
 export async function seededRows(
   db: Kysely<unknown>,
   seedNames: readonly string[],
@@ -194,7 +217,8 @@ export async function seededRows(
     for (const [table, where] of Object.entries(UPGRADE_SEEDS[name]?.tables ?? {})) {
       const { rows } = await sql<{ n: string }>`
         SELECT count(*) AS n FROM ${sql.table(table)} WHERE ${sql.raw(where)}`.execute(db);
-      counts[table] = Number(rows[0]?.n ?? 0);
+      // Keyed by seed too: a later migration that changes a table seeds its own row there.
+      counts[`${name}: ${table}`] = Number(rows[0]?.n ?? 0);
     }
   }
   return counts;

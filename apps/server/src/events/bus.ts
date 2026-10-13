@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { currentRequestScope } from '../request-scope';
 import { type DomainEvent, type DomainEventInput, EVENT_TYPES, type EventType } from './catalogue';
 
 export { diff } from './catalogue';
@@ -18,6 +19,8 @@ export interface EventContext {
   workspaceId: number;
   /** Who caused it; null for the system (the CLI, a job, first-run setup before an account). */
   actorId: number | null;
+  /** The client address; defaults to the address of the request being handled, if any. */
+  ip?: string | null;
 }
 
 /**
@@ -36,6 +39,7 @@ export async function emit(db: Db, context: EventContext, event: DomainEventInpu
       subject_type: spec.subject,
       subject_id: String(event.subjectId),
       payload: JSON.stringify(payload),
+      ip: context.ip ?? currentRequestScope()?.ip ?? null,
     })
     .execute();
 }
@@ -70,6 +74,7 @@ interface EventRow {
   subject_id: string;
   payload: unknown;
   occurred_at: Date;
+  ip: string | null;
 }
 
 function toEvent(row: EventRow): DomainEvent {
@@ -83,6 +88,7 @@ function toEvent(row: EventRow): DomainEvent {
     subjectId: row.subject_id,
     payload: row.payload,
     occurredAt: row.occurred_at,
+    ip: row.ip,
   };
 }
 

@@ -8,6 +8,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
+import { AUDIT_ACTIONS, recordRefusedAttempt } from '../audit/record';
 import { requireUser, revokeUserSessions } from '../auth';
 import { canonicalTimeZone, validLocale, validTimeZone } from '../directory';
 import { diff, withEvent } from '../events/bus';
@@ -117,7 +118,14 @@ export function registerAccountRoutes(
       .where('id', '=', user.id)
       .executeTakeFirstOrThrow();
     if (!row.password_hash || !(await passwords.verify(currentPassword, row.password_hash))) {
-      await recordFailure(db, workspaceId, keys, now);
+      const lock = await recordFailure(db, workspaceId, keys, now);
+      await recordRefusedAttempt(db, AUDIT_ACTIONS.passwordCheckFailed, {
+        workspaceId,
+        ip: request.ip,
+        actorId: user.id,
+        userId: user.id,
+        lockedUntil: lock,
+      });
       return reply.code(403).send({ error: 'wrong_password' });
     }
     await clearFailures(db, workspaceId, keys.account);

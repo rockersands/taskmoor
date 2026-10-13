@@ -19,6 +19,7 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
+import { AUDIT_ACTIONS, recordRefusedAttempt } from '../audit/record';
 import { requireSiteAdmin, requireUser, startSession } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { emit } from '../events/bus';
@@ -151,7 +152,14 @@ export function registerTwoFactorRoutes(
       .where('id', '=', userId)
       .executeTakeFirstOrThrow();
     if (!row.password_hash || !(await passwords.verify(parsed.data.password, row.password_hash))) {
-      await recordFailure(db, request.workspaceId, throttleKeys(email, request.ip));
+      const lock = await recordFailure(db, request.workspaceId, throttleKeys(email, request.ip));
+      await recordRefusedAttempt(db, AUDIT_ACTIONS.passwordCheckFailed, {
+        workspaceId: request.workspaceId,
+        ip: request.ip,
+        actorId: userId,
+        userId,
+        lockedUntil: lock,
+      });
       await reply.code(403).send({ error: 'wrong_password' });
       return false;
     }
@@ -232,7 +240,16 @@ export function registerTwoFactorRoutes(
     });
     if (sessionId === null) {
       await countChallengeFailure(db, challenge.id);
-      await recordFailure(db, ws, keys);
+      const lock = await recordFailure(db, ws, keys);
+      await recordRefusedAttempt(db, AUDIT_ACTIONS.signInFailed, {
+        workspaceId: ws,
+        ip: request.ip,
+        actorId: null,
+        userId: user.id,
+        email: user.email,
+        lockedUntil: lock,
+        reason: 'second_factor',
+      });
       return reply.code(401).send({ error: 'invalid_second_factor' });
     }
     await clearFailures(db, ws, keys.account);
@@ -314,7 +331,16 @@ export function registerTwoFactorRoutes(
     const step = secret ? verifyTotp(secret, parsed.data.code, new Date()) : null;
     if (!secret || step === null) {
       await countChallengeFailure(db, challenge.id);
-      await recordFailure(db, ws, throttleKeys(user.email, request.ip));
+      const lock = await recordFailure(db, ws, throttleKeys(user.email, request.ip));
+      await recordRefusedAttempt(db, AUDIT_ACTIONS.signInFailed, {
+        workspaceId: ws,
+        ip: request.ip,
+        actorId: null,
+        userId: user.id,
+        email: user.email,
+        lockedUntil: lock,
+        reason: 'second_factor',
+      });
       return reply.code(401).send({ error: 'invalid_second_factor' });
     }
     const result = await db.transaction().execute(async (trx) => {

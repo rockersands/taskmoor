@@ -3,6 +3,7 @@ import { newToken, openSecret, type PepperRing, sealSecret, tokenHash } from '@t
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
+import { recordSsoRefusal } from '../audit/record';
 import { requireSiteAdmin, startSession } from '../auth';
 import { diff, emit } from '../events/bus';
 import {
@@ -242,7 +243,8 @@ export function registerSsoRoutes(
         .executeTakeFirst();
       let userId = linked?.id;
       let created = false;
-      if (linked?.deactivated_at) return { error: 'account_deactivated' as const };
+      if (linked?.deactivated_at)
+        return { error: 'account_deactivated' as const, userId: linked.id };
       if (!userId) {
         // A first sign-in: only a verified email of a domain this provider serves may be linked
         // to an account or create one, so a provider cannot claim someone else's address.
@@ -257,7 +259,9 @@ export function registerSsoRoutes(
           .where('workspace_id', '=', ws)
           .where(sql<string>`lower(email)`, '=', identity.email)
           .executeTakeFirst();
-        if (existing?.deactivated_at) return { error: 'account_deactivated' as const };
+        if (existing?.deactivated_at) {
+          return { error: 'account_deactivated' as const, userId: existing.id };
+        }
         if (existing) {
           userId = existing.id;
         } else {
@@ -320,7 +324,17 @@ export function registerSsoRoutes(
       );
       return { error: null };
     });
-    if (outcome.error) return fail(reply, outcome.error);
+    if (outcome.error) {
+      await recordSsoRefusal(db, {
+        workspaceId: ws,
+        ip: request.ip,
+        providerId: provider.id,
+        userId: 'userId' in outcome ? (outcome.userId ?? null) : null,
+        email: identity.email,
+        reason: outcome.error,
+      });
+      return fail(reply, outcome.error);
+    }
     return reply.redirect(`${base}${login.return_to === '/' ? '/' : login.return_to}`, 302);
   });
 

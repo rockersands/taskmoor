@@ -170,6 +170,13 @@ describe('two-factor sign-in (M1-084)', () => {
       payload: { challenge, method: 'totp', code: '123456' },
     });
     expect(bad.json()).toEqual({ error: 'invalid_second_factor' });
+    const audited = await database.db
+      .selectFrom('audit_event')
+      .select(['action', 'details'])
+      .where('action', '=', 'session.sign_in_failed')
+      .orderBy('seq', 'desc')
+      .executeTakeFirstOrThrow();
+    expect(audited.details).toMatchObject({ reason: 'second_factor', email: 'second@example.com' });
 
     // The current step was used to confirm enrolment; the next step's code signs in.
     const code = totpCode(secret, totpStep(new Date()) + 1);

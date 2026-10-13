@@ -3,6 +3,7 @@ import { type PasswordHasher, throttleKeys } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
+import { AUDIT_ACTIONS, recordRefusedAttempt } from '../audit/record';
 import {
   clearSessionCookies,
   endSession,
@@ -35,7 +36,9 @@ const sessionId = z.object({ id: z.coerce.number().int().positive() });
  * Sign-in answers the same way for an unknown email, a deactivated account and a wrong
  * password, and takes as long (a dummy hash is checked), so it cannot be used to find accounts.
  * Every attempt counts against the submitted email and the client address (IAM-001 lockout);
- * while either is locked the password is not even checked.
+ * while either is locked the password is not even checked. Refused attempts and the lockouts
+ * they cause go to the audit log (IAM-013); attempts refused while locked do not, so a flood
+ * cannot fill it.
  */
 export function registerSessionRoutes(
   app: FastifyInstance,
@@ -89,13 +92,31 @@ export function registerSessionRoutes(
     // not the account exists or the password was right; wrong passwords still count.
     const sso = await providerForDomain(db, workspaceId, emailDomain(email));
     if (sso?.enforce_sso && !(user && ok && user.break_glass)) {
-      if (!user || !ok) await recordFailure(db, workspaceId, keys, now);
+      const lock = !user || !ok ? await recordFailure(db, workspaceId, keys, now) : null;
+      await recordRefusedAttempt(db, AUDIT_ACTIONS.signInFailed, {
+        workspaceId,
+        ip: request.ip,
+        actorId: null,
+        userId: user?.id ?? null,
+        email,
+        lockedUntil: lock,
+        reason: 'sso_required',
+      });
       return reply
         .code(403)
         .send({ error: 'sso_required', provider: { id: sso.id, name: sso.name } });
     }
     if (!user || !ok) {
-      await recordFailure(db, workspaceId, keys, now);
+      const lock = await recordFailure(db, workspaceId, keys, now);
+      // A refused sign-in changes nothing, so it is no domain event; the audit log records it.
+      await recordRefusedAttempt(db, AUDIT_ACTIONS.signInFailed, {
+        workspaceId,
+        ip: request.ip,
+        actorId: null,
+        userId: user?.id ?? null,
+        email,
+        lockedUntil: lock,
+      });
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 

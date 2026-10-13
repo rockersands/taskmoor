@@ -1,6 +1,7 @@
 import { createDb, migrateToLatest, poolStats } from '@taskmoor/db';
 import { passwordHasher } from '@taskmoor/iam';
 import { buildApp } from './app';
+import { registerAuditJobs, scheduleRetention } from './audit/retention';
 import { loadConfig } from './config';
 import { EventBus, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
@@ -83,6 +84,15 @@ if (config.roles.includes('worker') && db) {
   registerSubscribers(bus, { db });
   const runner = new JobRunner(db, `worker-${process.pid}`);
   bus.attach(runner);
+  // Audit retention (M1-003): one run a day across all workers, keyed by the date; it also
+  // makes next month's partition ahead.
+  registerAuditJobs(runner, db, (blocked) =>
+    app.log.error({ blocked }, 'audit retention stopped: a range to drop does not verify'),
+  );
+  const scheduleAudit = () =>
+    scheduleRetention(db).catch((error) => app.log.warn({ error }, 'audit retention not queued'));
+  void scheduleAudit();
+  timers.push(setInterval(scheduleAudit, 60 * 60 * 1000));
   worker = startWorker({
     bus,
     runner,
