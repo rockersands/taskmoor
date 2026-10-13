@@ -1,6 +1,7 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
 import {
+  ADMIN_GLOBAL_PERMISSIONS,
   CONFIGURATION_PERMISSIONS,
   GLOBAL_PERMISSIONS,
   type GlobalPermission,
@@ -22,6 +23,20 @@ import {
 export interface Principal {
   /** Null for anonymous visitors, who hold only what is granted to "anyone". */
   userId: number | null;
+  /**
+   * True for a request made with an API token that lacks the admin scope (IAM-007, ADR-034):
+   * the person acts as an ordinary user, without the administrator permissions they hold.
+   */
+  withoutAdminRights?: boolean;
+}
+
+/** Drops the administrator permissions from a set when the principal may not use them. */
+function forPrincipal(
+  set: ReadonlySet<GlobalPermission>,
+  principal: Principal,
+): ReadonlySet<GlobalPermission> {
+  if (!principal.withoutAdminRights) return set;
+  return new Set([...set].filter((p) => !ADMIN_GLOBAL_PERMISSIONS.includes(p)));
 }
 
 export interface Explanation {
@@ -162,7 +177,8 @@ export class Authorizer {
     epoch?: string,
   ): Promise<ReadonlySet<TrackPermission>> {
     const at = epoch ?? (await this.epoch(workspaceId));
-    const key = `${workspaceId}:${principal.userId ?? 'anon'}:${trackId}`;
+    const limited = principal.withoutAdminRights ? ':limited' : '';
+    const key = `${workspaceId}:${principal.userId ?? 'anon'}${limited}:${trackId}`;
     const hit = this.trackCache.get(key, at);
     if (hit) return hit;
     const result = await this.computeTrackPermissions(workspaceId, principal, trackId, at);
@@ -185,7 +201,10 @@ export class Authorizer {
            AND gr.grantee = 'anyone'`.execute(this.db);
       return new Set(rows.map((r) => r.permission));
     }
-    const global = await this.globalPermissions(workspaceId, userId, epoch);
+    const global = forPrincipal(
+      await this.globalPermissions(workspaceId, userId, epoch),
+      principal,
+    );
     if (global.has('site_admin')) {
       const exists = await this.db
         .selectFrom('track')
@@ -249,7 +268,10 @@ export class Authorizer {
          ORDER BY t.id`.execute(this.db);
       return rows.map((r) => r.id);
     }
-    const global = await this.globalPermissions(workspaceId, userId, epoch);
+    const global = forPrincipal(
+      await this.globalPermissions(workspaceId, userId, epoch),
+      principal,
+    );
     if (global.has('site_admin')) return 'all';
     if (global.size === 0) {
       // Deactivated or unknown: nothing. (Active people always hold the any_user defaults or none.)
@@ -381,10 +403,13 @@ export class AuthzContext {
   }
 
   async global(): Promise<ReadonlySet<GlobalPermission>> {
-    return this.authorizer.globalPermissions(
-      this.workspaceId,
-      this.principal.userId,
-      await this.epoch(),
+    return forPrincipal(
+      await this.authorizer.globalPermissions(
+        this.workspaceId,
+        this.principal.userId,
+        await this.epoch(),
+      ),
+      this.principal,
     );
   }
 

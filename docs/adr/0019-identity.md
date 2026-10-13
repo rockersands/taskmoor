@@ -21,7 +21,8 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
     several IdPs routed by email domain, JIT provisioning, attribute to group mapping).
   - LDAP and Active Directory (several directories, nested groups, scheduled incremental sync).
   - SCIM 2.0 server (users, groups, PATCH), tested against the Entra ID and Okta suites.
-  - Scoped expiring personal tokens, service accounts, token inventory with last use.
+  - Scoped expiring personal tokens, service accounts, token inventory with last use
+    (implemented in M1-004; ADR-034 records the format, scopes and rotation).
 - **Candidate libraries** (all MIT or Apache-2.0, pending the licence gate when added):
   `openid-client`, `@node-saml/node-saml`, `ldapts`, `@simplewebauthn/server`, `otplib`.
   Passwords use Argon2id through `hash-wasm` (MIT, WebAssembly, so the image still needs no

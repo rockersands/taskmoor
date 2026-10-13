@@ -16,10 +16,14 @@ import { registerAdminRoutes } from './routes/admin';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerGroupRoutes } from './routes/groups';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
+import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
+import { registerTokenRoutes } from './routes/tokens';
 import { registerUserRoutes } from './routes/users';
 import { pruneIdentityData } from './throttle';
+import { bearerToken, pruneApiTokens } from './tokens/api-tokens';
+import { authenticateBearer } from './tokens/bearer';
 import { defaultWorkspaceId } from './workspace';
 
 declare module 'fastify' {
@@ -100,12 +104,19 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const db = deps.db;
     app.decorateRequest('user', null);
     app.decorateRequest('authSession', null);
+    app.decorateRequest('apiToken', null);
     app.decorateRequest('workspaceId', 0);
     app.decorateRequest('authz', null as unknown as never);
     const authorizer = deps.authorizer ?? new Authorizer(db);
-    app.addHook('onRequest', async (request) => {
+    app.addHook('onRequest', async (request, reply) => {
       if (!request.url.startsWith('/api/')) return;
       request.workspaceId = await defaultWorkspaceId(db);
+      // A bearer token (IAM-007) speaks for itself; the cookie is not looked at then.
+      const bearer = bearerToken(request.headers.authorization);
+      if (bearer !== undefined) {
+        if (!(await authenticateBearer(db, authorizer, request, reply, bearer))) return reply;
+        return;
+      }
       request.authSession = await resolveSession(db, request.workspaceId, presentedToken(request));
       request.user = request.authSession?.user ?? null;
       request.authz = authorizer.context(request.workspaceId, { userId: request.user?.id ?? null });
@@ -123,9 +134,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);
-    // Expired sessions, used links and stale counters go at start and every six hours.
+    registerTokenRoutes(app, db);
+    registerServiceAccountRoutes(app, db);
+    // Expired sessions, used links, stale counters and long-dead tokens go at start and every
+    // six hours.
     const prune = () =>
-      pruneIdentityData(db).catch((error) => app.log.warn({ error }, 'prune failed'));
+      Promise.all([pruneIdentityData(db), pruneApiTokens(db)]).catch((error) =>
+        app.log.warn({ error }, 'prune failed'),
+      );
     let pruneTimer: NodeJS.Timeout | undefined;
     app.addHook('onReady', async () => {
       void prune();

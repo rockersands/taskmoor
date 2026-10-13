@@ -425,6 +425,124 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/tracks/${state.track}/roles/${state.role}/groups/${state.parent}`,
         }),
     },
+    {
+      route: 'POST /api/v1/account/tokens',
+      expect: 'token.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/account/tokens',
+          payload: { name: 'Contract script', scopes: ['read'], expiresInDays: 30 },
+        });
+        state.personal = res.json().apiToken.id;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/account/tokens/:id/rotate',
+      expect: 'token.rotated',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/account/tokens/${state.personal}/rotate`,
+          payload: { overlapHours: 1 },
+        });
+        state.personalNext = res.json().apiToken.id;
+        return res;
+      },
+    },
+    {
+      route: 'DELETE /api/v1/account/tokens/:id',
+      expect: 'token.revoked',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/account/tokens/${state.personalNext}` }),
+    },
+    {
+      route: 'POST /api/v1/service-accounts',
+      expect: 'service_account.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/service-accounts',
+          payload: { name: 'Contract robot', description: 'Deploys' },
+        });
+        state.robot = res.json().serviceAccount.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/service-accounts/:id',
+      expect: 'service_account.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/service-accounts/${state.robot}`,
+          payload: { description: 'Deploys and reports' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/service-accounts/:id/tokens',
+      expect: 'token.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/service-accounts/${state.robot}/tokens`,
+          payload: { name: 'Deploy key', scopes: ['read', 'write'], expiresInDays: 90 },
+        });
+        state.robotKey = res.json().apiToken.id;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/service-accounts/:id/tokens/:tokenId/rotate',
+      expect: 'token.rotated',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/service-accounts/${state.robot}/tokens/${state.robotKey}/rotate`,
+          payload: { overlapHours: 48 },
+        });
+        state.robotKeyNext = res.json().apiToken.id;
+        return res;
+      },
+    },
+    {
+      route: 'DELETE /api/v1/admin/tokens/:id',
+      expect: 'token.revoked',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/admin/tokens/${state.robotKeyNext}` }),
+    },
+    {
+      route: 'POST /api/v1/admin/tokens/revoke',
+      expect: 'token.bulk_revoked',
+      // The rotated key still works during its overlap; revoking the robot's tokens ends it.
+      run: () =>
+        admin({
+          method: 'POST',
+          url: '/api/v1/admin/tokens/revoke',
+          payload: { ownerId: state.robot },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/admin/token-policy',
+      expect: 'token_policy.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/token-policy',
+          payload: { maxLifetimeDays: 730 },
+        }),
+    },
+    {
+      route: 'POST /api/v1/service-accounts/:id/deactivate',
+      expect: 'service_account.deactivated',
+      run: () =>
+        admin({ method: 'POST', url: `/api/v1/service-accounts/${state.robot}/deactivate` }),
+    },
+    {
+      route: 'POST /api/v1/service-accounts/:id/reactivate',
+      expect: 'service_account.reactivated',
+      run: () =>
+        admin({ method: 'POST', url: `/api/v1/service-accounts/${state.robot}/reactivate` }),
+    },
   ];
 
   it('covers every mutating route with a scenario or a stated exemption', () => {

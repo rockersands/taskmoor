@@ -21,6 +21,8 @@ import {
   TracksIcon,
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
+import { AdminTokensPage } from './tokens/AdminTokensPage';
+import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
 
 export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
   { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon },
@@ -62,6 +64,8 @@ function isRoute(hash: string, route: string): boolean {
 
 /** Pages outside the navigation list that have their own route. */
 const ADMIN_SYSTEM = '#/admin/system';
+const ADMIN_TOKENS = '#/admin/tokens';
+const ADMIN_SERVICE_ACCOUNTS = '#/admin/service-accounts';
 const ACCOUNT = '#/account';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
@@ -95,7 +99,7 @@ function Pages() {
             {
               id: 'go-account',
               labelId: 'account.title' as const,
-              keywords: ['profile', 'password', 'sessions'],
+              keywords: ['profile', 'password', 'sessions', 'tokens'],
               run: () => {
                 window.location.hash = ACCOUNT;
               },
@@ -110,6 +114,22 @@ function Pages() {
               labelId: 'admin.system.title' as const,
               run: () => {
                 window.location.hash = ADMIN_SYSTEM;
+              },
+            },
+            {
+              id: 'go-tokens',
+              labelId: 'admin.tokens.title' as const,
+              keywords: ['api', 'revoke', 'rotate'],
+              run: () => {
+                window.location.hash = ADMIN_TOKENS;
+              },
+            },
+            {
+              id: 'go-service-accounts',
+              labelId: 'admin.serviceAccounts.title' as const,
+              keywords: ['robot', 'bot', 'token'],
+              run: () => {
+                window.location.hash = ADMIN_SERVICE_ACCOUNTS;
               },
             },
           ]
@@ -129,6 +149,10 @@ function Pages() {
   let content: ReactNode;
   if (hash.startsWith(ADMIN_SYSTEM)) {
     content = <SystemPage />;
+  } else if (isRoute(hash, ADMIN_TOKENS)) {
+    content = <AdminTokensPage />;
+  } else if (isRoute(hash, ADMIN_SERVICE_ACCOUNTS)) {
+    content = <ServiceAccountsPage />;
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
   } else if (isRoute(hash, SIGN_IN)) {

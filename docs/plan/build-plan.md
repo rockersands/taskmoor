@@ -150,6 +150,7 @@ Claude records these decisions as ADRs in M0; starred ones are confirmed by spik
 | 031 | Builder: browser page plus CLI on one core; two kits; signed connection manifest | Zero hand wiring |
 | 032 | Cross-origin auth and versioning: SameSite cookies or OAuth 2.1 PKCE; meta endpoint; N-1 compatibility | Frontend anywhere |
 | 033 | Desktop-first responsive UI: desktop is the primary target; phones and tablets must work; e2e runs on a desktop and a mobile viewport | User priority: PC first, mobile must work |
+| 034 | API tokens and service accounts: `tmk_` prefix and checksum, SHA-256 at rest, read / write / admin scopes checked per route, mandatory capped expiry, rotation with overlap, service accounts as non-person users | Programs get the people's permission model; leaked tokens findable and revocable |
 
 ### AI provider gateway (ADR-028, shipped in M1)
 

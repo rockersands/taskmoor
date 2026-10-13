@@ -4,6 +4,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely, Transaction } from 'kysely';
 import type { AuthzContext } from './authz/authorizer';
 import type { GlobalPermission } from './authz/permissions';
+import type { ApiTokenScope } from './tokens/scopes';
 
 /**
  * Cookie sessions (ADR-032, IAM-004). The browser holds a random 256-bit token; the database
@@ -32,6 +33,12 @@ export interface SessionUser {
   locale: string | null;
 }
 
+/** What a request made with an API token knows about it (IAM-007). */
+export interface CurrentApiToken {
+  id: number;
+  scopes: ApiTokenScope[];
+}
+
 export interface CurrentSession {
   /** The session row's id: what the session list shows and revocation names. */
   id: number;
@@ -44,7 +51,9 @@ declare module 'fastify' {
     workspaceId: number;
     /** The signed-in session, resolved from the cookie before every handler. */
     authSession: CurrentSession | null;
-    /** Shortcut for `authSession?.user`. */
+    /** The API token of a request sent with `Authorization: Bearer` (IAM-007); then no session. */
+    apiToken: CurrentApiToken | null;
+    /** Who the request acts as: the session's person or the token's owner. */
     user: SessionUser | null;
     /** Permission checks for this request's person (ADR-012). */
     authz: AuthzContext;
@@ -84,6 +93,8 @@ export async function resolveSession(
     .where('s.expires_at', '>', now)
     .where('s.last_seen_at', '>', new Date(now.getTime() - SESSION_IDLE_MS))
     .where('u.deactivated_at', 'is', null)
+    // Service accounts never sign in; a session row for one would be a bug, not a session.
+    .where('u.kind', '=', 'person')
     .executeTakeFirst();
   if (!row) return null;
   if (now.getTime() - row.last_seen_at.getTime() > TOUCH_INTERVAL_MS) {

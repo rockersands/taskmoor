@@ -33,6 +33,14 @@ export function SettingsPage() {
               <a href="#/admin/system">{t('settings.systemStatus')}</a>
               <p className="page-note">{t('settings.systemStatusHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/tokens">{t('settings.apiTokens')}</a>
+              <p className="page-note">{t('settings.apiTokensHint')}</p>
+            </li>
+            <li>
+              <a href="#/admin/service-accounts">{t('settings.serviceAccounts')}</a>
+              <p className="page-note">{t('settings.serviceAccountsHint')}</p>
+            </li>
           </ul>
         </section>
       )}

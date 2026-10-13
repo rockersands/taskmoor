@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
+import { type PersonalTokensClient, personalTokensClient } from '../tokens/client';
+import { TokensSection } from '../tokens/TokensSection';
 import { type AccountClient, accountClient } from './client';
 import { PasswordSection } from './PasswordSection';
 import { ProfileSection } from './ProfileSection';
@@ -9,13 +11,18 @@ import { SessionsSection } from './SessionsSection';
 export interface AccountPageProps {
   /** Stories and tests pass their own endpoints; the page calls the backend otherwise. */
   client?: AccountClient;
+  /** The person's API tokens; stories and tests pass their own. */
+  tokens?: PersonalTokensClient;
 }
 
 /**
- * The signed-in person's own settings (#/account): profile (IAM-008), password (IAM-001) and
- * sessions (IAM-004). The route sits behind RequireSession.
+ * The signed-in person's own settings (#/account): profile (IAM-008), password (IAM-001),
+ * sessions (IAM-004) and API tokens (IAM-007). The route sits behind RequireSession.
  */
-export function AccountPage({ client = accountClient }: AccountPageProps) {
+export function AccountPage({
+  client = accountClient,
+  tokens = personalTokensClient,
+}: AccountPageProps) {
   const t = useT();
   const { session } = useSession();
   // A password change signs other sessions out; a new key re-reads the list.
@@ -35,6 +42,7 @@ export function AccountPage({ client = accountClient }: AccountPageProps) {
           onChanged={() => setSessionsVersion((version) => version + 1)}
         />
         <SessionsSection key={sessionsVersion} client={client} timeZone={user.timeZone} />
+        <TokensSection client={tokens} allowAdmin={user.isSiteAdmin} timeZone={user.timeZone} />
       </div>
     </div>
   );

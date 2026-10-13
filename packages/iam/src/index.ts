@@ -1,4 +1,10 @@
 export {
+  API_TOKEN_PATTERN,
+  API_TOKEN_PREFIX,
+  isWellFormedApiToken,
+  newApiToken,
+} from './api-token';
+export {
   ARGON2,
   hashPassword,
   hashPasswordScryptForTests,

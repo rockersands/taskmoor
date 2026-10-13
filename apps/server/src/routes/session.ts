@@ -36,7 +36,12 @@ export function registerSessionRoutes(
 ): void {
   app.get('/api/v1/session', async (request, reply) => {
     if (!request.user) return reply.code(401).send({ error: 'not_signed_in' });
-    return { user: { ...request.user, isSiteAdmin: await request.authz.isSiteAdmin() } };
+    const user = { ...request.user, isSiteAdmin: await request.authz.isSiteAdmin() };
+    // A program holding a token can ask what it is and what it may do (IAM-007).
+    if (request.apiToken) {
+      return { user, apiToken: { id: request.apiToken.id, scopes: request.apiToken.scopes } };
+    }
+    return { user };
   });
 
   app.post('/api/v1/session', async (request, reply) => {
@@ -62,6 +67,8 @@ export function registerSessionRoutes(
       .where('workspace_id', '=', workspaceId)
       .where(sql<string>`lower(email)`, '=', email.toLowerCase())
       .where('deactivated_at', 'is', null)
+      // Service accounts have no password and never sign in (IAM-007).
+      .where('kind', '=', 'person')
       .executeTakeFirst();
     const { passwords } = options;
     const ok = user?.password_hash

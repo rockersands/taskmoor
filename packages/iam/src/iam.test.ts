@@ -1,6 +1,12 @@
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import {
+  API_TOKEN_PATTERN,
+  API_TOKEN_PREFIX,
+  isWellFormedApiToken,
+  newApiToken,
+} from './api-token';
+import {
   ARGON2,
   hashPassword,
   hashPasswordScryptForTests,
@@ -174,5 +180,43 @@ describe('tokens', () => {
         expect(tokenMatches(a, tokenHash(b))).toBe(a === b);
       }),
     );
+  });
+});
+
+describe('API tokens', () => {
+  it('[IAM-007] carry the tmk_ prefix and a checksum that secret scanners can match', () => {
+    const { token, hash } = newApiToken();
+    expect(token).toMatch(/^tmk_[0-9A-Za-z]{46}$/);
+    expect(API_TOKEN_PATTERN.test(`leaked in a log: ${token} (oops)`)).toBe(true);
+    expect(token.startsWith(API_TOKEN_PREFIX)).toBe(true);
+    expect(hash).toBe(tokenHash(token));
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(newApiToken().token).not.toBe(token);
+    expect(isWellFormedApiToken(token)).toBe(true);
+  });
+
+  it('[IAM-007] tells look-alike text from a token by its checksum', () => {
+    const { token } = newApiToken();
+    const last = token.at(-1) === 'A' ? 'B' : 'A';
+    expect(isWellFormedApiToken(`${token.slice(0, -1)}${last}`)).toBe(false);
+    expect(isWellFormedApiToken(token.slice(0, -1))).toBe(false);
+    expect(isWellFormedApiToken(`tmx_${token.slice(4)}`)).toBe(false);
+    expect(isWellFormedApiToken(`${token.slice(0, 10)}-${token.slice(11)}`)).toBe(false);
+    expect(isWellFormedApiToken(newToken())).toBe(false);
+    fc.assert(
+      fc.property(fc.string({ maxLength: 60 }), (text) => {
+        if (isWellFormedApiToken(text)) expect(text).toMatch(API_TOKEN_PATTERN);
+      }),
+    );
+  });
+
+  it('[IAM-007] spreads characters evenly over the base62 alphabet', () => {
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 500; i++) {
+      for (const c of newApiToken().token.slice(4, 44)) counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    expect(counts.size).toBe(62);
+    // 20,000 characters over 62 symbols: about 323 each; a biased generator lands far outside.
+    for (const n of counts.values()) expect(n).toBeGreaterThan(220);
   });
 });

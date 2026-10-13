@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
+import { personalTokens } from '../tokens/fixtures';
 import { KALO, SIGNED_IN, sampleSessions } from './fixtures';
 
 type Call = { method: string; path: string; body: unknown };
@@ -32,10 +33,20 @@ const sessionsAnswer =
   () =>
     jsonResponse(200, { sessions });
 
+const tokensAnswer = () =>
+  jsonResponse(200, {
+    tokens: personalTokens(),
+    policy: { maxLifetimeDays: 365, reminderDays: 14 },
+  });
+
 const region = (name: string) => screen.getByRole('region', { name });
 
 async function openAccount(handlers: Record<string, Handler> = {}) {
-  const calls = stubBackend({ 'GET /sessions': sessionsAnswer(), ...handlers });
+  const calls = stubBackend({
+    'GET /sessions': sessionsAnswer(),
+    'GET /account/tokens': tokensAnswer,
+    ...handlers,
+  });
   window.location.hash = '#/account';
   render(<App session={SIGNED_IN} />);
   await screen.findByRole('heading', { level: 1, name: 'Account' });
@@ -56,9 +67,9 @@ async function fillPassword(
 }
 
 describe('account page: profile', () => {
-  it('[IAM-008] shows profile, password and sessions to the signed-in person', async () => {
+  it('[IAM-008] shows profile, password, sessions and API tokens to the signed-in person', async () => {
     await openAccount();
-    for (const name of ['Profile', 'Password', 'Sessions']) {
+    for (const name of ['Profile', 'Password', 'Sessions', 'API tokens']) {
       expect(within(region(name)).getByRole('heading', { level: 2, name })).toBeVisible();
     }
     expect(screen.getByLabelText('Name')).toHaveValue('Kalo Mendes');
@@ -122,7 +133,7 @@ describe('account page: profile', () => {
   });
 
   it('[IAM-008] keeps a saved time zone and locale selected', async () => {
-    stubBackend({ 'GET /sessions': sessionsAnswer() });
+    stubBackend({ 'GET /sessions': sessionsAnswer(), 'GET /account/tokens': tokensAnswer });
     window.location.hash = '#/account';
     render(
       <App
@@ -387,7 +398,7 @@ describe('account page: access and layout', () => {
 
   it('[IAM-008] is linked from Settings and offered in the command palette', async () => {
     const user = userEvent.setup();
-    stubBackend({ 'GET /sessions': sessionsAnswer() });
+    stubBackend({ 'GET /sessions': sessionsAnswer(), 'GET /account/tokens': tokensAnswer });
     window.location.hash = '#/settings';
     render(<App session={SIGNED_IN} />);
     expect(await screen.findByRole('link', { name: 'Account' })).toHaveAttribute(
@@ -420,7 +431,7 @@ describe('account page: access and layout', () => {
   });
 
   it('passes every string through the pseudo-locale', async () => {
-    stubBackend({ 'GET /sessions': sessionsAnswer() });
+    stubBackend({ 'GET /sessions': sessionsAnswer(), 'GET /account/tokens': tokensAnswer });
     window.location.hash = '#/account';
     const errors: Error[] = [];
     render(<App session={SIGNED_IN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);

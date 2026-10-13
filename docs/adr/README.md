@@ -39,5 +39,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [031](0031-builder-and-two-kits.md) | The Builder, two kits and a signed connection manifest | Accepted |
 | [032](0032-cross-origin-auth-and-versioning.md) | Cross-origin authentication and frontend version compatibility | Accepted |
 | [033](0033-desktop-first-responsive-ui.md) | Desktop-first, responsive UI | Accepted |
+| [034](0034-api-tokens-and-service-accounts.md) | API tokens and service accounts: prefixed, hashed, scoped and expiring | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

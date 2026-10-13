@@ -79,7 +79,14 @@ describe('user menu', () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => jsonResponse(200, { sessions: sampleSessions() })),
+      // One answer for the Account page's sessions and API tokens alike.
+      vi.fn(async () =>
+        jsonResponse(200, {
+          sessions: sampleSessions(),
+          tokens: [],
+          policy: { maxLifetimeDays: 365, reminderDays: 14 },
+        }),
+      ),
     );
     render(<App session={SIGNED_IN} />);
     await user.click(menuButton());
