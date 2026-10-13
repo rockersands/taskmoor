@@ -84,6 +84,40 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   nothing. Without a pepper (development) the seal uses a key that lives as long as the process.
 - Passwordless sign-in with passkeys can build on the same credentials later.
 
+## Single sign-on with OpenID Connect (M1-080)
+
+- **Relying party:** `openid-client` 6 (MIT, certified by the OpenID Foundation) does discovery,
+  the authorization code flow with PKCE (S256), state and nonce, and the ID token checks.
+  Discovery results are cached per provider for an hour or until the provider is edited.
+  Issuers must use HTTPS; plain HTTP is accepted only on the loopback interface (development
+  and tests) or with `TASKMOOR_OIDC_ALLOW_HTTP=true`.
+- **Providers** are configured by site administrators: issuer, client id, client secret (sealed
+  like TOTP secrets, never returned), scopes, an optional group claim with a map from claim
+  values to Taskmoor groups, the email domains the provider serves, whether it enforces single
+  sign-on there, and whether it may create accounts (just-in-time provisioning). An enabled
+  provider owns its domains: a second enabled provider cannot claim one (409).
+- **Browser binding:** starting a sign-in stores the state (as a hash), the nonce and the sealed
+  PKCE verifier for ten minutes and sets a cookie limited to `/api/v1/auth/oidc`; the callback
+  accepts only the browser holding that cookie, and only once. The return address must be a
+  path on this site.
+- **Accounts:** a provider's subject identifies the person after the first sign-in, so a changed
+  address at the provider changes nothing. The first sign-in links an existing account or
+  creates one only when the provider says the address is verified and its domain is one the
+  provider serves, so a provider cannot claim an address outside its domains. Deactivated
+  accounts stay out. Created accounts have no password.
+- **Groups:** at each sign-in the mapped groups follow the claim (from the ID token, or from user
+  info when the token lacks it): mapped groups are added and removed, groups the provider does
+  not map are left alone.
+- **Enforcement:** where a provider enforces single sign-on for the address's domain, password
+  sign-in answers `sso_required` with the provider for every address of that domain, whether or
+  not the account exists or the password is right, and wrong passwords still count towards the
+  lockout. Accounts an administrator marks break-glass may still use their password there, so a
+  provider outage cannot lock everyone out. `POST /api/v1/auth/discover` tells the sign-in page
+  which methods a domain uses, decided by the domain alone.
+- The provider's own multi-factor policy applies to single sign-on; Taskmoor's second factor
+  applies to password sign-in. One `sso.signed_in` event records the sign-in, the session, an
+  account creation and the group changes.
+
 ## Options considered
 
 Argon2id: Node 22 has no built-in Argon2 (Node 24 adds an experimental one). Native addons

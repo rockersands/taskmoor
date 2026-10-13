@@ -129,6 +129,32 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT 1, id FROM user_group WHERE name = 'seed-group'`.execute(db);
     },
   },
+  '0010_identity_providers': {
+    tables: {
+      identity_provider: "name = 'Seed IdP'",
+      identity_provider_group: "claim_value = 'seed-claim'",
+      user_identity: "subject = 'seed-subject'",
+      oidc_login: "state_hash = 'seed-state'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO identity_provider (workspace_id, name, issuer, client_id, domains)
+        VALUES (1, 'Seed IdP', 'https://idp.example.com', 'taskmoor', '{example.com}')`.execute(db);
+      const provider = sql`(SELECT id FROM identity_provider WHERE name = 'Seed IdP')`;
+      await sql`INSERT INTO identity_provider_group (workspace_id, provider_id, claim_value, group_id)
+        SELECT 1, ${provider}, 'seed-claim', id FROM user_group WHERE name = 'seed-group'`.execute(
+        db,
+      );
+      await sql`INSERT INTO user_identity (workspace_id, provider_id, subject, user_id)
+        SELECT 1, ${provider}, 'seed-subject', id FROM app_user WHERE email = 'seed@example.com'`.execute(
+        db,
+      );
+      await sql`INSERT INTO oidc_login (workspace_id, provider_id, state_hash, browser_hash, nonce,
+          code_verifier_sealed, expires_at)
+        VALUES (1, ${provider}, 'seed-state', 'seed-browser', 'n', 'plain:v', now() + interval '5 minutes')`.execute(
+        db,
+      );
+    },
+  },
 };
 
 /** How many of the rows the named seeds wrote are still there: one per table when nothing was lost. */

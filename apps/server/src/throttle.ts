@@ -111,6 +111,7 @@ export async function pruneIdentityData(db: Kysely<Database>, now = new Date()):
   const dayAgo = new Date(now.getTime() - LOCKOUT.forgetAfterSeconds * 1000);
   await db.deleteFrom('user_session').where('expires_at', '<', now).execute();
   await db.deleteFrom('sign_in_challenge').where('expires_at', '<', now).execute();
+  await db.deleteFrom('oidc_login').where('expires_at', '<', now).execute();
   await db
     .deleteFrom('password_link')
     .where((eb) => eb.or([eb('expires_at', '<', now), eb('used_at', 'is not', null)]))

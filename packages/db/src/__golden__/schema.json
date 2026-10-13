@@ -44,7 +44,8 @@
       "locale text",
       "password_changed_at timestamp with time zone",
       "last_sign_in_at timestamp with time zone",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "break_glass boolean not null default false"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)",
@@ -116,6 +117,40 @@
       "CREATE UNIQUE INDEX group_nesting_pkey ON public.group_nesting USING btree (parent_id, child_id)"
     ]
   },
+  "identity_provider": {
+    "columns": [
+      "id integer not null default nextval('identity_provider_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "kind text not null default 'oidc'::text",
+      "issuer text not null",
+      "client_id text not null",
+      "client_secret_sealed text",
+      "scopes text not null default 'openid email profile'::text",
+      "group_claim text",
+      "domains ARRAY not null default '{}'::text[]",
+      "enforce_sso boolean not null default false",
+      "jit boolean not null default true",
+      "enabled boolean not null default true",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX identity_provider_pkey ON public.identity_provider USING btree (id)",
+      "CREATE UNIQUE INDEX identity_provider_workspace_name_idx ON public.identity_provider USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "identity_provider_group": {
+    "columns": [
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "claim_value text not null",
+      "group_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX identity_provider_group_pkey ON public.identity_provider_group USING btree (provider_id, claim_value, group_id)"
+    ]
+  },
   "instance_setting": {
     "columns": [
       "key text not null",
@@ -148,6 +183,24 @@
       "CREATE INDEX job_locked_idx ON public.job USING btree (locked_at) WHERE ((locked_at IS NOT NULL) AND (done_at IS NULL))",
       "CREATE UNIQUE INDEX job_pkey ON public.job USING btree (id)",
       "CREATE INDEX job_ready_idx ON public.job USING btree (run_at, id) WHERE ((done_at IS NULL) AND (locked_at IS NULL))"
+    ]
+  },
+  "oidc_login": {
+    "columns": [
+      "id integer not null default nextval('oidc_login_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "state_hash text not null",
+      "browser_hash text not null",
+      "nonce text not null",
+      "code_verifier_sealed text not null",
+      "return_to text not null default '/'::text",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX oidc_login_pkey ON public.oidc_login USING btree (id)",
+      "CREATE UNIQUE INDEX oidc_login_state_hash_key ON public.oidc_login USING btree (state_hash)"
     ]
   },
   "password_link": {
@@ -330,6 +383,23 @@
     "indexes": [
       "CREATE UNIQUE INDEX user_group_pkey ON public.user_group USING btree (id)",
       "CREATE UNIQUE INDEX user_group_workspace_name_idx ON public.user_group USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "user_identity": {
+    "columns": [
+      "id integer not null default nextval('user_identity_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "subject text not null",
+      "user_id integer not null",
+      "email text",
+      "created_at timestamp with time zone not null default now()",
+      "last_sign_in_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX user_identity_pkey ON public.user_identity USING btree (id)",
+      "CREATE UNIQUE INDEX user_identity_provider_id_subject_key ON public.user_identity USING btree (provider_id, subject)",
+      "CREATE INDEX user_identity_user_idx ON public.user_identity USING btree (user_id)"
     ]
   },
   "user_session": {

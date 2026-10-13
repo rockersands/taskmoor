@@ -9,6 +9,8 @@ export interface UserView {
   email: string;
   name: string;
   isSiteAdmin: boolean;
+  /** May sign in with a password where single sign-on is enforced (IAM-001). */
+  breakGlass: boolean;
   timeZone: string | null;
   locale: string | null;
   active: boolean;
@@ -23,6 +25,7 @@ export const USER_COLUMNS = [
   'email',
   'name',
   'is_site_admin',
+  'break_glass',
   'time_zone',
   'locale',
   'password_hash',
@@ -36,6 +39,7 @@ interface UserRow {
   email: string;
   name: string;
   is_site_admin: boolean;
+  break_glass: boolean;
   time_zone: string | null;
   locale: string | null;
   password_hash: string | null;
@@ -50,6 +54,7 @@ export function toUserView(row: UserRow): UserView {
     email: row.email,
     name: row.name,
     isSiteAdmin: row.is_site_admin,
+    breakGlass: row.break_glass,
     timeZone: row.time_zone,
     locale: row.locale,
     active: row.deactivated_at === null,

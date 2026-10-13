@@ -41,6 +41,7 @@ const updateBody = z
     email: z.string().trim().email().max(320).optional(),
     name: z.string().trim().min(1).max(200).optional(),
     isSiteAdmin: z.boolean().optional(),
+    breakGlass: z.boolean().optional(),
     timeZone: z.string().trim().min(1).max(64).nullable().optional(),
     locale: z.string().trim().min(2).max(35).nullable().optional(),
   })
@@ -217,7 +218,16 @@ export function registerUserRoutes(
       const outcome = await db.transaction().execute(async (trx) => {
         const current = await trx
           .selectFrom('app_user')
-          .select(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale', 'deactivated_at'])
+          .select([
+            'id',
+            'email',
+            'name',
+            'is_site_admin',
+            'break_glass',
+            'time_zone',
+            'locale',
+            'deactivated_at',
+          ])
           .where('id', '=', params.data.id)
           .where('workspace_id', '=', request.workspaceId)
           .forUpdate()
@@ -231,6 +241,7 @@ export function registerUserRoutes(
           ...(body.email !== undefined ? { email: body.email.toLowerCase() } : {}),
           ...(body.name !== undefined ? { name: body.name } : {}),
           ...(body.isSiteAdmin !== undefined ? { isSiteAdmin: body.isSiteAdmin } : {}),
+          ...(body.breakGlass !== undefined ? { breakGlass: body.breakGlass } : {}),
           ...(body.timeZone !== undefined
             ? { timeZone: body.timeZone ? canonicalTimeZone(body.timeZone) : null }
             : {}),
@@ -244,6 +255,7 @@ export function registerUserRoutes(
             ...(next.email !== undefined ? { email: next.email } : {}),
             ...(next.name !== undefined ? { name: next.name } : {}),
             ...(next.isSiteAdmin !== undefined ? { is_site_admin: next.isSiteAdmin } : {}),
+            ...(next.breakGlass !== undefined ? { break_glass: next.breakGlass } : {}),
             ...(next.timeZone !== undefined ? { time_zone: next.timeZone } : {}),
             ...(next.locale !== undefined ? { locale: next.locale } : {}),
             updated_at: new Date(),
@@ -256,6 +268,7 @@ export function registerUserRoutes(
             email: current.email,
             name: current.name,
             isSiteAdmin: current.is_site_admin,
+            breakGlass: current.break_glass,
             timeZone: current.time_zone,
             locale: current.locale,
           },

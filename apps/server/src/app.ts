@@ -18,6 +18,7 @@ import { registerGroupRoutes } from './routes/groups';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
+import { registerSsoRoutes } from './routes/sso';
 import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
 import { pruneIdentityData } from './throttle';
@@ -130,6 +131,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...cookieOptions,
       peppers: deps.peppers,
       authorizer,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+    });
+    registerSsoRoutes(app, db, {
+      secureCookies: cookieOptions.secureCookies,
+      peppers: deps.peppers,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     });
     // Expired sessions, used links and stale counters go at start and every six hours.

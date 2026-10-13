@@ -51,6 +51,8 @@ export interface AppUserTable {
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
   deactivated_at: Timestamp | null;
+  /** May sign in with a password where single sign-on is enforced (IAM-001). */
+  break_glass: Generated<boolean>;
 }
 
 /** Groups of users (IAM-008); names are unique within a workspace, ignoring case. */
@@ -289,6 +291,62 @@ export interface TwoFactorPolicyGroupTable {
   group_id: number;
 }
 
+/** An OpenID Connect provider (M1-080). The client secret is sealed under the pepper. */
+export interface IdentityProviderTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  kind: Generated<'oidc'>;
+  issuer: string;
+  client_id: string;
+  client_secret_sealed: string | null;
+  scopes: Generated<string>;
+  group_claim: string | null;
+  /** Email domains this provider serves; sign-in offers it for them. */
+  domains: Generated<string[]>;
+  /** Password sign-in is refused for these domains, except break-glass accounts. */
+  enforce_sso: Generated<boolean>;
+  /** Unknown people of these domains get an account on first sign-in. */
+  jit: Generated<boolean>;
+  enabled: Generated<boolean>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A group claim value that makes its holders members of a group. */
+export interface IdentityProviderGroupTable {
+  workspace_id: number;
+  provider_id: number;
+  claim_value: string;
+  group_id: number;
+}
+
+/** A provider's subject linked to a Taskmoor account. */
+export interface UserIdentityTable {
+  id: Generated<number>;
+  workspace_id: number;
+  provider_id: number;
+  subject: string;
+  user_id: number;
+  email: string | null;
+  created_at: DefaultTimestamp;
+  last_sign_in_at: Timestamp | null;
+}
+
+/** A sign-in through a provider in flight: state, nonce and PKCE verifier, bound to a browser. */
+export interface OidcLoginTable {
+  id: Generated<number>;
+  workspace_id: number;
+  provider_id: number;
+  state_hash: string;
+  browser_hash: string;
+  nonce: string;
+  code_verifier_sealed: string;
+  return_to: Generated<string>;
+  expires_at: Timestamp;
+  created_at: DefaultTimestamp;
+}
+
 /**
  * The M0 session table, replaced by user_session. Kept until a later release so the previous
  * release keeps working during a rolling upgrade (ADR-022); nothing in this release uses it.
@@ -327,5 +385,9 @@ export interface Database {
   sign_in_challenge: SignInChallengeTable;
   two_factor_policy: TwoFactorPolicyTable;
   two_factor_policy_group: TwoFactorPolicyGroupTable;
+  identity_provider: IdentityProviderTable;
+  identity_provider_group: IdentityProviderGroupTable;
+  user_identity: UserIdentityTable;
+  oidc_login: OidcLoginTable;
   session: SessionTable;
 }

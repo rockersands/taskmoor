@@ -12,6 +12,7 @@ import {
 } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { withEvent } from '../events/bus';
+import { emailDomain, providerForDomain } from '../sso/oidc';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 import {
   hasSecondFactor,
@@ -65,7 +66,16 @@ export function registerSessionRoutes(
 
     const user = await db
       .selectFrom('app_user')
-      .select(['id', 'email', 'name', 'password_hash', 'is_site_admin', 'time_zone', 'locale'])
+      .select([
+        'id',
+        'email',
+        'name',
+        'password_hash',
+        'is_site_admin',
+        'break_glass',
+        'time_zone',
+        'locale',
+      ])
       .where('workspace_id', '=', workspaceId)
       .where(sql<string>`lower(email)`, '=', email.toLowerCase())
       .where('deactivated_at', 'is', null)
@@ -74,6 +84,16 @@ export function registerSessionRoutes(
     const ok = user?.password_hash
       ? await passwords.verify(password, user.password_hash)
       : await passwords.verifyDummy(password);
+    // M1-080: where a provider enforces single sign-on for the email's domain, only
+    // break-glass accounts may use a password. Everyone else gets the same answer whether or
+    // not the account exists or the password was right; wrong passwords still count.
+    const sso = await providerForDomain(db, workspaceId, emailDomain(email));
+    if (sso?.enforce_sso && !(user && ok && user.break_glass)) {
+      if (!user || !ok) await recordFailure(db, workspaceId, keys, now);
+      return reply
+        .code(403)
+        .send({ error: 'sso_required', provider: { id: sso.id, name: sso.name } });
+    }
     if (!user || !ok) {
       await recordFailure(db, workspaceId, keys, now);
       return reply.code(401).send({ error: 'invalid_credentials' });

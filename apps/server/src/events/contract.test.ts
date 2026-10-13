@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { issueSetupToken } from '../setup';
+import { FakeIdp } from '../testing/fake-idp';
 import { SoftAuthenticator } from '../testing/webauthn';
 import { EVENT_TYPES, type EventType } from './catalogue';
 
@@ -16,6 +17,8 @@ import { EVENT_TYPES, type EventType } from './catalogue';
  * catalogue.
  */
 const MUTATING = ['POST', 'PUT', 'PATCH', 'DELETE'];
+/** GET routes that change state because a browser arrives at them by redirect. */
+const REDIRECT_MUTATIONS = ['GET /api/v1/auth/oidc/:id/start', 'GET /api/v1/auth/oidc/callback'];
 const EXEMPT: Record<string, string> = {
   'POST /api/v1/password-check': 'reads only: checks a candidate password, stores nothing',
   'POST /api/v1/password-links/inspect': 'reads only: shows who a link is for',
@@ -24,6 +27,9 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/session/enroll/totp': 'reads only: proposes a secret, stored at confirmation',
   'POST /api/v1/session/second-factor/webauthn':
     'transient sign-in state: the WebAuthn challenge of a sign-in in progress',
+  'POST /api/v1/auth/discover': 'reads only: which sign-in methods a domain uses',
+  'GET /api/v1/auth/oidc/:id/start':
+    'transient sign-in state: the state, nonce and verifier of a single sign-on in progress',
 };
 const PASSWORD = 'ladder violet harbour';
 
@@ -45,6 +51,8 @@ interface Scenario {
   /** Setup the call needs; its events are not counted. */
   prepare?: () => Promise<void>;
   run: () => Promise<LightMyRequestResponse>;
+  /** A redirect answers success for browser flows; everything else answers 2xx. */
+  status?: number;
 }
 
 describe('every mutation emits exactly one event (M1-005)', () => {
@@ -60,11 +68,15 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     });
   const admin = (options: InjectOptions) => call(String(state.admin), options);
 
+  const idp = new FakeIdp('taskmoor', 'contract client secret');
+
   beforeAll(async () => {
+    await idp.start();
     app = await buildApp({ db: database.db, version: 'test', roles: ['api'] });
   });
   afterAll(async () => {
     await app.close();
+    await idp.stop();
   });
 
   const scenarios: Scenario[] = [
@@ -603,10 +615,73 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           },
         }),
     },
+    {
+      route: 'POST /api/v1/identity-providers',
+      expect: 'identity_provider.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/identity-providers',
+          payload: {
+            name: 'Contract IdP',
+            issuer: idp.issuer,
+            clientId: 'taskmoor',
+            clientSecret: 'contract client secret',
+            domains: ['sso.example'],
+            groupClaim: 'groups',
+          },
+        });
+        state.idp = res.json().provider?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/identity-providers/:id',
+      expect: 'identity_provider.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/identity-providers/${state.idp}`,
+          payload: { groupMap: [{ claimValue: 'eng', groupId: state.parent }] },
+        }),
+    },
+    {
+      route: 'GET /api/v1/auth/oidc/callback',
+      expect: 'sso.signed_in',
+      status: 302,
+      prepare: async () => {
+        idp.person = { sub: 'fay', email: 'fay@sso.example', name: 'Fay', groups: ['eng'] };
+        const start = await call(undefined, {
+          method: 'GET',
+          url: `/api/v1/auth/oidc/${state.idp}/start`,
+        });
+        const header = start.headers['set-cookie'];
+        state.ssoBrowser = String(Array.isArray(header) ? header[0] : header).split(';')[0] ?? '';
+        const authorize = await fetch(String(start.headers.location), { redirect: 'manual' });
+        const back = new URL(authorize.headers.get('location') ?? '');
+        state.ssoCallback = `${back.pathname}${back.search}`;
+      },
+      run: async () => {
+        const res = await call(undefined, {
+          method: 'GET',
+          url: String(state.ssoCallback),
+          headers: { cookie: String(state.ssoBrowser) },
+        });
+        expect(String(res.headers.location)).not.toContain('sso_error');
+        return res;
+      },
+    },
+    {
+      route: 'DELETE /api/v1/identity-providers/:id',
+      expect: 'identity_provider.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/identity-providers/${state.idp}` }),
+    },
   ];
 
   it('covers every mutating route with a scenario or a stated exemption', () => {
-    const mutating = app.routeTable.filter((r) => MUTATING.includes(r.split(' ')[0] ?? ''));
+    const mutating = app.routeTable.filter(
+      (r) => MUTATING.includes(r.split(' ')[0] ?? '') || REDIRECT_MUTATIONS.includes(r),
+    );
     const covered = new Set([...scenarios.map((s) => s.route), ...Object.keys(EXEMPT)]);
     expect(
       mutating.filter((r) => !covered.has(r)),
@@ -628,7 +703,8 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         .executeTakeFirstOrThrow();
       const from = Number(before.max ?? 0);
       const res = await scenario.run();
-      expect(res.statusCode, `${scenario.route}: ${res.body}`).toBeLessThan(300);
+      if (scenario.status) expect(res.statusCode, scenario.route).toBe(scenario.status);
+      else expect(res.statusCode, `${scenario.route}: ${res.body}`).toBeLessThan(300);
       const events = await database.db
         .selectFrom('domain_event')
         .select(['type', 'payload', 'subject_type'])

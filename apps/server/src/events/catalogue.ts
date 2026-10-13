@@ -73,6 +73,41 @@ export const EVENT_TYPES = {
     }),
   },
 
+  // Single sign-on
+  'sso.signed_in': {
+    subject: 'user',
+    payload: z.object({
+      providerId: id,
+      sessionId: id,
+      userCreated: z.boolean(),
+      groupsAdded: z.array(id),
+      groupsRemoved: z.array(id),
+    }),
+  },
+  'identity_provider.created': {
+    subject: 'identity_provider',
+    payload: z.object({
+      name: z.string(),
+      issuer: z.string(),
+      domains: z.array(z.string()),
+      enforceSso: z.boolean(),
+      jit: z.boolean(),
+      enabled: z.boolean(),
+    }),
+  },
+  'identity_provider.updated': {
+    subject: 'identity_provider',
+    payload: z.object({
+      changes,
+      clientSecretChanged: z.boolean(),
+      groupMapChanged: z.boolean(),
+    }),
+  },
+  'identity_provider.deleted': {
+    subject: 'identity_provider',
+    payload: z.object({ name: z.string() }),
+  },
+
   // Groups
   'group.created': { subject: 'group', payload: z.object({ name: z.string() }) },
   'group.updated': { subject: 'group', payload: z.object({ changes }) },
@@ -162,8 +197,11 @@ export function diff<T extends Record<string, unknown>>(
 ): Record<string, { from: unknown; to: unknown }> {
   const out: Record<string, { from: unknown; to: unknown }> = {};
   for (const [key, value] of Object.entries(after)) {
-    if (value !== undefined && before[key] !== value)
-      out[key] = { from: before[key] ?? null, to: value };
+    if (value === undefined || before[key] === value) continue;
+    // Arrays and objects compare by content, so an unchanged list is not reported.
+    if (typeof value === 'object' && JSON.stringify(before[key]) === JSON.stringify(value))
+      continue;
+    out[key] = { from: before[key] ?? null, to: value };
   }
   return out;
 }

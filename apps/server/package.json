@@ -27,11 +27,13 @@
     "@taskmoor/iam": "workspace:*",
     "fastify": "^5.12.5",
     "kysely": "^0.28.17",
+    "openid-client": "^6.8.8",
     "prom-client": "^15.1.3",
     "zod": "^4.6.6"
   },
   "devDependencies": {
     "@taskmoor/testkit": "workspace:*",
+    "jose": "^6.2.12",
     "tsx": "^4.23.15"
   }
 }
