@@ -30,7 +30,7 @@
   font-weight: 600;
 }
 
-.form-field input:not([type="checkbox"]) {
+.form-field input:not([type="checkbox"], [type="radio"]) {
   min-height: var(--hit-target);
   box-sizing: border-box;
   padding: 0 var(--space-3);
@@ -123,10 +123,31 @@
   gap: var(--space-2);
 }
 
-.form-field-inline input[type="checkbox"] {
+.form-field-inline input:is([type="checkbox"], [type="radio"]) {
   width: 20px;
   height: 20px;
   margin: 0;
+}
+
+/* A row of buttons under a form or a list; wraps on narrow screens. */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* One-time and recovery codes: digits that line up and are easy to compare. */
+.form-field input.code-input {
+  max-width: 14rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-300);
+  letter-spacing: 0.12em;
+}
+
+.form-field input.code-input-recovery {
+  max-width: 18rem;
+  text-transform: uppercase;
 }
 
 .form-hint {
@@ -170,12 +191,19 @@
 }
 
 @media (pointer: coarse) {
-  .form-field-inline input[type="checkbox"] {
+  .form-field-inline input:is([type="checkbox"], [type="radio"]) {
     width: 28px;
     height: 28px;
   }
 
-  .form-field input:not([type="checkbox"]),
+  /* The label is part of the target: the whole row is at least 44px tall. */
+  .form-field-inline label {
+    display: flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
+  }
+
+  .form-field input:not([type="checkbox"], [type="radio"]),
   .form-field select {
     min-height: var(--hit-target-touch);
   }

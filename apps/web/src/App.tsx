@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { AccountPage } from './account/AccountPage';
+import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
@@ -62,6 +63,7 @@ function isRoute(hash: string, route: string): boolean {
 
 /** Pages outside the navigation list that have their own route. */
 const ADMIN_SYSTEM = '#/admin/system';
+const ADMIN_SECURITY = '#/admin/security';
 const ACCOUNT = '#/account';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
@@ -112,6 +114,14 @@ function Pages() {
                 window.location.hash = ADMIN_SYSTEM;
               },
             },
+            {
+              id: 'go-security',
+              labelId: 'admin.security.title' as const,
+              keywords: ['two-factor', '2fa', 'policy'],
+              run: () => {
+                window.location.hash = ADMIN_SECURITY;
+              },
+            },
           ]
         : []),
     ],
@@ -129,6 +139,8 @@ function Pages() {
   let content: ReactNode;
   if (hash.startsWith(ADMIN_SYSTEM)) {
     content = <SystemPage />;
+  } else if (isRoute(hash, ADMIN_SECURITY)) {
+    content = <SecurityPage />;
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
   } else if (isRoute(hash, SIGN_IN)) {

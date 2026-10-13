@@ -1,32 +1,15 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { App } from '../App';
+import { type Handler, noContent, stubBackend as stubAny } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
-import { KALO, SIGNED_IN, sampleSessions } from './fixtures';
+import { KALO, SIGNED_IN, sampleSessions, TWO_FACTOR_OFF } from './fixtures';
 
-type Call = { method: string; path: string; body: unknown };
-type Handler = (body: unknown) => Response;
-
-/** A fake backend keyed by "METHOD /path"; everything else answers 404. */
-function stubBackend(handlers: Record<string, Handler>) {
-  const calls: Call[] = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string, init?: RequestInit) => {
-      const method = init?.method ?? 'GET';
-      const path = url.replace(/^\/api\/v1/, '');
-      const body: unknown = init?.body ? JSON.parse(String(init.body)) : undefined;
-      calls.push({ method, path, body });
-      const handler = handlers[`${method} ${path}`];
-      return handler ? handler(body) : jsonResponse(404, { error: 'not_found' });
-    }),
-  );
-  return calls;
-}
-
-const noContent = () => new Response(null, { status: 204 });
+/** The page's backend: two-factor is off unless a test says otherwise. */
+const stubBackend = (handlers: Record<string, Handler>) =>
+  stubAny({ 'GET /account/two-factor': () => jsonResponse(200, TWO_FACTOR_OFF), ...handlers });
 const sessionsAnswer =
   (sessions = sampleSessions()) =>
   () =>
@@ -58,7 +41,7 @@ async function fillPassword(
 describe('account page: profile', () => {
   it('[IAM-008] shows profile, password and sessions to the signed-in person', async () => {
     await openAccount();
-    for (const name of ['Profile', 'Password', 'Sessions']) {
+    for (const name of ['Profile', 'Password', 'Two-factor authentication', 'Sessions']) {
       expect(within(region(name)).getByRole('heading', { level: 2, name })).toBeVisible();
     }
     expect(screen.getByLabelText('Name')).toHaveValue('Kalo Mendes');

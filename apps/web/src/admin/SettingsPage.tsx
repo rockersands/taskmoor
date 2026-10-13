@@ -33,6 +33,10 @@ export function SettingsPage() {
               <a href="#/admin/system">{t('settings.systemStatus')}</a>
               <p className="page-note">{t('settings.systemStatusHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/security">{t('settings.security')}</a>
+              <p className="page-note">{t('settings.securityHint')}</p>
+            </li>
           </ul>
         </section>
       )}

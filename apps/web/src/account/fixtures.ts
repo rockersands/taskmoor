@@ -1,5 +1,7 @@
+import { ApiError } from '../api/client';
 import type { Session, SessionUser } from '../session/SessionProvider';
-import type { AccountClient, AccountSession } from './client';
+import type { TotpSetupStart } from '../twofactor/types';
+import type { AccountClient, AccountSession, TwoFactorStatus } from './client';
 
 /** Synthetic people and sessions for stories and tests. */
 export const KALO: SessionUser = {
@@ -56,16 +58,77 @@ export function sampleSessions(now = Date.now()): AccountSession[] {
   ];
 }
 
+/** Ten synthetic recovery codes in the backend's XXXXX-XXXXX shape. */
+export const SAMPLE_RECOVERY_CODES = [
+  'KD7QX-M2PLA',
+  'R4TNB-Z9WEH',
+  'HB3YC-QF6UV',
+  'P8JLS-T2KXD',
+  'W5MZA-C7RNQ',
+  'E6VGH-Y3BTL',
+  'N2XKP-J8DWS',
+  'U4FRC-L5QZM',
+  'G7TYE-B2VNH',
+  'S3WQD-K6PXA',
+];
+
+/** A synthetic authenticator-app setup; the secret is not anybody's. */
+export const SAMPLE_TOTP_SETUP: TotpSetupStart = {
+  secret: 'MZXW6YTBOI4TQNRVGQ3DCMZRGQ2DIMZT',
+  uri: 'otpauth://totp/Taskmoor%3Akalo%40example.com?secret=MZXW6YTBOI4TQNRVGQ3DCMZRGQ2DIMZT&issuer=Taskmoor&algorithm=SHA1&digits=6&period=30',
+  setupToken: 'sealed-setup-token',
+};
+
+/** The password the fake backend accepts when a change asks for it again. */
+export const FAKE_PASSWORD = 'the current passphrase';
+/** The code the fake backend refuses, to show a wrong code. */
+export const WRONG_CODE = '000000';
+
+export const TWO_FACTOR_OFF: TwoFactorStatus = {
+  totp: false,
+  securityKeys: [],
+  recoveryRemaining: 0,
+  required: false,
+};
+
+/** An app and two keys, eight recovery codes left, timed relative to `now`. */
+export function twoFactorOn(now = Date.now()): TwoFactorStatus {
+  const ago = (days: number) => new Date(now - days * 86_400_000).toISOString();
+  return {
+    totp: true,
+    securityKeys: [
+      { id: 21, name: 'Blue key', createdAt: ago(40), lastUsedAt: ago(2) },
+      { id: 22, name: 'Work laptop', createdAt: ago(9), lastUsedAt: null },
+    ],
+    recoveryRemaining: 8,
+    required: false,
+  };
+}
+
 /**
- * An in-memory account backend: it keeps the profile and the sessions, so stories behave like
- * the real page. Pass overrides to make a call fail or never answer.
+ * An in-memory account backend: it keeps the profile, the sessions and the second factors, so
+ * stories behave like the real page. Pass overrides to make a call fail or never answer.
  */
 export function fakeAccountClient(
   overrides: Partial<AccountClient> = {},
-  options: { user?: SessionUser; sessions?: AccountSession[] } = {},
+  options: { user?: SessionUser; sessions?: AccountSession[]; twoFactor?: TwoFactorStatus } = {},
 ): AccountClient {
   let user = options.user ?? KALO;
   let sessions = options.sessions ?? sampleSessions();
+  let factors = options.twoFactor ?? TWO_FACTOR_OFF;
+  let nextKeyId = 100;
+  const hasFactor = () => factors.totp || factors.securityKeys.length > 0;
+  const checkPassword = (password: string) => {
+    if (password !== FAKE_PASSWORD) throw new ApiError(403, { error: 'wrong_password' });
+  };
+  /** Codes for a first factor, null when the person had one already. */
+  const firstFactorCodes = () => {
+    if (hasFactor()) return null;
+    factors = { ...factors, recoveryRemaining: SAMPLE_RECOVERY_CODES.length };
+    return SAMPLE_RECOVERY_CODES;
+  };
+  const lastRequired = () =>
+    factors.required && Number(factors.totp) + factors.securityKeys.length === 1;
   return {
     updateProfile: async (changes) => {
       user = { ...user, ...changes };
@@ -84,6 +147,37 @@ export function fakeAccountClient(
       const others = sessions.filter((s) => !s.current).length;
       sessions = sessions.filter((s) => s.current);
       return others;
+    },
+    twoFactorStatus: async () => factors,
+    startTotpSetup: async () => SAMPLE_TOTP_SETUP,
+    confirmTotpSetup: async (_token, code) => {
+      if (code === WRONG_CODE) throw new ApiError(400, { error: 'invalid_code' });
+      const codes = firstFactorCodes();
+      factors = { ...factors, totp: true };
+      return codes;
+    },
+    disableTotp: async (password) => {
+      checkPassword(password);
+      if (lastRequired()) throw new ApiError(409, { error: 'two_factor_required' });
+      factors = { ...factors, totp: false };
+      if (!hasFactor()) factors = { ...factors, recoveryRemaining: 0 };
+    },
+    addSecurityKey: async (name) => {
+      const key = { id: nextKeyId++, name, createdAt: new Date().toISOString(), lastUsedAt: null };
+      const recoveryCodes = firstFactorCodes();
+      factors = { ...factors, securityKeys: [...factors.securityKeys, key] };
+      return { key, recoveryCodes };
+    },
+    removeSecurityKey: async (id, password) => {
+      checkPassword(password);
+      if (lastRequired()) throw new ApiError(409, { error: 'two_factor_required' });
+      factors = { ...factors, securityKeys: factors.securityKeys.filter((k) => k.id !== id) };
+      if (!hasFactor()) factors = { ...factors, recoveryRemaining: 0 };
+    },
+    regenerateRecoveryCodes: async (password) => {
+      checkPassword(password);
+      factors = { ...factors, recoveryRemaining: SAMPLE_RECOVERY_CODES.length };
+      return SAMPLE_RECOVERY_CODES;
     },
     ...overrides,
   };
