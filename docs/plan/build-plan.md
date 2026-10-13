@@ -150,6 +150,7 @@ Claude records these decisions as ADRs in M0; starred ones are confirmed by spik
 | 031 | Builder: browser page plus CLI on one core; two kits; signed connection manifest | Zero hand wiring |
 | 032 | Cross-origin auth and versioning: SameSite cookies or OAuth 2.1 PKCE; meta endpoint; N-1 compatibility | Frontend anywhere |
 | 033 | Desktop-first responsive UI: desktop is the primary target; phones and tablets must work; e2e runs on a desktop and a mobile viewport | User priority: PC first, mobile must work |
+| 034 | Audit log: append-only monthly partitions, one SHA-256 hash chain per workspace, retention that drops whole months behind a checkpoint | Tamper-evident audit without a 180-day ceiling (IAM-013) |
 
 ### AI provider gateway (ADR-028, shipped in M1)
 

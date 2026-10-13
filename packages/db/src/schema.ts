@@ -212,6 +212,46 @@ export interface DomainEventTable {
   payload: Json;
   occurred_at: DefaultTimestamp;
   published_at: Timestamp | null;
+  /** Client address of the request that caused the event; null for the CLI and jobs. */
+  ip: string | null;
+}
+
+/**
+ * The audit log (M1-003, ADR-034): append-only (a trigger refuses UPDATE, DELETE and
+ * TRUNCATE), partitioned by month on `recorded_at`, one hash chain per workspace. Write it
+ * only through `appendAudit` in apps/server/src/audit/chain.ts, which keeps the chain whole.
+ */
+export interface AuditEventTable {
+  workspace_id: number;
+  /** Position in the workspace's chain, from 1, without gaps. */
+  seq: ColumnType<string, string | number, never>;
+  /** When the record joined the log; never earlier than the previous record's. */
+  recorded_at: ColumnType<Date, Date | string, never>;
+  /** When the recorded thing happened (the domain event's time). */
+  occurred_at: ColumnType<Date, Date | string, never>;
+  actor_id: ColumnType<number | null, number | null, never>;
+  action: ColumnType<string, string, never>;
+  subject_type: ColumnType<string | null, string | null, never>;
+  subject_id: ColumnType<string | null, string | null, never>;
+  details: ColumnType<JsonValue, string, never>;
+  ip: ColumnType<string | null, string | null, never>;
+  source_event_id: ColumnType<string | null, string | number | null, never>;
+  prev_hash: ColumnType<string, string, never>;
+  hash: ColumnType<string, string, never>;
+}
+
+/**
+ * Each workspace's audit chain: the head that appends lock and extend, and the checkpoint
+ * retention leaves when it drops old partitions (the last dropped record's seq and hash).
+ */
+export interface AuditChainTable {
+  workspace_id: number;
+  head_seq: ColumnType<string, string | number | undefined, string | number>;
+  head_hash: Generated<string>;
+  head_recorded_at: Timestamp | null;
+  checkpoint_seq: ColumnType<string, string | number | undefined, string | number>;
+  checkpoint_hash: Generated<string>;
+  checkpoint_at: Timestamp | null;
 }
 
 /** Background work (ADR-015): claimed with SKIP LOCKED, retried with backoff, keyed forever. */
@@ -264,5 +304,7 @@ export interface Database {
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;
   job: JobTable;
+  audit_event: AuditEventTable;
+  audit_chain: AuditChainTable;
   session: SessionTable;
 }

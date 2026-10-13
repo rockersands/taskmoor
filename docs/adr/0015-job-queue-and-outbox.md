@@ -59,13 +59,15 @@ budget of 1,000 jobs per second holds with a wide margin on one machine.
 - **One domain event per mutation**, written with `emit` in the mutation's own transaction and
   typed by the catalogue (`catalogue.ts`: type, subject kind, zod payload). Payloads never carry
   secrets. A changed payload is a new version of the type, not an edit, because events outlive
-  releases.
+  releases. Since M1-003 an event also keeps the client address of the request that caused it
+  (`ip`, from the request scope; null for the CLI and jobs).
 - **The outbox is the event table.** `EventBus.relayOnce` claims unpublished events with SKIP
   LOCKED and enqueues one job per interested subscriber keyed `event:<subscriber>:<event id>`,
   then marks them published, in one transaction; a relay run twice enqueues nothing twice.
 - **The worker role** loops: relay, run a batch of jobs, release jobs locked for more than ten
   minutes (a dead worker), then wait half a second when idle. LISTEN/NOTIFY can replace the
   wait when latency matters.
+- **Subscribers** register in `subscribers.ts`; the audit log (ADR-034) is the first.
 - **Fitness test** (`contract.test.ts`): every POST, PUT, PATCH and DELETE route has a scenario
   that must leave exactly one event of its declared type with a valid payload, or a stated
   exemption (read-only POSTs); every catalogue type must be produced by some route.

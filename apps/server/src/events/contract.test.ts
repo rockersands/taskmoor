@@ -425,6 +425,12 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/tracks/${state.track}/roles/${state.role}/groups/${state.parent}`,
         }),
     },
+    {
+      route: 'PUT /api/v1/audit/settings',
+      expect: 'audit.settings_updated',
+      run: () =>
+        admin({ method: 'PUT', url: '/api/v1/audit/settings', payload: { retentionMonths: 84 } }),
+    },
   ];
 
   it('covers every mutating route with a scenario or a stated exemption', () => {

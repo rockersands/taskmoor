@@ -80,6 +80,23 @@ then, copy the examples and fill them by hand.
 docker compose exec taskmoor node cli.mjs password-link admin@example.com
 ```
 
+## Audit log
+
+Sign-ins, refused sign-ins and lockouts, changes to people, groups, roles, access policies and
+grants, and changes to settings go to an append-only audit log in which every record carries
+the hash of the one before it (IAM-013, ADR-034). Site administrators search it and export it
+as CSV or JSON Lines through the API (`/api/v1/audit`, `/api/v1/audit/export`) and set how many
+months it keeps (`/api/v1/audit/settings`: 12 by default, 0 keeps everything); once a day the
+worker drops the months older than that. To check that no record was edited, removed or added:
+
+```
+docker compose exec taskmoor node cli.mjs audit-verify
+```
+
+It prints each workspace's chain status and exits with 1 when a chain is broken. Someone with
+full rights on the database could rewrite a chain from start to end, so keep the head hash it
+prints, or the last line of an export, somewhere else as well.
+
 ## Monitoring
 
 Each process serves Prometheus metrics on an internal port, `9464` by default (`METRICS_PORT`,
