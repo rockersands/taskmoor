@@ -89,6 +89,16 @@ hold `administer_track`, `manage_layouts`, `edit_workflows` and `view_readonly_w
 everywhere. Ticket-level grantees never grant at track level; M1-020 applies them per ticket.
 A property test checks the service against a plain reference model on 10,000 random grants.
 
+**Archived tracks (M1-006, CORE-025)** are read-only for everyone, site administrators
+included: the permission set computed in an archived track is cut down to the read
+permissions (`ARCHIVED_TRACK_PERMISSIONS`: browse, aggregated data, development tools,
+read-only workflow, voters and followers), and `allowedTracks` leaves archived tracks out.
+A site administrator may pass `includeArchived` for a read permission to search the archive;
+everyone else's request is answered without it. With an archived track present, a site
+administrator's pre-filter is the list of active tracks instead of 'all'. Archiving moves the
+epoch (a trigger on `archived_at`), and the explainer reports `trackArchived`. The reference
+model archives one track in five.
+
 ## Consequences
 
 Policies, roles and memberships are ordinary tables, so imports (IMP-005) and the admin UI

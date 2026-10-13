@@ -51,7 +51,8 @@ const invalid = (reply: FastifyReply, detail?: string) =>
  * Roles, access policies, global grants, track role actors, and the questions people ask the
  * authorization service (M1-002, IAM-009 to IAM-012). Configuration belongs to site and
  * configuration administrators; global grants to site administrators; a track's role actors
- * to whoever may administer that track.
+ * to whoever may administer that track. A policy owned by a local-mode track (M1-006, spec 01a
+ * section 1.1) is also read and granted by that track's administrators.
  */
 export function registerAuthzRoutes(
   app: FastifyInstance,
@@ -65,6 +66,23 @@ export function registerAuthzRoutes(
     workspaceId: request.workspaceId,
     actorId: request.user?.id ?? null,
   });
+
+  /** Configuration administrators, or for a local-mode track's own policy its administrators. */
+  async function policyEditor(request: FastifyRequest, reply: FastifyReply, policyId: number) {
+    if (!requireUser(request, reply)) return false;
+    const global = await request.authz.global();
+    if (global.has('site_admin') || global.has('configuration_admin')) return true;
+    const policy = await db
+      .selectFrom('access_policy')
+      .select('owner_track_id')
+      .where('id', '=', policyId)
+      .where('workspace_id', '=', request.workspaceId)
+      .executeTakeFirst();
+    const owner = policy?.owner_track_id ?? null;
+    if (owner !== null && (await request.authz.can('administer_track', owner))) return true;
+    await reply.code(403).send({ error: 'forbidden' });
+    return false;
+  }
 
   async function inWorkspace(
     table: 'role' | 'user_group' | 'app_user' | 'access_policy' | 'track',
@@ -248,6 +266,8 @@ export function registerAuthzRoutes(
         'p.id',
         'p.name',
         'p.description',
+        'p.is_default',
+        'p.owner_track_id',
         eb
           .selectFrom('track as t')
           .select((t) => t.fn.countAll<string>().as('n'))
@@ -267,6 +287,8 @@ export function registerAuthzRoutes(
         id: r.id,
         name: r.name,
         description: r.description,
+        isDefault: r.is_default,
+        ownerTrackId: r.owner_track_id,
         trackCount: Number(r.tracks ?? 0),
         grantCount: Number(r.grants ?? 0),
       })),
@@ -314,13 +336,19 @@ export function registerAuthzRoutes(
   });
 
   app.get('/api/v1/access-policies/:id', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
+    if (!(await policyEditor(request, reply, params.data.id))) return reply;
     const ws = request.workspaceId;
     const policy = await db
       .selectFrom('access_policy')
-      .select(['id', 'name', 'description'])
+      .select([
+        'id',
+        'name',
+        'description',
+        'is_default as isDefault',
+        'owner_track_id as ownerTrackId',
+      ])
       .where('id', '=', params.data.id)
       .where('workspace_id', '=', ws)
       .executeTakeFirst();
@@ -433,10 +461,10 @@ export function registerAuthzRoutes(
   });
 
   app.post('/api/v1/access-policies/:id/grants', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     const parsed = grantBody.safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
+    if (!(await policyEditor(request, reply, params.data.id))) return reply;
     const g = parsed.data;
     if (!isTrackPermission(g.permission)) return invalid(reply, 'unknown permission');
     // Exactly the reference the grantee kind needs, and no other.
@@ -498,9 +526,9 @@ export function registerAuthzRoutes(
   });
 
   app.delete('/api/v1/access-policies/:id/grants/:grantId', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
     const params = z.object({ id, grantId: id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
+    if (!(await policyEditor(request, reply, params.data.id))) return reply;
     const deleted = await db.transaction().execute(async (trx) => {
       const row = await trx
         .deleteFrom('access_grant')

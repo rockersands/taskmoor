@@ -5,6 +5,7 @@ import { type Kysely, sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 import { Authorizer } from './authorizer';
 import {
+  ARCHIVED_TRACK_PERMISSIONS,
   CONFIGURATION_PERMISSIONS,
   GLOBAL_PERMISSIONS,
   TICKET_LEVEL_GRANTEES,
@@ -16,7 +17,8 @@ import {
 /**
  * The authorization service against a reference model (M1-002 done-when: 10k random grants
  * agree with the reference; check p95 under 10 ms). Each world lives in its own workspace, so
- * worlds never see each other and nothing needs cleaning up.
+ * worlds never see each other and nothing needs cleaning up. About one track in five is
+ * archived (M1-006): read-only for everyone and absent from the search pre-filter.
  */
 
 interface World {
@@ -27,7 +29,7 @@ interface World {
   parents: Map<number, number[]>;
   /** group id to direct member user ids */
   members: Map<number, Set<number>>;
-  tracks: { id: number; policy: number; owner: number | null }[];
+  tracks: { id: number; policy: number; owner: number | null; archived: boolean }[];
   roles: number[];
   actors: { track: number; role: number; user: number | null; group: number | null }[];
   grants: {
@@ -58,13 +60,24 @@ async function ids(db: Kysely<Database>, query: ReturnType<typeof sql<{ id: numb
   return (await query.execute(db)).rows.map((r) => r.id);
 }
 
+let worldCount = 0;
+
 /** Builds a random world in a fresh workspace with bulk inserts. */
 async function buildWorld(
   db: Kysely<Database>,
   rng: Rng,
-  size: { users: number; groups: number; tracks: number; policies: number; grants: number },
+  size: {
+    users: number;
+    groups: number;
+    tracks: number;
+    policies: number;
+    grants: number;
+    /** Share of archived tracks; 0.2 when left out. */
+    archived?: number;
+  },
 ): Promise<World> {
-  const key = `w${Math.floor(rng() * 1e12)}`;
+  // Unique even when a property run replays a seed while shrinking.
+  const key = `w${Math.floor(rng() * 1e12)}-${++worldCount}`;
   const ws = (
     await db
       .insertInto('workspace')
@@ -131,13 +144,17 @@ async function buildWorld(
   const trackSpecs = Array.from({ length: size.tracks }, () => ({
     policy: pick(rng, policies),
     owner: rng() < 0.7 ? pick(rng, users) : null,
+    archived: rng() < (size.archived ?? 0.2),
   }));
   const trackIds = await ids(
     db,
-    sql<{ id: number }>`INSERT INTO track (workspace_id, key, name, access_policy_id, owner_id)
-      SELECT ${ws}, 'T' || n, 'Track ' || n, p, o
-        FROM unnest(${trackSpecs.map((t) => t.policy)}::int[], ${trackSpecs.map((t) => t.owner)}::int[])
-             WITH ORDINALITY AS x(p, o, n)
+    sql<{
+      id: number;
+    }>`INSERT INTO track (workspace_id, key, name, access_policy_id, owner_id, archived_at)
+      SELECT ${ws}, 'T' || n, 'Track ' || n, p, o, CASE WHEN a THEN now() END
+        FROM unnest(${trackSpecs.map((t) => t.policy)}::int[], ${trackSpecs.map((t) => t.owner)}::int[],
+                    ${trackSpecs.map((t) => t.archived)}::boolean[])
+             WITH ORDINALITY AS x(p, o, a, n)
       RETURNING id`,
   );
   const tracks = trackIds.map((id, i) => ({
@@ -235,9 +252,18 @@ function reference(world: World) {
     const admin = row.siteAdmin || granted.has('site_admin');
     return new Set(GLOBAL_PERMISSIONS.filter((p) => admin || granted.has(p)));
   };
+  /** An archived track keeps only the read permissions (CORE-025). */
+  const readOnlyIf = (archived: boolean, held: Set<string>): Set<string> =>
+    archived
+      ? new Set([...held].filter((p) => (ARCHIVED_TRACK_PERMISSIONS as string[]).includes(p)))
+      : held;
   const trackOf = (user: number | null, trackId: number): Set<string> => {
     const track = world.tracks.find((t) => t.id === trackId);
     if (!track) return new Set();
+    return readOnlyIf(track.archived, held(user, track));
+  };
+  const held = (user: number | null, track: World['tracks'][number]): Set<string> => {
+    const trackId = track.id;
     const grants = world.grants.filter((g) => g.policy === track.policy);
     if (user === null) {
       return new Set(grants.filter((g) => g.grantee === 'anyone').map((g) => g.permission));
@@ -270,7 +296,22 @@ function reference(world: World) {
     if (global.has('configuration_admin')) for (const p of CONFIGURATION_PERMISSIONS) out.add(p);
     return out;
   };
-  return { globalOf, trackOf };
+  /**
+   * The search pre-filter: tracks where the permission holds, archived ones left out, unless a
+   * site administrator asks to include them for a read permission.
+   */
+  const allowedOf = (user: number | null, permission: string, includeArchived = false) => {
+    const archive =
+      includeArchived &&
+      user !== null &&
+      globalOf(user).has('site_admin') &&
+      (ARCHIVED_TRACK_PERMISSIONS as string[]).includes(permission);
+    return world.tracks
+      .filter((t) => (archive || !t.archived) && trackOf(user, t.id).has(permission))
+      .map((t) => t.id)
+      .sort((a, b) => a - b);
+  };
+  return { globalOf, trackOf, allowedOf };
 }
 
 const sorted = (set: Iterable<string>) => [...set].sort();
@@ -306,20 +347,36 @@ describe('authorization service against the reference model (M1-002)', () => {
     }
     expect(compared).toBe(61 * 40);
 
-    // The search pre-filter agrees with the per-track answers.
-    for (const user of world.users.slice(0, 25).map((u) => u.id)) {
+    // The search pre-filter agrees with the per-track answers and leaves archived tracks out.
+    expect(world.tracks.some((t) => t.archived)).toBe(true);
+    for (const user of [...world.users.slice(0, 25).map((u) => u.id), null]) {
       for (const permission of [
         'browse_track',
         'edit_tickets',
         'administer_track',
       ] as TrackPermission[]) {
-        const allowed = await authorizer.allowedTracks(world.ws, { userId: user }, permission);
-        const expected = world.tracks
-          .filter((t) => ref.trackOf(user, t.id).has(permission))
-          .map((t) => t.id)
-          .sort((a, b) => a - b);
-        if (allowed === 'all') expect(ref.globalOf(user).has('site_admin')).toBe(true);
-        else expect(allowed, `user ${user} ${permission}`).toEqual(expected);
+        for (const includeArchived of [false, true]) {
+          const allowed = await authorizer.allowedTracks(
+            world.ws,
+            { userId: user },
+            permission,
+            undefined,
+            { includeArchived },
+          );
+          const expected = ref.allowedOf(user, permission, includeArchived);
+          if (allowed === 'all') {
+            // No filter: a site administrator searching the archive too.
+            expect(user !== null && ref.globalOf(user).has('site_admin')).toBe(true);
+            expect(expected).toEqual(
+              world.tracks
+                .filter((t) => ref.trackOf(user, t.id).has(permission))
+                .map((t) => t.id)
+                .sort((a, b) => a - b),
+            );
+          } else {
+            expect(allowed, `user ${user} ${permission} ${includeArchived}`).toEqual(expected);
+          }
+        }
       }
     }
   });
@@ -342,10 +399,99 @@ describe('authorization service against the reference model (M1-002)', () => {
             const actual = await authorizer.trackPermissions(world.ws, { userId: user }, track.id);
             expect(sorted(actual)).toEqual(sorted(ref.trackOf(user, track.id)));
           }
+          const allowed = await authorizer.allowedTracks(world.ws, { userId: user });
+          if (allowed !== 'all') expect(allowed).toEqual(ref.allowedOf(user, 'browse_track'));
         }
       }),
       { numRuns: 8 },
     );
+  });
+
+  it('[CORE-025] makes an archived track read-only for everyone and hides it from search until restored', async () => {
+    const db = database.db;
+    const world = await buildWorld(db, mulberry32(2510), {
+      users: 10,
+      groups: 4,
+      tracks: 3,
+      policies: 1,
+      grants: 0,
+      archived: 0,
+    });
+    const [track, other] = world.tracks as [World['tracks'][number], World['tracks'][number]];
+    const ref = reference(world);
+    const admin = world.users[0]?.id as number;
+    // Someone without administrator rights of any kind.
+    const owner = world.users.find((u) => {
+      const global = ref.globalOf(u.id);
+      return u.active && !global.has('site_admin') && !global.has('configuration_admin');
+    })?.id as number;
+    expect(owner).toBeDefined();
+    // The owner holds every permission through grants to the track owner.
+    await db.updateTable('track').set({ owner_id: owner }).where('id', '=', track.id).execute();
+    await sql`INSERT INTO access_grant (workspace_id, policy_id, permission, grantee)
+      SELECT ${world.ws}, ${track.policy}, p, 'track_owner' FROM unnest(${[...TRACK_PERMISSIONS]}::text[]) p`.execute(
+      db,
+    );
+    const authorizer = new Authorizer(db);
+    const ownerHeld = () => authorizer.trackPermissions(world.ws, { userId: owner }, track.id);
+    expect(sorted(await ownerHeld())).toEqual(sorted(TRACK_PERMISSIONS));
+    expect(await authorizer.allowedTracks(world.ws, { userId: owner })).toEqual([track.id]);
+    expect(await authorizer.allowedTracks(world.ws, { userId: admin })).toBe('all');
+
+    const before = await authorizer.epoch(world.ws);
+    await db
+      .updateTable('track')
+      .set({ archived_at: new Date() })
+      .where('id', '=', track.id)
+      .execute();
+    // Archiving moves the epoch, so no cached answer survives it.
+    expect(await authorizer.epoch(world.ws)).not.toBe(before);
+    expect(sorted(await ownerHeld())).toEqual(sorted(ARCHIVED_TRACK_PERMISSIONS));
+    expect(
+      sorted(await authorizer.trackPermissions(world.ws, { userId: admin }, track.id)),
+    ).toEqual(sorted(ARCHIVED_TRACK_PERMISSIONS));
+    // Hidden from search for everyone; a site administrator may search the archive explicitly.
+    expect(await authorizer.allowedTracks(world.ws, { userId: owner })).toEqual([]);
+    expect(
+      await authorizer.allowedTracks(world.ws, { userId: owner }, 'browse_track', undefined, {
+        includeArchived: true,
+      }),
+    ).toEqual([]);
+    const active = world.tracks.filter((t) => t.id !== track.id).map((t) => t.id);
+    expect(await authorizer.allowedTracks(world.ws, { userId: admin })).toEqual(active);
+    expect(
+      await authorizer.allowedTracks(world.ws, { userId: admin }, 'browse_track', undefined, {
+        includeArchived: true,
+      }),
+    ).toBe('all');
+    // Asking for a write permission never includes the archive.
+    expect(
+      await authorizer.allowedTracks(world.ws, { userId: admin }, 'edit_tickets', undefined, {
+        includeArchived: true,
+      }),
+    ).toEqual(active);
+    const explained = await authorizer.explain(
+      world.ws,
+      { userId: owner },
+      track.id,
+      'edit_tickets',
+    );
+    expect(explained).toMatchObject({ allowed: false, trackArchived: true });
+    expect(explained.reasons.length).toBeGreaterThan(0);
+    expect(
+      await authorizer.explain(world.ws, { userId: owner }, track.id, 'browse_track'),
+    ).toMatchObject({ allowed: true, trackArchived: true });
+    // The other track is untouched.
+    expect(
+      (await authorizer.trackPermissions(world.ws, { userId: admin }, other.id)).has(
+        'edit_tickets',
+      ),
+    ).toBe(true);
+
+    await db.updateTable('track').set({ archived_at: null }).where('id', '=', track.id).execute();
+    expect(sorted(await ownerHeld())).toEqual(sorted(TRACK_PERMISSIONS));
+    expect(await authorizer.allowedTracks(world.ws, { userId: owner })).toEqual([track.id]);
+    expect(await authorizer.allowedTracks(world.ws, { userId: admin })).toBe('all');
   });
 
   it('[IAM-012] checks a permission in under 10 ms at p95 without the cache', async () => {

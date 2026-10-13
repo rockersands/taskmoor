@@ -425,6 +425,77 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/tracks/${state.track}/roles/${state.role}/groups/${state.parent}`,
         }),
     },
+    {
+      route: 'POST /api/v1/track-categories',
+      expect: 'track_category.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/track-categories',
+          payload: { name: 'Product' },
+        });
+        state.category = res.json().category.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/track-categories/:id',
+      expect: 'track_category.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/track-categories/${state.category}`,
+          payload: { description: 'What we sell' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/tracks',
+      expect: 'track.created',
+      run: async () => {
+        // A local-mode track also copies a policy and adds its creator as an administrator:
+        // still one event.
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'loc', name: 'Local', mode: 'local', categoryId: state.category },
+        });
+        state.newTrack = res.json().track?.id;
+        return res;
+      },
+      prepare: async () => {
+        const res = await call(undefined, {
+          method: 'POST',
+          url: '/api/v1/session',
+          payload: { email: 'bo@example.com', password: 'quiet otter lantern' },
+        });
+        state.bo1b = sessionCookie(res);
+      },
+    },
+    {
+      route: 'PATCH /api/v1/tracks/:id',
+      expect: 'track.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tracks/${state.newTrack}`,
+          payload: { key: 'LOC2', features: { sprints: false } },
+        }),
+    },
+    {
+      route: 'POST /api/v1/tracks/:id/archive',
+      expect: 'track.archived',
+      run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.newTrack}/archive` }),
+    },
+    {
+      route: 'POST /api/v1/tracks/:id/restore',
+      expect: 'track.restored',
+      run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.newTrack}/restore` }),
+    },
+    {
+      route: 'DELETE /api/v1/track-categories/:id',
+      expect: 'track_category.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/track-categories/${state.category}` }),
+    },
   ];
 
   it('covers every mutating route with a scenario or a stated exemption', () => {

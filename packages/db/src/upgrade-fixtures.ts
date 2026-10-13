@@ -101,6 +101,33 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
+  '0008_tracks': {
+    tables: {
+      track_category: "name = 'Seed category'",
+      track: "key = 'SEEDNEW' AND category_id IS NOT NULL AND archived_at IS NOT NULL",
+      track_key_history: "key = 'SEEDOLD' AND replaced_at IS NOT NULL",
+      access_policy: "name = 'Seed local policy' AND owner_track_id IS NOT NULL",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO track_category (workspace_id, name) VALUES (1, 'Seed category')`.execute(
+        db,
+      );
+      await sql`INSERT INTO access_policy (workspace_id, name) VALUES (1, 'Seed local policy')`.execute(
+        db,
+      );
+      await sql`INSERT INTO track (workspace_id, key, name, access_policy_id, type, mode,
+                                   category_id, feature_sprints)
+        SELECT 1, 'SEEDOLD', 'Seed local', p.id, 'business', 'local', c.id, false
+          FROM access_policy p, track_category c
+         WHERE p.name = 'Seed local policy' AND c.name = 'Seed category'`.execute(db);
+      await sql`UPDATE access_policy SET owner_track_id = (SELECT id FROM track WHERE key = 'SEEDOLD')
+         WHERE name = 'Seed local policy'`.execute(db);
+      // A renamed key stays in the history; archiving keeps the row.
+      await sql`UPDATE track SET key = 'SEEDNEW', archived_at = now() WHERE key = 'SEEDOLD'`.execute(
+        db,
+      );
+    },
+  },
 };
 
 /** How many of the rows the named seeds wrote are still there: one per table when nothing was lost. */

@@ -18,6 +18,7 @@ import { registerGroupRoutes } from './routes/groups';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
+import { registerTrackRoutes } from './routes/tracks';
 import { registerUserRoutes } from './routes/users';
 import { pruneIdentityData } from './throttle';
 import { defaultWorkspaceId } from './workspace';
@@ -123,6 +124,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);
+    registerTrackRoutes(app, db);
     // Expired sessions, used links and stale counters go at start and every six hours.
     const prune = () =>
       pruneIdentityData(db).catch((error) => app.log.warn({ error }, 'prune failed'));
