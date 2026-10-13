@@ -1,9 +1,11 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
 import {
+  ARCHIVED_TRACK_PERMISSIONS,
   CONFIGURATION_PERMISSIONS,
   GLOBAL_PERMISSIONS,
   type GlobalPermission,
+  isReadOnlyPermission,
   TRACK_PERMISSIONS,
   type TrackPermission,
 } from './permissions';
@@ -18,6 +20,10 @@ import {
  * Site administrators hold every permission everywhere; configuration administrators hold the
  * configuration permissions of every track. Ticket-level grantees (requester, assignee, user and
  * group fields) never grant at track level; M1-020 applies them to each ticket.
+ *
+ * Archived tracks (M1-006, CORE-025) are read-only for everyone, site administrators included:
+ * whatever a person held there shrinks to the read permissions of ARCHIVED_TRACK_PERMISSIONS,
+ * and the search pre-filter leaves them out unless a site administrator asks for them.
  */
 export interface Principal {
   /** Null for anonymous visitors, who hold only what is granted to "anyone". */
@@ -26,6 +32,8 @@ export interface Principal {
 
 export interface Explanation {
   allowed: boolean;
+  /** The track is archived: only read permissions hold there, whatever the grants say. */
+  trackArchived: boolean;
   /** Why it is allowed: the grants or administrator rights that decided it. */
   reasons: Reason[];
   /** Grants that may allow it for single tickets (requester, assignee, fields). */
@@ -90,6 +98,19 @@ class Lru<T> {
       if (oldest !== undefined) this.map.delete(oldest);
     }
   }
+}
+
+export interface AllowedTracksOptions {
+  /**
+   * Site administrators only, and only for read permissions: include archived tracks (an
+   * explicit search of the archive). Ignored for everyone else.
+   */
+  includeArchived?: boolean;
+}
+
+/** Keeps what may still be done in an archived track. */
+function readOnly(permissions: Iterable<TrackPermission>): Set<TrackPermission> {
+  return new Set([...permissions].filter(isReadOnlyPermission));
 }
 
 export class Authorizer {
@@ -178,25 +199,27 @@ export class Authorizer {
   ): Promise<ReadonlySet<TrackPermission>> {
     const { userId } = principal;
     if (userId === null) {
-      const { rows } = await sql<{ permission: TrackPermission }>`
-        SELECT DISTINCT gr.permission FROM track t
+      const { rows } = await sql<{ permission: TrackPermission; archived: boolean }>`
+        SELECT DISTINCT gr.permission, t.archived_at IS NOT NULL AS archived FROM track t
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
          WHERE t.id = ${trackId} AND t.workspace_id = ${workspaceId}
            AND gr.grantee = 'anyone'`.execute(this.db);
-      return new Set(rows.map((r) => r.permission));
+      const held = rows.map((r) => r.permission);
+      return rows[0]?.archived ? readOnly(held) : new Set(held);
     }
     const global = await this.globalPermissions(workspaceId, userId, epoch);
     if (global.has('site_admin')) {
-      const exists = await this.db
+      const track = await this.db
         .selectFrom('track')
-        .select('id')
+        .select(['id', 'archived_at'])
         .where('id', '=', trackId)
         .where('workspace_id', '=', workspaceId)
         .executeTakeFirst();
-      return new Set(exists ? TRACK_PERMISSIONS : []);
+      if (!track) return new Set();
+      return track.archived_at ? new Set(ARCHIVED_TRACK_PERMISSIONS) : new Set(TRACK_PERMISSIONS);
     }
-    // One round trip: the grants that match, for an active person only, plus an empty marker
-    // row when the track exists (configuration administrators need to know that).
+    // One round trip: the grants that match, for an active person only, plus a marker row
+    // when the track exists ('' or '!archived'; configuration administrators need to know).
     // The person's roles in this track are found once, then matched against the grants.
     const { rows } = await sql<{ permission: string }>`
       WITH RECURSIVE ${GROUPS_CTE(workspaceId, userId)},
@@ -216,28 +239,33 @@ export class Authorizer {
               OR (gr.grantee = 'track_owner' AND t.owner_id = ${userId})
               OR (gr.grantee = 'role' AND gr.role_id IN (SELECT role_id FROM r)))
       UNION
-      SELECT '' FROM track t
+      SELECT CASE WHEN t.archived_at IS NULL THEN '' ELSE '!archived' END FROM track t
         JOIN app_user u ON u.id = ${userId} AND u.deactivated_at IS NULL
        WHERE t.id = ${trackId} AND t.workspace_id = ${workspaceId}`.execute(this.db);
-    const exists = rows.some((r) => r.permission === '');
+    const archived = rows.some((r) => r.permission === '!archived');
+    const exists = archived || rows.some((r) => r.permission === '');
     const result = new Set(
-      rows.map((r) => r.permission).filter((p): p is TrackPermission => p !== ''),
+      rows
+        .map((r) => r.permission)
+        .filter((p): p is TrackPermission => p !== '' && p !== '!archived'),
     );
     if (exists && global.has('configuration_admin')) {
       for (const p of CONFIGURATION_PERMISSIONS) result.add(p);
     }
-    return result;
+    return archived ? readOnly(result) : result;
   }
 
   /**
-   * The tracks where the principal holds a permission: the search pre-filter (QRY-008). 'all'
-   * for site administrators, so the query needs no filter.
+   * The tracks where the principal holds a permission: the search pre-filter (QRY-008).
+   * Archived tracks are left out (CORE-025). 'all' means no filter is needed: a site
+   * administrator while no track is archived, or one who asks to include the archive.
    */
   async allowedTracks(
     workspaceId: number,
     principal: Principal,
     permission: TrackPermission = 'browse_track',
     epoch?: string,
+    options: AllowedTracksOptions = {},
   ): Promise<number[] | 'all'> {
     const { userId } = principal;
     if (userId === null) {
@@ -245,12 +273,30 @@ export class Authorizer {
         SELECT DISTINCT t.id FROM track t
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
          WHERE t.workspace_id = ${workspaceId} AND gr.permission = ${permission}
-           AND gr.grantee = 'anyone'
+           AND gr.grantee = 'anyone' AND t.archived_at IS NULL
          ORDER BY t.id`.execute(this.db);
       return rows.map((r) => r.id);
     }
     const global = await this.globalPermissions(workspaceId, userId, epoch);
-    if (global.has('site_admin')) return 'all';
+    if (global.has('site_admin')) {
+      if (options.includeArchived && isReadOnlyPermission(permission)) return 'all';
+      const archived = await this.db
+        .selectFrom('track')
+        .select('id')
+        .where('workspace_id', '=', workspaceId)
+        .where('archived_at', 'is not', null)
+        .limit(1)
+        .executeTakeFirst();
+      if (!archived) return 'all';
+      const rows = await this.db
+        .selectFrom('track')
+        .select('id')
+        .where('workspace_id', '=', workspaceId)
+        .where('archived_at', 'is', null)
+        .orderBy('id')
+        .execute();
+      return rows.map((r) => r.id);
+    }
     if (global.size === 0) {
       // Deactivated or unknown: nothing. (Active people always hold the any_user defaults or none.)
       const active = await this.db
@@ -270,6 +316,7 @@ export class Authorizer {
         .selectFrom('track')
         .select('id')
         .where('workspace_id', '=', workspaceId)
+        .where('archived_at', 'is', null)
         .orderBy('id')
         .execute();
       return rows.map((r) => r.id);
@@ -281,6 +328,7 @@ export class Authorizer {
       SELECT DISTINCT id FROM (
         SELECT t.id FROM access_grant gr JOIN track t ON t.access_policy_id = gr.policy_id
          WHERE gr.permission = ${permission} AND t.workspace_id = ${workspaceId}
+           AND t.archived_at IS NULL
            AND (gr.grantee IN ('anyone', 'any_user')
                 OR (gr.grantee = 'user' AND gr.user_id = ${userId})
                 OR (gr.grantee = 'group' AND gr.group_id IN (SELECT id FROM g)))
@@ -289,13 +337,14 @@ export class Authorizer {
           JOIN track t ON t.id = a.track_id
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
                AND gr.permission = ${permission} AND gr.grantee = 'role' AND gr.role_id = a.role_id
-         WHERE t.workspace_id = ${workspaceId}
+         WHERE t.workspace_id = ${workspaceId} AND t.archived_at IS NULL
            AND (a.user_id = ${userId} OR a.group_id IN (SELECT id FROM g))
         UNION ALL
         SELECT t.id FROM track t
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
                AND gr.permission = ${permission} AND gr.grantee = 'track_owner'
          WHERE t.workspace_id = ${workspaceId} AND t.owner_id = ${userId}
+           AND t.archived_at IS NULL
       ) allowed
       ORDER BY id`.execute(this.db);
     return rows.map((r) => r.id);
@@ -361,7 +410,15 @@ export class Authorizer {
         });
       }
     }
-    return { allowed: reasons.length > 0, reasons, ticketLevel };
+    const track = await this.db
+      .selectFrom('track')
+      .select('archived_at')
+      .where('id', '=', trackId)
+      .where('workspace_id', '=', workspaceId)
+      .executeTakeFirst();
+    const trackArchived = Boolean(track?.archived_at);
+    const allowed = reasons.length > 0 && (!trackArchived || isReadOnlyPermission(permission));
+    return { allowed, trackArchived, reasons, ticketLevel };
   }
 }
 
@@ -409,12 +466,16 @@ export class AuthzContext {
     return (await this.track(trackId)).has(permission);
   }
 
-  async allowedTracks(permission: TrackPermission = 'browse_track'): Promise<number[] | 'all'> {
+  async allowedTracks(
+    permission: TrackPermission = 'browse_track',
+    options: AllowedTracksOptions = {},
+  ): Promise<number[] | 'all'> {
     return this.authorizer.allowedTracks(
       this.workspaceId,
       this.principal,
       permission,
       await this.epoch(),
+      options,
     );
   }
 }

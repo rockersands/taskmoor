@@ -81,6 +81,22 @@ export const CONFIGURATION_PERMISSIONS: readonly TrackPermission[] = [
   'view_readonly_workflow',
 ];
 
+/**
+ * What anyone may still do in an archived track (CORE-025): look, never change. Every other
+ * permission, site administrators' included, waits until the track is restored.
+ */
+export const ARCHIVED_TRACK_PERMISSIONS: readonly TrackPermission[] = [
+  'browse_track',
+  'view_aggregated_data',
+  'view_dev_tools',
+  'view_readonly_workflow',
+  'view_voters_followers',
+];
+
+export function isReadOnlyPermission(permission: TrackPermission): boolean {
+  return ARCHIVED_TRACK_PERMISSIONS.includes(permission);
+}
+
 /** Grantees decided at track level; the others need the ticket (requester, assignee, fields). */
 export const TRACK_LEVEL_GRANTEES = [
   'role',

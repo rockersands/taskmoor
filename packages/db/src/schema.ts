@@ -126,13 +126,19 @@ export interface RoleTable {
   created_at: DefaultTimestamp;
 }
 
-/** A set of grants that tracks share (Jira: permission scheme). */
+/**
+ * A set of grants (Jira: permission scheme). Shared policies serve many tracks; a policy with
+ * `owner_track_id` belongs to one local-mode track (M1-006). One policy per workspace is the
+ * default that new shared-mode tracks use and local-mode tracks copy.
+ */
 export interface AccessPolicyTable {
   id: Generated<number>;
   workspace_id: number;
   name: string;
   description: Generated<string>;
   created_at: DefaultTimestamp;
+  is_default: Generated<boolean>;
+  owner_track_id: number | null;
 }
 
 export type GranteeKind =
@@ -160,9 +166,15 @@ export interface AccessGrantTable {
   field_key: string | null;
 }
 
+export type TrackType = 'software' | 'business' | 'service' | 'discovery';
+export type TrackMode = 'shared' | 'local';
+
 /**
- * A track as a permission scope (M1-002); M1-006 adds category, archiving and configuration
- * mode. Keys are unique within a workspace, ignoring case.
+ * A track (M1-002, M1-006; CORE-001 to CORE-003, CORE-025): the container of tickets. Keys are
+ * unique within a workspace ignoring case, together with every key a track used before
+ * (`track_key_history`). The type is a preset of the feature toggles; the mode says whether the
+ * configuration is shared or owned by the track. An archived track is read-only and hidden
+ * from search.
  */
 export interface TrackTable {
   id: Generated<number>;
@@ -172,6 +184,48 @@ export interface TrackTable {
   owner_id: number | null;
   access_policy_id: number;
   created_at: DefaultTimestamp;
+  description: Generated<string>;
+  type: ColumnType<TrackType, TrackType | undefined, TrackType>;
+  mode: ColumnType<TrackMode, TrackMode | undefined, TrackMode>;
+  category_id: number | null;
+  icon: string | null;
+  color: string | null;
+  feature_board: Generated<boolean>;
+  feature_backlog: Generated<boolean>;
+  feature_sprints: Generated<boolean>;
+  feature_releases: Generated<boolean>;
+  feature_development: Generated<boolean>;
+  feature_forms: Generated<boolean>;
+  feature_approvals: Generated<boolean>;
+  feature_calendar: Generated<boolean>;
+  feature_timeline: Generated<boolean>;
+  archived_at: Timestamp | null;
+  archived_by: number | null;
+  updated_at: DefaultTimestamp;
+}
+
+/** Categories that group tracks (CORE-001); names are unique within a workspace, ignoring case. */
+export interface TrackCategoryTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/**
+ * Every key a track has had, the current one with `replaced_at` null. Unique within a workspace
+ * ignoring case, so an old key keeps resolving and no other track can take it (CORE-001 (2)).
+ * A trigger on `track` writes it.
+ */
+export interface TrackKeyHistoryTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number;
+  key: string;
+  created_at: DefaultTimestamp;
+  replaced_at: Timestamp | null;
 }
 
 /** A user or a group acting in a role on one track. */
@@ -374,6 +428,8 @@ export interface Database {
   access_policy: AccessPolicyTable;
   access_grant: AccessGrantTable;
   track: TrackTable;
+  track_category: TrackCategoryTable;
+  track_key_history: TrackKeyHistoryTable;
   track_role_actor: TrackRoleActorTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;

@@ -1,0 +1,791 @@
+import type { Database } from '@taskmoor/db';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { type Kysely, sql, type Transaction, type Updateable } from 'kysely';
+import { z } from 'zod';
+import { requireGlobal, requireUser } from '../auth';
+import { diff, emit } from '../events/bus';
+import {
+  checkKey,
+  FEATURE_DEFAULTS,
+  featureColumn,
+  looksLikeKey,
+  normalizeKey,
+  TRACK_FEATURES,
+  TRACK_MODES,
+  TRACK_TYPES,
+  type TrackFeatures,
+} from '../tracks/model';
+
+/**
+ * Tracks and track categories (M1-006; CORE-001, CORE-002, CORE-003, CORE-025).
+ *
+ * - Everyone sees the tracks they may browse or administer; archived tracks only through
+ *   `?archived=include|only`, which is for site and configuration administrators.
+ * - A track is found by id or by key, ignoring case; an old key answers with the track and a
+ *   redirect to its current key.
+ * - Shared-mode tracks are created by site and configuration administrators and use a shared
+ *   access policy (the workspace default unless one is named). Local-mode tracks need the
+ *   global permission "Create local-mode tracks" and get their own copy of the default
+ *   policy, so changing it never reaches another track (section 1.1).
+ * - The creator becomes owner (unless another owner is named) and joins the role the policy
+ *   lets administer the track (Administrators by default).
+ * - Track administrators edit the track; changing its access policy is configuration
+ *   administration; the mode is fixed at creation.
+ * - Archive and restore belong to site and configuration administrators. An archived track is
+ *   read-only for everyone (the authorizer keeps only read permissions there) and hidden from
+ *   the search pre-filter.
+ *
+ * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
+ */
+const MAX_INT = 2_147_483_647;
+const id = z.coerce.number().int().positive().max(MAX_INT);
+const icon = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-]{0,39}$/, 'an icon name: lower-case letters, digits and hyphens');
+const color = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'a colour as #rrggbb')
+  .transform((c) => c.toLowerCase());
+const features = z
+  .object(Object.fromEntries(TRACK_FEATURES.map((f) => [f, z.boolean().optional()])))
+  .strict() as unknown as z.ZodType<Partial<TrackFeatures>>;
+
+const trackFields = {
+  name: z.string().trim().min(1).max(255),
+  description: z.string().max(10_000),
+  type: z.enum(TRACK_TYPES),
+  ownerId: id,
+  categoryId: id.nullable(),
+  icon: icon.nullable(),
+  color: color.nullable(),
+  accessPolicyId: id,
+  features,
+};
+const createBody = z
+  .object({
+    key: z.string(),
+    mode: z.enum(TRACK_MODES),
+    name: trackFields.name,
+    description: trackFields.description.optional(),
+    type: trackFields.type.default('software'),
+    ownerId: trackFields.ownerId.optional(),
+    categoryId: trackFields.categoryId.optional(),
+    icon: trackFields.icon.optional(),
+    color: trackFields.color.optional(),
+    accessPolicyId: trackFields.accessPolicyId.optional(),
+    features: trackFields.features.optional(),
+  })
+  .strict();
+const updateBody = z
+  .object({
+    key: z.string().optional(),
+    name: trackFields.name.optional(),
+    description: trackFields.description.optional(),
+    type: trackFields.type.optional(),
+    ownerId: trackFields.ownerId.optional(),
+    categoryId: trackFields.categoryId.optional(),
+    icon: trackFields.icon.optional(),
+    color: trackFields.color.optional(),
+    accessPolicyId: trackFields.accessPolicyId.optional(),
+    features: trackFields.features.optional(),
+  })
+  .strict();
+const listQuery = z
+  .object({
+    archived: z.enum(['exclude', 'include', 'only']).default('exclude'),
+    categoryId: id.optional(),
+    type: z.enum(TRACK_TYPES).optional(),
+    mode: z.enum(TRACK_MODES).optional(),
+    q: z.string().trim().min(1).max(255).optional(),
+    after: z.string().min(1).max(255).optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(100),
+  })
+  .strict();
+const categoryBody = z
+  .object({
+    name: z.string().trim().min(1).max(255),
+    description: z.string().trim().max(2000).optional(),
+  })
+  .strict();
+
+type Db = Kysely<Database> | Transaction<Database>;
+
+function uniqueViolation(error: unknown): string | null {
+  const e = error as { code?: string; constraint?: string };
+  return e.code === '23505' ? (e.constraint ?? '') : null;
+}
+const KEY_CONSTRAINTS = ['track_workspace_key_idx', 'track_key_history_key_idx'];
+
+const invalid = (reply: FastifyReply, detail?: string) =>
+  reply.code(400).send({ error: 'invalid_request', ...(detail ? { detail } : {}) });
+const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
+
+/** The columns a track view needs, joined with the names it shows. */
+function trackQuery(db: Db, workspaceId: number) {
+  return db
+    .selectFrom('track as t')
+    .leftJoin('app_user as o', 'o.id', 't.owner_id')
+    .leftJoin('track_category as c', 'c.id', 't.category_id')
+    .leftJoin('app_user as ab', 'ab.id', 't.archived_by')
+    .select([
+      't.id',
+      't.key',
+      't.name',
+      't.description',
+      't.type',
+      't.mode',
+      't.owner_id',
+      'o.name as owner_name',
+      't.category_id',
+      'c.name as category_name',
+      't.icon',
+      't.color',
+      't.access_policy_id',
+      't.feature_board',
+      't.feature_backlog',
+      't.feature_sprints',
+      't.feature_releases',
+      't.feature_development',
+      't.feature_forms',
+      't.feature_approvals',
+      't.feature_calendar',
+      't.feature_timeline',
+      't.archived_at',
+      't.archived_by',
+      'ab.name as archived_by_name',
+      't.created_at',
+      't.updated_at',
+    ])
+    .where('t.workspace_id', '=', workspaceId);
+}
+type TrackRow = Awaited<ReturnType<ReturnType<typeof trackQuery>['executeTakeFirstOrThrow']>>;
+
+function featuresOf(row: TrackRow): TrackFeatures {
+  return Object.fromEntries(TRACK_FEATURES.map((f) => [f, row[featureColumn(f)]])) as TrackFeatures;
+}
+
+function trackView(row: TrackRow) {
+  return {
+    id: row.id,
+    key: row.key,
+    name: row.name,
+    description: row.description,
+    type: row.type,
+    mode: row.mode,
+    owner: row.owner_id === null ? null : { id: row.owner_id, name: row.owner_name ?? '' },
+    category:
+      row.category_id === null ? null : { id: row.category_id, name: row.category_name ?? '' },
+    icon: row.icon,
+    color: row.color,
+    accessPolicyId: row.access_policy_id,
+    features: featuresOf(row),
+    archived: row.archived_at !== null,
+    archivedAt: row.archived_at?.toISOString() ?? null,
+    archivedBy:
+      row.archived_by === null ? null : { id: row.archived_by, name: row.archived_by_name ?? '' },
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+  };
+}
+
+function loadTrack(db: Db, workspaceId: number, trackId: number) {
+  return trackQuery(db, workspaceId).where('t.id', '=', trackId).executeTakeFirst();
+}
+
+/** Escapes LIKE wildcards so a search for "50%" means those characters. */
+const likeEscape = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+  const by = (request: FastifyRequest) => ({
+    workspaceId: request.workspaceId,
+    actorId: request.user?.id ?? null,
+  });
+  const configAdmin = (request: FastifyRequest, reply: FastifyReply) =>
+    requireGlobal(request, reply, 'site_admin', 'configuration_admin');
+
+  async function isAdmin(request: FastifyRequest): Promise<boolean> {
+    const global = await request.authz.global();
+    return global.has('site_admin') || global.has('configuration_admin');
+  }
+
+  /** People who may browse or administer a track see it; administrators see every track. */
+  async function canSee(request: FastifyRequest, trackId: number): Promise<boolean> {
+    const held = await request.authz.track(trackId);
+    if (held.has('browse_track') || held.has('administer_track')) return true;
+    return isAdmin(request);
+  }
+
+  async function activeUser(workspaceId: number, userId: number): Promise<boolean> {
+    const row = await db
+      .selectFrom('app_user')
+      .select('id')
+      .where('id', '=', userId)
+      .where('workspace_id', '=', workspaceId)
+      .where('deactivated_at', 'is', null)
+      .executeTakeFirst();
+    return row !== undefined;
+  }
+
+  async function categoryExists(workspaceId: number, categoryId: number): Promise<boolean> {
+    const row = await db
+      .selectFrom('track_category')
+      .select('id')
+      .where('id', '=', categoryId)
+      .where('workspace_id', '=', workspaceId)
+      .executeTakeFirst();
+    return row !== undefined;
+  }
+
+  /** A shared policy of the workspace (never one that a local-mode track owns). */
+  async function sharedPolicy(workspaceId: number, policyId: number): Promise<boolean> {
+    const row = await db
+      .selectFrom('access_policy')
+      .select('id')
+      .where('id', '=', policyId)
+      .where('workspace_id', '=', workspaceId)
+      .where('owner_track_id', 'is', null)
+      .executeTakeFirst();
+    return row !== undefined;
+  }
+
+  async function defaultPolicy(trx: Db, workspaceId: number): Promise<number | null> {
+    const row = await trx
+      .selectFrom('access_policy')
+      .select('id')
+      .where('workspace_id', '=', workspaceId)
+      .where('is_default', '=', true)
+      .executeTakeFirst();
+    return row?.id ?? null;
+  }
+
+  /** Finds a track by id or by any key it has had. `oldKey` is set when the key is retired. */
+  async function resolve(
+    workspaceId: number,
+    ref: string,
+  ): Promise<{ id: number; oldKey: string | null } | null> {
+    if (/^\d+$/.test(ref)) {
+      const n = Number(ref);
+      return n > 0 && n <= MAX_INT ? { id: n, oldKey: null } : null;
+    }
+    if (!looksLikeKey(ref)) return null;
+    const row = await db
+      .selectFrom('track_key_history')
+      .select(['track_id', 'key', 'replaced_at'])
+      .where('workspace_id', '=', workspaceId)
+      .where(sql<string>`upper(key)`, '=', normalizeKey(ref))
+      .executeTakeFirst();
+    if (!row) return null;
+    return { id: row.track_id, oldKey: row.replaced_at ? row.key : null };
+  }
+
+  app.get('/api/v1/tracks', async (request, reply) => {
+    const parsed = listQuery.safeParse(request.query);
+    if (!parsed.success) return invalid(reply);
+    const q = parsed.data;
+    const ws = request.workspaceId;
+    if (q.archived !== 'exclude' && !(request.user && (await isAdmin(request)))) {
+      return reply.code(403).send({ error: 'forbidden' });
+    }
+    // Active tracks come through the authorizer's list, which leaves archived ones out.
+    const [browse, administer] = await Promise.all([
+      request.authz.allowedTracks('browse_track'),
+      request.authz.allowedTracks('administer_track'),
+    ]);
+    const active =
+      browse === 'all' || administer === 'all'
+        ? sql<boolean>`t.archived_at IS NULL`
+        : sql<boolean>`(t.archived_at IS NULL AND t.id = ANY(${[
+            ...new Set([...browse, ...administer]),
+          ]}::int[]))`;
+    const visible =
+      q.archived === 'exclude'
+        ? active
+        : q.archived === 'only'
+          ? sql<boolean>`t.archived_at IS NOT NULL`
+          : sql<boolean>`(${active} OR t.archived_at IS NOT NULL)`;
+    let query = trackQuery(db, ws).where(visible);
+    if (q.categoryId !== undefined) query = query.where('t.category_id', '=', q.categoryId);
+    if (q.type !== undefined) query = query.where('t.type', '=', q.type);
+    if (q.mode !== undefined) query = query.where('t.mode', '=', q.mode);
+    if (q.q !== undefined) {
+      const pattern = `%${likeEscape(q.q)}%`;
+      query = query.where(sql<boolean>`(t.key ILIKE ${pattern} OR t.name ILIKE ${pattern})`);
+    }
+    if (q.after !== undefined) {
+      query = query.where(sql<boolean>`upper(t.key) > ${normalizeKey(q.after)}`);
+    }
+    const rows = await query
+      .orderBy(sql`upper(t.key)`)
+      .limit(q.limit + 1)
+      .execute();
+    const page = rows.slice(0, q.limit);
+    const next = rows.length > q.limit ? (page[page.length - 1]?.key ?? null) : null;
+    return { tracks: page.map(trackView), next };
+  });
+
+  app.get('/api/v1/tracks/:id', async (request, reply) => {
+    const params = z.object({ id: z.string().min(1).max(255) }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const found = await resolve(ws, params.data.id);
+    if (!found) return notFound(reply);
+    const row = await loadTrack(db, ws, found.id);
+    // Tracks the caller may not see do not exist for them.
+    if (!row || !(await canSee(request, row.id))) return notFound(reply);
+    const history = await db
+      .selectFrom('track_key_history')
+      .select('key')
+      .where('track_id', '=', row.id)
+      .where('replaced_at', 'is not', null)
+      .orderBy('replaced_at')
+      .orderBy('id')
+      .execute();
+    return {
+      track: { ...trackView(row), previousKeys: history.map((h) => h.key) },
+      ...(found.oldKey ? { redirect: { from: found.oldKey, to: row.key } } : {}),
+    };
+  });
+
+  app.post('/api/v1/tracks', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const parsed = createBody.safeParse(request.body);
+    if (!parsed.success) return invalid(reply);
+    const body = parsed.data;
+    const ws = request.workspaceId;
+    const global = await request.authz.global();
+    const allowed =
+      body.mode === 'shared'
+        ? global.has('site_admin') || global.has('configuration_admin')
+        : global.has('create_local_tracks');
+    if (!allowed) return reply.code(403).send({ error: 'forbidden' });
+    const key = checkKey(body.key, 'native');
+    if (!key.ok) return reply.code(400).send({ error: 'invalid_key', problem: key.problem });
+    if (body.mode === 'local' && body.accessPolicyId !== undefined) {
+      return invalid(reply, 'a local-mode track gets its own access policy');
+    }
+    const ownerId = body.ownerId ?? user.id;
+    if (!(await activeUser(ws, ownerId))) return invalid(reply, 'ownerId');
+    if (body.categoryId != null && !(await categoryExists(ws, body.categoryId))) {
+      return invalid(reply, 'categoryId');
+    }
+    if (body.accessPolicyId !== undefined && !(await sharedPolicy(ws, body.accessPolicyId))) {
+      return invalid(reply, 'accessPolicyId');
+    }
+    const chosen = { ...FEATURE_DEFAULTS[body.type], ...(body.features ?? {}) };
+    try {
+      const created = await db.transaction().execute(async (trx) => {
+        const base = body.accessPolicyId ?? (await defaultPolicy(trx, ws));
+        if (base === null) return { error: 'no_default_access_policy' as const };
+        const row = await trx
+          .insertInto('track')
+          .values({
+            workspace_id: ws,
+            key: key.key,
+            name: body.name,
+            description: body.description ?? '',
+            type: body.type,
+            mode: body.mode,
+            owner_id: ownerId,
+            category_id: body.categoryId ?? null,
+            icon: body.icon ?? null,
+            color: body.color ?? null,
+            access_policy_id: base,
+            ...Object.fromEntries(TRACK_FEATURES.map((f) => [featureColumn(f), chosen[f]])),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        let policyId = base;
+        if (body.mode === 'local') {
+          policyId = await copyPolicy(trx, ws, base, row.id, key.key);
+          await trx
+            .updateTable('track')
+            .set({ access_policy_id: policyId })
+            .where('id', '=', row.id)
+            .execute();
+        }
+        // The creator joins the role this policy lets administer the track.
+        const adminRole = await trx
+          .selectFrom('access_grant')
+          .select('role_id')
+          .where('policy_id', '=', policyId)
+          .where('permission', '=', 'administer_track')
+          .where('grantee', '=', 'role')
+          .orderBy('role_id')
+          .limit(1)
+          .executeTakeFirst();
+        const roleId = adminRole?.role_id ?? null;
+        if (roleId !== null) {
+          await trx
+            .insertInto('track_role_actor')
+            .values({ workspace_id: ws, track_id: row.id, role_id: roleId, user_id: user.id })
+            .onConflict((oc) => oc.doNothing())
+            .execute();
+        }
+        await emit(trx, by(request), {
+          type: 'track.created',
+          subjectId: row.id,
+          payload: {
+            key: key.key,
+            name: body.name,
+            type: body.type,
+            mode: body.mode,
+            ownerId,
+            categoryId: body.categoryId ?? null,
+            accessPolicyId: policyId,
+            administratorRoleId: roleId,
+          },
+        });
+        return { track: await loadTrack(trx, ws, row.id) };
+      });
+      if ('error' in created) return reply.code(409).send({ error: created.error });
+      if (!created.track) return notFound(reply);
+      return reply.code(201).send({ track: trackView(created.track) });
+    } catch (error) {
+      const constraint = uniqueViolation(error);
+      if (constraint !== null && KEY_CONSTRAINTS.includes(constraint)) {
+        return reply.code(409).send({ error: 'key_taken' });
+      }
+      throw error;
+    }
+  });
+
+  app.patch('/api/v1/tracks/:id', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    const raw = (request.body ?? {}) as Record<string, unknown>;
+    if (typeof raw === 'object' && raw !== null && 'mode' in raw) {
+      return invalid(reply, 'the mode is chosen when the track is created');
+    }
+    const parsed = updateBody.safeParse(request.body);
+    if (!params.success || !parsed.success) return invalid(reply);
+    const body = parsed.data;
+    const ws = request.workspaceId;
+    const trackId = params.data.id;
+    const current = await loadTrack(db, ws, trackId);
+    if (!current || !(await canSee(request, trackId))) return notFound(reply);
+    if (current.archived_at) return reply.code(409).send({ error: 'track_archived' });
+    if (!(await request.authz.can('administer_track', trackId))) {
+      return reply.code(403).send({ error: 'forbidden' });
+    }
+    let key: string | undefined;
+    if (body.key !== undefined) {
+      const checked = checkKey(body.key, 'native');
+      if (!checked.ok) {
+        return reply.code(400).send({ error: 'invalid_key', problem: checked.problem });
+      }
+      key = checked.key;
+    }
+    if (body.accessPolicyId !== undefined && body.accessPolicyId !== current.access_policy_id) {
+      if (!(await isAdmin(request))) return reply.code(403).send({ error: 'forbidden' });
+      if (current.mode === 'local') {
+        return invalid(reply, 'a local-mode track keeps its own access policy');
+      }
+      if (!(await sharedPolicy(ws, body.accessPolicyId))) return invalid(reply, 'accessPolicyId');
+    }
+    if (body.ownerId !== undefined && !(await activeUser(ws, body.ownerId))) {
+      return invalid(reply, 'ownerId');
+    }
+    if (body.categoryId != null && !(await categoryExists(ws, body.categoryId))) {
+      return invalid(reply, 'categoryId');
+    }
+    try {
+      const updated = await db.transaction().execute(async (trx) => {
+        const locked = await trx
+          .selectFrom('track')
+          .selectAll()
+          .where('id', '=', trackId)
+          .where('workspace_id', '=', ws)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!locked) return { missing: true as const };
+        // Archived between the check and the lock: still read-only.
+        if (locked.archived_at) return { archived: true as const };
+        const before: Record<string, unknown> = {
+          key: locked.key,
+          name: locked.name,
+          description: locked.description,
+          type: locked.type,
+          ownerId: locked.owner_id,
+          categoryId: locked.category_id,
+          icon: locked.icon,
+          color: locked.color,
+          accessPolicyId: locked.access_policy_id,
+          ...Object.fromEntries(
+            TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
+          ),
+        };
+        const next: Record<string, unknown> = {
+          key,
+          name: body.name,
+          description: body.description,
+          type: body.type,
+          ownerId: body.ownerId,
+          categoryId: body.categoryId,
+          icon: body.icon,
+          color: body.color,
+          accessPolicyId: body.accessPolicyId,
+          ...Object.fromEntries(
+            Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
+          ),
+        };
+        const changes = diff(before, next);
+        if (Object.keys(changes).length > 0) {
+          // Only what changed is written; `changes` has an entry only for a given value.
+          const set: Updateable<Database['track']> = { updated_at: new Date() };
+          if (changes.key && key !== undefined) set.key = key;
+          if (changes.name && body.name !== undefined) set.name = body.name;
+          if (changes.description && body.description !== undefined) {
+            set.description = body.description;
+          }
+          if (changes.type && body.type !== undefined) set.type = body.type;
+          if (changes.ownerId && body.ownerId !== undefined) set.owner_id = body.ownerId;
+          if (changes.categoryId && body.categoryId !== undefined) {
+            set.category_id = body.categoryId;
+          }
+          if (changes.icon && body.icon !== undefined) set.icon = body.icon;
+          if (changes.color && body.color !== undefined) set.color = body.color;
+          if (changes.accessPolicyId && body.accessPolicyId !== undefined) {
+            set.access_policy_id = body.accessPolicyId;
+          }
+          for (const feature of TRACK_FEATURES) {
+            const on = body.features?.[feature];
+            if (changes[`features.${feature}`] && on !== undefined)
+              set[featureColumn(feature)] = on;
+          }
+          await trx.updateTable('track').set(set).where('id', '=', trackId).execute();
+          await emit(trx, by(request), {
+            type: 'track.updated',
+            subjectId: trackId,
+            payload: { changes },
+          });
+        }
+        return { track: await loadTrack(trx, ws, trackId) };
+      });
+      if ('missing' in updated) return notFound(reply);
+      if ('archived' in updated) return reply.code(409).send({ error: 'track_archived' });
+      if (!updated.track) return notFound(reply);
+      return { track: trackView(updated.track) };
+    } catch (error) {
+      const constraint = uniqueViolation(error);
+      if (constraint !== null && KEY_CONSTRAINTS.includes(constraint)) {
+        return reply.code(409).send({ error: 'key_taken' });
+      }
+      throw error;
+    }
+  });
+
+  for (const action of ['archive', 'restore'] as const) {
+    app.post(`/api/v1/tracks/:id/${action}`, async (request, reply) => {
+      const user = await configAdmin(request, reply);
+      if (!user) return reply;
+      const params = z.object({ id }).safeParse(request.params);
+      if (!params.success) return invalid(reply);
+      const ws = request.workspaceId;
+      const trackId = params.data.id;
+      const result = await db.transaction().execute(async (trx) => {
+        const archiving = action === 'archive';
+        const changed = await trx
+          .updateTable('track')
+          .set({
+            archived_at: archiving ? new Date() : null,
+            archived_by: archiving ? user.id : null,
+            updated_at: new Date(),
+          })
+          .where('id', '=', trackId)
+          .where('workspace_id', '=', ws)
+          .where('archived_at', archiving ? 'is' : 'is not', null)
+          .returning('key')
+          .executeTakeFirst();
+        if (!changed) {
+          const exists = await loadTrack(trx, ws, trackId);
+          return { error: exists ? (archiving ? 'already_archived' : 'not_archived') : null };
+        }
+        await emit(trx, by(request), {
+          type: archiving ? 'track.archived' : 'track.restored',
+          subjectId: trackId,
+          payload: { key: changed.key },
+        });
+        return { track: await loadTrack(trx, ws, trackId) };
+      });
+      if ('error' in result) {
+        return result.error ? reply.code(409).send({ error: result.error }) : notFound(reply);
+      }
+      if (!result.track) return notFound(reply);
+      return { track: trackView(result.track) };
+    });
+  }
+
+  // Categories: everyone signed in reads them; configuration administrators change them.
+  app.get('/api/v1/track-categories', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const admin = await isAdmin(request);
+    const rows = await db
+      .selectFrom('track_category as c')
+      .select((eb) => [
+        'c.id',
+        'c.name',
+        'c.description',
+        eb
+          .selectFrom('track as t')
+          .select((t) => t.fn.countAll<string>().as('n'))
+          .whereRef('t.category_id', '=', 'c.id')
+          .as('tracks'),
+      ])
+      .where('c.workspace_id', '=', request.workspaceId)
+      .orderBy(sql`lower(c.name)`)
+      .execute();
+    return {
+      categories: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        // How many tracks use it would reveal tracks a person cannot see.
+        ...(admin ? { trackCount: Number(r.tracks ?? 0) } : {}),
+      })),
+    };
+  });
+
+  app.post('/api/v1/track-categories', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const parsed = categoryBody.safeParse(request.body);
+    if (!parsed.success) return invalid(reply);
+    try {
+      const category = await db.transaction().execute(async (trx) => {
+        const row = await trx
+          .insertInto('track_category')
+          .values({
+            workspace_id: request.workspaceId,
+            name: parsed.data.name,
+            description: parsed.data.description ?? '',
+          })
+          .returning(['id', 'name', 'description'])
+          .executeTakeFirstOrThrow();
+        await emit(trx, by(request), {
+          type: 'track_category.created',
+          subjectId: row.id,
+          payload: { name: row.name },
+        });
+        return row;
+      });
+      return reply.code(201).send({ category });
+    } catch (error) {
+      if (uniqueViolation(error) !== null) return reply.code(409).send({ error: 'name_taken' });
+      throw error;
+    }
+  });
+
+  app.patch('/api/v1/track-categories/:id', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    const parsed = categoryBody.partial().strict().safeParse(request.body);
+    if (!params.success || !parsed.success) return invalid(reply);
+    try {
+      const category = await db.transaction().execute(async (trx) => {
+        const before = await trx
+          .selectFrom('track_category')
+          .select(['name', 'description'])
+          .where('id', '=', params.data.id)
+          .where('workspace_id', '=', request.workspaceId)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!before) return undefined;
+        const next = {
+          ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+          ...(parsed.data.description !== undefined
+            ? { description: parsed.data.description }
+            : {}),
+        };
+        const changes = diff(before, next);
+        if (Object.keys(changes).length > 0) {
+          await trx
+            .updateTable('track_category')
+            .set({ ...next, updated_at: new Date() })
+            .where('id', '=', params.data.id)
+            .execute();
+          await emit(trx, by(request), {
+            type: 'track_category.updated',
+            subjectId: params.data.id,
+            payload: { changes },
+          });
+        }
+        return trx
+          .selectFrom('track_category')
+          .select(['id', 'name', 'description'])
+          .where('id', '=', params.data.id)
+          .executeTakeFirstOrThrow();
+      });
+      if (!category) return notFound(reply);
+      return { category };
+    } catch (error) {
+      if (uniqueViolation(error) !== null) return reply.code(409).send({ error: 'name_taken' });
+      throw error;
+    }
+  });
+
+  // Deleting a category leaves its tracks without one; the event says how many.
+  app.delete('/api/v1/track-categories/:id', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const deleted = await db.transaction().execute(async (trx) => {
+      const used = await trx
+        .selectFrom('track')
+        .select((eb) => eb.fn.countAll<string>().as('n'))
+        .where('category_id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .executeTakeFirstOrThrow();
+      const row = await trx
+        .deleteFrom('track_category')
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', request.workspaceId)
+        .returning(['id', 'name'])
+        .executeTakeFirst();
+      if (row) {
+        await emit(trx, by(request), {
+          type: 'track_category.deleted',
+          subjectId: row.id,
+          payload: { name: row.name, trackCount: Number(used.n) },
+        });
+      }
+      return row;
+    });
+    if (!deleted) return notFound(reply);
+    return reply.code(204).send();
+  });
+}
+
+/**
+ * A local-mode track's own access policy: a copy of `sourceId`'s grants, owned by the track
+ * (section 1.1: nothing leaks to other tracks). Policy names are unique per workspace, so the
+ * track id is added when the plain name is already used.
+ */
+async function copyPolicy(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  sourceId: number,
+  trackId: number,
+  key: string,
+): Promise<number> {
+  for (const name of [`${key} local access policy`, `${key} local access policy ${trackId}`]) {
+    const row = await trx
+      .insertInto('access_policy')
+      .values({
+        workspace_id: workspaceId,
+        name,
+        description: `Owned by track ${key}; copied from the default access policy`,
+        owner_track_id: trackId,
+      })
+      .onConflict((oc) => oc.doNothing())
+      .returning('id')
+      .executeTakeFirst();
+    if (!row) continue;
+    await sql`
+      INSERT INTO access_grant (workspace_id, policy_id, permission, grantee, role_id, group_id,
+                                user_id, field_key)
+      SELECT workspace_id, ${row.id}, permission, grantee, role_id, group_id, user_id, field_key
+        FROM access_grant WHERE policy_id = ${sourceId}`.execute(trx);
+    return row.id;
+  }
+  throw new Error(`no free name for the local access policy of track ${key}`);
+}

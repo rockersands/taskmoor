@@ -20,6 +20,7 @@ import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSsoRoutes } from './routes/sso';
 import { registerTwoFactorRoutes } from './routes/two-factor';
+import { registerTrackRoutes } from './routes/tracks';
 import { registerUserRoutes } from './routes/users';
 import { pruneIdentityData } from './throttle';
 import { defaultWorkspaceId } from './workspace';
@@ -138,6 +139,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       peppers: deps.peppers,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     });
+    registerTrackRoutes(app, db);
     // Expired sessions, used links and stale counters go at start and every six hours.
     const prune = () =>
       pruneIdentityData(db).catch((error) => app.log.warn({ error }, 'prune failed'));

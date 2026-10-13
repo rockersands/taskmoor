@@ -159,6 +159,34 @@ export const EVENT_TYPES = {
     subject: 'track',
     payload: z.object({ roleId: id, userId: id.nullable(), groupId: id.nullable() }),
   },
+
+  // Tracks and categories (M1-006)
+  'track.created': {
+    subject: 'track',
+    payload: z.object({
+      key: z.string(),
+      name: z.string(),
+      type: z.enum(['software', 'business', 'service', 'discovery']),
+      mode: z.enum(['shared', 'local']),
+      ownerId: id.nullable(),
+      categoryId: id.nullable(),
+      /** For a local-mode track, the policy it owns (a copy of the default, made with it). */
+      accessPolicyId: id,
+      /** The role the creator joined, the one the policy lets administer the track. */
+      administratorRoleId: id.nullable(),
+    }),
+  },
+  /** Field changes; a key change is `changes.key` (the old key keeps resolving). */
+  'track.updated': { subject: 'track', payload: z.object({ changes }) },
+  'track.archived': { subject: 'track', payload: z.object({ key: z.string() }) },
+  'track.restored': { subject: 'track', payload: z.object({ key: z.string() }) },
+  'track_category.created': { subject: 'track_category', payload: z.object({ name: z.string() }) },
+  'track_category.updated': { subject: 'track_category', payload: z.object({ changes }) },
+  'track_category.deleted': {
+    subject: 'track_category',
+    /** Tracks that used it are left without a category. */
+    payload: z.object({ name: z.string(), trackCount: z.number().int().min(0) }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;
