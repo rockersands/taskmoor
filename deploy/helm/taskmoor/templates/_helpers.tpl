@@ -55,6 +55,15 @@ app.kubernetes.io/component: {{ .component }}
   value: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
 - name: METRICS_PORT
   value: {{ .Values.metrics.port | quote }}
+- name: TASKMOOR_PASSWORD_PEPPER
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.passwordPepper.existingSecret | default (printf "%s-password-pepper" (include "taskmoor.fullname" .)) }}
+      key: {{ .Values.passwordPepper.existingSecretKey }}
+{{- if .Values.trustedProxies }}
+- name: TASKMOOR_TRUSTED_PROXIES
+  value: {{ .Values.trustedProxies | quote }}
+{{- end }}
 {{- if .Values.setupToken.existingSecret }}
 - name: TASKMOOR_SETUP_TOKEN
   valueFrom:

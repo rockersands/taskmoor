@@ -119,7 +119,8 @@ describe('system status page', () => {
     );
     unmount();
     render(<App session={MEMBER} />);
-    expect(await screen.findByText('This area is under construction.')).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Account' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Administration' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'System status' })).toBeNull();
   });
 

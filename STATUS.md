@@ -63,4 +63,5 @@ Updated 2026-10-12. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-035 Jira-compatible dialect | Done | `toNative` and `toJira` rename fields and functions between the vocabularies on the shared tree; parse cases 100% green |
 | M1-103 Health page, metrics, traces | Done | /metrics on port 9464, OTLP traces when configured, admin System status page, example alerts and dashboard; CI green |
 | M1-099 Helm chart | Done | Chart with lint and render tests; on kind in CI: helm test green and a rolling upgrade with 55,271 requests and none failed |
+| M1-001 Identity foundation | Done | Workspaces, users, nested groups, Argon2id with a pepper keyring, lockout and rate limits, hashed sessions, password links, account UI; ASVS L2 authentication checks as tests |
 | M1-100 Air-gap bundle | In progress | Bundle, verify and offline install tested on an internal network; release signing key waits on the user |

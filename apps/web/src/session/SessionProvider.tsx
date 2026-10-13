@@ -6,6 +6,10 @@ export interface SessionUser {
   name: string;
   email: string;
   isSiteAdmin: boolean;
+  /** IANA time zone the person chose; null follows the device. */
+  timeZone: string | null;
+  /** BCP 47 locale the person chose; null follows the browser. */
+  locale: string | null;
 }
 
 export type Session =
@@ -19,6 +23,8 @@ interface SessionContextValue {
   signOut: () => Promise<void>;
   /** Re-reads the session from the backend, for example after setup created it. */
   refresh: () => Promise<void>;
+  /** Takes a user the backend just returned: a saved profile or a redeemed password link. */
+  setUser: (user: SessionUser) => void;
 }
 
 const SessionContext = createContext<SessionContextValue>({
@@ -26,6 +32,7 @@ const SessionContext = createContext<SessionContextValue>({
   signIn: async () => {},
   signOut: async () => {},
   refresh: async () => {},
+  setUser: () => {},
 });
 
 /**
@@ -71,8 +78,12 @@ export function SessionProvider({
     setSession({ status: 'anonymous' });
   }, []);
 
+  const setUser = useCallback((user: SessionUser) => {
+    setSession({ status: 'signed-in', user });
+  }, []);
+
   return (
-    <SessionContext.Provider value={{ session, signIn, signOut, refresh }}>
+    <SessionContext.Provider value={{ session, signIn, signOut, refresh, setUser }}>
       {children}
     </SessionContext.Provider>
   );

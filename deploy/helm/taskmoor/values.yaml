@@ -40,6 +40,18 @@ storage:
     # Secret with S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY.
     existingSecret: ""
 
+# Password pepper (ASVS 2.4.5): a secret key mixed into every password hash and kept out of
+# the database. Every pod needs the same key. By default the chart creates a Secret with a
+# random key once and keeps it across upgrades and uninstalls; or name your own Secret.
+passwordPepper:
+  existingSecret: ""
+  existingSecretKey: TASKMOOR_PASSWORD_PEPPER
+
+# Proxies whose X-Forwarded-For header is believed. Sign-in limits count failures per client
+# address, so behind the ingress controller (private pod addresses) the real client must come
+# from the header. Comma-separated addresses, CIDRs or loopback, linklocal, uniquelocal.
+trustedProxies: "loopback,uniquelocal"
+
 logLevel: info
 extraEnv: []
 

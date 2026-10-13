@@ -110,7 +110,7 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        {t('shell.openCommandPalette')}
+        <span className="palette-trigger-label">{t('shell.openCommandPalette')}</span>
       </button>
 
       {open && (

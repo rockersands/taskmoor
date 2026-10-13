@@ -70,7 +70,14 @@ describe('session guard', () => {
       <App
         session={{
           status: 'signed-in',
-          user: { id: 1, name: 'Kalo', email: 'kalo@example.com', isSiteAdmin: true },
+          user: {
+            id: 1,
+            name: 'Kalo',
+            email: 'kalo@example.com',
+            isSiteAdmin: true,
+            timeZone: null,
+            locale: null,
+          },
         }}
       />,
     );

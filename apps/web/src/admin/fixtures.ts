@@ -43,10 +43,24 @@ export const STALE_BACKUP: SystemInfo = {
 
 export const ADMIN: Session = {
   status: 'signed-in',
-  user: { id: 1, name: 'Ada', email: 'ada@example.com', isSiteAdmin: true },
+  user: {
+    id: 1,
+    name: 'Ada',
+    email: 'ada@example.com',
+    isSiteAdmin: true,
+    timeZone: null,
+    locale: null,
+  },
 };
 
 export const MEMBER: Session = {
   status: 'signed-in',
-  user: { id: 2, name: 'Bo', email: 'bo@example.com', isSiteAdmin: false },
+  user: {
+    id: 2,
+    name: 'Bo',
+    email: 'bo@example.com',
+    isSiteAdmin: false,
+    timeZone: null,
+    locale: null,
+  },
 };

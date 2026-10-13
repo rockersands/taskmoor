@@ -1,10 +1,14 @@
-import { useMemo, useSyncExternalStore } from 'react';
+import { type ReactNode, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { AccountPage } from './account/AccountPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
+import { PasswordLinkPage } from './session/PasswordLinkPage';
 import { RequireSession } from './session/RequireSession';
 import { type Session, SessionProvider, useSession } from './session/SessionProvider';
+import { SignInPage } from './session/SignInPage';
+import { UserMenu } from './session/UserMenu';
 import { SetupPage } from './setup/SetupPage';
 import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
@@ -51,17 +55,31 @@ function routeFromHash(hash: string, fallback: string): string {
   return NAV_ITEMS.some((item) => item.id === id) && id ? id : fallback;
 }
 
-/** Pages below Settings that have their own route. */
+/** True when the hash is this route, with or without a query or a sub-path. */
+function isRoute(hash: string, route: string): boolean {
+  return hash === route || hash.startsWith(`${route}?`) || hash.startsWith(`${route}/`);
+}
+
+/** Pages outside the navigation list that have their own route. */
 const ADMIN_SYSTEM = '#/admin/system';
+const ACCOUNT = '#/account';
+const SIGN_IN = '#/sign-in';
+const PASSWORD_LINK = '#/password';
+const HOME = '#/home';
+
+const goHome = () => {
+  window.location.hash = HOME;
+};
 
 function Pages() {
   const t = useT();
   const hash = useHash();
-  const system = hash.startsWith(ADMIN_SYSTEM);
-  const active = system ? 'settings' : routeFromHash(hash, 'home');
-  const page = NAV_ITEMS.find((item) => item.id === active);
   const { session } = useSession();
-  const admin = session.status === 'signed-in' && session.user.isSiteAdmin;
+  const signedIn = session.status === 'signed-in';
+  const admin = signedIn && session.user.isSiteAdmin;
+  const showSignIn = useCallback(() => {
+    window.location.hash = SIGN_IN;
+  }, []);
   const commands = useMemo<Command[]>(
     () => [
       ...NAV_ITEMS.map((item) => ({
@@ -71,6 +89,19 @@ function Pages() {
           window.location.hash = item.href;
         },
       })),
+      // The person's own account, once there is one to show.
+      ...(signedIn
+        ? [
+            {
+              id: 'go-account',
+              labelId: 'account.title' as const,
+              keywords: ['profile', 'password', 'sessions'],
+              run: () => {
+                window.location.hash = ACCOUNT;
+              },
+            },
+          ]
+        : []),
       // Administration commands are offered to site administrators only.
       ...(admin
         ? [
@@ -84,38 +115,53 @@ function Pages() {
           ]
         : []),
     ],
-    [admin],
+    [signedIn, admin],
   );
 
-  // First-run setup stands alone: no shell until there is an administrator.
-  if (hash.startsWith('#/setup')) {
-    return (
-      <SetupPage
-        onDone={() => {
-          window.location.hash = '#/home';
-        }}
-      />
-    );
+  // First-run setup and password links stand alone: no shell before someone can sign in.
+  if (hash.startsWith('#/setup')) return <SetupPage onDone={goHome} />;
+  if (isRoute(hash, PASSWORD_LINK)) return <PasswordLinkPage onDone={goHome} />;
+
+  // Which navigation entry is highlighted, what the main area shows, and whether it needs a
+  // session. Account is personal settings, so Settings stays highlighted there.
+  let active = 'settings';
+  let guarded = true;
+  let content: ReactNode;
+  if (hash.startsWith(ADMIN_SYSTEM)) {
+    content = <SystemPage />;
+  } else if (isRoute(hash, ACCOUNT)) {
+    content = <AccountPage />;
+  } else if (isRoute(hash, SIGN_IN)) {
+    active = '';
+    guarded = false;
+    content = <SignInPage onSignedIn={goHome} />;
+  } else {
+    active = routeFromHash(hash, 'home');
+    const page = NAV_ITEMS.find((item) => item.id === active);
+    guarded = page?.requiresSession ?? false;
+    content =
+      active === 'settings' ? (
+        <SettingsPage />
+      ) : (
+        <>
+          <h1 className="page-title">{page ? t(page.labelId) : ''}</h1>
+          <p className="page-note">{t('page.underConstruction')}</p>
+        </>
+      );
   }
-
-  const content = system ? (
-    <SystemPage />
-  ) : active === 'settings' ? (
-    <SettingsPage />
-  ) : (
-    <>
-      <h1 className="page-title">{page ? t(page.labelId) : ''}</h1>
-      <p className="page-note">{t('page.underConstruction')}</p>
-    </>
-  );
 
   return (
     <AppShell
       items={NAV_ITEMS}
       activeId={active}
-      topbarEnd={<CommandPalette commands={commands} />}
+      topbarEnd={
+        <>
+          <CommandPalette commands={commands} />
+          <UserMenu onSignedOut={showSignIn} />
+        </>
+      }
     >
-      {page?.requiresSession ? <RequireSession>{content}</RequireSession> : content}
+      {guarded ? <RequireSession>{content}</RequireSession> : content}
     </AppShell>
   );
 }

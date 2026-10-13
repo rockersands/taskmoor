@@ -1,7 +1,9 @@
 import { createDb, migrateToLatest, poolStats } from '@taskmoor/db';
+import { passwordHasher } from '@taskmoor/iam';
 import { buildApp } from './app';
 import { loadConfig } from './config';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
+import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
 import { waitForDatabase } from './startup';
 
@@ -42,12 +44,24 @@ if (db && config.roles.includes('api')) {
   }
 }
 
+const peppers = loadPeppers({ dataDir: config.dataDir, envSecret: config.passwordPepper });
+if (!peppers?.active && config.roles.includes('api')) {
+  console.log(
+    JSON.stringify({
+      msg: 'passwords are hashed without a pepper: set TASKMOOR_DATA or TASKMOOR_PASSWORD_PEPPER',
+    }),
+  );
+}
+
 const app = await buildApp({
+  passwords: passwordHasher(peppers),
   ...(db ? { db } : {}),
   version: config.version,
   logLevel: config.logLevel,
   roles: config.roles,
   secureCookies: config.secureCookies,
+  publicUrl: config.publicUrl,
+  ...(config.trustedProxies ? { trustedProxies: config.trustedProxies } : {}),
   ...(config.webDir ? { webDir: config.webDir } : {}),
   metrics,
   ...(tracing ? { tracer: tracing.tracer } : {}),

@@ -15,7 +15,13 @@ const db = createDb({ connectionString: database.url, maxConnections: 5 });
 await migrateToLatest(db);
 await issueSetupToken(db, E2E_SETUP_TOKEN);
 
-const app = await buildApp({ db, version: 'e2e', roles: ['api'], logLevel: 'warn' });
+const app = await buildApp({
+  db,
+  version: 'e2e',
+  roles: ['api'],
+  logLevel: 'warn',
+  publicUrl: 'http://localhost:4173',
+});
 await app.listen({ port: E2E_API_PORT, host: '127.0.0.1' });
 process.stdout.write(`e2e API listening on http://127.0.0.1:${E2E_API_PORT}\n`);
 

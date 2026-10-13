@@ -1,5 +1,5 @@
 import type { Database } from '@taskmoor/db';
-import { hashPassword, passwordProblems } from '@taskmoor/iam';
+import { checkPassword, describePasswordProblem, type PasswordHasher } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
@@ -45,7 +45,7 @@ export type SetupBody = z.infer<typeof setupBody>;
 export function registerSetupRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { secureCookies: boolean },
+  options: { secureCookies: boolean; passwords: PasswordHasher },
 ): void {
   app.get('/api/v1/setup', async () => {
     const state = await setupState(db);
@@ -61,11 +61,14 @@ export function registerSetupRoutes(
       });
     }
     const body = parsed.data;
-    const problems = passwordProblems(body.admin.password);
+    const problems = checkPassword(body.admin.password, {
+      identity: [body.admin.email, body.admin.name],
+    });
     if (problems.length > 0) {
       return reply.code(400).send({
         error: 'weak_password',
-        problems: problems.map((p) => `admin.password: ${p}`),
+        codes: problems,
+        problems: problems.map((p) => `admin.password: ${describePasswordProblem(p)}`),
       });
     }
     if ((await setupState(db)).completed) {
@@ -75,17 +78,19 @@ export function registerSetupRoutes(
       return reply.code(403).send({ error: 'invalid_setup_token' });
     }
 
-    const passwordHash = await hashPassword(body.admin.password);
+    const passwordHash = await options.passwords.hash(body.admin.password);
     const user = await db.transaction().execute(async (trx) => {
       const created = await trx
         .insertInto('app_user')
         .values({
+          workspace_id: request.workspaceId,
           email: body.admin.email.toLowerCase(),
           name: body.admin.name,
           password_hash: passwordHash,
+          password_changed_at: new Date(),
           is_site_admin: true,
         })
-        .returning(['id', 'email', 'name'])
+        .returning(['id', 'email', 'name', 'time_zone', 'locale'])
         .executeTakeFirstOrThrow();
       await writeSetting(trx, INSTANCE_KEY, { name: body.instanceName });
       if (body.smtp) await writeSetting(trx, SMTP_KEY, body.smtp);
@@ -97,9 +102,16 @@ export function registerSetupRoutes(
       await trx.deleteFrom('instance_setting').where('key', '=', SETUP_TOKEN_KEY).execute();
       return created;
     });
-    await startSession(db, reply, user.id, { secure: options.secureCookies });
+    await startSession(db, request, reply, { userId: user.id, secure: options.secureCookies });
     return reply.code(201).send({
-      user: { id: user.id, email: user.email, name: user.name, isSiteAdmin: true },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        isSiteAdmin: true,
+        timeZone: user.time_zone,
+        locale: user.locale,
+      },
     });
   });
 }

@@ -6,6 +6,17 @@ Read this first in every session, then update it before you stop.
 
 ### Done
 
+- **M1-001 identity foundation** (after the user tested the demo): `workspace` table and
+  `workspace_id` on every table (fitness test `packages/db/src/workspace-scope.test.ts`), users
+  with profiles, nested groups, Argon2id (`hash-wasm`) keyed with a pepper from
+  `TASKMOOR_DATA/secrets/password-peppers` or `TASKMOOR_PASSWORD_PEPPER` (backups carry the
+  keyring, restore merges it), a password policy with the zxcvbn-ts breached list, lockout and
+  address limits in Postgres, hashed session tokens with idle and absolute expiry, session list
+  and revoke, admin users and groups API, one-time password links and `node cli.mjs
+  password-link <email>`. `apps/server/src/asvs.test.ts` is the ASVS level 2 checklist (three
+  todo items wait for email, M1-057). UI: user menu with sign-out, Account page, password link
+  page; e2e covers sign-out and in, lockout, password change and activation. ADR-019 records
+  the design.
 - **Own terminology** (the user's request; `docs/specs/00-terminology.md`): ticket, track,
   ticket type, Outcome / Feature / Bug / Chore / Subticket, requester, followers, close reason,
   stage, areas, releases, guards / checks / effects and the rest, in the specs, ADRs, plans,
@@ -101,10 +112,14 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. M1 work: the catalogue gaps the query suite lists (targetRelease, area, sprint, due;
-   history on every field; user values by name; function arity) as part of M1-036, then
-   M1-001 now that M0 is accepted.
-2. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
+1. M1-002 (roles, track roles, access policies, global permissions, the authorization service;
+   it reuses `effectiveGroupIds` in `apps/server/src/directory.ts`), then M1-003 (audit events)
+   and M1-005 (event bus), which M1-001 unblocked. The query catalogue gaps (targetRelease,
+   area, sprint, due; history on every field; user values by name; function arity) belong to
+   M1-036.
+2. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
+   the default on `app_user.workspace_id` (ADR-022).
+3. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
    `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
    spikes in about four minutes, logs in `.cache/scripts/g-*.log`). The copy on E: is deleted.
 
@@ -182,6 +197,11 @@ status page. Boards, items and queries arrive with M1.
   sub-millisecond queries on shared runners.
 - `install.sh` resolves the port as Compose does: `TASKMOOR_PORT` in the environment first,
   then `.env`, then 8080. The install-matrix scripts set it in the environment.
+- Sign-in limits count per client address. In-process tests pass `remoteAddress` to
+  `app.inject` so one test's failures never lock another; behind a proxy the server needs
+  `TASKMOOR_TRUSTED_PROXIES`, or every visitor shares the proxy's address.
+- Argon2id costs tens of milliseconds per hash: a test that needs many users where the
+  password does not matter should reuse one precomputed hash.
 - Record task state in `docs/plan/progress.csv` (in-progress, done, waiting-on-user) as you go;
   `pnpm next-task`, `pnpm status-report`, `pnpm gate` and a test read it.
 

@@ -41,9 +41,80 @@
   font: inherit;
 }
 
-.form-field input:focus-visible {
+.form-field select {
+  min-height: var(--hit-target);
+  max-width: 100%;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.form-field input[readonly] {
+  border-style: dashed;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.form-field input:focus-visible,
+.form-field select:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;
+}
+
+.form-field [aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+/* Password input with its show/hide toggle joined to the right edge. */
+.password-control {
+  display: flex;
+  min-width: 0;
+}
+
+.password-control input:not([type="checkbox"]) {
+  flex: 1;
+  min-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.password-toggle {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--hit-target);
+  min-height: var(--hit-target);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-left: 0;
+  border-radius: 0 var(--radius-1) var(--radius-1) 0;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: var(--color-text);
+}
+
+.password-toggle[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+/* Success and progress messages; empty while there is nothing to say. */
+.form-status {
+  margin: 0;
+}
+
+.form-status:not(:empty) {
+  padding: var(--space-3);
+  border-radius: var(--radius-1);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 .form-field-inline {
@@ -87,6 +158,10 @@
   padding: var(--space-8) var(--space-4);
 }
 
+.setup .page-note + .form {
+  margin-top: var(--space-4);
+}
+
 .setup-link {
   display: inline-flex;
   align-items: center;
@@ -98,5 +173,15 @@
   .form-field-inline input[type="checkbox"] {
     width: 28px;
     height: 28px;
+  }
+
+  .form-field input:not([type="checkbox"]),
+  .form-field select {
+    min-height: var(--hit-target-touch);
+  }
+
+  .password-toggle {
+    width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
   }
 }

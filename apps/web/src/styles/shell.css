@@ -153,14 +153,140 @@ body {
 
 .shell-topbar-end {
   margin-left: auto;
+  /* Lets the palette trigger shorten on narrow screens instead of pushing the page sideways. */
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
+/* User menu (APG menu button) and the "Sign in" link that replaces it when signed out. */
+.topbar-link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-1);
+  color: var(--color-accent);
+  font-size: var(--font-size-200);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.topbar-link:hover {
+  background: var(--color-accent-soft);
+}
+
+.user-menu {
+  position: relative;
+  flex: none;
+  /* As tall as its button, so the menu opens right below it in any flex row. */
+  align-self: center;
+}
+
+.user-menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+  max-width: 14rem;
+  padding: 0 var(--space-2) 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--font-size-200);
+  cursor: pointer;
+}
+
+.user-menu-button:hover,
+.user-menu-button[aria-expanded="true"] {
+  background: var(--color-accent-soft);
+}
+
+.user-avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-size: var(--font-size-100);
+  font-weight: 650;
+}
+
+.user-menu-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-popup {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 30;
+  width: max-content;
+  min-width: 14rem;
+  max-width: min(20rem, calc(100vw - 2 * var(--space-3)));
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+}
+
+.user-menu-email {
+  margin: 0 0 var(--space-1);
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  overflow-wrap: anywhere;
+}
+
+.user-menu-error {
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-200);
+}
+
+.user-menu-list {
+  display: grid;
+  gap: 2px;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-1);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-200);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.user-menu-item:hover,
+.user-menu-item:focus {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
 /* Command palette */
 .palette-trigger {
   display: inline-flex;
+  min-width: 0;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--hit-target);
@@ -172,6 +298,12 @@ body {
   font: inherit;
   font-size: var(--font-size-200);
   cursor: pointer;
+}
+
+.palette-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .palette {
@@ -234,7 +366,7 @@ body {
   border: 0;
   border-radius: var(--radius-1);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -249,6 +381,11 @@ body {
   margin-top: var(--space-4);
 }
 
+/* The sign-in page focuses its heading after signing out; no ring for that. */
+.sign-in-prompt .page-title:focus {
+  outline: none;
+}
+
 /* Compact: phones and narrow windows. */
 .shell[data-layout="compact"] {
   grid-template-columns: minmax(0, 1fr);
@@ -259,6 +396,20 @@ body {
 
 .shell[data-layout="compact"] .shell-main {
   padding: var(--space-4);
+}
+
+/* Phones show only the initial; the name stays the button's accessible name. */
+.shell[data-layout="compact"] .user-menu-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.shell[data-layout="compact"] .user-menu-button {
+  padding: 0 var(--space-1);
 }
 
 .shell-backdrop {
@@ -287,8 +438,16 @@ body {
   .icon-button,
   .nav-link,
   .palette-trigger,
-  .palette-item {
+  .palette-item,
+  .topbar-link,
+  .user-menu-button,
+  .user-menu-item {
     min-height: var(--hit-target-touch);
+  }
+
+  .user-menu-button {
+    min-width: var(--hit-target-touch);
+    justify-content: center;
   }
 
   .icon-button {

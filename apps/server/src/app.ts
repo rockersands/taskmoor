@@ -4,14 +4,21 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import type { Tracer } from '@opentelemetry/api';
 import type { Database } from '@taskmoor/db';
+import { type PasswordHasher, passwordHasher } from '@taskmoor/iam';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
-import { resolveSession, SESSION_COOKIE } from './auth';
+import { presentedToken, resolveSession } from './auth';
 import type { Role, ServerConfig } from './config';
 import { instrumentApp, type Metrics } from './observability';
+import { registerAccountRoutes } from './routes/account';
 import { registerAdminRoutes } from './routes/admin';
+import { registerGroupRoutes } from './routes/groups';
+import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
+import { registerUserRoutes } from './routes/users';
+import { pruneIdentityData } from './throttle';
+import { defaultWorkspaceId } from './workspace';
 
 export interface AppDeps {
   /** Absent only for a process that serves nothing but the frontend. */
@@ -24,6 +31,15 @@ export interface AppDeps {
   webDir?: string;
   /** Mark session cookies Secure (true behind HTTPS; tests and plain-HTTP trials say false). */
   secureCookies?: boolean;
+  /** Where browsers reach this instance; one-time links point here. */
+  publicUrl?: string;
+  /**
+   * Proxies whose X-Forwarded-For is believed (Fastify's trustProxy: addresses, CIDRs or
+   * "loopback", "linklocal", "uniquelocal"). Unset, the client is the socket's peer.
+   */
+  trustedProxies?: string;
+  /** Password hashing with the install's pepper (ASVS 2.4.5); tests may leave it out. */
+  passwords?: PasswordHasher;
   /** Request latency goes here (ADR-023). */
   metrics?: Metrics;
   /** Requests open server spans with it (ADR-023); absent when tracing is off. */
@@ -38,7 +54,10 @@ export interface AppDeps {
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const level = deps.logLevel ?? 'silent';
   const roles = deps.roles ?? ['api'];
-  const app = Fastify({ logger: level === 'silent' ? false : { level } });
+  const app = Fastify({
+    logger: level === 'silent' ? false : { level },
+    ...(deps.trustedProxies ? { trustProxy: deps.trustedProxies } : {}),
+  });
   instrumentApp(app, {
     ...(deps.metrics ? { metrics: deps.metrics } : {}),
     ...(deps.tracer ? { tracer: deps.tracer } : {}),
@@ -63,12 +82,36 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   if (roles.includes('api') && deps.db) {
     const db = deps.db;
     app.decorateRequest('user', null);
+    app.decorateRequest('authSession', null);
+    app.decorateRequest('workspaceId', 0);
     app.addHook('onRequest', async (request) => {
-      request.user = await resolveSession(db, request.cookies[SESSION_COOKIE]);
+      if (!request.url.startsWith('/api/')) return;
+      request.workspaceId = await defaultWorkspaceId(db);
+      request.authSession = await resolveSession(db, request.workspaceId, presentedToken(request));
+      request.user = request.authSession?.user ?? null;
     });
-    const cookieOptions = { secureCookies: deps.secureCookies ?? false };
+    const passwords = deps.passwords ?? passwordHasher();
+    const cookieOptions = { secureCookies: deps.secureCookies ?? false, passwords };
     registerSetupRoutes(app, db, cookieOptions);
     registerSessionRoutes(app, db, cookieOptions);
+    registerAccountRoutes(app, db, { passwords });
+    registerUserRoutes(app, db, {
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      passwords,
+    });
+    registerGroupRoutes(app, db);
+    registerPasswordLinkRoutes(app, db, cookieOptions);
+    registerPasswordCheckRoute(app);
+    // Expired sessions, used links and stale counters go at start and every six hours.
+    const prune = () =>
+      pruneIdentityData(db).catch((error) => app.log.warn({ error }, 'prune failed'));
+    let pruneTimer: NodeJS.Timeout | undefined;
+    app.addHook('onReady', async () => {
+      void prune();
+      pruneTimer = setInterval(prune, 6 * 60 * 60 * 1000);
+      pruneTimer.unref();
+    });
+    app.addHook('onClose', async () => clearInterval(pruneTimer));
     registerAdminRoutes(app, db, {
       version: deps.version,
       roles,

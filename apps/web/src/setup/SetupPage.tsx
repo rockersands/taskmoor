@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { PASSWORD_MIN_LENGTH, passwordProblemMessages } from '../session/errors';
+import { PasswordField } from '../session/PasswordField';
 import { useSession } from '../session/SessionProvider';
 
 type Status = 'checking' | 'ready' | 'done' | 'submitting' | 'already-set-up' | 'no-token';
@@ -47,7 +49,7 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (password !== confirm) {
-      setError(t('setup.passwordMismatch'));
+      setError(t('password.mismatch'));
       return;
     }
     setStatus('submitting');
@@ -82,9 +84,9 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
         if (e.code === 'invalid_setup_token') setError(t('setup.invalidToken'));
         else if (e.code === 'setup_completed') setStatus('already-set-up');
         else if (e.code === 'weak_password' || e.code === 'invalid_request') {
-          const body = e.body as { problems?: string[] };
-          setError(t('setup.invalid'));
-          setProblems(body.problems ?? []);
+          // Password problems come as codes with translated messages; other fields as text.
+          setError(t(e.code === 'weak_password' ? 'password.problemsIntro' : 'setup.invalid'));
+          setProblems(passwordProblemMessages(t, e.body));
         } else setError(t('setup.failed'));
       } else setError(t('setup.failed'));
     }
@@ -148,33 +150,20 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="form-field">
-            <label htmlFor={field('password')}>{t('auth.password')}</label>
-            <input
-              id={field('password')}
-              type="password"
-              required
-              minLength={12}
-              autoComplete="new-password"
-              aria-describedby={field('password-hint')}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <p id={field('password-hint')} className="form-hint">
-              {t('setup.passwordHint')}
-            </p>
-          </div>
-          <div className="form-field">
-            <label htmlFor={field('confirm')}>{t('setup.confirmPassword')}</label>
-            <input
-              id={field('confirm')}
-              type="password"
-              required
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-          </div>
+          <PasswordField
+            label={t('auth.password')}
+            autoComplete="new-password"
+            hint={t('password.hint', { min: PASSWORD_MIN_LENGTH })}
+            value={password}
+            onChange={setPassword}
+          />
+          <PasswordField
+            label={t('setup.confirmPassword')}
+            toggleLabel={t('password.showConfirm')}
+            autoComplete="new-password"
+            value={confirm}
+            onChange={setConfirm}
+          />
         </fieldset>
         <fieldset>
           <legend>{t('setup.mail')}</legend>

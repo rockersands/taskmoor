@@ -1,0 +1,85 @@
+/* The Account page: profile, password and sessions. Desktop first; one column on phones. */
+.account-page {
+  max-width: 48rem;
+}
+
+.account-sections {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.account-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  background: var(--color-surface);
+}
+
+.account-section .facts-title {
+  margin: 0;
+}
+
+/* Headings take focus after an action removes the focused control; no ring for that. */
+.account-section .facts-title:focus {
+  outline: none;
+}
+
+.account-section .form {
+  max-width: 28rem;
+}
+
+.session-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.session-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+.session-main {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.session-device {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+}
+
+.session-badge {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+.session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}

@@ -19,7 +19,8 @@ migration steps to be the main reasons people give up on self-hosting. The user 
   Managed offerings (RDS, Cloud SQL, Azure, Neon, Supabase) are supported because nothing
   outside the standard `contrib` set is required. `pgvector` is optional: the bundled image
   ships it and semantic features switch off without it.
-- **`workspace_id` on every table** (a fitness test enforces it from M1), so one database can
+- **`workspace_id` on every table** (enforced since M1-001 by `packages/db/src/workspace-scope.test.ts`,
+  which lists the few instance-wide tables and why), so one database can
   serve several workspaces and every query is scoped by construction.
 - **History, audit, change log and analytics tables are range-partitioned by month**; a
   scheduled job creates partitions ahead and detaches those past retention.

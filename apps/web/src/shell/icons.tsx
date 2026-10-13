@@ -71,3 +71,18 @@ export const SettingsIcon = (p: IconProps) => (
     <path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" />
   </Icon>
 );
+
+export const EyeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+);
+
+export const EyeOffIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M10.6 5.6a9.7 9.7 0 0 1 1.4-.1c6 0 9.5 6.5 9.5 6.5a16.8 16.8 0 0 1-2.9 3.7M6.6 6.6C3.9 8.3 2.5 12 2.5 12S6 18.5 12 18.5a9.4 9.4 0 0 0 5.4-1.6" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="m3.5 3.5 17 17" />
+  </Icon>
+);

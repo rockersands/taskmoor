@@ -1,20 +1,37 @@
 import type { Database } from '@taskmoor/db';
-import { verifyPassword } from '@taskmoor/iam';
+import { type PasswordHasher, throttleKeys } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
-import type { Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
-import { endSession, startSession } from '../auth';
+import {
+  clearSessionCookies,
+  endSession,
+  requireUser,
+  revokeUserSessions,
+  startSession,
+} from '../auth';
+import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 
 const signInBody = z.object({
-  email: z.string().trim().email(),
-  password: z.string().min(1),
+  email: z.string().trim().min(1).max(320),
+  // Long enough for any policy's maximum; the hash never sees more.
+  password: z.string().min(1).max(1024),
 });
 
-/** Who am I, sign in, sign out: the cookie session of ADR-032 (same-site layout). */
+const sessionId = z.object({ id: z.coerce.number().int().positive() });
+
+/**
+ * Who am I, sign in, sign out (ADR-032), and the signed-in person's own sessions (IAM-004).
+ *
+ * Sign-in answers the same way for an unknown email, a deactivated account and a wrong
+ * password, and takes as long (a dummy hash is checked), so it cannot be used to find accounts.
+ * Every attempt counts against the submitted email and the client address (IAM-001 lockout);
+ * while either is locked the password is not even checked.
+ */
 export function registerSessionRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { secureCookies: boolean },
+  options: { secureCookies: boolean; passwords: PasswordHasher },
 ): void {
   app.get('/api/v1/session', async (request, reply) => {
     if (!request.user) return reply.code(401).send({ error: 'not_signed_in' });
@@ -25,23 +42,116 @@ export function registerSessionRoutes(
     const parsed = signInBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     const { email, password } = parsed.data;
+    const workspaceId = request.workspaceId;
+    const keys = throttleKeys(email, request.ip);
+    const now = new Date();
+
+    const locked = await lockedUntil(db, workspaceId, [keys.account, keys.address], now);
+    if (locked) {
+      const retryAfter = secondsUntil(locked, now);
+      return reply
+        .code(429)
+        .header('retry-after', String(retryAfter))
+        .send({ error: 'too_many_attempts', retryAfterSeconds: retryAfter });
+    }
+
     const user = await db
       .selectFrom('app_user')
-      .select(['id', 'email', 'name', 'password_hash', 'is_site_admin'])
-      .where('email', '=', email.toLowerCase())
+      .select(['id', 'email', 'name', 'password_hash', 'is_site_admin', 'time_zone', 'locale'])
+      .where('workspace_id', '=', workspaceId)
+      .where(sql<string>`lower(email)`, '=', email.toLowerCase())
       .where('deactivated_at', 'is', null)
       .executeTakeFirst();
-    // One answer for an unknown email and a wrong password, so accounts cannot be enumerated.
-    const ok = user?.password_hash ? await verifyPassword(password, user.password_hash) : false;
-    if (!user || !ok) return reply.code(401).send({ error: 'invalid_credentials' });
-    await startSession(db, reply, user.id, { secure: options.secureCookies });
+    const { passwords } = options;
+    const ok = user?.password_hash
+      ? await passwords.verify(password, user.password_hash)
+      : await passwords.verifyDummy(password);
+    if (!user || !ok) {
+      await recordFailure(db, workspaceId, keys, now);
+      return reply.code(401).send({ error: 'invalid_credentials' });
+    }
+
+    await clearFailures(db, workspaceId, keys.account);
+    // Older schemes (M0's scrypt, no pepper, a lower cost) are replaced at the first sign-in.
+    const rehash = user.password_hash && passwords.needsRehash(user.password_hash);
+    await db
+      .updateTable('app_user')
+      .set({
+        last_sign_in_at: now,
+        ...(rehash ? { password_hash: await passwords.hash(password) } : {}),
+      })
+      .where('id', '=', user.id)
+      .execute();
+    await startSession(db, request, reply, { userId: user.id, secure: options.secureCookies });
     return {
-      user: { id: user.id, email: user.email, name: user.name, isSiteAdmin: user.is_site_admin },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        isSiteAdmin: user.is_site_admin,
+        timeZone: user.time_zone,
+        locale: user.locale,
+      },
     };
   });
 
   app.delete('/api/v1/session', async (request, reply) => {
     await endSession(db, request, reply);
+    return reply.code(204).send();
+  });
+
+  // The signed-in person's sessions, newest activity first, with the current one marked.
+  app.get('/api/v1/sessions', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const rows = await db
+      .selectFrom('user_session')
+      .select(['id', 'created_at', 'last_seen_at', 'expires_at', 'ip', 'user_agent'])
+      .where('workspace_id', '=', request.workspaceId)
+      .where('user_id', '=', user.id)
+      .where('expires_at', '>', new Date())
+      .orderBy('last_seen_at', 'desc')
+      .orderBy('id', 'desc')
+      .execute();
+    return {
+      sessions: rows.map((r) => ({
+        id: r.id,
+        createdAt: r.created_at.toISOString(),
+        lastSeenAt: r.last_seen_at.toISOString(),
+        expiresAt: r.expires_at.toISOString(),
+        ip: r.ip,
+        userAgent: r.user_agent,
+        current: r.id === request.authSession?.id,
+      })),
+    };
+  });
+
+  // Sign out every other browser.
+  app.delete('/api/v1/sessions/others', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const revoked = await revokeUserSessions(
+      db,
+      request.workspaceId,
+      user.id,
+      request.authSession?.id,
+    );
+    return { revoked };
+  });
+
+  app.delete('/api/v1/sessions/:id', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const parsed = sessionId.safeParse(request.params);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+    const result = await db
+      .deleteFrom('user_session')
+      .where('id', '=', parsed.data.id)
+      .where('workspace_id', '=', request.workspaceId)
+      .where('user_id', '=', user.id)
+      .executeTakeFirst();
+    if (Number(result.numDeletedRows) === 0) return reply.code(404).send({ error: 'not_found' });
+    if (parsed.data.id === request.authSession?.id) clearSessionCookies(reply);
     return reply.code(204).send();
   });
 }

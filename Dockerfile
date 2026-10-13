@@ -14,10 +14,12 @@ COPY apps/web/package.json apps/web/
 COPY packages/ai/package.json packages/ai/
 COPY packages/db/package.json packages/db/
 COPY packages/devtools/package.json packages/devtools/
+COPY packages/iam/package.json packages/iam/
 COPY packages/query/package.json packages/query/
 COPY packages/richtext/package.json packages/richtext/
 COPY packages/spikes/package.json packages/spikes/
 COPY packages/testkit/package.json packages/testkit/
+COPY packages/workflow/package.json packages/workflow/
 RUN pnpm install --frozen-lockfile --ignore-scripts \
       --filter @taskmoor/server... --filter @taskmoor/web...
 COPY . .

@@ -176,6 +176,7 @@ describe('observability', () => {
     await db
       .insertInto('app_user')
       .values({
+        workspace_id: 1,
         email: 'bo@example.com',
         name: 'Bo',
         password_hash: await hashPassword('another long passphrase'),

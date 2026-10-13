@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
@@ -98,6 +98,58 @@ describe('setup page', () => {
     await user.click(screen.getByRole('button', { name: 'Finish setup' }));
     expect(await screen.findByText(/already set up/)).toBeVisible();
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '#/settings');
+  });
+
+  it('[IAM-001] explains each password problem in the reader’s language', async () => {
+    const user = userEvent.setup();
+    stubApi(({ url, init }) => {
+      if (url.endsWith('/setup') && init?.method === 'POST') {
+        return jsonResponse(400, {
+          error: 'weak_password',
+          codes: ['predictable', 'contains_identity', 'rule_from_a_newer_backend'],
+          problems: [
+            'admin.password: is too predictable',
+            'admin.password: must not contain your name',
+            'admin.password: breaks a newer rule',
+          ],
+        });
+      }
+      if (url.endsWith('/setup')) return jsonResponse(200, { needed: true });
+      return jsonResponse(401, { error: 'not_signed_in' });
+    });
+    window.location.hash = '#/setup?token=t';
+    render(<App />);
+    await screen.findByRole('button', { name: 'Finish setup' });
+    await fillAdminForm(user);
+    await user.click(screen.getByRole('button', { name: 'Finish setup' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Choose a different password:');
+    expect(
+      within(alert)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual([
+      'Too predictable: avoid repeated patterns and sequences such as abcabc or 123456.',
+      'It contains your name, your email address or the product name.',
+      'admin.password: breaks a newer rule',
+    ]);
+  });
+
+  it('[IAM-001] lets the administrator show the password while typing it', async () => {
+    const user = userEvent.setup();
+    stubApi(({ url }) =>
+      url.endsWith('/setup') ? jsonResponse(200, { needed: true }) : jsonResponse(401, {}),
+    );
+    window.location.hash = '#/setup?token=t';
+    render(<App />);
+    await screen.findByRole('button', { name: 'Finish setup' });
+    await user.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'text');
+    expect(screen.getByLabelText('Confirm password')).toHaveAttribute('type', 'password');
+    expect(screen.getByRole('button', { name: 'Show password confirmation' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('catches a password mismatch before calling the backend', async () => {

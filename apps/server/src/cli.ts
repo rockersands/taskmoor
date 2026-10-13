@@ -5,12 +5,16 @@
 //   node cli.mjs backup [--out <dir>]   database, files and config into <dir> (OPS-008)
 //   node cli.mjs restore <dir> --yes    put a backup back; stop the other roles first (OPS-009)
 //   node cli.mjs checksum               one checksum per table, for restore drills
+//   node cli.mjs password-link <email>  a one-time link to set a password (an administrator who
+//                                       is locked out, or after a lost password keyring)
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
 import { backup, backupSize, restore, tableChecksums } from './backup';
 import { loadConfig } from './config';
+import { createPasswordLink, passwordLinkUrl } from './directory';
 import { checkUpgrade, formatChecks } from './upgrade-check';
+import { defaultWorkspaceId } from './workspace';
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -18,7 +22,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | checksum>';
+  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | checksum | password-link <email>>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -102,6 +106,35 @@ try {
     case 'checksum':
       say(JSON.stringify(await tableChecksums(db), null, 2));
       break;
+    case 'password-link': {
+      const email = positionals[1]?.trim().toLowerCase();
+      if (!email) {
+        process.stderr.write(`${USAGE}\n`);
+        process.exitCode = 2;
+        break;
+      }
+      const workspaceId = await defaultWorkspaceId(db);
+      const user = await db
+        .selectFrom('app_user')
+        .select(['id', 'password_hash', 'deactivated_at'])
+        .where('workspace_id', '=', workspaceId)
+        .where('email', '=', email)
+        .executeTakeFirst();
+      if (!user || user.deactivated_at) {
+        process.stderr.write(`no active account for ${email}\n`);
+        process.exitCode = 1;
+        break;
+      }
+      const link = await createPasswordLink(db, {
+        workspaceId,
+        userId: user.id,
+        purpose: user.password_hash ? 'reset' : 'activate',
+        createdBy: null,
+      });
+      say(passwordLinkUrl(config.publicUrl, link.token));
+      say(`valid until ${link.expiresAt.toISOString()}; it works once`);
+      break;
+    }
     default:
       process.stderr.write(`${USAGE}\n`);
       process.exitCode = 2;

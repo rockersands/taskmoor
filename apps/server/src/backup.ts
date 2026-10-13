@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
+  copyFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -13,6 +14,7 @@ import { join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import { type Database, migrationStatus } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
+import { mergePepperFile, PEPPER_FILE, pepperFile } from './secrets';
 
 const run = promisify(execFile);
 
@@ -46,8 +48,9 @@ export async function serverMajor(db: Kysely<Database>): Promise<number> {
 
 /**
  * Backup and restore (OPS-008, OPS-009, M0-030): the database through pg_dump's custom format,
- * the files directory as a copy, the non-secret configuration as JSON, and a manifest with
- * checksums so a restore can refuse a damaged archive. Scheduling, encryption, remote targets
+ * the files directory as a copy, the password keyring (secrets.ts), the non-secret
+ * configuration as JSON, and a manifest with checksums so a restore can refuse a damaged
+ * archive. The keyring makes a backup as sensitive as the live install: keep it protected. Scheduling, encryption, remote targets
  * and single-track restore come in M1.
  */
 export interface BackupManifest {
@@ -102,6 +105,12 @@ export async function backup(
   if (files && existsSync(files)) {
     log('copying files');
     cpSync(files, join(out, 'files'), { recursive: true });
+  }
+  const keyring = options.dataDir ? pepperFile(options.dataDir) : undefined;
+  if (keyring && existsSync(keyring)) {
+    log('copying the password keyring');
+    mkdirSync(join(out, 'secrets'), { recursive: true });
+    copyFileSync(keyring, join(out, PEPPER_FILE));
   }
   writeFileSync(join(out, 'config.json'), `${JSON.stringify(options.config ?? {}, null, 2)}\n`);
   const checksums: Record<string, string> = {};
@@ -162,6 +171,17 @@ export async function restore(
   if (options.dataDir && existsSync(files)) {
     log('restoring files');
     cpSync(files, join(options.dataDir, 'files'), { recursive: true });
+  }
+  // Merge, never replace: this install's own key stays active, the backup's keys verify the
+  // restored passwords until sign-in moves them over.
+  const keyring = join(dir, PEPPER_FILE);
+  if (options.dataDir && existsSync(keyring)) {
+    const secrets = readFileSync(keyring, 'utf8')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'));
+    const added = mergePepperFile(pepperFile(options.dataDir), secrets);
+    log(`password keyring: ${added} key(s) added`);
   }
   log('restore complete');
   return manifest;

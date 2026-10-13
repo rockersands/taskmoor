@@ -31,6 +31,37 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0003_identity': {
+    tables: {
+      workspace: "key = 'seed'",
+      user_group: "name = 'seed-group'",
+      group_member: "group_id IN (SELECT id FROM user_group WHERE name = 'seed-group')",
+      group_nesting: "child_id IN (SELECT id FROM user_group WHERE name = 'seed-group')",
+      user_session: "token_hash = 'seed-hash'",
+      sign_in_throttle: "key = 'email:seed@example.com'",
+      password_link: "token_hash = 'seed-link'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO workspace (key, name) VALUES ('seed', 'Seed')`.execute(db);
+      await sql`INSERT INTO user_group (workspace_id, name) VALUES (1, 'seed-group'), (1, 'seed-parent')`.execute(
+        db,
+      );
+      await sql`INSERT INTO group_member (workspace_id, group_id, user_id)
+        SELECT 1, g.id, u.id FROM user_group g, app_user u
+         WHERE g.name = 'seed-group' AND u.email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO group_nesting (workspace_id, parent_id, child_id)
+        SELECT 1, p.id, c.id FROM user_group p, user_group c
+         WHERE p.name = 'seed-parent' AND c.name = 'seed-group'`.execute(db);
+      await sql`INSERT INTO user_session (workspace_id, user_id, token_hash, expires_at)
+        SELECT 1, id, 'seed-hash', now() + interval '1 day' FROM app_user
+         WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO sign_in_throttle (workspace_id, key, failures)
+        VALUES (1, 'email:seed@example.com', 2)`.execute(db);
+      await sql`INSERT INTO password_link (workspace_id, user_id, token_hash, purpose, expires_at)
+        SELECT 1, id, 'seed-link', 'reset', now() + interval '1 day' FROM app_user
+         WHERE email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /** How many of the rows the named seeds wrote are still there: one per table when nothing was lost. */

@@ -4,6 +4,7 @@ import '../src/styles/tokens.css';
 import '../src/styles/shell.css';
 import '../src/styles/forms.css';
 import '../src/styles/admin.css';
+import '../src/styles/account.css';
 
 const preview: Preview = {
   parameters: {

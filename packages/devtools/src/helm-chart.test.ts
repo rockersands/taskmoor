@@ -61,11 +61,17 @@ describe.skipIf(!helm)('Helm chart', () => {
       'PersistentVolumeClaim',
       'Pod',
       'Secret',
+      'Secret',
       'Service',
       'Service',
       'ServiceAccount',
     ]);
     expect(out).not.toContain('PodDisruptionBudget');
+    // One password pepper for every pod, kept across upgrades and uninstalls (ASVS 2.4.5).
+    expect(out).toContain('-taskmoor-password-pepper');
+    expect(out).toContain('helm.sh/resource-policy: keep');
+    expect(out).toContain('- name: TASKMOOR_PASSWORD_PEPPER');
+    expect(out).toContain('value: "loopback,uniquelocal"');
     expect(out).toContain('readOnlyRootFilesystem: true');
     expect(out).toContain('maxUnavailable: 0');
     expect(out).toContain('preStop:');

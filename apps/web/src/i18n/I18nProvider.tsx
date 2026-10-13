@@ -30,8 +30,11 @@ function defaultOnError(error: Error): void {
   console.error(error.message);
 }
 
-/** Typed access to the catalogue: `t('nav.home')` only accepts known IDs. */
-export function useT(): (id: MessageId, values?: Record<string, string | number>) => string {
+/** A message formatter: `t('nav.home')` only accepts known IDs. */
+export type Translate = (id: MessageId, values?: Record<string, string | number>) => string;
+
+/** Typed access to the catalogue. */
+export function useT(): Translate {
   const intl: IntlShape = useIntl();
   return (id, values) => intl.formatMessage({ id }, values);
 }

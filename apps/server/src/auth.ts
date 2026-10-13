@@ -1,70 +1,188 @@
 import type { Database } from '@taskmoor/db';
-import { newToken } from '@taskmoor/iam';
+import { newToken, tokenHash } from '@taskmoor/iam';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 
+/**
+ * Cookie sessions (ADR-032, IAM-004). The browser holds a random 256-bit token; the database
+ * keeps only its SHA-256, so a copy of the table cannot sign anyone in. On HTTPS the cookie is
+ * named with the `__Host-` prefix, which pins it to this host and path (ASVS 3.4.4).
+ */
 export const SESSION_COOKIE = 'taskmoor_session';
-/** IAM-004 makes this a policy; until then two weeks of inactivity signs a browser out. */
-export const SESSION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+export const SECURE_SESSION_COOKIE = '__Host-taskmoor_session';
+
+export function sessionCookieName(secure: boolean): string {
+  return secure ? SECURE_SESSION_COOKIE : SESSION_COOKIE;
+}
+
+/** IAM-004 turns these into policies per group or domain; until then they apply to everyone. */
+export const SESSION_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000;
+export const SESSION_IDLE_MS = 3 * 24 * 60 * 60 * 1000;
+/** `last_seen_at` is written at most once a minute, so ordinary requests stay read-only. */
+const TOUCH_INTERVAL_MS = 60 * 1000;
 
 export interface SessionUser {
   id: number;
   email: string;
   name: string;
   isSiteAdmin: boolean;
+  timeZone: string | null;
+  locale: string | null;
+}
+
+export interface CurrentSession {
+  /** The session row's id: what the session list shows and revocation names. */
+  id: number;
+  user: SessionUser;
 }
 
 declare module 'fastify' {
   interface FastifyRequest {
-    /** The signed-in user, resolved from the session cookie before every handler. */
+    /** The workspace every query of this request is scoped to (ADR-006). */
+    workspaceId: number;
+    /** The signed-in session, resolved from the cookie before every handler. */
+    authSession: CurrentSession | null;
+    /** Shortcut for `authSession?.user`. */
     user: SessionUser | null;
   }
 }
 
-/** Looks up the cookie's session; expired and unknown sessions count as signed out. */
-export async function resolveSession(
-  db: Kysely<Database>,
-  sessionId: string | undefined,
-): Promise<SessionUser | null> {
-  if (!sessionId) return null;
-  const row = await db
-    .selectFrom('session')
-    .innerJoin('app_user', 'app_user.id', 'session.user_id')
-    .select(['app_user.id', 'app_user.email', 'app_user.name', 'app_user.is_site_admin'])
-    .where('session.id', '=', sessionId)
-    .where('session.expires_at', '>', new Date())
-    .where('app_user.deactivated_at', 'is', null)
-    .executeTakeFirst();
-  if (!row) return null;
-  return { id: row.id, email: row.email, name: row.name, isSiteAdmin: row.is_site_admin };
+export function presentedToken(request: FastifyRequest): string | undefined {
+  return request.cookies[SECURE_SESSION_COOKIE] ?? request.cookies[SESSION_COOKIE];
 }
 
-/** Creates a session row and sets the cookie (ADR-032: HttpOnly, SameSite=Lax, Secure on HTTPS). */
+/**
+ * Finds the live session for a presented token. A session is over after its lifetime, after
+ * the idle timeout, or once its user is deactivated; any of these reads as signed out.
+ */
+export async function resolveSession(
+  db: Kysely<Database>,
+  workspaceId: number,
+  token: string | undefined,
+  now = new Date(),
+): Promise<CurrentSession | null> {
+  if (!token) return null;
+  const row = await db
+    .selectFrom('user_session as s')
+    .innerJoin('app_user as u', 'u.id', 's.user_id')
+    .select([
+      's.id as sessionId',
+      's.last_seen_at',
+      'u.id',
+      'u.email',
+      'u.name',
+      'u.is_site_admin',
+      'u.time_zone',
+      'u.locale',
+    ])
+    .where('s.token_hash', '=', tokenHash(token))
+    .where('s.workspace_id', '=', workspaceId)
+    .where('s.expires_at', '>', now)
+    .where('s.last_seen_at', '>', new Date(now.getTime() - SESSION_IDLE_MS))
+    .where('u.deactivated_at', 'is', null)
+    .executeTakeFirst();
+  if (!row) return null;
+  if (now.getTime() - row.last_seen_at.getTime() > TOUCH_INTERVAL_MS) {
+    await db
+      .updateTable('user_session')
+      .set({ last_seen_at: now })
+      .where('id', '=', row.sessionId)
+      .execute();
+  }
+  return {
+    id: row.sessionId,
+    user: {
+      id: row.id,
+      email: row.email,
+      name: row.name,
+      isSiteAdmin: row.is_site_admin,
+      timeZone: row.time_zone,
+      locale: row.locale,
+    },
+  };
+}
+
+/** Starts a session with a fresh token (ASVS 3.2.1) and sets the cookie. Returns the row id. */
 export async function startSession(
   db: Kysely<Database>,
+  request: FastifyRequest,
   reply: FastifyReply,
-  userId: number,
-  options: { secure: boolean },
-): Promise<string> {
-  const id = newToken();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  await db.insertInto('session').values({ id, user_id: userId, expires_at: expiresAt }).execute();
-  reply.setCookie(SESSION_COOKIE, id, {
+  options: { userId: number; secure: boolean },
+): Promise<number> {
+  const token = newToken();
+  const expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS);
+  const agent = request.headers['user-agent']?.slice(0, 400) || null;
+  const row = await db
+    .insertInto('user_session')
+    .values({
+      workspace_id: request.workspaceId,
+      user_id: options.userId,
+      token_hash: tokenHash(token),
+      expires_at: expiresAt,
+      ip: request.ip,
+      user_agent: agent,
+    })
+    .returning('id')
+    .executeTakeFirstOrThrow();
+  reply.setCookie(sessionCookieName(options.secure), token, {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
     secure: options.secure,
     expires: expiresAt,
   });
-  return id;
+  return row.id;
 }
 
+export function clearSessionCookies(reply: FastifyReply): void {
+  reply.clearCookie(SESSION_COOKIE, { path: '/' });
+  reply.clearCookie(SECURE_SESSION_COOKIE, { path: '/', secure: true });
+}
+
+/** Signs this browser out: the row goes, so the token is worthless even if it was copied. */
 export async function endSession(
   db: Kysely<Database>,
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<void> {
-  const id = request.cookies[SESSION_COOKIE];
-  if (id) await db.deleteFrom('session').where('id', '=', id).execute();
-  reply.clearCookie(SESSION_COOKIE, { path: '/' });
+  const token = presentedToken(request);
+  if (token)
+    await db.deleteFrom('user_session').where('token_hash', '=', tokenHash(token)).execute();
+  clearSessionCookies(reply);
+}
+
+/** Ends every session of a user, except one when given (the browser that asked). */
+export async function revokeUserSessions(
+  db: Kysely<Database>,
+  workspaceId: number,
+  userId: number,
+  except?: number,
+): Promise<number> {
+  let query = db
+    .deleteFrom('user_session')
+    .where('workspace_id', '=', workspaceId)
+    .where('user_id', '=', userId);
+  if (except !== undefined) query = query.where('id', '!=', except);
+  const result = await query.executeTakeFirst();
+  return Number(result.numDeletedRows);
+}
+
+/** 401 for anonymous callers; returns the user otherwise. */
+export function requireUser(request: FastifyRequest, reply: FastifyReply): SessionUser | null {
+  if (!request.user) {
+    void reply.code(401).send({ error: 'not_signed_in' });
+    return null;
+  }
+  return request.user;
+}
+
+/** 401 for anonymous callers, 403 for everyone but site administrators. */
+export function requireSiteAdmin(request: FastifyRequest, reply: FastifyReply): SessionUser | null {
+  const user = requireUser(request, reply);
+  if (!user) return null;
+  if (!user.isSiteAdmin) {
+    void reply.code(403).send({ error: 'forbidden' });
+    return null;
+  }
+  return user;
 }

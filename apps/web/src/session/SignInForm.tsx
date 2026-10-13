@@ -1,6 +1,8 @@
 import { type FormEvent, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { tooManyAttemptsMessage } from './errors';
+import { PasswordField } from './PasswordField';
 import { useSession } from './SessionProvider';
 
 /** Email and password sign-in (IAM-001); SSO buttons join it in M1. */
@@ -20,8 +22,12 @@ export function SignInForm() {
     try {
       await signIn(email, password);
     } catch (e) {
+      // A locked email or address answers 429 with the wait (IAM-001 lockout).
       setError(
-        e instanceof ApiError && e.status === 401 ? t('auth.invalidCredentials') : t('auth.failed'),
+        tooManyAttemptsMessage(t, e) ??
+          (e instanceof ApiError && e.status === 401
+            ? t('auth.invalidCredentials')
+            : t('auth.failed')),
       );
     } finally {
       setBusy(false);
@@ -41,17 +47,12 @@ export function SignInForm() {
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
-      <div className="form-field">
-        <label htmlFor={`${id}-password`}>{t('auth.password')}</label>
-        <input
-          id={`${id}-password`}
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
+      <PasswordField
+        label={t('auth.password')}
+        autoComplete="current-password"
+        value={password}
+        onChange={setPassword}
+      />
       {error && (
         <p className="form-error" role="alert">
           {error}

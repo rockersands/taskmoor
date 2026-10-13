@@ -34,7 +34,9 @@ runs them on their own, `node cli.mjs status` shows what is pending).
 ## Backups
 
 A backup is a directory with the database (`pg_dump` custom format), the uploaded files, the
-non-secret configuration and a manifest with a checksum per entry (OPS-008):
+password keyring, the non-secret configuration and a manifest with a checksum per entry
+(OPS-008). With the keyring inside, a backup is as sensitive as the live instance: store it
+encrypted or on a protected host.
 
 ```
 docker compose exec taskmoor node cli.mjs backup
@@ -51,12 +53,32 @@ docker compose exec taskmoor node cli.mjs restore /data/backups/<timestamp> --ye
 
 The restore verifies the checksums first, replaces the database contents and the files, and
 leaves the instance exactly as it was backed up, including the administrators and their
-sessions. `node cli.mjs checksum` prints one checksum per table; CI runs the whole drill
+sessions. The backup's password keys are added to this instance's keyring, never replacing it,
+so the restored passwords keep working. `node cli.mjs checksum` prints one checksum per table; CI runs the whole drill
 (back up, wipe, restore, compare) with `tools/image/drill-backup.sh` on every push.
 Scheduled backups come with M1.
 
 The Builder (M1) generates these files with fresh secrets and a reverse proxy with HTTPS; until
 then, copy the examples and fill them by hand.
+
+## Sign-in security
+
+- **Password pepper.** Every password hash also depends on a secret key kept outside the
+  database (ASVS 2.4.5). The instance creates it on first start in
+  `/data/secrets/password-peppers`; keep that volume, and keep backups, which carry the key.
+  To manage the key yourself, set `TASKMOOR_PASSWORD_PEPPER` (32 characters or more). The Helm
+  chart creates one Secret for every pod and keeps it across upgrades and uninstalls.
+- **Reverse proxies.** Sign-in is limited per account and per client address (five free
+  failures per account, then a lock that doubles from 30 seconds to 15 minutes; 50 failures per
+  address in 15 minutes). Behind a proxy, set `TASKMOOR_TRUSTED_PROXIES` to its address, its
+  network (for example `uniquelocal` for private networks) or both; otherwise every visitor
+  looks like the proxy. The Helm chart trusts private addresses by default.
+- **Locked out?** An administrator can make a one-time password link for anyone; from the
+  host, the operator CLI makes one for any account, the administrator's included:
+
+```
+docker compose exec taskmoor node cli.mjs password-link admin@example.com
+```
 
 ## Monitoring
 

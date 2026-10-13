@@ -32,6 +32,17 @@ const envSchema = z.object({
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
   /** Address of the metrics listener; defaults to HOST. */
   METRICS_HOST: z.string().min(1).optional(),
+  /**
+   * Reverse proxies whose X-Forwarded-For header is believed, comma-separated: addresses,
+   * CIDRs or the names loopback, linklocal, uniquelocal. Sign-in rate limits count per client
+   * address, so set this whenever a proxy sits in front; unset, the socket peer is the client.
+   */
+  TASKMOOR_TRUSTED_PROXIES: z.string().min(1).optional(),
+  /**
+   * The active password pepper (ASVS 2.4.5), 32 characters or more. Unset, the install keeps
+   * its keyring in TASKMOOR_DATA/secrets/password-peppers (created on first start).
+   */
+  TASKMOOR_PASSWORD_PEPPER: z.string().min(32).optional(),
 });
 
 export interface ServerConfig {
@@ -50,6 +61,8 @@ export interface ServerConfig {
   /** 0 when the metrics listener is off. */
   metricsPort: number;
   metricsHost: string;
+  trustedProxies: string | undefined;
+  passwordPepper: string | undefined;
 }
 
 export function parseRoles(text: string): Role[] {
@@ -102,5 +115,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     dataDir: e.TASKMOOR_DATA,
     metricsPort: e.METRICS_PORT,
     metricsHost: e.METRICS_HOST ?? e.HOST,
+    trustedProxies: e.TASKMOOR_TRUSTED_PROXIES,
+    passwordPepper: e.TASKMOOR_PASSWORD_PEPPER,
   };
 }

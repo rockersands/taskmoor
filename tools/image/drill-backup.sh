@@ -70,7 +70,13 @@ else
   echo "checksums differ:"; diff "$WORK/before.json" "$WORK/after.json" || true; exit 1
 fi
 expect_setup false
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$PORT/api/v1/session" -H 'content-type: application/json' \
+body="$WORK/sign-in.json"
+code=$(curl -s -o "$body" -w '%{http_code}' -X POST "http://127.0.0.1:$PORT/api/v1/session" -H 'content-type: application/json' \
   -d '{"email":"drill@example.com","password":"a long enough passphrase"}')
-test "$code" = "200" && echo "the restored administrator signs in"
+if [ "$code" != "200" ]; then
+  echo "the restored administrator cannot sign in (HTTP $code): $(cat "$body")"
+  docker logs "$PROJECT-taskmoor-1" 2>&1 | tail -20
+  exit 1
+fi
+echo "the restored administrator signs in"
 echo "== drill passed"

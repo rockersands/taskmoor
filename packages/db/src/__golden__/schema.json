@@ -7,11 +7,40 @@
       "password_hash text",
       "is_site_admin boolean not null default false",
       "created_at timestamp with time zone not null default now()",
-      "deactivated_at timestamp with time zone"
+      "deactivated_at timestamp with time zone",
+      "workspace_id integer not null default 1",
+      "time_zone text",
+      "locale text",
+      "password_changed_at timestamp with time zone",
+      "last_sign_in_at timestamp with time zone",
+      "updated_at timestamp with time zone not null default now()"
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX app_user_email_key ON public.app_user USING btree (email)",
-      "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)"
+      "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)",
+      "CREATE UNIQUE INDEX app_user_workspace_email_idx ON public.app_user USING btree (workspace_id, lower(email))"
+    ]
+  },
+  "group_member": {
+    "columns": [
+      "workspace_id integer not null",
+      "group_id integer not null",
+      "user_id integer not null",
+      "added_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX group_member_pkey ON public.group_member USING btree (group_id, user_id)",
+      "CREATE INDEX group_member_user_idx ON public.group_member USING btree (user_id)"
+    ]
+  },
+  "group_nesting": {
+    "columns": [
+      "workspace_id integer not null",
+      "parent_id integer not null",
+      "child_id integer not null"
+    ],
+    "indexes": [
+      "CREATE INDEX group_nesting_child_idx ON public.group_nesting USING btree (child_id)",
+      "CREATE UNIQUE INDEX group_nesting_pkey ON public.group_nesting USING btree (parent_id, child_id)"
     ]
   },
   "instance_setting": {
@@ -22,6 +51,24 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX instance_setting_pkey ON public.instance_setting USING btree (key)"
+    ]
+  },
+  "password_link": {
+    "columns": [
+      "id integer not null default nextval('password_link_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "token_hash text not null",
+      "purpose text not null",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX password_link_pkey ON public.password_link USING btree (id)",
+      "CREATE UNIQUE INDEX password_link_token_hash_key ON public.password_link USING btree (token_hash)",
+      "CREATE INDEX password_link_user_idx ON public.password_link USING btree (user_id)"
     ]
   },
   "schema_migration": {
@@ -54,6 +101,63 @@
       "CREATE INDEX session_expires_at_idx ON public.session USING btree (expires_at)",
       "CREATE UNIQUE INDEX session_pkey ON public.session USING btree (id)",
       "CREATE INDEX session_user_id_idx ON public.session USING btree (user_id)"
+    ]
+  },
+  "sign_in_throttle": {
+    "columns": [
+      "workspace_id integer not null",
+      "key text not null",
+      "failures integer not null",
+      "window_started_at timestamp with time zone not null default now()",
+      "locked_until timestamp with time zone",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
+    ]
+  },
+  "user_group": {
+    "columns": [
+      "id integer not null default nextval('user_group_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX user_group_pkey ON public.user_group USING btree (id)",
+      "CREATE UNIQUE INDEX user_group_workspace_name_idx ON public.user_group USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "user_session": {
+    "columns": [
+      "id integer not null default nextval('user_session_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "token_hash text not null",
+      "created_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "last_seen_at timestamp with time zone not null default now()",
+      "ip text",
+      "user_agent text"
+    ],
+    "indexes": [
+      "CREATE INDEX user_session_expires_idx ON public.user_session USING btree (expires_at)",
+      "CREATE UNIQUE INDEX user_session_pkey ON public.user_session USING btree (id)",
+      "CREATE UNIQUE INDEX user_session_token_hash_key ON public.user_session USING btree (token_hash)",
+      "CREATE INDEX user_session_user_idx ON public.user_session USING btree (user_id)"
+    ]
+  },
+  "workspace": {
+    "columns": [
+      "id integer not null default nextval('workspace_id_seq'::regclass)",
+      "key text not null",
+      "name text not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workspace_key_key ON public.workspace USING btree (key)",
+      "CREATE UNIQUE INDEX workspace_pkey ON public.workspace USING btree (id)"
     ]
   }
 }
