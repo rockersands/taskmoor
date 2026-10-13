@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { ApiError, api } from '../api/client';
+import { applyAppearance, toAppearance } from '../skins/skins';
 
 export interface SessionUser {
   id: number;
@@ -10,6 +11,8 @@ export interface SessionUser {
   timeZone: string | null;
   /** BCP 47 locale the person chose; null follows the browser. */
   locale: string | null;
+  /** `system` or a skin name (M1-122); older answers and fixtures may leave it out. */
+  appearance?: string;
 }
 
 export type Session =
@@ -79,6 +82,13 @@ export function SessionProvider({
   useEffect(() => {
     if (!fixed) void refresh();
   }, [fixed, refresh]);
+
+  // The account's appearance wins wherever the person signs in (M1-122, ADR-036); signed out,
+  // the browser keeps what it last showed.
+  const appearance = session.status === 'signed-in' ? session.user.appearance : undefined;
+  useEffect(() => {
+    if (appearance !== undefined) applyAppearance(toAppearance(appearance));
+  }, [appearance]);
 
   const signIn = useCallback(async (email: string, password: string): Promise<SignInOutcome> => {
     const answer = await api<SignInOutcome | { status?: undefined; user: SessionUser }>(

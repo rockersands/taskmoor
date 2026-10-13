@@ -20,5 +20,7 @@ export default defineProject({
       instances: [{ browser: 'chromium' }],
     },
     setupFiles: ['./.storybook/vitest.setup.ts'],
+    // The skin the stories render in; vitest.stories-dark.config.ts runs them again in dark.
+    env: { STORY_SKIN: 'light' },
   },
 });

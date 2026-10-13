@@ -19,6 +19,14 @@ const profileBody = z
     name: z.string().trim().min(1).max(200).optional(),
     timeZone: z.string().trim().min(1).max(64).nullable().optional(),
     locale: z.string().trim().min(2).max(35).nullable().optional(),
+    /**
+     * `system` or a skin name (M1-122, ADR-036). Only the shape is checked: the frontend owns
+     * the list of skins and treats a name it does not know as `system`.
+     */
+    appearance: z
+      .string()
+      .regex(/^[a-z][a-z0-9-]{0,31}$/)
+      .optional(),
   })
   .strict();
 
@@ -42,7 +50,7 @@ export function registerAccountRoutes(
     if (!user) return reply;
     const parsed = profileBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const { name, timeZone, locale } = parsed.data;
+    const { name, timeZone, locale, appearance } = parsed.data;
     if (timeZone && !validTimeZone(timeZone)) {
       return reply.code(400).send({ error: 'invalid_time_zone' });
     }
@@ -55,6 +63,7 @@ export function registerAccountRoutes(
       ...(locale !== undefined
         ? { locale: locale ? (Intl.getCanonicalLocales(locale)[0] ?? null) : null }
         : {}),
+      ...(appearance !== undefined ? { appearance } : {}),
     };
     const row = await withEvent(
       db,
@@ -62,7 +71,7 @@ export function registerAccountRoutes(
       async (trx) => {
         const before = await trx
           .selectFrom('app_user')
-          .select(['name', 'time_zone', 'locale'])
+          .select(['name', 'time_zone', 'locale', 'appearance'])
           .where('id', '=', user.id)
           .executeTakeFirstOrThrow();
         const updated = await trx
@@ -70,7 +79,7 @@ export function registerAccountRoutes(
           .set({ ...changes, updated_at: new Date() })
           .where('id', '=', user.id)
           .where('workspace_id', '=', request.workspaceId)
-          .returning(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale'])
+          .returning(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale', 'appearance'])
           .executeTakeFirstOrThrow();
         const changed = diff(before, changes);
         return {
@@ -90,6 +99,7 @@ export function registerAccountRoutes(
         isSiteAdmin: row.is_site_admin,
         timeZone: row.time_zone,
         locale: row.locale,
+        appearance: row.appearance,
       },
     };
   });

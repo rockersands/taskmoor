@@ -1,4 +1,8 @@
-/* App shell. Desktop is the base layout; the compact rules at the end adapt it for phones. */
+/*
+ * App shell in the soft visual language (ADR-036): the top bar and the sidebar float as rounded
+ * panels on the canvas; controls are pills and circles. Desktop is the base layout; the compact
+ * rules at the end adapt it for phones.
+ */
 *,
 *::before,
 *::after {
@@ -8,7 +12,9 @@
 html,
 body {
   margin: 0;
-  background: var(--color-bg);
+  background-color: var(--color-canvas);
+  background-image: var(--canvas-image);
+  background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-sans);
   font-size: var(--font-size-300);
@@ -20,6 +26,16 @@ body {
   outline-offset: 2px;
 }
 
+/* Present for screen readers, not drawn. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .shell {
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
@@ -27,6 +43,8 @@ body {
   grid-template-areas:
     "top top"
     "side main";
+  gap: var(--shell-gap);
+  padding: 0 var(--shell-gap) var(--shell-gap);
   min-height: 100dvh;
 }
 
@@ -39,9 +57,10 @@ body {
   left: var(--space-2);
   top: -100px;
   z-index: 100;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border-radius: var(--radius-1);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-2);
 }
 
 .skip-link:focus {
@@ -53,9 +72,11 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 0 var(--space-3);
+  margin-top: var(--shell-gap);
+  padding: 0 var(--space-3) 0 var(--space-4);
   background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-3);
+  box-shadow: var(--shadow-1);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -72,24 +93,27 @@ body {
   width: var(--hit-target);
   height: var(--hit-target);
   border: 0;
-  border-radius: var(--radius-1);
+  border-radius: 50%;
   background: transparent;
   color: inherit;
   cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-soft);
 }
 
 .icon-button:hover {
-  background: var(--color-accent-soft);
+  background: var(--color-surface-sunken);
 }
 
 .shell-sidebar {
   grid-area: side;
+  align-self: start;
   background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
-  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-3);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-3);
   position: sticky;
-  top: var(--topbar-height);
-  height: calc(100dvh - var(--topbar-height));
+  top: calc(var(--topbar-height) + 2 * var(--shell-gap));
+  max-height: calc(100dvh - var(--topbar-height) - 3 * var(--shell-gap));
   overflow-y: auto;
 }
 
@@ -106,16 +130,19 @@ body {
   align-items: center;
   gap: var(--space-3);
   min-height: var(--hit-target);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-1);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
   color: var(--color-text-muted);
   text-decoration: none;
   font-size: var(--font-size-200);
   white-space: nowrap;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    color var(--motion-fast) var(--ease-soft);
 }
 
 .nav-link:hover {
-  background: var(--color-accent-soft);
+  background: var(--color-surface-sunken);
   color: var(--color-text);
 }
 
@@ -133,7 +160,7 @@ body {
 .shell-main {
   grid-area: main;
   min-width: 0;
-  padding: var(--space-6) var(--space-8);
+  padding: var(--space-4) var(--space-6) var(--space-8);
 }
 
 .shell-main:focus {
@@ -143,7 +170,8 @@ body {
 .page-title {
   margin: 0 0 var(--space-2);
   font-size: var(--font-size-600);
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .page-note {
@@ -166,8 +194,8 @@ body {
   flex: none;
   align-items: center;
   min-height: var(--hit-target);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-1);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
   color: var(--color-accent);
   font-size: var(--font-size-200);
   font-weight: 600;
@@ -192,9 +220,9 @@ body {
   gap: var(--space-2);
   min-height: var(--hit-target);
   max-width: 14rem;
-  padding: 0 var(--space-2) 0 var(--space-1);
+  padding: 0 var(--space-3) 0 var(--space-1);
   border: 0;
-  border-radius: var(--radius-1);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -204,7 +232,7 @@ body {
 
 .user-menu-button:hover,
 .user-menu-button[aria-expanded="true"] {
-  background: var(--color-accent-soft);
+  background: var(--color-surface-sunken);
 }
 
 .user-avatar {
@@ -214,8 +242,8 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--color-accent);
-  color: var(--color-surface);
+  background: var(--color-blush-soft);
+  color: var(--color-blush);
   font-size: var(--font-size-100);
   font-weight: 650;
 }
@@ -235,10 +263,9 @@ body {
   min-width: 14rem;
   max-width: min(20rem, calc(100vw - 2 * var(--space-3)));
   padding: var(--space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
   border-radius: var(--radius-2);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-3);
 }
 
 .user-menu-email {
@@ -267,7 +294,7 @@ body {
   min-height: var(--hit-target);
   padding: 0 var(--space-3);
   border: 0;
-  border-radius: var(--radius-1);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-text);
   font: inherit;
@@ -290,10 +317,11 @@ body {
   align-items: center;
   gap: var(--space-3);
   min-height: var(--hit-target);
-  padding: 0 var(--space-3);
+  padding: 0 var(--space-4);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-bg);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  box-shadow: var(--shadow-inset);
   color: var(--color-text-muted);
   font: inherit;
   font-size: var(--font-size-200);
@@ -313,22 +341,22 @@ body {
   transform: translateX(-50%);
   z-index: 60;
   width: min(92vw, 560px);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2);
-  box-shadow: 0 16px 48px rgb(0 0 0 / 30%);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-3);
+  box-shadow: var(--shadow-3);
   overflow: hidden;
 }
 
 .palette-input {
   width: 100%;
   box-sizing: border-box;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-5);
   border: 0;
   border-bottom: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text);
   font: inherit;
+  font-size: var(--font-size-400);
 }
 
 .palette-list {
@@ -345,7 +373,7 @@ body {
   min-height: var(--hit-target);
   display: flex;
   align-items: center;
-  border-radius: var(--radius-1);
+  border-radius: var(--radius-pill);
   cursor: pointer;
 }
 
@@ -359,17 +387,26 @@ body {
   cursor: default;
 }
 
-/* Sign-in prompt */
+/* The main action: a peach pill with dark text, lifted by a soft shadow. */
 .button-primary {
   min-height: var(--hit-target);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-5);
   border: 0;
-  border-radius: var(--radius-1);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  box-shadow: var(--shadow-1);
+  color: var(--color-on-primary);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    box-shadow var(--motion-fast) var(--ease-soft);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-2);
 }
 
 .button-primary:disabled {
@@ -394,8 +431,16 @@ body {
     "main";
 }
 
+.shell[data-layout="compact"] {
+  --shell-gap: 8px;
+}
+
+.shell[data-layout="compact"] .shell-topbar {
+  border-radius: var(--radius-2);
+}
+
 .shell[data-layout="compact"] .shell-main {
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-1) var(--space-6);
 }
 
 /* Phones show only the initial; the name stays the button's accessible name. */
@@ -426,11 +471,11 @@ body {
   inset: 0 auto 0 0;
   z-index: 50;
   width: min(84vw, 320px);
-  padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-2) var(--space-3);
+  padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) var(--space-3);
   background: var(--color-surface);
-  border-right: 1px solid var(--color-border);
+  border-radius: 0 var(--radius-3) var(--radius-3) 0;
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
+  box-shadow: var(--shadow-3);
 }
 
 /* Touch screens get larger targets regardless of width. */
@@ -456,9 +501,17 @@ body {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .shell-drawer {
-    animation: drawer-in 160ms ease-out;
+    animation: drawer-in var(--motion-base) var(--ease-soft);
   }
 
   @keyframes drawer-in {

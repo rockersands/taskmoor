@@ -2,9 +2,43 @@
 
 Read this first in every session, then update it before you stop.
 
+## Development is paused (2026-10-13)
+
+The user paused development after this session. Main is committed, pushed and green locally
+(`pnpm verify --e2e`: 2,125 tests, 23 e2e). Nothing is half-done on `main`.
+
+**Three local branches hold unfinished work from background sessions that were stopped**
+(each is one commit marked "WIP, unverified"; the gate was never run on them; they are not
+pushed). Their worktrees are still in `.claude/worktrees/`:
+
+| Branch | Task | Contents |
+|---|---|---|
+| `worktree-agent-a021dce46d033a2be` | M1-007 ticket types and hierarchy levels | Migration 0011, `apps/server/src/tickets/`, catalogue events; about 1,500 lines |
+| `worktree-agent-a53bf3036bc5809f5` | M1-083 SCIM 2.0 | Migration 0012, `apps/server/src/scim/`; about 1,550 lines |
+| `worktree-agent-a0228ec4c45837fca` | M1-080 single sign-on UI | `apps/web/src/sso/`, sign-in form and page changes, messages; about 1,600 lines |
+
+To resume one: check out its branch (or open its worktree), read the diff against `main`,
+finish it, run `pnpm verify` (and `--e2e` for the UI), then squash the WIP commit into a real
+one before merging. Migration numbers are reserved: 0011 ticket types, 0012 SCIM, 0013 is
+taken by appearance on `main`. The briefs those sessions worked from are in this session's
+transcript; the essentials are in Next below. If a branch looks wrong, redo the task instead:
+nothing depends on them.
+
 ## Last session: 2026-10-12 to 13 (night)
 
 ### Done
+
+- **M1-122 skins** (ADR-036, the user's request): light ("Soft daylight") and dark ("Soft
+  night") skins as token blocks on `[data-skin]` in `apps/web/src/styles/tokens.css`;
+  `apps/web/public/skin-boot.js` paints the saved skin before the app loads; Account,
+  Appearance offers System, Light and Dark, applies at once and saves to the account
+  (migration 0013 `app_user.appearance`; every sign-in answer and `GET /session` carry it).
+  The shell, forms, buttons and cards moved to the soft look (floating rounded panels, pills,
+  circles, soft shadows, pastel canvas, waves on the stand-alone pages). Storybook has a skin
+  toolbar, and every story runs its axe test in both skins (`vitest.stories.config.ts` and
+  `vitest.stories-dark.config.ts`, the skin passed through `test.env.STORY_SKIN`). Adding a
+  skin: a token block, an entry in `src/skins/skins.ts`, the name in `public/skin-boot.js` (a
+  test keeps them equal).
 
 - **Four parallel branches merged** (each built in its own worktree, then merged in migration
   order 0006 to 0010): M1-003 audit log (ADR-034), M1-004 API tokens and service accounts
@@ -147,16 +181,23 @@ Read this first in every session, then update it before you stop.
 
 ### Next (in order)
 
-1. **M1-122 skins** (the user's request): ADR-036, semantic tokens per skin, `data-skin` on the
-   root, System / Light / Dark under Account and saved to the account, the soft pastel look,
-   stories checked with axe in both skins.
-2. **M1-080 rest:** provider buttons and `sso_error` messages on the sign-in page, the discover
-   step (email first), the identity provider admin page, break-glass in the user admin UI.
-3. `pnpm next-task` for the rest. The query catalogue gaps (targetRelease, area, sprint, due;
-   history on every field; user values by name; function arity) belong to M1-036.
-4. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
+1. **M1-080 rest** (WIP branch above): provider buttons and `sso_error` messages on the sign-in
+   page, the discover step (email first; hide the password field where single sign-on is
+   enforced), the identity provider admin page at `#/admin/identity-providers` (redirect URI
+   with a copy button, write-only client secret, domains, group map), e2e with the fake
+   provider; break-glass waits for the user admin UI (M1-053).
+2. **M1-007 ticket types** (WIP branch above), then M1-008 tickets: the core path to boards.
+3. **M1-083 SCIM** (WIP branch above): SCIM clients are service accounts with a `scim` token
+   scope; compliance suite and Okta / Entra ID shaped fixtures.
+4. **Upgrade the local demo** once the WIP branches are merged or dropped: it is at migration
+   0003; rebuild the image (`docker build -t taskmoor:dev .`) and run `bash install.sh` in
+   `G:/taskmoor-demo` so it shows the new skins.
+5. `pnpm next-task` for the rest (M1-073 AI gateway core and M1-082 LDAP are also ready). The
+   query catalogue gaps (targetRelease, area, sprint, due; history on every field; user values
+   by name; function arity) belong to M1-036.
+6. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
    the default on `app_user.workspace_id` (ADR-022).
-5. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
+7. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
    `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
    spikes in about four minutes, logs in `.cache/scripts/g-*.log`). The copy on E: is deleted.
 
@@ -243,6 +284,18 @@ status page. Boards, items and queries arrive with M1.
   password does not matter should reuse one precomputed hash.
 - Record task state in `docs/plan/progress.csv` (in-progress, done, waiting-on-user) as you go;
   `pnpm next-task`, `pnpm status-report`, `pnpm gate` and a test read it.
+
+- Parallel sessions: three gates running at once on this machine made the server suite take
+  over 800 s and time out in dozens of tests; two at a time is the practical limit. Each
+  session needs its own `TASKMOOR_PG_CACHE_DIR` and its own migration number, and e2e runs need
+  ports 4173 and 8787 free. Stop a session's embedded Postgres (`pg_ctl stop -m fast -D
+  <dir>`) before deleting its worktree, or the folder stays locked.
+- Merging parallel branches: union the migration index, upgrade seeds and event catalogue in
+  migration order; rebuild `events/contract.test.ts` from `main` plus each branch's added
+  scenarios; regenerate the schema golden; give every new event type an audit decision
+  (`audit/subscriber.ts`) and every new route a token scope class (`tokens/scopes.ts`).
+- `apps/server/src/shutdown.test.ts` models two pods behind a Service; without the drain it
+  fails with resets, so keep the drain (`TASKMOOR_SHUTDOWN_DRAIN_MS`) when touching shutdown.
 
 ### Waiting on the user
 

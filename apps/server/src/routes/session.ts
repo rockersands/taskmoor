@@ -83,6 +83,7 @@ export function registerSessionRoutes(
         'break_glass',
         'time_zone',
         'locale',
+        'appearance',
       ])
       .where('workspace_id', '=', workspaceId)
       .where(sql<string>`lower(email)`, '=', email.toLowerCase())
@@ -184,6 +185,7 @@ export function registerSessionRoutes(
         isSiteAdmin: user.is_site_admin,
         timeZone: user.time_zone,
         locale: user.locale,
+        appearance: user.appearance,
       },
     };
   });

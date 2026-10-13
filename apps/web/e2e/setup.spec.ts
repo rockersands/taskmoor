@@ -763,3 +763,38 @@ test('[IAM-001] when the policy covers everyone, a person without a second facto
     expect(reset.status()).toBe(200);
   }
 });
+
+test('[IAM-008] the chosen skin is painted at once and follows the person to another browser', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  await page.goto('./#/account');
+  const appearance = page.getByRole('region', { name: 'Appearance' });
+  const saved = page.waitForResponse(
+    (r) => r.url().endsWith('/api/v1/account') && r.request().method() === 'PATCH',
+  );
+  await appearance.getByRole('radio', { name: 'Dark' }).check();
+  expect((await saved).status()).toBe(200);
+  await expect(page.locator('html')).toHaveAttribute('data-skin', 'dark');
+
+  // A reload is dark from the first paint: the boot script runs before the app.
+  await page.reload();
+  expect(await page.evaluate(() => document.documentElement.dataset.skin)).toBe('dark');
+  await expect(appearance.getByRole('radio', { name: 'Dark' })).toBeChecked();
+
+  // Another browser, light by default, turns dark when the person signs in there.
+  const other = await browser.newContext({ ...at(baseURL), colorScheme: 'light' });
+  const phone = await other.newPage();
+  await phone.goto('./');
+  await expect(phone.locator('html')).toHaveAttribute('data-skin', 'light');
+  await signInThroughApi(other.request, ADMIN);
+  await phone.reload();
+  await expect(phone.locator('html')).toHaveAttribute('data-skin', 'dark');
+  await other.close();
+
+  // Back to System for whatever runs next.
+  await appearance.getByRole('radio', { name: 'System' }).check();
+  await expect(appearance.getByText('Appearance saved to your account.')).toBeVisible();
+});

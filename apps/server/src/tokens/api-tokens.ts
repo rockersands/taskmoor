@@ -186,6 +186,7 @@ export async function resolveApiToken(
       'u.is_site_admin',
       'u.time_zone',
       'u.locale',
+      'u.appearance',
       'u.deactivated_at',
     ])
     .where('t.token_hash', '=', tokenHash(token))
@@ -212,6 +213,7 @@ export async function resolveApiToken(
       isSiteAdmin: row.is_site_admin,
       timeZone: row.time_zone,
       locale: row.locale,
+      appearance: row.appearance,
     },
   };
 }

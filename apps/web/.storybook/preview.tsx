@@ -14,12 +14,25 @@ const preview: Preview = {
     a11y: { test: 'error' },
     layout: 'fullscreen',
   },
+  // The skin a story renders in (ADR-036); the tests run every story in each skin.
+  globalTypes: {
+    skin: {
+      description: 'Skin',
+      toolbar: { title: 'Skin', icon: 'paintbrush', items: ['light', 'dark'], dynamicTitle: true },
+    },
+  },
+  initialGlobals: { skin: 'light' },
   decorators: [
-    (Story) => (
-      <I18nProvider locale="en">
-        <Story />
-      </I18nProvider>
-    ),
+    (Story, context) => {
+      // Story tests set the skin per run (vitest.setup.ts); the toolbar decides otherwise.
+      const tested = (globalThis as { taskmoorStorySkin?: string }).taskmoorStorySkin;
+      document.documentElement.dataset.skin = tested ?? String(context.globals.skin ?? 'light');
+      return (
+        <I18nProvider locale="en">
+          <Story />
+        </I18nProvider>
+      );
+    },
   ],
 };
 

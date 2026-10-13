@@ -7,5 +7,12 @@
     "jsx": "react-jsx",
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "e2e", "playwright.config.ts", ".storybook", "vitest.stories.config.ts"]
+  "include": [
+    "src",
+    "e2e",
+    "playwright.config.ts",
+    ".storybook",
+    "vitest.stories.config.ts",
+    "vitest.stories-dark.config.ts"
+  ]
 }

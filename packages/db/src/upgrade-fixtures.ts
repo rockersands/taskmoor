@@ -220,6 +220,14 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
+  '0013_appearance': {
+    tables: { app_user: "email = 'seed@example.com' AND appearance = 'dark'" },
+    seed: async (db) => {
+      await sql`UPDATE app_user SET appearance = 'dark' WHERE email = 'seed@example.com'`.execute(
+        db,
+      );
+    },
+  },
 };
 
 /**

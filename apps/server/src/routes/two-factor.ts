@@ -100,7 +100,7 @@ export function registerTwoFactorRoutes(
   async function userOf(userId: number) {
     return db
       .selectFrom('app_user')
-      .select(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale'])
+      .select(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale', 'appearance'])
       .where('id', '=', userId)
       .executeTakeFirstOrThrow();
   }
@@ -112,6 +112,7 @@ export function registerTwoFactorRoutes(
     isSiteAdmin,
     timeZone: u.time_zone,
     locale: u.locale,
+    appearance: u.appearance,
   });
 
   /** Answers 429 when the account or the address is locked; true when the caller stopped. */

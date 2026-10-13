@@ -124,6 +124,7 @@ export function registerSetupRoutes(
         isSiteAdmin: true,
         timeZone: user.time_zone,
         locale: user.locale,
+        appearance: 'system',
       },
     });
   });

@@ -13,10 +13,10 @@
   display: grid;
   gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2);
+  padding: var(--space-5);
+  border-radius: var(--radius-3);
   background: var(--color-surface);
+  box-shadow: var(--shadow-1);
 }
 
 .account-section .facts-title {
@@ -46,9 +46,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-4);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
 }
 
 .session-main {
@@ -82,4 +82,126 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-200);
   overflow-wrap: anywhere;
+}
+
+/* Appearance (M1-122): one card per choice, each with a miniature of its skin. */
+.appearance-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.appearance-option {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 2px solid transparent;
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-soft);
+}
+
+.appearance-option:has(input:checked) {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.appearance-option:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.appearance-option input {
+  position: absolute;
+  top: calc(var(--space-3) + 6px);
+  right: calc(var(--space-3) + 6px);
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.appearance-text {
+  display: grid;
+  gap: 2px;
+}
+
+.appearance-name {
+  font-weight: 650;
+}
+
+.appearance-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.skin-preview {
+  display: block;
+  height: 76px;
+  overflow: hidden;
+  border-radius: var(--radius-1);
+  box-shadow: var(--shadow-1);
+}
+
+.skin-preview-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.skin-preview-half {
+  display: block;
+  min-width: 0;
+}
+
+.skin-preview-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  padding: 8px;
+  background-color: var(--color-canvas);
+  background-image: var(--canvas-image);
+}
+
+.skin-preview-bar {
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+
+.skin-preview-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.skin-preview-line {
+  width: 60%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-text-muted);
+}
+
+.skin-preview-pill {
+  width: 42%;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+}
+
+@media (pointer: coarse) {
+  .appearance-option input {
+    width: 28px;
+    height: 28px;
+  }
 }

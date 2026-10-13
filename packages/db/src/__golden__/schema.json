@@ -76,7 +76,8 @@
       "updated_at timestamp with time zone not null default now()",
       "kind text not null default 'person'::text",
       "description text not null default ''::text",
-      "break_glass boolean not null default false"
+      "break_glass boolean not null default false",
+      "appearance text not null default 'system'::text"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)",

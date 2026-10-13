@@ -20,10 +20,10 @@
 
 .facts {
   min-width: 0;
-  padding: var(--space-4);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2);
+  padding: var(--space-5);
+  border-radius: var(--radius-3);
   background: var(--color-surface);
+  box-shadow: var(--shadow-1);
 }
 
 .facts-title {
@@ -74,13 +74,19 @@
 
 .button-secondary {
   min-height: var(--hit-target);
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-5);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  background: var(--color-surface);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-1);
   color: var(--color-text);
   font: inherit;
   cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-soft);
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: var(--color-surface-sunken);
 }
 
 .button-secondary:disabled {

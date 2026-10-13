@@ -1,65 +1,151 @@
-/* Design tokens. Original palette; components read only these variables. */
+/*
+ * Design tokens and skins (ADR-024, ADR-036). Components read only these variables. A skin is
+ * one block below on [data-skin="<name>"]; the boot script sets the attribute on the root
+ * before the first paint, and a nested data-skin (the Appearance previews) paints a miniature.
+ * The palette is original; every text pair meets WCAG AA in every skin (measured in ADR-036).
+ */
 :root {
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
   --font-size-100: 0.8125rem;
   --font-size-200: 0.875rem;
   --font-size-300: 1rem;
-  --font-size-600: 1.5rem;
+  --font-size-400: 1.125rem;
+  --font-size-600: 1.625rem;
 
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
 
-  --radius-1: 6px;
-  --radius-2: 10px;
+  /* Soft, generous corners: fields and small items, cards, panels, hero shapes. */
+  --radius-1: 10px;
+  --radius-2: 16px;
+  --radius-3: 24px;
+  --radius-4: 32px;
+  --radius-pill: 999px;
 
-  --topbar-height: 52px;
-  --sidebar-width: 232px;
-  --sidebar-rail-width: 60px;
-  --hit-target: 36px;
+  --topbar-height: 60px;
+  --sidebar-width: 240px;
+  --sidebar-rail-width: 72px;
+  /* The gap that lets the top bar and the sidebar float on the canvas. */
+  --shell-gap: 12px;
+  --hit-target: 38px;
   --hit-target-touch: 44px;
 
-  --color-bg: #f7f8fa;
-  --color-surface: #ffffff;
-  --color-border: #dfe3e8;
-  --color-text: #1b2430;
-  --color-text-muted: #5b6676;
-  --color-accent: #0f766e;
-  --color-accent-soft: #e3f2f0;
-  /* Text on an accent background: 5.5:1 in light, 9:1 in dark. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --ease-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Soft daylight: cream, peach, blush and powder blue on a warm lavender-grey canvas. */
+:root,
+[data-skin="light"] {
+  --color-canvas: #ece8f0;
+  --canvas-image:
+    radial-gradient(circle at 8% -10%, rgb(253 222 205 / 85%), transparent 42%),
+    radial-gradient(circle at 96% 4%, rgb(214 230 248 / 90%), transparent 38%),
+    radial-gradient(circle at 70% 110%, rgb(251 222 230 / 70%), transparent 45%),
+    linear-gradient(160deg, #ece8f0 0%, #f3ece6 100%);
+  --color-surface: #fcfaf7;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f3efea;
+  --color-border: #e6e0e8;
+  /* Edges of fields and other controls: 3:1 against the surfaces. */
+  --color-field-border: #8e8599;
+  --color-text: #2a2532;
+  --color-text-muted: #5f5869;
+
+  --color-primary: #f5b896;
+  --color-primary-hover: #f0a57d;
+  --color-on-primary: #3a1f12;
+  --color-accent: #a1452a;
+  --color-accent-soft: #fde6d9;
+  /* Text on an accent background. */
   --color-on-accent: #ffffff;
-  --color-focus: #2563eb;
-  --color-backdrop: rgb(15 23 42 / 45%);
-  --color-danger: #b42318;
-  --color-danger-soft: #fdecea;
-  --color-warning: #92400e;
-  /* QR codes stay dark on light in both themes: scanners expect it. */
+
+  --color-blue: #2f5f8f;
+  --color-blue-soft: #e1edf9;
+  --color-blush: #9b3550;
+  --color-blush-soft: #fbe5ea;
+  --color-butter: #7a5a00;
+  --color-butter-soft: #fbf1d3;
+
+  --color-focus: #6a55d4;
+  --color-backdrop: rgb(42 37 50 / 40%);
+  --color-danger: #b3261e;
+  --color-danger-soft: #fbe4e1;
+  --color-success: #2c6a44;
+  --color-success-soft: #e0f2e6;
+  --color-warning: #8a5300;
+  --color-warning-soft: #fcefd6;
+
+  --shadow-1: 0 1px 2px rgb(74 56 96 / 6%), 0 3px 10px rgb(74 56 96 / 7%);
+  --shadow-2: 0 2px 6px rgb(74 56 96 / 6%), 0 12px 32px rgb(74 56 96 / 10%);
+  --shadow-3: 0 8px 20px rgb(74 56 96 / 10%), 0 28px 64px rgb(74 56 96 / 18%);
+  --shadow-inset: inset 0 1px 3px rgb(74 56 96 / 10%);
+
+  /* QR codes stay dark on light in every skin: scanners expect it. */
   --color-qr-dark: #000000;
   --color-qr-light: #ffffff;
+
+  /* M0 names, kept so older styles follow the skin. */
+  --color-bg: var(--color-canvas);
 
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #0f141b;
-    --color-surface: #161d26;
-    --color-border: #2a3441;
-    --color-text: #e6ebf1;
-    --color-text-muted: #9aa6b5;
-    --color-accent: #2dd4bf;
-    --color-accent-soft: #123532;
-    --color-on-accent: #042f2e;
-    --color-focus: #60a5fa;
-    --color-backdrop: rgb(0 0 0 / 60%);
-    --color-danger: #fca5a5;
-    --color-danger-soft: #3b1513;
-    --color-warning: #fcd34d;
+/* Soft night: the same pastels, glowing on a deep plum canvas. */
+[data-skin="dark"] {
+  --color-canvas: #1b1922;
+  --canvas-image:
+    radial-gradient(circle at 8% -10%, rgb(120 72 60 / 35%), transparent 42%),
+    radial-gradient(circle at 96% 4%, rgb(56 84 120 / 35%), transparent 38%),
+    radial-gradient(circle at 70% 110%, rgb(110 56 82 / 30%), transparent 45%),
+    linear-gradient(160deg, #1b1922 0%, #231d24 100%);
+  --color-surface: #26222e;
+  --color-surface-raised: #2e2937;
+  --color-surface-sunken: #1f1c26;
+  --color-border: #3d3747;
+  --color-field-border: #8a8096;
+  --color-text: #f2edf5;
+  --color-text-muted: #bbb2c6;
 
-    color-scheme: dark;
-  }
+  --color-primary: #f5b593;
+  --color-primary-hover: #f8c6aa;
+  --color-on-primary: #2b170d;
+  --color-accent: #f6b996;
+  --color-accent-soft: #432f2a;
+  --color-on-accent: #2b170d;
+
+  --color-blue: #a9cdf0;
+  --color-blue-soft: #24344a;
+  --color-blush: #f3b2c0;
+  --color-blush-soft: #46283a;
+  --color-butter: #efd794;
+  --color-butter-soft: #3d3622;
+
+  --color-focus: #ab9dff;
+  --color-backdrop: rgb(8 6 12 / 62%);
+  --color-danger: #ffb3aa;
+  --color-danger-soft: #4a2523;
+  --color-success: #a2dbb4;
+  --color-success-soft: #20382a;
+  --color-warning: #f3ca73;
+  --color-warning-soft: #3e3220;
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 30%), 0 3px 10px rgb(0 0 0 / 22%);
+  --shadow-2: 0 2px 6px rgb(0 0 0 / 30%), 0 12px 32px rgb(0 0 0 / 34%);
+  --shadow-3: 0 8px 20px rgb(0 0 0 / 36%), 0 28px 64px rgb(0 0 0 / 48%);
+  --shadow-inset: inset 0 1px 3px rgb(0 0 0 / 40%);
+
+  --color-qr-dark: #000000;
+  --color-qr-light: #ffffff;
+
+  --color-bg: var(--color-canvas);
+
+  color-scheme: dark;
 }

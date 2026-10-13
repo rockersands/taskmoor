@@ -3,6 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { type PersonalTokensClient, personalTokensClient } from '../tokens/client';
 import { TokensSection } from '../tokens/TokensSection';
+import { AppearanceSection } from './AppearanceSection';
 import { type AccountClient, accountClient } from './client';
 import { PasswordSection } from './PasswordSection';
 import { ProfileSection } from './ProfileSection';
@@ -38,6 +39,7 @@ export function AccountPage({
       <p className="page-note">{t('account.intro')}</p>
       <div className="account-sections">
         <ProfileSection user={user} client={client} />
+        <AppearanceSection user={user} client={client} />
         <PasswordSection
           email={user.email}
           client={client}

@@ -126,6 +126,17 @@ export const messagesEn = {
   'account.intro':
     'Your profile, your password, two-factor authentication and the devices where you are signed in.',
   'account.profile': 'Profile',
+  'account.appearance': 'Appearance',
+  'account.appearance.intro': 'How Taskmoor looks for you, on every device where you sign in.',
+  'account.appearance.system': 'System',
+  'account.appearance.systemHint': 'Light or dark, following the setting of your device.',
+  'account.appearance.saved': 'Appearance saved to your account.',
+  'account.appearance.saveFailed':
+    'Shown in this browser, but your account could not be updated. Try again in a moment.',
+  'skins.light': 'Light',
+  'skins.lightHint': 'Soft daylight: cream, peach and powder blue on a warm canvas.',
+  'skins.dark': 'Dark',
+  'skins.darkHint': 'Soft night: the same pastels on a deep plum canvas.',
   'account.name': 'Name',
   'account.timeZone': 'Time zone',
   'account.timeZoneAutomatic': 'Automatic',

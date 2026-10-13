@@ -57,6 +57,8 @@ export interface AppUserTable {
   deactivated_at: Timestamp | null;
   /** May sign in with a password where single sign-on is enforced (IAM-001). */
   break_glass: Generated<boolean>;
+  /** `system` (follow the device) or the name of a skin (M1-122). */
+  appearance: Generated<string>;
 }
 
 /** Groups of users (IAM-008); names are unique within a workspace, ignoring case. */

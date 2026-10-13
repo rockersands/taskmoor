@@ -390,6 +390,22 @@ describe('sign-in, lockout, sessions and the account (M1-001)', () => {
       expect(cleared.json().user).toMatchObject({ timeZone: null, locale: null });
     });
 
+    it('[IAM-008] saves the appearance with the account, so it follows the person', async () => {
+      await createUser('skin@example.com');
+      const cookie = await signedIn('skin@example.com');
+      expect((await me(cookie)).json().user.appearance).toBe('system');
+      const patch = (payload: object) =>
+        app.inject({ method: 'PATCH', url: '/api/v1/account', headers: { cookie }, payload });
+      expect((await patch({ appearance: 'dark' })).json().user.appearance).toBe('dark');
+      // Another browser signing in gets it straight from the sign-in answer.
+      const again = await signIn('skin@example.com', PASSWORD);
+      expect(again.json().user.appearance).toBe('dark');
+      expect((await me(cookie)).json().user.appearance).toBe('dark');
+      // Only the shape of a skin name is checked; the frontend owns the list.
+      expect((await patch({ appearance: 'Dark Mode!' })).statusCode).toBe(400);
+      expect((await patch({ appearance: 'high-contrast' })).statusCode).toBe(200);
+    });
+
     it('[IAM-008] needs a session for every account route', async () => {
       const calls = [
         app.inject({ method: 'GET', url: '/api/v1/sessions' }),

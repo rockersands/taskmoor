@@ -35,6 +35,8 @@ export interface ProfileChanges {
   name?: string;
   timeZone?: string | null;
   locale?: string | null;
+  /** `system` or a skin name (M1-122). */
+  appearance?: string;
 }
 
 /** The signed-in person's own endpoints. Stories and some tests pass their own. */

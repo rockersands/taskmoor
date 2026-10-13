@@ -9,6 +9,7 @@ import * as m0007 from './0007_tokens';
 import * as m0008 from './0008_tracks';
 import * as m0009 from './0009_two_factor';
 import * as m0010 from './0010_identity_providers';
+import * as m0013 from './0013_appearance';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -26,4 +27,5 @@ export const migrations: Record<string, Migration> = {
   '0008_tracks': m0008,
   '0009_two_factor': m0009,
   '0010_identity_providers': m0010,
+  '0013_appearance': m0013,
 };

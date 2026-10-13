@@ -23,7 +23,10 @@ function chromiumInstalled(): boolean {
   }
 }
 
-const storiesProject = chromiumInstalled() ? ['apps/web/vitest.stories.config.ts'] : [];
+// Stories run once per skin (ADR-036): light, then dark.
+const storiesProject = chromiumInstalled()
+  ? ['apps/web/vitest.stories.config.ts', 'apps/web/vitest.stories-dark.config.ts']
+  : [];
 if (storiesProject.length === 0) {
   console.warn(
     'Stories skipped: Playwright Chromium is not installed (pnpm --filter @taskmoor/web exec playwright install chromium).',

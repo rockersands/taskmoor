@@ -123,7 +123,7 @@ export function registerPasswordLinkRoutes(
     if (!used) return invalid(request, reply);
     const user = await db
       .selectFrom('app_user')
-      .select(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale'])
+      .select(['id', 'email', 'name', 'is_site_admin', 'time_zone', 'locale', 'appearance'])
       .where('id', '=', link.userId)
       .executeTakeFirstOrThrow();
     return {
@@ -134,6 +134,7 @@ export function registerPasswordLinkRoutes(
         isSiteAdmin: user.is_site_admin,
         timeZone: user.time_zone,
         locale: user.locale,
+        appearance: user.appearance,
       },
     };
   });

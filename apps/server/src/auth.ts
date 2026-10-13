@@ -31,6 +31,8 @@ export interface SessionUser {
   isSiteAdmin: boolean;
   timeZone: string | null;
   locale: string | null;
+  /** `system` or a skin name (M1-122): the frontend applies it wherever the person signs in. */
+  appearance: string;
 }
 
 /** What a request made with an API token knows about it (IAM-007). */
@@ -87,6 +89,7 @@ export async function resolveSession(
       'u.is_site_admin',
       'u.time_zone',
       'u.locale',
+      'u.appearance',
     ])
     .where('s.token_hash', '=', tokenHash(token))
     .where('s.workspace_id', '=', workspaceId)
@@ -113,6 +116,7 @@ export async function resolveSession(
       isSiteAdmin: row.is_site_admin,
       timeZone: row.time_zone,
       locale: row.locale,
+      appearance: row.appearance,
     },
   };
 }
