@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-10-13. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
+Updated 2026-10-15. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
 
 ## Milestones
 
@@ -71,5 +71,5 @@ Updated 2026-10-13. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-006 Tracks | Done | Keys with history, categories, feature toggles, shared or local mode, archive and restore |
 | M1-084 Two-factor sign-in | Done | Authenticator apps, security keys, recovery codes, policy with enrolment at sign-in; UI and e2e |
 | M1-122 Skins and the soft visual language | Done | Light and dark skins in the soft pastel style, Appearance under Account saved with the account, axe on every story in both skins |
-| M1-080 OpenID Connect sign-in | In progress | Backend, enforcement with break-glass accounts and Keycloak e2e done; sign-in buttons and provider admin UI next |
+| M1-080 OpenID Connect sign-in | Done | Providers, JIT, group sync, enforcement with break-glass accounts, Keycloak e2e; email-first sign-in with provider buttons and the Single sign-on admin page, e2e against a fake provider |
 | M1-100 Air-gap bundle | In progress | Bundle, verify and offline install tested on an internal network; release signing key waits on the user |

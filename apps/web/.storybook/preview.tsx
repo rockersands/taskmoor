@@ -7,6 +7,7 @@ import '../src/styles/admin.css';
 import '../src/styles/account.css';
 import '../src/styles/api-tokens.css';
 import '../src/styles/twofactor.css';
+import '../src/styles/sso.css';
 
 const preview: Preview = {
   parameters: {

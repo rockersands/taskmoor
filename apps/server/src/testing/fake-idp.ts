@@ -39,7 +39,8 @@ export class FakeIdp {
     readonly clientSecret: string,
   ) {}
 
-  async start(): Promise<string> {
+  /** Listens on loopback; port 0 picks a free one, the end-to-end suite names its own. */
+  async start(port = 0): Promise<string> {
     const { privateKey, publicKey } = await generateKeyPair('RS256');
     this.keys = {
       privateKey,
@@ -57,10 +58,10 @@ export class FakeIdp {
         },
       );
     });
-    await new Promise<void>((resolve) => this.server?.listen(0, '127.0.0.1', resolve));
+    await new Promise<void>((resolve) => this.server?.listen(port, '127.0.0.1', resolve));
     const address = this.server.address();
-    const port = typeof address === 'object' && address ? address.port : 0;
-    this.issuer = `http://127.0.0.1:${port}`;
+    const listening = typeof address === 'object' && address ? address.port : 0;
+    this.issuer = `http://127.0.0.1:${listening}`;
     return this.issuer;
   }
 

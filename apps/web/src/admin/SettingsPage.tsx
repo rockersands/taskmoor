@@ -45,6 +45,10 @@ export function SettingsPage() {
               <a href="#/admin/security">{t('settings.security')}</a>
               <p className="page-note">{t('settings.securityHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/identity-providers">{t('settings.singleSignOn')}</a>
+              <p className="page-note">{t('settings.singleSignOnHint')}</p>
+            </li>
           </ul>
         </section>
       )}

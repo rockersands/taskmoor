@@ -8,6 +8,7 @@ import './styles/admin.css';
 import './styles/account.css';
 import './styles/api-tokens.css';
 import './styles/twofactor.css';
+import './styles/sso.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element in index.html');

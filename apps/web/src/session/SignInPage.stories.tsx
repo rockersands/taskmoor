@@ -1,19 +1,25 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
+import { fakeSignInSso, PARTNERS, STAFF, UMBRELLA } from '../sso/fixtures';
 import { SessionProvider } from './SessionProvider';
 import { SignInPage } from './SignInPage';
 
-/** Where "Sign in" in the top bar leads and where signing out lands. */
+/** Where "Sign in" in the top bar leads, where signing out lands and where SSO errors return. */
 const meta = {
   title: 'Session/SignInPage',
   component: SignInPage,
-  args: { onSignedIn: () => {} },
+  // No providers unless a story names them; the page never calls a backend here.
+  args: { onSignedIn: () => {}, ssoClient: fakeSignInSso() },
   decorators: [
-    (Story) => (
-      <main style={{ padding: 32 }}>
-        <Story />
-      </main>
-    ),
+    (Story, { parameters }) => {
+      // The form reads `sso_error` and `method` from the address when it opens.
+      window.history.replaceState(null, '', `#${parameters.hash ?? '/sign-in'}`);
+      return (
+        <main style={{ padding: 32 }}>
+          <Story />
+        </main>
+      );
+    },
   ],
 } satisfies Meta<typeof SignInPage>;
 
@@ -51,6 +57,68 @@ export const CheckingTheSession: Story = {
 };
 
 export const Phone: Story = {
+  decorators: anonymous,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+const providers = fakeSignInSso([STAFF, PARTNERS, UMBRELLA], {
+  'corp.example': { provider: STAFF, password: true },
+  'umbrella.example': { provider: UMBRELLA, password: false },
+});
+
+export const WithProviders: Story = {
+  args: { ssoClient: providers },
+  decorators: anonymous,
+};
+
+export const OrganisationProvider: Story = {
+  args: { ssoClient: providers },
+  decorators: anonymous,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText('Email'), 'sam@corp.example');
+    await userEvent.tab();
+    await expect(
+      await canvas.findByText('Your organisation signs in with Staff accounts.'),
+    ).toBeVisible();
+  },
+};
+
+export const SingleSignOnEnforced: Story = {
+  args: { ssoClient: providers },
+  decorators: anonymous,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText('Email'), 'ana@umbrella.example');
+    await userEvent.tab();
+    await expect(
+      await canvas.findByRole('button', { name: 'Sign in with Umbrella' }),
+    ).toBeVisible();
+    await expect(canvas.queryByLabelText('Password')).toBeNull();
+  },
+};
+
+export const BreakGlass: Story = {
+  args: { ssoClient: providers },
+  decorators: anonymous,
+  parameters: { hash: '/sign-in?method=password' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText('Email'), 'ana@umbrella.example');
+    await userEvent.tab();
+    await canvas.findByText('Your organisation signs in with Umbrella.');
+    await expect(canvas.getByLabelText('Password')).toBeVisible();
+  },
+};
+
+export const SingleSignOnFailed: Story = {
+  args: { ssoClient: providers },
+  decorators: anonymous,
+  parameters: { hash: '/sign-in?sso_error=email_unverified' },
+};
+
+export const PhoneWithProviders: Story = {
+  args: { ssoClient: providers },
   decorators: anonymous,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };

@@ -382,7 +382,12 @@ export function registerSsoRoutes(
       .where('workspace_id', '=', request.workspaceId)
       .orderBy(sql`lower(name)`)
       .execute()) as Provider[];
-    return { providers: await Promise.all(rows.map(async (p) => view(p, await groupMapOf(p.id)))) };
+    return {
+      providers: await Promise.all(rows.map(async (p) => view(p, await groupMapOf(p.id)))),
+      // The address to register at every provider, from the public URL: the browser's own
+      // origin can differ (a proxy, an internal host name) and would register the wrong one.
+      redirectUri,
+    };
   });
 
   app.post('/api/v1/identity-providers', async (request, reply) => {

@@ -38,6 +38,26 @@ export const messagesEn = {
   'auth.tooManyAttemptsLater': 'Too many attempts. Try again later.',
   'auth.challengeExpired':
     'The sign-in took too long or had too many wrong codes. Enter your password again.',
+  'auth.sso.signInWith': 'Sign in with {name}',
+  'auth.sso.others': 'Or sign in through your organisation',
+  'auth.sso.organisation': 'Your organisation signs in with {name}.',
+  'auth.sso.error.invalidState':
+    'The sign-in took too long, or it was started in another browser. Try again.',
+  'auth.sso.error.providerError':
+    'Your identity provider did not complete the sign-in. Try again, and ask your administrator if it keeps happening.',
+  'auth.sso.error.providerUnavailable':
+    'Single sign-on is not available right now. Try again later, or ask your administrator.',
+  'auth.sso.error.emailUnverified':
+    'Your identity provider did not confirm your email address, so you could not be signed in. Ask your administrator for help.',
+  'auth.sso.error.domainNotAllowed':
+    'Your email address is in a domain this sign-in option does not serve. Ask your administrator for help.',
+  'auth.sso.error.noAccount':
+    'There is no account for you here yet. Ask your administrator to create one.',
+  'auth.sso.error.accountDeactivated':
+    'Your account is deactivated. Ask your administrator if you need it again.',
+  'auth.sso.error.unknown': 'Single sign-on did not work. Try again in a moment.',
+  'auth.sso.breakGlassOnly':
+    'The email and password did not sign you in. For this domain only break-glass accounts can use a password; everyone else signs in with {name}.',
   'auth.secondFactor.title': 'Two-factor authentication',
   'auth.secondFactor.introTotp': 'Enter the 6-digit code from your authenticator app.',
   'auth.secondFactor.introKey': 'Use your security key to finish signing in.',
@@ -122,6 +142,9 @@ export const messagesEn = {
   'settings.serviceAccountsHint': 'Accounts for programs, with their own named, expiring tokens.',
   'settings.security': 'Security',
   'settings.securityHint': 'Who must sign in with two-factor authentication.',
+  'settings.singleSignOn': 'Single sign-on',
+  'settings.singleSignOnHint':
+    'Identity providers people sign in with, the email domains they serve and their group mapping.',
   'account.title': 'Account',
   'account.intro':
     'Your profile, your password, two-factor authentication and the devices where you are signed in.',
@@ -442,6 +465,115 @@ export const messagesEn = {
   'admin.security.save': 'Save policy',
   'admin.security.saved': 'Policy saved.',
   'admin.security.saveFailed': 'The policy could not be saved. Try again in a moment.',
+  'admin.sso.title': 'Single sign-on',
+  'admin.sso.intro':
+    'People sign in with the account your organisation already gives them, through an identity provider that speaks OpenID Connect. Each provider serves the email domains you list; it can create accounts at a first sign-in and keep group memberships in step.',
+  'admin.sso.loading': 'Reading the identity providers…',
+  'admin.sso.failed': 'The identity providers could not be read. Try again in a moment.',
+  'admin.sso.forbidden': 'Only site administrators can manage single sign-on.',
+  'admin.sso.redirectTitle': 'Redirect URI',
+  'admin.sso.redirectIntro':
+    'Register this address as the redirect URI of the client you create at the identity provider. It is the same for every provider.',
+  'admin.sso.redirectLabel': 'Redirect URI to register',
+  'admin.sso.copy': 'Copy',
+  'admin.sso.copied': 'Redirect URI copied.',
+  'admin.sso.copyFailed': 'Copying did not work. Select the address and copy it yourself.',
+  'admin.sso.list': 'Identity providers',
+  'admin.sso.none': 'No identity providers yet. Everyone signs in with a password.',
+  'admin.sso.add': 'Add an identity provider',
+  'admin.sso.newTitle': 'New identity provider',
+  'admin.sso.editTitle': 'Edit {name}',
+  'admin.sso.edit': 'Edit',
+  'admin.sso.editNamed': 'Edit {name}',
+  'admin.sso.delete': 'Delete',
+  'admin.sso.deleteNamed': 'Delete {name}',
+  'admin.sso.deleteConfirm':
+    'Delete {name}? Nobody can sign in with it any more. Accounts stay; people without a password need a password link to sign in.',
+  'admin.sso.confirmDelete': 'Delete provider',
+  'admin.sso.cancel': 'Cancel',
+  'admin.sso.added': 'Added {name}.',
+  'admin.sso.saved': 'Saved {name}.',
+  'admin.sso.unchanged': 'Nothing changed.',
+  'admin.sso.deleted': 'Deleted {name}.',
+  'admin.sso.actionFailed': 'That did not work. Try again in a moment.',
+  'admin.sso.disabled': 'Disabled',
+  'admin.sso.enforced': 'Single sign-on enforced',
+  'admin.sso.issuerValue': 'Issuer {issuer}',
+  'admin.sso.clientIdValue': 'Client ID {clientId}',
+  'admin.sso.secretSaved': 'Client secret saved',
+  'admin.sso.noSecret': 'No client secret',
+  'admin.sso.domainsValue': 'Domains: {domains}',
+  'admin.sso.noDomains': 'No email domains',
+  'admin.sso.jitOn': 'Creates accounts at a first sign-in',
+  'admin.sso.jitOff': 'Only existing accounts sign in',
+  'admin.sso.groupsValue':
+    '{count, plural, =0 {Group claim {claim}, no mappings} one {Group claim {claim}, # mapping} other {Group claim {claim}, # mappings}}',
+  'admin.sso.noGroupSync': 'No group mapping',
+  'admin.sso.form.name': 'Name',
+  'admin.sso.form.nameHint': 'Shown on the sign-in button, such as Staff accounts.',
+  'admin.sso.form.issuer': 'Issuer URL',
+  'admin.sso.form.issuerHint':
+    'The address of the provider, such as https://id.example.com/realms/staff. Taskmoor reads the rest of its settings from there.',
+  'admin.sso.form.clientId': 'Client ID',
+  'admin.sso.form.clientSecret': 'Client secret',
+  'admin.sso.form.showClientSecret': 'Show client secret',
+  'admin.sso.form.clientSecretHintNew': 'Leave blank if the provider gave the client no secret.',
+  'admin.sso.form.clientSecretHintKeep':
+    'A secret is saved and is never shown again. Leave blank to keep it.',
+  'admin.sso.form.clientSecretHintNone': 'No secret is saved. Leave blank to keep it that way.',
+  'admin.sso.form.scopes': 'Scopes',
+  'admin.sso.form.scopesHint':
+    'Separated by spaces. openid is required; email and profile bring the address and the name.',
+  'admin.sso.form.domains': 'Email domains',
+  'admin.sso.form.domainsHint':
+    'Addresses in these domains are linked to their account at a first sign-in, or get one. Press Enter after each domain.',
+  'admin.sso.form.domainList': 'Domains this provider serves',
+  'admin.sso.form.noDomains': 'No domains yet.',
+  'admin.sso.form.domain': 'Domain',
+  'admin.sso.form.addDomain': 'Add domain',
+  'admin.sso.form.removeDomain': 'Remove {domain}',
+  'admin.sso.form.invalidDomain': '{domain} is not a domain name. Enter one such as example.com.',
+  'admin.sso.form.policy': 'Sign-in policy',
+  'admin.sso.form.enforce': 'Enforce single sign-on for these domains',
+  'admin.sso.form.enforceHint':
+    'People with these addresses cannot sign in with a password. Accounts marked break-glass still can, from the sign-in page address ending in #/sign-in?method=password.',
+  'admin.sso.form.jit': 'Create accounts at a first sign-in',
+  'admin.sso.form.jitHint':
+    'Otherwise only people who already have an account with a matching address can sign in.',
+  'admin.sso.form.enabled': 'Enabled',
+  'admin.sso.form.enabledHint':
+    'A disabled provider is not offered at sign-in and serves none of its domains.',
+  'admin.sso.form.groupClaim': 'Group claim',
+  'admin.sso.form.groupClaimHint':
+    'The claim that lists the groups of the person, such as groups. Leave blank to leave group memberships alone.',
+  'admin.sso.form.groupMap': 'Group mapping',
+  'admin.sso.form.groupMapHint':
+    'At each sign-in, people join the mapped groups their claim lists and leave the mapped groups it no longer lists. Groups without a mapping are left alone.',
+  'admin.sso.form.mapping': 'Mapping {number}',
+  'admin.sso.form.claimValue': 'Claim value',
+  'admin.sso.form.group': 'Group',
+  'admin.sso.form.chooseGroup': 'Choose a group',
+  'admin.sso.form.addMapping': 'Add mapping',
+  'admin.sso.form.removeMapping': 'Remove',
+  'admin.sso.form.removeMappingNamed': 'Remove mapping {number}',
+  'admin.sso.form.noMappings': 'No mappings.',
+  'admin.sso.form.noGroups':
+    'There are no groups yet. Create groups first to map claim values to them.',
+  'admin.sso.form.groupsFailed':
+    'The groups could not be read, so the mapping cannot be changed now.',
+  'admin.sso.form.create': 'Add provider',
+  'admin.sso.form.save': 'Save changes',
+  'admin.sso.form.cancel': 'Cancel',
+  'admin.sso.error.insecureIssuer': 'The issuer URL must start with https://.',
+  'admin.sso.error.domainTaken':
+    '{count, plural, one {Another enabled provider already serves {domains}.} other {Other enabled providers already serve {domains}.}} A domain can belong to one enabled provider.',
+  'admin.sso.error.nameTaken': 'Another provider already has this name.',
+  'admin.sso.error.groupMissing':
+    'A group in the mapping no longer exists. Reload the page and choose the groups again.',
+  'admin.sso.error.notFound':
+    'This provider, or a group in its mapping, no longer exists. Reload the page and try again.',
+  'admin.sso.error.invalid': 'Some fields are not valid. Check them and try again.',
+  'admin.sso.error.failed': 'The provider could not be saved. Try again in a moment.',
   'twoFactor.setupForm': 'Authenticator app setup',
   'twoFactor.scan':
     'Scan this QR code with an authenticator app, such as the one on your phone or in your password manager.',

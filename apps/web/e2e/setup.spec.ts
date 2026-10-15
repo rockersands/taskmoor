@@ -27,7 +27,8 @@ async function signInThroughApi(
 async function signInThroughForm(page: Page, who: { email: string; password: string }) {
   await page.getByLabel('Email').fill(who.email);
   await page.getByLabel('Password', { exact: true }).fill(who.password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  // Exact: "Sign in with <provider>" buttons sit next to it once single sign-on is set up.
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 }
 
 /** New contexts need the base URL the project configured. */
@@ -797,4 +798,114 @@ test('[IAM-008] the chosen skin is painted at once and follows the person to ano
   // Back to System for whatever runs next.
   await appearance.getByRole('radio', { name: 'System' }).check();
   await expect(appearance.getByText('Appearance saved to your account.')).toBeVisible();
+});
+
+// The fake provider of e2e/api-server.ts (M1-080): it signs in one person, Sam, at sso.test.
+const IDP = {
+  issuer: 'http://127.0.0.1:8788',
+  clientId: 'taskmoor-e2e',
+  clientSecret: 'e2e-client-secret-0123456789',
+};
+const SAM = { name: 'Sam Rivera', email: 'sam@sso.test' };
+
+/** Opens the provider's editor on the admin page, changes it and saves. */
+async function editProvider(
+  page: Page,
+  change: (form: ReturnType<Page['getByRole']>) => Promise<void>,
+) {
+  await page.goto('./#/admin/identity-providers');
+  await page.getByRole('button', { name: 'Edit Staff accounts' }).click();
+  const form = page.getByRole('form', { name: 'Edit Staff accounts' });
+  await change(form);
+  await form.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByText('Saved Staff accounts.')).toBeVisible();
+}
+
+test('[IAM-003] [IAM-004] the administrator adds an identity provider; people sign in with it, and only with it once enforced', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  await page.goto('./#/settings');
+  await page.getByRole('link', { name: 'Single sign-on' }).click();
+  await expect(heading(page)).toHaveText('Single sign-on');
+  // The address to register at the provider comes from the backend's public URL.
+  await expect(page.getByRole('textbox', { name: 'Redirect URI to register' })).toHaveValue(
+    'http://localhost:4173/api/v1/auth/oidc/callback',
+  );
+
+  // At first the provider only signs in people who already have an account.
+  await page.getByRole('button', { name: 'Add an identity provider' }).click();
+  const form = page.getByRole('form', { name: 'New identity provider' });
+  await form.getByLabel('Name', { exact: true }).fill('Staff accounts');
+  await form.getByLabel('Issuer URL').fill(IDP.issuer);
+  await form.getByLabel('Client ID').fill(IDP.clientId);
+  await form.getByLabel('Client secret', { exact: true }).fill(IDP.clientSecret);
+  await form.getByLabel('Domain', { exact: true }).fill('sso.test');
+  await form.getByLabel('Domain', { exact: true }).press('Enter');
+  await form.getByRole('checkbox', { name: 'Create accounts at a first sign-in' }).uncheck();
+  await form.getByRole('button', { name: 'Add provider' }).click();
+  await expect(page.getByText('Added Staff accounts.')).toBeVisible();
+  await expect(page.getByText('Only existing accounts sign in')).toBeVisible();
+
+  try {
+    // Signed out, the sign-in page offers the provider. Sam has no account here yet, so the
+    // round trip ends back on the sign-in page with the reason, which the address then loses.
+    await signOutThroughMenu(page, ADMIN.name);
+    await page.getByRole('button', { name: 'Sign in with Staff accounts' }).click();
+    await expect(page.getByRole('alert')).toHaveText(
+      'There is no account for you here yet. Ask your administrator to create one.',
+    );
+    await expect.poll(() => new URL(page.url()).hash).toBe('#/sign-in');
+
+    // With accounts created at a first sign-in, Sam gets one and lands on the start page.
+    await signInThroughForm(page, ADMIN);
+    await expect(page.getByRole('button', { name: ADMIN.name, exact: true })).toBeVisible();
+    await editProvider(page, (edit) =>
+      edit.getByRole('checkbox', { name: 'Create accounts at a first sign-in' }).check(),
+    );
+    await signOutThroughMenu(page, ADMIN.name);
+    await page.getByRole('button', { name: 'Sign in with Staff accounts' }).click();
+    await expect(page.getByRole('button', { name: SAM.name, exact: true })).toBeVisible();
+    await expect(heading(page)).toHaveText('Home');
+    await signOutThroughMenu(page, SAM.name);
+
+    // Enforced: the email leads to the provider, the password field goes away, and the backend
+    // refuses a password for the domain whatever the page shows.
+    await signInThroughForm(page, ADMIN);
+    await expect(page.getByRole('button', { name: ADMIN.name, exact: true })).toBeVisible();
+    await editProvider(page, (edit) =>
+      edit.getByRole('checkbox', { name: 'Enforce single sign-on for these domains' }).check(),
+    );
+    await signOutThroughMenu(page, ADMIN.name);
+    await page.getByLabel('Email').fill(SAM.email);
+    await page.getByLabel('Email').blur();
+    await expect(page.getByText('Your organisation signs in with Staff accounts.')).toBeVisible();
+    await expect(page.getByLabel('Password', { exact: true })).toHaveCount(0);
+    const refused = await page.request.post('/api/v1/session', {
+      data: { email: SAM.email, password: 'any password at all' },
+    });
+    expect(refused.status()).toBe(403);
+    expect(await refused.json()).toMatchObject({ error: 'sso_required' });
+    await page.getByLabel('Email').press('Enter');
+    await expect(page.getByRole('button', { name: SAM.name, exact: true })).toBeVisible();
+    await signOutThroughMenu(page, SAM.name);
+
+    // Deleted through the page, after confirmation: the sign-in page offers nothing again.
+    await signInThroughForm(page, ADMIN);
+    await expect(page.getByRole('button', { name: ADMIN.name, exact: true })).toBeVisible();
+    await page.goto('./#/admin/identity-providers');
+    await page.getByRole('button', { name: 'Delete Staff accounts' }).click();
+    await page.getByRole('button', { name: 'Delete provider' }).click();
+    await expect(page.getByText('Deleted Staff accounts.')).toBeVisible();
+    await signOutThroughMenu(page, ADMIN.name);
+    await expect(page.getByRole('button', { name: 'Sign in with Staff accounts' })).toHaveCount(0);
+  } finally {
+    // Whatever failed above, later runs against a reused backend start without the provider.
+    await signInThroughApi(page.request, ADMIN);
+    const listed = await page.request.get('/api/v1/identity-providers');
+    for (const p of ((await listed.json()) as { providers: { id: number }[] }).providers) {
+      await page.request.delete(`/api/v1/identity-providers/${p.id}`);
+    }
+    await page.request.delete('/api/v1/session');
+  }
 });

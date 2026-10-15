@@ -2,29 +2,69 @@
 
 Read this first in every session, then update it before you stop.
 
-## Development is paused (2026-10-13)
+## Moved to a Mac (2026-10-15)
 
-The user paused development after this session. Main is committed, pushed and green locally
-(`pnpm verify --e2e`: 2,125 tests, 23 e2e). Nothing is half-done on `main`.
+Development resumed on a Mac (Apple silicon, macOS). The repository lives in
+`~/Documents/claude` (not a folder named tracksmith). The Windows notes below (drives E: and
+G:, MSYS, CRLF, `pg_ctl` pipes) are history for this machine; see "On the Mac" under Notes.
 
-**Three branches hold unfinished work from background sessions that were stopped** (each is
-one commit marked "WIP, unverified"; the gate was never run on them). They are pushed to
-GitHub under the names below; their worktrees are still in `.claude/worktrees/`:
+**Two branches still hold unfinished work** from background sessions that were stopped (one
+commit each, marked "WIP, unverified"; the gate was never run on them). Both start from
+`f735251`, two commits before the skins, so rebase or cherry-pick them onto `main` first:
 
 | Branch | Task | Contents |
 |---|---|---|
 | `wip/m1-007-ticket-types` | M1-007 ticket types and hierarchy levels | Migration 0011, `apps/server/src/tickets/`, catalogue events; about 1,500 lines |
 | `wip/m1-083-scim` | M1-083 SCIM 2.0 | Migration 0012, `apps/server/src/scim/`; about 1,550 lines |
-| `wip/m1-080-sso-ui` | M1-080 single sign-on UI | `apps/web/src/sso/`, sign-in form and page changes, messages; about 1,600 lines |
 
-To resume one: check out its branch (or open its worktree), read the diff against `main`,
-finish it, run `pnpm verify` (and `--e2e` for the UI), then squash the WIP commit into a real
-one before merging. Migration numbers are reserved: 0011 ticket types, 0012 SCIM, 0013 is
-taken by appearance on `main`. The briefs those sessions worked from are in this session's
-transcript; the essentials are in Next below. If a branch looks wrong, redo the task instead:
-nothing depends on them.
+To resume one: cherry-pick its commit onto a new branch from `main`, read the diff, finish it,
+run `pnpm verify` (and `--e2e` for UI), then squash into a real commit. Migration numbers are
+reserved: 0011 ticket types, 0012 SCIM; 0013 is appearance on `main`. If a branch looks wrong,
+redo the task instead: nothing depends on them. `wip/m1-080-sso-ui` was finished (below) and
+deleted from GitHub.
 
-## Last session: 2026-10-12 to 13 (night)
+## Last session: 2026-10-15 (Mac)
+
+### Done
+
+- **Set up on the Mac**: Node 22 (Homebrew `node@22`), pnpm 10 through corepack, the local
+  identity and hooks, and the gate green (2,119 tests, 23 e2e) before any change.
+- **M1-080 finished** and merged into `main` with the user's go-ahead. Started from the WIP
+  branch, then:
+  - Wired `#/admin/identity-providers` into the app, Settings ("Single sign-on") and the
+    command palette; styles in `apps/web/src/styles/sso.css`; fieldsets for the button and
+    mapping groups (Biome's a11y rule).
+  - `GET /api/v1/identity-providers` now also answers `redirectUri`, built from `PUBLIC_URL`:
+    the WIP showed `window.location.origin`, wrong behind a proxy or another host name.
+  - Fixed: an `sso_error` such as `toString` matched an inherited property and passed a
+    function to the translator; the email's blur now reads the field, not the last render.
+  - At the break-glass address a refused password explains that only break-glass accounts may
+    use one for that domain.
+  - Tests: `SignInForm.sso.test.tsx`, `sso/*.test.ts(x)` (one reads the server's `fail()` codes
+    so the error list cannot drift); stories for every new component, axe in both skins.
+  - e2e: `e2e/api-server.ts` starts the fake provider (`FakeIdp`, now exported as
+    `@taskmoor/server/testing`) on port 8788, signing in Sam (`sam@sso.test`). The last test
+    in `setup.spec.ts` adds the provider through the page, then covers no account, JIT,
+    enforcement (password field gone, backend answers `sso_required`) and delete.
+  - ADR-019 records the sign-in page and administration design.
+
+### Next (in order)
+
+1. **M1-007 ticket types** (`wip/m1-007-ticket-types`), then M1-008 tickets: the core path to
+   boards.
+2. **M1-083 SCIM** (`wip/m1-083-scim`): SCIM clients are service accounts with a `scim` token
+   scope; compliance suite and Okta / Entra ID shaped fixtures.
+3. The break-glass switch per account comes with the user admin UI (M1-053); the backend has
+   it (`breakGlass` on `PATCH /users/:id`).
+4. `pnpm next-task` for the rest (M1-073 AI gateway core and M1-082 LDAP are also ready). The
+   query catalogue gaps (targetRelease, area, sprint, due; history on every field; user values
+   by name; function arity) belong to M1-036.
+5. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
+   the default on `app_user.workspace_id` (ADR-022).
+6. **Upgrade the local demo** once the WIP branches are merged or dropped. It ran on the Windows
+   machine (see Local demo); this Mac has no Docker yet.
+
+## Earlier: 2026-10-12 to 13 (night)
 
 ### Done
 
@@ -179,28 +219,6 @@ nothing depends on them.
   moves the embedded clusters to another disk; a second process attaches to the running
   bench cluster instead of starting an empty one.
 
-### Next (in order)
-
-1. **M1-080 rest** (WIP branch above): provider buttons and `sso_error` messages on the sign-in
-   page, the discover step (email first; hide the password field where single sign-on is
-   enforced), the identity provider admin page at `#/admin/identity-providers` (redirect URI
-   with a copy button, write-only client secret, domains, group map), e2e with the fake
-   provider; break-glass waits for the user admin UI (M1-053).
-2. **M1-007 ticket types** (WIP branch above), then M1-008 tickets: the core path to boards.
-3. **M1-083 SCIM** (WIP branch above): SCIM clients are service accounts with a `scim` token
-   scope; compliance suite and Okta / Entra ID shaped fixtures.
-4. **Upgrade the local demo** once the WIP branches are merged or dropped: it is at migration
-   0003; rebuild the image (`docker build -t taskmoor:dev .`) and run `bash install.sh` in
-   `G:/taskmoor-demo` so it shows the new skins.
-5. `pnpm next-task` for the rest (M1-073 AI gateway core and M1-082 LDAP are also ready). The
-   query catalogue gaps (targetRelease, area, sprint, due; history on every field; user values
-   by name; function arity) belong to M1-036.
-6. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
-   the default on `app_user.workspace_id` (ADR-022).
-7. **Benchmark data lives on G:** (`G:/taskmoor-pg/bench`, 137 GB; set
-   `TASKMOOR_PG_CACHE_DIR=G:/taskmoor-pg`). Reruns: `.cache/scripts/rerun-g.sh` (all six
-   spikes in about four minutes, logs in `.cache/scripts/g-*.log`). The copy on E: is deleted.
-
 ### Local demo
 
 The demo runs from a copy of the Compose kit in `G:/taskmoor-demo` with the locally built
@@ -214,6 +232,29 @@ first-run setup, sign-in, the app shell with the command palette, Settings and t
 status page. Boards, items and queries arrive with M1.
 
 ### Notes and gotchas
+
+- **On the Mac:**
+  - Use Node 22: `PATH="/opt/homebrew/opt/node@22/bin:$PATH"`. The default `node` is 25, whose
+    built-in `localStorage` hides jsdom's, and 9 web tests fail with
+    "window.localStorage.clear is not a function".
+  - Run the gate with a resolved temporary folder:
+    `TMPDIR="$(cd "$TMPDIR" && pwd -P)/" pnpm verify`. macOS's `os.tmpdir()` is under `/var`, a
+    link to `/private/var`, and dependency-cruiser reports resolved paths, so 5 cases in
+    `packages/devtools/src/boundaries.test.ts` fail without it (a `realpathSync` around the
+    test's `mkdtempSync` would remove the need).
+  - e2e needs ports 4173, 8787 and 8788 (the fake identity provider) free.
+  - Not on this Mac: Docker (local demo, image smoke tests, `tools/sso/keycloak-test.sh`; CI
+    runs `sso.yml`), PostgreSQL client tools (the backup round trip skips; set
+    `TASKMOOR_PG_BIN`), the 137 GB benchmark data (stayed on the Windows machine's G:) and the
+    OpenFGA binary.
+  - In the Storybook dev UI, `userEvent.type` in a play function fills the field without
+    React seeing the change (also `PasswordShown`, which predates single sign-on). The same
+    plays pass in `pnpm verify`, which runs them through Vitest; check interactions there.
+  - The GitHub CLI token here has `repo` but not `workflow`: a push that changes
+    `.github/workflows/*` needs `gh auth refresh -s workflow` first.
+  - `migrate.test.ts` "applies each migration exactly once when several servers start
+    together" once threw an unhandled 57P01 under the load of a full `--e2e` run; reruns
+    were clean.
 
 - Pushes use the GitHub CLI token through a repo-local credential helper
   (`git config --local credential.helper`); Git Credential Manager would otherwise open a

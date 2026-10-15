@@ -72,6 +72,12 @@ export const SettingsIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const CloseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m6.5 6.5 11 11M17.5 6.5l-11 11" />
+  </Icon>
+);
+
 export const EyeIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />

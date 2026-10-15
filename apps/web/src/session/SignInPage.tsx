@@ -1,13 +1,21 @@
 import { useEffect, useId, useRef } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import type { SignInSsoClient } from '../sso/client';
 import { useSession } from './SessionProvider';
 import { SignInForm } from './SignInForm';
 
+export interface SignInPageProps {
+  onSignedIn: () => void;
+  /** Stories and tests pass their own single sign-on endpoints. */
+  ssoClient?: SignInSsoClient;
+}
+
 /**
- * The sign-in page (#/sign-in): where "Sign in" in the top bar leads and where signing out
- * lands. Once someone is signed in it hands over to `onSignedIn`.
+ * The sign-in page (#/sign-in): where "Sign in" in the top bar leads, where signing out lands
+ * and where a failed single sign-on returns. Once someone is signed in it hands over to
+ * `onSignedIn`.
  */
-export function SignInPage({ onSignedIn }: { onSignedIn: () => void }) {
+export function SignInPage({ onSignedIn, ssoClient }: SignInPageProps) {
   const t = useT();
   const { session } = useSession();
   const titleId = useId();
@@ -34,7 +42,7 @@ export function SignInPage({ onSignedIn }: { onSignedIn: () => void }) {
           {t('auth.checking')}
         </p>
       ) : (
-        <SignInForm />
+        <SignInForm {...(ssoClient ? { ssoClient } : {})} />
       )}
     </section>
   );

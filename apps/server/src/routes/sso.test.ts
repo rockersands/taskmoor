@@ -183,6 +183,8 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
       enabled: true,
     });
     expect(JSON.stringify(listed.json())).not.toContain(CLIENT_SECRET);
+    // The address to register at the provider comes from the public URL, not the request.
+    expect(listed.json().redirectUri).toBe(`${ORIGIN}/api/v1/auth/oidc/callback`);
     const row = await database.db
       .selectFrom('identity_provider')
       .select('client_secret_sealed')

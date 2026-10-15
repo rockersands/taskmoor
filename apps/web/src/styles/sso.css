@@ -1,0 +1,212 @@
+/* Single sign-on (M1-080): the provider buttons of the sign-in form and the identity provider
+   admin page. Desktop first; lists of cards and rows that stack, so phones never scroll
+   sideways. */
+
+/* ---- Sign-in ---- */
+
+.sign-in-methods {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 32rem;
+}
+
+.sign-in-email {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* The organisation note reads as a hint, not as a success message. */
+.sign-in-email .form-status:not(:empty) {
+  padding: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.sso-button {
+  width: 100%;
+  font-weight: 600;
+}
+
+/* The provider of the email's domain: the likely way in, drawn in the accent. */
+.sso-button-emphasis {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.sso-button-emphasis:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+  box-shadow: var(--shadow-2);
+}
+
+.sso-options {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* A line on either side of the words: "or" between the password form and the buttons. */
+.sso-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.sso-divider::before,
+.sso-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ---- Administration ---- */
+
+.sso-page {
+  max-width: 60rem;
+}
+
+.sso-sections {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.sso-list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.sso-provider-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sso-provider {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
+}
+
+.sso-editor {
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.sso-list-head + .sso-editor {
+  border-top: 0;
+}
+
+.account-section .sso-form {
+  max-width: 40rem;
+}
+
+.sso-option {
+  row-gap: 0;
+}
+
+.sso-option-hint {
+  grid-column: 2;
+}
+
+.sso-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sso-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: 0 0 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sso-chip-remove {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--hit-target);
+  height: var(--hit-target);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sso-chip-remove:hover {
+  background: var(--color-surface-raised);
+}
+
+.sso-chip-remove:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.sso-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.form-field .sso-add-row input {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+/* One mapping: claim value, group and its Remove button on one row, stacked when narrow. A
+   fieldset inside the form's card, so it drops the card look. */
+.form fieldset.sso-mapping {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
+  box-shadow: none;
+}
+
+@media (max-width: 40rem) {
+  .form fieldset.sso-mapping {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+@media (pointer: coarse) {
+  .sso-chip-remove {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+}

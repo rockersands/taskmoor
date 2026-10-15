@@ -121,6 +121,17 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   lockout. Accounts an administrator marks break-glass may still use their password there, so a
   provider outage cannot lock everyone out. `POST /api/v1/auth/discover` tells the sign-in page
   which methods a domain uses, decided by the domain alone.
+- **Sign-in page:** email first. The page offers a button per enabled provider; once the email
+  is entered it names the domain's provider and offers it first, and where that provider
+  enforces single sign-on the password field gives way to it. The backend still decides: a
+  password answered with `sso_required` leads to the same prompt. Break-glass accounts sign in
+  with their password at `#/sign-in?method=password`. A failed sign-in returns to
+  `#/sign-in?sso_error=<reason>` and the page explains each reason in a sentence.
+- **Administration:** Settings > Single sign-on (`#/admin/identity-providers`) lists, adds,
+  edits and deletes providers; an edit sends only what changed, and a blank secret keeps the
+  saved one. The redirect URI to register at the provider comes from the backend, built from
+  `PUBLIC_URL`, because the address an administrator's browser uses can differ (a proxy, an
+  internal host name) and would register the wrong one.
 - The provider's own multi-factor policy applies to single sign-on; Taskmoor's second factor
   applies to password sign-in. One `sso.signed_in` event records the sign-in, the session, an
   account creation and the group changes.
