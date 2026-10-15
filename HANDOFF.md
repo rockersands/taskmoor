@@ -7,15 +7,15 @@ Read this first in every session, then update it before you stop.
 The user paused development after this session. Main is committed, pushed and green locally
 (`pnpm verify --e2e`: 2,125 tests, 23 e2e). Nothing is half-done on `main`.
 
-**Three local branches hold unfinished work from background sessions that were stopped**
-(each is one commit marked "WIP, unverified"; the gate was never run on them; they are not
-pushed). Their worktrees are still in `.claude/worktrees/`:
+**Three branches hold unfinished work from background sessions that were stopped** (each is
+one commit marked "WIP, unverified"; the gate was never run on them). They are pushed to
+GitHub under the names below; their worktrees are still in `.claude/worktrees/`:
 
 | Branch | Task | Contents |
 |---|---|---|
-| `worktree-agent-a021dce46d033a2be` | M1-007 ticket types and hierarchy levels | Migration 0011, `apps/server/src/tickets/`, catalogue events; about 1,500 lines |
-| `worktree-agent-a53bf3036bc5809f5` | M1-083 SCIM 2.0 | Migration 0012, `apps/server/src/scim/`; about 1,550 lines |
-| `worktree-agent-a0228ec4c45837fca` | M1-080 single sign-on UI | `apps/web/src/sso/`, sign-in form and page changes, messages; about 1,600 lines |
+| `wip/m1-007-ticket-types` | M1-007 ticket types and hierarchy levels | Migration 0011, `apps/server/src/tickets/`, catalogue events; about 1,500 lines |
+| `wip/m1-083-scim` | M1-083 SCIM 2.0 | Migration 0012, `apps/server/src/scim/`; about 1,550 lines |
+| `wip/m1-080-sso-ui` | M1-080 single sign-on UI | `apps/web/src/sso/`, sign-in form and page changes, messages; about 1,600 lines |
 
 To resume one: check out its branch (or open its worktree), read the diff against `main`,
 finish it, run `pnpm verify` (and `--e2e` for the UI), then squash the WIP commit into a real
