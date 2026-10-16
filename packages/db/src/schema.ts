@@ -208,6 +208,74 @@ export interface TrackTable {
   archived_at: Timestamp | null;
   archived_by: number | null;
   updated_at: DefaultTimestamp;
+  /** The type set the track offers (M1-007); a local-mode track owns its set. */
+  type_set_id: number | null;
+}
+
+export type HierarchyLevelKind = 'subticket' | 'standard' | 'outcome' | 'custom';
+
+/**
+ * A hierarchy level (M1-007; CORE-006, spec 01a section 1.2). The built-in levels sit at ranks
+ * -1 (subticket), 0 (standard) and 1 (Outcome); custom levels at 2 and above. Ranks are unique
+ * per workspace (a deferred constraint) and run without a gap.
+ */
+export interface HierarchyLevelTable {
+  id: Generated<number>;
+  workspace_id: number;
+  kind: HierarchyLevelKind;
+  rank: number;
+  name: string;
+  description: Generated<string>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/**
+ * A ticket type (CORE-005): its look and its level. One with `owner_track_id` belongs to that
+ * local-mode track; the others are shared.
+ */
+export interface TicketTypeTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  icon: string | null;
+  color: string | null;
+  level_id: number;
+  owner_track_id: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/**
+ * The ticket types a track offers, in order, with one preselected (CORE-005; Jira: issue type
+ * scheme). One with `owner_track_id` belongs to that local-mode track.
+ */
+export interface TypeSetTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  /** A member of the set (deferred foreign key), or null for no preselection. */
+  default_type_id: number | null;
+  owner_track_id: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface TypeSetMemberTable {
+  workspace_id: number;
+  type_set_id: number;
+  ticket_type_id: number;
+  /** Position in the set, from 1; unique per set (deferred). */
+  sort_order: number;
+}
+
+/** The set new tracks of each type use (shared mode) or copy (local mode). */
+export interface TypeSetDefaultTable {
+  workspace_id: number;
+  track_type: TrackType;
+  type_set_id: number;
 }
 
 /** Categories that group tracks (CORE-001); names are unique within a workspace, ignoring case. */
@@ -510,6 +578,11 @@ export interface Database {
   track_category: TrackCategoryTable;
   track_key_history: TrackKeyHistoryTable;
   track_role_actor: TrackRoleActorTable;
+  hierarchy_level: HierarchyLevelTable;
+  ticket_type: TicketTypeTable;
+  type_set: TypeSetTable;
+  type_set_member: TypeSetMemberTable;
+  type_set_default: TypeSetDefaultTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

@@ -220,6 +220,35 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
+  '0011_ticket_types': {
+    tables: {
+      hierarchy_level: "name = 'Seed level' AND rank = 2",
+      ticket_type: "name = 'Seed type'",
+      type_set: "name = 'Seed type set' AND default_type_id IS NOT NULL",
+      type_set_member: "ticket_type_id IN (SELECT id FROM ticket_type WHERE name = 'Seed type')",
+      type_set_default:
+        "workspace_id = 1 AND track_type = 'service' AND type_set_id IN (SELECT id FROM type_set WHERE name = 'Seed type set')",
+      track:
+        "key = 'SEED' AND type_set_id IN (SELECT id FROM type_set WHERE name = 'Seed type set')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO hierarchy_level (workspace_id, kind, rank, name)
+        VALUES (1, 'custom', 2, 'Seed level')`.execute(db);
+      await sql`INSERT INTO ticket_type (workspace_id, name, level_id)
+        SELECT 1, 'Seed type', id FROM hierarchy_level WHERE name = 'Seed level'`.execute(db);
+      await sql`INSERT INTO type_set (workspace_id, name) VALUES (1, 'Seed type set')`.execute(db);
+      await sql`INSERT INTO type_set_member (workspace_id, type_set_id, ticket_type_id, sort_order)
+        SELECT 1, s.id, t.id, 1 FROM type_set s, ticket_type t
+         WHERE s.name = 'Seed type set' AND t.name = 'Seed type'`.execute(db);
+      await sql`UPDATE type_set SET default_type_id = (SELECT id FROM ticket_type WHERE name = 'Seed type')
+         WHERE name = 'Seed type set'`.execute(db);
+      await sql`UPDATE type_set_default
+           SET type_set_id = (SELECT id FROM type_set WHERE name = 'Seed type set')
+         WHERE workspace_id = 1 AND track_type = 'service'`.execute(db);
+      await sql`UPDATE track SET type_set_id = (SELECT id FROM type_set WHERE name = 'Seed type set')
+         WHERE key = 'SEED'`.execute(db);
+    },
+  },
   '0013_appearance': {
     tables: { app_user: "email = 'seed@example.com' AND appearance = 'dark'" },
     seed: async (db) => {

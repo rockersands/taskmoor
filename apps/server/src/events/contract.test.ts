@@ -633,6 +633,94 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'DELETE', url: `/api/v1/track-categories/${state.category}` }),
     },
     {
+      route: 'POST /api/v1/hierarchy-levels',
+      expect: 'hierarchy_level.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/hierarchy-levels',
+          payload: { name: 'Objective' },
+        });
+        state.level = res.json().level?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/hierarchy-levels/:id',
+      expect: 'hierarchy_level.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/hierarchy-levels/${state.level}`,
+          payload: { description: 'What a year of work aims at' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/ticket-types',
+      expect: 'ticket_type.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/ticket-types',
+          payload: { name: 'Objective', levelId: state.level, icon: 'target' },
+        });
+        state.ticketType = res.json().ticketType?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/ticket-types/:id',
+      expect: 'ticket_type.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/ticket-types/${state.ticketType}`,
+          payload: { color: '#336699' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/type-sets',
+      expect: 'type_set.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/type-sets',
+          payload: {
+            name: 'Planning type set',
+            ticketTypeIds: [state.ticketType],
+            defaultTypeId: state.ticketType,
+          },
+        });
+        state.typeSet = res.json().typeSet?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/type-sets/:id',
+      expect: 'type_set.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/type-sets/${state.typeSet}`,
+          payload: { description: 'Objectives only' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/type-sets/:id',
+      expect: 'type_set.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/type-sets/${state.typeSet}` }),
+    },
+    {
+      route: 'DELETE /api/v1/ticket-types/:id',
+      expect: 'ticket_type.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/ticket-types/${state.ticketType}` }),
+    },
+    {
+      route: 'DELETE /api/v1/hierarchy-levels/:id',
+      expect: 'hierarchy_level.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/hierarchy-levels/${state.level}` }),
+    },
+    {
       route: 'POST /api/v1/account/two-factor/totp/confirm',
       expect: 'user.two_factor_enabled',
       prepare: async () => {

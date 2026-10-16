@@ -61,6 +61,23 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/audit/export']).toBe('admin');
     expect(classes['PATCH /api/v1/identity-providers/:id']).toBe('admin');
     expect(classes['POST /api/v1/tracks']).toBe('write');
+    // Track configuration: read and write, so local-mode track administrators keep theirs.
+    expect(classes['GET /api/v1/hierarchy-levels']).toBe('read');
+    expect(classes['GET /api/v1/hierarchy-levels/impact']).toBe('read');
+    expect(classes['POST /api/v1/hierarchy-levels']).toBe('write');
+    expect(classes['PATCH /api/v1/hierarchy-levels/:id']).toBe('write');
+    expect(classes['DELETE /api/v1/hierarchy-levels/:id']).toBe('write');
+    expect(classes['GET /api/v1/ticket-types']).toBe('read');
+    expect(classes['GET /api/v1/ticket-types/:id']).toBe('read');
+    expect(classes['POST /api/v1/ticket-types']).toBe('write');
+    expect(classes['PATCH /api/v1/ticket-types/:id']).toBe('write');
+    expect(classes['DELETE /api/v1/ticket-types/:id']).toBe('write');
+    expect(classes['GET /api/v1/type-sets']).toBe('read');
+    expect(classes['GET /api/v1/type-sets/:id']).toBe('read');
+    expect(classes['POST /api/v1/type-sets']).toBe('write');
+    expect(classes['PATCH /api/v1/type-sets/:id']).toBe('write');
+    expect(classes['DELETE /api/v1/type-sets/:id']).toBe('write');
+    expect(classes['GET /api/v1/tracks/:id/ticket-types']).toBe('read');
     // Every route that only site administrators may use is in the admin class.
     const adminOnly = api.filter((r) =>
       /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|audit)/.test(

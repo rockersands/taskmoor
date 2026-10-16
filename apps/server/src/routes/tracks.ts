@@ -5,6 +5,14 @@ import { z } from 'zod';
 import { requireGlobal, requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import {
+  copyTypeSet,
+  defaultTypeSetId,
+  isSharedTypeSet,
+  setMembers,
+  ticketsOfTypes,
+  ticketTypeView,
+} from '../tickets/configuration';
+import {
   checkKey,
   FEATURE_DEFAULTS,
   featureColumn,
@@ -29,8 +37,11 @@ import {
  *   policy, so changing it never reaches another track (section 1.1).
  * - The creator becomes owner (unless another owner is named) and joins the role the policy
  *   lets administer the track (Administrators by default).
- * - Track administrators edit the track; changing its access policy is configuration
- *   administration; the mode is fixed at creation.
+ * - Track administrators edit the track; changing its access policy or its type set is
+ *   configuration administration; the mode is fixed at creation.
+ * - A shared-mode track uses a shared type set (the default of its track type unless one is
+ *   named); a local-mode track gets its own copy of that default (M1-007). Everyone who sees a
+ *   track reads the ticket types it offers, in set order with the default preselected.
  * - Archive and restore belong to site and configuration administrators. An archived track is
  *   read-only for everyone (the authorizer keeps only read permissions there) and hidden from
  *   the search pre-filter.
@@ -59,6 +70,7 @@ const trackFields = {
   icon: icon.nullable(),
   color: color.nullable(),
   accessPolicyId: id,
+  typeSetId: id,
   features,
 };
 const createBody = z
@@ -73,6 +85,7 @@ const createBody = z
     icon: trackFields.icon.optional(),
     color: trackFields.color.optional(),
     accessPolicyId: trackFields.accessPolicyId.optional(),
+    typeSetId: trackFields.typeSetId.optional(),
     features: trackFields.features.optional(),
   })
   .strict();
@@ -87,6 +100,7 @@ const updateBody = z
     icon: trackFields.icon.optional(),
     color: trackFields.color.optional(),
     accessPolicyId: trackFields.accessPolicyId.optional(),
+    typeSetId: trackFields.typeSetId.optional(),
     features: trackFields.features.optional(),
   })
   .strict();
@@ -141,6 +155,7 @@ function trackQuery(db: Db, workspaceId: number) {
       't.icon',
       't.color',
       't.access_policy_id',
+      't.type_set_id',
       't.feature_board',
       't.feature_backlog',
       't.feature_sprints',
@@ -178,6 +193,7 @@ function trackView(row: TrackRow) {
     icon: row.icon,
     color: row.color,
     accessPolicyId: row.access_policy_id,
+    typeSetId: row.type_set_id,
     features: featuresOf(row),
     archived: row.archived_at !== null,
     archivedAt: row.archived_at?.toISOString() ?? null,
@@ -346,6 +362,31 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
     };
   });
 
+  // The ticket types a track offers, in set order, with the one to preselect (CORE-005 (1)).
+  app.get('/api/v1/tracks/:id/ticket-types', async (request, reply) => {
+    const params = z.object({ id: z.string().min(1).max(255) }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const found = await resolve(ws, params.data.id);
+    if (!found) return notFound(reply);
+    const row = await loadTrack(db, ws, found.id);
+    if (!row || !(await canSee(request, row.id))) return notFound(reply);
+    if (row.type_set_id === null) {
+      return { typeSetId: null, defaultTypeId: null, ticketTypes: [] };
+    }
+    const set = await db
+      .selectFrom('type_set')
+      .select('default_type_id')
+      .where('id', '=', row.type_set_id)
+      .executeTakeFirstOrThrow();
+    const members = (await setMembers(db, ws, [row.type_set_id])).get(row.type_set_id) ?? [];
+    return {
+      typeSetId: row.type_set_id,
+      defaultTypeId: set.default_type_id,
+      ticketTypes: members.map(ticketTypeView),
+    };
+  });
+
   app.post('/api/v1/tracks', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
@@ -364,6 +405,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
     if (body.mode === 'local' && body.accessPolicyId !== undefined) {
       return invalid(reply, 'a local-mode track gets its own access policy');
     }
+    if (body.mode === 'local' && body.typeSetId !== undefined) {
+      return invalid(reply, 'a local-mode track gets its own type set');
+    }
     const ownerId = body.ownerId ?? user.id;
     if (!(await activeUser(ws, ownerId))) return invalid(reply, 'ownerId');
     if (body.categoryId != null && !(await categoryExists(ws, body.categoryId))) {
@@ -372,11 +416,16 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
     if (body.accessPolicyId !== undefined && !(await sharedPolicy(ws, body.accessPolicyId))) {
       return invalid(reply, 'accessPolicyId');
     }
+    if (body.typeSetId !== undefined && !(await isSharedTypeSet(db, ws, body.typeSetId))) {
+      return invalid(reply, 'typeSetId');
+    }
     const chosen = { ...FEATURE_DEFAULTS[body.type], ...(body.features ?? {}) };
     try {
       const created = await db.transaction().execute(async (trx) => {
         const base = body.accessPolicyId ?? (await defaultPolicy(trx, ws));
         if (base === null) return { error: 'no_default_access_policy' as const };
+        const baseTypes = body.typeSetId ?? (await defaultTypeSetId(trx, ws, body.type));
+        if (baseTypes === null) return { error: 'no_default_type_set' as const };
         const row = await trx
           .insertInto('track')
           .values({
@@ -391,16 +440,19 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
             icon: body.icon ?? null,
             color: body.color ?? null,
             access_policy_id: base,
+            type_set_id: baseTypes,
             ...Object.fromEntries(TRACK_FEATURES.map((f) => [featureColumn(f), chosen[f]])),
           })
           .returning('id')
           .executeTakeFirstOrThrow();
         let policyId = base;
+        let typeSetId = baseTypes;
         if (body.mode === 'local') {
           policyId = await copyPolicy(trx, ws, base, row.id, key.key);
+          typeSetId = await copyTypeSet(trx, ws, baseTypes, row.id, key.key);
           await trx
             .updateTable('track')
-            .set({ access_policy_id: policyId })
+            .set({ access_policy_id: policyId, type_set_id: typeSetId })
             .where('id', '=', row.id)
             .execute();
         }
@@ -434,6 +486,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
             categoryId: body.categoryId ?? null,
             accessPolicyId: policyId,
             administratorRoleId: roleId,
+            typeSetId,
           },
         });
         return { track: await loadTrack(trx, ws, row.id) };
@@ -483,6 +536,13 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       }
       if (!(await sharedPolicy(ws, body.accessPolicyId))) return invalid(reply, 'accessPolicyId');
     }
+    if (body.typeSetId !== undefined && body.typeSetId !== current.type_set_id) {
+      if (!(await isAdmin(request))) return reply.code(403).send({ error: 'forbidden' });
+      if (current.mode === 'local') {
+        return invalid(reply, 'a local-mode track keeps its own type set');
+      }
+      if (!(await isSharedTypeSet(db, ws, body.typeSetId))) return invalid(reply, 'typeSetId');
+    }
     if (body.ownerId !== undefined && !(await activeUser(ws, body.ownerId))) {
       return invalid(reply, 'ownerId');
     }
@@ -511,6 +571,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           icon: locked.icon,
           color: locked.color,
           accessPolicyId: locked.access_policy_id,
+          typeSetId: locked.type_set_id,
           ...Object.fromEntries(
             TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
           ),
@@ -525,11 +586,26 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           icon: body.icon,
           color: body.color,
           accessPolicyId: body.accessPolicyId,
+          typeSetId: body.typeSetId,
           ...Object.fromEntries(
             Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
           ),
         };
         const changes = diff(before, next);
+        if (changes.typeSetId && body.typeSetId !== undefined && locked.type_set_id !== null) {
+          // Types the new set lacks leave the track: only once no ticket of them remains there
+          // (CORE-005 (2)).
+          const sets = await setMembers(trx, ws, [locked.type_set_id, body.typeSetId]);
+          const kept = new Set((sets.get(body.typeSetId) ?? []).map((t) => t.id));
+          const removed = (sets.get(locked.type_set_id) ?? [])
+            .map((t) => t.id)
+            .filter((t) => !kept.has(t));
+          const tickets =
+            removed.length === 0 ? 0 : await ticketsOfTypes(trx, ws, removed, [trackId]);
+          if (tickets > 0) {
+            return { typeInUse: { ticketTypeIds: removed, ticketCount: tickets } };
+          }
+        }
         if (Object.keys(changes).length > 0) {
           // Only what changed is written; `changes` has an entry only for a given value.
           const set: Updateable<Database['track']> = { updated_at: new Date() };
@@ -548,6 +624,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           if (changes.accessPolicyId && body.accessPolicyId !== undefined) {
             set.access_policy_id = body.accessPolicyId;
           }
+          if (changes.typeSetId && body.typeSetId !== undefined) {
+            set.type_set_id = body.typeSetId;
+          }
           for (const feature of TRACK_FEATURES) {
             const on = body.features?.[feature];
             if (changes[`features.${feature}`] && on !== undefined)
@@ -564,6 +643,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       });
       if ('missing' in updated) return notFound(reply);
       if ('archived' in updated) return reply.code(409).send({ error: 'track_archived' });
+      if ('typeInUse' in updated) {
+        return reply.code(409).send({ error: 'type_in_use', ...updated.typeInUse });
+      }
       if (!updated.track) return notFound(reply);
       return { track: trackView(updated.track) };
     } catch (error) {

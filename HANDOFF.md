@@ -8,20 +8,20 @@ Development resumed on a Mac (Apple silicon, macOS). The repository lives in
 `~/Documents/claude` (not a folder named tracksmith). The Windows notes below (drives E: and
 G:, MSYS, CRLF, `pg_ctl` pipes) are history for this machine; see "On the Mac" under Notes.
 
-**Two branches still hold unfinished work** from background sessions that were stopped (one
-commit each, marked "WIP, unverified"; the gate was never run on them). Both start from
-`f735251`, two commits before the skins, so rebase or cherry-pick them onto `main` first:
+**One branch still holds unfinished work** from a background session that was stopped (one
+commit, marked "WIP, unverified"; the gate was never run on it). It starts from `f735251`, two
+commits before the skins, so cherry-pick it onto `main` first:
 
 | Branch | Task | Contents |
 |---|---|---|
-| `wip/m1-007-ticket-types` | M1-007 ticket types and hierarchy levels | Migration 0011, `apps/server/src/tickets/`, catalogue events; about 1,500 lines |
 | `wip/m1-083-scim` | M1-083 SCIM 2.0 | Migration 0012, `apps/server/src/scim/`; about 1,550 lines |
 
-To resume one: cherry-pick its commit onto a new branch from `main`, read the diff, finish it,
+To resume it: cherry-pick its commit onto a new branch from `main`, read the diff, finish it,
 run `pnpm verify` (and `--e2e` for UI), then squash into a real commit. Migration numbers are
 reserved: 0011 ticket types, 0012 SCIM; 0013 is appearance on `main`. If a branch looks wrong,
-redo the task instead: nothing depends on them. `wip/m1-080-sso-ui` was finished (below) and
-deleted from GitHub.
+redo the task instead: nothing depends on it. `wip/m1-080-sso-ui` and
+`wip/m1-007-ticket-types` were finished (below); the first is deleted from GitHub, the second
+can be.
 
 ## Last session: 2026-10-15 (Mac)
 
@@ -47,11 +47,24 @@ deleted from GitHub.
     in `setup.spec.ts` adds the provider through the page, then covers no account, JIT,
     enforcement (password field gone, backend answers `sso_required`) and delete.
   - ADR-019 records the sign-in page and administration design.
+- **M1-007 ticket types and hierarchy levels** (finished from the WIP branch in its own
+  worktree, then cherry-picked onto `main`; ADR-009 implementation note): migration 0011
+  (levels, ticket types, type sets, the default set per track type, `track.type_set_id`), the
+  pure model with its property tests in
+  `apps/server/src/tickets/hierarchy.ts`, the API in `routes/ticket-types.ts`
+  (`/api/v1/hierarchy-levels` with `/impact`, `/api/v1/ticket-types`, `/api/v1/type-sets`) and
+  `GET /api/v1/tracks/:id/ticket-types`; tracks get their type's default set (local-mode tracks
+  a copy they own, plus their own ticket types). Nine events, all audited; read and write token
+  scopes. No UI yet.
 
 ### Next (in order)
 
-1. **M1-007 ticket types** (`wip/m1-007-ticket-types`), then M1-008 tickets: the core path to
-   boards.
+1. **M1-008 tickets**: the core path to boards. It fills the two hooks M1-007 left in
+   `apps/server/src/tickets/configuration.ts`: `hierarchyTickets` (tickets with type and
+   parent, so hierarchy changes see the links they break) and `ticketsOfTypes` (a type with
+   tickets cannot leave a set until they are mapped to another type, CORE-005 (2); add the
+   mapping then). Rollback of a hierarchy change that broke links (CORE-007 (2), 30 days)
+   needs tickets too; until it exists such a change is refused with its impact.
 2. **M1-083 SCIM** (`wip/m1-083-scim`): SCIM clients are service accounts with a `scim` token
    scope; compliance suite and Okta / Entra ID shaped fixtures.
 3. The break-glass switch per account comes with the user admin UI (M1-053); the backend has
@@ -335,6 +348,11 @@ status page. Boards, items and queries arrive with M1.
   migration order; rebuild `events/contract.test.ts` from `main` plus each branch's added
   scenarios; regenerate the schema golden; give every new event type an audit decision
   (`audit/subscriber.ts`) and every new route a token scope class (`tokens/scopes.ts`).
+- Kysely applies migrations only in name order: a database that has run a later migration
+  (0013 from `main`) refuses an earlier one merged after it (0011, 0012) as "corrupted
+  migrations". Test and e2e databases are created fresh, so only long-lived development
+  databases are affected: recreate them. Released databases never meet this, because numbers
+  are reserved before a release.
 - `apps/server/src/shutdown.test.ts` models two pods behind a Service; without the drain it
   fails with resets, so keep the drain (`TASKMOOR_SHUTDOWN_DRAIN_MS`) when touching shutdown.
 

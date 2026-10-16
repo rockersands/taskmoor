@@ -10,7 +10,11 @@
  * - administration routes (people, groups, roles, policies, grants, service accounts, tokens of
  *   others, sign-in security, identity providers, the audit log, instance status) need the
  *   admin scope, whatever the method;
- * - everything else needs read for GET and HEAD and write for other methods.
+ * - everything else needs read for GET and HEAD and write for other methods. That includes
+ *   track configuration (track categories, hierarchy levels, ticket types, type sets):
+ *   everyone reads the levels and a track's ticket types, and a local-mode track's
+ *   administrators change the types and type set it owns with a write token; shared ones need
+ *   configuration administrators, whose rights only the admin scope keeps (below).
  *
  * The scope only narrows: authorization still runs through `request.authz` as the token's
  * owner, and a token without the admin scope also loses the owner's administrator rights there,

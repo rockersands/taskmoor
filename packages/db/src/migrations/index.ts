@@ -9,6 +9,7 @@ import * as m0007 from './0007_tokens';
 import * as m0008 from './0008_tracks';
 import * as m0009 from './0009_two_factor';
 import * as m0010 from './0010_identity_providers';
+import * as m0011 from './0011_ticket_types';
 import * as m0013 from './0013_appearance';
 
 /**
@@ -27,5 +28,6 @@ export const migrations: Record<string, Migration> = {
   '0008_tracks': m0008,
   '0009_two_factor': m0009,
   '0010_identity_providers': m0010,
+  '0011_ticket_types': m0011,
   '0013_appearance': m0013,
 };

@@ -22,6 +22,7 @@ import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSsoRoutes } from './routes/sso';
+import { registerTicketTypeRoutes } from './routes/ticket-types';
 import { registerTokenRoutes } from './routes/tokens';
 import { registerTrackRoutes } from './routes/tracks';
 import { registerTwoFactorRoutes } from './routes/two-factor';
@@ -155,6 +156,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     });
     registerTrackRoutes(app, db);
+    registerTicketTypeRoutes(app, db);
     registerAuditRoutes(app, db);
     registerTokenRoutes(app, db);
     registerServiceAccountRoutes(app, db);

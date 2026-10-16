@@ -89,6 +89,44 @@ Migration 0008 expands the `track` table of M1-002 and adds `track_category` and
   `track.archived`, `track.restored` and `track_category.created`, `.updated`, `.deleted`;
   one per mutation, the local policy copy and the creator's role included in `track.created`.
 
+## Implementation (M1-007: hierarchy levels, ticket types and type sets)
+
+Migration 0011 adds `hierarchy_level`, `ticket_type`, `type_set`, `type_set_member`,
+`type_set_default` and `track.type_set_id`; the API is in
+`apps/server/src/routes/ticket-types.ts`, the rules in `apps/server/src/tickets/hierarchy.ts`
+(a pure model with property tests) and `tickets/configuration.ts`.
+
+- **Levels belong to the workspace, not to a track:** a parent may sit in another track (spec
+  01a section 1.2, rule 5), so every track sees one ladder. Each level stores its rank. The
+  built-in levels keep theirs (subticket -1, standard 0, Outcome 1) and are renamed but never
+  moved or removed; custom levels take 2 and above without a gap, so adding, moving or removing
+  one renumbers the custom levels above it in the same transaction (a deferred unique
+  constraint on the rank, and an advisory lock per workspace so two changes never start from
+  the same ladder). Removing a level moves its ticket types to the standard level (rule 7).
+- **Several ticket types share a level;** a ticket's level is its type's. Changing a type's
+  level is a hierarchy change like the others.
+- **Impact before change** (CORE-007 (1)): `GET /api/v1/hierarchy-levels/impact` shows the
+  levels and types that would move, the parent links that would break and the parentless
+  tickets that would land on the subticket level. Until rollback exists (CORE-007 (2), which
+  needs tickets, M1-008 onwards), a change that would break a parent link is refused with that
+  impact instead of being applied.
+- **Type sets are ordered lists of ticket types with an optional preselected member** (a
+  deferred foreign key keeps the default a member). Each track type has one default set in
+  `type_set_default` (software, business and discovery sets ship; service tracks use the
+  business set until request forms arrive); a track type never loses its default, another set
+  takes it over. Every set lists the tracks that use it (section 1.5).
+- **Local mode follows the access policy's pattern:** a local-mode track gets a copy of its
+  type's default set, owned by the track, and may own ticket types; its track administrators
+  change both without being configuration administrators. A shared set only holds shared
+  types, a local set holds shared types and its own track's types, and neither a local set nor
+  a local type reaches another track.
+- **A type in use stays.** A ticket type is deleted only once no set holds it, and a set (or a
+  track switching sets) drops a type only when no ticket of it remains in the tracks
+  concerned; mapping those tickets to another type (CORE-005 (2)) comes with tickets.
+- **Events:** `hierarchy_level.created`, `.updated`, `.deleted` (with the levels renumbered
+  and the types that fell to the standard level), `ticket_type.*` and `type_set.*`, all
+  audited; `track.created` names the track's type set and `track.updated` a change of it.
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

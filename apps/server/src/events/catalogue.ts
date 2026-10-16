@@ -10,6 +10,8 @@ import { z } from 'zod';
  */
 const id = z.number().int().positive();
 const changes = z.record(z.string(), z.object({ from: z.unknown(), to: z.unknown() }));
+/** Hierarchy levels a change renumbered, with their rank before and after. */
+const shifted = z.array(z.object({ levelId: id, from: z.number().int(), to: z.number().int() }));
 
 export const EVENT_TYPES = {
   // Instance and sessions
@@ -174,6 +176,8 @@ export const EVENT_TYPES = {
       accessPolicyId: id,
       /** The role the creator joined, the one the policy lets administer the track. */
       administratorRoleId: id.nullable(),
+      /** The type set it offers; a local-mode track owns a copy of its type's default. */
+      typeSetId: id,
     }),
   },
   /** Field changes; a key change is `changes.key` (the old key keeps resolving). */
@@ -187,6 +191,54 @@ export const EVENT_TYPES = {
     /** Tracks that used it are left without a category. */
     payload: z.object({ name: z.string(), trackCount: z.number().int().min(0) }),
   },
+
+  // Hierarchy levels, ticket types and type sets (M1-007)
+  'hierarchy_level.created': {
+    subject: 'hierarchy_level',
+    payload: z.object({ name: z.string(), rank: z.number().int(), shifted }),
+  },
+  /** Field changes; a new rank is `changes.rank`, and the levels it renumbered are `shifted`. */
+  'hierarchy_level.updated': {
+    subject: 'hierarchy_level',
+    payload: z.object({ changes, shifted }),
+  },
+  /** Its ticket types fall to the standard level (rule 7); the levels above move down. */
+  'hierarchy_level.deleted': {
+    subject: 'hierarchy_level',
+    payload: z.object({
+      name: z.string(),
+      rank: z.number().int(),
+      shifted,
+      typesToStandard: z.array(id),
+    }),
+  },
+  'ticket_type.created': {
+    subject: 'ticket_type',
+    payload: z.object({
+      name: z.string(),
+      levelId: id,
+      rank: z.number().int(),
+      /** The local-mode track that owns the type; null for a shared type. */
+      trackId: id.nullable(),
+    }),
+  },
+  'ticket_type.updated': { subject: 'ticket_type', payload: z.object({ changes }) },
+  'ticket_type.deleted': {
+    subject: 'ticket_type',
+    payload: z.object({ name: z.string(), trackId: id.nullable() }),
+  },
+  'type_set.created': {
+    subject: 'type_set',
+    payload: z.object({
+      name: z.string(),
+      ticketTypeIds: z.array(id),
+      defaultTypeId: id.nullable(),
+      defaultFor: z.array(z.enum(['software', 'business', 'service', 'discovery'])),
+    }),
+  },
+  /** Field changes: name, description, `ticketTypeIds` (in order), defaultTypeId, defaultFor. */
+  'type_set.updated': { subject: 'type_set', payload: z.object({ changes }) },
+  'type_set.deleted': { subject: 'type_set', payload: z.object({ name: z.string() }) },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   // API tokens and service accounts (IAM-007). Never the token or its hash.
