@@ -302,6 +302,74 @@ export interface TrackKeyHistoryTable {
   replaced_at: Timestamp | null;
 }
 
+/** JSONB that may be null: read parsed, written as JSON text. */
+export type NullableJson = ColumnType<JsonValue | null, string | null | undefined, string | null>;
+
+/** A calendar day as `YYYY-MM-DD` text (the client reads dates without a time zone). */
+export type DateText = ColumnType<string | null, string | null | undefined, string | null>;
+
+/**
+ * A ticket (M1-008; CORE-001, CORE-008, spec 01a section 1.3): KEY-n from its track's key and
+ * its number, its type and parent, content and people fields, and its place in the global rank
+ * (`rank`, a fractional key unique per workspace, AGL-009). `version` counts changes for
+ * optimistic saves. A deleted ticket stays in the trash with `deleted_at` (CORE-025 (3));
+ * subtickets deleted along with their parent name it in `trashed_with`.
+ */
+export interface TicketTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number;
+  number: number;
+  ticket_type_id: number;
+  parent_id: number | null;
+  summary: string;
+  /** Rich text as a ProseMirror document (ADR-014); null when empty. */
+  description: NullableJson;
+  environment: NullableJson;
+  assignee_id: number | null;
+  requester_id: number | null;
+  /** Null for tickets the system made (an import of an unknown person, a job). */
+  creator_id: number | null;
+  start_date: DateText;
+  due_date: DateText;
+  rank: string;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  deleted_at: Timestamp | null;
+  deleted_by: number | null;
+  trashed_with: number | null;
+}
+
+/** The last ticket number given out in each track. */
+export interface TicketCounterTable {
+  track_id: number;
+  workspace_id: number;
+  last_number: number;
+}
+
+/**
+ * Every track and number a ticket has had, the current pair with `replaced_at` null (CORE-023
+ * (3)). A number belongs to one ticket in its track for good. A trigger on `ticket` writes it.
+ */
+export interface TicketKeyHistoryTable {
+  id: Generated<number>;
+  workspace_id: number;
+  ticket_id: number;
+  track_id: number;
+  number: number;
+  created_at: DefaultTimestamp;
+  replaced_at: Timestamp | null;
+}
+
+/** A child that lost its parent link when the parent went to the trash; a restore puts it back. */
+export interface TicketDetachedParentTable {
+  ticket_id: number;
+  workspace_id: number;
+  parent_id: number;
+  detached_at: DefaultTimestamp;
+}
+
 /** A user or a group acting in a role on one track. */
 export interface TrackRoleActorTable {
   workspace_id: number;
@@ -583,6 +651,10 @@ export interface Database {
   type_set: TypeSetTable;
   type_set_member: TypeSetMemberTable;
   type_set_default: TypeSetDefaultTable;
+  ticket: TicketTable;
+  ticket_counter: TicketCounterTable;
+  ticket_key_history: TicketKeyHistoryTable;
+  ticket_detached_parent: TicketDetachedParentTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

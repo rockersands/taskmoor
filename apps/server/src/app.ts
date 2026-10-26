@@ -23,6 +23,7 @@ import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSsoRoutes } from './routes/sso';
 import { registerTicketTypeRoutes } from './routes/ticket-types';
+import { registerTicketRoutes } from './routes/tickets';
 import { registerTokenRoutes } from './routes/tokens';
 import { registerTrackRoutes } from './routes/tracks';
 import { registerTwoFactorRoutes } from './routes/two-factor';
@@ -157,6 +158,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerTrackRoutes(app, db);
     registerTicketTypeRoutes(app, db);
+    registerTicketRoutes(app, db, authorizer);
     registerAuditRoutes(app, db);
     registerTokenRoutes(app, db);
     registerServiceAccountRoutes(app, db);

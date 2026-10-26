@@ -8,8 +8,9 @@ import {
   copyTypeSet,
   defaultTypeSetId,
   isSharedTypeSet,
+  mapTicketTypes,
   setMembers,
-  ticketsOfTypes,
+  ticketTypeMapping,
   ticketTypeView,
 } from '../tickets/configuration';
 import {
@@ -91,6 +92,8 @@ const createBody = z
   .strict();
 const updateBody = z
   .object({
+    /** Tickets of types the new type set lacks take these types (CORE-005 (2)). */
+    ticketTypeMapping: ticketTypeMapping.optional(),
     key: z.string().optional(),
     name: trackFields.name.optional(),
     description: trackFields.description.optional(),
@@ -592,19 +595,27 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           ),
         };
         const changes = diff(before, next);
+        let mapped: { fromTypeId: number; toTypeId: number; ticketCount: number }[] = [];
         if (changes.typeSetId && body.typeSetId !== undefined && locked.type_set_id !== null) {
-          // Types the new set lacks leave the track: only once no ticket of them remains there
-          // (CORE-005 (2)).
+          // Types the new set lacks leave the track: their tickets there take the types the
+          // mapping names, or the switch waits (CORE-005 (2)).
           const sets = await setMembers(trx, ws, [locked.type_set_id, body.typeSetId]);
-          const kept = new Set((sets.get(body.typeSetId) ?? []).map((t) => t.id));
+          const kept = (sets.get(body.typeSetId) ?? []).map((t) => t.id);
           const removed = (sets.get(locked.type_set_id) ?? [])
             .map((t) => t.id)
-            .filter((t) => !kept.has(t));
-          const tickets =
-            removed.length === 0 ? 0 : await ticketsOfTypes(trx, ws, removed, [trackId]);
-          if (tickets > 0) {
-            return { typeInUse: { ticketTypeIds: removed, ticketCount: tickets } };
-          }
+            .filter((t) => !kept.includes(t));
+          const result = await mapTicketTypes(
+            trx,
+            ws,
+            [trackId],
+            removed,
+            kept,
+            body.ticketTypeMapping,
+          );
+          if (!result.ok) return { refused: result };
+          mapped = result.mapped;
+        } else if (body.ticketTypeMapping !== undefined) {
+          return { badMapping: true as const };
         }
         if (Object.keys(changes).length > 0) {
           // Only what changed is written; `changes` has an entry only for a given value.
@@ -636,16 +647,17 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           await emit(trx, by(request), {
             type: 'track.updated',
             subjectId: trackId,
-            payload: { changes },
+            payload: { changes, ...(mapped.length > 0 ? { mapped } : {}) },
           });
         }
         return { track: await loadTrack(trx, ws, trackId) };
       });
       if ('missing' in updated) return notFound(reply);
       if ('archived' in updated) return reply.code(409).send({ error: 'track_archived' });
-      if ('typeInUse' in updated) {
-        return reply.code(409).send({ error: 'type_in_use', ...updated.typeInUse });
+      if ('refused' in updated) {
+        return reply.code(updated.refused.status).send(updated.refused.body);
       }
+      if ('badMapping' in updated) return invalid(reply, 'ticketTypeMapping');
       if (!updated.track) return notFound(reply);
       return { track: trackView(updated.track) };
     } catch (error) {

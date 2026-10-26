@@ -399,6 +399,81 @@
       "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
     ]
   },
+  "ticket": {
+    "columns": [
+      "id integer not null default nextval('ticket_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "number integer not null",
+      "ticket_type_id integer not null",
+      "parent_id integer",
+      "summary text not null",
+      "description jsonb",
+      "environment jsonb",
+      "assignee_id integer",
+      "requester_id integer",
+      "creator_id integer",
+      "start_date date",
+      "due_date date",
+      "rank text not null",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "deleted_at timestamp with time zone",
+      "deleted_by integer",
+      "trashed_with integer"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_assignee_idx ON public.ticket USING btree (assignee_id) WHERE (assignee_id IS NOT NULL)",
+      "CREATE INDEX ticket_parent_idx ON public.ticket USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX ticket_pkey ON public.ticket USING btree (id)",
+      "CREATE UNIQUE INDEX ticket_rank_key ON public.ticket USING btree (workspace_id, rank)",
+      "CREATE UNIQUE INDEX ticket_track_number_key ON public.ticket USING btree (track_id, number)",
+      "CREATE INDEX ticket_track_rank_idx ON public.ticket USING btree (track_id, rank) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_trash_idx ON public.ticket USING btree (workspace_id, deleted_at) WHERE (deleted_at IS NOT NULL)",
+      "CREATE INDEX ticket_trashed_with_idx ON public.ticket USING btree (trashed_with) WHERE (trashed_with IS NOT NULL)",
+      "CREATE INDEX ticket_type_idx ON public.ticket USING btree (ticket_type_id)"
+    ]
+  },
+  "ticket_counter": {
+    "columns": [
+      "track_id integer not null",
+      "workspace_id integer not null",
+      "last_number integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_counter_pkey ON public.ticket_counter USING btree (track_id)"
+    ]
+  },
+  "ticket_detached_parent": {
+    "columns": [
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "parent_id integer not null",
+      "detached_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_detached_parent_parent_idx ON public.ticket_detached_parent USING btree (parent_id)",
+      "CREATE UNIQUE INDEX ticket_detached_parent_pkey ON public.ticket_detached_parent USING btree (ticket_id)"
+    ]
+  },
+  "ticket_key_history": {
+    "columns": [
+      "id integer not null default nextval('ticket_key_history_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "number integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "replaced_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_key_history_current_idx ON public.ticket_key_history USING btree (ticket_id) WHERE (replaced_at IS NULL)",
+      "CREATE UNIQUE INDEX ticket_key_history_key ON public.ticket_key_history USING btree (track_id, number)",
+      "CREATE UNIQUE INDEX ticket_key_history_pkey ON public.ticket_key_history USING btree (id)",
+      "CREATE INDEX ticket_key_history_ticket_idx ON public.ticket_key_history USING btree (ticket_id)"
+    ]
+  },
   "ticket_type": {
     "columns": [
       "id integer not null default nextval('ticket_type_id_seq'::regclass)",

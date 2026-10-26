@@ -23,7 +23,69 @@ redo the task instead: nothing depends on it. `wip/m1-080-sso-ui` and
 `wip/m1-007-ticket-types` were finished (below); the first is deleted from GitHub, the second
 can be.
 
-## Last session: 2026-10-15 (Mac)
+## Last session: 2026-10-26 (cloud container)
+
+### Done
+
+- **M1-008 tickets** (migration 0014; ADR-009 implementation note; ADR-037 for the rank):
+  - Tables: `ticket`, `ticket_counter` (consecutive numbers per track under a row lock),
+    `ticket_key_history` (trigger-written; a number belongs to one ticket for good, so old keys
+    resolve after a move as old track keys do after a rename), `ticket_detached_parent` and the
+    sequence `ticket_rank_seq`. Date columns now read as `YYYY-MM-DD` text (a type parser in
+    `packages/db/src/client.ts`), never as a Date at local midnight.
+  - `apps/server/src/tickets/rank.ts`: fractional rank keys, new tickets at the bottom through
+    the sequence, moves to a random point in the middle of the gap, retry on a clash.
+  - `routes/tickets.ts` (data access in `tickets/store.ts`, rules in `tickets/model.ts`):
+    create, view by id or any key it has had (with `redirect`), list in rank order by track or
+    parent, edit with a permission per field and an optional `version`, `PUT .../rank`,
+    `POST .../move` (subtickets come along; types the target lacks need `ticketTypeId` or
+    `subticketTypeId`), `DELETE` to the trash (subtickets go along, other children lose the
+    link), `POST .../restore` (links come back), `GET /api/v1/trash`. Errors in values answer
+    400 `invalid_fields` with a reason per field. Description and environment are ProseMirror
+    documents checked against `@taskmoor/richtext` (now a server dependency, about 1 MB more in
+    `server.mjs`).
+  - Locks: ticket writes that check levels hold the hierarchy lock shared (`shareHierarchy`), and
+    every writer takes the hierarchy, then the track and type set (key share), then tickets.
+  - M1-007 hooks filled: `hierarchyTickets` reads only tickets of types whose level changes and
+    their parents and children; `ticketsOfTypes` counts the trash too. `ticketTypeMapping` on
+    `PATCH /type-sets/:id` and `PATCH /tracks/:id` maps tickets of a leaving type to one at the
+    same level (CORE-005 (2)).
+  - Events `ticket.created`, `.updated`, `.moved`, `.ranked`, `.deleted`, `.restored`; the last
+    two are audited (`audit/subscriber.ts`), the others wait for the change history (M1-009).
+  - Tests: `routes/tickets.test.ts` (1,000 parallel creates give 1..1000, moves keep key
+    history, concurrent rank moves, trash round trip, type mapping, hierarchy impact),
+    `tickets/rank.test.ts` (properties), `packages/db/src/tickets.test.ts`, contract scenarios.
+- `apps/web/src/tokens/AdminTokensPage.test.tsx` typed a fixed 2026-10-01 against fixtures dated
+  relative to today, so it failed from 2026-10-21 on; it now types a day ten days back.
+
+### Next (in order)
+
+1. **M1-083 SCIM** (`wip/m1-083-scim`), as described at the top. Migration 0012 is still reserved for it; 0014
+   is now taken by tickets, so a long-lived development database that ran 0014 will refuse
+   0012 ("corrupted migrations"): recreate it.
+2. **M1-009 change history**: every ticket mutation writes per-field change rows; the
+   `ticket.updated` payload already carries the field changes in API names.
+3. `pnpm next-task`: M1-014 (priorities, close reasons, labels, releases, areas), M1-015
+   (links, followers, votes), M1-010 (field types) are ready.
+4. Later for tickets: the trash retention setting and purge (M1-101; `TRASH_RETENTION_DAYS` is
+   30 for now), ticket-level grantees and visibility levels (M1-020), hierarchy rollback
+   (CORE-007 (2)), a ticket UI (the ticket view is M1-051, boards M1-043 and M1-046), block
+   ranking and a background rank rebalance if keys grow long (M1-047).
+
+### Notes for cloud sessions (Linux container, running as root)
+
+- The embedded Postgres refuses to run as root. Start the system one
+  (`service postgresql start`), give its `postgres` user a password and point
+  `TASKMOOR_TEST_DATABASE_URL` at it, as the CI job does (`.github/workflows/ci.yml`).
+  `--e2e` still needs the embedded cluster and was not run here (no UI changed).
+- The container's Chromium (`/opt/pw-browsers`, build 1194) is older than Playwright 1.64's
+  (1248). Linking it under the new names in a scratch folder and setting
+  `PLAYWRIGHT_BROWSERS_PATH` there runs every story (193 passed).
+- A full run once ended with an unhandled 57P01 ("terminating connection due to administrator
+  command") from `packages/db/src/schema.test.ts` while its database was dropped; every test
+  passed and reruns were clean (the same flake as under "On the Mac" below).
+
+## Earlier: 2026-10-15 (Mac)
 
 ### Done
 

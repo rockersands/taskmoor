@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-10-15. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
+Updated 2026-10-26. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
 
 ## Milestones
 
@@ -70,6 +70,7 @@ Updated 2026-10-15. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-004 API tokens and service accounts | Done | Prefixed, hashed, scoped, expiring tokens with rotation; service accounts; admin inventory and bulk revoke; UI and e2e |
 | M1-006 Tracks | Done | Keys with history, categories, feature toggles, shared or local mode, archive and restore |
 | M1-007 Ticket types and hierarchy levels | Done | Unlimited levels above Outcome, the subticket level, ticket types and type sets (local tracks own theirs); impact preview; property tests for cycles and parent levels; ticket mapping and rollback wait for M1-008 |
+| M1-008 Tickets | Done | Per-track numbers (1,000 parallel creates give 1..1000), key history across moves and renames, system fields, global rank (ADR-037), edit with per-field permissions and optimistic versions, move with subtickets, trash and restore; type mapping when a type leaves a track; no UI yet |
 | M1-084 Two-factor sign-in | Done | Authenticator apps, security keys, recovery codes, policy with enrolment at sign-in; UI and e2e |
 | M1-122 Skins and the soft visual language | Done | Light and dark skins in the soft pastel style, Appearance under Account saved with the account, axe on every story in both skins |
 | M1-080 OpenID Connect sign-in | Done | Providers, JIT, group sync, enforcement with break-glass accounts, Keycloak e2e; email-first sign-in with provider buttons and the Single sign-on admin page, e2e against a fake provider |

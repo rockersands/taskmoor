@@ -8,7 +8,8 @@ import { appendAudit } from './chain';
  * The domain events the audit log records (IAM-013: sign-ins, security, permission,
  * configuration, token, export and admin events). Every catalogue type is either here or in
  * NOT_AUDITED with a reason; a test fails when a new type is in neither, so each new event
- * gets a decision. Ticket activity will mostly go to NOT_AUDITED: the ticket history holds it.
+ * gets a decision. Ticket activity goes to NOT_AUDITED, the ticket history holds it, except
+ * deletion and restore.
  */
 export const AUDITED_EVENTS = [
   'setup.completed',
@@ -65,6 +66,9 @@ export const AUDITED_EVENTS = [
   'type_set.created',
   'type_set.updated',
   'type_set.deleted',
+  // Deleting outlives the ticket's own history, which the trash purge removes with it.
+  'ticket.deleted',
+  'ticket.restored',
   'audit.settings_updated',
   'token.created',
   'token.revoked',
@@ -77,7 +81,13 @@ export const AUDITED_EVENTS = [
   'service_account.reactivated',
 ] as const satisfies readonly EventType[];
 
-export const NOT_AUDITED: Partial<Record<EventType, string>> = {};
+const TICKET_ACTIVITY = 'ticket activity: the ticket history keeps it (M1-009), not the audit log';
+export const NOT_AUDITED: Partial<Record<EventType, string>> = {
+  'ticket.created': TICKET_ACTIVITY,
+  'ticket.updated': TICKET_ACTIVITY,
+  'ticket.moved': TICKET_ACTIVITY,
+  'ticket.ranked': TICKET_ACTIVITY,
+};
 
 /**
  * The first subscriber of the domain event bus (ADR-015): each audited event becomes one audit

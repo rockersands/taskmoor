@@ -628,6 +628,80 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.newTrack}/restore` }),
     },
     {
+      route: 'POST /api/v1/tickets',
+      expect: 'ticket.created',
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/tickets',
+          payload: { track: state.newTrack, summary: 'First ticket' },
+        });
+        state.ticket = res.json().ticket?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/tickets/:id',
+      expect: 'ticket.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}`,
+          payload: { summary: 'First ticket, renamed', dueDate: '2026-12-01' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/tickets/:id/rank',
+      expect: 'ticket.ranked',
+      prepare: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/tickets',
+          payload: { track: state.newTrack, summary: 'Second ticket' },
+        });
+        state.secondTicket = res.json().ticket.id;
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/tickets/${state.ticket}/rank`,
+          payload: { after: state.secondTicket },
+        }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/move',
+      expect: 'ticket.moved',
+      prepare: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'MOV', name: 'Moves', mode: 'local' },
+        });
+        state.moveTrack = res.json().track.id;
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/move`,
+          payload: { track: 'MOV' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id',
+      expect: 'ticket.deleted',
+      run: () =>
+        call(String(state.bo1b), { method: 'DELETE', url: `/api/v1/tickets/${state.ticket}` }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/restore',
+      expect: 'ticket.restored',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/restore`,
+        }),
+    },
+    {
       route: 'DELETE /api/v1/track-categories/:id',
       expect: 'track_category.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/track-categories/${state.category}` }),

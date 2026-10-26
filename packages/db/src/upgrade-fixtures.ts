@@ -257,6 +257,31 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
+  '0014_tickets': {
+    tables: {
+      ticket: "summary = 'Seed ticket' AND number = 1 AND start_date = '2026-10-01'",
+      ticket_counter: "last_number = 2 AND track_id IN (SELECT id FROM track WHERE key = 'SEED')",
+      ticket_key_history:
+        "replaced_at IS NULL AND ticket_id IN (SELECT id FROM ticket WHERE summary = 'Seed ticket')",
+      ticket_detached_parent: "ticket_id IN (SELECT id FROM ticket WHERE summary = 'Seed child')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary,
+          description, requester_id, creator_id, start_date, rank)
+        SELECT 1, t.id, n.number, ty.id, n.summary, '{"type": "doc", "content": []}', u.id, u.id,
+               '2026-10-01', n.rank
+          FROM track t, ticket_type ty, app_user u,
+               (VALUES (1, 'Seed ticket', 'a1'), (2, 'Seed child', 'a2')) AS n (number, summary, rank)
+         WHERE t.key = 'SEED' AND ty.name = 'Seed type' AND u.email = 'seed@example.com'`.execute(
+        db,
+      );
+      await sql`INSERT INTO ticket_counter (workspace_id, track_id, last_number)
+        SELECT 1, id, 2 FROM track WHERE key = 'SEED'`.execute(db);
+      await sql`INSERT INTO ticket_detached_parent (workspace_id, ticket_id, parent_id)
+        SELECT 1, c.id, p.id FROM ticket c, ticket p
+         WHERE c.summary = 'Seed child' AND p.summary = 'Seed ticket'`.execute(db);
+    },
+  },
 };
 
 /**

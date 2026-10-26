@@ -127,6 +127,50 @@ Migration 0011 adds `hierarchy_level`, `ticket_type`, `type_set`, `type_set_memb
   and the types that fell to the standard level), `ticket_type.*` and `type_set.*`, all
   audited; `track.created` names the track's type set and `track.updated` a change of it.
 
+## Implementation (M1-008: tickets)
+
+Migration 0014 adds `ticket`, `ticket_counter`, `ticket_key_history`, `ticket_detached_parent`
+and the sequence `ticket_rank_seq`; the API is `apps/server/src/routes/tickets.ts`, with the
+data access in `tickets/store.ts`, the rules in `tickets/model.ts` and the rank keys in
+`tickets/rank.ts` (ADR-037).
+
+- **A key is the track's key and a number.** `ticket_counter` holds the last number per track;
+  taking the next one locks that row until the transaction ends, so parallel creates in a
+  track get consecutive numbers and a rolled-back create gives its number to the next.
+  `ticket_key_history`, written by a trigger, keeps every track and number a ticket has had,
+  with one unique index over all of them: a number belongs to one ticket for good, and an old
+  key keeps resolving after a move (CORE-023 (3)) as old track keys do after a rename.
+- **System fields now:** track, number, type, parent, summary, description and environment
+  (ProseMirror documents checked against the shared schema, ADR-014), assignee, requester,
+  creator, start and due dates, rank, created and updated, plus `version` for optimistic
+  saves. Status, priority, close reason, labels, areas, releases and custom fields arrive with
+  their own tasks as columns or side tables (ADR-008).
+- **Level rules hold for every stored ticket, the trash included,** so a restore never brings
+  back a broken link. Writes that check levels hold the workspace's hierarchy lock shared
+  (hierarchy changes hold it exclusively) and take their locks in one order: the hierarchy,
+  the track and its type set (key share), then tickets. A type set change and a track's switch
+  of set hold their row first and rewrite tickets after, so neither deadlocks with a ticket
+  write. A subticket lives in its parent's track and moves with it.
+- **Hierarchy changes read only the tickets they can affect:** those of types whose level
+  changes, with their parents and children.
+- **A type leaving a track takes a mapping** (CORE-005 (2)): `ticketTypeMapping` on a type set
+  change or a track's switch of set names the new type for each leaving type with tickets; the
+  new type must stay offered and sit at the same level, so no link changes. Without one the
+  change answers `type_in_use`.
+- **The trash** (CORE-025 (3)): deleting keeps the row with `deleted_at`; subtickets go along
+  (`trashed_with`), other children lose the link and `ticket_detached_parent` remembers it. A
+  restore brings back the subtickets and re-attaches the children that have no other parent
+  since. A ticket whose parent is still in the trash comes back without the link, which the
+  parent's restore puts back; a subticket waits for its parent. The trash keeps tickets for
+  30 days; the setting and the purge job are M1-101.
+- **Permissions per field:** create, edit, assign, modify requester and schedule (dates and
+  rank) as in spec 05a; moving needs "Move tickets" in the source and "Create tickets" in the
+  target; deleting and restoring "Delete tickets". Ticket-level grantees (requester, assignee)
+  and visibility levels apply per ticket from M1-020.
+- **Events:** `ticket.created`, `.updated`, `.moved`, `.ranked`, `.deleted` and `.restored`;
+  deletion and restore are audited, the rest is ticket activity for the change history
+  (M1-009).
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

@@ -8,9 +8,11 @@ import {
   hierarchyTickets,
   loadHierarchy,
   lockHierarchy,
+  mapTicketTypes,
   setMembers,
   type TicketTypeRow,
   ticketsOfTypes,
+  ticketTypeMapping,
   ticketTypeQuery,
   ticketTypeView,
 } from '../tickets/configuration';
@@ -23,6 +25,7 @@ import {
   type HierarchyImpact,
   hierarchyImpact,
   type Level,
+  typeRanks,
 } from '../tickets/hierarchy';
 import { TRACK_TYPES } from '../tracks/model';
 
@@ -40,7 +43,10 @@ import { TRACK_TYPES } from '../tracks/model';
  * - Every change to the ladder, or to the level of a ticket type, takes the workspace's
  *   hierarchy lock, computes the new ladder and its impact on tickets, and is refused with
  *   that impact when it would break a parent link (CORE-007 (1);
- *   `GET /api/v1/hierarchy-levels/impact` previews it). Tickets arrive with M1-008.
+ *   `GET /api/v1/hierarchy-levels/impact` previews it). Ticket writes that check levels hold
+ *   the same lock shared (M1-008).
+ * - A type set that drops a type, or a track that switches to a set without it, maps the
+ *   type's tickets to another type at its level (`ticketTypeMapping`, CORE-005 (2)).
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -105,7 +111,10 @@ const createTypeSetBody = z
     defaultFor: typeSetFields.defaultFor.optional(),
   })
   .strict();
-const updateTypeSetBody = z.object(typeSetFields).partial().strict();
+const updateTypeSetBody = z
+  .object({ ...typeSetFields, ticketTypeMapping })
+  .partial()
+  .strict();
 
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -205,7 +214,11 @@ async function plan(db: Db, workspaceId: number, change: HierarchyChange): Promi
         return { ok: false, status: 409, error: 'level_exists' };
     }
   }
-  const tickets = await hierarchyTickets(db, workspaceId);
+  // Only tickets of types whose level changes, with their parents and children, can break.
+  const was = typeRanks(hierarchy);
+  const now = typeRanks(result.hierarchy);
+  const moved = [...was].filter(([typeId, rank]) => now.get(typeId) !== rank).map(([id]) => id);
+  const tickets = await hierarchyTickets(db, workspaceId, moved);
   return {
     ok: true,
     before: hierarchy,
@@ -932,6 +945,7 @@ export function registerTicketTypeRoutes(app: FastifyInstance, db: Kysely<Databa
     }
     try {
       const result = await db.transaction().execute(async (trx) => {
+        let mapped: { fromTypeId: number; toTypeId: number; ticketCount: number }[] = [];
         const locked = await trx
           .selectFrom('type_set')
           .select(['name', 'description', 'default_type_id', 'owner_track_id'])
@@ -970,27 +984,24 @@ export function registerTicketTypeRoutes(app: FastifyInstance, db: Kysely<Databa
             return { invalid: 'ticketTypeIds' };
           }
           const removed = before.ticketTypeIds.filter((t) => !typeIds.includes(t));
-          if (removed.length > 0) {
-            const tracks = await trx
-              .selectFrom('track')
-              .select('id')
-              .where('type_set_id', '=', setId)
-              .execute();
-            const tickets =
-              tracks.length === 0
-                ? 0
-                : await ticketsOfTypes(
-                    trx,
-                    ws,
-                    removed,
-                    tracks.map((t) => t.id),
-                  );
-            if (tickets > 0) {
-              return {
-                conflict: { error: 'type_in_use', ticketTypeIds: removed, ticketCount: tickets },
-              };
-            }
-          }
+          const tracks = await trx
+            .selectFrom('track')
+            .select('id')
+            .where('type_set_id', '=', setId)
+            .execute();
+          // Tickets of a dropped type take the type the mapping names, or the change waits.
+          const result = await mapTicketTypes(
+            trx,
+            ws,
+            tracks.map((t) => t.id),
+            removed,
+            typeIds,
+            body.ticketTypeMapping,
+          );
+          if (!result.ok) return { refused: result };
+          mapped = result.mapped;
+        } else if (body.ticketTypeMapping !== undefined) {
+          return { invalid: 'ticketTypeMapping' };
         }
         const changes = diff<Record<string, unknown>>(before, {
           name: body.name,
@@ -1022,7 +1033,7 @@ export function registerTicketTypeRoutes(app: FastifyInstance, db: Kysely<Databa
           await emit(trx, by(request), {
             type: 'type_set.updated',
             subjectId: setId,
-            payload: { changes },
+            payload: { changes, ...(mapped.length > 0 ? { mapped } : {}) },
           });
         }
         return { view: await typeSetView(trx, ws, setId) };
@@ -1030,6 +1041,9 @@ export function registerTicketTypeRoutes(app: FastifyInstance, db: Kysely<Databa
       if ('missing' in result) return notFound(reply);
       if ('invalid' in result) return invalid(reply, result.invalid);
       if ('conflict' in result) return reply.code(409).send(result.conflict);
+      if ('refused' in result) {
+        return reply.code(result.refused.status).send(result.refused.body);
+      }
       if (!result.view) return notFound(reply);
       return { typeSet: result.view };
     } catch (error) {

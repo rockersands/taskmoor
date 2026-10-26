@@ -164,16 +164,21 @@ describe('admin token inventory', () => {
     const user = userEvent.setup();
     const { calls, region } = await openPage();
     const bulk = region('Revoke in bulk');
+    // The fixture tokens were created 20 days ago, so a day 10 days back matches them.
+    const before = new Date(Date.now() - 10 * 86_400_000);
+    const day = [
+      before.getFullYear(),
+      String(before.getMonth() + 1).padStart(2, '0'),
+      String(before.getDate()).padStart(2, '0'),
+    ].join('-');
     await user.click(bulk.getByRole('radio', { name: 'Tokens created before a day' }));
-    await user.type(bulk.getByLabelText('Created before'), '2026-10-01');
+    await user.type(bulk.getByLabelText('Created before'), day);
     await user.click(bulk.getByRole('button', { name: 'Revoke tokens' }));
     await bulk.findByRole('button', { name: 'Confirm revocation' });
     const preview = calls.filter((c) => c.method === 'POST').at(-1)?.body as {
       createdBefore: string;
     };
-    expect(new Date(preview.createdBefore).getTime()).toBe(
-      new Date('2026-10-01T00:00:00').getTime(),
-    );
+    expect(new Date(preview.createdBefore).getTime()).toBe(new Date(`${day}T00:00:00`).getTime());
     await user.click(bulk.getByRole('button', { name: 'Cancel' }));
     expect(bulk.queryByRole('button', { name: 'Confirm revocation' })).toBeNull();
 

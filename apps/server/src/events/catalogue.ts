@@ -12,6 +12,12 @@ const id = z.number().int().positive();
 const changes = z.record(z.string(), z.object({ from: z.unknown(), to: z.unknown() }));
 /** Hierarchy levels a change renumbered, with their rank before and after. */
 const shifted = z.array(z.object({ levelId: id, from: z.number().int(), to: z.number().int() }));
+/** Tickets that took another type because theirs left a track (CORE-005 (2)). */
+const typeMapping = z.array(
+  z.object({ fromTypeId: id, toTypeId: id, ticketCount: z.number().int().min(1) }),
+);
+/** Where a ticket sits: its key, track and type. */
+const placement = z.object({ key: z.string(), trackId: id, ticketTypeId: id });
 
 export const EVENT_TYPES = {
   // Instance and sessions
@@ -180,8 +186,14 @@ export const EVENT_TYPES = {
       typeSetId: id,
     }),
   },
-  /** Field changes; a key change is `changes.key` (the old key keeps resolving). */
-  'track.updated': { subject: 'track', payload: z.object({ changes }) },
+  /**
+   * Field changes; a key change is `changes.key` (the old key keeps resolving). A new type set
+   * lists in `mapped` the tickets that took another type because theirs left the track.
+   */
+  'track.updated': {
+    subject: 'track',
+    payload: z.object({ changes, mapped: typeMapping.optional() }),
+  },
   'track.archived': { subject: 'track', payload: z.object({ key: z.string() }) },
   'track.restored': { subject: 'track', payload: z.object({ key: z.string() }) },
   'track_category.created': { subject: 'track_category', payload: z.object({ name: z.string() }) },
@@ -236,9 +248,64 @@ export const EVENT_TYPES = {
       defaultFor: z.array(z.enum(['software', 'business', 'service', 'discovery'])),
     }),
   },
-  /** Field changes: name, description, `ticketTypeIds` (in order), defaultTypeId, defaultFor. */
-  'type_set.updated': { subject: 'type_set', payload: z.object({ changes }) },
+  /**
+   * Field changes: name, description, `ticketTypeIds` (in order), defaultTypeId, defaultFor.
+   * `mapped` lists the tickets that took another type because theirs left the set.
+   */
+  'type_set.updated': {
+    subject: 'type_set',
+    payload: z.object({ changes, mapped: typeMapping.optional() }),
+  },
   'type_set.deleted': { subject: 'type_set', payload: z.object({ name: z.string() }) },
+
+  // Tickets (M1-008). The change history (M1-009) keeps the field-by-field detail.
+  'ticket.created': {
+    subject: 'ticket',
+    payload: z.object({
+      key: z.string(),
+      trackId: id,
+      ticketTypeId: id,
+      parentId: id.nullable(),
+    }),
+  },
+  /** Fields as the API names them; rich text changes carry both documents. */
+  'ticket.updated': { subject: 'ticket', payload: z.object({ key: z.string(), changes }) },
+  /** To another track: a new key there; the old key keeps resolving. Subtickets come along. */
+  'ticket.moved': {
+    subject: 'ticket',
+    payload: z.object({
+      from: placement,
+      to: placement,
+      parentId: id.nullable(),
+      subtickets: z.array(z.object({ id, from: z.string(), to: z.string(), ticketTypeId: id })),
+    }),
+  },
+  'ticket.ranked': {
+    subject: 'ticket',
+    payload: z.object({ key: z.string(), from: z.string(), to: z.string() }),
+  },
+  /** To the trash, with its subtickets; children above that level lose the link to it. */
+  'ticket.deleted': {
+    subject: 'ticket',
+    payload: z.object({
+      key: z.string(),
+      subtickets: z.array(id),
+      detachedChildren: z.array(id),
+    }),
+  },
+  /**
+   * Out of the trash, with the subtickets that went with it and the children that lost their
+   * link; `detachedFrom` is a parent still in the trash, whose link waits for its restore.
+   */
+  'ticket.restored': {
+    subject: 'ticket',
+    payload: z.object({
+      key: z.string(),
+      subtickets: z.array(id),
+      reattachedChildren: z.array(id),
+      detachedFrom: id.nullable(),
+    }),
+  },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   // API tokens and service accounts (IAM-007). Never the token or its hash.

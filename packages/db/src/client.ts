@@ -30,6 +30,10 @@ export interface PoolStats {
 
 const pools = new WeakMap<Kysely<Database>, pg.Pool>();
 
+// A date column (a ticket's start and due dates) reads as its `YYYY-MM-DD` text. The driver's
+// default makes a Date at local midnight, which shifts the day in every time zone west of UTC.
+pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
+
 /** Creates a pooled Kysely client. Call `db.destroy()` to close the pool. */
 export function createDb(options: DbOptions): Kysely<Database> {
   const max = options.maxConnections ?? 10;

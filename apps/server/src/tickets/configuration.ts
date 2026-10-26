@@ -1,5 +1,6 @@
 import type { Database, TrackType } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { z } from 'zod';
 import type { Hierarchy, Level, TicketNode } from './hierarchy';
 
 /**
@@ -16,6 +17,15 @@ type Db = Kysely<Database> | Transaction<Database>;
  */
 export async function lockHierarchy(trx: Transaction<Database>, workspaceId: number) {
   await sql`SELECT pg_advisory_xact_lock(${workspaceId}, 2)`.execute(trx);
+}
+
+/**
+ * The same lock, shared: ticket writes that check levels (a new ticket, a new type or parent, a
+ * move, a restore) hold it until they commit, so the ladder they checked against cannot change
+ * under them. Shared holders never wait for each other.
+ */
+export async function shareHierarchy(trx: Transaction<Database>, workspaceId: number) {
+  await sql`SELECT pg_advisory_xact_lock_shared(${workspaceId}, 2)`.execute(trx);
 }
 
 /** The levels (top first) and the level of every ticket type, local ones included. */
@@ -42,28 +52,169 @@ export async function loadHierarchy(db: Db, workspaceId: number) {
 }
 
 /**
- * The tickets a hierarchy change is checked against: id, type and parent. There are no
- * tickets before M1-008, which reads them here from the ticket table.
+ * The tickets a hierarchy change is checked against: id, type and parent of every ticket of
+ * the types whose level changes, with their parents and children. A link between two tickets
+ * whose levels both stay cannot break, so nothing else needs reading. Tickets in the trash
+ * count: they keep their links, so a restore never brings back a broken one.
  */
 export async function hierarchyTickets(
-  _db: Db,
-  _workspaceId: number,
+  db: Db,
+  workspaceId: number,
+  typeIds: readonly number[],
 ): Promise<Map<number, TicketNode>> {
-  return new Map();
+  const out = new Map<number, TicketNode>();
+  if (typeIds.length === 0) return out;
+  const { rows } = await sql<{ id: number; ticket_type_id: number; parent_id: number | null }>`
+    WITH changed AS (
+      SELECT id, ticket_type_id, parent_id FROM ticket
+       WHERE workspace_id = ${workspaceId} AND ticket_type_id = ANY(${[...typeIds]}::int[]))
+    SELECT id, ticket_type_id, parent_id FROM changed
+    UNION
+    SELECT p.id, p.ticket_type_id, p.parent_id FROM ticket p JOIN changed c ON p.id = c.parent_id
+    UNION
+    SELECT k.id, k.ticket_type_id, k.parent_id FROM ticket k JOIN changed c ON k.parent_id = c.id`.execute(
+    db,
+  );
+  for (const r of rows) {
+    out.set(r.id, { id: r.id, typeId: r.ticket_type_id, parentId: r.parent_id });
+  }
+  return out;
 }
 
 /**
- * How many tickets of these types sit in these tracks (all tracks when `trackIds` is null):
- * a type with tickets cannot leave a set or be deleted until they are mapped to another type
- * (CORE-005 (2)). Zero until M1-008 adds tickets and counts them here.
+ * How many tickets of these types sit in these tracks (all tracks when `trackIds` is null),
+ * the trash included: a type with tickets cannot leave a set or be deleted until they are
+ * mapped to another type (CORE-005 (2)).
  */
 export async function ticketsOfTypes(
-  _db: Db,
-  _workspaceId: number,
-  _typeIds: readonly number[],
-  _trackIds: readonly number[] | null,
+  db: Db,
+  workspaceId: number,
+  typeIds: readonly number[],
+  trackIds: readonly number[] | null,
 ): Promise<number> {
-  return 0;
+  if (typeIds.length === 0 || trackIds?.length === 0) return 0;
+  let query = db
+    .selectFrom('ticket')
+    .select((eb) => eb.fn.countAll<string>().as('n'))
+    .where('workspace_id', '=', workspaceId)
+    .where('ticket_type_id', 'in', [...typeIds]);
+  if (trackIds !== null) query = query.where('track_id', 'in', [...trackIds]);
+  const row = await query.executeTakeFirstOrThrow();
+  return Number(row.n);
+}
+
+/**
+ * A ticket type mapping as the API takes it: the new type of each type that leaves a track,
+ * keyed by the leaving type's id (CORE-005 (2)).
+ */
+export const ticketTypeMapping = z
+  .record(z.string().regex(/^[1-9][0-9]{0,9}$/), z.number().int().positive().max(2_147_483_647))
+  .refine((m) => Object.keys(m).length <= 1000, 'at most 1,000 entries');
+
+export type TypeMappingResult =
+  | { ok: true; mapped: { fromTypeId: number; toTypeId: number; ticketCount: number }[] }
+  | {
+      ok: false;
+      status: 409;
+      body: { error: 'type_in_use'; ticketTypeIds: number[]; ticketCount: number };
+    }
+  | {
+      ok: false;
+      status: 400;
+      body: {
+        error: 'invalid_mapping';
+        fromTypeId: number;
+        toTypeId: number | null;
+        problem: string;
+      };
+    };
+
+/**
+ * Types leave tracks (a type set drops them, or a track switches sets): their tickets in those
+ * tracks, the trash included, take the types `mapping` names (CORE-005 (2)). A target must stay
+ * in the tracks' types and sit at the level of the type it replaces, so no parent link changes.
+ * A removed type with tickets and no mapping answers `type_in_use`. The caller holds the type
+ * set or the track, so no new ticket of a removed type arrives meanwhile.
+ */
+export async function mapTicketTypes(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  trackIds: readonly number[],
+  removed: readonly number[],
+  kept: readonly number[],
+  mapping: Readonly<Record<string, number>> | undefined,
+): Promise<TypeMappingResult> {
+  for (const [from, to] of Object.entries(mapping ?? {})) {
+    if (!removed.includes(Number(from))) {
+      return {
+        ok: false,
+        status: 400,
+        body: {
+          error: 'invalid_mapping',
+          fromTypeId: Number(from),
+          toTypeId: to,
+          problem: 'not_removed',
+        },
+      };
+    }
+  }
+  if (removed.length === 0 || trackIds.length === 0) return { ok: true, mapped: [] };
+  const counts = await trx
+    .selectFrom('ticket')
+    .select(['ticket_type_id', (eb) => eb.fn.countAll<string>().as('n')])
+    .where('workspace_id', '=', workspaceId)
+    .where('track_id', 'in', [...trackIds])
+    .where('ticket_type_id', 'in', [...removed])
+    .groupBy('ticket_type_id')
+    .orderBy('ticket_type_id')
+    .execute();
+  const unmapped = counts.filter((c) => mapping?.[String(c.ticket_type_id)] === undefined);
+  if (unmapped.length > 0) {
+    return {
+      ok: false,
+      status: 409,
+      body: {
+        error: 'type_in_use',
+        ticketTypeIds: unmapped.map((c) => c.ticket_type_id),
+        ticketCount: unmapped.reduce((n, c) => n + Number(c.n), 0),
+      },
+    };
+  }
+  const levels = new Map(
+    (
+      await trx
+        .selectFrom('ticket_type')
+        .select(['id', 'level_id'])
+        .where('workspace_id', '=', workspaceId)
+        .where('id', 'in', [...new Set([...removed, ...kept])])
+        .execute()
+    ).map((t) => [t.id, t.level_id]),
+  );
+  const mapped: { fromTypeId: number; toTypeId: number; ticketCount: number }[] = [];
+  for (const { ticket_type_id: from, n } of counts) {
+    const to = mapping?.[String(from)] as number;
+    const problem = !kept.includes(to)
+      ? 'not_kept'
+      : levels.get(to) !== levels.get(from)
+        ? 'other_level'
+        : null;
+    if (problem) {
+      return {
+        ok: false,
+        status: 400,
+        body: { error: 'invalid_mapping', fromTypeId: from, toTypeId: to, problem },
+      };
+    }
+    await trx
+      .updateTable('ticket')
+      .set((eb) => ({ ticket_type_id: to, version: eb('version', '+', 1), updated_at: new Date() }))
+      .where('workspace_id', '=', workspaceId)
+      .where('track_id', 'in', [...trackIds])
+      .where('ticket_type_id', '=', from)
+      .execute();
+    mapped.push({ fromTypeId: from, toTypeId: to, ticketCount: Number(n) });
+  }
+  return { ok: true, mapped };
 }
 
 /** Ticket types with the level they sit at, as the API shows them. */
