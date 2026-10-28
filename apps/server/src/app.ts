@@ -21,6 +21,7 @@ import { registerLinkRoutes } from './routes/links';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerReleaseRoutes } from './routes/releases';
+import { registerSamlRoutes } from './routes/saml';
 import { registerScimRoutes } from './routes/scim';
 import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
@@ -158,6 +159,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerSsoRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
       peppers: deps.peppers,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+    });
+    await registerSamlRoutes(app, db, {
+      secureCookies: cookieOptions.secureCookies,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     });
     registerTrackRoutes(app, db);

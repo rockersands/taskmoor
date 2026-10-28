@@ -1,10 +1,10 @@
 import type { Database } from '@taskmoor/db';
 import { newToken, openSecret, type PepperRing, sealSecret, tokenHash } from '@taskmoor/iam';
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { type Kysely, sql } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { recordSsoRefusal } from '../audit/record';
-import { requireSiteAdmin, startSession } from '../auth';
+import { requireSiteAdmin } from '../auth';
 import { diff, emit } from '../events/bus';
 import {
   emailDomain,
@@ -16,8 +16,10 @@ import {
   providerForDomain,
   safeReturnTo,
   startAuthorization,
-  syncGroups,
 } from '../sso/oidc';
+import { MetadataError, parseIdpMetadata, readCertificates } from '../sso/saml';
+import { certificateView, samlEndpoints } from '../sso/saml-provider';
+import { completeSsoSignIn } from '../sso/sign-in';
 
 const LOGIN_COOKIE = 'taskmoor_oidc';
 const LOGIN_TTL_MS = 10 * 60 * 1000;
@@ -36,58 +38,143 @@ const domainList = z
 const groupMap = z
   .array(z.object({ claimValue: z.string().trim().min(1).max(500), groupId: id }))
   .max(1000);
-// Edits name only what changes, so the edit schema has no defaults (zod applies a default
+/** What both protocols share: the name, the domains and policy, and the group mapping. */
+const commonFields = {
+  name: z.string().trim().min(1).max(100),
+  groupClaim: z.string().trim().min(1).max(100).nullable(),
+  domains: domainList,
+  enforceSso: z.boolean(),
+  jit: z.boolean(),
+  enabled: z.boolean(),
+  groupMap,
+};
+const commonDefaults = {
+  domains: domainList.default([]),
+  enforceSso: z.boolean().default(false),
+  jit: z.boolean().default(true),
+  enabled: z.boolean().default(true),
+  groupMap: groupMap.default([]),
+};
+// Edits name only what changes, so the edit schemas have no defaults (zod applies a default
 // even under .partial(), which would reset untouched fields).
-const providerEdit = z
+const oidcEdit = z
   .object({
-    name: z.string().trim().min(1).max(100),
+    ...commonFields,
     issuer: z.string().trim().url().max(500),
     clientId: z.string().trim().min(1).max(500),
     clientSecret: z.string().min(1).max(2000).nullable(),
     scopes: z.string().trim().min(6).max(500),
-    groupClaim: z.string().trim().min(1).max(100).nullable(),
-    domains: domainList,
-    enforceSso: z.boolean(),
-    jit: z.boolean(),
-    enabled: z.boolean(),
-    groupMap,
   })
   .partial()
   .strict();
-const providerBody = providerEdit
+const oidcBody = oidcEdit
   .required({ name: true, issuer: true, clientId: true })
+  .extend({ protocol: z.literal('oidc').optional(), ...commonDefaults })
+  .strict();
+/** An entity ID: a URI, usually a URL, never with white space or control characters. */
+const entityId = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: refusing control characters
+  .regex(/^[^\s\u0000-\u001f\u007f]+$/);
+const samlEdit = z
+  .object({
+    ...commonFields,
+    entityId,
+    ssoUrl: z.string().trim().url().max(2000),
+    certificates: z.array(z.string().min(1).max(20_000)).min(1).max(10),
+    // Fills entityId, ssoUrl and certificates where those are not given.
+    metadataXml: z.string().min(1).max(1_000_000),
+    spEntityId: entityId.nullable(),
+    emailAttribute: z.string().trim().min(1).max(500).nullable(),
+    idpInitiated: z.boolean(),
+  })
+  .partial()
+  .strict();
+const samlBody = samlEdit
+  .required({ name: true })
   .extend({
-    domains: domainList.default([]),
-    enforceSso: z.boolean().default(false),
-    jit: z.boolean().default(true),
-    enabled: z.boolean().default(true),
-    groupMap: groupMap.default([]),
+    protocol: z.literal('saml'),
+    ...commonDefaults,
+    idpInitiated: z.boolean().default(false),
   })
   .strict();
 
-function view(p: Provider, groupMap: { claimValue: string; groupId: number }[]) {
-  return {
-    id: p.id,
-    name: p.name,
-    issuer: p.issuer,
-    clientId: p.client_id,
-    hasClientSecret: p.client_secret_sealed !== null,
-    scopes: p.scopes,
-    groupClaim: p.group_claim,
-    domains: p.domains,
-    enforceSso: p.enforce_sso,
-    jit: p.jit,
-    enabled: p.enabled,
-    groupMap,
-  };
+type GroupMap = { claimValue: string; groupId: number }[];
+
+/** A refusal of an administrator's provider settings, with its code for the form. */
+class ProviderProblem extends Error {
+  constructor(
+    readonly code: string,
+    readonly detail: string,
+  ) {
+    super(detail);
+  }
 }
 
 /**
- * Single sign-on through OpenID Connect (M1-080; IAM-003, IAM-004). The sign-in page offers
- * the providers; a sign-in starts at /auth/oidc/:id/start and returns to /auth/oidc/callback,
- * bound to the browser that started it (a cookie), so nobody can complete someone else's
- * sign-in. Accounts are linked by the provider's subject; a first sign-in links a verified
- * email of a domain the provider serves, or creates the account when the provider allows it.
+ * A SAML provider's identity provider settings from what an administrator sent: explicit
+ * fields win over the metadata, which fills the rest.
+ */
+function samlSettings(body: z.infer<typeof samlEdit>): {
+  entityId?: string;
+  ssoUrl?: string;
+  certificates?: string[];
+} {
+  let metadata: ReturnType<typeof parseIdpMetadata> | undefined;
+  if (body.metadataXml !== undefined) {
+    try {
+      metadata = parseIdpMetadata(body.metadataXml);
+    } catch (error) {
+      if (error instanceof MetadataError) {
+        throw new ProviderProblem('invalid_metadata', error.message);
+      }
+      throw error;
+    }
+  }
+  let certificates = metadata?.certificates;
+  if (body.certificates !== undefined) {
+    try {
+      certificates = readCertificates(body.certificates);
+    } catch {
+      throw new ProviderProblem('invalid_certificate', 'A certificate cannot be read');
+    }
+  }
+  const ssoUrl = body.ssoUrl ?? metadata?.ssoUrl;
+  if (ssoUrl !== undefined) {
+    let url: URL;
+    try {
+      url = new URL(ssoUrl);
+    } catch {
+      throw new ProviderProblem('invalid_metadata', 'The sign-in address is not a URL');
+    }
+    if (!insecureIssuerAllowed(url)) {
+      throw new ProviderProblem('insecure_sso_url', 'The sign-in address must use HTTPS');
+    }
+  }
+  const entity = body.entityId ?? metadata?.entityId;
+  return {
+    ...(entity !== undefined ? { entityId: entity } : {}),
+    ...(ssoUrl !== undefined ? { ssoUrl } : {}),
+    ...(certificates !== undefined ? { certificates } : {}),
+  };
+}
+
+/** SHA-256 fingerprints, which the audit log records for certificate changes. */
+function fingerprints(pems: readonly string[]): (string | null)[] {
+  return pems.map((pem) => certificateView(pem).fingerprint);
+}
+
+/**
+ * Single sign-on through OpenID Connect (M1-080; IAM-003, IAM-004) and the identity provider
+ * administration for both protocols (SAML: M1-081, IAM-002; its sign-in routes are in
+ * `saml.ts`). The sign-in page offers the providers; an OpenID Connect sign-in starts at
+ * /auth/oidc/:id/start and returns to /auth/oidc/callback, bound to the browser that started
+ * it (a cookie), so nobody can complete someone else's sign-in. Accounts are linked by the
+ * provider's subject; a first sign-in links a verified email of a domain the provider serves,
+ * or creates the account when the provider allows it (`completeSsoSignIn`).
  */
 export function registerSsoRoutes(
   app: FastifyInstance,
@@ -96,6 +183,40 @@ export function registerSsoRoutes(
 ): void {
   const base = options.publicUrl.replace(/\/+$/, '');
   const redirectUri = `${base}/api/v1/auth/oidc/callback`;
+
+  function view(p: Provider, map: GroupMap) {
+    const common = {
+      id: p.id,
+      name: p.name,
+      protocol: p.kind,
+      groupClaim: p.group_claim,
+      domains: p.domains,
+      enforceSso: p.enforce_sso,
+      jit: p.jit,
+      enabled: p.enabled,
+      groupMap: map,
+    };
+    if (p.kind === 'saml') {
+      return {
+        ...common,
+        entityId: p.issuer,
+        ssoUrl: p.saml_sso_url,
+        certificates: p.saml_certificates.map(certificateView),
+        spEntityId: p.saml_sp_entity_id,
+        emailAttribute: p.saml_email_attribute,
+        idpInitiated: p.saml_idp_initiated,
+        // What to register at this provider.
+        serviceProvider: samlEndpoints(base, p),
+      };
+    }
+    return {
+      ...common,
+      issuer: p.issuer,
+      clientId: p.client_id,
+      hasClientSecret: p.client_secret_sealed !== null,
+      scopes: p.scopes,
+    };
+  }
 
   async function loadProvider(workspaceId: number, providerId: number) {
     return (await db
@@ -125,12 +246,12 @@ export function registerSsoRoutes(
   app.get('/api/v1/auth/providers', async (request) => {
     const rows = await db
       .selectFrom('identity_provider')
-      .select(['id', 'name'])
+      .select(['id', 'name', 'kind'])
       .where('workspace_id', '=', request.workspaceId)
       .where('enabled', '=', true)
       .orderBy(sql`lower(name)`)
       .execute();
-    return { providers: rows };
+    return { providers: rows.map((r) => ({ id: r.id, name: r.name, protocol: r.kind })) };
   });
 
   // Which sign-in methods an email's domain uses; decided by the domain alone, never by
@@ -146,7 +267,7 @@ export function registerSsoRoutes(
       emailDomain(parsed.data.email),
     );
     return {
-      provider: provider ? { id: provider.id, name: provider.name } : null,
+      provider: provider ? { id: provider.id, name: provider.name, protocol: provider.kind } : null,
       password: !provider?.enforce_sso,
     };
   });
@@ -157,7 +278,7 @@ export function registerSsoRoutes(
     if (!params.success || !query.success)
       return reply.code(400).send({ error: 'invalid_request' });
     const provider = await loadProvider(request.workspaceId, params.data.id);
-    if (!provider?.enabled) return fail(reply, 'provider_unavailable');
+    if (!provider?.enabled || provider.kind !== 'oidc') return fail(reply, 'provider_unavailable');
     let start: Awaited<ReturnType<typeof startAuthorization>>;
     try {
       start = await startAuthorization(
@@ -218,7 +339,9 @@ export function registerSsoRoutes(
     if (query.error) return fail(reply, 'provider_error');
     const provider = await loadProvider(request.workspaceId, login.provider_id);
     const verifier = openSecret(login.code_verifier_sealed, options.peppers);
-    if (!provider?.enabled || !verifier) return fail(reply, 'provider_unavailable');
+    if (!provider?.enabled || provider.kind !== 'oidc' || !verifier) {
+      return fail(reply, 'provider_unavailable');
+    }
 
     let identity: Awaited<ReturnType<typeof finishAuthorization>>;
     try {
@@ -234,107 +357,20 @@ export function registerSsoRoutes(
     }
     if (!identity.subject) return fail(reply, 'provider_error');
 
-    const ws = request.workspaceId;
-    const outcome = await db.transaction().execute(async (trx) => {
-      const linked = await trx
-        .selectFrom('user_identity as i')
-        .innerJoin('app_user as u', 'u.id', 'i.user_id')
-        .select(['u.id', 'u.deactivated_at', 'u.kind'])
-        .where('i.provider_id', '=', provider.id)
-        .where('i.subject', '=', identity.subject)
-        .executeTakeFirst();
-      let userId = linked?.id;
-      let created = false;
-      // Service accounts never sign in, through a provider or otherwise (IAM-007).
-      if (linked?.kind === 'service') return { error: 'no_account' as const };
-      if (linked?.deactivated_at)
-        return { error: 'account_deactivated' as const, userId: linked.id };
-      if (!userId) {
-        // A first sign-in: only a verified email of a domain this provider serves may be linked
-        // to an account or create one, so a provider cannot claim someone else's address.
-        if (!identity.email || !identity.emailVerified)
-          return { error: 'email_unverified' as const };
-        if (!provider.domains.includes(emailDomain(identity.email))) {
-          return { error: 'domain_not_allowed' as const };
-        }
-        const existing = await trx
-          .selectFrom('app_user')
-          .select(['id', 'deactivated_at', 'kind'])
-          .where('workspace_id', '=', ws)
-          .where(sql<string>`lower(email)`, '=', identity.email)
-          .executeTakeFirst();
-        if (existing?.kind === 'service') return { error: 'no_account' as const };
-        if (existing?.deactivated_at) {
-          return { error: 'account_deactivated' as const, userId: existing.id };
-        }
-        if (existing) {
-          userId = existing.id;
-        } else {
-          if (!provider.jit) return { error: 'no_account' as const };
-          const row = await trx
-            .insertInto('app_user')
-            .values({
-              workspace_id: ws,
-              email: identity.email,
-              name: identity.name ?? identity.email,
-              password_hash: null,
-            })
-            .returning('id')
-            .executeTakeFirstOrThrow();
-          userId = row.id;
-          created = true;
-        }
-        await trx
-          .insertInto('user_identity')
-          .values({
-            workspace_id: ws,
-            provider_id: provider.id,
-            subject: identity.subject,
-            user_id: userId,
-            email: identity.email,
-          })
-          .execute();
-      }
-      const groups = await syncGroups(trx, ws, provider.id, userId, identity.groups);
-      const now = new Date();
-      await trx
-        .updateTable('user_identity')
-        .set({ last_sign_in_at: now, ...(identity.email ? { email: identity.email } : {}) })
-        .where('provider_id', '=', provider.id)
-        .where('subject', '=', identity.subject)
-        .execute();
-      await trx
-        .updateTable('app_user')
-        .set({ last_sign_in_at: now })
-        .where('id', '=', userId)
-        .execute();
-      const sessionId = await startSession(trx, request, reply, {
-        userId,
-        secure: options.secureCookies,
-      });
-      await emit(
-        trx,
-        { workspaceId: ws, actorId: userId },
-        {
-          type: 'sso.signed_in',
-          subjectId: userId,
-          payload: {
-            providerId: provider.id,
-            sessionId,
-            userCreated: created,
-            groupsAdded: groups.added,
-            groupsRemoved: groups.removed,
-          },
-        },
-      );
-      return { error: null };
-    });
+    const outcome = await completeSsoSignIn(
+      db,
+      request,
+      reply,
+      { id: provider.id, protocol: 'oidc', domains: provider.domains, jit: provider.jit },
+      identity,
+      { secureCookies: options.secureCookies },
+    );
     if (outcome.error) {
       await recordSsoRefusal(db, {
-        workspaceId: ws,
+        workspaceId: request.workspaceId,
         ip: request.ip,
         providerId: provider.id,
-        userId: 'userId' in outcome ? (outcome.userId ?? null) : null,
+        userId: outcome.userId ?? null,
         email: identity.email,
         reason: outcome.error,
       });
@@ -374,6 +410,27 @@ export function registerSsoRoutes(
     return insecureIssuerAllowed(new URL(issuer)) ? null : 'The issuer must use HTTPS';
   }
 
+  async function writeGroupMap(
+    trx: Transaction<Database>,
+    workspaceId: number,
+    providerId: number,
+    map: GroupMap,
+  ) {
+    if (map.length === 0) return;
+    await trx
+      .insertInto('identity_provider_group')
+      .values(
+        map.map((m) => ({
+          workspace_id: workspaceId,
+          provider_id: providerId,
+          claim_value: m.claimValue,
+          group_id: m.groupId,
+        })),
+      )
+      .onConflict((oc) => oc.doNothing())
+      .execute();
+  }
+
   app.get('/api/v1/identity-providers', async (request, reply) => {
     if (!(await requireSiteAdmin(request, reply))) return reply;
     const rows = (await db
@@ -384,8 +441,9 @@ export function registerSsoRoutes(
       .execute()) as Provider[];
     return {
       providers: await Promise.all(rows.map(async (p) => view(p, await groupMapOf(p.id)))),
-      // The address to register at every provider, from the public URL: the browser's own
-      // origin can differ (a proxy, an internal host name) and would register the wrong one.
+      // The address to register at every OpenID Connect provider, from the public URL: the
+      // browser's own origin can differ (a proxy, an internal host name) and would register
+      // the wrong one. SAML providers carry their own addresses (`serviceProvider`).
       redirectUri,
     };
   });
@@ -393,15 +451,70 @@ export function registerSsoRoutes(
   app.post('/api/v1/identity-providers', async (request, reply) => {
     const admin = await requireSiteAdmin(request, reply);
     if (!admin) return reply;
-    const parsed = providerBody.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const body = parsed.data;
     const ws = request.workspaceId;
-    const problem = issuerProblem(body.issuer);
-    if (problem) return reply.code(400).send({ error: 'insecure_issuer', detail: problem });
-    if (!(await checkGroups(ws, body.groupMap)))
+    const isSaml = (request.body as { protocol?: unknown } | null)?.protocol === 'saml';
+    let common: z.infer<typeof oidcBody> | z.infer<typeof samlBody>;
+    let columns: {
+      kind: 'oidc' | 'saml';
+      issuer: string;
+      client_id: string | null;
+      client_secret_sealed?: string | null;
+      scopes?: string;
+      saml_sso_url?: string;
+      saml_certificates?: string[];
+      saml_sp_entity_id?: string | null;
+      saml_email_attribute?: string | null;
+      saml_idp_initiated?: boolean;
+    };
+    if (isSaml) {
+      const parsed = samlBody.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+      const body = parsed.data;
+      let settings: ReturnType<typeof samlSettings>;
+      try {
+        settings = samlSettings(body);
+      } catch (error) {
+        if (!(error instanceof ProviderProblem)) throw error;
+        return reply.code(400).send({ error: error.code, detail: error.detail });
+      }
+      if (!settings.entityId || !settings.ssoUrl || !settings.certificates?.length) {
+        return reply.code(400).send({
+          error: 'invalid_request',
+          detail:
+            'A SAML provider needs metadata, or an entity ID, sign-in address and certificate',
+        });
+      }
+      common = body;
+      columns = {
+        kind: 'saml',
+        issuer: settings.entityId,
+        client_id: null,
+        saml_sso_url: settings.ssoUrl,
+        saml_certificates: settings.certificates,
+        saml_sp_entity_id: body.spEntityId ?? null,
+        saml_email_attribute: body.emailAttribute ?? null,
+        saml_idp_initiated: body.idpInitiated,
+      };
+    } else {
+      const parsed = oidcBody.safeParse(request.body);
+      if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+      const body = parsed.data;
+      const problem = issuerProblem(body.issuer);
+      if (problem) return reply.code(400).send({ error: 'insecure_issuer', detail: problem });
+      common = body;
+      columns = {
+        kind: 'oidc',
+        issuer: body.issuer,
+        client_id: body.clientId,
+        client_secret_sealed: body.clientSecret
+          ? sealSecret(body.clientSecret, options.peppers?.active)
+          : null,
+        ...(body.scopes ? { scopes: body.scopes } : {}),
+      };
+    }
+    if (!(await checkGroups(ws, common.groupMap)))
       return reply.code(404).send({ error: 'not_found' });
-    const taken = body.enabled ? await domainsTaken(ws, body.domains) : [];
+    const taken = common.enabled ? await domainsTaken(ws, common.domains) : [];
     if (taken.length > 0) return reply.code(409).send({ error: 'domain_taken', domains: taken });
     try {
       const provider = await db.transaction().execute(async (trx) => {
@@ -409,35 +522,17 @@ export function registerSsoRoutes(
           .insertInto('identity_provider')
           .values({
             workspace_id: ws,
-            name: body.name,
-            issuer: body.issuer,
-            client_id: body.clientId,
-            client_secret_sealed: body.clientSecret
-              ? sealSecret(body.clientSecret, options.peppers?.active)
-              : null,
-            ...(body.scopes ? { scopes: body.scopes } : {}),
-            group_claim: body.groupClaim ?? null,
-            domains: body.domains,
-            enforce_sso: body.enforceSso,
-            jit: body.jit,
-            enabled: body.enabled,
+            name: common.name,
+            group_claim: common.groupClaim ?? null,
+            domains: common.domains,
+            enforce_sso: common.enforceSso,
+            jit: common.jit,
+            enabled: common.enabled,
+            ...columns,
           })
           .returning([...PROVIDER_COLUMNS])
           .executeTakeFirstOrThrow()) as Provider;
-        if (body.groupMap.length > 0) {
-          await trx
-            .insertInto('identity_provider_group')
-            .values(
-              body.groupMap.map((m) => ({
-                workspace_id: ws,
-                provider_id: row.id,
-                claim_value: m.claimValue,
-                group_id: m.groupId,
-              })),
-            )
-            .onConflict((oc) => oc.doNothing())
-            .execute();
-        }
+        await writeGroupMap(trx, ws, row.id, common.groupMap);
         await emit(
           trx,
           { workspaceId: ws, actorId: admin.id },
@@ -446,6 +541,7 @@ export function registerSsoRoutes(
             subjectId: row.id,
             payload: {
               name: row.name,
+              protocol: row.kind,
               issuer: row.issuer,
               domains: row.domains,
               enforceSso: row.enforce_sso,
@@ -468,16 +564,61 @@ export function registerSsoRoutes(
     const admin = await requireSiteAdmin(request, reply);
     if (!admin) return reply;
     const params = z.object({ id }).safeParse(request.params);
-    const parsed = providerEdit.safeParse(request.body);
-    if (!params.success || !parsed.success)
-      return reply.code(400).send({ error: 'invalid_request' });
+    if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const ws = request.workspaceId;
     const current = await loadProvider(ws, params.data.id);
     if (!current) return reply.code(404).send({ error: 'not_found' });
+    // The protocol stays the provider's: the other protocol's fields are refused.
+    const parsed =
+      current.kind === 'saml' ? samlEdit.safeParse(request.body) : oidcEdit.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     const body = parsed.data;
-    if (body.issuer) {
-      const problem = issuerProblem(body.issuer);
-      if (problem) return reply.code(400).send({ error: 'insecure_issuer', detail: problem });
+    const next: Record<string, unknown> = {
+      ...(body.name !== undefined ? { name: body.name } : {}),
+      ...(body.groupClaim !== undefined ? { group_claim: body.groupClaim } : {}),
+      ...(body.domains !== undefined ? { domains: body.domains } : {}),
+      ...(body.enforceSso !== undefined ? { enforce_sso: body.enforceSso } : {}),
+      ...(body.jit !== undefined ? { jit: body.jit } : {}),
+      ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
+    };
+    let secret: { client_secret_sealed: string | null } | undefined;
+    let certificates: string[] | undefined;
+    if (current.kind === 'saml') {
+      const saml = body as z.infer<typeof samlEdit>;
+      let settings: ReturnType<typeof samlSettings>;
+      try {
+        settings = samlSettings(saml);
+      } catch (error) {
+        if (!(error instanceof ProviderProblem)) throw error;
+        return reply.code(400).send({ error: error.code, detail: error.detail });
+      }
+      if (settings.entityId !== undefined) next.issuer = settings.entityId;
+      if (settings.ssoUrl !== undefined) next.saml_sso_url = settings.ssoUrl;
+      if (saml.spEntityId !== undefined) next.saml_sp_entity_id = saml.spEntityId;
+      if (saml.emailAttribute !== undefined) next.saml_email_attribute = saml.emailAttribute;
+      if (saml.idpInitiated !== undefined) next.saml_idp_initiated = saml.idpInitiated;
+      if (
+        settings.certificates !== undefined &&
+        settings.certificates.join('\n') !== current.saml_certificates.join('\n')
+      ) {
+        certificates = settings.certificates;
+      }
+    } else {
+      const oidc = body as z.infer<typeof oidcEdit>;
+      if (oidc.issuer !== undefined) {
+        const problem = issuerProblem(oidc.issuer);
+        if (problem) return reply.code(400).send({ error: 'insecure_issuer', detail: problem });
+        next.issuer = oidc.issuer;
+      }
+      if (oidc.clientId !== undefined) next.client_id = oidc.clientId;
+      if (oidc.scopes !== undefined) next.scopes = oidc.scopes;
+      if (oidc.clientSecret !== undefined) {
+        secret = {
+          client_secret_sealed: oidc.clientSecret
+            ? sealSecret(oidc.clientSecret, options.peppers?.active)
+            : null,
+        };
+      }
     }
     if (body.groupMap && !(await checkGroups(ws, body.groupMap)))
       return reply.code(404).send({ error: 'not_found' });
@@ -485,30 +626,14 @@ export function registerSsoRoutes(
     const domains = body.domains ?? current.domains;
     const taken = enabled ? await domainsTaken(ws, domains, current.id) : [];
     if (taken.length > 0) return reply.code(409).send({ error: 'domain_taken', domains: taken });
-    const next = {
-      ...(body.name !== undefined ? { name: body.name } : {}),
-      ...(body.issuer !== undefined ? { issuer: body.issuer } : {}),
-      ...(body.clientId !== undefined ? { client_id: body.clientId } : {}),
-      ...(body.scopes !== undefined ? { scopes: body.scopes } : {}),
-      ...(body.groupClaim !== undefined ? { group_claim: body.groupClaim } : {}),
-      ...(body.domains !== undefined ? { domains: body.domains } : {}),
-      ...(body.enforceSso !== undefined ? { enforce_sso: body.enforceSso } : {}),
-      ...(body.jit !== undefined ? { jit: body.jit } : {}),
-      ...(body.enabled !== undefined ? { enabled: body.enabled } : {}),
-    };
     try {
       const provider = await db.transaction().execute(async (trx) => {
         const row = (await trx
           .updateTable('identity_provider')
           .set({
             ...next,
-            ...(body.clientSecret !== undefined
-              ? {
-                  client_secret_sealed: body.clientSecret
-                    ? sealSecret(body.clientSecret, options.peppers?.active)
-                    : null,
-                }
-              : {}),
+            ...(secret ?? {}),
+            ...(certificates ? { saml_certificates: certificates } : {}),
             updated_at: new Date(),
           })
           .where('id', '=', current.id)
@@ -519,22 +644,16 @@ export function registerSsoRoutes(
             .deleteFrom('identity_provider_group')
             .where('provider_id', '=', current.id)
             .execute();
-          if (body.groupMap.length > 0) {
-            await trx
-              .insertInto('identity_provider_group')
-              .values(
-                body.groupMap.map((m) => ({
-                  workspace_id: ws,
-                  provider_id: current.id,
-                  claim_value: m.claimValue,
-                  group_id: m.groupId,
-                })),
-              )
-              .onConflict((oc) => oc.doNothing())
-              .execute();
-          }
+          await writeGroupMap(trx, ws, current.id, body.groupMap);
         }
         const changes = diff(current as unknown as Record<string, unknown>, next);
+        // Certificates are recorded by fingerprint, which is what administrators compare.
+        if (certificates) {
+          changes.certificates = {
+            from: fingerprints(current.saml_certificates),
+            to: fingerprints(certificates),
+          };
+        }
         await emit(
           trx,
           { workspaceId: ws, actorId: admin.id },
@@ -543,7 +662,7 @@ export function registerSsoRoutes(
             subjectId: current.id,
             payload: {
               changes,
-              clientSecretChanged: body.clientSecret !== undefined,
+              clientSecretChanged: secret !== undefined,
               groupMapChanged: body.groupMap !== undefined,
             },
           },

@@ -210,3 +210,59 @@
     height: var(--hit-target-touch);
   }
 }
+
+/* ---- SAML 2.0 (M1-081) ---- */
+
+/* Metadata and certificates are pasted as they are: monospace, wrapped anywhere. */
+.form-field textarea.sso-code {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+.sso-certificates {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+/* The addresses to register at a SAML provider: label above value, long URLs wrap. */
+.sso-addresses {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-200);
+}
+
+.sso-addresses dt {
+  color: var(--color-text-muted);
+}
+
+.sso-addresses dd {
+  margin: 0 0 var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.sso-addresses code {
+  font-family: var(--font-mono);
+}
+
+.sso-addresses a {
+  display: inline-block;
+  max-width: 100%;
+  min-height: var(--hit-target);
+  overflow-wrap: anywhere;
+  padding: var(--space-2) 0;
+  color: var(--color-accent);
+}
+
+@media (pointer: coarse) {
+  .sso-addresses a {
+    min-height: var(--hit-target-touch);
+  }
+}

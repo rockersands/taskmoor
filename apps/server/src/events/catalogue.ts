@@ -100,6 +100,8 @@ export const EVENT_TYPES = {
     subject: 'user',
     payload: z.object({
       providerId: id,
+      // Added with SAML (M1-081); events before it are OpenID Connect sign-ins.
+      protocol: z.enum(['oidc', 'saml']).optional(),
       sessionId: id,
       userCreated: z.boolean(),
       groupsAdded: z.array(id),
@@ -110,6 +112,9 @@ export const EVENT_TYPES = {
     subject: 'identity_provider',
     payload: z.object({
       name: z.string(),
+      // Added with SAML (M1-081); providers before it use OpenID Connect. A SAML provider's
+      // issuer is its entity ID.
+      protocol: z.enum(['oidc', 'saml']).optional(),
       issuer: z.string(),
       domains: z.array(z.string()),
       enforceSso: z.boolean(),

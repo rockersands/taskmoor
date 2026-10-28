@@ -395,6 +395,29 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT id, 1, false FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0020_saml': {
+    tables: {
+      identity_provider:
+        "name = 'Seed SAML IdP' AND kind = 'saml' AND client_id IS NULL AND cardinality(saml_certificates) = 1",
+      saml_login: "request_id = 'seed-request'",
+      saml_assertion: "assertion_id = 'seed-assertion'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO identity_provider (workspace_id, name, kind, issuer, saml_sso_url,
+          saml_certificates, domains)
+        VALUES (1, 'Seed SAML IdP', 'saml', 'https://saml.example.com/idp',
+          'https://saml.example.com/sso', ARRAY['-----BEGIN CERTIFICATE-----'], '{saml.example.com}')`.execute(
+        db,
+      );
+      const provider = sql`(SELECT id FROM identity_provider WHERE name = 'Seed SAML IdP')`;
+      await sql`INSERT INTO saml_login (workspace_id, provider_id, request_id, browser_hash, expires_at)
+        VALUES (1, ${provider}, 'seed-request', 'seed-browser', now() + interval '5 minutes')`.execute(
+        db,
+      );
+      await sql`INSERT INTO saml_assertion (workspace_id, assertion_id, provider_id, expires_at)
+        VALUES (1, 'seed-assertion', ${provider}, now() + interval '5 minutes')`.execute(db);
+    },
+  },
 };
 
 /**

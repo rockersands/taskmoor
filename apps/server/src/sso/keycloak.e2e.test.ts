@@ -177,7 +177,7 @@ describe.skipIf(!ISSUER)('single sign-on against Keycloak (M1-080)', () => {
     expect(res.statusCode).toBe(403);
     expect(res.json()).toEqual({
       error: 'sso_required',
-      provider: { id: providerId, name: 'Keycloak' },
+      provider: { id: providerId, name: 'Keycloak', protocol: 'oidc' },
     });
   });
 });

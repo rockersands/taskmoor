@@ -1,7 +1,8 @@
 name: Single sign-on
 
-# OpenID Connect sign-in against a real Keycloak (M1-080): tools/sso/keycloak-test.sh starts it
-# with the test realm and runs apps/server/src/sso/keycloak.e2e.test.ts. Runs when sign-in code
+# OpenID Connect (M1-080) and SAML 2.0 (M1-081) sign-in against a real Keycloak:
+# tools/sso/keycloak-test.sh starts it with the test realm and runs
+# apps/server/src/sso/keycloak.e2e.test.ts and keycloak-saml.e2e.test.ts. Runs when sign-in code
 # changes, weekly, and on demand.
 on:
   push:
@@ -9,6 +10,7 @@ on:
     paths:
       - "apps/server/src/sso/**"
       - "apps/server/src/routes/sso.ts"
+      - "apps/server/src/routes/saml.ts"
       - "apps/server/src/routes/session.ts"
       - "apps/server/src/auth.ts"
       - "packages/iam/**"

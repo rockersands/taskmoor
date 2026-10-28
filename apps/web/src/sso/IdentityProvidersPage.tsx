@@ -9,6 +9,7 @@ import {
   type IdentityProvider,
   type IdentityProvidersClient,
   identityProvidersClient,
+  isSaml,
   type ProviderInput,
 } from './client';
 import { ProviderForm } from './ProviderForm';
@@ -34,9 +35,10 @@ type State =
 type Editing = 'new' | number | null;
 
 /**
- * Single sign-on for site administrators (#/admin/identity-providers; M1-080, IAM-003,
- * IAM-004): the redirect URI to register at a provider, the providers with their domains and
- * policy, and a form to add, edit or delete one. The groups list feeds the mapping editor; when
+ * Single sign-on for site administrators (#/admin/identity-providers; M1-080, M1-081, IAM-002,
+ * IAM-003, IAM-004): the redirect URI to register at an OpenID Connect provider, the providers
+ * (SAML ones with the addresses to register for each) with their domains and policy, and a
+ * form to add, edit or delete one. The groups list feeds the mapping editor; when
  * it cannot be read the providers still load and the mapping is left as it is.
  */
 export function IdentityProvidersPage({
@@ -259,18 +261,29 @@ function ProviderItem({
         <div className="token-main">
           <p className="token-name">
             <span>{value(provider.name)}</span>
+            {isSaml(provider) && <span className="token-badge">{t('admin.sso.saml')}</span>}
             {!provider.enabled && (
               <span className="token-badge token-badge-revoked">{t('admin.sso.disabled')}</span>
             )}
             {provider.enforceSso && <span className="token-badge">{t('admin.sso.enforced')}</span>}
           </p>
-          <p className="token-meta">
-            <span>{t('admin.sso.issuerValue', { issuer: provider.issuer })}</span>
-            <span>{t('admin.sso.clientIdValue', { clientId: provider.clientId })}</span>
-            <span>
-              {t(provider.hasClientSecret ? 'admin.sso.secretSaved' : 'admin.sso.noSecret')}
-            </span>
-          </p>
+          {isSaml(provider) ? (
+            <p className="token-meta">
+              <span>{t('admin.sso.entityIdValue', { entityId: provider.entityId })}</span>
+              <span>
+                {t('admin.sso.certificatesValue', { count: provider.certificates.length })}
+              </span>
+              {provider.idpInitiated && <span>{t('admin.sso.idpInitiatedOn')}</span>}
+            </p>
+          ) : (
+            <p className="token-meta">
+              <span>{t('admin.sso.issuerValue', { issuer: provider.issuer })}</span>
+              <span>{t('admin.sso.clientIdValue', { clientId: provider.clientId })}</span>
+              <span>
+                {t(provider.hasClientSecret ? 'admin.sso.secretSaved' : 'admin.sso.noSecret')}
+              </span>
+            </p>
+          )}
           <p className="token-meta">
             <span>
               {provider.domains.length > 0
@@ -282,13 +295,35 @@ function ProviderItem({
             <span>{t(provider.jit ? 'admin.sso.jitOn' : 'admin.sso.jitOff')}</span>
             <span>
               {provider.groupClaim
-                ? t('admin.sso.groupsValue', {
+                ? t(isSaml(provider) ? 'admin.sso.groupAttributeValue' : 'admin.sso.groupsValue', {
                     claim: provider.groupClaim,
                     count: provider.groupMap.length,
                   })
                 : t('admin.sso.noGroupSync')}
             </span>
           </p>
+          {isSaml(provider) && (
+            // What to register at the identity provider for this one: its own addresses.
+            <dl className="sso-addresses">
+              <dt>{t('admin.sso.spEntityId')}</dt>
+              <dd>
+                <code>{provider.serviceProvider.spEntityId}</code>
+              </dd>
+              <dt>{t('admin.sso.acsUrl')}</dt>
+              <dd>
+                <code>{provider.serviceProvider.acsUrl}</code>
+              </dd>
+              <dt>{t('admin.sso.spMetadata')}</dt>
+              <dd>
+                <a
+                  href={provider.serviceProvider.metadataUrl}
+                  aria-label={t('admin.sso.spMetadataNamed', { name: provider.name })}
+                >
+                  {provider.serviceProvider.metadataUrl}
+                </a>
+              </dd>
+            </dl>
+          )}
         </div>
         <div className="token-actions">
           <button

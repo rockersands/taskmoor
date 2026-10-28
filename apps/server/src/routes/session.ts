@@ -110,9 +110,10 @@ export function registerSessionRoutes(
         lockedUntil: lock,
         reason: 'sso_required',
       });
-      return reply
-        .code(403)
-        .send({ error: 'sso_required', provider: { id: sso.id, name: sso.name } });
+      return reply.code(403).send({
+        error: 'sso_required',
+        provider: { id: sso.id, name: sso.name, protocol: sso.kind },
+      });
     }
     if (!user || !ok) {
       const lock = await recordFailure(db, workspaceId, keys, now);

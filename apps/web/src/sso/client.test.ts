@@ -29,7 +29,15 @@ describe('single sign-on client helpers (M1-080)', () => {
   });
 
   it('[IAM-003] starts a sign-in at the backend with the return address encoded', () => {
-    expect(startUrl(7, '/#/settings')).toBe('/api/v1/auth/oidc/7/start?returnTo=%2F%23%2Fsettings');
+    expect(startUrl({ id: 7, name: 'Staff' }, '/#/settings')).toBe(
+      '/api/v1/auth/oidc/7/start?returnTo=%2F%23%2Fsettings',
+    );
+  });
+
+  it('[IAM-002] starts a SAML provider at its own address', () => {
+    expect(startUrl({ id: 8, name: 'Partners', protocol: 'saml' }, '/')).toBe(
+      '/api/v1/auth/saml/8/start?returnTo=%2F',
+    );
   });
 
   it('[IAM-003] reads and removes one parameter of the hash route', () => {

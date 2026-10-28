@@ -248,7 +248,7 @@
       "name text not null",
       "kind text not null default 'oidc'::text",
       "issuer text not null",
-      "client_id text not null",
+      "client_id text",
       "client_secret_sealed text",
       "scopes text not null default 'openid email profile'::text",
       "group_claim text",
@@ -257,7 +257,12 @@
       "jit boolean not null default true",
       "enabled boolean not null default true",
       "created_at timestamp with time zone not null default now()",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "saml_sso_url text",
+      "saml_certificates ARRAY not null default '{}'::text[]",
+      "saml_sp_entity_id text",
+      "saml_email_attribute text",
+      "saml_idp_initiated boolean not null default false"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX identity_provider_pkey ON public.identity_provider USING btree (id)",
@@ -488,6 +493,38 @@
     "indexes": [
       "CREATE UNIQUE INDEX role_pkey ON public.role USING btree (id)",
       "CREATE UNIQUE INDEX role_workspace_name_idx ON public.role USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "saml_assertion": {
+    "columns": [
+      "workspace_id integer not null",
+      "assertion_id text not null",
+      "provider_id integer not null",
+      "expires_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX saml_assertion_expires_idx ON public.saml_assertion USING btree (expires_at)",
+      "CREATE UNIQUE INDEX saml_assertion_pkey ON public.saml_assertion USING btree (workspace_id, assertion_id)"
+    ]
+  },
+  "saml_login": {
+    "columns": [
+      "id integer not null default nextval('saml_login_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "request_id text",
+      "browser_hash text",
+      "return_to text not null default '/'::text",
+      "handle_hash text",
+      "identity jsonb",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX saml_login_expires_idx ON public.saml_login USING btree (expires_at)",
+      "CREATE UNIQUE INDEX saml_login_handle_hash_key ON public.saml_login USING btree (handle_hash)",
+      "CREATE UNIQUE INDEX saml_login_pkey ON public.saml_login USING btree (id)",
+      "CREATE UNIQUE INDEX saml_login_request_id_key ON public.saml_login USING btree (request_id)"
     ]
   },
   "schema_migration": {

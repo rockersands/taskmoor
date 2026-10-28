@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { IdentityProvider } from './client';
-import { changesOf, DEFAULT_SCOPES, draftOf, emptyDraft, inputOf, mappingRow } from './draft';
+import type { IdentityProvider, OidcProviderInput, SamlProvider } from './client';
+import {
+  certificatesOf,
+  changesOf,
+  DEFAULT_SCOPES,
+  draftOf,
+  emptyDraft,
+  inputOf,
+  mappingRow,
+  samlComplete,
+} from './draft';
 
 const SAVED: IdentityProvider = {
   id: 4,
@@ -64,9 +73,10 @@ describe('identity provider drafts (M1-080)', () => {
         { claimValue: 'platform', groupId: 7 },
       ],
     });
-    expect(inputOf({ ...draft, clientSecret: 's3cret' }).clientSecret).toBe('s3cret');
+    const oidc = (d: typeof draft) => inputOf(d) as OidcProviderInput;
+    expect(oidc({ ...draft, clientSecret: 's3cret' }).clientSecret).toBe('s3cret');
     // Blank scopes fall back to the defaults rather than failing at the backend.
-    expect(inputOf({ ...draft, scopes: '   ' }).scopes).toBe(DEFAULT_SCOPES);
+    expect(oidc({ ...draft, scopes: '   ' }).scopes).toBe(DEFAULT_SCOPES);
   });
 
   it('[IAM-003] an unchanged edit sends nothing; the saved secret is never part of the draft', () => {
@@ -103,5 +113,101 @@ describe('identity provider drafts (M1-080)', () => {
     const draft = { ...draftOf(SAVED), groupMap: [] };
     expect(changesOf(SAVED, draft, false)).toEqual({});
     expect(changesOf(SAVED, draft, true)).toEqual({ groupMap: [] });
+  });
+});
+
+const PEM_A = '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----';
+const PEM_B = '-----BEGIN CERTIFICATE-----\nBBBB\n-----END CERTIFICATE-----';
+const SAML: SamlProvider = {
+  id: 6,
+  name: 'Agency',
+  protocol: 'saml',
+  entityId: 'https://id.agency.example/saml',
+  ssoUrl: 'https://id.agency.example/sso',
+  certificates: [
+    { fingerprint: 'AA', subject: 'CN=a', notAfter: '2030-01-01T00:00:00Z', pem: PEM_A },
+  ],
+  spEntityId: null,
+  emailAttribute: 'mail',
+  idpInitiated: false,
+  serviceProvider: {
+    spEntityId: 'https://tasks.example/api/v1/auth/saml/6/metadata',
+    acsUrl: 'https://tasks.example/api/v1/auth/saml/6/acs',
+    metadataUrl: 'https://tasks.example/api/v1/auth/saml/6/metadata',
+  },
+  groupClaim: null,
+  domains: ['agency.example'],
+  enforceSso: false,
+  jit: true,
+  enabled: true,
+  groupMap: [],
+};
+
+describe('SAML provider drafts (M1-081)', () => {
+  it('[IAM-002] a new SAML provider sends its protocol and only the settings filled in', () => {
+    const draft = {
+      ...emptyDraft('saml'),
+      name: ' Agency ',
+      metadataXml: '  <md:EntityDescriptor/>  ',
+      emailAttribute: '  ',
+      spEntityId: ' taskmoor-agency ',
+    };
+    expect(inputOf(draft)).toEqual({
+      protocol: 'saml',
+      name: 'Agency',
+      metadataXml: '<md:EntityDescriptor/>',
+      spEntityId: 'taskmoor-agency',
+      emailAttribute: null,
+      idpInitiated: false,
+      groupClaim: null,
+      domains: [],
+      enforceSso: false,
+      jit: true,
+      enabled: true,
+      groupMap: [],
+    });
+    expect(samlComplete(draft)).toBe(true);
+    expect(samlComplete({ ...draft, metadataXml: '' })).toBe(false);
+    expect(
+      samlComplete({
+        ...draft,
+        metadataXml: '',
+        entityId: 'urn:x',
+        ssoUrl: 'https://x.example/sso',
+        certificates: PEM_A,
+      }),
+    ).toBe(true);
+  });
+
+  it('[IAM-002] reads PEM blocks, or one bare certificate, from the certificate box', () => {
+    expect(certificatesOf(`${PEM_A}\n\n${PEM_B}\n`)).toEqual([PEM_A, PEM_B]);
+    expect(certificatesOf('  MIIB AAAA\nBBBB ')).toEqual(['MIIBAAAABBBB']);
+    expect(certificatesOf('   ')).toEqual([]);
+  });
+
+  it('[IAM-002] an unchanged SAML edit sends nothing; changes are named one by one', () => {
+    const draft = draftOf(SAML);
+    expect(draft).toMatchObject({ protocol: 'saml', certificates: PEM_A, emailAttribute: 'mail' });
+    expect(changesOf(SAML, draft)).toEqual({});
+    expect(
+      changesOf(SAML, {
+        ...draft,
+        certificates: `${PEM_A}\n${PEM_B}`,
+        idpInitiated: true,
+        emailAttribute: '',
+        ssoUrl: 'https://id.agency.example/sso2',
+      }),
+    ).toEqual({
+      certificates: [PEM_A, PEM_B],
+      idpInitiated: true,
+      emailAttribute: null,
+      ssoUrl: 'https://id.agency.example/sso2',
+    });
+    // New metadata goes as pasted; the fields it fills stay out unless edited.
+    expect(changesOf(SAML, { ...draft, metadataXml: '<md:EntityDescriptor/>' })).toEqual({
+      metadataXml: '<md:EntityDescriptor/>',
+    });
+    // A cleared field keeps the saved value rather than sending nothing useful.
+    expect(changesOf(SAML, { ...draft, entityId: '', certificates: '' })).toEqual({});
   });
 });

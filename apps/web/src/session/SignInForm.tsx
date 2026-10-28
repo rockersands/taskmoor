@@ -97,7 +97,11 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
         (found) => {
           const provider =
             typeof found?.provider?.id === 'number' && typeof found.provider.name === 'string'
-              ? { id: found.provider.id, name: found.provider.name }
+              ? {
+                  id: found.provider.id,
+                  name: found.provider.name,
+                  ...(found.provider.protocol === 'saml' ? { protocol: 'saml' as const } : {}),
+                }
               : null;
           const known: Discovery = { provider, password: found?.password !== false };
           if (asked.current?.email === key) setDiscovery({ ...known, email: key });
@@ -123,7 +127,7 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
   const others = providers.filter((p) => p.id !== organisation?.id);
 
   const start = (provider: SsoProviderSummary) =>
-    ssoClient.go(startUrl(provider.id, returnTo(window.location.hash)));
+    ssoClient.go(startUrl(provider, returnTo(window.location.hash)));
 
   const promptFor = (provider: SsoProviderSummary) => {
     const answer: Discovery = { provider, password: false };

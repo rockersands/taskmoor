@@ -44,6 +44,34 @@ export const AddingAProvider: Story = {
   },
 };
 
+export const AddingASamlProvider: Story = {
+  // Its own store: adding changes it.
+  args: { client: fakeIdentityProvidersClient([]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Add an identity provider' }));
+    await userEvent.keyboard('Agency');
+    await userEvent.click(canvas.getByRole('radio', { name: 'SAML 2.0' }));
+    await userEvent.type(
+      canvas.getByLabelText('Identity provider metadata'),
+      '<md:EntityDescriptor entityID="https://id.agency.example"/>',
+    );
+    await userEvent.type(canvas.getByLabelText('Domain'), 'agency.example{Enter}');
+    await userEvent.click(canvas.getByRole('button', { name: 'Add provider' }));
+    await expect(await canvas.findByText('Added Agency.')).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Taskmoor metadata for Agency' })).toBeVisible();
+  },
+};
+
+export const EditingASamlProvider: Story = {
+  args: { client: fakeIdentityProvidersClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Edit Contractors' }));
+    await expect(canvas.getByRole('form', { name: 'Edit Contractors' })).toBeVisible();
+  },
+};
+
 export const EditingAProvider: Story = {
   args: { client: fakeIdentityProvidersClient() },
   play: async ({ canvasElement }) => {

@@ -104,14 +104,17 @@ export async function clearFailures(
 }
 
 /**
- * Removes what has run out: expired sessions, used or expired password links and counters
- * nobody has touched for a day. Safe to run from several pods at once.
+ * Removes what has run out: expired sessions, used or expired password links, single sign-ons
+ * that never finished, assertion IDs past their validity and counters nobody has touched for a
+ * day. Safe to run from several pods at once.
  */
 export async function pruneIdentityData(db: Kysely<Database>, now = new Date()): Promise<void> {
   const dayAgo = new Date(now.getTime() - LOCKOUT.forgetAfterSeconds * 1000);
   await db.deleteFrom('user_session').where('expires_at', '<', now).execute();
   await db.deleteFrom('sign_in_challenge').where('expires_at', '<', now).execute();
   await db.deleteFrom('oidc_login').where('expires_at', '<', now).execute();
+  await db.deleteFrom('saml_login').where('expires_at', '<', now).execute();
+  await db.deleteFrom('saml_assertion').where('expires_at', '<', now).execute();
   await db
     .deleteFrom('password_link')
     .where((eb) => eb.or([eb('expires_at', '<', now), eb('used_at', 'is not', null)]))

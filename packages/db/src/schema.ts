@@ -738,9 +738,12 @@ export interface IdentityProviderTable {
   id: Generated<number>;
   workspace_id: number;
   name: string;
-  kind: Generated<'oidc'>;
+  /** The protocol: OpenID Connect (M1-080) or SAML 2.0 (M1-081). */
+  kind: Generated<'oidc' | 'saml'>;
+  /** OpenID Connect: the issuer URL. SAML: the identity provider's entity ID. */
   issuer: string;
-  client_id: string;
+  /** OpenID Connect only; null for SAML. */
+  client_id: string | null;
   client_secret_sealed: string | null;
   scopes: Generated<string>;
   group_claim: string | null;
@@ -751,6 +754,16 @@ export interface IdentityProviderTable {
   /** Unknown people of these domains get an account on first sign-in. */
   jit: Generated<boolean>;
   enabled: Generated<boolean>;
+  /** SAML: where AuthnRequests go (HTTP-Redirect binding). */
+  saml_sso_url: string | null;
+  /** SAML: the certificates whose keys may sign responses, PEM. */
+  saml_certificates: Generated<string[]>;
+  /** SAML: Taskmoor's entity ID towards this provider; null derives it from PUBLIC_URL. */
+  saml_sp_entity_id: string | null;
+  /** SAML: the attribute holding the email address; null tries the usual ones. */
+  saml_email_attribute: string | null;
+  /** SAML: whether the provider may start sign-ins itself (IdP-initiated). */
+  saml_idp_initiated: Generated<boolean>;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
 }
@@ -787,6 +800,32 @@ export interface OidcLoginTable {
   return_to: Generated<string>;
   expires_at: Timestamp;
   created_at: DefaultTimestamp;
+}
+
+/**
+ * A SAML sign-in in flight (M1-081): the AuthnRequest bound to the browser that started it,
+ * and, once the provider's response verified, the person it names under a one-time handle
+ * until the browser collects it. IdP-initiated sign-ins have no request and no browser.
+ */
+export interface SamlLoginTable {
+  id: Generated<number>;
+  workspace_id: number;
+  provider_id: number;
+  request_id: string | null;
+  browser_hash: string | null;
+  return_to: Generated<string>;
+  handle_hash: string | null;
+  identity: NullableJson;
+  expires_at: Timestamp;
+  created_at: DefaultTimestamp;
+}
+
+/** An accepted assertion's ID, kept until the assertion expires, so it is used once. */
+export interface SamlAssertionTable {
+  workspace_id: number;
+  assertion_id: string;
+  provider_id: number;
+  expires_at: Timestamp;
 }
 
 /** `scim` is held alone: it reaches the SCIM endpoints and nothing else (ADR-038). */
@@ -919,6 +958,8 @@ export interface Database {
   identity_provider_group: IdentityProviderGroupTable;
   user_identity: UserIdentityTable;
   oidc_login: OidcLoginTable;
+  saml_login: SamlLoginTable;
+  saml_assertion: SamlAssertionTable;
   audit_event: AuditEventTable;
   audit_chain: AuditChainTable;
   api_token: ApiTokenTable;

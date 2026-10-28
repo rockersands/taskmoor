@@ -204,7 +204,11 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
 
     // The sign-in page sees names only.
     const publicList = await call(undefined, { method: 'GET', url: '/api/v1/auth/providers' });
-    expect(publicList.json().providers).toContainEqual({ id: provider.id, name: 'Corporate' });
+    expect(publicList.json().providers).toContainEqual({
+      id: provider.id,
+      name: 'Corporate',
+      protocol: 'oidc',
+    });
     expect(JSON.stringify(publicList.json())).not.toContain('taskmoor');
 
     const event = await lastEvent('identity_provider.created');
@@ -441,7 +445,7 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
       payload: { email: 'whoever@Umbrella.example' },
     });
     expect(discover.json()).toEqual({
-      provider: { id: provider.id, name: 'Umbrella' },
+      provider: { id: provider.id, name: 'Umbrella', protocol: 'oidc' },
       password: false,
     });
     const elsewhere = await call(undefined, {
@@ -452,7 +456,10 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
     expect(elsewhere.json()).toEqual({ provider: null, password: true });
 
     // The same answer for a real account, a wrong password and an unknown address.
-    const expected = { error: 'sso_required', provider: { id: provider.id, name: 'Umbrella' } };
+    const expected = {
+      error: 'sso_required',
+      provider: { id: provider.id, name: 'Umbrella', protocol: 'oidc' },
+    };
     for (const res of [
       await passwordSignIn('alice@umbrella.example'),
       await passwordSignIn('alice@umbrella.example', 'not the password'),

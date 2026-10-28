@@ -42,6 +42,10 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/auth/discover',
   'GET /api/v1/auth/oidc/:id/start',
   'GET /api/v1/auth/oidc/callback',
+  'GET /api/v1/auth/saml/:id/metadata',
+  'GET /api/v1/auth/saml/:id/start',
+  'POST /api/v1/auth/saml/:id/acs',
+  'GET /api/v1/auth/saml/continue',
 ]);
 
 export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([

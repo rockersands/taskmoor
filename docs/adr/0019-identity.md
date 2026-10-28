@@ -25,7 +25,9 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   - Scoped expiring personal tokens, service accounts, token inventory with last use
     (implemented in M1-004; ADR-035 records the format, scopes and rotation).
 - **Candidate libraries** (all MIT or Apache-2.0, pending the licence gate when added):
-  `openid-client`, `@node-saml/node-saml`, `ldapts`, `@simplewebauthn/server`, `otplib`.
+  `openid-client`, `@node-saml/node-saml`, `ldapts`, `@simplewebauthn/server`, `otplib`. SAML
+  ended up on `xml-crypto` and `@xmldom/xmldom` instead of `@node-saml/node-saml` (M1-081,
+  below).
   Passwords use Argon2id through `hash-wasm` (MIT, WebAssembly, so the image still needs no
   native addon) with OWASP's cost (19 MiB, two passes, one lane); M0's scrypt hashes verify and
   are replaced at the next sign-in (M1-001).
@@ -136,6 +138,92 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
 - The provider's own multi-factor policy applies to single sign-on; Taskmoor's second factor
   applies to password sign-in. One `sso.signed_in` event records the sign-in, the session, an
   account creation and the group changes.
+
+## Single sign-on with SAML 2.0 (M1-081)
+
+- **Library:** XML signatures are checked by `xml-crypto` 6.4 (MIT, maintained by the
+  node-saml project; 6.x carries the fixes for the 2025 signature-wrapping advisories) on
+  documents parsed by `@xmldom/xmldom` 0.8 (MIT, the version xml-crypto itself uses, so both
+  read the same tree). The SAML layer on top is ours (`apps/server/src/sso/saml.ts`), not
+  `@node-saml/node-saml`: wrapping defences depend on exactly which element is used after the
+  signature check, and owning that step is what lets the rules below be stated and tested. It
+  also avoids `xml2js`, `xmlbuilder` and `xml-encryption`, which we would not use.
+- **Providers** live in `identity_provider` with `kind` 'saml' (migration 0020), beside the
+  OpenID Connect ones, so domains (one enabled provider per domain, whatever its protocol),
+  enforced single sign-on with break-glass accounts, just-in-time accounts, group maps, the
+  links to accounts (`user_identity`) and the audit of refusals are shared; the sign-in itself
+  is finished by one function for both protocols (`sso/sign-in.ts`). A SAML provider keeps its
+  entity ID in `issuer` and its sign-in address (HTTP-Redirect), signing certificates (several,
+  for rollover), email attribute and the IdP-initiated switch in `saml_*` columns. Administrators
+  paste the identity provider's metadata (entity ID, redirect address and signing certificates
+  are read from it; the metadata's own signature is not required, since an administrator vouches
+  for it), or enter those by hand; explicit fields win over the metadata. Fetching metadata from
+  a URL is left out on purpose (the server would reach arbitrary addresses).
+- **Taskmoor's side** is per provider: entity ID `PUBLIC_URL/api/v1/auth/saml/:id/metadata`
+  (an administrator may fix another one to keep an existing registration), ACS
+  `/api/v1/auth/saml/:id/acs` and metadata at the entity ID's address. Two providers trusting
+  the same signing key (two clients of one realm) cannot accept each other's assertions: the
+  audience and recipient differ. AuthnRequests are not signed and encrypted assertions are not
+  read (refused with a reason); both can come later with a service provider key.
+- **Flow:** `GET /auth/saml/:id/start` sends an AuthnRequest over HTTP-Redirect and stores its
+  ID for ten minutes, bound to the browser by a cookie (as the OpenID Connect state). The
+  provider posts the response to the ACS. A cross-site POST carries no SameSite=Lax cookie, so
+  the ACS verifies the response, records the assertion ID, checks that InResponseTo names a
+  pending request of this provider, parks the person under a one-time handle (two minutes) and
+  sends the browser on with a 303 to `GET /auth/saml/continue`, where the cookie is sent and
+  must match: a response captured and posted from another browser cannot finish the sign-in.
+  Responses without InResponseTo (IdP-initiated) are refused unless the provider allows them
+  (off by default; with them on, RelayState may name a path on this site to return to).
+- **What is accepted:** a plain document (no DTD or entity, no comment, processing instruction
+  or CDATA, nesting below 64 levels, at most 256 KB); one Response holding exactly one
+  Assertion and no element named Assertion or Response anywhere else; no encrypted assertion;
+  IDs unique across the document; signatures only directly in the Response or the Assertion, at
+  most one each, with exactly one Reference pointing at the element that encloses it, no
+  `ds:Object`, RSA-SHA-256/512, SHA-256/512 digests and the comment-free canonicalizations.
+  Signatures are verified against the configured certificates only, never a certificate in the
+  response's KeyInfo; every signature present must verify, and the assertion must be covered by
+  one (its own or the Response's). Everything after that is read from the canonical bytes the
+  signature covered, re-parsed, never from the received tree. Then: the issuer is the
+  provider's entity ID, Destination (required when the Response is signed) and the bearer
+  confirmation's Recipient are this provider's ACS, the audience restrictions name this
+  provider's entity ID, NotBefore, NotOnOrAfter, SessionNotOnOrAfter and IssueInstant hold
+  with two minutes of clock skew, and an AuthnStatement is present. Unknown conditions refuse
+  the assertion. Accepted assertion IDs stay in `saml_assertion` until they could no longer be
+  accepted anyway, so a response is used once.
+- **The person:** the email comes from the configured attribute, else a usual one (`email`,
+  `mail`, the claims URI, the mail OID), else a NameID that is an address. SAML has no
+  "verified" flag: a provider is trusted for the domains an administrator assigned it, and the
+  shared rule still refuses an address outside them. The NameID identifies the person (persistent
+  NameIDs are best); a transient NameID changes at each sign-in, so the address does then. The
+  name comes from a display name attribute or given name and surname; groups from the attribute
+  named as the provider's group claim.
+- **Audit:** refusals the provider signed go to the audit log as `sso.sign_in_refused` with
+  reasons such as `response_expired`, `response_audience`, `response_replayed`,
+  `response_unknown_request` and `response_unsolicited`, besides the shared account reasons;
+  forged or broken responses are only logged (anyone can post those). `sso.signed_in` and
+  `identity_provider.created` gained an optional `protocol`; certificate changes appear in
+  `identity_provider.updated` as SHA-256 fingerprints.
+- **Tests:** `sso/saml.test.ts` holds our own vectors, signed in-process by
+  `testing/fake-saml-idp.ts` with keys and self-signed certificates made per run
+  (`testing/x509.ts`): XSW1 to XSW8, an unsigned second assertion, a signature moved to an
+  element it does not cover, duplicate and namespaced IDs, misplaced and doubled signatures,
+  `ds:Object`, comment injection in the NameID, DTDs, CDATA, deep nesting, SHA-1, foreign keys
+  with their certificate in KeyInfo, tampering, wrong audience, recipient, destination and
+  issuer, expiry and clock skew, and a property test that changes single bytes.
+  `routes/saml.test.ts` runs whole sign-ins (two domains through two providers, group sync,
+  linking rules, replay, browser binding, IdP-initiated, enforcement). In `pnpm verify --e2e`
+  the fake provider also runs over HTTP (port 8789, from `e2e/api-server.ts`) and Chromium signs
+  in through it from the admin page's setup, so the cross-site POST, the 303 and the Lax cookie
+  are exercised in a real browser. `bash tools/sso/keycloak-test.sh saml` signs in through
+  Keycloak 26.7.4's SAML client (`sso/keycloak-saml.e2e.test.ts`; also run by `sso.yml` in CI).
+- **Administration and sign-in page:** the identity provider page adds a protocol choice to a
+  new provider; a SAML one takes pasted metadata or the entity ID, sign-in URL and certificates
+  (saved certificates are listed with subject, expiry and SHA-256 fingerprint), the email and
+  group attributes, Taskmoor's entity ID when fixed, and the IdP-initiated switch. Each SAML
+  provider in the list shows its entity ID, ACS URL and metadata link to register at the
+  identity provider. Public provider summaries (`/auth/providers`, `/auth/discover`, the
+  `sso_required` answer) carry the protocol, so the sign-in page starts each provider at its own
+  address.
 
 ## SCIM provisioning (M1-083)
 

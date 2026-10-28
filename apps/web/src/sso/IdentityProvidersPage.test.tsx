@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
@@ -6,7 +6,7 @@ import { ADMIN, MEMBER } from '../admin/fixtures';
 import { type Handler, noContent, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
-import type { IdentityProvider } from './client';
+import type { IdentityProvider, OidcProvider, SamlProvider } from './client';
 
 const REDIRECT_URI = 'https://tasks.example/api/v1/auth/oidc/callback';
 const GROUPS = [
@@ -44,6 +44,38 @@ const PARTNERS: IdentityProvider = {
   enabled: false,
   groupMap: [],
 };
+
+const PEM = '-----BEGIN CERTIFICATE-----\nMIIBplaceholder\n-----END CERTIFICATE-----';
+const CONTRACTORS: SamlProvider = {
+  id: 4,
+  name: 'Contractors',
+  protocol: 'saml',
+  entityId: 'https://id.contractors.example/saml',
+  ssoUrl: 'https://id.contractors.example/saml/sso',
+  certificates: [
+    {
+      fingerprint: 'AB:CD:EF',
+      subject: 'CN=id.contractors.example',
+      notAfter: '2028-03-31T00:00:00.000Z',
+      pem: PEM,
+    },
+  ],
+  spEntityId: null,
+  emailAttribute: null,
+  idpInitiated: true,
+  serviceProvider: {
+    spEntityId: 'https://tasks.example/api/v1/auth/saml/4/metadata',
+    acsUrl: 'https://tasks.example/api/v1/auth/saml/4/acs',
+    metadataUrl: 'https://tasks.example/api/v1/auth/saml/4/metadata',
+  },
+  groupClaim: 'memberOf',
+  domains: ['contractors.example'],
+  enforceSso: false,
+  jit: true,
+  enabled: true,
+  groupMap: [{ claimValue: 'finance', groupId: 3 }],
+};
+const METADATA = '<md:EntityDescriptor entityID="https://id.pasted.example"/>';
 
 function openPage(handlers: Record<string, Handler> = {}, session = ADMIN) {
   const calls = stubBackend({
@@ -122,7 +154,7 @@ describe('identity provider administration (M1-080)', () => {
     const calls = openPage({
       'GET /identity-providers': () => jsonResponse(200, { providers, redirectUri: REDIRECT_URI }),
       'POST /identity-providers': (body) => {
-        const created = { ...(body as IdentityProvider), id: 9, hasClientSecret: true };
+        const created = { ...(body as OidcProvider), id: 9, hasClientSecret: true };
         providers = [...providers, created];
         return jsonResponse(201, { provider: created });
       },
@@ -387,6 +419,212 @@ describe('identity provider administration (M1-080)', () => {
     expect(within(form).getByRole('group', { name: 'Mapping 1' })).toBeVisible();
     expect(within(form).getByRole('button', { name: 'Save changes' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Open navigation' })).toBeVisible();
+  });
+
+  it('[IAM-002] lists a SAML provider with its entity ID, certificates and the addresses to register', async () => {
+    openPage({
+      'GET /identity-providers': () =>
+        jsonResponse(200, { providers: [STAFF, CONTRACTORS], redirectUri: REDIRECT_URI }),
+    });
+    const item = await providerItem('Contractors');
+    for (const text of [
+      'SAML 2.0',
+      'Entity ID https://id.contractors.example/saml',
+      '1 signing certificate',
+      'Accepts sign-ins started at the provider',
+      'Domains: contractors.example',
+      'Group attribute memberOf, 1 mapping',
+      'Entity ID to register',
+      CONTRACTORS.serviceProvider.acsUrl,
+    ]) {
+      expect(within(item).getByText(text)).toBeVisible();
+    }
+    expect(
+      within(item).getByRole('link', { name: 'Taskmoor metadata for Contractors' }),
+    ).toHaveAttribute('href', CONTRACTORS.serviceProvider.metadataUrl);
+    // OpenID Connect providers keep their own details.
+    expect(within(await providerItem('Staff accounts')).queryByText('SAML 2.0')).toBeNull();
+  });
+
+  it('[IAM-002] adds a SAML provider from pasted metadata', async () => {
+    const user = userEvent.setup();
+    let providers: IdentityProvider[] = [STAFF];
+    const calls = openPage({
+      'GET /identity-providers': () => jsonResponse(200, { providers, redirectUri: REDIRECT_URI }),
+      'POST /identity-providers': () => {
+        const created = { ...CONTRACTORS, id: 9, name: 'Agency' };
+        providers = [...providers, created];
+        return jsonResponse(201, { provider: created });
+      },
+    });
+    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    const form = screen.getByRole('form', { name: 'New identity provider' });
+    await user.keyboard('Agency');
+    const protocol = within(form).getByRole('group', { name: 'Protocol' });
+    expect(within(protocol).getByRole('radio', { name: 'OpenID Connect' })).toBeChecked();
+    await user.click(within(protocol).getByRole('radio', { name: 'SAML 2.0' }));
+    // The OpenID Connect fields give way to the SAML ones; the name stays.
+    expect(within(form).queryByLabelText('Issuer URL')).toBeNull();
+    expect(within(form).getByLabelText('Name')).toHaveValue('Agency');
+    await user.click(within(form).getByLabelText('Identity provider metadata'));
+    await user.paste(METADATA);
+    await user.type(within(form).getByLabelText('Domain'), 'agency.example{Enter}');
+    await user.type(within(form).getByLabelText('Group attribute'), 'memberOf');
+    const policy = within(form).getByRole('group', { name: 'Sign-in policy' });
+    expect(
+      within(policy).getByRole('checkbox', {
+        name: 'Accept sign-ins started at the identity provider',
+      }),
+    ).not.toBeChecked();
+    await user.click(within(form).getByRole('button', { name: 'Add provider' }));
+
+    expect(await screen.findByText('Added Agency.')).toHaveAttribute('role', 'status');
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
+      protocol: 'saml',
+      name: 'Agency',
+      metadataXml: METADATA,
+      spEntityId: null,
+      emailAttribute: null,
+      idpInitiated: false,
+      groupClaim: 'memberOf',
+      domains: ['agency.example'],
+      enforceSso: false,
+      jit: true,
+      enabled: true,
+      groupMap: [],
+    });
+    expect(await providerItem('Agency')).toBeVisible();
+  });
+
+  it('[IAM-002] asks for metadata or the settings before sending a new SAML provider', async () => {
+    const user = userEvent.setup();
+    const calls = openPage();
+    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    const form = screen.getByRole('form', { name: 'New identity provider' });
+    await user.keyboard('Agency');
+    await user.click(within(form).getByRole('radio', { name: 'SAML 2.0' }));
+    await user.type(within(form).getByLabelText('Entity ID'), 'urn:agency');
+    await user.click(within(form).getByRole('button', { name: 'Add provider' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Paste the metadata, or fill in the entity ID, the sign-in URL and at least one certificate.',
+    );
+    expect(within(form).getByLabelText('Identity provider metadata')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+
+    // By hand: the three settings are enough.
+    await user.type(within(form).getByLabelText('Sign-in URL'), 'https://agency.example/sso');
+    await user.click(within(form).getByLabelText('Signing certificates'));
+    await user.paste(PEM);
+    await user.click(within(form).getByRole('button', { name: 'Add provider' }));
+    await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
+    expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({
+      protocol: 'saml',
+      entityId: 'urn:agency',
+      ssoUrl: 'https://agency.example/sso',
+      certificates: [PEM],
+    });
+  });
+
+  it('[IAM-002] explains metadata and certificates the backend could not read', async () => {
+    const user = userEvent.setup();
+    let answer = 'invalid_metadata';
+    openPage({
+      'GET /identity-providers': () =>
+        jsonResponse(200, { providers: [CONTRACTORS], redirectUri: REDIRECT_URI }),
+      'PATCH /identity-providers/4': () => jsonResponse(400, { error: answer }),
+    });
+    const item = await providerItem('Contractors');
+    await user.click(within(item).getByRole('button', { name: 'Edit Contractors' }));
+    const form = within(item).getByRole('form', { name: 'Edit Contractors' });
+    await user.click(within(form).getByLabelText('Identity provider metadata'));
+    await user.paste('<not-metadata/>');
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'The metadata could not be read.',
+    );
+    answer = 'invalid_certificate';
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(within(form).getByLabelText('Signing certificates')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      ),
+    );
+    answer = 'insecure_sso_url';
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(within(form).getByLabelText('Sign-in URL')).toHaveAttribute('aria-invalid', 'true'),
+    );
+  });
+
+  it('[IAM-002] an edit of a SAML provider sends only what changed', async () => {
+    const user = userEvent.setup();
+    const calls = openPage({
+      'GET /identity-providers': () =>
+        jsonResponse(200, { providers: [CONTRACTORS], redirectUri: REDIRECT_URI }),
+      'PATCH /identity-providers/4': (body) =>
+        jsonResponse(200, { provider: { ...CONTRACTORS, ...(body as object) } }),
+    });
+    const item = await providerItem('Contractors');
+    await user.click(within(item).getByRole('button', { name: 'Edit Contractors' }));
+    const form = within(item).getByRole('form', { name: 'Edit Contractors' });
+    // The saved settings are there to change; the protocol is not.
+    expect(within(form).queryByRole('group', { name: 'Protocol' })).toBeNull();
+    expect(within(form).getByLabelText('Entity ID')).toHaveValue(CONTRACTORS.entityId);
+    expect(within(form).getByLabelText('Signing certificates')).toHaveValue(PEM);
+    expect(within(form).getByText(/Saved: CN=id\.contractors\.example, valid until/)).toBeVisible();
+    await user.click(
+      within(form).getByRole('checkbox', {
+        name: 'Accept sign-ins started at the identity provider',
+      }),
+    );
+    await user.type(within(form).getByLabelText('Email attribute'), 'mail');
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('Saved Contractors.')).toBeVisible();
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({
+      idpInitiated: false,
+      emailAttribute: 'mail',
+    });
+  });
+
+  it('[IAM-002] passes every SAML string through the pseudo-locale', async () => {
+    const user = userEvent.setup();
+    stubBackend({
+      'GET /identity-providers': () =>
+        jsonResponse(200, { providers: [CONTRACTORS], redirectUri: REDIRECT_URI }),
+      'GET /groups': () => jsonResponse(200, { groups: GROUPS }),
+    });
+    window.location.hash = '#/admin/identity-providers';
+    const errors: Error[] = [];
+    render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
+    const main = screen.getByRole('main');
+    await within(main).findByRole('list');
+    const add = within(main)
+      .getAllByRole('button')
+      .find((b) => b.getAttribute('aria-expanded') === 'false') as HTMLElement;
+    await user.click(add);
+    await user.click(within(main).getAllByRole('radio')[1] as HTMLElement);
+    await user.click(
+      within(main)
+        .getAllByRole('button')
+        .filter((b) => b.getAttribute('aria-controls'))[0] as HTMLElement,
+    );
+    const data = [
+      REDIRECT_URI,
+      PEM,
+      CONTRACTORS.serviceProvider.spEntityId,
+      CONTRACTORS.serviceProvider.acsUrl,
+      CONTRACTORS.serviceProvider.metadataUrl,
+      CONTRACTORS.entityId,
+      CONTRACTORS.ssoUrl,
+    ];
+    const texts = visibleTexts(main).filter((text) => !data.includes(text));
+    expect(texts.length).toBeGreaterThan(40);
+    expect(untranslated(texts)).toEqual([]);
+    expect(errors).toEqual([]);
   });
 
   it('passes every string through the pseudo-locale', async () => {

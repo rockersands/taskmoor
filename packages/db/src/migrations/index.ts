@@ -16,6 +16,7 @@ import * as m0014 from './0014_tickets';
 import * as m0015 from './0015_ticket_history';
 import * as m0018 from './0018_ticket_fields';
 import * as m0019 from './0019_links';
+import * as m0020 from './0020_saml';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -40,4 +41,5 @@ export const migrations: Record<string, Migration> = {
   '0015_ticket_history': m0015,
   '0018_ticket_fields': m0018,
   '0019_links': m0019,
+  '0020_saml': m0020,
 };

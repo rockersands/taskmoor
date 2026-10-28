@@ -56,6 +56,9 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/session']).toBe('public');
     expect(classes['POST /api/v1/session/second-factor']).toBe('public');
     expect(classes['GET /api/v1/auth/oidc/callback']).toBe('public');
+    expect(classes['POST /api/v1/auth/saml/:id/acs']).toBe('public');
+    expect(classes['GET /api/v1/auth/saml/continue']).toBe('public');
+    expect(classes['GET /api/v1/auth/saml/:id/metadata']).toBe('public');
     expect(classes['POST /api/v1/account/two-factor/totp/disable']).toBe('session');
     expect(classes['PUT /api/v1/security/two-factor']).toBe('admin');
     expect(classes['GET /api/v1/audit/export']).toBe('admin');

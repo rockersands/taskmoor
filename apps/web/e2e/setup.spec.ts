@@ -909,3 +909,50 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
     await page.request.delete('/api/v1/session');
   }
 });
+
+// The SAML provider of e2e/api-server.ts (M1-081): it signs in one person, Riley, at saml.test.
+const SAML_IDP = 'http://127.0.0.1:8789';
+const RILEY = { name: 'Riley Chen' };
+
+test('[IAM-002] the administrator adds a SAML identity provider from its metadata; people sign in through it', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  await page.goto('./#/admin/identity-providers');
+  await page.getByRole('button', { name: 'Add an identity provider' }).click();
+  const form = page.getByRole('form', { name: 'New identity provider' });
+  await form.getByLabel('Name', { exact: true }).fill('Partner SAML');
+  await form.getByRole('radio', { name: 'SAML 2.0' }).check();
+  const metadata = await (await page.request.get(`${SAML_IDP}/metadata`)).text();
+  await form.getByLabel('Identity provider metadata').fill(metadata);
+  await form.getByLabel('Domain', { exact: true }).fill('saml.test');
+  await form.getByLabel('Domain', { exact: true }).press('Enter');
+  await form.getByRole('button', { name: 'Add provider' }).click();
+  await expect(page.getByText('Added Partner SAML.')).toBeVisible();
+  // The addresses to register at the identity provider, from the backend's public URL.
+  await expect(
+    page.getByText(/^http:\/\/localhost:4173\/api\/v1\/auth\/saml\/\d+\/acs$/),
+  ).toBeVisible();
+
+  try {
+    // The provider's page posts the response across sites; the browser that started the
+    // sign-in then collects it, with the cookie a cross-site POST would not carry.
+    await signOutThroughMenu(page, ADMIN.name);
+    await page.getByRole('button', { name: 'Sign in with Partner SAML' }).click();
+    await expect(page.getByRole('button', { name: RILEY.name, exact: true })).toBeVisible();
+    await expect(heading(page)).toHaveText('Home');
+    await signOutThroughMenu(page, RILEY.name);
+
+    // The next sign-in finds Riley's account again, by the provider's persistent name ID.
+    await page.getByRole('button', { name: 'Sign in with Partner SAML' }).click();
+    await expect(page.getByRole('button', { name: RILEY.name, exact: true })).toBeVisible();
+    await signOutThroughMenu(page, RILEY.name);
+  } finally {
+    await signInThroughApi(page.request, ADMIN);
+    const listed = await page.request.get('/api/v1/identity-providers');
+    for (const p of ((await listed.json()) as { providers: { id: number }[] }).providers) {
+      await page.request.delete(`/api/v1/identity-providers/${p.id}`);
+    }
+    await page.request.delete('/api/v1/session');
+  }
+});

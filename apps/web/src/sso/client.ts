@@ -1,10 +1,15 @@
 import type { GroupSummary } from '../admin/SecurityPage';
 import { API_BASE, api } from '../api/client';
 
+/** The protocol a provider speaks: OpenID Connect (M1-080) or SAML 2.0 (M1-081). */
+export type SsoProtocol = 'oidc' | 'saml';
+
 /** A provider the sign-in page offers (M1-080, IAM-003): enabled ones only. */
 export interface SsoProviderSummary {
   id: number;
   name: string;
+  /** Which start address it uses; OpenID Connect when absent. */
+  protocol?: SsoProtocol;
 }
 
 /** Which sign-in methods an email's domain uses; the backend decides by the domain alone. */
@@ -43,9 +48,10 @@ export function returnTo(hash: string): string {
   return address.length > RETURN_TO_MAX ? '/' : address;
 }
 
-/** The backend address that starts a sign-in with a provider. */
-export function startUrl(providerId: number, back: string): string {
-  return `${API_BASE}/auth/oidc/${providerId}/start?returnTo=${encodeURIComponent(back)}`;
+/** The backend address that starts a sign-in with a provider, by its protocol. */
+export function startUrl(provider: SsoProviderSummary, back: string): string {
+  const protocol = provider.protocol === 'saml' ? 'saml' : 'oidc';
+  return `${API_BASE}/auth/${protocol}/${provider.id}/start?returnTo=${encodeURIComponent(back)}`;
 }
 
 /** A parameter of the hash route's query (`#/sign-in?sso_error=no_account`). */
@@ -80,14 +86,11 @@ export interface GroupMapping {
   groupId: number;
 }
 
-/** An identity provider as administrators see it; the client secret is never returned. */
-export interface IdentityProvider {
+/** What every provider has, whatever its protocol. */
+interface ProviderCommon {
   id: number;
   name: string;
-  issuer: string;
-  clientId: string;
-  hasClientSecret: boolean;
-  scopes: string;
+  /** The claim (OpenID Connect) or attribute (SAML) that lists the person's groups. */
   groupClaim: string | null;
   domains: string[];
   enforceSso: boolean;
@@ -96,14 +99,51 @@ export interface IdentityProvider {
   groupMap: GroupMapping[];
 }
 
-/** What creating or editing a provider sends; an edit names only what changed. */
-export interface ProviderInput {
-  name: string;
+/** An OpenID Connect provider as administrators see it; the client secret is never returned. */
+export interface OidcProvider extends ProviderCommon {
+  protocol?: 'oidc';
   issuer: string;
   clientId: string;
-  /** Write-only: left out, the saved secret stays. */
-  clientSecret?: string;
+  hasClientSecret: boolean;
   scopes: string;
+}
+
+/** A signing certificate of a SAML provider; the summary is null when it cannot be read. */
+export interface SamlCertificate {
+  fingerprint: string | null;
+  subject: string | null;
+  notAfter: string | null;
+  pem: string;
+}
+
+/** Where a SAML provider reaches Taskmoor: what administrators register there. */
+export interface SamlServiceProvider {
+  spEntityId: string;
+  acsUrl: string;
+  metadataUrl: string;
+}
+
+/** A SAML 2.0 provider (M1-081, IAM-002). */
+export interface SamlProvider extends ProviderCommon {
+  protocol: 'saml';
+  entityId: string;
+  ssoUrl: string;
+  certificates: SamlCertificate[];
+  /** Taskmoor's entity ID when an administrator fixed one; the metadata address otherwise. */
+  spEntityId: string | null;
+  emailAttribute: string | null;
+  idpInitiated: boolean;
+  serviceProvider: SamlServiceProvider;
+}
+
+export type IdentityProvider = OidcProvider | SamlProvider;
+
+export function isSaml(provider: IdentityProvider): provider is SamlProvider {
+  return provider.protocol === 'saml';
+}
+
+interface InputCommon {
+  name: string;
   groupClaim: string | null;
   domains: string[];
   enforceSso: boolean;
@@ -111,6 +151,32 @@ export interface ProviderInput {
   enabled: boolean;
   groupMap: GroupMapping[];
 }
+
+/** What creating or editing an OpenID Connect provider sends; an edit names only what changed. */
+export interface OidcProviderInput extends InputCommon {
+  issuer: string;
+  clientId: string;
+  /** Write-only: left out, the saved secret stays. */
+  clientSecret?: string;
+  scopes: string;
+}
+
+/**
+ * What creating or editing a SAML provider sends. The metadata fills the entity ID, sign-in
+ * address and certificates the input leaves out. `protocol` goes with a new provider only.
+ */
+export interface SamlProviderInput extends InputCommon {
+  protocol?: 'saml';
+  metadataXml?: string;
+  entityId?: string;
+  ssoUrl?: string;
+  certificates?: string[];
+  spEntityId: string | null;
+  emailAttribute: string | null;
+  idpInitiated: boolean;
+}
+
+export type ProviderInput = OidcProviderInput | SamlProviderInput;
 
 /** The providers, and the backend's callback address that administrators register at each. */
 export interface ProviderList {

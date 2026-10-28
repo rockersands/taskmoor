@@ -470,13 +470,13 @@ export const messagesEn = {
   'admin.security.saveFailed': 'The policy could not be saved. Try again in a moment.',
   'admin.sso.title': 'Single sign-on',
   'admin.sso.intro':
-    'People sign in with the account your organisation already gives them, through an identity provider that speaks OpenID Connect. Each provider serves the email domains you list; it can create accounts at a first sign-in and keep group memberships in step.',
+    'People sign in with the account your organisation already gives them, through an identity provider that speaks OpenID Connect or SAML 2.0. Each provider serves the email domains you list; it can create accounts at a first sign-in and keep group memberships in step.',
   'admin.sso.loading': 'Reading the identity providers…',
   'admin.sso.failed': 'The identity providers could not be read. Try again in a moment.',
   'admin.sso.forbidden': 'Only site administrators can manage single sign-on.',
   'admin.sso.redirectTitle': 'Redirect URI',
   'admin.sso.redirectIntro':
-    'Register this address as the redirect URI of the client you create at the identity provider. It is the same for every provider.',
+    'Register this address as the redirect URI of the client you create at an OpenID Connect provider. It is the same for every OpenID Connect provider; each SAML provider lists its own addresses below.',
   'admin.sso.redirectLabel': 'Redirect URI to register',
   'admin.sso.copy': 'Copy',
   'admin.sso.copied': 'Redirect URI copied.',
@@ -512,6 +512,20 @@ export const messagesEn = {
   'admin.sso.groupsValue':
     '{count, plural, =0 {Group claim {claim}, no mappings} one {Group claim {claim}, # mapping} other {Group claim {claim}, # mappings}}',
   'admin.sso.noGroupSync': 'No group mapping',
+  'admin.sso.saml': 'SAML 2.0',
+  'admin.sso.entityIdValue': 'Entity ID {entityId}',
+  'admin.sso.certificatesValue':
+    '{count, plural, =0 {No signing certificate} one {# signing certificate} other {# signing certificates}}',
+  'admin.sso.idpInitiatedOn': 'Accepts sign-ins started at the provider',
+  'admin.sso.groupAttributeValue':
+    '{count, plural, =0 {Group attribute {claim}, no mappings} one {Group attribute {claim}, # mapping} other {Group attribute {claim}, # mappings}}',
+  'admin.sso.spEntityId': 'Entity ID to register',
+  'admin.sso.acsUrl': 'Assertion consumer service URL (HTTP-POST)',
+  'admin.sso.spMetadata': 'Metadata to import',
+  'admin.sso.spMetadataNamed': 'Taskmoor metadata for {name}',
+  'admin.sso.form.protocol': 'Protocol',
+  'admin.sso.form.protocolOidc': 'OpenID Connect',
+  'admin.sso.form.protocolSaml': 'SAML 2.0',
   'admin.sso.form.name': 'Name',
   'admin.sso.form.nameHint': 'Shown on the sign-in button, such as Staff accounts.',
   'admin.sso.form.issuer': 'Issuer URL',
@@ -549,6 +563,34 @@ export const messagesEn = {
   'admin.sso.form.groupClaim': 'Group claim',
   'admin.sso.form.groupClaimHint':
     'The claim that lists the groups of the person, such as groups. Leave blank to leave group memberships alone.',
+  'admin.sso.form.metadata': 'Identity provider metadata',
+  'admin.sso.form.metadataHint':
+    'Paste the metadata XML the identity provider publishes. Taskmoor reads the entity ID, the sign-in URL and the signing certificates from it; what you fill in below takes precedence.',
+  'admin.sso.form.metadataHintEdit':
+    'Paste new metadata to update the entity ID, the sign-in URL and the certificates. Leave blank to keep them.',
+  'admin.sso.form.entityId': 'Entity ID',
+  'admin.sso.form.entityIdHint':
+    'The entity ID of the identity provider, which it names as the issuer of its answers.',
+  'admin.sso.form.ssoUrl': 'Sign-in URL',
+  'admin.sso.form.ssoUrlHint':
+    'Where people are sent to sign in: the single sign-on address for the HTTP-Redirect binding.',
+  'admin.sso.form.certificates': 'Signing certificates',
+  'admin.sso.form.certificatesHint':
+    'One or more certificates in PEM format. Answers must be signed with the key of one of them; add the next certificate before the provider changes keys.',
+  'admin.sso.form.certificateSaved': 'Saved: {subject}, valid until {until}, SHA-256 {fingerprint}',
+  'admin.sso.form.certificateUnreadable': 'Saved: a certificate that cannot be read',
+  'admin.sso.form.emailAttribute': 'Email attribute',
+  'admin.sso.form.emailAttributeHint':
+    'The attribute that holds the email address. Leave blank to use email or mail, or the name ID when it is an address.',
+  'admin.sso.form.spEntityId': 'Taskmoor entity ID',
+  'admin.sso.form.spEntityIdHint':
+    'How Taskmoor names itself to this provider. Leave blank to use the address of its metadata; fill it in to keep an existing registration.',
+  'admin.sso.form.idpInitiated': 'Accept sign-ins started at the identity provider',
+  'admin.sso.form.idpInitiatedHint':
+    'For app portals that sign people in without Taskmoor asking. Leave it off unless you need it: such answers are not tied to the browser that brings them.',
+  'admin.sso.form.groupAttribute': 'Group attribute',
+  'admin.sso.form.groupAttributeHint':
+    'The attribute that lists the groups of the person, such as groups or memberOf. Leave blank to leave group memberships alone.',
   'admin.sso.form.groupMap': 'Group mapping',
   'admin.sso.form.groupMapHint':
     'At each sign-in, people join the mapped groups their claim lists and leave the mapped groups it no longer lists. Groups without a mapping are left alone.',
@@ -568,6 +610,13 @@ export const messagesEn = {
   'admin.sso.form.save': 'Save changes',
   'admin.sso.form.cancel': 'Cancel',
   'admin.sso.error.insecureIssuer': 'The issuer URL must start with https://.',
+  'admin.sso.error.insecureSsoUrl': 'The sign-in URL must start with https://.',
+  'admin.sso.error.invalidMetadata':
+    'The metadata could not be read. Paste the whole XML of one SAML 2.0 identity provider that offers the HTTP-Redirect binding and a signing certificate.',
+  'admin.sso.error.invalidCertificate':
+    'A certificate could not be read. Paste each one in PEM format, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.',
+  'admin.sso.error.samlIncomplete':
+    'Paste the metadata, or fill in the entity ID, the sign-in URL and at least one certificate.',
   'admin.sso.error.domainTaken':
     '{count, plural, one {Another enabled provider already serves {domains}.} other {Other enabled providers already serve {domains}.}} A domain can belong to one enabled provider.',
   'admin.sso.error.nameTaken': 'Another provider already has this name.',

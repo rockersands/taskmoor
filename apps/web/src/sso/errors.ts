@@ -40,6 +40,10 @@ export function ssoRequiredProvider(error: unknown): SsoProviderSummary | null {
   }
   const provider = (error.body as { provider?: Partial<SsoProviderSummary> } | null)?.provider;
   return typeof provider?.id === 'number' && typeof provider.name === 'string'
-    ? { id: provider.id, name: provider.name }
+    ? {
+        id: provider.id,
+        name: provider.name,
+        ...(provider.protocol === 'saml' ? { protocol: 'saml' as const } : {}),
+      }
     : null;
 }

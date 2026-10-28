@@ -6,6 +6,7 @@ import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { issueSetupToken } from '../setup';
 import { FakeIdp } from '../testing/fake-idp';
+import { FakeSamlIdp } from '../testing/fake-saml-idp';
 import { SoftAuthenticator } from '../testing/webauthn';
 import { EVENT_TYPES, type EventType } from './catalogue';
 
@@ -18,7 +19,12 @@ import { EVENT_TYPES, type EventType } from './catalogue';
  */
 const MUTATING = ['POST', 'PUT', 'PATCH', 'DELETE'];
 /** GET routes that change state because a browser arrives at them by redirect. */
-const REDIRECT_MUTATIONS = ['GET /api/v1/auth/oidc/:id/start', 'GET /api/v1/auth/oidc/callback'];
+const REDIRECT_MUTATIONS = [
+  'GET /api/v1/auth/oidc/:id/start',
+  'GET /api/v1/auth/oidc/callback',
+  'GET /api/v1/auth/saml/:id/start',
+  'GET /api/v1/auth/saml/continue',
+];
 const EXEMPT: Record<string, string> = {
   'POST /api/v1/password-check': 'reads only: checks a candidate password, stores nothing',
   'POST /api/v1/password-links/inspect': 'reads only: shows who a link is for',
@@ -30,6 +36,10 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/auth/discover': 'reads only: which sign-in methods a domain uses',
   'GET /api/v1/auth/oidc/:id/start':
     'transient sign-in state: the state, nonce and verifier of a single sign-on in progress',
+  'GET /api/v1/auth/saml/:id/start':
+    'transient sign-in state: the request ID of a SAML sign-in in progress, bound to the browser',
+  'POST /api/v1/auth/saml/:id/acs':
+    'transient sign-in state: a verified SAML response waiting for its browser, and its assertion ID; the sign-in itself is GET /api/v1/auth/saml/continue',
 };
 const PASSWORD = 'ladder violet harbour';
 
@@ -87,6 +97,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
   };
 
   const idp = new FakeIdp('taskmoor', 'contract client secret');
+  const samlIdp = new FakeSamlIdp();
 
   beforeAll(async () => {
     await idp.start();
@@ -1490,6 +1501,57 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           method: 'GET',
           url: String(state.ssoCallback),
           headers: { cookie: String(state.ssoBrowser) },
+        });
+        expect(String(res.headers.location)).not.toContain('sso_error');
+        return res;
+      },
+    },
+    {
+      route: 'GET /api/v1/auth/saml/continue',
+      expect: 'sso.signed_in',
+      status: 302,
+      // A SAML provider, a sign-in started, answered and posted back; then the browser
+      // collects it.
+      prepare: async () => {
+        const created = await admin({
+          method: 'POST',
+          url: '/api/v1/identity-providers',
+          payload: {
+            protocol: 'saml',
+            name: 'Contract SAML',
+            metadataXml: samlIdp.metadata(),
+            domains: ['saml.example'],
+          },
+        });
+        const provider = created.json().provider;
+        const start = await call(undefined, {
+          method: 'GET',
+          url: `/api/v1/auth/saml/${provider.id}/start`,
+        });
+        const header = start.headers['set-cookie'];
+        state.samlBrowser = String(Array.isArray(header) ? header[0] : header).split(';')[0] ?? '';
+        const request = samlIdp.readRequest(String(start.headers.location));
+        const acs = await call(undefined, {
+          method: 'POST',
+          url: `/api/v1/auth/saml/${provider.id}/acs`,
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          payload: new URLSearchParams({
+            SAMLResponse: samlIdp.post({
+              person: { nameId: 'gil@saml.example' },
+              acsUrl: provider.serviceProvider.acsUrl,
+              audience: provider.serviceProvider.spEntityId,
+              inResponseTo: request.id,
+            }),
+          }).toString(),
+        });
+        const next = new URL(String(acs.headers.location));
+        state.samlContinue = `${next.pathname}${next.search}`;
+      },
+      run: async () => {
+        const res = await call(undefined, {
+          method: 'GET',
+          url: String(state.samlContinue),
+          headers: { cookie: String(state.samlBrowser) },
         });
         expect(String(res.headers.location)).not.toContain('sso_error');
         return res;

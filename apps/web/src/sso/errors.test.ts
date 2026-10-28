@@ -16,15 +16,19 @@ describe('single sign-on errors (M1-080)', () => {
     expect(sentences).not.toContain(messages['auth.sso.error.unknown']);
   });
 
-  it('[IAM-003] knows every reason the backend redirects with', () => {
-    // The backend's sign-in routes send these through fail(), literally or as an outcome's
-    // error; read from the source (from the repo or the app) so both lists stay in step.
-    const path = ['apps/server/src/routes/sso.ts', '../server/src/routes/sso.ts']
-      .map((p) => resolve(process.cwd(), p))
-      .find((p) => existsSync(p));
-    const source = readFileSync(path ?? 'sso.ts', 'utf8');
+  it('[IAM-002] [IAM-003] knows every reason the backend redirects with', () => {
+    // The backend's sign-in routes (OpenID Connect, SAML) send these through fail(), literally
+    // or as the shared sign-in's error; read from the source (from the repo or the app) so
+    // both lists stay in step.
+    const read = (file: string) => {
+      const path = [`apps/server/src/${file}`, `../server/src/${file}`]
+        .map((p) => resolve(process.cwd(), p))
+        .find((p) => existsSync(p));
+      return readFileSync(path ?? file, 'utf8');
+    };
+    const source = ['routes/sso.ts', 'routes/saml.ts', 'sso/sign-in.ts'].map(read).join('\n');
     const sent = new Set([
-      ...[...source.matchAll(/fail\(reply, '([a-z_]+)'\)/g)].map((m) => m[1]),
+      ...[...source.matchAll(/fail\(reply, '([a-z_]+)'(?:, \d+)?\)/g)].map((m) => m[1]),
       ...[...source.matchAll(/error: '([a-z_]+)' as const/g)].map((m) => m[1]),
     ]);
     expect(sent.size).toBeGreaterThan(5);
@@ -42,6 +46,11 @@ describe('single sign-on errors (M1-080)', () => {
       provider: { id: 3, name: 'Umbrella' },
     });
     expect(ssoRequiredProvider(required)).toEqual({ id: 3, name: 'Umbrella' });
+    const saml = new ApiError(403, {
+      error: 'sso_required',
+      provider: { id: 4, name: 'Partners', protocol: 'saml' },
+    });
+    expect(ssoRequiredProvider(saml)).toEqual({ id: 4, name: 'Partners', protocol: 'saml' });
     expect(ssoRequiredProvider(new ApiError(403, { error: 'sso_required' }))).toBeNull();
     expect(ssoRequiredProvider(new ApiError(403, { error: 'forbidden' }))).toBeNull();
     expect(

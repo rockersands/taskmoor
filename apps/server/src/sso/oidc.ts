@@ -10,11 +10,17 @@ import * as client from 'openid-client';
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
+/**
+ * An identity provider row, of either protocol (`kind`): OpenID Connect uses issuer, client and
+ * scopes; SAML (M1-081, `saml.ts`) uses the issuer column for its entity ID and the saml_*
+ * columns.
+ */
 export interface Provider {
   id: number;
   name: string;
+  kind: 'oidc' | 'saml';
   issuer: string;
-  client_id: string;
+  client_id: string | null;
   client_secret_sealed: string | null;
   scopes: string;
   group_claim: string | null;
@@ -22,12 +28,18 @@ export interface Provider {
   enforce_sso: boolean;
   jit: boolean;
   enabled: boolean;
+  saml_sso_url: string | null;
+  saml_certificates: string[];
+  saml_sp_entity_id: string | null;
+  saml_email_attribute: string | null;
+  saml_idp_initiated: boolean;
   updated_at: Date;
 }
 
 export const PROVIDER_COLUMNS = [
   'id',
   'name',
+  'kind',
   'issuer',
   'client_id',
   'client_secret_sealed',
@@ -37,6 +49,11 @@ export const PROVIDER_COLUMNS = [
   'enforce_sso',
   'jit',
   'enabled',
+  'saml_sso_url',
+  'saml_certificates',
+  'saml_sp_entity_id',
+  'saml_email_attribute',
+  'saml_idp_initiated',
   'updated_at',
 ] as const;
 
@@ -67,7 +84,7 @@ export async function providerConfiguration(
     : undefined;
   const config = await client.discovery(
     issuer,
-    provider.client_id,
+    provider.client_id ?? '',
     secret,
     undefined,
     issuer.protocol === 'http:' ? { execute: [client.allowInsecureRequests] } : undefined,
@@ -102,6 +119,7 @@ export async function startAuthorization(
   return { url, state, nonce, verifier };
 }
 
+/** The person a provider vouches for; `SsoIdentity` in `sign-in.ts` has the same shape. */
 export interface Identity {
   subject: string;
   email: string | null;
@@ -154,10 +172,10 @@ export async function providerForDomain(
   db: Db,
   workspaceId: number,
   domain: string,
-): Promise<{ id: number; name: string; enforce_sso: boolean } | undefined> {
+): Promise<{ id: number; name: string; kind: 'oidc' | 'saml'; enforce_sso: boolean } | undefined> {
   return db
     .selectFrom('identity_provider')
-    .select(['id', 'name', 'enforce_sso'])
+    .select(['id', 'name', 'kind', 'enforce_sso'])
     .where('workspace_id', '=', workspaceId)
     .where('enabled', '=', true)
     .where(sql<boolean>`${domain} = ANY(domains)`)

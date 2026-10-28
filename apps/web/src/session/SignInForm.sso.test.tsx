@@ -88,6 +88,28 @@ describe('sign-in with single sign-on (M1-080)', () => {
     expect(went).toEqual(['/api/v1/auth/oidc/2/start?returnTo=%2F']);
   });
 
+  it('[IAM-002] starts a SAML provider at its own address', async () => {
+    const user = userEvent.setup();
+    const contractors: SsoProviderSummary = { id: 4, name: 'Contractors', protocol: 'saml' };
+    const { client, went } = fakeSso({
+      providers: async () => [STAFF, contractors],
+      discover: async () => ({ provider: contractors, password: false }),
+    });
+    openSignIn(client);
+    await user.click(await screen.findByRole('button', { name: 'Sign in with Contractors' }));
+    expect(went).toEqual(['/api/v1/auth/saml/4/start?returnTo=%2F']);
+    // Where the domain's SAML provider enforces single sign-on, the email leads there too.
+    await user.type(screen.getByLabelText('Email'), 'kai@contractors.test');
+    await user.tab();
+    const form = screen.getByRole('form', { name: 'Sign in' });
+    await within(form).findByText('Your organisation signs in with Contractors.');
+    await user.click(within(form).getByRole('button', { name: 'Sign in with Contractors' }));
+    expect(went).toEqual([
+      '/api/v1/auth/saml/4/start?returnTo=%2F',
+      '/api/v1/auth/saml/4/start?returnTo=%2F',
+    ]);
+  });
+
   it('[IAM-003] comes back to the page the person was on', async () => {
     const user = userEvent.setup();
     const { client, went } = fakeSso();
