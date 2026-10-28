@@ -147,6 +147,9 @@ export const messagesEn = {
   'settings.singleSignOn': 'Single sign-on',
   'settings.singleSignOnHint':
     'Identity providers people sign in with, the email domains they serve and their group mapping.',
+  'settings.directories': 'LDAP and Active Directory',
+  'settings.directoriesHint':
+    'Directories people and groups are synced from and sign in against, and how their syncs went.',
   'account.title': 'Account',
   'account.intro':
     'Your profile, your password, two-factor authentication and the devices where you are signed in.',
@@ -684,6 +687,212 @@ export const messagesEn = {
     'This provider, or a group in its mapping, no longer exists. Reload the page and try again.',
   'admin.sso.error.invalid': 'Some fields are not valid. Check them and try again.',
   'admin.sso.error.failed': 'The provider could not be saved. Try again in a moment.',
+  'admin.directories.title': 'LDAP and Active Directory',
+  'admin.directories.intro':
+    'Taskmoor reads people and groups from your directories on a schedule, nested groups included, and signs people in with their directory password. A person disabled or deleted in the directory is deactivated at the next sync and keeps everything they did.',
+  'admin.directories.loading': 'Reading the directories…',
+  'admin.directories.failed': 'The directories could not be read. Try again in a moment.',
+  'admin.directories.forbidden': 'Only site administrators can manage directories.',
+  'admin.directories.list': 'Directories',
+  'admin.directories.none': 'No directories yet. People and groups are managed in Taskmoor.',
+  'admin.directories.precedence':
+    'In this order: when two directories hold the same email address, the first one manages that account.',
+  'admin.directories.add': 'Add a directory',
+  'admin.directories.newTitle': 'New directory',
+  'admin.directories.editTitle': 'Edit {name}',
+  'admin.directories.edit': 'Edit',
+  'admin.directories.editNamed': 'Edit {name}',
+  'admin.directories.delete': 'Delete',
+  'admin.directories.deleteNamed': 'Delete {name}',
+  'admin.directories.deleteConfirm':
+    'Delete {name}? {accounts, plural, =0 {It manages no accounts.} one {The # account it manages is deactivated and keeps its work.} other {The # accounts it manages are deactivated and keep their work.}} Its groups stay as Taskmoor groups.',
+  'admin.directories.confirmDelete': 'Delete directory',
+  'admin.directories.cancel': 'Cancel',
+  'admin.directories.lastAdmin':
+    'This directory manages the last active site administrator, so it cannot be deleted. Make another account a site administrator first.',
+  'admin.directories.added': 'Added {name}. Its first sync starts shortly.',
+  'admin.directories.saved': 'Saved {name}.',
+  'admin.directories.unchanged': 'Nothing changed.',
+  'admin.directories.deleted': 'Deleted {name}.',
+  'admin.directories.moved': 'Moved {name}.',
+  'admin.directories.actionFailed': 'That did not work. Try again in a moment.',
+  'admin.directories.disabled': 'Disabled',
+  'admin.directories.readWrite': 'Read and write',
+  'admin.directories.urlValue': '{url}',
+  'admin.directories.urlStartTls': '{url} with StartTLS',
+  'admin.directories.manages':
+    '{accounts, plural, =0 {No accounts} one {# account} other {# accounts}}, {groups, plural, =0 {no groups} one {# group} other {# groups}}',
+  'admin.directories.schedule':
+    'Syncs every {minutes, plural, one {minute} other {# minutes}}, in full every {hours, plural, one {hour} other {# hours}}',
+  'admin.directories.neverSynced': 'Not synced yet',
+  'admin.directories.nextSync': 'Next sync {when}',
+  'admin.directories.sync': 'Sync now',
+  'admin.directories.syncNamed': 'Sync {name} now',
+  'admin.directories.fullSync': 'Full sync',
+  'admin.directories.fullSyncNamed': 'Sync all of {name} now',
+  'admin.directories.syncQueued': 'A sync of {name} is on its way.',
+  'admin.directories.syncDisabled': 'This directory is disabled. Enable it to sync it.',
+  'admin.directories.confirmRemovals': 'Sync and remove',
+  'admin.directories.confirmRemovalsNamed': 'Sync {name} and remove what left it',
+  'admin.directories.history': 'History',
+  'admin.directories.historyNamed': 'History of {name}',
+  'admin.directories.historyTitle': 'Recent syncs of {name}',
+  'admin.directories.noRuns': 'No syncs yet.',
+  'admin.directories.moveUp': 'Move up',
+  'admin.directories.moveUpNamed': 'Move {name} up',
+  'admin.directories.moveDown': 'Move down',
+  'admin.directories.moveDownNamed': 'Move {name} down',
+  'admin.directories.run.full': 'Full sync',
+  'admin.directories.run.incremental': 'Sync',
+  'admin.directories.run.queued': '{kind} waiting to start…',
+  'admin.directories.run.running': '{kind} running…',
+  'admin.directories.run.failed': '{kind} failed {when}: {reason}',
+  'admin.directories.run.succeeded': '{kind} {when}: {changes}',
+  'admin.directories.run.unchanged': '{kind} {when}: nothing changed',
+  'admin.directories.run.usersCreated':
+    '{count, plural, one {# account created} other {# accounts created}}',
+  'admin.directories.run.usersLinked':
+    '{count, plural, one {# account linked} other {# accounts linked}}',
+  'admin.directories.run.usersUpdated':
+    '{count, plural, one {# account updated} other {# accounts updated}}',
+  'admin.directories.run.usersDeactivated':
+    '{count, plural, one {# account deactivated} other {# accounts deactivated}}',
+  'admin.directories.run.usersReactivated':
+    '{count, plural, one {# account reactivated} other {# accounts reactivated}}',
+  'admin.directories.run.usersRemoved':
+    '{count, plural, one {# person left the directory} other {# people left the directory}}',
+  'admin.directories.run.groupsCreated':
+    '{count, plural, one {# group created} other {# groups created}}',
+  'admin.directories.run.groupsUpdated':
+    '{count, plural, one {# group updated} other {# groups updated}}',
+  'admin.directories.run.groupsDeleted':
+    '{count, plural, one {# group deleted} other {# groups deleted}}',
+  'admin.directories.run.warnings': '{count, plural, one {# warning} other {# warnings}}',
+  'admin.directories.warningAt': '{warning} {entry}',
+  'admin.directories.warning.noEmail': 'Skipped, it has no email address:',
+  'admin.directories.warning.duplicateEmail': 'Skipped, another entry has its email address:',
+  'admin.directories.warning.emailTaken': 'Kept the old email address, another account has it:',
+  'admin.directories.warning.serviceAccount': 'Skipped, a service account has its email address:',
+  'admin.directories.warning.breakGlass': 'Skipped, a break-glass account has its email address:',
+  'admin.directories.warning.otherDirectory':
+    'Skipped, a directory earlier in the order manages its email address:',
+  'admin.directories.warning.lastAdmin': 'Kept active, it is the last active site administrator:',
+  'admin.directories.warning.keptBreakGlass': 'Kept active, it is a break-glass account:',
+  'admin.directories.warning.nestingCycle': 'Left out a nested group that would form a loop:',
+  'admin.directories.warning.noIdentifier': 'Skipped, it has no identifier:',
+  'admin.directories.warning.other': 'Warning {code}:',
+  'admin.directories.error.safetyStop':
+    'it would have removed more than half of the people or groups. Check the filters; if the removals are right, choose Sync and remove.',
+  'admin.directories.error.workerLost': 'the worker running it stopped. The next sync tries again.',
+  'admin.directories.error.workerStopped':
+    'the worker running it was shut down. The next sync tries again.',
+  'admin.directories.error.directoryDisabled': 'the directory was disabled.',
+  'admin.directories.error.directoryDeleted': 'the directory was deleted.',
+  'admin.directories.error.unknown': 'no reason was given.',
+  'admin.directories.kind.activeDirectory': 'Active Directory',
+  'admin.directories.kind.openldap': 'OpenLDAP',
+  'admin.directories.kind.generic': 'Other LDAP server',
+  'admin.directories.form.kind': 'Kind of directory',
+  'admin.directories.form.name': 'Name',
+  'admin.directories.form.nameHint': 'For administrators, such as Head office.',
+  'admin.directories.form.connection': 'Connection',
+  'admin.directories.form.url': 'URL',
+  'admin.directories.form.urlHint':
+    'ldaps://host:636, or ldap://host:389 with StartTLS. Passwords never travel without TLS.',
+  'admin.directories.form.startTls': 'Upgrade to TLS with StartTLS',
+  'admin.directories.form.startTlsHint': 'For ldap:// URLs; ldaps:// is encrypted from the start.',
+  'admin.directories.form.caCertificates': 'CA certificates to trust',
+  'admin.directories.form.caCertificatesHint':
+    'Leave blank when the directory has a certificate your servers already trust. Otherwise paste the certificate of the authority that signed it, in PEM format.',
+  'admin.directories.form.caCertificatesHintEdit':
+    'Paste certificates to replace the saved ones. Leave blank to keep them.',
+  'admin.directories.form.certificateSaved':
+    'Saved: {subject}, valid until {until}, SHA-256 {fingerprint}',
+  'admin.directories.form.serviceAccount': 'Service account',
+  'admin.directories.form.bindDn': 'Bind DN',
+  'admin.directories.form.bindDnHint':
+    'The account Taskmoor reads the directory as, such as CN=Taskmoor,OU=Services,DC=example,DC=com. It needs to read people and groups, and to write them for a read-and-write directory.',
+  'admin.directories.form.bindPassword': 'Password',
+  'admin.directories.form.showBindPassword': 'Show service account password',
+  'admin.directories.form.bindPasswordHintNew': 'Stored encrypted and never shown again.',
+  'admin.directories.form.bindPasswordHintKeep':
+    'A password is saved and is never shown again. Leave blank to keep it.',
+  'admin.directories.form.search': 'What to read',
+  'admin.directories.form.baseDn': 'Base DN',
+  'admin.directories.form.baseDnHint': 'Where the directory starts, such as DC=example,DC=com.',
+  'admin.directories.form.userBaseDn': 'People under',
+  'admin.directories.form.userBaseDnHint': 'Leave blank to look for people under the base DN.',
+  'admin.directories.form.userFilter': 'People filter',
+  'admin.directories.form.userFilterHint':
+    'An LDAP filter for the people to sync. People it leaves out are deactivated.',
+  'admin.directories.form.groupBaseDn': 'Groups under',
+  'admin.directories.form.groupBaseDnHint': 'Leave blank to look for groups under the base DN.',
+  'admin.directories.form.groupFilter': 'Groups filter',
+  'admin.directories.form.groupFilterHint':
+    'An LDAP filter for the groups to sync. Groups inside groups are kept, at any depth.',
+  'admin.directories.form.attributes': 'Attribute names',
+  'admin.directories.form.attributesHint':
+    'Leave a field blank to use the name shown in it, the usual one for this kind of directory.',
+  'admin.directories.form.attribute.id': 'Identifier',
+  'admin.directories.form.attribute.username': 'User name',
+  'admin.directories.form.attribute.email': 'Email',
+  'admin.directories.form.attribute.emailFallback': 'Email when empty',
+  'admin.directories.form.attribute.name': 'Display name',
+  'admin.directories.form.attribute.givenName': 'Given name',
+  'admin.directories.form.attribute.surname': 'Surname',
+  'admin.directories.form.attribute.changeMark': 'Changed marker',
+  'admin.directories.form.attribute.groupName': 'Group name',
+  'admin.directories.form.attribute.member': 'Group members',
+  'admin.directories.form.mode': 'Changes made in Taskmoor',
+  'admin.directories.form.readOnly': 'Read only',
+  'admin.directories.form.readOnlyHint':
+    'The directory owns passwords, names, email addresses and group members. Taskmoor does not let anyone change them.',
+  'admin.directories.form.readWrite': 'Read and write',
+  'admin.directories.form.readWriteHint':
+    'Password changes, names, email addresses and group members changed in Taskmoor are written to the directory.',
+  'admin.directories.form.schedule': 'Schedule',
+  'admin.directories.form.interval': 'Minutes between syncs',
+  'admin.directories.form.intervalHint':
+    'From 5 to 1,440. Each sync reads what changed since the last one.',
+  'admin.directories.form.fullHours': 'Hours between full syncs',
+  'admin.directories.form.fullHoursHint':
+    'From 1 to 720. A full sync reads everything, to catch what a changed-since search cannot see.',
+  'admin.directories.form.enabled': 'Enabled',
+  'admin.directories.form.enabledHint':
+    'A disabled directory does not sync, and the people it manages cannot sign in with a password.',
+  'admin.directories.form.test': 'Test connection',
+  'admin.directories.form.create': 'Add directory',
+  'admin.directories.form.save': 'Save changes',
+  'admin.directories.form.cancel': 'Cancel',
+  'admin.directories.test.running': 'Connecting…',
+  'admin.directories.test.found':
+    'Connected. {peopleMore, select, true {More than {people, number} people} other {{people, plural, =0 {No people} one {# person} other {# people}}}} and {groupsMore, select, true {more than {groups, number} groups} other {{groups, plural, =0 {no groups} one {# group} other {# groups}}}} match the filters.',
+  'admin.directories.test.unreachable':
+    'The directory could not be reached. Check the URL, and that this server can reach it.',
+  'admin.directories.test.tlsFailed':
+    'The secure connection failed: the certificate of the directory is not trusted, or does not name the host in the URL. Paste the CA certificate to trust.',
+  'admin.directories.test.bindRefused':
+    'The directory refused the service account. Check the bind DN and the password.',
+  'admin.directories.test.passwordUnreadable':
+    'The saved password cannot be read any more. Enter it again.',
+  'admin.directories.test.searchFailed':
+    'The directory refused the search. Check the base DNs and the filters.',
+  'admin.directories.error.insecureTransport':
+    'Use an ldaps:// URL, or turn on StartTLS: passwords must not cross the network in clear.',
+  'admin.directories.error.invalidUrl':
+    'Enter a URL such as ldaps://ldap.example.com, without a path. StartTLS is only for ldap:// URLs.',
+  'admin.directories.error.invalidCertificate':
+    'A certificate could not be read. Paste each one in PEM format, from -----BEGIN CERTIFICATE----- to -----END CERTIFICATE-----.',
+  'admin.directories.error.nameTaken': 'Another directory already has this name.',
+  'admin.directories.error.notFound':
+    'This directory no longer exists. Reload the page and try again.',
+  'admin.directories.error.invalid':
+    'Some fields are not valid. Check the DNs and that each filter is one LDAP filter in parentheses.',
+  'admin.directories.error.invalidEdit':
+    'Some changes are not valid. Check the DNs and that each filter is one LDAP filter in parentheses.',
+  'admin.directories.error.interval': 'Enter whole minutes from 5 to 1,440.',
+  'admin.directories.error.fullHours': 'Enter whole hours from 1 to 720.',
+  'admin.directories.error.failed': 'The directory could not be saved. Try again in a moment.',
   'twoFactor.setupForm': 'Authenticator app setup',
   'twoFactor.scan':
     'Scan this QR code with an authenticator app, such as the one on your phone or in your password manager.',

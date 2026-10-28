@@ -56,9 +56,13 @@ export function selfSignedCertificate(
   const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const from = options.notBefore ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
   const until = new Date(from.getTime() + (options.days ?? 365) * 24 * 60 * 60 * 1000);
+  // DER integers are minimal: a serial starting with a zero byte (1 in 256 random ones, then
+  // a byte below 0x80) is refused as "cannot be read". The first byte is never zero here.
+  const serial = randomBytes(8);
+  serial[0] = ((serial[0] ?? 0) & 0x7f) | 0x40;
   const tbs = sequence(
     tlv(0xa0, integer(Buffer.from([2]))), // version 3
-    integer(randomBytes(8)),
+    integer(serial),
     SHA256_WITH_RSA,
     name(commonName),
     sequence(utcTime(from), utcTime(until)),

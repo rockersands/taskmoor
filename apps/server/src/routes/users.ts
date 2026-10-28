@@ -16,6 +16,12 @@ import {
   validTimeZone,
 } from '../directory';
 import { diff, emit } from '../events/bus';
+import {
+  type DirectoryGateway,
+  directoryFailure,
+  directoryManaged,
+  readOnly,
+} from '../ldap/gateway';
 
 const listQuery = z.object({
   query: z.string().trim().max(200).optional(),
@@ -63,7 +69,7 @@ function isUniqueViolation(error: unknown): boolean {
 export function registerUserRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { publicUrl: string; passwords: PasswordHasher },
+  options: { publicUrl: string; passwords: PasswordHasher; directories: DirectoryGateway },
 ): void {
   app.get('/api/v1/users', async (request, reply) => {
     if (!(await requireSiteAdmin(request, reply))) return reply;
@@ -201,7 +207,21 @@ export function registerUserRoutes(
       .orderBy(sql`lower(g.name)`)
       .execute();
     const effective = await effectiveGroupIds(db, request.workspaceId, row.id);
-    return { user: toUserView(row), groups: direct, effectiveGroupIds: effective };
+    const managed = await options.directories.account(request.workspaceId, row.id);
+    return {
+      user: toUserView(row),
+      groups: direct,
+      effectiveGroupIds: effective,
+      // M1-082: the directory that manages the account, if one does.
+      directory: managed
+        ? {
+            id: managed.directory.id,
+            name: managed.directory.name,
+            dn: managed.dn,
+            mode: managed.directory.mode,
+          }
+        : null,
+    };
   });
 
   app.patch('/api/v1/users/:id', async (request, reply) => {
@@ -218,6 +238,39 @@ export function registerUserRoutes(
     }
     if (body.locale && !validLocale(body.locale)) {
       return reply.code(400).send({ error: 'invalid_locale' });
+    }
+    // M1-082: a directory owns the name and address of the accounts it manages; a read-write
+    // one takes changes made here. A break-glass account must not depend on a directory.
+    const managed = await options.directories.account(request.workspaceId, params.data.id);
+    if (managed) {
+      if (body.breakGlass === true) return directoryManaged(reply, managed.directory);
+      // Only values that change count: sending the current name or address back is fine.
+      const current = await db
+        .selectFrom('app_user')
+        .select(['name', 'email'])
+        .where('id', '=', managed.userId)
+        .executeTakeFirstOrThrow();
+      const profile = {
+        ...(body.name !== undefined && body.name !== current.name ? { name: body.name } : {}),
+        ...(body.email !== undefined && body.email.toLowerCase() !== current.email.toLowerCase()
+          ? { email: body.email.toLowerCase() }
+          : {}),
+      };
+      if (Object.keys(profile).length > 0) {
+        if (readOnly(managed.directory.mode)) return directoryManaged(reply, managed.directory);
+        if (profile.email !== undefined) {
+          const holder = await db
+            .selectFrom('app_user')
+            .select('id')
+            .where('workspace_id', '=', request.workspaceId)
+            .where(sql<string>`lower(email)`, '=', profile.email)
+            .where('id', '!=', managed.userId)
+            .executeTakeFirst();
+          if (holder) return reply.code(409).send({ error: 'email_taken' });
+        }
+        const failure = await options.directories.writeProfile(managed, profile);
+        if (failure) return directoryFailure(reply, failure);
+      }
     }
     try {
       const outcome = await db.transaction().execute(async (trx) => {
@@ -403,6 +456,9 @@ export function registerUserRoutes(
       .executeTakeFirst();
     if (!row) return reply.code(404).send({ error: 'not_found' });
     if (row.deactivated_at) return reply.code(409).send({ error: 'user_deactivated' });
+    // A directory checks this person's password (M1-082): a local one would never be asked for.
+    const managed = await options.directories.account(request.workspaceId, row.id);
+    if (managed) return directoryManaged(reply, managed.directory);
     const purpose = row.password_hash ? 'reset' : 'activate';
     const link = await db.transaction().execute(async (trx) => {
       const created = await createPasswordLink(trx, {

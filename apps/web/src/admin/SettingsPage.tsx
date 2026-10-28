@@ -53,6 +53,10 @@ export function SettingsPage() {
               <a href="#/admin/identity-providers">{t('settings.singleSignOn')}</a>
               <p className="page-note">{t('settings.singleSignOnHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/directories">{t('settings.directories')}</a>
+              <p className="page-note">{t('settings.directoriesHint')}</p>
+            </li>
           </ul>
         </section>
       )}

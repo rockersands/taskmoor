@@ -12,6 +12,12 @@ import { AUDIT_ACTIONS, recordRefusedAttempt } from '../audit/record';
 import { requireUser, revokeUserSessions } from '../auth';
 import { canonicalTimeZone, validLocale, validTimeZone } from '../directory';
 import { diff, withEvent } from '../events/bus';
+import {
+  type DirectoryGateway,
+  directoryFailure,
+  directoryManaged,
+  readOnly,
+} from '../ldap/gateway';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 
 const profileBody = z
@@ -43,7 +49,7 @@ const passwordBody = z.object({
 export function registerAccountRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  { passwords }: { passwords: PasswordHasher },
+  { passwords, directories }: { passwords: PasswordHasher; directories: DirectoryGateway },
 ): void {
   app.patch('/api/v1/account', async (request, reply) => {
     const user = requireUser(request, reply);
@@ -55,6 +61,16 @@ export function registerAccountRoutes(
       return reply.code(400).send({ error: 'invalid_time_zone' });
     }
     if (locale && !validLocale(locale)) return reply.code(400).send({ error: 'invalid_locale' });
+    // M1-082: a directory owns the name of the accounts it manages; a read-write one takes the
+    // change. Time zone, locale and appearance are Taskmoor's.
+    if (name !== undefined && name !== user.name) {
+      const managed = await directories.account(request.workspaceId, user.id);
+      if (managed) {
+        if (readOnly(managed.directory.mode)) return directoryManaged(reply, managed.directory);
+        const failure = await directories.writeProfile(managed, { name });
+        if (failure) return directoryFailure(reply, failure);
+      }
+    }
     const changes = {
       ...(name !== undefined ? { name } : {}),
       ...(timeZone !== undefined
@@ -124,10 +140,22 @@ export function registerAccountRoutes(
     }
     const row = await db
       .selectFrom('app_user')
-      .select('password_hash')
+      .select(['password_hash', 'break_glass'])
       .where('id', '=', user.id)
       .executeTakeFirstOrThrow();
-    if (!row.password_hash || !(await passwords.verify(currentPassword, row.password_hash))) {
+    // M1-082: a directory holds the password of the accounts it manages. A read-only one is
+    // changed there; a read-write one takes the change from here, as the person.
+    const managed = row.break_glass ? null : await directories.account(workspaceId, user.id);
+    if (managed && readOnly(managed.directory.mode)) {
+      return directoryManaged(reply, managed.directory);
+    }
+    const verdict = managed
+      ? await directories.verifyPassword(managed, currentPassword)
+      : row.password_hash && (await passwords.verify(currentPassword, row.password_hash))
+        ? 'ok'
+        : 'invalid';
+    if (verdict === 'unavailable') return directoryFailure(reply, 'directory_unavailable');
+    if (verdict !== 'ok') {
       const lock = await recordFailure(db, workspaceId, keys, now);
       await recordRefusedAttempt(db, AUDIT_ACTIONS.passwordCheckFailed, {
         workspaceId,
@@ -148,11 +176,21 @@ export function registerAccountRoutes(
         problems: problems.map((p) => `newPassword: ${describePasswordProblem(p)}`),
       });
     }
-    const newHash = await passwords.hash(newPassword);
+    if (managed) {
+      const changed = await directories.changePassword(managed, currentPassword, newPassword);
+      if (changed === 'unavailable') return directoryFailure(reply, 'directory_unavailable');
+      // The directory's own password policy or history refused it.
+      if (changed !== 'ok') return directoryFailure(reply, 'directory_refused');
+    }
+    const newHash = managed ? null : await passwords.hash(newPassword);
     const signedOut = await withEvent(db, { workspaceId, actorId: user.id }, async (trx) => {
       await trx
         .updateTable('app_user')
-        .set({ password_hash: newHash, password_changed_at: now, updated_at: now })
+        .set({
+          ...(newHash ? { password_hash: newHash } : {}),
+          password_changed_at: now,
+          updated_at: now,
+        })
         .where('id', '=', user.id)
         .execute();
       const ended = await revokeUserSessions(trx, workspaceId, user.id, request.authSession?.id);

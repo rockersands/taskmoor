@@ -18,6 +18,23 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-082 LDAP and Active Directory** (built by a background agent, reviewed and merged;
+  migration 0021; ADR-019 "LDAP and Active Directory"): directories in `ldap_directory`
+  (LDAPS or StartTLS, sealed bind password, precedence, schedule), synced by the worker
+  (`ldap/scheduler.ts`, runs in `ldap_sync_run`), full or incremental (AD USN per domain
+  controller, otherwise modifyTimestamp with a 10-minute overlap, plus an identifier scan for
+  deletions). People are linked by stable identifier or email; disabled or removed entries are
+  deactivated (break-glass accounts and the last active admin never). Groups are mirrored with
+  nesting at any depth, loops broken by DN. Sign-in binds as the person. Read-only directories
+  refuse changes to what they own (`409 directory_managed`); read-write ones take them. API
+  `/api/v1/directories`; admin page `#/admin/directories`. Migration 0021 also made the epoch
+  triggers on group_member, group_nesting and user_group per statement.
+  - e2e now needs port 8790 as well (a fake directory in `e2e/api-server.ts`; its passwords
+    are made per run in `playwright.config.ts`).
+  - **Not run here:** `bash tools/ldap/openldap-test.sh` in Docker (CI `ldap.yml`); the same
+    suite passed with `--local` against slapd 2.6.10 (10,000 people in 3.0 s; 100,000 in
+    29 s). Left for later: just-in-time accounts at first sign-in, memberships of accounts
+    another directory manages, DirSync or persistent search, writing new entries.
 - **M1-010 custom field types, contexts and options** (migration 0026; ADR-009 "Implementation
   (M1-010)", ADR-008 note). Types in `fields/types.ts` (conformance suite beside it), the
   catalogue in `fields/catalog.ts` (one per process, reloaded when `field_epoch` moves),

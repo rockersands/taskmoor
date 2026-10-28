@@ -44,6 +44,8 @@ export const EVENT_TYPES = {
     payload: z.object({
       sessionId: id,
       method: z.enum(['password', 'password_link', 'setup', 'totp', 'webauthn', 'recovery_code']),
+      // Added with directories (M1-082): the directory that checked the password.
+      directoryId: id.optional(),
     }),
   },
   'session.ended': { subject: 'user', payload: z.object({ sessionId: id.nullable() }) },
@@ -685,6 +687,129 @@ export const EVENT_TYPES = {
     payload: z.object({ changes, added: z.array(id), removed: z.array(id) }),
   },
   'scim.group_deleted': { subject: 'group', payload: z.object({ name: z.string() }) },
+  // LDAP and Active Directory (M1-082, IAM-005, ADR-019). Administration events name the
+  // administrator; a sync's own changes have no actor and name the directory and the run.
+  'directory.created': {
+    subject: 'directory',
+    payload: z.object({
+      name: z.string(),
+      kind: z.enum(['active_directory', 'openldap', 'generic']),
+      url: z.string(),
+      mode: z.enum(['read_only', 'read_write']),
+      enabled: z.boolean(),
+      position: z.number().int().min(1),
+    }),
+  },
+  /** Changed settings (never the bind password itself, only that it changed). */
+  'directory.updated': {
+    subject: 'directory',
+    payload: z.object({
+      changes,
+      bindPasswordChanged: z.boolean(),
+      caCertificatesChanged: z.boolean(),
+    }),
+  },
+  /** The directory's accounts are deactivated; its groups stay as Taskmoor groups. */
+  'directory.deleted': {
+    subject: 'directory',
+    payload: z.object({
+      name: z.string(),
+      deactivatedUsers: z.number().int().min(0),
+      releasedGroups: z.number().int().min(0),
+    }),
+  },
+  /** Precedence: the directories in their new order, first wins. */
+  'directory.reordered': { subject: 'workspace', payload: z.object({ ids: z.array(id) }) },
+  /** A run asked for by an administrator; `coalesced` when one was already waiting. */
+  'directory.sync_requested': {
+    subject: 'directory',
+    payload: z.object({
+      runId: id,
+      mode: z.enum(['full', 'incremental']),
+      confirmRemovals: z.boolean(),
+      coalesced: z.boolean(),
+    }),
+  },
+  /** A run that changed something or failed; runs that changed nothing are in its history. */
+  'directory.synced': {
+    subject: 'directory',
+    payload: z.object({
+      runId: id,
+      mode: z.enum(['full', 'incremental']),
+      trigger: z.enum(['schedule', 'manual']),
+      status: z.enum(['succeeded', 'failed']),
+      stats: z.record(z.string(), z.number()),
+      warnings: z.number().int().min(0),
+      error: z.string().nullable(),
+    }),
+  },
+  /** An account the directory created, or an existing one it linked (`linked`). */
+  'directory.user_created': {
+    subject: 'user',
+    payload: z.object({
+      directoryId: id,
+      runId: id,
+      email: z.string(),
+      username: z.string(),
+      dn: z.string(),
+      linked: z.boolean(),
+      takenFromDirectoryId: id.nullable(),
+      active: z.boolean(),
+    }),
+  },
+  /** Changes to the account (`email`, `name`, `active`) and its entry (`dn`, `username`, ...). */
+  'directory.user_updated': {
+    subject: 'user',
+    payload: z.object({
+      directoryId: id,
+      runId: id,
+      changes,
+      endedSessions: z.number().int().min(0),
+    }),
+  },
+  /** The entry left the directory or its filter: deactivated, unless protected. */
+  'directory.user_removed': {
+    subject: 'user',
+    payload: z.object({
+      directoryId: id,
+      runId: id,
+      username: z.string(),
+      dn: z.string(),
+      deactivated: z.boolean(),
+      endedSessions: z.number().int().min(0),
+    }),
+  },
+  /** Member and child ids are listed up to 1,000; the counts are complete. */
+  'directory.group_created': {
+    subject: 'group',
+    payload: z.object({
+      directoryId: id,
+      runId: id,
+      name: z.string(),
+      dn: z.string(),
+      members: z.array(id),
+      memberCount: z.number().int().min(0),
+      children: z.array(id),
+    }),
+  },
+  'directory.group_updated': {
+    subject: 'group',
+    payload: z.object({
+      directoryId: id,
+      runId: id,
+      changes,
+      added: z.array(id),
+      removed: z.array(id),
+      addedCount: z.number().int().min(0),
+      removedCount: z.number().int().min(0),
+      nested: z.array(id),
+      unnested: z.array(id),
+    }),
+  },
+  'directory.group_deleted': {
+    subject: 'group',
+    payload: z.object({ directoryId: id, runId: id, name: z.string() }),
+  },
   'service_account.created': {
     subject: 'user',
     payload: z.object({ name: z.string(), email: z.string(), description: z.string() }),

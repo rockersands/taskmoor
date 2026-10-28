@@ -63,6 +63,10 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['PUT /api/v1/security/two-factor']).toBe('admin');
     expect(classes['GET /api/v1/audit/export']).toBe('admin');
     expect(classes['PATCH /api/v1/identity-providers/:id']).toBe('admin');
+    // LDAP and Active Directory administration (M1-082), reads included.
+    expect(classes['GET /api/v1/directories']).toBe('admin');
+    expect(classes['POST /api/v1/directories/:id/sync']).toBe('admin');
+    expect(classes['POST /api/v1/directories/test']).toBe('admin');
     expect(classes['POST /api/v1/tracks']).toBe('write');
     // Track configuration: read and write, so local-mode track administrators keep theirs.
     expect(classes['GET /api/v1/hierarchy-levels']).toBe('read');
@@ -87,7 +91,7 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/scim/v2/ServiceProviderConfig']).toBe('scim');
     // Every route that only site administrators may use is in the admin class.
     const adminOnly = api.filter((r) =>
-      /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|audit)/.test(
+      /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|directories|audit)/.test(
         r,
       ),
     );

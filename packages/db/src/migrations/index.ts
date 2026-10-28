@@ -17,6 +17,7 @@ import * as m0015 from './0015_ticket_history';
 import * as m0018 from './0018_ticket_fields';
 import * as m0019 from './0019_links';
 import * as m0020 from './0020_saml';
+import * as m0021 from './0021_ldap';
 import * as m0022 from './0022_trash_backups';
 import * as m0023 from './0023_time_tracking';
 import * as m0024 from './0024_workflows';
@@ -47,6 +48,7 @@ export const migrations: Record<string, Migration> = {
   '0018_ticket_fields': m0018,
   '0019_links': m0019,
   '0020_saml': m0020,
+  '0021_ldap': m0021,
   '0022_trash_backups': m0022,
   '0023_time_tracking': m0023,
   '0024_workflows': m0024,

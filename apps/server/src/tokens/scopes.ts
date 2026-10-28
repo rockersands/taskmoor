@@ -8,8 +8,8 @@
  *   and sessions.
  *   A token can never mint, rotate or list tokens, so a leaked one cannot extend itself;
  * - administration routes (people, groups, roles, policies, grants, service accounts, tokens of
- *   others, sign-in security, identity providers, the audit log, instance status) need the
- *   admin scope, whatever the method;
+ *   others, sign-in security, identity providers, LDAP and Active Directory directories, the
+ *   audit log, instance status) need the admin scope, whatever the method;
  * - everything else needs read for GET and HEAD and write for other methods. That includes
  *   track configuration (track categories, hierarchy levels, ticket types, type sets):
  *   everyone reads the levels and a track's ticket types, and a local-mode track's
@@ -80,6 +80,7 @@ export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/permissions/explain',
   '/api/v1/security',
   '/api/v1/identity-providers',
+  '/api/v1/directories',
   '/api/v1/audit',
 ];
 

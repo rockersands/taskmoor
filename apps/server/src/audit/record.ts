@@ -35,8 +35,11 @@ export interface RefusedAttempt {
   email?: string;
   /** The lock now in force after this failure, if it caused one. */
   lockedUntil: Date | null;
-  /** Why, when it was not a wrong password: `second_factor`, `sso_required`. */
-  reason?: 'second_factor' | 'sso_required';
+  /**
+   * Why, when it was not a wrong password: `second_factor`, `sso_required`, or
+   * `directory_unavailable` (the directory managing the account could not be reached, M1-082).
+   */
+  reason?: 'second_factor' | 'sso_required' | 'directory_unavailable';
 }
 
 /** Records a refused sign-in or password check, and the lockout it caused, if any. */

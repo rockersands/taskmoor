@@ -1,10 +1,10 @@
 // The backend for the end-to-end suite: a Postgres with its own database, migrated,
-// the API on a fixed port with a fixed setup token, and fake OpenID Connect and SAML providers
-// for the single sign-on tests. Playwright starts it as a web server and the Vite preview proxies /api
+// the API on a fixed port with a fixed setup token, fake OpenID Connect and SAML providers
+// for the single sign-on tests, and a fake LDAP directory with the worker's sync loop. Playwright starts it as a web server and the Vite preview proxies /api
 // to it. Started with: tsx apps/web/e2e/api-server.ts
 import { createDb, migrateToLatest } from '@taskmoor/db';
-import { buildApp, issueSetupToken } from '@taskmoor/server';
-import { FakeIdp, FakeSamlIdp } from '@taskmoor/server/testing';
+import { buildApp, issueSetupToken, startDirectorySync } from '@taskmoor/server';
+import { FakeIdp, FakeLdap, FakeSamlIdp } from '@taskmoor/server/testing';
 import { createDatabase } from '@taskmoor/testkit/pg';
 import { startEmbeddedPostgres } from '@taskmoor/testkit/server';
 
@@ -12,6 +12,7 @@ export const E2E_API_PORT = 8787;
 export const E2E_SETUP_TOKEN = 'e2e-setup-token-0123456789';
 export const E2E_IDP_PORT = 8788;
 export const E2E_SAML_IDP_PORT = 8789;
+export const E2E_LDAP_PORT = 8790;
 
 // Always signs in the same synthetic person; the tests register it as a provider first.
 const idp = new FakeIdp('taskmoor-e2e', 'e2e-client-secret-0123456789');
@@ -26,6 +27,24 @@ samlIdp.person = {
   nameIdFormat: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
   attributes: { email: ['riley@saml.test'], displayName: ['Riley Chen'] },
 };
+
+// The directory (M1-082): an OpenLDAP-like server with two people in a group inside a group.
+// Its passwords are made per run by playwright.config.ts and shared through the environment.
+const ldap = new FakeLdap({
+  flavour: 'openldap',
+  baseDn: 'dc=e2e,dc=test',
+  bindPassword: process.env.TASKMOOR_E2E_LDAP_BIND_PASSWORD as string,
+});
+await ldap.start(E2E_LDAP_PORT);
+const morgan = ldap.addUser({
+  username: 'morgan',
+  mail: 'morgan@ldap.test',
+  displayName: 'Morgan Lee',
+  password: process.env.TASKMOOR_E2E_LDAP_USER_PASSWORD as string,
+});
+const noor = ldap.addUser({ username: 'noor', mail: 'noor@ldap.test', displayName: 'Noor Haddad' });
+const designers = ldap.addGroup({ cn: 'Designers', members: [morgan, noor] });
+ldap.addGroup({ cn: 'Studio', members: [designers] });
 
 // An embedded cluster of its own, unless TASKMOOR_TEST_DATABASE_URL names a server, as for the
 // unit tests (CI's service container; containers running as root, where initdb refuses).
@@ -46,10 +65,14 @@ const app = await buildApp({
   publicUrl: 'http://localhost:4173',
 });
 await app.listen({ port: E2E_API_PORT, host: '127.0.0.1' });
+// The worker's directory loop, so a sync asked for on the page runs.
+const directories = startDirectorySync(db, { worker: 'e2e', pollMs: 500 });
 process.stdout.write(`e2e API listening on http://127.0.0.1:${E2E_API_PORT}\n`);
 
 async function stop(): Promise<void> {
+  await directories.stop();
   await app.close();
+  await ldap.stop();
   await idp.stop();
   await samlIdp.stop();
   await db.destroy();

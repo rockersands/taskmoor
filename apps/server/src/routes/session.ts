@@ -13,6 +13,7 @@ import {
 } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { withEvent } from '../events/bus';
+import type { DirectoryGateway } from '../ldap/gateway';
 import { emailDomain, providerForDomain } from '../sso/oidc';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 import {
@@ -43,7 +44,12 @@ const sessionId = z.object({ id: z.coerce.number().int().positive() });
 export function registerSessionRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { secureCookies: boolean; passwords: PasswordHasher; authorizer: Authorizer },
+  options: {
+    secureCookies: boolean;
+    passwords: PasswordHasher;
+    authorizer: Authorizer;
+    directories: DirectoryGateway;
+  },
 ): void {
   app.get('/api/v1/session', async (request, reply) => {
     if (!request.user) return reply.code(401).send({ error: 'not_signed_in' });
@@ -92,15 +98,27 @@ export function registerSessionRoutes(
       .where('kind', '=', 'person')
       .executeTakeFirst();
     const { passwords } = options;
-    const ok = user?.password_hash
-      ? await passwords.verify(password, user.password_hash)
-      : await passwords.verifyDummy(password);
+    // M1-082: a directory checks the password of the accounts it manages, by binding as the
+    // person; break-glass accounts keep their own, so they work when the directory does not.
+    const managed =
+      user && !user.break_glass ? await options.directories.account(workspaceId, user.id) : null;
+    let verdict: 'ok' | 'invalid' | 'unavailable';
+    if (managed) {
+      verdict = await options.directories.verifyPassword(managed, password);
+    } else {
+      const matches = user?.password_hash
+        ? await passwords.verify(password, user.password_hash)
+        : await passwords.verifyDummy(password);
+      verdict = matches ? 'ok' : 'invalid';
+    }
+    const ok = verdict === 'ok';
     // M1-080: where a provider enforces single sign-on for the email's domain, only
     // break-glass accounts may use a password. Everyone else gets the same answer whether or
     // not the account exists or the password was right; wrong passwords still count.
     const sso = await providerForDomain(db, workspaceId, emailDomain(email));
     if (sso?.enforce_sso && !(user && ok && user.break_glass)) {
-      const lock = !user || !ok ? await recordFailure(db, workspaceId, keys, now) : null;
+      const lock =
+        !user || verdict === 'invalid' ? await recordFailure(db, workspaceId, keys, now) : null;
       await recordRefusedAttempt(db, AUDIT_ACTIONS.signInFailed, {
         workspaceId,
         ip: request.ip,
@@ -116,7 +134,16 @@ export function registerSessionRoutes(
       });
     }
     if (!user || !ok) {
-      const lock = await recordFailure(db, workspaceId, keys, now);
+      // A directory that cannot be reached decided nothing: no failure is counted, the answer
+      // stays the same as for a wrong password, and the audit log says why.
+      const unavailable = verdict === 'unavailable';
+      const lock = unavailable ? null : await recordFailure(db, workspaceId, keys, now);
+      if (unavailable) {
+        request.log.warn(
+          { directoryId: managed?.directory.id },
+          'directory unavailable at sign-in',
+        );
+      }
       // A refused sign-in changes nothing, so it is no domain event; the audit log records it.
       await recordRefusedAttempt(db, AUDIT_ACTIONS.signInFailed, {
         workspaceId,
@@ -125,12 +152,13 @@ export function registerSessionRoutes(
         userId: user?.id ?? null,
         email,
         lockedUntil: lock,
+        ...(unavailable ? { reason: 'directory_unavailable' as const } : {}),
       });
       return reply.code(401).send({ error: 'invalid_credentials' });
     }
 
     // Older schemes (M0's scrypt, no pepper, a lower cost) are replaced at the first sign-in.
-    const rehash = user.password_hash && passwords.needsRehash(user.password_hash);
+    const rehash = !managed && user.password_hash && passwords.needsRehash(user.password_hash);
     const newHash = rehash ? await passwords.hash(password) : undefined;
     if (newHash) {
       await db
@@ -173,7 +201,11 @@ export function registerSessionRoutes(
         event: {
           type: 'session.started',
           subjectId: user.id,
-          payload: { sessionId, method: 'password' },
+          payload: {
+            sessionId,
+            method: 'password',
+            ...(managed ? { directoryId: managed.directory.id } : {}),
+          },
         },
       };
     });

@@ -1007,3 +1007,56 @@ test('[CORE-025] [OPS-009] the administrator undeletes a ticket and a whole trac
   expect((await page.request.get(`/api/v1/tickets/${key}`)).status()).toBe(200);
   await page.request.delete('/api/v1/session');
 });
+
+// The directory of e2e/api-server.ts (M1-082): Morgan and Noor in Designers, inside Studio. Its
+// passwords are made per run by playwright.config.ts.
+const LDAP_URL = 'ldap://127.0.0.1:8790';
+const MORGAN = { name: 'Morgan Lee', email: 'morgan@ldap.test' };
+
+test('[IAM-005] the administrator adds a directory; it syncs and its people sign in with their directory password', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  await page.goto('./#/settings');
+  await page.getByRole('link', { name: 'LDAP and Active Directory' }).click();
+  await expect(heading(page)).toHaveText('LDAP and Active Directory');
+  await page.getByRole('button', { name: 'Add a directory' }).click();
+  const form = page.getByRole('form', { name: 'New directory' });
+  await form.getByLabel('Name', { exact: true }).fill('Studio LDAP');
+  await form.getByRole('radio', { name: 'OpenLDAP' }).check();
+  await form.getByLabel('URL', { exact: true }).fill(LDAP_URL);
+  await form.getByLabel('Bind DN', { exact: true }).fill('cn=sync,dc=e2e,dc=test');
+  await form
+    .getByLabel('Password', { exact: true })
+    .fill(process.env.TASKMOOR_E2E_LDAP_BIND_PASSWORD as string);
+  await form.getByLabel('Base DN', { exact: true }).fill('dc=e2e,dc=test');
+  await form.getByRole('button', { name: 'Test connection' }).click();
+  await expect(form.getByText('Connected. 2 people and 2 groups match the filters.')).toBeVisible();
+  await form.getByRole('button', { name: 'Add directory' }).click();
+  await expect(page.getByText('Added Studio LDAP. Its first sync starts shortly.')).toBeVisible();
+
+  try {
+    // The worker runs the first sync; the page looks again until it has.
+    await expect(page.getByText('2 accounts, 2 groups')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Sync Studio LDAP now' }).click();
+    await expect(page.getByText('A sync of Studio LDAP is on its way.')).toBeVisible();
+    await expect(page.getByText(/^Sync .*: nothing changed$/)).toBeVisible({ timeout: 30_000 });
+
+    // Morgan has no Taskmoor password: the directory checks the one typed here.
+    await signOutThroughMenu(page, ADMIN.name);
+    await signInThroughForm(page, {
+      email: MORGAN.email,
+      password: process.env.TASKMOOR_E2E_LDAP_USER_PASSWORD as string,
+    });
+    await expect(page.getByRole('button', { name: MORGAN.name, exact: true })).toBeVisible();
+    await expect(heading(page)).toHaveText('Home');
+    await signOutThroughMenu(page, MORGAN.name);
+  } finally {
+    await signInThroughApi(page.request, ADMIN);
+    const listed = await page.request.get('/api/v1/directories');
+    for (const d of ((await listed.json()) as { directories: { id: number }[] }).directories) {
+      await page.request.delete(`/api/v1/directories/${d.id}`);
+    }
+    await page.request.delete('/api/v1/session');
+  }
+});

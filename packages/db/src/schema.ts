@@ -1093,6 +1093,98 @@ export interface ScimGroupTable {
 }
 
 /**
+ * An LDAP or Active Directory directory (M1-082, IAM-005): where Taskmoor reads people and
+ * groups from and signs them in against. The service account's password is sealed under the
+ * pepper and never leaves the server.
+ */
+export interface LdapDirectoryTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  /** Which attribute and behaviour defaults apply (objectGUID and USNs for Active Directory). */
+  kind: 'active_directory' | 'openldap' | 'generic';
+  /** `ldaps://host:port` or `ldap://host:port` (then with StartTLS outside loopback). */
+  url: string;
+  start_tls: Generated<boolean>;
+  /** PEM certificates to trust for this directory instead of the system store; empty uses it. */
+  ca_certificates: Generated<string[]>;
+  bind_dn: string;
+  bind_password_sealed: string;
+  base_dn: string;
+  /** Where people are searched; null searches the base DN. */
+  user_base_dn: string | null;
+  user_filter: string;
+  /** Where groups are searched; null searches the base DN. */
+  group_base_dn: string | null;
+  group_filter: string;
+  /** Attribute names that differ from the kind's defaults (`ldap/settings.ts`). */
+  attribute_map: Json;
+  /** read_write writes password, profile and membership changes made in Taskmoor back. */
+  mode: Generated<'read_only' | 'read_write'>;
+  /** Precedence among directories, lowest first: an address two directories hold is the first's. */
+  position: number;
+  enabled: Generated<boolean>;
+  sync_interval_minutes: Generated<number>;
+  /** An incremental run becomes a full one when the last full run is older than this. */
+  full_sync_hours: Generated<number>;
+  next_sync_at: Timestamp | null;
+  last_full_sync_at: Timestamp | null;
+  /** Where the next incremental run starts: a USN on one domain controller, or a timestamp. */
+  sync_cursor: NullableJson;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** An account a directory manages, by the entry's stable identifier. */
+export interface LdapUserTable {
+  user_id: number;
+  workspace_id: number;
+  directory_id: number;
+  /** objectGUID (as a GUID string) or entryUUID: survives renames and moves. */
+  external_id: string;
+  dn: string;
+  username: string;
+  /** The directory marks the entry disabled (Active Directory's ACCOUNTDISABLE, a ppolicy lock). */
+  disabled: Generated<boolean>;
+  /** The sync deactivated the account, so the sync may bring it back. */
+  deactivated_by_sync: Generated<boolean>;
+  /** The entry left the directory or its filter; the account stays, deactivated. */
+  removed_at: Timestamp | null;
+  synced_at: DefaultTimestamp;
+}
+
+/** A group a directory manages; its members and nested groups follow the directory. */
+export interface LdapGroupTable {
+  group_id: number;
+  workspace_id: number;
+  directory_id: number;
+  external_id: string;
+  dn: string;
+  synced_at: DefaultTimestamp;
+}
+
+/** A directory sync: queued, running or finished, with its counts and warnings (`ldap/sync.ts`). */
+export interface LdapSyncRunTable {
+  id: Generated<number>;
+  workspace_id: number;
+  directory_id: number;
+  mode: 'full' | 'incremental';
+  trigger: 'schedule' | 'manual';
+  requested_by: number | null;
+  /** A manual run may remove more than the safety limit allows (`ldap/sync.ts`). */
+  confirm_removals: Generated<boolean>;
+  status: Generated<'queued' | 'running' | 'succeeded' | 'failed'>;
+  worker: string | null;
+  created_at: DefaultTimestamp;
+  started_at: Timestamp | null;
+  heartbeat_at: Timestamp | null;
+  finished_at: Timestamp | null;
+  stats: ColumnType<JsonValue, string | undefined, string>;
+  warnings: ColumnType<JsonValue, string | undefined, string>;
+  error: string | null;
+}
+
+/**
  * The M0 session table, replaced by user_session. Kept until a later release so the previous
  * release keeps working during a rolling upgrade (ADR-022); nothing in this release uses it.
  */
@@ -1185,5 +1277,9 @@ export interface Database {
   token_policy: TokenPolicyTable;
   scim_user: ScimUserTable;
   scim_group: ScimGroupTable;
+  ldap_directory: LdapDirectoryTable;
+  ldap_user: LdapUserTable;
+  ldap_group: LdapGroupTable;
+  ldap_sync_run: LdapSyncRunTable;
   session: SessionTable;
 }

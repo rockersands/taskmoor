@@ -44,6 +44,36 @@ export async function emit(db: Db, context: EventContext, event: DomainEventInpu
     .execute();
 }
 
+/**
+ * Records many events in the caller's transaction with few statements: a background job that
+ * changes many records (a directory sync, M1-082) emits one event per record it changed.
+ */
+export async function emitMany(
+  db: Db,
+  context: EventContext,
+  events: readonly DomainEventInput[],
+): Promise<void> {
+  const ip = context.ip ?? currentRequestScope()?.ip ?? null;
+  const rows = events.map((event) => {
+    const spec = EVENT_TYPES[event.type];
+    return {
+      workspace_id: context.workspaceId,
+      type: event.type,
+      actor_id: context.actorId,
+      subject_type: spec.subject,
+      subject_id: String(event.subjectId),
+      payload: JSON.stringify(spec.payload.parse(event.payload)),
+      ip,
+    };
+  });
+  for (let i = 0; i < rows.length; i += 1000) {
+    await db
+      .insertInto('domain_event')
+      .values(rows.slice(i, i + 1000))
+      .execute();
+  }
+}
+
 /** Runs `work` in a transaction and emits its event there; `work` returns the result and event. */
 export async function withEvent<T>(
   db: Kysely<Database>,

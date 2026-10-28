@@ -225,6 +225,128 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   `sso_required` answer) carry the protocol, so the sign-in page starts each provider at its own
   address.
 
+## LDAP and Active Directory (M1-082)
+
+IAM-005 asks for several directories, sign-in against them, and scheduled incremental sync of
+people and groups nested at least four levels deep, read-only or read-write: 100,000 people and
+25,000 groups in under 30 minutes in full and under 2 minutes incrementally, and a person
+disabled in Active Directory deactivated at the next sync.
+
+- **Client:** `ldapts` 9 (MIT, maintained; its one dependency is `strict-event-emitter-types`,
+  ISC). `ldapjs` is archived and is not used, not even in tests: the in-process test directory
+  (`testing/fake-ldap.ts`) has its own BER codec, so client and server cannot share an
+  encoding mistake.
+- **Directories** are their own rows (`ldap_directory`, migration 0021), not identity
+  providers: they are read and bound to, not redirected to. Kinds `active_directory`,
+  `openldap` and `generic` set the defaults (identifier objectGUID or entryUUID, user name,
+  address, name, change mark, filters, how "disabled" is told); administrators may rename any
+  attribute. Several directories are allowed, ordered by `position`: where two hold the same
+  address, the first manages the account (`PUT /api/v1/directories/order`).
+- **Transport:** `ldaps://`, or `ldap://` upgraded with StartTLS; plain LDAP only on the
+  loopback interface or with `TASKMOOR_LDAP_ALLOW_PLAIN=true`. Certificates are verified (TLS
+  1.2 or later, the host name against the certificate); an administrator may give the CA
+  certificates to trust for one directory instead of the system store.
+- **The service account's password** is sealed under the pepper like OpenID Connect client
+  secrets, never returned (`hasBindPassword` only), never logged, never in an event; a blank
+  field in an edit keeps it. `POST /api/v1/directories/test` tries settings without saving them
+  (connect, bind, the first thousand people and groups with a sample) and reuses the saved
+  password when a directory's id is given.
+- **Sign-in** of an account a directory manages binds as the person's stored DN with the typed
+  password; the directory decides, with its own lockout and expiry. The DN comes from the sync,
+  never from what was typed, and an empty password is refused before any bind (an
+  unauthenticated bind would succeed as anonymous on many servers). Taskmoor's own lockout and
+  address limits apply first, so Taskmoor cannot be used to guess against the directory; its
+  second factor and single sign-on enforcement apply as for local passwords. A directory that
+  cannot be reached decides nothing: the answer is the usual `invalid_credentials`, no failure
+  is counted, and the audit log records `directory_unavailable`. Break-glass accounts are
+  never linked to a directory, so they keep working when it does not.
+- **Matching:** an entry is followed by its stable identifier, so renames and moves keep the
+  account. A new entry links the existing account with its address, or creates one without a
+  password; linking clears the local password, which would otherwise come back unnoticed.
+  Service accounts, break-glass accounts and accounts a directory of higher precedence manages
+  are never taken; entries without an address are skipped with a warning. When a person is
+  deleted and created again (a new identifier, the same address) the account is taken back.
+- **Disabled and removed entries:** Active Directory's ACCOUNTDISABLE bit
+  (`userAccountControl`), OpenLDAP's administrative lock (`pwdAccountLockedTime`
+  `000001010000Z`; a lockout after failed binds is not a disable), or, for other servers, a user
+  filter that leaves disabled people out. A disabled entry, or one that left the directory or
+  its filter, deactivates the account and ends its sessions (as SCIM and administrators do); the
+  account and its work stay. Only accounts the sync deactivated come back when the entry does;
+  an administrator's deactivation stands. Break-glass accounts and the last active site
+  administrator are never deactivated by a sync (a warning says so).
+- **Groups** a directory syncs are its own (`ldap_group`); a name another group holds gets the
+  directory's name after it. Members and nested groups follow the directory; members outside
+  the filters (or managed by another directory) are ignored and counted. Nesting is mirrored
+  as `group_nesting`, so any depth works with the existing effective-membership queries.
+  Directories may contain loops (Active Directory allows them); Taskmoor's nesting may not. The
+  sync drops, per strongly connected component and in DN order, each edge that would close a
+  loop, so the same directory always gives the same groups (`ldap/nesting.ts`); a dropped edge
+  comes back at the first full run after the loop is gone. Active Directory's ranged values
+  (`member;range=0-1499`) are read to the end. A group that left the directory is deleted.
+- **Schedule and runs:** each directory syncs every `sync_interval_minutes` (default 60),
+  incrementally, and in full every `full_sync_hours` (default 24), on its first run, after its
+  settings change what is read, and when the cursor no longer fits. Administrators ask for a
+  run with `POST /api/v1/directories/:id/sync`; a second request joins the waiting one. Runs
+  live in `ldap_sync_run`, not the job queue, whose jobs are released after ten minutes: a
+  worker claims a queued run (one running per directory, enforced by a partial unique index),
+  beats every 30 seconds, and a run without a beat for five minutes is failed. Changes are
+  written in chunks of 500, each a transaction with its events; a stopping worker ends its runs
+  between chunks. A run that would remove more than half of a directory's people or groups (of
+  ten or more) stops before changing anything, unless an administrator's run confirms it: a
+  broken filter must not deactivate everyone.
+- **Incremental runs:** Active Directory: `uSNChanged` above the domain controller's
+  `highestCommittedUSN` read before the previous run; USNs belong to one controller
+  (`dsServiceName`), so another one answering means a full run. Others: `modifyTimestamp` from
+  the later of the newest change seen and the run's start by Taskmoor's clock, less ten minutes
+  (and the read's own length); clocks must agree within that, and the daily full run catches
+  what a wrong clock hides. Changes do not show deletions, nor entries that entered or left a
+  filter through a back-link (`memberOf`) without changing themselves, so every run also reads
+  the identifiers of everything in scope: missing ones are removals, unknown ones are read by
+  identifier. Groups that list newly added people are re-read, since their own change mark did
+  not move. Skipped entries are remembered with the cursor, so they are not read every time.
+- **Read-only or read-write:** a read-only directory owns its people's passwords, names and
+  addresses and its groups' names and members: changing them in Taskmoor is refused with
+  `409 directory_managed` (the next sync would undo it), as are password links, break-glass on a
+  managed account, and renaming or deleting a managed group. A read-write directory takes those
+  changes first: a password change binds as the person and uses the Password Modify extended
+  operation (RFC 3062), or, for Active Directory, removes the old `unicodePwd` and adds the new
+  one (which it accepts only over TLS); name and address changes and membership changes (people
+  and groups of the same directory) are written as the service account. Creating, renaming and
+  deleting entries stay in the directory. Taskmoor's own settings (time zone, locale, site
+  administration, description) are Taskmoor's in both modes.
+- **Deleting a directory** deactivates the accounts it manages and ends their sessions (refused
+  when that would deactivate the last active site administrator); its groups stay as ordinary
+  groups.
+- **Events and audit:** administration emits `directory.created`, `.updated` (never the
+  password, only that it changed), `.deleted`, `.reordered` and `.sync_requested` with the
+  administrator as actor. A run's own changes emit `directory.user_created`, `.user_updated`,
+  `.user_removed`, `.group_created`, `.group_updated` and `.group_deleted`, one per account or
+  group changed, with no actor and the directory and run in the payload (member lists capped at
+  1,000 ids, counts complete), and one `directory.synced` per run that changed something or
+  failed. All are audited. Directory sign-ins are `session.started` with `directoryId`.
+- **Authorization epoch:** the per-row triggers of migration 0004 on `group_member`,
+  `group_nesting` and `user_group` became per-statement ones (migration 0021): bumping one row
+  thousands of times in one transaction made each bump slower than the last, and a
+  100,000-person sync spent most of its time there (62 s of memberships became 10 s).
+- **Evidence:** `ldap/sync.test.ts` runs both flavours of the test directory (nesting, disable
+  and re-enable, deletion and re-creation, break-glass and last administrator, precedence,
+  loops, ranged values, the safety stop, a domain controller change, unreachable directories,
+  scheduling and stale runs); `routes/directories.test.ts` covers administration, the
+  connection test, sign-in, read-only refusals and read-write write-back (LDAPS with a pinned
+  CA for Active Directory). `ldap/sync.scale.test.ts` syncs 10,000 people in 2,460 groups nested
+  four deep in about 4 s in full and 1 s incrementally (100,000 and 24,600: 43 s and 20 s).
+  `bash tools/ldap/openldap-test.sh` runs `ldap/openldap.e2e.test.ts` against a real slapd
+  built from `tools/ldap/Dockerfile` (CI: `ldap.yml`), or with `--local` against an installed
+  one: OpenLDAP 2.6.10 synced 10,000 people over StartTLS in 3.0 s and 100,000 in 29 s.
+
+| Option | For | Against |
+|---|---|---|
+| Sync with incremental cursors and an identifier scan (chosen) | Works on every server with standard controls; sees deletions and filter changes | Reads every identifier each run (seconds for 100,000) |
+| Active Directory DirSync control | Changes and deletions in one stream | Needs replication rights; Active Directory only |
+| Persistent search or syncrepl | Near real time | Server-specific, long-lived connections, still needs a full run to recover |
+| Sign-in against the directory only, no sync | Simplest | No groups, no deactivation, people unknown until they sign in |
+| Flattening nested groups into direct members | Simple membership queries | Loses the structure administrators grant on; large rewrites on small changes |
+
 ## SCIM provisioning (M1-083)
 
 ADR-038 holds the design: an identity provider provisions through a service account whose

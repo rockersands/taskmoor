@@ -1,4 +1,11 @@
+import { randomBytes } from 'node:crypto';
 import { defineConfig, devices } from '@playwright/test';
+
+// The directory test's passwords (M1-082), made per run and handed to the API server and the
+// tests through the environment, so none is written in the repository. Workers load this file
+// again and keep the values they inherited.
+process.env.TASKMOOR_E2E_LDAP_BIND_PASSWORD ??= `bind-${randomBytes(18).toString('base64url')}`;
+process.env.TASKMOOR_E2E_LDAP_USER_PASSWORD ??= `user-${randomBytes(18).toString('base64url')}`;
 
 const PORT = 4173;
 const API_PORT = 8787;

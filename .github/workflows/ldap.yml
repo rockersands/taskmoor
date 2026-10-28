@@ -1,0 +1,43 @@
+name: Directories
+
+# LDAP and Active Directory sync (M1-082) against a real OpenLDAP: tools/ldap/openldap-test.sh
+# builds a slapd image (tools/ldap/Dockerfile), loads 10,000 people in groups nested four levels
+# deep and runs apps/server/src/ldap/openldap.e2e.test.ts over StartTLS. Runs when directory
+# code changes, weekly (also at IAM-005's 100,000 people), and on demand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/server/src/ldap/**"
+      - "apps/server/src/routes/directories.ts"
+      - "apps/server/src/routes/session.ts"
+      - "apps/server/src/testing/fake-ldap.ts"
+      - "tools/ldap/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/ldap.yml"
+  schedule:
+    - cron: "0 6 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  openldap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Sync 10,000 people from OpenLDAP
+        run: bash tools/ldap/openldap-test.sh
+      - name: Sync 100,000 people from OpenLDAP (IAM-005 (1))
+        if: github.event_name == 'schedule'
+        env:
+          TASKMOOR_OPENLDAP_PEOPLE: "100000"
+        run: bash tools/ldap/openldap-test.sh

@@ -11,6 +11,7 @@ import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
 import type { Role, ServerConfig } from './config';
 import { FieldCatalogs } from './fields/catalog';
+import { DirectoryGateway } from './ldap/gateway';
 import { instrumentApp, type Metrics } from './observability';
 import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
@@ -18,6 +19,7 @@ import { registerAdminRoutes } from './routes/admin';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
+import { registerDirectoryRoutes } from './routes/directories';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
 import { registerLinkRoutes } from './routes/links';
@@ -146,14 +148,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerRequestScope(app);
     const passwords = deps.passwords ?? passwordHasher(deps.peppers);
     const cookieOptions = { secureCookies: deps.secureCookies ?? false, passwords };
+    // LDAP and Active Directory (M1-082): sign-in against them and read-write write-back.
+    const directories = new DirectoryGateway(db, deps.peppers);
     registerSetupRoutes(app, db, cookieOptions);
-    registerSessionRoutes(app, db, { ...cookieOptions, authorizer });
-    registerAccountRoutes(app, db, { passwords });
+    registerSessionRoutes(app, db, { ...cookieOptions, authorizer, directories });
+    registerAccountRoutes(app, db, { passwords, directories });
     registerUserRoutes(app, db, {
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       passwords,
+      directories,
     });
-    registerGroupRoutes(app, db);
+    registerGroupRoutes(app, db, { directories });
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);
@@ -187,6 +192,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerTokenRoutes(app, db);
     registerServiceAccountRoutes(app, db);
     await registerScimRoutes(app, db, { publicUrl: deps.publicUrl ?? 'http://localhost:8080' });
+    registerDirectoryRoutes(app, db, { peppers: deps.peppers });
     // Expired sessions, used links, stale counters and long-dead tokens go at start and every
     // six hours.
     const prune = () =>

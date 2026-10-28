@@ -1,0 +1,80 @@
+/* LDAP and Active Directory (M1-082): the directory admin page. It reuses the single sign-on
+   page's list and form layout (sso.css); these rules add the run history, the attribute names
+   and the schedule numbers. Desktop first; everything stacks on phones without sideways
+   scrolling. */
+
+.directory-actions {
+  justify-content: flex-end;
+}
+
+/* A failed sync reads in the danger colour, so it stands out in a long list. */
+.token-meta.directory-failed,
+.directory-failed {
+  color: var(--color-danger);
+}
+
+.directory-history {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.directory-runs {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-200);
+}
+
+.directory-runs p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.directory-warnings {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Attribute names: a disclosure, closed by default, with two columns of short fields. */
+.directory-attributes {
+  min-width: 0;
+}
+
+.directory-attributes summary {
+  min-height: var(--hit-target);
+  padding: var(--space-2) 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.directory-attributes summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.directory-attribute-grid,
+.directory-numbers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+@media (max-width: 40rem) {
+  .directory-attribute-grid,
+  .directory-numbers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (pointer: coarse) {
+  .directory-attributes summary {
+    min-height: var(--hit-target-touch);
+  }
+}

@@ -4,8 +4,10 @@ import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fas
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { queueRun, runSync } from '../ldap/sync';
 import { issueSetupToken } from '../setup';
 import { FakeIdp } from '../testing/fake-idp';
+import { FakeLdap } from '../testing/fake-ldap';
 import { FakeSamlIdp } from '../testing/fake-saml-idp';
 import { SoftAuthenticator } from '../testing/webauthn';
 import { EVENT_TYPES, type EventType } from './catalogue';
@@ -40,7 +42,22 @@ const EXEMPT: Record<string, string> = {
     'transient sign-in state: the request ID of a SAML sign-in in progress, bound to the browser',
   'POST /api/v1/auth/saml/:id/acs':
     'transient sign-in state: a verified SAML response waiting for its browser, and its assertion ID; the sign-in itself is GET /api/v1/auth/saml/continue',
+  'POST /api/v1/directories/test':
+    'reads only: tries directory settings (connect, bind, read a first page), stores nothing',
 };
+/**
+ * Event types no route emits: a background job's own changes (M1-082 directory syncs). The
+ * last test below runs the job and checks each of them like a route scenario.
+ */
+const JOB_EVENTS: readonly EventType[] = [
+  'directory.synced',
+  'directory.user_created',
+  'directory.user_updated',
+  'directory.user_removed',
+  'directory.group_created',
+  'directory.group_updated',
+  'directory.group_deleted',
+];
 const PASSWORD = 'ladder violet harbour';
 
 function sessionCookie(res: LightMyRequestResponse): string {
@@ -98,14 +115,25 @@ describe('every mutation emits exactly one event (M1-005)', () => {
 
   const idp = new FakeIdp('taskmoor', 'contract client secret');
   const samlIdp = new FakeSamlIdp();
+  const ldap = new FakeLdap({ flavour: 'openldap' });
+  const directoryBody = (name: string) => ({
+    name,
+    kind: 'openldap',
+    url: ldap.url,
+    bindDn: ldap.bindDn,
+    bindPassword: ldap.bindPassword,
+    baseDn: ldap.baseDn,
+  });
 
   beforeAll(async () => {
     await idp.start();
+    await ldap.start();
     app = await buildApp({ db: database.db, version: 'test', roles: ['api'] });
   });
   afterAll(async () => {
     await app.close();
     await idp.stop();
+    await ldap.stop();
   });
 
   const scenarios: Scenario[] = [
@@ -2045,6 +2073,62 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'scim.user_removed',
       run: () => scim('DELETE', `/Users/${state.scimUser}`),
     },
+    {
+      route: 'POST /api/v1/directories',
+      expect: 'directory.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/directories',
+          payload: directoryBody('Contract directory'),
+        });
+        state.directory = res.json().directory.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/directories/:id',
+      expect: 'directory.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/directories/${state.directory}`,
+          payload: { syncIntervalMinutes: 30, bindPassword: ldap.bindPassword },
+        }),
+    },
+    {
+      route: 'POST /api/v1/directories/:id/sync',
+      expect: 'directory.sync_requested',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/directories/${state.directory}/sync`,
+          payload: { mode: 'full' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/directories/order',
+      expect: 'directory.reordered',
+      prepare: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/directories',
+          payload: directoryBody('Second directory'),
+        });
+        state.directory2 = res.json().directory.id;
+      },
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/directories/order',
+          payload: { ids: [state.directory2, state.directory] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/directories/:id',
+      expect: 'directory.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/directories/${state.directory2}` }),
+    },
   ];
 
   it('covers every mutating route with a scenario or a stated exemption', () => {
@@ -2093,7 +2177,64 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect(JSON.stringify(event?.payload)).not.toMatch(/password_hash|argon2|token|\$scrypt/i);
       produced.add(scenario.expect);
     }
-    const missing = (Object.keys(EVENT_TYPES) as EventType[]).filter((t) => !produced.has(t));
+    const missing = (Object.keys(EVENT_TYPES) as EventType[]).filter(
+      (t) => !produced.has(t) && !JOB_EVENTS.includes(t),
+    );
     expect(missing, 'event types no route produces').toEqual([]);
+  });
+
+  it('[IAM-005] a directory sync emits one valid event per change it makes, with no actor', async () => {
+    const people = [1, 2].map((n) =>
+      ldap.addUser({ username: `job${n}`, mail: `job${n}@example.com` }),
+    );
+    const team = ldap.addGroup({ cn: 'Job team', members: [people[0] as string] });
+    const temporary = ldap.addGroup({ cn: 'Job temporary', members: [people[1] as string] });
+    const created = await admin({
+      method: 'POST',
+      url: '/api/v1/directories',
+      payload: directoryBody('Job directory'),
+    });
+    const directoryId = created.json().directory.id as number;
+    const before = await database.db
+      .selectFrom('domain_event')
+      .select((eb) => eb.fn.max('id').as('max'))
+      .executeTakeFirstOrThrow();
+    const run = async (mode: 'full' | 'incremental') => {
+      const queued = await queueRun(database.db, {
+        workspaceId: 1,
+        directoryId,
+        mode,
+        trigger: 'schedule',
+        requestedBy: null,
+        confirmRemovals: false,
+      });
+      const result = await runSync(database.db, queued.id);
+      expect(result.status, result.error ?? '').toBe('succeeded');
+    };
+    await run('full');
+    ldap.modify(people[0] as string, { displayName: ['Job One'] });
+    ldap.addMember(team, people[1] as string);
+    await run('incremental');
+    ldap.remove(people[1] as string);
+    ldap.remove(temporary);
+    await run('incremental');
+
+    const events = await database.db
+      .selectFrom('domain_event')
+      .select(['type', 'payload', 'subject_type', 'actor_id'])
+      .where('id', '>', String(before.max ?? 0))
+      .orderBy('id')
+      .execute();
+    for (const event of events) {
+      const spec = EVENT_TYPES[event.type as EventType];
+      expect(JOB_EVENTS, event.type).toContain(event.type);
+      expect(event.subject_type).toBe(spec.subject);
+      expect(() => spec.payload.parse(event.payload)).not.toThrow();
+      expect(event.actor_id).toBeNull();
+      const text = JSON.stringify(event.payload);
+      expect(text).not.toMatch(/password_hash|argon2|token|\$scrypt/i);
+      expect(text).not.toContain(ldap.bindPassword);
+    }
+    expect([...new Set(events.map((e) => e.type))].sort()).toEqual([...JOB_EVENTS].sort());
   });
 });

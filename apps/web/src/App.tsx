@@ -4,6 +4,7 @@ import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
+import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
@@ -72,6 +73,7 @@ const ADMIN_SERVICE_ACCOUNTS = '#/admin/service-accounts';
 const ADMIN_SECURITY = '#/admin/security';
 const ADMIN_IDENTITY_PROVIDERS = '#/admin/identity-providers';
 const ADMIN_TRASH = '#/admin/trash';
+const ADMIN_DIRECTORIES = '#/admin/directories';
 const ACCOUNT = '#/account';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
@@ -162,6 +164,14 @@ function Pages() {
                 window.location.hash = ADMIN_IDENTITY_PROVIDERS;
               },
             },
+            {
+              id: 'go-directories',
+              labelId: 'admin.directories.title' as const,
+              keywords: ['ldap', 'active directory', 'directory', 'sync', 'groups'],
+              run: () => {
+                window.location.hash = ADMIN_DIRECTORIES;
+              },
+            },
           ]
         : []),
     ],
@@ -189,6 +199,8 @@ function Pages() {
     content = <IdentityProvidersPage />;
   } else if (isRoute(hash, ADMIN_TRASH)) {
     content = <TrashPage />;
+  } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
+    content = <DirectoriesPage />;
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
   } else if (isRoute(hash, SIGN_IN)) {

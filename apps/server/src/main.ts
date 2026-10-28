@@ -7,6 +7,7 @@ import { loadConfig } from './config';
 import { EventBus, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
 import { registerSubscribers } from './events/subscribers';
+import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
 import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
@@ -124,13 +125,24 @@ if (config.roles.includes('worker') && db) {
     );
   void scheduleHousekeeping();
   timers.push(setInterval(scheduleHousekeeping, 5 * 60 * 1000));
-  worker = startWorker({
+  const events = startWorker({
     bus,
     runner,
     db,
     onError: (error) => app.log.error({ error }, 'worker loop failed'),
   });
-  app.log.info('worker role: relaying events and running jobs');
+  // LDAP and Active Directory syncs (M1-082): queued by schedule or an administrator.
+  const directories = startDirectorySync(db, {
+    worker: `worker-${process.pid}`,
+    peppers,
+    log: (msg, details) => app.log.warn(details, msg),
+  });
+  worker = {
+    stop: async () => {
+      await Promise.all([events.stop(), directories.stop()]);
+    },
+  };
+  app.log.info('worker role: relaying events, running jobs and directory syncs');
 }
 if (config.roles.includes('realtime')) {
   app.log.info('realtime role: no channels yet (ADR-013, M1-031)');

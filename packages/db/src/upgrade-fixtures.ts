@@ -395,6 +395,35 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT id, 1, false FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0021_ldap': {
+    tables: {
+      ldap_directory:
+        "name = 'Seed directory' AND kind = 'openldap' AND position = 1 AND sync_cursor IS NOT NULL",
+      ldap_user: "external_id = 'seed-entry-uuid' AND deactivated_by_sync = false",
+      ldap_group: "external_id = 'seed-group-uuid'",
+      ldap_sync_run: "status = 'succeeded' AND mode = 'full'",
+    },
+    seed: async (db) => {
+      // The sealed password is a placeholder that opens to nothing: no credential in the repo.
+      await sql`INSERT INTO ldap_directory (workspace_id, name, kind, url, bind_dn,
+          bind_password_sealed, base_dn, user_filter, group_filter, position, sync_cursor)
+        VALUES (1, 'Seed directory', 'openldap', 'ldaps://ldap.example.com',
+          'cn=sync,dc=example,dc=com', 'sealed-placeholder', 'dc=example,dc=com',
+          '(objectClass=inetOrgPerson)', '(objectClass=groupOfNames)', 1,
+          '{"kind": "timestamp", "value": "20261001000000Z"}')`.execute(db);
+      const directory = sql`(SELECT id FROM ldap_directory WHERE name = 'Seed directory')`;
+      await sql`INSERT INTO ldap_user (workspace_id, directory_id, user_id, external_id, dn, username)
+        SELECT 1, ${directory}, id, 'seed-entry-uuid', 'uid=seed,ou=people,dc=example,dc=com', 'seed'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO ldap_group (workspace_id, directory_id, group_id, external_id, dn)
+        SELECT 1, ${directory}, id, 'seed-group-uuid', 'cn=seed-parent,ou=groups,dc=example,dc=com'
+          FROM user_group WHERE name = 'seed-parent'`.execute(db);
+      await sql`INSERT INTO ldap_sync_run (workspace_id, directory_id, mode, trigger, status,
+          started_at, finished_at, stats)
+        VALUES (1, ${directory}, 'full', 'schedule', 'succeeded', now(), now(),
+          '{"usersCreated": 1}')`.execute(db);
+    },
+  },
   '0022_trash_backups': {
     tables: {
       track: "key = 'SEEDTRASH' AND deleted_at IS NOT NULL AND purge_started_at IS NULL",

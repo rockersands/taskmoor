@@ -1,10 +1,16 @@
 import type { Database } from '@taskmoor/db';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireSiteAdmin } from '../auth';
 import { effectiveMemberIds, nestingWouldCycle, toUserView, USER_COLUMNS } from '../directory';
 import { diff, emit } from '../events/bus';
+import {
+  type DirectoryGateway,
+  directoryFailure,
+  directoryManaged,
+  readOnly,
+} from '../ldap/gateway';
 
 const listQuery = z.object({ query: z.string().trim().max(200).optional() });
 const groupBody = z
@@ -33,7 +39,38 @@ function isUniqueViolation(error: unknown): boolean {
  * groups. A member of a nested group counts as a member of every group above it; nesting that
  * would close a loop is refused. M1-002 grants permissions to groups.
  */
-export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+export function registerGroupRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  options: { directories: DirectoryGateway },
+): void {
+  const { directories } = options;
+  /**
+   * M1-082: a directory owns the members and nested groups of its groups. Read-only ones refuse
+   * changes here (the next sync would undo them); read-write ones take them first, for members
+   * and groups of the same directory. Renaming or deleting a directory's group is done there.
+   */
+  async function directoryChange(
+    reply: FastifyReply,
+    workspaceId: number,
+    parentId: number,
+    member: { userId: number } | { groupId: number },
+    operation: 'add' | 'delete',
+  ): Promise<'go' | FastifyReply> {
+    const group = await directories.group(workspaceId, parentId);
+    if (!group) return 'go';
+    if (readOnly(group.directory.mode)) return directoryManaged(reply, group.directory);
+    const target =
+      'userId' in member
+        ? await directories.account(workspaceId, member.userId)
+        : await directories.group(workspaceId, member.groupId);
+    if (!target || target.directory.id !== group.directory.id) {
+      return reply.code(409).send({ error: 'not_in_directory' });
+    }
+    const failure = await directories.writeMembership(group, target.dn, operation);
+    return failure ? directoryFailure(reply, failure) : 'go';
+  }
+
   const findGroup = (workspaceId: number, id: number) =>
     db
       .selectFrom('user_group')
@@ -143,11 +180,20 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
         .orderBy(sql`lower(g.name)`)
         .execute(),
     ]);
+    const managed = await directories.group(ws, group.id);
     return {
       group: { id: group.id, name: group.name, description: group.description },
       members: members.map(toUserView),
       children,
       parents,
+      directory: managed
+        ? {
+            id: managed.directory.id,
+            name: managed.directory.name,
+            dn: managed.dn,
+            mode: managed.directory.mode,
+          }
+        : null,
     };
   });
 
@@ -168,6 +214,10 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
     const parsed = patchBody.safeParse(request.body);
     if (!params.success || !parsed.success) {
       return reply.code(400).send({ error: 'invalid_request' });
+    }
+    if (parsed.data.name !== undefined) {
+      const managed = await directories.group(request.workspaceId, params.data.id);
+      if (managed) return directoryManaged(reply, managed.directory);
     }
     try {
       const row = await db.transaction().execute(async (trx) => {
@@ -214,6 +264,8 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
     if (!admin) return reply;
     const params = idParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
+    const managed = await directories.group(request.workspaceId, params.data.id);
+    if (managed) return directoryManaged(reply, managed.directory);
     const deleted = await db.transaction().execute(async (trx) => {
       const row = await trx
         .deleteFrom('user_group')
@@ -250,6 +302,8 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
         .executeTakeFirst(),
     ]);
     if (!group || !user) return reply.code(404).send({ error: 'not_found' });
+    const verdict = await directoryChange(reply, ws, group.id, { userId: user.id }, 'add');
+    if (verdict !== 'go') return verdict;
     await db.transaction().execute(async (trx) => {
       const added = await trx
         .insertInto('group_member')
@@ -273,6 +327,14 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
     if (!admin) return reply;
     const params = memberParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
+    const verdict = await directoryChange(
+      reply,
+      request.workspaceId,
+      params.data.id,
+      { userId: params.data.userId },
+      'delete',
+    );
+    if (verdict !== 'go') return verdict;
     const removed = await db.transaction().execute(async (trx) => {
       const result = await trx
         .deleteFrom('group_member')
@@ -304,6 +366,20 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
     const params = childParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
     const ws = request.workspaceId;
+    if (params.data.id !== params.data.childId && (await directories.group(ws, params.data.id))) {
+      // A directory's group is changed there first: a loop must be refused before that.
+      if (await nestingWouldCycle(db, ws, params.data.id, params.data.childId)) {
+        return reply.code(409).send({ error: 'nesting_cycle' });
+      }
+      const verdict = await directoryChange(
+        reply,
+        ws,
+        params.data.id,
+        { groupId: params.data.childId },
+        'add',
+      );
+      if (verdict !== 'go') return verdict;
+    }
     const outcome = await db.transaction().execute(async (trx) => {
       // One nesting change at a time per workspace, so two requests cannot build a loop together.
       await sql`SELECT pg_advisory_xact_lock(${ws}, 1)`.execute(trx);
@@ -346,6 +422,14 @@ export function registerGroupRoutes(app: FastifyInstance, db: Kysely<Database>):
     if (!admin) return reply;
     const params = childParams.safeParse(request.params);
     if (!params.success) return reply.code(400).send({ error: 'invalid_request' });
+    const verdict = await directoryChange(
+      reply,
+      request.workspaceId,
+      params.data.id,
+      { groupId: params.data.childId },
+      'delete',
+    );
+    if (verdict !== 'go') return verdict;
     const removed = await db.transaction().execute(async (trx) => {
       const result = await trx
         .deleteFrom('group_nesting')
