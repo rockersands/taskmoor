@@ -29,6 +29,7 @@ import * as m0029 from './0029_visibility_levels';
 import * as m0030 from './0030_notifications';
 import * as m0031 from './0031_attachments';
 import * as m0032 from './0032_email';
+import * as m0034 from './0034_rich_text';
 import * as m0036 from './0036_change_log';
 import * as m0037 from './0037_mutation_receipts';
 
@@ -70,6 +71,7 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0030_notifications': m0030,
   '0031_attachments': m0031,
   '0032_email': m0032,
+  '0034_rich_text': m0034,
   '0036_change_log': m0036,
   '0037_mutation_receipts': m0037,
 };

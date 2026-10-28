@@ -86,11 +86,12 @@ const s3 = new S3Store({
   prefix: '',
   credentials: bucket.credentials,
 });
+// Both also co-edit rich text (the realtime role, M1-017); the rich text tests use the first.
 const attachApps = [
   await buildApp({
     db: attachDb,
     version: 'e2e',
-    roles: ['api'],
+    roles: ['api', 'realtime'],
     logLevel: 'warn',
     publicUrl: 'http://localhost:4174',
     attachments: storesOf(local, { others: [s3] }),
@@ -98,7 +99,7 @@ const attachApps = [
   await buildApp({
     db: attachDb,
     version: 'e2e',
-    roles: ['api'],
+    roles: ['api', 'realtime'],
     logLevel: 'warn',
     publicUrl: 'http://localhost:4175',
     attachments: storesOf(s3, { others: [local] }),
@@ -139,7 +140,7 @@ await attachApps[1]?.listen({ port: E2E_ATTACH_S3_PORT, host: '127.0.0.1' });
 const app = await buildApp({
   db,
   version: 'e2e',
-  // The realtime socket of the sync engine too (M1-032).
+  // The realtime role: the sync engine's socket (M1-032) and co-editing (M1-017).
   roles: ['api', 'realtime'],
   logLevel: 'warn',
   publicUrl: 'http://localhost:4173',

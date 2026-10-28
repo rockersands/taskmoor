@@ -1,6 +1,9 @@
-import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import type { PmJson } from '@taskmoor/richtext';
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { type MentionSource, mentionSource } from '../richtext/mentions';
+import { RichTextEditor } from '../richtext/RichTextEditor';
 import {
   type CustomField,
   createBody,
@@ -32,6 +35,8 @@ export interface CreateClient {
   form: (track: string, ticketTypeId: number) => Promise<TicketForm>;
   priorities: () => Promise<{ id: number; name: string }[]>;
   create: (body: Record<string, unknown>) => Promise<{ key: string }>;
+  /** People to mention in rich text fields (M1-017); none when left out. */
+  mentions?: (track: string) => MentionSource;
 }
 
 export const createClient: CreateClient = {
@@ -50,7 +55,11 @@ export const createClient: CreateClient = {
     (await api<{ priorities: { id: number; name: string }[] }>('/priorities')).priorities,
   create: async (body) =>
     (await api<{ ticket: { key: string } }>('/tickets', { method: 'POST', body })).ticket,
+  mentions: (track) => mentionSource({ track }),
 };
+
+/** Fields written in the rich text editor (M1-017). */
+const RICH_TYPES = new Set(['description', 'environment', 'paragraph']);
 
 type Loaded<T> = { status: 'loading' } | { status: 'failed' } | { status: 'loaded'; value: T };
 
@@ -75,6 +84,9 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
   const [form, setForm] = useState<Loaded<TicketForm> | null>(null);
   const [priorities, setPriorities] = useState<{ id: number; name: string }[]>([]);
   const [values, setValues] = useState<FormValues>({});
+  // Rich text fields' documents, by field key; a new form key gives empty editors.
+  const [docs, setDocs] = useState<Record<string, PmJson | null>>({});
+  const [formKey, setFormKey] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [problem, setProblem] = useState<string | null>(null);
   const [message, setMessage] = useState('');
@@ -103,7 +115,12 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
       .then((res) => {
         if (!live) return;
         setTypes(res.types);
-        setTypeId(res.defaultTypeId ?? res.types[0]?.id ?? null);
+        // A type chosen while the track's list was on its way stays when the track offers it.
+        setTypeId((chosen) =>
+          chosen !== null && res.types.some((type) => type.id === chosen)
+            ? chosen
+            : (res.defaultTypeId ?? res.types[0]?.id ?? null),
+        );
       })
       .catch(() => live && setForm({ status: 'failed' }));
     return () => {
@@ -127,6 +144,15 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
   }, [loadForm]);
 
   const set = (key: string, value: string | string[]) => setValues((v) => ({ ...v, [key]: value }));
+  const mentions = useMemo(
+    () => (track === '' ? undefined : client.mentions?.(track)),
+    [client, track],
+  );
+  const clearForm = () => {
+    setValues({});
+    setDocs({});
+    setFormKey((k) => k + 1);
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -136,8 +162,8 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
     setMessage('');
     setErrors({});
     try {
-      const made = await client.create(createBody(track, typeId, form.value, values));
-      setValues({});
+      const made = await client.create(createBody(track, typeId, form.value, values, docs));
+      clearForm();
       setMessage(t('tickets.create.created', { key: made.key }));
     } catch (e) {
       const body = e instanceof ApiError ? (e.body as { fields?: Record<string, string> }) : null;
@@ -173,13 +199,16 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
       'aria-invalid': errors[field.key] ? true : undefined,
     };
     const type = custom?.type ?? field.key;
-    if (type === 'description' || type === 'environment' || type === 'paragraph') {
+    if (RICH_TYPES.has(type)) {
       return (
-        <textarea
-          {...common}
-          rows={4}
-          value={text}
-          onChange={(e) => set(field.key, e.target.value)}
+        <RichTextEditor
+          key={`${formKey}:${field.key}`}
+          labelledBy={`${id}-label`}
+          describedBy={described || undefined}
+          required={field.required}
+          invalid={Boolean(errors[field.key])}
+          onChange={(doc) => setDocs((d) => ({ ...d, [field.key]: doc }))}
+          mentions={mentions}
         />
       );
     }
@@ -324,9 +353,16 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
           </fieldset>
         ) : (
           <>
-            <label htmlFor={id} className="form-label">
-              {label}
-            </label>
+            {RICH_TYPES.has(custom?.type ?? field.key) && editable ? (
+              // A rich text editor is no form control: it names itself by this text's id.
+              <span id={`${id}-label`} className="form-label rt-label">
+                {label}
+              </span>
+            ) : (
+              <label htmlFor={id} className="form-label">
+                {label}
+              </label>
+            )}
             {editable ? (
               control(field, custom, id, [helpId, errorId].filter(Boolean).join(' '))
             ) : (
@@ -380,7 +416,7 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
                 value={track}
                 onChange={(e) => {
                   setTrack(e.target.value);
-                  setValues({});
+                  clearForm();
                   // The old track's types until the new ones arrive would let a choice made
                   // meanwhile be overwritten, or sent with a type of the wrong track.
                   setTypes([]);

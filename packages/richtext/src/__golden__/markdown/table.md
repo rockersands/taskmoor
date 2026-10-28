@@ -1,0 +1,4 @@
+| Browser | Result |
+| ------- | ------ |
+| Firefox | passes |
+| Safari  | fails  |

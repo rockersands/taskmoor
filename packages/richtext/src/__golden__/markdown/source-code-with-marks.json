@@ -1,0 +1,64 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "Bold code ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "type": "code"
+            }
+          ],
+          "text": "flag",
+          "type": "text"
+        },
+        {
+          "text": ", linked code ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "https://example.test/run",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "run()",
+          "type": "text"
+        },
+        {
+          "text": ", a bold mention ",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null,
+            "id": "9",
+            "label": "Ana",
+            "mentionSuggestionChar": "@"
+          },
+          "type": "mention"
+        },
+        {
+          "text": ".",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

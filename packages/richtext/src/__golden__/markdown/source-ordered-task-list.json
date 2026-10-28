@@ -1,0 +1,55 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null,
+            "checked": false
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "first",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "taskItem"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null,
+            "checked": true
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "second",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "taskItem"
+        }
+      ],
+      "type": "taskList"
+    }
+  ],
+  "type": "doc"
+}

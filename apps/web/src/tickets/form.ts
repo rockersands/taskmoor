@@ -112,7 +112,13 @@ export function textDocument(text: string): unknown {
 const words = (text: string) => text.split(/\s+/).filter((w) => w !== '');
 
 /** The value a custom field takes from what was typed; undefined for nothing. */
-function customValue(field: CustomField, values: FormValues, key: string): unknown {
+function customValue(
+  field: CustomField,
+  values: FormValues,
+  key: string,
+  rich: Readonly<Record<string, unknown>>,
+): unknown {
+  if (field.type === 'paragraph' && key in rich) return rich[key] ?? undefined;
   const raw = values[key];
   if (raw === undefined) return undefined;
   if (Array.isArray(raw)) return raw.length === 0 ? undefined : raw.map(Number);
@@ -139,12 +145,16 @@ function customValue(field: CustomField, values: FormValues, key: string): unkno
   }
 }
 
-/** The create request a form makes: values left empty are not sent. */
+/**
+ * The create request a form makes: values left empty are not sent. Rich text fields come as
+ * the editor's documents (`rich`, by field key; null when empty), or as plain text in `values`.
+ */
 export function createBody(
   track: string,
   ticketTypeId: number,
   form: TicketForm,
   values: FormValues,
+  rich: Readonly<Record<string, unknown>> = {},
 ): Record<string, unknown> {
   const body: Record<string, unknown> = { track, ticketTypeId };
   const custom: Record<string, unknown> = {};
@@ -152,13 +162,18 @@ export function createBody(
     const id = customId(key.key);
     if (id !== null) {
       const field = form.customFields.find((f) => f.id === id);
-      const value = field ? customValue(field, values, key.key) : undefined;
+      const value = field ? customValue(field, values, key.key, rich) : undefined;
       if (value !== undefined) custom[id] = value;
+      continue;
+    }
+    const name = SYSTEM_FIELDS[key.key]?.body ?? key.key;
+    if ((key.key === 'description' || key.key === 'environment') && key.key in rich) {
+      const doc = rich[key.key];
+      if (doc != null) body[name] = doc;
       continue;
     }
     const raw = values[key.key];
     if (typeof raw !== 'string' || raw.trim() === '') continue;
-    const name = SYSTEM_FIELDS[key.key]?.body ?? key.key;
     if (key.key === 'description' || key.key === 'environment') body[name] = textDocument(raw);
     else if (key.key === 'labels') body[name] = words(raw);
     else if (key.key === 'priority') body[name] = Number(raw);

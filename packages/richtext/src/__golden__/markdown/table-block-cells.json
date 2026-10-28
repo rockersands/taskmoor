@@ -1,0 +1,145 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "Item",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableHeader"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "Detail",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableHeader"
+            }
+          ],
+          "type": "tableRow"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "steps",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "first paragraph",
+                      "type": "text"
+                    },
+                    {
+                      "attrs": {
+                        "adfAttrs": null
+                      },
+                      "type": "hardBreak"
+                    },
+                    {
+                      "text": "second paragraph",
+                      "type": "text"
+                    },
+                    {
+                      "attrs": {
+                        "adfAttrs": null
+                      },
+                      "type": "hardBreak"
+                    },
+                    {
+                      "text": "a list item",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            }
+          ],
+          "type": "tableRow"
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "type": "doc"
+}

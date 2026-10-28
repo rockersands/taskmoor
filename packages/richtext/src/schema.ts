@@ -1,7 +1,7 @@
-import { Extension, getSchema, Mark, Node } from '@tiptap/core';
-import Mention from '@tiptap/extension-mention';
+import { type AnyExtension, Extension, getSchema, Mark, Node } from '@tiptap/core';
+import Mention, { type MentionOptions } from '@tiptap/extension-mention';
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
-import TaskItem from '@tiptap/extension-task-item';
+import TaskItem, { type TaskItemOptions } from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import type { Schema } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
@@ -30,6 +30,7 @@ const Status = Node.create({
   group: 'inline',
   inline: true,
   atom: true,
+  marks: '',
   addAttributes: () => ({ text: { default: '' }, color: { default: 'neutral' } }),
   parseHTML: () => [{ tag: 'span[data-status]' }],
   renderHTML: ({ HTMLAttributes }) => [
@@ -44,6 +45,7 @@ const DateNode = Node.create({
   group: 'inline',
   inline: true,
   atom: true,
+  marks: '',
   addAttributes: () => ({ timestamp: { default: '' } }),
   parseHTML: () => [{ tag: 'time[data-date]' }],
   renderHTML: ({ HTMLAttributes }) => ['time', { 'data-date': HTMLAttributes.timestamp }],
@@ -54,6 +56,7 @@ const Emoji = Node.create({
   group: 'inline',
   inline: true,
   atom: true,
+  marks: '',
   addAttributes: () => ({ shortName: { default: '' }, text: { default: null } }),
   parseHTML: () => [{ tag: 'span[data-emoji]' }],
   renderHTML: ({ HTMLAttributes }) => [
@@ -139,29 +142,50 @@ const AdfAttrs = Extension.create({
   ],
 });
 
-export const extensions = [
-  StarterKit.configure({
-    heading: { levels: [1, 2, 3, 4, 5, 6] },
-    codeBlock: { defaultLanguage: null },
-    link: { openOnClick: false },
-  }),
-  Mention,
-  Table,
-  TableRow,
-  TableHeader,
-  TableCell,
-  TaskList,
-  TaskItem.configure({ nested: true }),
-  Panel,
-  Status,
-  DateNode,
-  Emoji,
-  UnknownBlock,
-  UnknownInline,
-  TextColor,
-  SubSup,
-  UnknownMark,
-  AdfAttrs,
-];
+/**
+ * How an editor runs the schema. None of these change the schema: the server, the importer
+ * and every editor read and write the same documents.
+ */
+export interface EditorOptions {
+  /** ProseMirror's own undo history; off when Yjs keeps it (collaboration, ADR-014). */
+  undoRedo?: boolean;
+  /** The mention node's behaviour in an editor: its suggestion popup, how it renders. */
+  mention?: Partial<MentionOptions>;
+  /** Checklist items in an editor: their checkboxes' accessible names. */
+  taskItem?: Partial<TaskItemOptions>;
+}
+
+/** The schema's extensions, set up for an editor. */
+export function editorExtensions(options: EditorOptions = {}): AnyExtension[] {
+  return [
+    StarterKit.configure({
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
+      codeBlock: { defaultLanguage: null },
+      link: { openOnClick: false },
+      ...(options.undoRedo === false ? { undoRedo: false as const } : {}),
+    }),
+    // Inline atoms take no marks: the other format gives them none, and Yjs keeps marks on
+    // text only, so a mark on one would not reach the other people editing.
+    Mention.extend({ marks: '' }).configure(options.mention ?? {}),
+    Table,
+    TableRow,
+    TableHeader,
+    TableCell,
+    TaskList,
+    TaskItem.configure({ ...options.taskItem, nested: true }),
+    Panel,
+    Status,
+    DateNode,
+    Emoji,
+    UnknownBlock,
+    UnknownInline,
+    TextColor,
+    SubSup,
+    UnknownMark,
+    AdfAttrs,
+  ];
+}
+
+export const extensions = editorExtensions();
 
 export const schema: Schema = getSchema(extensions);

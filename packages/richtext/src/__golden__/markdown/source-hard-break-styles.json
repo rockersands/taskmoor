@@ -1,0 +1,37 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "two spaces",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "type": "hardBreak"
+        },
+        {
+          "text": "backslash",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "type": "hardBreak"
+        },
+        {
+          "text": "end",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

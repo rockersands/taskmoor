@@ -53,3 +53,70 @@ Rendering an unknown node shows a placeholder until a mapping is added, and the 
 stays safe. Mark order and text-run boundaries are not preserved byte for byte; nothing in the
 format depends on them. Task items store their inline content inside a paragraph in the editor
 and flatten it on export.
+
+## Implementation (M1-017)
+
+Migration 0034 adds `ticket_text_original` and `ticket_text_state`. The editor is in
+`apps/web/src/richtext/`, the conversions in `packages/richtext`, the realtime server in
+`apps/server/src/collab/`.
+
+- **One schema, now also in the browser.** `editorExtensions()` builds the shared extensions
+  with an editor's options (mention suggestions, checkbox names, no ProseMirror history when
+  Yjs keeps it); none of them changes the schema. Inline atoms (mention, emoji, status, date)
+  take no marks: the other format gives them none and Yjs keeps marks only on text, so a mark
+  on one would have reached nobody else. Mentions read their label without the format's "@"
+  and write it back with one.
+- **Editor** (`RichTextEditor`): Tiptap with a one-tab-stop toolbar (arrow keys move along it),
+  Markdown input rules, pasted plain-text Markdown converted (`looksLikeMarkdown`), "@" with a
+  listbox driven by `aria-activedescendant` on the text box, a link form (Ctrl+K) that refuses
+  unsafe schemes, table tools while the caret is in a table, placeholders for nodes kept whole,
+  and Escape to leave the text (Tab then moves on; Tab still indents lists and moves between
+  cells). The create form uses it for description, environment and paragraph fields; the ticket
+  page (until M1-051) co-edits the description.
+- **Markdown** (`markdown.ts`, mdast with the GFM table, strikethrough, task list and literal
+  autolink extensions; no footnotes): lossless for what Markdown expresses, plus our conventions
+  for what it does not: mentions as `[@Name](mention:<id>)` links, panels as alert quotes
+  (`> [!WARNING]`; GitHub's IMPORTANT reads as info and CAUTION as error), underline, subscript,
+  superscript and colour as `<ins>`, `<sub>`, `<sup>` and `<span style="color: …">`. No other
+  HTML is interpreted: inline HTML stays text and HTML blocks become code blocks of their source.
+  The losses are listed in the module comment (attributes of the other format, empty paragraphs,
+  emoji, dates and status as text, tables beyond GFM, addresses in text becoming links). A corpus
+  of 63 documents and sources has golden Markdown and read-back files; documents in the
+  Markdown-expressible subset must come back unchanged, every document reaches a fixed point
+  after one pass (property test over the synthetic generator). Two writer bugs in
+  `mdast-util-to-markdown` 2.1.2 are worked around locally (half an emoji encoded as a
+  reference; `~~` next to a letter), and links are written for web addresses in text because GFM
+  finds them after escapes are read.
+- **API formats** (API-011): `?format=doc|adf|markdown` on ticket reads and writes (create,
+  edit, view, list and every answer that returns a ticket); `doc` is the default and what is
+  stored. HTML and wiki markup come with the compatibility API (M1-071).
+- **Originals** (IMP-008): a description or environment written as `adf` keeps that document
+  in `ticket_text_original` with the SHA-256 of the canonical document converted from it.
+  Editing the text in another format leaves the original; `GET
+  /api/v1/tickets/:id/rich-text/:field/original` returns it with `current` (whether the text is
+  still what was converted from it). Writing it again as `adf` replaces it; clearing it drops it.
+  Reading `?format=adf` converts the stored document, so later edits show; the original is for
+  audits and for redoing the conversion with a better converter while `current` holds.
+- **Collaboration**: Hocuspocus runs inside the realtime role on the process's own HTTP server
+  (`/api/v1/collab`, a `ws` upgrade, no separate port); the default `all` role and the e2e
+  servers have it. Documents are `ticket/<id>/<field>`. The upgrade needs a session cookie and,
+  from a browser, this instance's origin (public URL or Host). Opening a document needs what
+  editing the field through the API needs: seeing the ticket (browse, visibility level), "Edit
+  tickets" (none in an archived track or the trash) and the field on the edit form; others are
+  refused (`forbidden` for those who see the ticket, `not-found` otherwise) and read the text
+  through the API. Saves are debounced (2 s, at most 10 s, and when the last person leaves)
+  and go through the same rules as PATCH: lock, history rows, version, one `ticket.updated`
+  event attributed to the last editor, auto-follow, required fields; refused saves put the
+  ticket's text back and let go of people who lost access. The Yjs state is kept in
+  `ticket_text_state` with the hash of the text it holds and is used again only while the
+  ticket still holds that text. After any successful API mutation (and every 30 s) open
+  documents are checked again: text written another way replaces the live text (last write
+  wins; history keeps what was replaced) and people who lost access are disconnected.
+- **People to mention** (NTF-005): `GET /api/v1/people/mentionable?ticket=|track=&q=` needs
+  "Browse users and groups"; it lists active people by name or email prefix with `canView`, those
+  who can see the ticket first. The editor marks the others and says they will not be notified.
+
+Not yet: a document lives in one process, so several realtime processes need routing by
+document until they relay updates (Redis-free, through Postgres, later); notifications for
+mentions (M1-056, M1-058); collaborative saves carry no client address; emoji, date, status and
+panel pickers, inline images and syntax highlighting in the editor; HTML and wiki markup.

@@ -18,6 +18,20 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-017 rich text** (built by a background agent on `work/m1-017-rich-text`, reviewed and
+  merged; migration 0034 adds `ticket_text_original` and `ticket_text_state`; ADR-014
+  "Implementation (M1-017)"). The editor lives in `apps/web/src/richtext/`, the conversions in
+  `packages/richtext` (`markdown.ts`, `collab.ts`), co-editing in `apps/server/src/collab/`
+  (realtime role, `/api/v1/collab`). New write paths to description or environment need
+  nothing extra: open documents pick up API writes within about 50 ms, or 30 s otherwise.
+  Comments (M1-018) should reuse `RichTextEditor` and `readRichText`/`inFormat` from
+  `tickets/rich-text.ts`; mention notifications (M1-056, M1-058) can find mention nodes in the
+  stored documents (`canView` logic in `routes/rich-text.ts`). Several realtime processes need
+  routing by document until updates are relayed between them. At the merge both realtime
+  features share one upgrade dispatcher in `app.ts` (co-editing takes `/api/v1/collab`, the
+  rest goes to Fastify's WebSocket routes). Known flaky: `storage.test.ts` [NFR-002] "keeps
+  the side tables in step" fails on some random seeds (its "rows of every kind" check can
+  find `v_user` empty); worth a fix.
 - **M1-032 websocket, local copy and outbox** (migration 0037; ADR-013 "Implementation
   (M1-032)"). Server: `apps/server/src/sync/mutations.ts` (idempotent mutations by
   `taskmoor-client-id` and `taskmoor-mutation-id`, answers carry `taskmoor-position`) and

@@ -119,9 +119,13 @@ function inline(node: AdfNode): PmJson {
     case 'hardBreak':
       return { type: 'hardBreak', attrs: withAdf(node) };
     case 'mention':
+      // The format's text carries the leading "@"; the editor adds its own when it renders.
       return {
         type: 'mention',
-        attrs: withAdf(node, { id: a.id ?? null, label: a.text ?? null }),
+        attrs: withAdf(node, {
+          id: a.id ?? null,
+          label: typeof a.text === 'string' ? a.text.replace(/^@/, '') : null,
+        }),
       };
     case 'emoji':
       return {
@@ -276,11 +280,16 @@ function exportNode(n: PmJson): AdfNode {
       if (n.marks && n.marks.length > 0) out.marks = n.marks.map(exportMark);
       return out;
     }
-    case 'mention':
+    case 'mention': {
+      // "@" and the label, unless the original text had no "@" (then it is kept as it was).
+      const original = (a.adfAttrs as Attrs | null | undefined)?.text;
+      const bare = typeof original === 'string' && !original.startsWith('@');
+      const text = a.label == null ? null : bare ? a.label : `@${String(a.label)}`;
       return node(
         'mention',
-        attrsOut(a, { id: { value: a.id }, text: { value: a.label, isDefault: a.label == null } }),
+        attrsOut(a, { id: { value: a.id }, text: { value: text, isDefault: text == null } }),
       );
+    }
     case 'emoji':
       return node(
         'emoji',

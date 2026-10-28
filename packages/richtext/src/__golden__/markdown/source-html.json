@@ -1,0 +1,43 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "language": "html"
+      },
+      "content": [
+        {
+          "text": "<div align=\"center\">\n  <b>centered</b>\n</div>",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "Inline <script>alert(1)</script> and <kbd>Ctrl</kbd> and ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "type": "underline"
+            }
+          ],
+          "text": "under",
+          "type": "text"
+        },
+        {
+          "text": ".",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

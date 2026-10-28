@@ -1,0 +1,98 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "Ping ",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null,
+            "id": "42",
+            "label": "Kalo",
+            "mentionSuggestionChar": "@"
+          },
+          "type": "mention"
+        },
+        {
+          "text": " about ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "type": "underline"
+            }
+          ],
+          "text": "this",
+          "type": "text"
+        },
+        {
+          "text": ", H",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "type": "sub"
+              },
+              "type": "subsup"
+            }
+          ],
+          "text": "2",
+          "type": "text"
+        },
+        {
+          "text": "O and ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "color": "#ff5630"
+              },
+              "type": "textColor"
+            }
+          ],
+          "text": "red",
+          "type": "text"
+        },
+        {
+          "text": " text.",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "panelType": "warning"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "Read first.",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "panel"
+    }
+  ],
+  "type": "doc"
+}

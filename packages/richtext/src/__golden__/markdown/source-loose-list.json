@@ -1,0 +1,85 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "first",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "second",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "with a second paragraph",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "third",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        }
+      ],
+      "type": "bulletList"
+    }
+  ],
+  "type": "doc"
+}

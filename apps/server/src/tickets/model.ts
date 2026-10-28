@@ -63,6 +63,8 @@ export function checkRichText(
   try {
     const node = schema.nodeFromJSON(value);
     if (node.type.name !== 'doc') return { ok: false, problem: 'invalid' };
+    // A document with no blocks at all (the other format's empty document) is no text.
+    if (node.childCount === 0) return { ok: true, doc: null };
     node.check();
     if (node.textContent.length > RICH_TEXT_MAX_CHARS) return { ok: false, problem: 'too_long' };
     // A document with nothing in it is no description at all.

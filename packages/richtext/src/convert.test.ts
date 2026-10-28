@@ -145,7 +145,7 @@ const sample: AdfNode = adfDoc([
 ]);
 
 describe('document format round trip', () => {
-  it('[NTF-001] keeps every node, attribute and mark of a document that uses each mapped type', () => {
+  it('[NTF-007] keeps every node, attribute and mark of a document that uses each mapped type', () => {
     const back = roundTrip(sample);
     expect(canonicalAdf(back)).toEqual(canonicalAdf(sample));
     expect(countNodes(canonicalAdf(back))).toBe(countNodes(canonicalAdf(sample)));
@@ -205,6 +205,33 @@ describe('document format round trip', () => {
       { type: 'codeBlock', content: [] },
     ]);
     expect(roundTrip(doc)).toEqual(doc);
+  });
+
+  it('[NTF-005] reads a mention label without its "@" and writes the "@" back', () => {
+    const doc = adfDoc([
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'mention', attrs: { id: 'u1', text: '@Kalo' } },
+          { type: 'mention', attrs: { id: 'u2', text: 'Bare' } },
+        ],
+      },
+    ]);
+    const pm = fromAdfJson(doc);
+    const labels = pm.content?.[0]?.content?.map((n) => n.attrs?.label);
+    expect(labels).toEqual(['Kalo', 'Bare']);
+    expect(roundTrip(doc)).toEqual(doc);
+    // A mention made in the editor has no original: the format's "@" is added.
+    const made = toAdfFromJson({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'mention', attrs: { id: '7', label: 'Mi' } }] },
+      ],
+    });
+    expect(made.content?.[0]?.content?.[0]).toEqual({
+      type: 'mention',
+      attrs: { id: '7', text: '@Mi' },
+    });
   });
 
   it('rejects a root that is not a document', () => {

@@ -1,5 +1,8 @@
+import { EventEmitter } from 'node:events';
 import { existsSync } from 'node:fs';
+import type { IncomingMessage, Server } from 'node:http';
 import { resolve } from 'node:path';
+import type { Duplex } from 'node:stream';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
@@ -12,6 +15,7 @@ import { sweepStorage } from './attachments/cleanup';
 import { type AttachmentStores, NO_STORAGE } from './attachments/stores';
 import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
+import { Collaboration } from './collab/server';
 import type { Role, ServerConfig } from './config';
 import { FieldCatalogs } from './fields/catalog';
 import { DirectoryGateway } from './ldap/gateway';
@@ -33,6 +37,7 @@ import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerReleaseRoutes } from './routes/releases';
+import { registerRichTextRoutes } from './routes/rich-text';
 import { registerSamlRoutes } from './routes/saml';
 import { registerScimRoutes } from './routes/scim';
 import { registerSearchRoutes } from './routes/search';
@@ -62,6 +67,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     /** Every registered route as "METHOD /path". */
     routeTable: string[];
+    /** Real-time co-editing (M1-017), when this process has the realtime role. */
+    collaboration: Collaboration | null;
   }
 }
 
@@ -101,6 +108,8 @@ export interface AppDeps {
   attachments?: AttachmentStores;
   /** Whether an SMTP server is configured for email notifications (M1-057). */
   smtpConfigured?: boolean;
+  /** Quiet time before collaborative edits are saved (M1-017); tests shorten it. */
+  collabDebounceMs?: number;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -138,15 +147,25 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
   });
 
-  if (roles.includes('api') && deps.db) {
+  // One authorizer and field catalogue per process, shared by the API and realtime roles.
+  // The realtime role's WebSockets share the HTTP server: co-editing takes /api/v1/collab
+  // (M1-017) and passes every other upgrade to Fastify's WebSocket routes (M1-032), which
+  // would otherwise answer 404 to co-editing's upgrades, as it would to theirs.
+  const upgrades = new EventEmitter();
+  const passOn = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    if (upgrades.listenerCount('upgrade') > 0) upgrades.emit('upgrade', request, socket, head);
+    else socket.destroy();
+  };
+  const authorizer = deps.db ? (deps.authorizer ?? new Authorizer(deps.db)) : null;
+  const fieldCatalogs = deps.db ? new FieldCatalogs(deps.db) : null;
+
+  if (roles.includes('api') && deps.db && authorizer && fieldCatalogs) {
     const db = deps.db;
     app.decorateRequest('user', null);
     app.decorateRequest('authSession', null);
     app.decorateRequest('apiToken', null);
     app.decorateRequest('workspaceId', 0);
     app.decorateRequest('authz', null as unknown as never);
-    const authorizer = deps.authorizer ?? new Authorizer(db);
-    const fieldCatalogs = new FieldCatalogs(db);
     app.addHook('onRequest', async (request, reply) => {
       if (!request.url.startsWith('/api/')) return;
       request.workspaceId = await defaultWorkspaceId(db);
@@ -165,8 +184,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // Mutations an outbox sends with a client and mutation id run at most once (M1-032).
     registerMutationReceipts(app, db);
     // The realtime channel: where the change log stands, pushed to signed-in clients (M1-032).
+    // Fastify's WebSocket routes take the upgrades co-editing passes on (below).
     if (roles.includes('realtime')) {
-      await app.register(fastifyWebsocket);
+      await app.register(fastifyWebsocket, {
+        options: { server: upgrades as unknown as Server },
+      });
       registerSyncSocket(app, db);
     }
     const passwords = deps.passwords ?? passwordHasher(deps.peppers);
@@ -203,6 +225,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerTrackRoutes(app, db);
     registerTicketTypeRoutes(app, db);
     registerTicketRoutes(app, db, authorizer, fieldCatalogs);
+    registerRichTextRoutes(app, db, authorizer);
     registerFieldRoutes(app, db, fieldCatalogs);
     registerLayoutRoutes(app, db, fieldCatalogs);
     registerVisibilityRoutes(app, db);
@@ -257,6 +280,22 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       startedAt: deps.startedAt ?? new Date(),
       ...(deps.dataDir ? { dataDir: deps.dataDir } : {}),
     });
+  }
+
+  // Co-editing rich text over WebSockets (M1-017, ADR-014): the realtime role.
+  app.decorate('collaboration', null);
+  if (roles.includes('realtime') && deps.db && authorizer && fieldCatalogs) {
+    const collaboration = new Collaboration({
+      db: deps.db,
+      authorizer,
+      catalogs: fieldCatalogs,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      ...(deps.collabDebounceMs !== undefined ? { debounceMs: deps.collabDebounceMs } : {}),
+    });
+    collaboration.attach(app, passOn);
+    app.collaboration = collaboration;
+  } else if (roles.includes('realtime')) {
+    app.server.on('upgrade', passOn);
   }
 
   if (roles.includes('web') && deps.webDir) {

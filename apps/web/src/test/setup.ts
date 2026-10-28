@@ -5,6 +5,14 @@ import { installMatchMedia, setViewportWidth } from './viewport';
 
 installMatchMedia();
 
+// jsdom lays nothing out; the rich text editor (ProseMirror) measures ranges and asks what is
+// under a point while it keeps the caret in view. Empty answers are what it gets on a page
+// that is not drawn.
+const noRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
+Range.prototype.getClientRects ??= noRects;
+Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+document.elementFromPoint ??= () => null;
+
 /**
  * No test talks to a backend. By default every API call answers 401 (signed out) as JSON, so
  * the session check settles to "anonymous"; a test that needs other answers stubs fetch itself.

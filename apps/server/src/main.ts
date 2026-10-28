@@ -201,7 +201,9 @@ if (config.roles.includes('worker') && db) {
   app.log.info('worker role: relaying events, running jobs and directory syncs');
 }
 if (config.roles.includes('realtime')) {
-  app.log.info('realtime role: change log positions over /api/v1/sync/socket (M1-032)');
+  app.log.info(
+    'realtime role: change log positions over /api/v1/sync/socket (M1-032), co-editing at /api/v1/collab (M1-017)',
+  );
 }
 
 const closeApp = gracefulShutdown(app);

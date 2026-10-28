@@ -1,0 +1,4 @@
+> The cache is warm after the first request.
+>
+> - cold: 900 ms
+> - warm: 40 ms

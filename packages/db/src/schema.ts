@@ -373,6 +373,33 @@ export interface TicketTable {
   visibility_level_id: ColumnType<number | null, number | null | undefined, number | null>;
 }
 
+/** A rich text field's text as last written in another format (M1-017, IMP-008). */
+export interface TicketTextOriginalTable {
+  ticket_id: number;
+  workspace_id: number;
+  field: RichTextField;
+  format: 'adf' | 'wiki';
+  /** The document exactly as written (wiki markup as a JSON string). */
+  source: Json;
+  /** SHA-256 of the canonical document converted from it. */
+  doc_sha256: string;
+  written_by: number | null;
+  written_at: DefaultTimestamp;
+}
+
+/** A rich text field's collaboration state: one Yjs update holding the document (ADR-014). */
+export interface TicketTextStateTable {
+  ticket_id: number;
+  workspace_id: number;
+  field: RichTextField;
+  state: Buffer;
+  /** SHA-256 of the canonical document the state holds. */
+  doc_sha256: string;
+  updated_at: DefaultTimestamp;
+}
+
+export type RichTextField = 'description' | 'environment';
+
 /** The last ticket number given out in each track. */
 export interface TicketCounterTable {
   track_id: number;
@@ -1527,6 +1554,8 @@ export interface Database {
   ticket_key_history: TicketKeyHistoryTable;
   ticket_detached_parent: TicketDetachedParentTable;
   ticket_change: TicketChangeTable;
+  ticket_text_original: TicketTextOriginalTable;
+  ticket_text_state: TicketTextStateTable;
   priority: PriorityTable;
   priority_set: PrioritySetTable;
   priority_set_member: PrioritySetMemberTable;

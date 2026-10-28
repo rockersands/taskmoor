@@ -1287,6 +1287,34 @@
       "CREATE INDEX ticket_release_release_idx ON public.ticket_release USING btree (release_id, role)"
     ]
   },
+  "ticket_text_original": {
+    "columns": [
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "field text not null",
+      "format text not null",
+      "source jsonb not null",
+      "doc_sha256 text not null",
+      "written_by integer",
+      "written_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_text_original_pkey ON public.ticket_text_original USING btree (ticket_id, field)"
+    ]
+  },
+  "ticket_text_state": {
+    "columns": [
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "field text not null",
+      "state bytea not null",
+      "doc_sha256 text not null",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_text_state_pkey ON public.ticket_text_state USING btree (ticket_id, field)"
+    ]
+  },
   "ticket_type": {
     "columns": [
       "id integer not null default nextval('ticket_type_id_seq'::regclass)",

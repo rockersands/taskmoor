@@ -1,0 +1,4 @@
+- [x] Write the migration
+- [ ] Review with [@Kalo](mention:7)
+- [ ] Ship it
+  - after the freeze

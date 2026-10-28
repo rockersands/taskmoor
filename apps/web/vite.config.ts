@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 // Where /api goes during development and in the e2e preview; the built app calls its own
 // origin, which the backend's web role or a reverse proxy serves (ADR-021, ADR-032).
 const apiProxy = process.env.VITE_API_PROXY ?? 'http://127.0.0.1:8080';
-// `ws`: the realtime socket of the sync engine (M1-032) goes through the same proxy.
+// WebSockets too: the sync engine's socket (M1-032) and co-editing over /api/v1/collab (M1-017).
 const proxy = { '/api': { target: apiProxy, changeOrigin: false, ws: true } };
 
 export default defineConfig({

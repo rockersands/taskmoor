@@ -48,14 +48,16 @@ import {
 import { autoFollow } from '../tickets/followers';
 import { DEFAULT_PARENT_RULES, parentLevelAllowed, SUBTICKET_RANK } from '../tickets/hierarchy';
 import { changesOf, recordChanges, ticketChanges } from '../tickets/history';
-import {
-  canonicalJson,
-  checkRichText,
-  isCalendarDay,
-  SUMMARY_MAX,
-  ticketKey,
-} from '../tickets/model';
+import { canonicalJson, isCalendarDay, SUMMARY_MAX, ticketKey } from '../tickets/model';
 import { keyBetween } from '../tickets/rank';
+import {
+  inFormat,
+  keepOriginals,
+  type ReadText,
+  type RichTextFormat,
+  readRichText,
+  requestedFormat,
+} from '../tickets/rich-text';
 import {
   bottomRank,
   inTracks,
@@ -214,6 +216,7 @@ const rankBody = z
   );
 const listQuery = z
   .object({
+    format: z.enum(['doc', 'adf', 'markdown']).optional(),
     track: z.string().min(1).max(300).optional(),
     parent: z.string().min(1).max(300).optional(),
     after: z.string().min(1).max(2000).optional(),
@@ -277,13 +280,23 @@ interface ContentValues {
   summary?: string;
   description?: JsonValue | null;
   environment?: JsonValue | null;
+  /** Rich text as read in the request's format, with any original to keep (M1-017). */
+  texts?: Partial<Record<'description' | 'environment', ReadText>>;
   startDate?: string | null;
   dueDate?: string | null;
   labels?: string[];
 }
 
-/** Checks the plain values of a create or edit; problems go into `fields`. */
-function contentValues(body: ContentInput, fields: FieldErrors, creating: boolean): ContentValues {
+/**
+ * Checks the plain values of a create or edit; problems go into `fields`. Rich text comes in
+ * the request's format (`?format=`, M1-017).
+ */
+function contentValues(
+  body: ContentInput,
+  fields: FieldErrors,
+  creating: boolean,
+  format: RichTextFormat = 'doc',
+): ContentValues {
   const out: ContentValues = {};
   if (body.summary !== undefined || creating) {
     const summary = (body.summary ?? '').trim();
@@ -294,9 +307,13 @@ function contentValues(body: ContentInput, fields: FieldErrors, creating: boolea
   }
   for (const name of ['description', 'environment'] as const) {
     if (body[name] === undefined) continue;
-    const checked = checkRichText(body[name]);
-    if (checked.ok) out[name] = checked.doc;
-    else fields[name] = checked.problem;
+    const read = readRichText(body[name], format);
+    if (!read.ok) {
+      fields[name] = read.problem;
+      continue;
+    }
+    out[name] = read.text.doc;
+    out.texts = { ...out.texts, [name]: read.text };
   }
   for (const name of ['startDate', 'dueDate'] as const) {
     const value = body[name];
@@ -641,7 +658,10 @@ export function registerTicketRoutes(
     const refused = refusal(reply, outcome);
     if (refused) return refused;
     const row = (outcome as { ticket: TicketRow }).ticket;
-    return reply.code(code).send({ ticket: await viewOf(request, row) });
+    const view = await viewOf(request, row);
+    return reply
+      .code(code)
+      .send({ ticket: inFormat(view, requestedFormat(request.query) ?? 'doc') });
   }
 
   app.get('/api/v1/tickets', async (request, reply) => {
@@ -670,14 +690,15 @@ export function registerTicketRoutes(
       .execute();
     const page = rows.slice(0, q.limit);
     return {
-      tickets: await pageViews(request, page),
+      tickets: (await pageViews(request, page)).map((v) => inFormat(v, q.format ?? 'doc')),
       next: rows.length > q.limit ? (page[page.length - 1]?.rank ?? null) : null,
     };
   });
 
   app.get('/api/v1/tickets/:id', async (request, reply) => {
     const p = params.safeParse(request.params);
-    if (!p.success) return invalid(reply);
+    const format = requestedFormat(request.query);
+    if (!p.success || !format) return invalid(reply);
     const found = await findTicket(request, p.data.id);
     if (!found) return notFound(reply);
     if (found.row.deleted_at && !(await request.authz.canTicket('delete_tickets', found.row))) {
@@ -685,7 +706,7 @@ export function registerTicketRoutes(
     }
     const ticket = await viewOf(request, found.row);
     return {
-      ticket,
+      ticket: inFormat(ticket, format),
       ...(found.asked !== null && found.asked !== ticket.key
         ? { redirect: { from: found.asked, to: ticket.key } }
         : {}),
@@ -788,6 +809,8 @@ export function registerTicketRoutes(
   app.post('/api/v1/tickets', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
+    const format = requestedFormat(request.query);
+    if (!format) return invalid(reply);
     const parsed = createBody.safeParse(request.body);
     if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
     const body = parsed.data;
@@ -821,7 +844,7 @@ export function registerTicketRoutes(
       return forbidden(reply, 'set_visibility_level');
     }
     const fields: FieldErrors = {};
-    const values = contentValues(body, fields, true);
+    const values = contentValues(body, fields, true, format);
     const estimates = await estimateValues(body, ws, fields);
     if (estimates === 'disabled') return reply.code(409).send({ error: 'time_tracking_disabled' });
     if (body.assigneeId != null && !(await assignable(ws, trackId, body.assigneeId))) {
@@ -980,6 +1003,8 @@ export function registerTicketRoutes(
         .returning('id')
         .executeTakeFirstOrThrow();
       await rememberFieldLabels(trx, ws, custom.labels);
+      // The originals of rich text written in the other format (M1-017, IMP-008).
+      if (values.texts) await keepOriginals(trx, ws, row.id, values.texts, user.id);
       await setTicketReleases(trx, ws, row.id, 'target', body.targetReleaseIds ?? []);
       await setTicketReleases(trx, ws, row.id, 'found', body.foundInReleaseIds ?? []);
       await setTicketAreas(trx, ws, row.id, body.areaIds ?? []);
@@ -1059,6 +1084,8 @@ export function registerTicketRoutes(
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
     if (!p.success) return invalid(reply);
+    const format = requestedFormat(request.query);
+    if (!format) return invalid(reply);
     const parsed = updateBody.safeParse(request.body);
     if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
     const body = parsed.data;
@@ -1069,7 +1096,7 @@ export function registerTicketRoutes(
     if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
     const ticketId = found.row.id;
     const fields: FieldErrors = {};
-    const values = contentValues(body, fields, false);
+    const values = contentValues(body, fields, false, format);
     const estimates = await estimateValues(body, ws, fields);
     if (estimates === 'disabled') return reply.code(409).send({ error: 'time_tracking_disabled' });
     let parentId: number | null | undefined;
@@ -1166,6 +1193,7 @@ export function registerTicketRoutes(
       };
       const changes = diff<Record<string, unknown>>(before, {
         ...values,
+        texts: undefined,
         ticketTypeId: body.ticketTypeId,
         parentId,
         assigneeId: body.assigneeId,
@@ -1376,6 +1404,12 @@ export function registerTicketRoutes(
       }
       if (lists.areaIds) await setTicketAreas(trx, ws, ticketId, lists.areaIds);
       if (changes.labels) await rememberLabels(trx, ws, values.labels ?? []);
+      if (values.texts) {
+        const written = Object.fromEntries(
+          Object.entries(values.texts).filter(([name]) => changes[name] !== undefined),
+        );
+        await keepOriginals(trx, ws, ticketId, written, actor(request));
+      }
       await emit(trx, by(request), {
         type: 'ticket.updated',
         subjectId: ticketId,

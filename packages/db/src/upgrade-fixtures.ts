@@ -720,6 +720,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0034_rich_text': {
+    tables: {
+      ticket_text_original: "field = 'description' AND format = 'adf' AND source ? 'version'",
+      ticket_text_state: "field = 'environment' AND octet_length(state) = 3",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO ticket_text_original (ticket_id, workspace_id, field, format, source,
+          doc_sha256, written_by)
+        SELECT k.id, 1, 'description', 'adf', '{"version": 1, "type": "doc", "content": []}',
+          repeat('cd', 32), u.id
+          FROM ticket k, app_user u
+         WHERE k.summary = 'Seed ticket' AND u.email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO ticket_text_state (ticket_id, workspace_id, field, state, doc_sha256)
+        SELECT id, 1, 'environment', '\\x000102'::bytea, repeat('ef', 32)
+          FROM ticket WHERE summary = 'Seed ticket'`.execute(db);
+    },
+  },
   '0036_change_log': {
     tables: {
       change_log:

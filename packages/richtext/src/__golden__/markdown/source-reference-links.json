@@ -1,0 +1,62 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "See ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": {
+                  "href": "https://example.test/guide",
+                  "title": "Guide"
+                },
+                "class": null,
+                "href": "https://example.test/guide",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "the guide",
+          "type": "text"
+        },
+        {
+          "text": " and ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "https://example.test/faq",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "the FAQ",
+          "type": "text"
+        },
+        {
+          "text": ".",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}
