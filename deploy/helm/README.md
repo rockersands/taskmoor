@@ -37,8 +37,10 @@ helm install taskmoor deploy/helm/taskmoor \
 ## Upgrades
 
 `helm upgrade` first runs `node cli.mjs check-upgrade` from the new image (ADR-022); a blocking
-finding (database unreachable, or migrated by a newer release) stops the upgrade before anything
-changes. Pods roll one at a time and never below full capacity; a stopping pod keeps serving for
+finding (database unreachable, migrated by a newer release, or more than three releases back)
+stops the upgrade before anything changes. The pending migrations then run in one transaction, so
+a failed one leaves the database as it was; back it up with the provider's tooling first (the
+other kits' `node cli.mjs upgrade` takes its own backup, `../README.md`, Upgrades). Pods roll one at a time and never below full capacity; a stopping pod keeps serving for
 `drainSeconds` while it leaves the Service, then finishes its in-flight requests. The first new
 app pod applies pending migrations, which are forward-compatible with the release before.
 `tools/helm/kind-test.sh` checks this: two app pods, `helm test`, then a rolling upgrade while

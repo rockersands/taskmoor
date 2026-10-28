@@ -14,7 +14,9 @@ tens of millions of rows cannot be locked for minutes.
 ## Decision
 
 - **Forward-only migrations** (ADR-007) with no down scripts. Rollback is a restore of the
-  automatic pre-upgrade backup, which the upgrade command takes and verifies first.
+  automatic pre-upgrade backup, which the upgrade command takes and verifies first. (M1-102:
+  while nothing has committed, the rollback of the one migration transaction is enough; the
+  restore is for upgrades with online migrations. See "Implementation (M1-102)".)
 - **Expand and contract** for anything the running version still reads: add the column or
   table and backfill in batches (release N), switch readers and writers (N), drop the old shape
   (N+1). Index builds on large tables run `CONCURRENTLY` outside the transaction; migrations
@@ -118,3 +120,78 @@ retention (one audited event each) in 10 s.
 
 Not done here: encryption and remote targets (S3, SFTP), point-in-time recovery, and restoring a
 single track or deleted tickets from a backup into the live site (OPS-009 (2)).
+
+## Implementation (M1-102: the upgrade command)
+
+`node cli.mjs upgrade [--dry-run] [--no-backup] [--unattended]` (`apps/server/src/upgrade.ts`)
+is the one command of OPS-006. The Compose kit wraps it in `deploy/compose/upgrade.sh <image>`
+(stop the backend, run the new image's command, record the image and start it, or start the
+previous image again when it fails); the all-in-one image runs it before every start. The Helm
+chart keeps its `check-upgrade` hook and the migration at the first new pod's start. No new
+table: the backup log of M1-101 records the pre-upgrade backup and the outcome.
+
+- **How migrations run.** All pending ordinary migrations, across every release the upgrade
+  crosses, run in **one transaction** together with the bookkeeping rows and the verification,
+  on one connection holding a session-level advisory lock for the whole run
+  (`packages/db/src/migrate.ts`; the server's start and `migrate` use the same runner). A
+  database therefore lands on the new release or stays exactly where it was, never on a schema
+  no release has. One transaction per migration was rejected: a failure in the third release
+  would leave the database between releases, which only a restore could undo. The price is
+  that locks taken early are held until the commit; that is why large-table changes are online
+  migrations, which this runner now supports: a migration module that exports
+  `online = true` runs alone outside any transaction (each statement commits), and splits the
+  plan into segments, each run of ordinary migrations being one transaction.
+- **What rollback means.** While nothing has committed (no online migration in the plan, or the
+  failure came before the first), the transaction's rollback is the rollback: Postgres DDL is
+  transactional. The command does not take that on trust; it compares the migration list and
+  the schema snapshot with the ones taken before. Only sequence values taken by rolled-back
+  inserts stay taken (gaps in ids). Once something has committed, or an online migration failed
+  part way, the rollback is a **restore of the pre-upgrade backup in place**: first every
+  relation, routine, type, extension and schema that did not exist before the upgrade is
+  dropped (`pg_restore --clean` drops and recreates only what the dump holds, and a new table
+  referencing an old one would block the old one's drop), then `restore` puts the database back
+  (not the files or the keyring, which migrations do not touch), keeping the live backup log,
+  and the result is checked like the restore drill: migrations as in the manifest, schema as
+  before, every table's row count as the backup's snapshot. Writes made between the backup and
+  the restore would be lost, so a plan with online migrations is refused while other Taskmoor
+  processes are connected, and without a backup (`--no-backup`).
+- **Verification** runs inside the last transaction before the commit: nothing pending and
+  every table, column and index of the reviewed golden schema present as reviewed
+  (`EXPECTED_SCHEMA`, the schema golden now shipped in the build). Objects of the operator's
+  own (an extra index) are reported, never a failure. A failed verification rolls back.
+- **Pre-flight**, read-only, every finding a line with ok, warn or block: database reachable,
+  PostgreSQL 16+, the upgrade lock free (another upgrade blocks), no unknown migration (a
+  downgrade), none pending out of order, the **upgrade path rule** (`packages/db/src/releases.ts`:
+  a release is the last migration it ships; supported starts are the last three earlier
+  releases counted by distinct schema, plus the latest LTS release (OPS-007); fewer than three
+  releases means every start; an empty database is an install), a backup directory with room
+  (the last backup's size and a fifth more, else the database and files as they are), a running
+  backup (the upgrade waits for it, an hour at most), other Taskmoor processes (warn; block for
+  online plans), and for `--unattended` a failed earlier attempt at the same target. The dry
+  run adds the plan: every migration with the existing tables its code changes and a rough
+  estimate at 50 MB/s of their size (OPS-006 (3)); a rehearsal on a restored copy would measure
+  instead and is left for later. Extension compatibility (OPS-006) waits for extensions (ADR-026).
+- **The pre-upgrade backup** goes through the backup path of M1-101 into
+  `<backup dir>/pre-upgrade-<time>` and is logged as a `manual` backup with
+  `purpose: 'pre-upgrade'`, so scheduled retention, which counts only scheduled backups, never
+  removes it. The log's kinds were not extended: the row must be writable by the schema the
+  database has before the upgrade. A database from before the log (migration 0022) is backed up
+  all the same and the entry is written once the upgrade created the table. The outcome
+  (`upgrade: {outcome, from, to, failedMigration, rollback, error, seconds}`) is added to that
+  entry, after a restore too. An empty database takes no backup.
+- **Unattended runs** (the all-in-one start) leave `upgrade-failed.json` in the backup directory
+  after a failure and refuse the same target at the next start, so a restarting container never
+  takes backup after backup; a run by hand always tries and a success removes the marker.
+- **Exit codes**: 0 upgraded or nothing to do, 1 not upgraded with the database as before, 3 the
+  rollback failed too (the report names the backup to restore by hand). The last output line is
+  the report as JSON.
+
+Tested (`apps/server/src/upgrade.test.ts`, `packages/db/src/migrate.test.ts`,
+`releases.test.ts`): releases modelled as points in today's migration list (1.0 to 1.3, this
+build 1.4, as the M0-029 harness does) upgrade from each of the last three in one call, with
+the reviewed schema, every seeded row and the logged backup; 1.0 is refused before anything is
+written; failures injected by test-only migration sets (nothing ships) roll back by transaction
+after two real migrations ran, and by restore after an online index and a segment of new
+tables, types, functions and a schema committed; every case compares migrations, schema and
+every table's checksum with the state before. Not run here: `upgrade.sh` and the all-in-one
+entrypoint against Docker (CI's kit smoke test runs both with the same image).

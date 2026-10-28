@@ -41,9 +41,10 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm conformance <workflow \| query>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`) |
 | `pnpm fuzz query [--minutes N] [--seed N]` | Fuzzes the query parser; report in `.verify/fuzz-query.json`, failing inputs in `.cache/fuzz/` |
 | `pnpm build` | Production build: the static frontend (`apps/web/dist`) and the bundled server (`apps/server/dist/server.mjs`) |
+| `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
-| `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `migrate`, `status`, `backup`, `restore`, `checksum`, `drill`, `purge-trash`, `field-values [--repair]`, `password-link <email>`, `audit-verify`); in the image: `docker compose exec taskmoor node cli.mjs check-upgrade` |
+| `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `upgrade [--dry-run]`, `migrate`, `status`, `backup`, `restore`, `checksum`, `drill`, `purge-trash`, `field-values [--repair]`, `password-link <email>`, `audit-verify`); in the image: `docker compose exec taskmoor node cli.mjs check-upgrade` |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |

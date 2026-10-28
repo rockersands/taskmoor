@@ -47,3 +47,39 @@ export async function snapshotSchema<DB>(db: Kysely<DB>): Promise<SchemaSnapshot
   for (const i of indexes.rows) table(i.tablename).indexes.push(i.indexdef);
   return tables;
 }
+
+export interface SchemaDiff {
+  /** Expected tables, columns and indexes the database lacks or holds in another shape. */
+  missing: string[];
+  /** What the database holds beyond the expected schema (an operator's own index, say). */
+  extra: string[];
+}
+
+/** Compares a database's snapshot with an expected one, entry by entry. */
+export function compareSchema(actual: SchemaSnapshot, expected: SchemaSnapshot): SchemaDiff {
+  const missing: string[] = [];
+  const extra: string[] = [];
+  const entries = (s: SchemaSnapshot[string] | undefined) =>
+    new Set([...(s?.columns ?? []), ...(s?.indexes ?? [])]);
+  for (const table of Object.keys(expected).sort()) {
+    if (!(table in actual)) {
+      missing.push(`table ${table}`);
+      continue;
+    }
+    const have = entries(actual[table]);
+    for (const entry of entries(expected[table])) {
+      if (!have.has(entry)) missing.push(`${table}: ${entry}`);
+    }
+  }
+  for (const table of Object.keys(actual).sort()) {
+    if (!(table in expected)) {
+      extra.push(`table ${table}`);
+      continue;
+    }
+    const want = entries(expected[table]);
+    for (const entry of entries(actual[table])) {
+      if (!want.has(entry)) extra.push(`${table}: ${entry}`);
+    }
+  }
+  return { missing, extra };
+}

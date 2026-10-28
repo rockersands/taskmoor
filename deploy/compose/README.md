@@ -12,9 +12,12 @@ front for anything beyond a trial (the Builder's backend kit adds Caddy with aut
 Check: `curl http://localhost:8080/ready` returns `{"status":"ready"}` once migrations have run
 (the backend waits up to a minute for the database on its first start).
 
-Upgrade: change `TASKMOOR_IMAGE` in `.env` and run `docker compose up -d` again; migrations
-are forward-only and run at start (ADR-022). Stop: `docker compose down` (add `-v` to delete
-the data).
+Upgrade: `bash upgrade.sh <image>` (for example `ghcr.io/rockersands/taskmoor:1.4.0`; add
+`--dry-run` to see the checks and the plan first). It stops the backend, runs the new image's
+`node cli.mjs upgrade` (checks, a backup under `/data/backups/pre-upgrade-<time>`, the
+migrations, a rollback on any failure), records the image in `.env` and starts it; when the
+upgrade fails, the previous image starts again on the unchanged database (`../README.md`,
+Upgrades). Stop: `docker compose down` (add `-v` to delete the data).
 
 For a single container with Postgres inside, see `deploy/allinone`.
 

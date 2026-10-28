@@ -5,6 +5,8 @@ import { createDb } from './client';
 import { migrateToLatest, migrationsFingerprint } from './migrate';
 import type { Database } from './schema';
 
+export { seededRows, UPGRADE_SEEDS, type UpgradeSeed } from './upgrade-fixtures';
+
 /** A database with every migration applied. Rebuilt automatically when migrations change. */
 export const migratedTemplate: TemplateSpec = {
   name: `tpl_${migrationsFingerprint().slice(0, 16)}`,

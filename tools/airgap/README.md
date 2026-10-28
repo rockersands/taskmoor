@@ -26,6 +26,19 @@ The installer prints the one-time setup link. The instance makes no outbound con
 default: no telemetry, no update check, and AI features stay off until a local model is
 configured.
 
+## Upgrade with Docker Compose
+
+Verify the new bundle and load its images, then run its `upgrade.sh` from the kit directory you
+installed from (where `.env` is): it backs up, migrates and rolls back on failure (OPS-006,
+`INSTALL.md`, Upgrades), without contacting a registry.
+
+```
+bash verify.sh
+for archive in images/*.tar.gz; do gzip -dc "$archive" | docker load; done
+cp compose/upgrade.sh <installed kit>/
+TASKMOOR_PULL=never bash <installed kit>/upgrade.sh "$(awk '$1 == "taskmoor" { print $2 }' images.txt)"
+```
+
 ## Kubernetes
 
 Push the two images to your private registry (`docker load` the archives, then `docker tag` and

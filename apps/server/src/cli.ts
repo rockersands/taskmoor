@@ -1,6 +1,12 @@
 // The backend's command line, shipped in the image as cli.mjs:
+//   node cli.mjs upgrade [--dry-run]    the upgrade (OPS-006, M1-102): pre-flight checks, a
+//        [--no-backup] [--unattended]   backup, the migrations, verification, rollback on any
+//                                       failure. Exit 0 upgraded or up to date, 1 blocked or
+//                                       failed with the database as before, 3 when the rollback
+//                                       failed too. The last line is the report as JSON
 //   node cli.mjs check-upgrade          pre-upgrade check (OPS-006); exit 1 while anything blocks
-//   node cli.mjs migrate                apply pending migrations and exit
+//   node cli.mjs migrate                apply pending migrations and exit (no backup: the
+//                                       advanced path; the server does this at start too)
 //   node cli.mjs status                 migration status as JSON
 //   node cli.mjs backup [--out <dir>]   database, files and config into <dir> (OPS-008); waits
 //                                       while a scheduled backup runs
@@ -33,6 +39,7 @@ import { emit } from './events/bus';
 import { FieldCatalogs } from './fields/catalog';
 import { checkFieldValues } from './fields/jobs';
 import { purgeExpired } from './trash/purge';
+import { formatOutcome, upgrade, upgradeExitCode } from './upgrade';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 import { defaultWorkspaceId } from './workspace';
 
@@ -44,11 +51,14 @@ const { positionals, values } = parseArgs({
     wait: { type: 'boolean', default: false },
     keep: { type: 'boolean', default: false },
     repair: { type: 'boolean', default: false },
+    'dry-run': { type: 'boolean', default: false },
+    'no-backup': { type: 'boolean', default: false },
+    unattended: { type: 'boolean', default: false },
   },
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | checksum | password-link <email> | audit-verify>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | checksum | password-link <email> | audit-verify>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -68,12 +78,34 @@ const dataDir = process.env.TASKMOOR_DATA;
 const say = (message: string) => process.stdout.write(`${message}\n`);
 const db = createDb({
   connectionString: databaseUrl,
-  maxConnections: 2,
+  // The upgrade holds its lock on one connection while the backup and migrations use others.
+  maxConnections: command === 'upgrade' ? 4 : 2,
   applicationName: 'taskmoor-cli',
 });
 
 try {
   switch (command) {
+    case 'upgrade': {
+      const report = await upgrade(db, {
+        databaseUrl,
+        dataDir,
+        backupRoot: backupDirectory({ backupDir: config.backupDir, dataDir }),
+        version: config.version,
+        config: {
+          PUBLIC_URL: config.publicUrl,
+          TASKMOOR_ROLE: config.roles.join(','),
+          TASKMOOR_VERSION: config.version,
+        },
+        dryRun: values['dry-run'],
+        noBackup: values['no-backup'],
+        unattended: values.unattended,
+        log: say,
+      });
+      process.stdout.write(formatOutcome(report));
+      say(JSON.stringify(report));
+      process.exitCode = upgradeExitCode(report.outcome);
+      break;
+    }
     case 'check-upgrade': {
       const checks = await checkUpgrade(db, dataDir ? { dataDir } : {});
       process.stdout.write(formatChecks(checks));

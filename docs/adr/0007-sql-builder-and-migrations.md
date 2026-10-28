@@ -17,8 +17,10 @@ read in an `EXPLAIN`, and a schema whose every change is reviewed.
   through `sql` tagged templates is allowed where the builder gets in the way (window
   functions, partition DDL, the query compiler's output).
 - **Migrations are plain SQL in TypeScript files**, numbered, forward-only and idempotent where
-  possible, applied by the in-house migrator (`packages/db/src/migrate.ts`) inside one
-  transaction each, with a registry test that fails when a file is missing from the index.
+  possible, applied by the in-house migrator (`packages/db/src/migrate.ts`): all pending ones
+  in one transaction (since M1-102 explicitly; ADR-022 "Implementation (M1-102)"), except
+  `online` ones, which run alone outside a transaction, with a registry test that fails when a
+  file is missing from the index.
   Large-table changes follow expand and contract (ADR-022).
 - **The schema is a golden file** (`packages/db/src/__golden__/schema.json`): a migrated
   database is introspected in tests and compared, so a schema change without a reviewed golden

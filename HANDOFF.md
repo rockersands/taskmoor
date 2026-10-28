@@ -18,6 +18,26 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-102 upgrade command** (built by a background agent, reviewed and merged; ADR-022
+  "Implementation (M1-102)"; no migration). `node cli.mjs upgrade [--dry-run] [--no-backup]
+  [--unattended]` (`apps/server/src/upgrade.ts`): read-only pre-flight checks (lock, unknown
+  or out-of-order migrations, the N-3/LTS path from `packages/db/src/releases.ts`, backup
+  room, a running backup, other `taskmoor-*` processes), a plan, a full backup into
+  `<backup dir>/pre-upgrade-<time>` (logged as `manual` with `purpose: 'pre-upgrade'`, never
+  pruned), all pending migrations in one transaction verified against the shipped schema
+  golden (`EXPECTED_SCHEMA`) before the commit, and rollback by the transaction or, after a
+  committed online migration, by dropping new objects and restoring the backup. Exit codes 0,
+  1 and 3; the last output line is the report as JSON.
+  - `RELEASES` in `packages/db/src/releases.ts` is empty until the first release; cutting a
+    release appends `{version, lastMigration, lts?}`.
+  - The migration runner (`packages/db/src/migrate.ts`) now pins one connection with a session
+    lock and runs pending migrations in one transaction; `export const online = true` runs a
+    migration alone outside it. `migrationStatus` reports `outOfOrder`, so a development
+    database that applied a later migration before an earlier one is named clearly.
+  - Kits: `bash deploy/compose/upgrade.sh <image>`; the all-in-one image runs
+    `upgrade --unattended` at every start (marker `upgrade-failed.json`) and
+    `taskmoor-allinone upgrade` by hand. **Not run here:** both under Docker (CI's
+    `smoke-kits.sh` now exercises them).
 - **M1-011 field storage** (migration 0027; ADR-008 "Implementation (M1-010 and M1-011)"):
   side tables `v_text`, `v_number`, `v_date`, `v_time`, `v_user`, `v_option`, written by
   `syncFieldValues` (`fields/storage.ts`) in every transaction that changes a ticket's values,

@@ -133,13 +133,22 @@ export interface BackupTarget {
   log?: (message: string) => void;
 }
 
-/** Takes a backup and records it in the log. A failed scheduled backup leaves no directory. */
+/**
+ * Takes a backup and records it in the log. A failed scheduled backup leaves no directory.
+ * `details` go into the log entry beside the measurements (the upgrade command marks its
+ * backup `purpose: 'pre-upgrade'`).
+ */
 export async function recordedBackup(
   db: Kysely<Database>,
   kind: 'scheduled' | 'manual',
   out: string,
   target: BackupTarget,
-  options: { jobId?: string; take?: typeof backup; startedAt?: Date } = {},
+  options: {
+    jobId?: string;
+    take?: typeof backup;
+    startedAt?: Date;
+    details?: Record<string, unknown>;
+  } = {},
 ): Promise<{ runId: string; manifest: BackupManifest; sizeBytes: number }> {
   const runId = await startRun(db, kind, out, options.startedAt);
   const started = Date.now();
@@ -159,6 +168,7 @@ export async function recordedBackup(
       state: 'succeeded',
       sizeBytes,
       details: {
+        ...options.details,
         seconds: Math.round((Date.now() - started) / 100) / 10,
         entries: Object.keys(manifest.checksums).length,
         migrations: manifest.migrations.length,
@@ -168,7 +178,11 @@ export async function recordedBackup(
     return { runId, manifest, sizeBytes };
   } catch (error) {
     if (kind === 'scheduled') rmSync(out, { recursive: true, force: true });
-    await finishRun(db, runId, { state: 'failed', error: message(error) });
+    await finishRun(db, runId, {
+      state: 'failed',
+      error: message(error),
+      ...(options.details ? { details: options.details } : {}),
+    });
     throw error;
   }
 }

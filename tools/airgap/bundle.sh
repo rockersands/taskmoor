@@ -34,7 +34,7 @@ docker save "$db" | gzip -6 > "$dir/images/postgres.tar.gz"
 echo "== kits"
 cp deploy/compose/docker-compose.yml deploy/compose/docker-compose.external.yml \
   deploy/compose/.env.example deploy/compose/install.sh deploy/compose/install.ps1 \
-  deploy/compose/README.md "$dir/compose/"
+  deploy/compose/upgrade.sh deploy/compose/README.md "$dir/compose/"
 if command -v helm >/dev/null 2>&1; then
   helm package deploy/helm/taskmoor --app-version "$version" -d "$dir/helm" >/dev/null
 else

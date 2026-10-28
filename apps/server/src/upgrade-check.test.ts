@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb } from '@taskmoor/db';
+import { createDb, knownMigrations } from '@taskmoor/db';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { checkUpgrade, formatChecks } from './upgrade-check';
@@ -25,6 +25,7 @@ describe('pre-upgrade check', () => {
       'database:ok',
       'postgres-version:ok',
       'migrations:ok',
+      'upgrade-path:ok',
       'disk-space:ok',
       'backup:ok',
     ]);
@@ -61,6 +62,44 @@ describe('pre-upgrade check', () => {
         .where('name' as never, '=', '9999_newer' as never)
         .execute();
     }
+  });
+
+  it('[OPS-006] blocks a database too many releases back, naming the release to take first', async () => {
+    const all = knownMigrations();
+    const latest = all[all.length - 1] as string;
+    // Pretend three releases came out after this database's schema.
+    const releases = [
+      { version: '2.0.0', lastMigration: latest },
+      { version: '2.1.0', lastMigration: `${latest}_a` },
+      { version: '2.2.0', lastMigration: `${latest}_b` },
+      { version: '2.3.0', lastMigration: `${latest}_c` },
+    ];
+    const migrations = {
+      ...Object.fromEntries(all.map((n) => [n, { up: async () => {} }])),
+      [`${latest}_a`]: { up: async () => {} },
+      [`${latest}_b`]: { up: async () => {} },
+      [`${latest}_c`]: { up: async () => {} },
+      [`${latest}_d`]: { up: async () => {} },
+    };
+    const checks = await checkUpgrade(database.db, { releases, migrations });
+    expect(checks.find((c) => c.name === 'upgrade-path')).toMatchObject({
+      state: 'block',
+      detail: expect.stringMatching(/at release 2\.0\.0 .*upgrade to 2\.1\.0 first/),
+    });
+    expect(formatChecks(checks)).toContain('1 blocking problem(s)');
+  });
+
+  it('[OPS-006] blocks pending migrations that would run out of order', async () => {
+    const all = knownMigrations();
+    const migrations = {
+      ...Object.fromEntries(all.map((n) => [n, { up: async () => {} }])),
+      '0001_foundation_late': { up: async () => {} },
+    };
+    const checks = await checkUpgrade(database.db, { migrations });
+    expect(checks.find((c) => c.name === 'migrations')).toMatchObject({
+      state: 'block',
+      detail: expect.stringMatching(/^0001_foundation_late would run after .*applied already/),
+    });
   });
 
   it('[OPS-006] blocks when the database is unreachable', async () => {

@@ -1,4 +1,4 @@
-import type { Migration } from 'kysely';
+import type { TaskmoorMigration } from '../migration';
 import * as m0001 from './0001_foundation';
 import * as m0002 from './0002_users_and_sessions';
 import * as m0003 from './0003_identity';
@@ -28,9 +28,11 @@ import * as m0027 from './0027_field_values';
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
  * shipped; add a new one instead (expand, migrate data, then contract in a later release).
- * A test fails if a file in this folder is missing from the list.
+ * A test fails if a file in this folder is missing from the list. Ordinary migrations of one
+ * upgrade run together in one transaction; a module that exports `online = true` runs alone
+ * outside a transaction (an index built CONCURRENTLY, ADR-022).
  */
-export const migrations: Record<string, Migration> = {
+export const migrations: Record<string, TaskmoorMigration> = {
   '0001_foundation': m0001,
   '0002_users_and_sessions': m0002,
   '0003_identity': m0003,

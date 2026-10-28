@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Proves M0-026 on this machine: the all-in-one image comes up with its own Postgres, keeps its
-# data across a restart, and both Compose kits reach /ready. Needs the main image (TAG) built,
+# data across a restart, and both Compose kits reach /ready. Each kit's upgrade path (M1-102)
+# runs once with the same image, which has nothing to apply. Needs the main image (TAG) built,
 # for example by tools/image/smoke.sh. The fresh-VM timing (OPS-001) is the nightly matrix's job.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -43,6 +44,11 @@ docker restart "$AIO_NAME" >/dev/null
 wait_for http://127.0.0.1:18090/ready 60 "$AIO_NAME"
 docker logs "$AIO_NAME" 2>&1 | grep -c "initialising PostgreSQL" | grep -qx 1 && echo "data kept: initialised once"
 docker rm -f "$AIO_NAME" >/dev/null
+# OPS-006: the upgrade by hand, with the container stopped (never beside a running one: both
+# would start PostgreSQL on the same files). Same image, so nothing to apply.
+out=$(docker run --rm -v "$VOL:/data" "$AIO" upgrade)
+echo "$out" | tail -2
+grep -q "Up to date at" <<<"$out"
 
 echo "== compose kit with bundled Postgres"
 (
@@ -53,6 +59,15 @@ echo "== compose kit with bundled Postgres"
 app="ts-smoke-$ID-taskmoor-1"
 wait_for http://127.0.0.1:18091/ready 120 "$app"
 curl -fsS http://127.0.0.1:18091/ready; echo
+echo "upgrade.sh to the same image: stops the backend, nothing to apply, starts it again"
+out=$(
+  cd deploy/compose
+  COMPOSE_PROJECT_NAME="ts-smoke-$ID" POSTGRES_PASSWORD=smoke-$ID TASKMOOR_IMAGE=$TAG \
+    TASKMOOR_PORT=18091 TASKMOOR_PULL=never bash upgrade.sh "$TAG"
+)
+echo "$out" | tail -3
+grep -q "Up to date at" <<<"$out"
+wait_for http://127.0.0.1:18091/ready 30 "$app"
 (cd deploy/compose && docker compose -p "ts-smoke-$ID" down -v >/dev/null)
 
 echo "== compose kit with an external Postgres"

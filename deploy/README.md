@@ -20,16 +20,68 @@ The token works once and expires after 24 hours; restarting the backend prints a
 match the address people use, and `TASKMOOR_SETUP_TOKEN` to choose the token yourself, as an
 installer or a test does.
 
-Before an upgrade, run the pre-upgrade check (ADR-022): it blocks on a database that is
-unreachable, older than PostgreSQL 16 or migrated by a newer release, and warns about disk
-space and backup age:
+## Upgrades
+
+One command takes an instance from any of the last three releases (and from the latest
+long-term-support release) to a new one, with no step per version (OPS-006, ADR-022):
+
+| Kit | Upgrade |
+|---|---|
+| Compose | `bash upgrade.sh ghcr.io/rockersands/taskmoor:<version>` in `deploy/compose` |
+| All-in-one | Start the new image on the same volume: it upgrades before it serves |
+| Helm | `helm upgrade` ([`helm/README.md`](helm/README.md)) |
+
+Each runs `node cli.mjs upgrade` from the new image, which:
+
+1. **Checks first and changes nothing** if anything blocks: the database answers and runs
+   PostgreSQL 16 or later; no other upgrade is running; no migration of a newer release is
+   applied (a downgrade); the database is no more than three releases back (otherwise it names
+   the release to upgrade to first); there is room for the backup; no other Taskmoor process is
+   connected (a warning, or a blocker for online migrations). It then lists every migration it
+   will apply with a rough time estimate.
+2. **Backs up** the database, the files and the password keyring into
+   `/data/backups/pre-upgrade-<time>` (or under `TASKMOOR_BACKUP_DIR`), waiting for a running
+   backup to finish first. The backup log lists it as a manual backup, so scheduled retention
+   never deletes it: remove it yourself once the new version has proved itself.
+3. **Applies the migrations** of all the releases it crosses in one transaction, and checks the
+   result against the reviewed schema before committing.
+4. **Rolls back on any failure**: the transaction leaves the database exactly as it was; when a
+   migration that cannot run in a transaction (`online`, such as an index built concurrently on
+   a large table) has already committed, it restores the pre-upgrade backup instead and checks
+   every table against it. The report names the migration that failed and what went wrong.
+
+It exits with 0 when upgraded (or when there was nothing to do), 1 when it did not upgrade and
+the database is as it was, and 3 when the rollback failed too: then keep Taskmoor stopped and
+restore the backup it names (`node cli.mjs restore <dir> --yes`). The last line of its output is
+the whole report as JSON; the backup log keeps the outcome with the pre-upgrade backup. To see
+the checks and the plan without changing anything:
 
 ```
-docker compose exec taskmoor node cli.mjs check-upgrade
+bash upgrade.sh ghcr.io/rockersands/taskmoor:<version> --dry-run
 ```
 
-Then change the image tag and start again; migrations run at start (`node cli.mjs migrate`
-runs them on their own, `node cli.mjs status` shows what is pending).
+**Compose.** `upgrade.sh` pulls the image when it is missing, stops the backend (PostgreSQL keeps
+running), runs the upgrade from the new image, records the new image as `TASKMOOR_IMAGE` in
+`.env` and starts it. When the upgrade fails, it starts the previous image again on the
+unchanged database. Like `install.sh`, it uses the external-PostgreSQL file when `DATABASE_URL`
+is set and honours `TASKMOOR_COMPOSE_OVERRIDE` and `TASKMOOR_PULL=never`.
+
+**All-in-one.** Every start runs the upgrade (`--unattended`) before the server: with nothing to
+apply it costs a few queries. When an upgrade fails, the container stops with the database as it
+was, and the next start of the same image does not try again (no pile of backups from a
+restarting container): start the previous image, or retry by hand with the container stopped,
+never beside a running one (both would start PostgreSQL on the same files):
+
+```
+docker run --rm -v taskmoor-data:/data <image> upgrade [--dry-run]
+```
+
+**The advanced path.** `node cli.mjs check-upgrade` runs the checks alone (the Helm chart's
+pre-upgrade hook); `node cli.mjs migrate` applies pending migrations without a backup or
+checks, as the server does when it starts on an older database; `node cli.mjs status` shows
+what is applied and pending. `node cli.mjs upgrade --no-backup` skips the backup when the
+database provider keeps its own (snapshots, point-in-time recovery): a failure is then rolled
+back by the transaction alone, and plans with online migrations are refused.
 
 ## Backups
 

@@ -1,8 +1,13 @@
 #!/bin/sh
-# Starts PostgreSQL in the container, then the Taskmoor server as the unprivileged node user.
-# Postgres listens on 127.0.0.1 only and trusts local connections, which is the container's own
-# process; nothing else can reach it. The database lives under $TASKMOOR_DATA/postgres and
-# survives container restarts and image upgrades through the /data volume.
+# Starts PostgreSQL in the container, upgrades the database when the image is newer than it
+# (OPS-006), then starts the Taskmoor server as the unprivileged node user. Postgres listens on
+# 127.0.0.1 only and trusts local connections, which is the container's own process; nothing
+# else can reach it. The database lives under $TASKMOOR_DATA/postgres and survives container
+# restarts and image upgrades through the /data volume.
+#
+#   taskmoor-allinone                       start: upgrade when needed, then serve
+#   taskmoor-allinone upgrade [--dry-run]   only the upgrade, by hand (also retries one that
+#                                           failed at start), then stop
 set -eu
 
 DATA=${TASKMOOR_DATA:-/data}
@@ -30,6 +35,30 @@ fi
 
 export DATABASE_URL=${DATABASE_URL:-postgres://postgres@127.0.0.1:5432/taskmoor}
 cd /app
+
+stop_postgres() { su-exec postgres pg_ctl -D "$PGDATA" -m fast -w -t 60 stop >/dev/null || true; }
+
+if [ "${1:-}" = "upgrade" ]; then
+  shift
+  code=0
+  su-exec node node cli.mjs upgrade "$@" || code=$?
+  stop_postgres
+  exit "$code"
+fi
+
+# A newer image upgrades the database before serving: pre-flight checks, a backup under
+# $DATA/backups/pre-upgrade-<time>, the migrations, a check of the result, and a rollback when
+# anything fails. A failed upgrade is not tried again at the next start (--unattended), so a
+# restarting container never piles up backups: start the previous image again, or retry with
+# `docker run --rm -v <volume>:/data <image> upgrade`.
+code=0
+su-exec node node cli.mjs upgrade --unattended || code=$?
+if [ "$code" -ne 0 ]; then
+  echo "allinone: not starting: the upgrade did not complete (exit $code); the report above says why"
+  stop_postgres
+  exit "$code"
+fi
+
 su-exec node node server.mjs &
 APP=$!
 
@@ -42,7 +71,7 @@ stop() {
 }
 trap stop TERM INT
 
-wait "$APP"
-code=$?
-su-exec postgres pg_ctl -D "$PGDATA" -m fast -w -t 60 stop >/dev/null || true
+code=0
+wait "$APP" || code=$?
+stop_postgres
 exit "$code"
