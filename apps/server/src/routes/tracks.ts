@@ -611,6 +611,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
             removed,
             kept,
             body.ticketTypeMapping,
+            request.user?.id ?? null,
           );
           if (!result.ok) return { refused: result };
           mapped = result.mapped;

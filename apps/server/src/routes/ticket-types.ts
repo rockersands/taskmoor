@@ -997,6 +997,7 @@ export function registerTicketTypeRoutes(app: FastifyInstance, db: Kysely<Databa
             removed,
             typeIds,
             body.ticketTypeMapping,
+            request.user?.id ?? null,
           );
           if (!result.ok) return { refused: result };
           mapped = result.mapped;

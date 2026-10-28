@@ -36,19 +36,21 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
   - Tests: `routes/scim.test.ts` (compliance over HTTP), `routes/scim.idp.test.ts` with the
     Entra ID and Okta sequences in `testing/scim-idp.ts`, `scim/filter.test.ts` (with 2,000
     random inputs) and `scim/patch.test.ts`, contract scenarios, web tests and a story.
+- **M1-009 change history** (migration 0015, `tickets/history.ts`, ADR-009 note): every ticket
+  mutation writes `ticket_change` rows (field, old and new value with names, change set);
+  `GET /api/v1/tickets/:id/history`. New ticket mutations must call `recordChanges` with
+  `ticketChanges(before, after)` from rows read with `loadTicket(s)` in the same transaction.
 - The e2e API server (`apps/web/e2e/api-server.ts`) uses `TASKMOOR_TEST_DATABASE_URL` when it
   is set, like the unit tests, so `pnpm verify --e2e` runs in a container that runs as root
   (24 passed here). CI sets the variable, so its e2e now runs on the Postgres 16 service.
 
 ### Next (in order)
 
-1. **M1-009 change history**: every ticket mutation writes per-field change rows; the
-   `ticket.updated` payload already carries the field changes in API names.
-2. `pnpm next-task`: M1-014 (priorities, close reasons, labels, releases, areas), M1-015
+1. `pnpm next-task`: M1-014 (priorities, close reasons, labels, releases, areas), M1-015
    (links, followers, votes), M1-010 (field types) are ready.
-3. Run the Entra ID and Okta provisioning validators against a test instance with a public
+2. Run the Entra ID and Okta provisioning validators against a test instance with a public
    URL (IAM-006 (1)); the fixtures here imitate their request shapes.
-4. Later for tickets: the trash retention setting and purge (M1-101; `TRASH_RETENTION_DAYS` is
+3. Later for tickets: the trash retention setting and purge (M1-101; `TRASH_RETENTION_DAYS` is
    30 for now), ticket-level grantees and visibility levels (M1-020), hierarchy rollback
    (CORE-007 (2)), a ticket UI (the ticket view is M1-051, boards M1-043 and M1-046), block
    ranking and a background rank rebalance if keys grow long (M1-047).
@@ -97,9 +99,10 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 - The container's Chromium (`/opt/pw-browsers`, build 1194) is older than Playwright 1.64's
   (1248). Linking it under the new names in a scratch folder and setting
   `PLAYWRIGHT_BROWSERS_PATH` there runs every story (193 passed).
-- A full run once ended with an unhandled 57P01 ("terminating connection due to administrator
-  command") from `packages/db/src/schema.test.ts` while its database was dropped; every test
-  passed and reruns were clean (the same flake as under "On the Mac" below).
+- The unhandled 57P01 ("terminating connection due to administrator command") that ended some
+  full runs was a real bug: no pool had an `error` listener, so an idle connection the server
+  ended (a test database dropped, in production a restart or failover) crashed the process.
+  `createDb` now always listens (`onIdleError`, logged by the server); `client.test.ts` proves it.
 
 ## Earlier: 2026-10-15 (Mac)
 

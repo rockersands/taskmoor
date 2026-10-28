@@ -18,6 +18,12 @@ export interface DbOptions {
   applicationName?: string;
   /** Called after every statement, in the caller's async context, so a trace can parent it. */
   onQuery?: (event: QueryEvent) => void;
+  /**
+   * Called when an idle pooled connection fails (the server restarted, an administrator ended
+   * it, the network dropped). The pool discards that connection and opens a new one for the
+   * next statement, so this is for logging only.
+   */
+  onIdleError?: (error: Error) => void;
 }
 
 export interface PoolStats {
@@ -42,6 +48,8 @@ export function createDb(options: DbOptions): Kysely<Database> {
     max,
     application_name: options.applicationName ?? 'taskmoor',
   });
+  // Without a listener, a failing idle connection is an uncaught error that ends the process.
+  pool.on('error', (error) => options.onIdleError?.(error));
   const onQuery = options.onQuery;
   const db = new Kysely<Database>({
     dialect: new PostgresDialect({ pool }),

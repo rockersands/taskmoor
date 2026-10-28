@@ -143,6 +143,7 @@ export async function mapTicketTypes(
   removed: readonly number[],
   kept: readonly number[],
   mapping: Readonly<Record<string, number>> | undefined,
+  actorId: number | null,
 ): Promise<TypeMappingResult> {
   for (const [from, to] of Object.entries(mapping ?? {})) {
     if (!removed.includes(Number(from))) {
@@ -191,6 +192,8 @@ export async function mapTicketTypes(
     ).map((t) => [t.id, t.level_id]),
   );
   const mapped: { fromTypeId: number; toTypeId: number; ticketCount: number }[] = [];
+  // One change set for the whole mapping, in each ticket's history (M1-009).
+  let changeSet: string | null = null;
   for (const { ticket_type_id: from, n } of counts) {
     const to = mapping?.[String(from)] as number;
     const problem = !kept.includes(to)
@@ -205,6 +208,20 @@ export async function mapTicketTypes(
         body: { error: 'invalid_mapping', fromTypeId: from, toTypeId: to, problem },
       };
     }
+    if (changeSet === null) {
+      const { rows } = await sql<{
+        n: string;
+      }>`SELECT nextval('ticket_change_set_seq') AS n`.execute(trx);
+      changeSet = rows[0]?.n as string;
+    }
+    await sql`
+      INSERT INTO ticket_change (workspace_id, ticket_id, change_set, actor_id, field, from_value,
+                                 to_value, from_display, to_display)
+      SELECT k.workspace_id, k.id, ${changeSet}, ${actorId}, 'type', ${String(from)}, ${String(to)},
+             f.name, t.name
+        FROM ticket k, ticket_type f, ticket_type t
+       WHERE k.workspace_id = ${workspaceId} AND k.track_id = ANY(${[...trackIds]}::int[])
+         AND k.ticket_type_id = ${from} AND f.id = ${from} AND t.id = ${to}`.execute(trx);
     await trx
       .updateTable('ticket')
       .set((eb) => ({ ticket_type_id: to, version: eb('version', '+', 1), updated_at: new Date() }))

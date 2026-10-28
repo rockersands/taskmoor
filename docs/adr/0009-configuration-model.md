@@ -171,6 +171,27 @@ data access in `tickets/store.ts`, the rules in `tickets/model.ts` and the rank 
   deletion and restore are audited, the rest is ticket activity for the change history
   (M1-009).
 
+## Implementation (M1-009: change history)
+
+Migration 0015 adds `ticket_change`, hash-partitioned by ticket into 16 partitions, and the
+sequence `ticket_change_set_seq`; the rules are in `apps/server/src/tickets/history.ts`.
+
+- **Every ticket mutation records one row per field it changed,** in its own transaction: the
+  value before and after as text (ids for references, ISO days, canonical JSON for rich text)
+  and the names those values had then, so history reads right after a rename. Rows of one
+  mutation share a change set, across tickets too (a move with its subtickets, a deletion that
+  detaches children, a type mapping). The fields follow the query language's names (track,
+  key, type, parent, summary, description, environment, assignee, requester, startDate,
+  dueDate, rank, trash).
+- **A new ticket records every value it starts with,** so `WAS` finds the first value
+  (ADR-010) and replaying a history from nothing gives the ticket as it is.
+- **Reads go to one partition through the primary key** (ticket, id):
+  `GET /api/v1/tickets/:id/history` pages newest first (or oldest first) with a cursor, up to
+  1,000 rows a page; a page of a 20,000-change history takes milliseconds. History is never
+  truncated (CORE-022 (3)); it leaves only with its ticket.
+- Comments, links, attachments and time entries add their own fields to the same table when
+  they arrive (M1-015 to M1-019).
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

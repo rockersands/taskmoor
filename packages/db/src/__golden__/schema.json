@@ -465,6 +465,25 @@
       "CREATE INDEX ticket_type_idx ON public.ticket USING btree (ticket_type_id)"
     ]
   },
+  "ticket_change": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "change_set bigint not null",
+      "at timestamp with time zone not null default now()",
+      "actor_id integer",
+      "field text not null",
+      "from_value text",
+      "to_value text",
+      "from_display text",
+      "to_display text"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_change_actor_idx ON ONLY public.ticket_change USING btree (actor_id, at) WHERE (actor_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX ticket_change_pkey ON ONLY public.ticket_change USING btree (ticket_id, id)"
+    ]
+  },
   "ticket_counter": {
     "columns": [
       "track_id integer not null",

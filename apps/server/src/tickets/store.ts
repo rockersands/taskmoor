@@ -157,6 +157,19 @@ export function loadTicket(db: Db, workspaceId: number, ticketId: number) {
   return ticketQuery(db, workspaceId).where('k.id', '=', ticketId).executeTakeFirst();
 }
 
+/** Several tickets by id, trash included, keyed by id. */
+export async function loadTickets(
+  db: Db,
+  workspaceId: number,
+  ticketIds: readonly number[],
+): Promise<Map<number, TicketRow>> {
+  if (ticketIds.length === 0) return new Map();
+  const rows = await ticketQuery(db, workspaceId)
+    .where('k.id', 'in', [...ticketIds])
+    .execute();
+  return new Map(rows.map((r) => [r.id, r]));
+}
+
 const person = (id: number | null, name: string | null) =>
   id === null ? null : { id, name: name ?? '' };
 

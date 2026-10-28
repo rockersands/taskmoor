@@ -13,6 +13,7 @@ import * as m0011 from './0011_ticket_types';
 import * as m0012 from './0012_scim';
 import * as m0013 from './0013_appearance';
 import * as m0014 from './0014_tickets';
+import * as m0015 from './0015_ticket_history';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -34,4 +35,5 @@ export const migrations: Record<string, Migration> = {
   '0012_scim': m0012,
   '0013_appearance': m0013,
   '0014_tickets': m0014,
+  '0015_ticket_history': m0015,
 };

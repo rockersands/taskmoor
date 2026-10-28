@@ -299,6 +299,19 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE c.summary = 'Seed child' AND p.summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0015_ticket_history': {
+    tables: {
+      ticket_change:
+        "field = 'summary' AND to_value = 'Seed ticket' AND to_display IS NULL AND change_set = 1",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, actor_id, field,
+          from_value, to_value)
+        SELECT 1, t.id, 1, u.id, 'summary', NULL, 'Seed ticket'
+          FROM ticket t, app_user u
+         WHERE t.summary = 'Seed ticket' AND u.email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

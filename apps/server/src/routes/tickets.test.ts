@@ -1,6 +1,7 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -894,6 +895,224 @@ describe('tickets (M1-008)', () => {
       // Without the link, the level goes.
       await patch('alice', `/api/v1/tickets/${below.id}`, { parent: null });
       expect((await del('admin', `/api/v1/hierarchy-levels/${levelId}`)).statusCode).toBe(204);
+    });
+  });
+
+  describe('change history (M1-009)', () => {
+    interface ChangeJson {
+      id: string;
+      changeSet: string;
+      at: string;
+      actor: { id: number; name: string } | null;
+      field: string;
+      from: { value: string | null; display: string | null };
+      to: { value: string | null; display: string | null };
+    }
+    const historyOf = async (ref: string | number, query = '') =>
+      (await get('admin', `/api/v1/tickets/${ref}/history?order=asc&limit=1000${query}`)).json()
+        .changes as ChangeJson[];
+    /** The changes of the latest change set: field, from and to (values and names). */
+    const lastSet = async (ref: string | number) => {
+      const all = await historyOf(ref);
+      const set = all[all.length - 1]?.changeSet;
+      return all
+        .filter((c) => c.changeSet === set)
+        .map((c) => [c.field, c.from.display ?? c.from.value, c.to.display ?? c.to.value]);
+    };
+
+    it('[CORE-022] records every starting value of a new ticket, with names', async () => {
+      const ticket = await create('alice', {
+        track: 'ABC',
+        summary: 'Recorded',
+        assigneeId: users.dave?.id,
+        dueDate: '2027-02-01',
+        description: doc('Why'),
+      });
+      const changes = await historyOf(ticket.key);
+      expect(new Set(changes.map((c) => c.changeSet)).size).toBe(1);
+      expect(changes.map((c) => c.field)).toEqual([
+        'track',
+        'key',
+        'type',
+        'summary',
+        'description',
+        'assignee',
+        'requester',
+        'dueDate',
+        'rank',
+      ]);
+      expect(changes.every((c) => c.from.value === null && c.actor?.id === users.alice?.id)).toBe(
+        true,
+      );
+      const by = Object.fromEntries(changes.map((c) => [c.field, c.to]));
+      expect(by.track).toEqual({ value: String(tracks.ABC), display: 'ABC' });
+      expect(by.type).toEqual({ value: String(types.Feature), display: 'Feature' });
+      expect(by.assignee).toEqual({ value: String(users.dave?.id), display: 'dave' });
+      expect(JSON.parse(by.description?.value ?? 'null')).toMatchObject({ type: 'doc' });
+    });
+
+    it('[CORE-022] records each edit, rank move, track move, deletion and restore', async () => {
+      const parent = await create('alice', {
+        track: 'ABC',
+        summary: 'Parent',
+        ticketTypeId: types.Outcome,
+      });
+      const ticket = await create('alice', { track: 'ABC', summary: 'Before', parent: parent.key });
+      const sub = await create('alice', {
+        track: 'ABC',
+        summary: 'Part',
+        ticketTypeId: types.Subticket,
+        parent: ticket.key,
+      });
+      await patch('alice', `/api/v1/tickets/${ticket.id}`, {
+        summary: 'After',
+        assigneeId: users.dave?.id,
+      });
+      expect(await lastSet(ticket.id)).toEqual([
+        ['summary', 'Before', 'After'],
+        ['assignee', null, 'dave'],
+      ]);
+      const oldRank = (await view('alice', ticket.id)).rank;
+      await put('alice', `/api/v1/tickets/${ticket.id}/rank`, { position: 'top' });
+      const ranked = await lastSet(ticket.id);
+      expect(ranked).toHaveLength(1);
+      expect(ranked[0]?.slice(0, 2)).toEqual(['rank', oldRank]);
+
+      const moved = ticketOf(
+        await post('alice', `/api/v1/tickets/${ticket.id}/move`, { track: 'XYZ' }),
+      );
+      expect(await lastSet(ticket.id)).toEqual([
+        ['track', 'ABC', 'XYZ'],
+        ['key', ticket.key, moved.key],
+      ]);
+      // The subticket moved in the same change set.
+      const subHistory = await historyOf(sub.id);
+      const last = subHistory[subHistory.length - 1];
+      const ticketHistory = await historyOf(ticket.id);
+      expect(last?.changeSet).toBe(ticketHistory[ticketHistory.length - 1]?.changeSet);
+
+      // Deleting the parent detaches its child and says so in the child's history.
+      expect((await del('admin', `/api/v1/tickets/${parent.key}`)).statusCode).toBe(204);
+      expect(await lastSet(parent.id)).toEqual([['trash', null, 'in_trash']]);
+      expect(await lastSet(ticket.id)).toEqual([['parent', parent.key, null]]);
+      expect((await post('admin', `/api/v1/tickets/${parent.key}/restore`)).statusCode).toBe(200);
+      expect(await lastSet(parent.id)).toEqual([['trash', 'in_trash', null]]);
+      expect(await lastSet(ticket.id)).toEqual([['parent', null, parent.key]]);
+      const deleter = (await historyOf(parent.id)).find((c) => c.field === 'trash');
+      expect(deleter?.actor?.id).toBe(users.admin?.id);
+    });
+
+    it('[CORE-022] records the type of tickets mapped when their type leaves a track', async () => {
+      const set = await post('admin', '/api/v1/type-sets', {
+        name: 'History mapping set',
+        ticketTypeIds: [types.Feature, types.Bug],
+        defaultTypeId: types.Feature,
+      });
+      await newTrack('HMS', { typeSetId: set.json().typeSet.id });
+      const bug = await create('alice', {
+        track: 'HMS',
+        summary: 'A bug',
+        ticketTypeId: types.Bug,
+      });
+      const mapped = await patch('admin', `/api/v1/type-sets/${set.json().typeSet.id}`, {
+        ticketTypeIds: [types.Feature],
+        ticketTypeMapping: { [String(types.Bug)]: types.Feature },
+      });
+      expect(mapped.statusCode, mapped.body).toBe(200);
+      expect(await lastSet(bug.id)).toEqual([['type', 'Bug', 'Feature']]);
+    });
+
+    it('[CORE-022] holds a complete history after a 1,000-step scripted edit sequence', async () => {
+      await newTrack('SEQ');
+      const ticket = await create('alice', { track: 'SEQ', summary: 'Step 0' });
+      // People assignable in SEQ: Alice works there; nobody is a choice too.
+      const people = [users.alice?.id, users.admin?.id, null];
+      let seed = 42;
+      const next = () => {
+        seed = (seed * 1103515245 + 12345) % 2 ** 31;
+        return seed;
+      };
+      for (let step = 1; step <= 1_000; step++) {
+        const pick = next() % 4;
+        const body =
+          pick === 0
+            ? { summary: `Step ${step}` }
+            : pick === 1
+              ? { assigneeId: people[next() % people.length] ?? null }
+              : pick === 2
+                ? { dueDate: next() % 3 === 0 ? null : `2027-0${(next() % 9) + 1}-1${next() % 9}` }
+                : { ticketTypeId: next() % 2 === 0 ? types.Bug : types.Feature };
+        const res = await patch('alice', `/api/v1/tickets/${ticket.id}`, body);
+        expect(res.statusCode, res.body).toBe(200);
+      }
+      // Replaying the history from nothing gives the ticket as it is now.
+      const state: Record<string, string | null> = {};
+      let cursor = '';
+      for (;;) {
+        const page = (
+          await get('alice', `/api/v1/tickets/${ticket.id}/history?order=asc&limit=500${cursor}`)
+        ).json();
+        for (const c of page.changes as ChangeJson[]) {
+          expect(state[c.field] ?? null, `${c.id} ${c.field}`).toBe(c.from.value);
+          state[c.field] = c.to.value;
+        }
+        if (!page.next) break;
+        cursor = `&cursor=${page.next}`;
+      }
+      const now = await view('alice', ticket.id);
+      expect(state.summary).toBe(now.summary);
+      expect(state.assignee ?? null).toBe(now.assignee ? String(now.assignee.id) : null);
+      expect(state.dueDate ?? null).toBe(now.dueDate);
+      expect(state.type).toBe(String(now.ticketType.id));
+      expect(now.version).toBeGreaterThan(1);
+    }, 120_000);
+
+    it('[CORE-022] reads any page of a 20,000-change history in under 300 ms', async () => {
+      const ticket = await create('alice', { track: 'ABC', summary: 'Long history' });
+      await database.db.executeQuery(
+        sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, actor_id, field,
+              from_value, to_value)
+            SELECT 1, ${ticket.id}, 1000000 + g, ${users.alice?.id}, 'summary', 'v' || g, 'v' || (g + 1)
+              FROM generate_series(1, 20000) g`.compile(database.db),
+      );
+      await database.db.executeQuery(sql`ANALYZE ticket_change`.compile(database.db));
+      const timed = async (query: string) => {
+        const started = performance.now();
+        const res = await get('alice', `/api/v1/tickets/${ticket.id}/history?${query}`);
+        const ms = performance.now() - started;
+        expect(res.statusCode).toBe(200);
+        return { ms, body: res.json() };
+      };
+      const first = await timed('limit=100');
+      expect(first.body.changes).toHaveLength(100);
+      const deep = await timed(`limit=100&cursor=${Number(first.body.next) - 15_000}`);
+      expect(deep.body.changes).toHaveLength(100);
+      const oldest = await timed('order=asc&limit=1000');
+      expect(oldest.body.changes).toHaveLength(1000);
+      for (const { ms } of [first, deep, oldest]) expect(ms).toBeLessThan(300);
+      // And the whole history, a thousand at a time.
+      let pages = 0;
+      let cursor = '';
+      const started = performance.now();
+      for (;;) {
+        const page = (
+          await get('alice', `/api/v1/tickets/${ticket.id}/history?limit=1000${cursor}`)
+        ).json();
+        pages++;
+        if (!page.next) break;
+        cursor = `&cursor=${page.next}`;
+      }
+      expect(pages).toBe(21);
+      expect((performance.now() - started) / pages).toBeLessThan(300);
+    }, 60_000);
+
+    it('[CORE-022] shows the history only to those who see the ticket', async () => {
+      const ticket = await create('alice', { track: 'ABC', summary: 'Private to ABC' });
+      expect((await get('carol', `/api/v1/tickets/${ticket.key}/history`)).statusCode).toBe(404);
+      expect((await get('bob', `/api/v1/tickets/${ticket.key}/history`)).statusCode).toBe(200);
+      expect(
+        (await get('bob', `/api/v1/tickets/${ticket.key}/history?limit=5000`)).statusCode,
+      ).toBe(400);
     });
   });
 });

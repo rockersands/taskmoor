@@ -362,6 +362,25 @@ export interface TicketKeyHistoryTable {
   replaced_at: Timestamp | null;
 }
 
+/**
+ * One field one mutation changed on a ticket (M1-009, CORE-022): values as text (ids for
+ * references) with the names they had then. Rows of one mutation share `change_set`.
+ * Partitioned by hash of the ticket.
+ */
+export interface TicketChangeTable {
+  id: Generated<string>;
+  workspace_id: number;
+  ticket_id: number;
+  change_set: string;
+  at: DefaultTimestamp;
+  actor_id: number | null;
+  field: string;
+  from_value: string | null;
+  to_value: string | null;
+  from_display: string | null;
+  to_display: string | null;
+}
+
 /** A child that lost its parent link when the parent went to the trash; a restore puts it back. */
 export interface TicketDetachedParentTable {
   ticket_id: number;
@@ -681,6 +700,7 @@ export interface Database {
   ticket_counter: TicketCounterTable;
   ticket_key_history: TicketKeyHistoryTable;
   ticket_detached_parent: TicketDetachedParentTable;
+  ticket_change: TicketChangeTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

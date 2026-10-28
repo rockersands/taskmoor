@@ -28,6 +28,11 @@ const db = config.databaseUrl
       connectionString: config.databaseUrl,
       applicationName: `taskmoor-${config.roles.join('+')}`,
       onQuery: queryObserver({ metrics, ...(tracing ? { tracer: tracing.tracer } : {}) }),
+      // A dropped idle connection is replaced on the next statement; it is worth a log line.
+      onIdleError: (error) =>
+        console.warn(
+          JSON.stringify({ msg: 'idle database connection failed', error: error.message }),
+        ),
     })
   : undefined;
 if (db) readPool = () => poolStats(db);

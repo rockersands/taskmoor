@@ -8,6 +8,7 @@ import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
 import { shareHierarchy } from '../tickets/configuration';
 import { DEFAULT_PARENT_RULES, parentLevelAllowed, SUBTICKET_RANK } from '../tickets/hierarchy';
+import { changesOf, recordChanges, ticketChanges } from '../tickets/history';
 import {
   canonicalJson,
   checkRichText,
@@ -20,6 +21,7 @@ import {
   bottomRank,
   inTracks,
   loadTicket,
+  loadTickets,
   nextNumber,
   resolveTicket,
   resolveTrack,
@@ -127,6 +129,16 @@ const trashQuery = z
       .regex(/^\d{1,15}\.\d{1,10}$/)
       .optional(),
     limit: z.coerce.number().int().min(1).max(200).default(50),
+  })
+  .strict();
+const historyQuery = z
+  .object({
+    order: z.enum(['desc', 'asc']).default('desc'),
+    cursor: z
+      .string()
+      .regex(/^[1-9][0-9]{0,18}$/)
+      .optional(),
+    limit: z.coerce.number().int().min(1).max(1000).default(100),
   })
   .strict();
 const params = z.object({ id: z.string().min(1).max(300) });
@@ -300,6 +312,7 @@ export function registerTicketRoutes(
     workspaceId: request.workspaceId,
     actorId: request.user?.id ?? null,
   });
+  const actor = (request: FastifyRequest) => request.user?.id ?? null;
 
   /** A ticket the caller may browse, trash included, by id or key. */
   async function findTicket(request: FastifyRequest, ticketRef: string | number) {
@@ -416,6 +429,57 @@ export function registerTicketRoutes(
       ...(found.asked !== null && found.asked !== ticket.key
         ? { redirect: { from: found.asked, to: ticket.key } }
         : {}),
+    };
+  });
+
+  // A ticket's change history (CORE-022), newest first unless asked otherwise, page by page:
+  // each page reads one partition through the primary key, however long the history is.
+  app.get('/api/v1/tickets/:id/history', async (request, reply) => {
+    const p = params.safeParse(request.params);
+    const parsed = historyQuery.safeParse(request.query);
+    if (!p.success || !parsed.success) return invalid(reply);
+    const q = parsed.data;
+    const found = await findTicket(request, p.data.id);
+    if (!found) return notFound(reply);
+    if (found.row.deleted_at && !(await request.authz.can('delete_tickets', found.row.track_id))) {
+      return notFound(reply);
+    }
+    let query = db
+      .selectFrom('ticket_change as c')
+      .leftJoin('app_user as u', 'u.id', 'c.actor_id')
+      .select([
+        'c.id',
+        'c.change_set',
+        'c.at',
+        'c.actor_id',
+        'u.name as actor_name',
+        'c.field',
+        'c.from_value',
+        'c.to_value',
+        'c.from_display',
+        'c.to_display',
+      ])
+      .where('c.ticket_id', '=', found.row.id)
+      .where('c.workspace_id', '=', request.workspaceId);
+    if (q.cursor !== undefined) {
+      query = query.where('c.id', q.order === 'desc' ? '<' : '>', q.cursor);
+    }
+    const rows = await query
+      .orderBy('c.id', q.order)
+      .limit(q.limit + 1)
+      .execute();
+    const page = rows.slice(0, q.limit);
+    return {
+      changes: page.map((c) => ({
+        id: c.id,
+        changeSet: c.change_set,
+        at: c.at.toISOString(),
+        actor: c.actor_id === null ? null : { id: c.actor_id, name: c.actor_name ?? '' },
+        field: c.field,
+        from: { value: c.from_value, display: c.from_display },
+        to: { value: c.to_value, display: c.to_display },
+      })),
+      next: rows.length > q.limit ? (page[page.length - 1]?.id ?? null) : null,
     };
   });
 
@@ -550,7 +614,10 @@ export function registerTicketRoutes(
         subjectId: row.id,
         payload: { key: ticketKey(offered.key, number), trackId, ticketTypeId: typeId, parentId },
       });
-      return { ticket: await loadTicket(trx, ws, row.id) };
+      const created = await loadTicket(trx, ws, row.id);
+      // Every starting value is history too, so "was" finds the first one (ADR-010).
+      if (created) await recordChanges(trx, ws, user.id, ticketChanges(null, created));
+      return { ticket: created };
     });
     return answer(request, reply, outcome, 201);
   });
@@ -726,7 +793,9 @@ export function registerTicketRoutes(
         subjectId: ticketId,
         payload: { key: ticketKey(current.track_key, current.number), changes },
       });
-      return { ticket: await loadTicket(trx, ws, ticketId) };
+      const updated = await loadTicket(trx, ws, ticketId);
+      if (updated) await recordChanges(trx, ws, actor(request), ticketChanges(current, updated));
+      return { ticket: updated };
     });
     return answer(request, reply, outcome);
   });
@@ -850,6 +919,8 @@ export function registerTicketRoutes(
         }
       }
 
+      const touched = [ticketId, ...subtickets.map((st) => st.id)];
+      const before = await loadTickets(trx, ws, touched);
       const number = await nextNumber(trx, ws, targetId);
       const now = new Date();
       await trx
@@ -907,6 +978,12 @@ export function registerTicketRoutes(
           subtickets: moved,
         },
       });
+      await recordChanges(
+        trx,
+        ws,
+        actor(request),
+        changesOf(before, await loadTickets(trx, ws, touched)),
+      );
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
     return answer(request, reply, outcome);
@@ -1003,6 +1080,16 @@ export function registerTicketRoutes(
             subjectId: ticketId,
             payload: { key: ticketKey(track.key, locked.number), from: locked.rank, to: rank },
           });
+          await recordChanges(trx, ws, actor(request), [
+            {
+              ticketId,
+              field: 'rank',
+              from: locked.rank,
+              to: rank,
+              fromDisplay: null,
+              toDisplay: null,
+            },
+          ]);
           return { ticket: await loadTicket(trx, ws, ticketId) };
         });
         return await answer(request, reply, outcome);
@@ -1051,6 +1138,8 @@ export function registerTicketRoutes(
         .execute();
       const subtickets = children.filter((c) => c.rank === SUBTICKET_RANK).map((c) => c.id);
       const detached = children.filter((c) => c.rank !== SUBTICKET_RANK).map((c) => c.id);
+      const touched = [ticketId, ...subtickets, ...detached];
+      const before = await loadTickets(trx, ws, touched);
       const now = new Date();
       await trx
         .updateTable('ticket')
@@ -1087,6 +1176,7 @@ export function registerTicketRoutes(
           detachedChildren: detached,
         },
       });
+      await recordChanges(trx, ws, user.id, changesOf(before, await loadTickets(trx, ws, touched)));
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
     const refused = refusal(reply, outcome);
@@ -1128,6 +1218,20 @@ export function registerTicketRoutes(
         .executeTakeFirst();
       if (!locked) return { conflict: 'not_in_trash' };
       if (locked.trashed_with !== null) return { conflict: 'deleted_with_parent' };
+      // Everything a restore may touch, as it was, for the history.
+      const related = await trx
+        .selectFrom('ticket')
+        .select('id')
+        .where('trashed_with', '=', ticketId)
+        .union(
+          trx
+            .selectFrom('ticket_detached_parent')
+            .select('ticket_id as id')
+            .where('parent_id', '=', ticketId),
+        )
+        .execute();
+      const touched = [ticketId, ...related.map((r) => r.id)];
+      const before = await loadTickets(trx, ws, touched);
       let parentId = locked.parent_id;
       let detachedFrom: number | null = null;
       if (parentId !== null) {
@@ -1215,6 +1319,12 @@ export function registerTicketRoutes(
           detachedFrom,
         },
       });
+      await recordChanges(
+        trx,
+        ws,
+        actor(request),
+        changesOf(before, await loadTickets(trx, ws, touched)),
+      );
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
     return answer(request, reply, outcome);
