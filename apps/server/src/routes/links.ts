@@ -212,14 +212,12 @@ export function registerLinkRoutes(
   const configAdmin = (request: FastifyRequest, reply: FastifyReply) =>
     requireGlobal(request, reply, 'site_admin', 'configuration_admin');
 
-  /** A ticket outside the trash that the caller may browse, by id or key. */
+  /** A ticket outside the trash that the caller may see (M1-020), by id or key. */
   async function findTicket(request: FastifyRequest, ticketRef: string | number) {
     const found = await resolveTicket(db, request.workspaceId, ticketRef);
     if (!found) return null;
     const row = await loadTicket(db, request.workspaceId, found.id);
-    if (!row || row.deleted_at || !(await request.authz.can('browse_track', row.track_id))) {
-      return null;
-    }
+    if (!row || row.deleted_at || !(await request.authz.seesTicket(row))) return null;
     return row;
   }
 
@@ -469,14 +467,10 @@ export function registerLinkRoutes(
       linkRows(db, ticket.id),
       webLinkRows(db, ticket.id),
     ]);
-    // One check per track among the other tickets, however many links there are.
-    const tracks = [...new Set(rows.map((r) => r.other_track_id))];
-    const visible = new Set<number>();
-    for (const trackId of tracks) {
-      if (await request.authz.can('browse_track', trackId)) visible.add(trackId);
-    }
+    // One statement for the other tickets the caller may see, however many links there are.
+    const visible = await request.authz.visibleTickets(rows.map((r) => r.other_id));
     const links = rows
-      .filter((r) => r.other_deleted_at === null && visible.has(r.other_track_id))
+      .filter((r) => r.other_deleted_at === null && visible.has(r.other_id))
       .map((r) => ({
         id: r.id,
         type: { id: r.link_type_id, name: r.type_name },
@@ -502,7 +496,7 @@ export function registerLinkRoutes(
     if (!parsed.success) return invalid(reply);
     const body = parsed.data;
     const ws = request.workspaceId;
-    if (!(await request.authz.can('link_tickets', ticket.track_id))) {
+    if (!(await request.authz.canTicket('link_tickets', ticket))) {
       return reply.code(403).send({ error: 'forbidden', permission: 'link_tickets' });
     }
     if (!(await linksEnabled(db, ws))) return reply.code(409).send({ error: 'links_disabled' });
@@ -602,7 +596,7 @@ export function registerLinkRoutes(
     const linkId = id.safeParse((request.params as { linkId?: string }).linkId);
     if (!linkId.success) return invalid(reply);
     const ws = request.workspaceId;
-    if (!(await request.authz.can('link_tickets', ticket.track_id))) {
+    if (!(await request.authz.canTicket('link_tickets', ticket))) {
       return reply.code(403).send({ error: 'forbidden', permission: 'link_tickets' });
     }
     const result = await db.transaction().execute(async (trx) => {
@@ -671,7 +665,7 @@ export function registerLinkRoutes(
     if (!parsed.success) return invalid(reply);
     const body = parsed.data;
     const ws = request.workspaceId;
-    if (!(await request.authz.can('link_tickets', ticket.track_id))) {
+    if (!(await request.authz.canTicket('link_tickets', ticket))) {
       return reply.code(403).send({ error: 'forbidden', permission: 'link_tickets' });
     }
     const result = await db.transaction().execute(async (trx) => {
@@ -773,7 +767,7 @@ export function registerLinkRoutes(
     if (!linkId.success || !parsed.success) return invalid(reply);
     const body = parsed.data;
     const ws = request.workspaceId;
-    if (!(await request.authz.can('link_tickets', ticket.track_id))) {
+    if (!(await request.authz.canTicket('link_tickets', ticket))) {
       return reply.code(403).send({ error: 'forbidden', permission: 'link_tickets' });
     }
     const found = await db.transaction().execute(async (trx) => {
@@ -831,7 +825,7 @@ export function registerLinkRoutes(
     const linkId = id.safeParse((request.params as { linkId?: string }).linkId);
     if (!linkId.success) return invalid(reply);
     const ws = request.workspaceId;
-    if (!(await request.authz.can('link_tickets', ticket.track_id))) {
+    if (!(await request.authz.canTicket('link_tickets', ticket))) {
       return reply.code(403).send({ error: 'forbidden', permission: 'link_tickets' });
     }
     const removed = await db.transaction().execute(async (trx) => {
@@ -874,8 +868,9 @@ export function registerLinkRoutes(
       .orderBy('k.id')
       .execute();
     const tickets = [];
+    const visible = await request.authz.visibleTickets(rows.map((r) => r.id));
     for (const r of rows) {
-      if (!(await request.authz.can('browse_track', r.track_id))) continue;
+      if (!visible.has(r.id)) continue;
       tickets.push({
         id: r.id,
         key: ticketKey(r.key, r.number),
@@ -904,7 +899,7 @@ export function registerLinkRoutes(
         .orderBy('u.id')
         .execute();
       // The count is everyone's; the names need "View voters and followers".
-      const mayList = await request.authz.can('view_voters_followers', ticket.track_id);
+      const mayList = await request.authz.canTicket('view_voters_followers', ticket);
       return {
         count: rows.length,
         mine: rows.some((r) => r.id === user.id),
@@ -926,7 +921,7 @@ export function registerLinkRoutes(
     if (!ticket) return null;
     const userId = params.data.userId === 'me' ? user.id : params.data.userId;
     if (userId !== user.id) {
-      if (!(await request.authz.can('manage_followers', ticket.track_id))) {
+      if (!(await request.authz.canTicket('manage_followers', ticket))) {
         await reply.code(403).send({ error: 'forbidden', permission: 'manage_followers' });
         return null;
       }
@@ -940,7 +935,7 @@ export function registerLinkRoutes(
         .executeTakeFirst();
       const sees =
         person !== undefined &&
-        (await authorizer.trackPermissions(request.workspaceId, { userId }, ticket.track_id)).has(
+        (await authorizer.ticketPermissions(request.workspaceId, { userId }, ticket)).has(
           'browse_track',
         );
       if (!sees) {

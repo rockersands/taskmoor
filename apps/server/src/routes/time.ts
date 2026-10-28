@@ -170,7 +170,7 @@ export function registerTimeRoutes(app: FastifyInstance, db: Kysely<Database>): 
     }
     const found = await resolveTicket(db, request.workspaceId, params.data.id);
     const row = found ? await loadTicket(db, request.workspaceId, found.id) : undefined;
-    if (!row || row.deleted_at || !(await request.authz.can('browse_track', row.track_id))) {
+    if (!row || row.deleted_at || !(await request.authz.seesTicket(row))) {
       await notFound(reply);
       return null;
     }
@@ -364,7 +364,7 @@ export function registerTimeRoutes(app: FastifyInstance, db: Kysely<Database>): 
     const ws = request.workspaceId;
     const settings = await timeSettings(db, ws);
     if (!settings.enabled) return reply.code(409).send({ error: 'time_tracking_disabled' });
-    if (!(await request.authz.can('record_time', ticket.track_id))) {
+    if (!(await request.authz.canTicket('record_time', ticket))) {
       return forbidden(reply, 'record_time');
     }
     const fields: Record<string, string> = {};
@@ -453,7 +453,7 @@ export function registerTimeRoutes(app: FastifyInstance, db: Kysely<Database>): 
         ? 'edit_all_time_entries'
         : 'delete_all_time_entries';
     // Whoever may change all entries may also change their own.
-    const held = await request.authz.track(ticket.track_id);
+    const held = await request.authz.ticket(ticket);
     const all = action === 'edit' ? 'edit_all_time_entries' : 'delete_all_time_entries';
     if (!held.has(permission) && !held.has(all)) {
       await forbidden(reply, permission);

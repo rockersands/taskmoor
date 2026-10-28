@@ -217,6 +217,8 @@ export interface TrackTable {
   /** Its field rule set and layout set; null for the workspace's defaults (M1-012). */
   field_rule_set_id: ColumnType<number | null, number | null | undefined, number | null>;
   layout_set_id: ColumnType<number | null, number | null | undefined, number | null>;
+  /** Its visibility policy; null for none (M1-020). */
+  visibility_policy_id: ColumnType<number | null, number | null | undefined, number | null>;
   /** In the trash since (M1-101, CORE-025); restorable until the purge starts. */
   deleted_at: Timestamp | null;
   deleted_by: number | null;
@@ -365,6 +367,8 @@ export interface TicketTable {
   status_id: ColumnType<number, number | undefined, number>;
   /** Custom field values by field id, in the forms of `apps/server/src/fields/types.ts`. */
   fields: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  /** Who besides track browsing may see it (M1-020); null for everyone who browses the track. */
+  visibility_level_id: ColumnType<number | null, number | null | undefined, number | null>;
 }
 
 /** The last ticket number given out in each track. */
@@ -861,6 +865,42 @@ export interface ConfigurationSetTable {
   is_default: Generated<boolean>;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
+}
+
+/**
+ * A visibility policy (M1-020; IAM-011): levels and the default a new or moved ticket takes. A
+ * local-mode track's own policy names it in `track_id`.
+ */
+export interface VisibilityPolicyTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number | null;
+  name: string;
+  description: Generated<string>;
+  default_level_id: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface VisibilityLevelTable {
+  id: Generated<number>;
+  workspace_id: number;
+  policy_id: number;
+  name: string;
+  description: Generated<string>;
+  position: number;
+}
+
+/** Who sees tickets at a level: any grantee an access grant takes. */
+export interface VisibilityMemberTable {
+  id: Generated<number>;
+  workspace_id: number;
+  level_id: number;
+  grantee: GranteeKind;
+  role_id: number | null;
+  group_id: number | null;
+  user_id: number | null;
+  field_key: string | null;
 }
 
 /** Whether a field is required or hidden, and its help text, for a ticket type or every type. */
@@ -1372,6 +1412,9 @@ export interface Database {
   field_rule: FieldRuleTable;
   layout_set: ConfigurationSetTable;
   layout: LayoutTable;
+  visibility_policy: VisibilityPolicyTable;
+  visibility_level: VisibilityLevelTable;
+  visibility_member: VisibilityMemberTable;
   v_text: TextValueTable;
   v_number: NumberValueTable;
   v_date: DateValueTable;

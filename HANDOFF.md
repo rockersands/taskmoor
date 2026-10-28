@@ -18,6 +18,17 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-020 visibility levels** (migration 0029; ADR-012 "Visibility levels and ticket-level
+  grantees"). `apps/server/src/authz/visibility.ts` holds the rules; `request.authz.ticket(row)`,
+  `canTicket(p, row)` and `seesTicket(row)` replace track checks wherever a ticket is at hand,
+  and lists put `(await request.authz.ticketFilter()).sql` (a predicate on alias `k`) in their
+  statement; `visibleTickets(ids)` filters a set of ids. **Every new read path must use them**:
+  search results (M1-037), notifications (M1-056), sync and exports are not built yet. Site
+  administrators are not exempt from levels. Routes: `/api/v1/visibility-policies` (admin scope;
+  levels, members, `replaceWith` on delete), `GET /api/v1/tracks/:id/visibility-levels` and
+  `/api/v1/tickets/:id/visibility-levels` for forms, `visibilityPolicyId` on track PATCH,
+  `visibilityLevelId` on ticket create, edit and move, `?ticket=` on the explainer. No admin UI
+  yet (M1-053); the create form does not offer levels yet (M1-051).
 - **M1-030 workflow editor** (built by a background agent, reviewed and merged; ADR-039
   "Implementation (M1-030)"). Web only, on the M1-023 API: `#/admin/workflows` (list, create,
   copy, delete, statuses) and `#/admin/workflows/<id>` (the editor), both in Settings and the

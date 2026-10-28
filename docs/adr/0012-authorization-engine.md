@@ -86,7 +86,8 @@ the spike:
 Site administrators (the account flag, or a `site_admin` global grant, also through a group)
 hold every permission in every track and need no search filter; configuration administrators
 hold `administer_track`, `manage_layouts`, `edit_workflows` and `view_readonly_workflow`
-everywhere. Ticket-level grantees never grant at track level; M1-020 applies them per ticket.
+everywhere. Ticket-level grantees never grant at track level; M1-020 applies them per ticket
+(below).
 A property test checks the service against a plain reference model on 10,000 random grants.
 
 **Archived tracks (M1-006, CORE-025)** are read-only for everyone, site administrators
@@ -98,6 +99,52 @@ everyone else's request is answered without it. With an archived track present, 
 administrator's pre-filter is the list of active tracks instead of 'all'. Archiving moves the
 epoch (a trigger on `archived_at`), and the explainer reports `trackArchived`. The reference
 model archives one track in five.
+
+**Visibility levels and ticket-level grantees (M1-020, IAM-010, IAM-011)** are judged per
+ticket, in `apps/server/src/authz/visibility.ts`, on the ticket's track, requester, assignee,
+custom values and level:
+
+- **Policies and levels** (migration 0029): a visibility policy has up to 50 levels and a
+  default level; a level's members are any grantee an access grant takes, a user or group field
+  member naming a custom field of that type. Shared policies belong to the workspace; a
+  local-mode track's own policy names it. `track.visibility_policy_id` chooses one (null: no
+  levels), `ticket.visibility_level_id` holds a ticket's (null: no restriction). Policies,
+  levels, members and a track's choice move the epoch.
+- **Who sees a ticket:** someone who browses its track, either for the whole track or through
+  a ticket-level grant of "Browse track" (requester, assignee, a user or group field), and who is
+  a member of its level when it has one. **Levels apply to everyone, site administrators
+  included**: as in the products we import from, an administrator who is not a member does not
+  see the ticket, and may add themselves as a member (audited). What a person may do to a
+  ticket they see is their track permissions plus the ticket-level grants it matches (read ones
+  only in an archived track, none in the trash); a ticket they do not see answers 404 on every
+  route, as one that never existed.
+- **Two readings, kept in agreement.** `ticketPermissions` judges one row in memory with cached
+  facts (the person's groups, their roles in the track, the track's owner and ticket-level
+  grants, the workspace's levels and members, all epoch-checked). Lists put `ticketFilter()` in
+  their statement instead (QRY-008: never filtered after the fact): the browse part is the
+  allowed-track list plus, for tracks whose policy lets ticket grantees browse, one condition per
+  kind of grantee; the level part lists once the levels the person belongs to whatever the
+  ticket (user, group, any signed-in user, anyone), and adds one condition per kind of member
+  that depends on the ticket (role, track owner, requester, assignee, field). With no level in
+  the workspace the level part is `true`. User and group field members read `ticket.fields`
+  (so trashed tickets, which have no side rows, are judged the same way). A property test over
+  random members, grants and tickets shows both readings name the same tickets for every person,
+  anonymous and deactivated ones included.
+- **Setting levels:** a create or an edit that gives `visibilityLevelId` needs "Set visibility
+  level", and the level must belong to the track's policy; a create without one takes the
+  policy's default. A move gives the ticket and its subtickets the target track's default, or
+  the level asked for there (IAM-011 (2)). A track that changes policy gives its tickets at
+  levels the new policy lacks the new default, and a level deleted while tickets use it needs
+  a replacement; both record history as one change set. History and the query language name
+  the field `visibilityLevel`.
+- **Read paths:** every ticket route (view, list, history, links and the tickets they name, web
+  links by global id, followers and votes, time entries, attachments, layout, transitions,
+  levels on offer), the trash list, release progress counts and the parent a view names go
+  through these checks; the visibility matrix test reads each of them as seven people against
+  six tickets. Paths not built yet (search results M1-037, notifications M1-056, sync, exports)
+  must use `ticketFilter()` or `seesTicket()`.
+- **Explainer (IAM-012 (2)):** `GET /api/v1/permissions/explain?ticket=` adds the ticket's
+  level, the members that let the person in, and the ticket-level grants that match.
 
 ## Consequences
 

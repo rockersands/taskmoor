@@ -1351,6 +1351,101 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'DELETE', url: `/api/v1/layout-sets/${state.layoutSet}` }),
     },
     {
+      route: 'POST /api/v1/visibility-policies',
+      expect: 'visibility_policy.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/visibility-policies',
+          payload: {
+            name: 'Contract visibility_policy',
+            levels: [{ name: 'Internal', members: [{ grantee: 'any_user' }] }],
+            defaultLevel: 'Internal',
+          },
+        });
+        state.visibilityPolicy = res.json().visibilityPolicy?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/visibility-policies/:id',
+      expect: 'visibility_policy.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/visibility-policies/${state.visibilityPolicy}`,
+          payload: { description: 'Changed' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/visibility-policies/:id/levels',
+      expect: 'visibility_level.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/visibility-policies/${state.visibilityPolicy}/levels`,
+          payload: { name: 'Contract level' },
+        });
+        const levels = res.json().visibilityPolicy?.levels as { id: number; name: string }[];
+        state.visibilityLevel = levels?.find((l) => l.name === 'Contract level')?.id ?? 0;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/visibility-policies/:id/levels/:levelId',
+      expect: 'visibility_level.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/visibility-policies/${state.visibilityPolicy}/levels/${state.visibilityLevel}`,
+          payload: { description: 'Changed', position: 0 },
+        }),
+    },
+    {
+      route: 'POST /api/v1/visibility-policies/:id/levels/:levelId/members',
+      expect: 'visibility_level.member_added',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/visibility-policies/${state.visibilityPolicy}/levels/${state.visibilityLevel}/members`,
+          payload: { grantee: 'requester' },
+        });
+        const levels = res.json().visibilityPolicy?.levels as {
+          id: number;
+          members: { id: number; grantee: string }[];
+        }[];
+        state.visibilityMember =
+          levels
+            ?.find((l) => l.id === state.visibilityLevel)
+            ?.members.find((m) => m.grantee === 'requester')?.id ?? 0;
+        return res;
+      },
+    },
+    {
+      route: 'DELETE /api/v1/visibility-policies/:id/levels/:levelId/members/:memberId',
+      expect: 'visibility_level.member_removed',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/visibility-policies/${state.visibilityPolicy}/levels/${state.visibilityLevel}/members/${state.visibilityMember}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/visibility-policies/:id/levels/:levelId',
+      expect: 'visibility_level.deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/visibility-policies/${state.visibilityPolicy}/levels/${state.visibilityLevel}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/visibility-policies/:id',
+      expect: 'visibility_policy.deleted',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/visibility-policies/${state.visibilityPolicy}` }),
+    },
+    {
       route: 'POST /api/v1/tickets/:id/links',
       expect: 'ticket.linked',
       run: async () => {

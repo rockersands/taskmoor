@@ -70,6 +70,7 @@ import {
   ticketView,
 } from '../tickets/store';
 import { durationValue, timeSettings } from '../tickets/time';
+import { levelFor, trackVisibility } from '../tickets/visibility';
 import { isKnownField, isWritableField, parseField } from '../workflows/fields';
 import { statusIdsOf } from '../workflows/model';
 import {
@@ -150,6 +151,8 @@ const createBody = z
     originalEstimate: estimate.optional(),
     remainingEstimate: estimate.optional(),
     fields: customValues.optional(),
+    /** Null for none; the track's default level when left out (M1-020). */
+    visibilityLevelId: idValue.nullable().optional(),
   })
   .strict();
 const updateBody = z
@@ -172,6 +175,7 @@ const updateBody = z
     originalEstimate: estimate.optional(),
     remainingEstimate: estimate.optional(),
     fields: customValues.optional(),
+    visibilityLevelId: idValue.nullable().optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -183,6 +187,8 @@ const moveBody = z
     /** For tickets whose status the target track's workflow lacks; its initial status if left out. */
     statusId: idValue.optional(),
     parent: ref.nullable().optional(),
+    /** The level in the target track; its default when left out (IAM-011 (2)). */
+    visibilityLevelId: idValue.nullable().optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -493,22 +499,32 @@ export function registerTicketRoutes(
     }
   }
 
-  /** A ticket the caller may browse, trash included, by id or key. */
+  /**
+   * A ticket the caller may see, trash included, by id or key: they browse it and belong to
+   * its visibility level (M1-020).
+   */
   async function findTicket(request: FastifyRequest, ticketRef: string | number) {
     const ws = request.workspaceId;
     const found = await resolveTicket(db, ws, ticketRef);
     if (!found) return null;
     const row = await loadTicket(db, ws, found.id);
-    if (!row || !(await request.authz.can('browse_track', row.track_id))) return null;
+    if (!row || !(await request.authz.seesTicket(row))) return null;
     return { row, asked: found.asked };
   }
 
   async function viewOf(request: FastifyRequest, row: TicketRow) {
-    const parentVisible =
-      row.parent_track_id === null ||
-      (await request.authz.can('browse_track', row.parent_track_id));
+    const parent =
+      row.parent_id === null ? undefined : await loadTicket(db, request.workspaceId, row.parent_id);
+    const parentVisible = parent !== undefined && (await request.authz.seesTicket(parent));
     const [view] = await viewsOf(request, [row], () => parentVisible);
     return view as TicketView;
+  }
+
+  /** Views of a page of tickets, with the parents the caller may see named. */
+  async function pageViews(request: FastifyRequest, rows: readonly TicketRow[]) {
+    const parents = rows.flatMap((r) => (r.parent_id === null ? [] : [r.parent_id]));
+    const visible = await request.authz.visibleTickets(parents);
+    return viewsOf(request, rows, (r) => r.parent_id !== null && visible.has(r.parent_id));
   }
 
   /** Views of several tickets, their custom values read together. */
@@ -524,7 +540,7 @@ export function registerTicketRoutes(
 
   /** A ticket in the trash exists only for those who may restore it. */
   async function inTrash(request: FastifyRequest, reply: FastifyReply, row: TicketRow) {
-    return (await request.authz.can('delete_tickets', row.track_id))
+    return (await request.authz.canTicket('delete_tickets', row))
       ? reply.code(409).send({ error: 'in_trash' })
       : notFound(reply);
   }
@@ -633,13 +649,13 @@ export function registerTicketRoutes(
     if (!parsed.success) return invalid(reply);
     const q = parsed.data;
     const ws = request.workspaceId;
-    const browse = await request.authz.allowedTracks('browse_track');
-    if (browse !== 'all' && browse.length === 0) return { tickets: [], next: null };
-    let query = ticketQuery(db, ws).where('k.deleted_at', 'is', null);
-    if (browse !== 'all') query = query.where('k.track_id', 'in', browse);
+    // Track browsing, ticket-level grants and visibility levels, in the statement (QRY-008).
+    const filter = await request.authz.ticketFilter();
+    if (filter.tracks !== 'all' && filter.tracks.length === 0) return { tickets: [], next: null };
+    let query = ticketQuery(db, ws).where('k.deleted_at', 'is', null).where(filter.sql);
     if (q.track !== undefined) {
       const trackId = await resolveTrack(db, ws, q.track);
-      if (trackId === null || !inTracks(browse, trackId)) return notFound(reply);
+      if (trackId === null || !inTracks(filter.tracks, trackId)) return notFound(reply);
       query = query.where('k.track_id', '=', trackId);
     }
     if (q.parent !== undefined) {
@@ -654,11 +670,7 @@ export function registerTicketRoutes(
       .execute();
     const page = rows.slice(0, q.limit);
     return {
-      tickets: await viewsOf(
-        request,
-        page,
-        (r) => r.parent_track_id === null || inTracks(browse, r.parent_track_id),
-      ),
+      tickets: await pageViews(request, page),
       next: rows.length > q.limit ? (page[page.length - 1]?.rank ?? null) : null,
     };
   });
@@ -668,7 +680,7 @@ export function registerTicketRoutes(
     if (!p.success) return invalid(reply);
     const found = await findTicket(request, p.data.id);
     if (!found) return notFound(reply);
-    if (found.row.deleted_at && !(await request.authz.can('delete_tickets', found.row.track_id))) {
+    if (found.row.deleted_at && !(await request.authz.canTicket('delete_tickets', found.row))) {
       return notFound(reply);
     }
     const ticket = await viewOf(request, found.row);
@@ -689,7 +701,7 @@ export function registerTicketRoutes(
     const q = parsed.data;
     const found = await findTicket(request, p.data.id);
     if (!found) return notFound(reply);
-    if (found.row.deleted_at && !(await request.authz.can('delete_tickets', found.row.track_id))) {
+    if (found.row.deleted_at && !(await request.authz.canTicket('delete_tickets', found.row))) {
       return notFound(reply);
     }
     let query = db
@@ -741,7 +753,10 @@ export function registerTicketRoutes(
     const ws = request.workspaceId;
     const allowed = await request.authz.allowedTracks('delete_tickets');
     if (allowed !== 'all' && allowed.length === 0) return { tickets: [], next: null };
-    let query = ticketQuery(db, ws).where('k.deleted_at', 'is not', null);
+    // Only tickets the caller sees at their visibility level (M1-020).
+    let query = ticketQuery(db, ws)
+      .where('k.deleted_at', 'is not', null)
+      .where((await request.authz.ticketFilter()).level);
     if (allowed !== 'all') query = query.where('k.track_id', 'in', allowed);
     if (q.track !== undefined) {
       const trackId = await resolveTrack(db, ws, q.track);
@@ -761,13 +776,8 @@ export function registerTicketRoutes(
       .execute();
     const page = rows.slice(0, q.limit);
     const last = page[page.length - 1];
-    const browse = await request.authz.allowedTracks('browse_track');
     return {
-      tickets: await viewsOf(
-        request,
-        page,
-        (r) => r.parent_track_id === null || inTracks(browse, r.parent_track_id),
-      ),
+      tickets: await pageViews(request, page),
       next:
         rows.length > q.limit && last?.deleted_at
           ? `${last.deleted_at.getTime()}.${last.id}`
@@ -806,6 +816,9 @@ export function registerTicketRoutes(
     }
     if (body.closeReasonId != null && !held.has('set_close_reason')) {
       return forbidden(reply, 'set_close_reason');
+    }
+    if (body.visibilityLevelId !== undefined && !held.has('set_visibility_level')) {
+      return forbidden(reply, 'set_visibility_level');
     }
     const fields: FieldErrors = {};
     const values = contentValues(body, fields, true);
@@ -924,6 +937,9 @@ export function registerTicketRoutes(
         trackId,
       );
       if (problem) return { fields: { parent: problem } };
+      // The level asked for, else the track's default (IAM-011).
+      const levelId = levelFor(await trackVisibility(trx, ws, trackId), body.visibilityLevelId);
+      if (levelId === 'not_in_track') return { fields: { visibilityLevelId: levelId } };
       // No assignee given: the first of its areas whose rule names someone (CORE-015 (1)).
       let assigneeId = body.assigneeId ?? null;
       if (body.assigneeId === undefined && body.areaIds !== undefined) {
@@ -959,6 +975,7 @@ export function registerTicketRoutes(
           remaining_estimate:
             estimates.remaining !== undefined ? estimates.remaining : (estimates.original ?? null),
           fields: JSON.stringify(custom.fields),
+          visibility_level_id: levelId,
         })
         .returning('id')
         .executeTakeFirstOrThrow();
@@ -1066,7 +1083,7 @@ export function registerTicketRoutes(
     if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
     // Permissions and assignability are read before the transaction (see the create route);
     // a ticket that moves meanwhile is refused inside it, so they stay the right track's.
-    const held = await request.authz.track(found.row.track_id);
+    const held = await request.authz.ticket(found.row);
     const assigneeOk =
       body.assigneeId == null || (await assignable(ws, found.row.track_id, body.assigneeId));
     const catalog = await catalogs.get(ws);
@@ -1143,6 +1160,7 @@ export function registerTicketRoutes(
         remainingEstimate: current.remaining_estimate,
         priorityId: current.priority_id,
         closeReasonId: current.close_reason_id,
+        visibilityLevelId: current.visibility_level_id,
         labels: current.labels,
         ...had,
       };
@@ -1154,6 +1172,7 @@ export function registerTicketRoutes(
         requesterId: body.requesterId,
         priorityId: body.priorityId,
         closeReasonId: body.closeReasonId,
+        visibilityLevelId: body.visibilityLevelId,
         originalEstimate: estimates.original,
         remainingEstimate,
         ...lists,
@@ -1220,6 +1239,7 @@ export function registerTicketRoutes(
         ['dueDate', 'schedule_tickets'],
         ['priorityId', 'edit_tickets'],
         ['closeReasonId', 'set_close_reason'],
+        ['visibilityLevelId', 'set_visibility_level'],
         ['labels', 'edit_tickets'],
         ['targetReleaseIds', 'edit_tickets'],
         ['foundInReleaseIds', 'edit_tickets'],
@@ -1252,6 +1272,12 @@ export function registerTicketRoutes(
       }
       if (changes.assigneeId && !assigneeOk) {
         return { fields: { assigneeId: 'not_assignable' } };
+      }
+      if (changes.visibilityLevelId && body.visibilityLevelId != null) {
+        const visibility = await trackVisibility(trx, ws, current.track_id);
+        if (levelFor(visibility, body.visibilityLevelId) === 'not_in_track') {
+          return { fields: { visibilityLevelId: 'not_in_track' } };
+        }
       }
       if (changes.requesterId && body.requesterId !== undefined) {
         if (!(await activeUser(ws, body.requesterId)))
@@ -1329,6 +1355,7 @@ export function registerTicketRoutes(
         set.closed_at = body.closeReasonId == null ? null : new Date();
       }
       if (changes.labels && values.labels !== undefined) set.labels = values.labels;
+      if (changes.visibilityLevelId) set.visibility_level_id = body.visibilityLevelId ?? null;
       if (changes.originalEstimate) set.original_estimate = estimates.original ?? null;
       if (changes.remainingEstimate) set.remaining_estimate = remainingEstimate ?? null;
       if (customFields !== null) set.fields = JSON.stringify(customFields);
@@ -1397,11 +1424,17 @@ export function registerTicketRoutes(
       return invalidFields(reply, { track: 'not_found' });
     }
     if (targetId === sourceId) return invalidFields(reply, { track: 'same_track' });
-    if (!(await request.authz.can('move_tickets', sourceId))) {
+    if (!(await request.authz.canTicket('move_tickets', found.row))) {
       return forbidden(reply, 'move_tickets');
     }
     if (!(await request.authz.can('create_tickets', targetId))) {
       return forbidden(reply, 'create_tickets');
+    }
+    if (
+      body.visibilityLevelId !== undefined &&
+      !(await request.authz.can('set_visibility_level', targetId))
+    ) {
+      return forbidden(reply, 'set_visibility_level');
     }
     let parentId: number | null | undefined;
     if (body.parent === null) parentId = null;
@@ -1413,7 +1446,7 @@ export function registerTicketRoutes(
     }
 
     const catalog = await catalogs.get(ws);
-    const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
+    const outcome = await transact(async (trx): Promise<Outcome> => {
       // The hierarchy, then the target track, its type set and its workflow, then tickets.
       await shareHierarchy(trx, ws);
       const offered = await offeredTypes(trx, ws, targetId);
@@ -1553,6 +1586,17 @@ export function registerTicketRoutes(
       await trx.deleteFrom('ticket_area').where('ticket_id', 'in', touched).execute();
       // A status the target workflow lacks becomes the one asked for, or its initial status.
       // The close reason stays: only transitions, layouts and effects set or clear it.
+      // The ticket and its subtickets take the level asked for, else the target's default
+      // (IAM-011 (2)).
+      const levelId = levelFor(await trackVisibility(trx, ws, targetId), body.visibilityLevelId);
+      if (levelId === 'not_in_track') {
+        throw new Rollback({ fields: { visibilityLevelId: levelId } });
+      }
+      await trx
+        .updateTable('ticket')
+        .set({ visibility_level_id: levelId })
+        .where('id', 'in', touched)
+        .execute();
       const lost = [...before.values()].filter((t) => !targetStatuses.has(t.status_id));
       if (lost.length > 0) {
         await trx
@@ -1856,7 +1900,7 @@ export function registerTicketRoutes(
     const found = await findTicket(request, p.data.id);
     if (!found || found.row.deleted_at) return notFound(reply);
     const row = found.row;
-    if (row.track_archived_at || !(await request.authz.can('transition_tickets', row.track_id))) {
+    if (row.track_archived_at || !(await request.authz.canTicket('transition_tickets', row))) {
       return { transitions: [] };
     }
     const { workflowId, version } = await workflowOf(db, ws, row.track_id);
@@ -1898,7 +1942,7 @@ export function registerTicketRoutes(
     if (!found) return notFound(reply);
     if (found.row.deleted_at) return inTrash(request, reply, found.row);
     if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
-    const held = await request.authz.track(found.row.track_id);
+    const held = await request.authz.ticket(found.row);
     if (!held.has('transition_tickets')) return forbidden(reply, 'transition_tickets');
     const given = body.fields ?? {};
     if ('assignee' in given && !held.has('assign_tickets'))
@@ -1942,7 +1986,7 @@ export function registerTicketRoutes(
     if (!found) return notFound(reply);
     if (found.row.deleted_at) return inTrash(request, reply, found.row);
     if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
-    if (!(await request.authz.can('transition_tickets', found.row.track_id))) {
+    if (!(await request.authz.canTicket('transition_tickets', found.row))) {
       return forbidden(reply, 'transition_tickets');
     }
     const outcome = await runTransition(
@@ -1971,7 +2015,7 @@ export function registerTicketRoutes(
     if (!found) return notFound(reply);
     if (found.row.deleted_at) return inTrash(request, reply, found.row);
     if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
-    if (!(await request.authz.can('schedule_tickets', found.row.track_id))) {
+    if (!(await request.authz.canTicket('schedule_tickets', found.row))) {
       return forbidden(reply, 'schedule_tickets');
     }
     const ticketId = found.row.id;
@@ -2080,7 +2124,7 @@ export function registerTicketRoutes(
     if (!found) return notFound(reply);
     if (found.row.deleted_at) return inTrash(request, reply, found.row);
     if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
-    if (!(await request.authz.can('delete_tickets', found.row.track_id))) {
+    if (!(await request.authz.canTicket('delete_tickets', found.row))) {
       return forbidden(reply, 'delete_tickets');
     }
     const ticketId = found.row.id;
@@ -2164,7 +2208,7 @@ export function registerTicketRoutes(
     const found = await findTicket(request, p.data.id);
     if (!found) return notFound(reply);
     const row = found.row;
-    const mayRestore = await request.authz.can('delete_tickets', row.track_id);
+    const mayRestore = await request.authz.canTicket('delete_tickets', row);
     if (!row.deleted_at) return reply.code(409).send({ error: 'not_in_trash' });
     if (!mayRestore) return notFound(reply);
     if (row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });

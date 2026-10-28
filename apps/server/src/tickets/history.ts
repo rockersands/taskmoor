@@ -67,6 +67,11 @@ export const TRACKED_FIELDS: readonly Tracked[] = [
     value: (r) => idText(r.close_reason_id),
     display: (r) => r.close_reason_name,
   },
+  {
+    field: 'visibilityLevel',
+    value: (r) => idText(r.visibility_level_id),
+    display: (r) => r.visibility_level_name,
+  },
   { field: 'labels', value: (r) => listText(r.labels) },
   {
     field: 'targetRelease',

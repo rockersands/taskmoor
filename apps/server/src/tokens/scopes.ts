@@ -75,6 +75,7 @@ export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/groups',
   '/api/v1/roles',
   '/api/v1/access-policies',
+  '/api/v1/visibility-policies',
   '/api/v1/global-grants',
   '/api/v1/service-accounts',
   '/api/v1/permissions/explain',

@@ -650,7 +650,7 @@ export function registerLayoutRoutes(
     const ws = request.workspaceId;
     const found = await resolveTicket(db, ws, p.data.id);
     const row = found ? await loadTicket(db, ws, found.id) : undefined;
-    if (!row || row.deleted_at || !(await request.authz.can('browse_track', row.track_id))) {
+    if (!row || row.deleted_at || !(await request.authz.seesTicket(row))) {
       return notFound(reply);
     }
     return formOf(

@@ -21,13 +21,15 @@ describe('pseudoLocalize', () => {
   });
 
   it('formats every catalogue message in both locales with the same arguments', () => {
+    // The pseudo catalogue once: building it per message made this test quadratic.
+    const pseudoMessages = messagesFor('en-XA');
     const en = createIntl({ locale: 'en', messages: messagesFor('en') });
-    const xa = createIntl({ locale: 'en-XA', messages: messagesFor('en-XA') });
+    const xa = createIntl({ locale: 'en-XA', messages: pseudoMessages });
     for (const [id, source] of Object.entries(messagesEn)) {
       const values = Object.fromEntries(argumentNames(source).map((name) => [name, 3]));
       const original = en.formatMessage({ id }, values);
       const pseudo = xa.formatMessage({ id }, values);
-      expect(argumentNames(messagesFor('en-XA')[id] ?? '')).toEqual(argumentNames(source));
+      expect(argumentNames(pseudoMessages[id] ?? '')).toEqual(argumentNames(source));
       expect(pseudo).toMatch(/^\[.*\]$/s);
       expect(pseudo.length).toBeGreaterThan(original.length);
     }

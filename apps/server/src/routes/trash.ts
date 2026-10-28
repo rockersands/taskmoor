@@ -74,13 +74,20 @@ export function registerTrashRoutes(app: FastifyInstance, db: Kysely<Database>):
     const ticket = found
       ? await db
           .selectFrom('ticket')
-          .select(['id', 'track_id'])
+          .select([
+            'id',
+            'track_id',
+            'requester_id',
+            'assignee_id',
+            'visibility_level_id',
+            'fields',
+          ])
           .where('id', '=', found.id)
           .where('workspace_id', '=', ws)
           .executeTakeFirst()
       : undefined;
     // A ticket of a track in the trash goes with its track.
-    if (!ticket || !(await request.authz.can('browse_track', ticket.track_id))) {
+    if (!ticket || !(await request.authz.seesTicket(ticket))) {
       return reply.code(404).send({ error: 'not_found' });
     }
     const outcome = await purgeTicketNow(db, ws, ticket.id, admin.id);

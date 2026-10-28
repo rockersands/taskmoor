@@ -58,7 +58,7 @@ export interface SystemField {
   /** ORDER BY may use it (section 1.7). */
   sortable?: boolean;
   /** A field of a module not built yet: it resolves, the compiler names the module. */
-  module?: 'agile' | 'service' | 'journeys' | 'saved-searches' | 'visibility';
+  module?: 'agile' | 'service' | 'journeys' | 'saved-searches';
 }
 
 export interface CustomField {
@@ -285,7 +285,6 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     name: 'visibilityLevel',
     aliases: ['level', 'Visibility level'],
     type: 'option',
-    module: 'visibility',
   }),
   system({
     name: 'originalEstimate',

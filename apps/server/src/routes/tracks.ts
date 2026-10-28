@@ -14,6 +14,7 @@ import {
   ticketTypeView,
 } from '../tickets/configuration';
 import { DEFAULT_TRASH_RETENTION_DAYS, purgeAfter } from '../tickets/model';
+import { setLevels } from '../tickets/visibility';
 import {
   checkKey,
   FEATURE_DEFAULTS,
@@ -127,6 +128,8 @@ const updateBody = z
     /** Its field rule set and layout set (M1-012); null for the workspace's defaults. */
     fieldRuleSetId: id.nullable().optional(),
     layoutSetId: id.nullable().optional(),
+    /** Null for none; tickets at a level the new policy lacks take its default (M1-020). */
+    visibilityPolicyId: id.nullable().optional(),
     /** For each status the new workflow lacks that tickets are in: where they go. */
     statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
     features: trackFields.features.optional(),
@@ -190,6 +193,7 @@ function trackQuery(db: Db, workspaceId: number) {
       't.workflow_id',
       't.field_rule_set_id',
       't.layout_set_id',
+      't.visibility_policy_id',
       't.feature_board',
       't.feature_backlog',
       't.feature_sprints',
@@ -237,6 +241,7 @@ function trackView(row: TrackRow) {
     workflowId: row.workflow_id,
     fieldRuleSetId: row.field_rule_set_id,
     layoutSetId: row.layout_set_id,
+    visibilityPolicyId: row.visibility_policy_id,
     features: featuresOf(row),
     archived: row.archived_at !== null,
     archivedAt: row.archived_at?.toISOString() ?? null,
@@ -639,6 +644,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
     for (const [kind, value, had] of [
       ['field_rule_set', body.fieldRuleSetId, current.field_rule_set_id],
       ['layout_set', body.layoutSetId, current.layout_set_id],
+      ['visibility_policy', body.visibilityPolicyId, current.visibility_policy_id],
     ] as const) {
       if (value === undefined || value === had || value === null) {
         if (value === null && value !== had && !(await isAdmin(request))) {
@@ -653,7 +659,14 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
         .where('workspace_id', '=', ws)
         .executeTakeFirst();
       if (!set || (set.track_id !== null && set.track_id !== trackId)) {
-        return invalid(reply, kind === 'field_rule_set' ? 'fieldRuleSetId' : 'layoutSetId');
+        return invalid(
+          reply,
+          kind === 'field_rule_set'
+            ? 'fieldRuleSetId'
+            : kind === 'layout_set'
+              ? 'layoutSetId'
+              : 'visibilityPolicyId',
+        );
       }
       if (set.track_id === null && !(await isAdmin(request))) {
         return reply.code(403).send({ error: 'forbidden' });
@@ -700,6 +713,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           workflowId: locked.workflow_id,
           fieldRuleSetId: locked.field_rule_set_id,
           layoutSetId: locked.layout_set_id,
+          visibilityPolicyId: locked.visibility_policy_id,
           ...Object.fromEntries(
             TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
           ),
@@ -719,6 +733,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           workflowId: body.workflowId,
           fieldRuleSetId: body.fieldRuleSetId,
           layoutSetId: body.layoutSetId,
+          visibilityPolicyId: body.visibilityPolicyId,
           ...Object.fromEntries(
             Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
           ),
@@ -794,6 +809,36 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
         } else if (body.statusMapping !== undefined) {
           return { badStatusMapping: true as const };
         }
+        let levelsMapped = 0;
+        if (changes.visibilityPolicyId && body.visibilityPolicyId !== undefined) {
+          // Tickets at a level the new policy lacks take its default, or none (IAM-011).
+          const next =
+            body.visibilityPolicyId === null
+              ? null
+              : await trx
+                  .selectFrom('visibility_policy')
+                  .select('default_level_id')
+                  .where('id', '=', body.visibilityPolicyId)
+                  .executeTakeFirst();
+          const kept = trx
+            .selectFrom('visibility_level')
+            .select('id')
+            .where('policy_id', '=', body.visibilityPolicyId ?? 0);
+          const moving = await trx
+            .selectFrom('ticket')
+            .select('id')
+            .where('track_id', '=', trackId)
+            .where('visibility_level_id', 'is not', null)
+            .where('visibility_level_id', 'not in', kept)
+            .execute();
+          levelsMapped = await setLevels(
+            trx,
+            ws,
+            request.user?.id ?? null,
+            moving.map((t) => t.id),
+            next?.default_level_id ?? null,
+          );
+        }
         if (Object.keys(changes).length > 0) {
           // Only what changed is written; `changes` has an entry only for a given value.
           const set: Updateable<Database['track']> = { updated_at: new Date() };
@@ -827,6 +872,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           if (changes.layoutSetId && body.layoutSetId !== undefined) {
             set.layout_set_id = body.layoutSetId;
           }
+          if (changes.visibilityPolicyId && body.visibilityPolicyId !== undefined) {
+            set.visibility_policy_id = body.visibilityPolicyId;
+          }
           for (const feature of TRACK_FEATURES) {
             const on = body.features?.[feature];
             if (changes[`features.${feature}`] && on !== undefined)
@@ -840,6 +888,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
               changes,
               ...(mapped.length > 0 ? { mapped } : {}),
               ...(statusMapped > 0 ? { statusMapped } : {}),
+              ...(levelsMapped > 0 ? { levelsMapped } : {}),
             },
           });
         }

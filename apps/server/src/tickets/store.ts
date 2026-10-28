@@ -193,6 +193,11 @@ export function ticketQuery(db: Db, workspaceId: number) {
         'SELECT retention_days FROM trash_policy WHERE workspace_id = k.workspace_id',
       ).as('trash_retention_days'),
       'k.fields',
+      'k.visibility_level_id',
+      one<string | null>('SELECT name FROM visibility_level WHERE id = k.visibility_level_id').as(
+        'visibility_level_name',
+      ),
+      't.visibility_policy_id',
     ])
     .select([
       releasesOf(db, 'target').as('target_releases'),
@@ -299,6 +304,10 @@ export function ticketView(
         ? null
         : { id: row.close_reason_id, name: row.close_reason_name ?? '' },
     closedAt: row.closed_at?.toISOString() ?? null,
+    visibilityLevel:
+      row.visibility_level_id === null
+        ? null
+        : { id: row.visibility_level_id, name: row.visibility_level_name ?? '' },
     labels: row.labels,
     targetReleases: row.target_releases,
     foundInReleases: row.found_releases,

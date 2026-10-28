@@ -218,6 +218,8 @@ export const EVENT_TYPES = {
       mapped: typeMapping.optional(),
       /** Tickets moved to another status by a switch of workflow (M1-023). */
       statusMapped: z.number().int().min(1).optional(),
+      /** Tickets given the new visibility policy's default level (M1-020). */
+      levelsMapped: z.number().int().min(1).optional(),
     }),
   },
   'track.archived': { subject: 'track', payload: z.object({ key: z.string() }) },
@@ -520,6 +522,52 @@ export const EVENT_TYPES = {
     payload: z.object({ changes, trackIds: z.array(id) }),
   },
   'layout_set.deleted': { subject: 'layout_set', payload: z.object({ name: z.string() }) },
+  // Visibility policies and levels (M1-020); `trackIds` names every track a change reaches.
+  'visibility_policy.created': {
+    subject: 'visibility_policy',
+    payload: z.object({
+      name: z.string(),
+      trackId: id.nullable(),
+      levelCount: z.number().int().min(0),
+    }),
+  },
+  'visibility_policy.updated': {
+    subject: 'visibility_policy',
+    payload: z.object({ changes, trackIds: z.array(id) }),
+  },
+  'visibility_policy.deleted': {
+    subject: 'visibility_policy',
+    payload: z.object({ name: z.string() }),
+  },
+  'visibility_level.created': {
+    subject: 'visibility_level',
+    payload: z.object({ policyId: id, name: z.string(), memberCount: z.number().int().min(0) }),
+  },
+  'visibility_level.updated': {
+    subject: 'visibility_level',
+    payload: z.object({ policyId: id, changes }),
+  },
+  /** Tickets at the level took `replacementId` (null: none). */
+  'visibility_level.deleted': {
+    subject: 'visibility_level',
+    payload: z.object({ policyId: id }).merge(replaced),
+  },
+  'visibility_level.member_added': {
+    subject: 'visibility_level',
+    payload: z.object({
+      policyId: id,
+      memberId: id,
+      grantee: z.string(),
+      roleId: id.nullable(),
+      groupId: id.nullable(),
+      userId: id.nullable(),
+      fieldKey: z.string().nullable(),
+    }),
+  },
+  'visibility_level.member_removed': {
+    subject: 'visibility_level',
+    payload: z.object({ policyId: id, memberId: id, grantee: z.string() }),
+  },
   'field_option.deleted': {
     subject: 'field_option',
     payload: z.object({ fieldId: id, contextId: id, value: z.string() }),

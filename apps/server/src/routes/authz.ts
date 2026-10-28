@@ -13,6 +13,8 @@ import {
   TRACK_PERMISSION_GROUPS,
 } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
+import { ticketKey } from '../tickets/model';
+import { loadTicket, resolveTicket } from '../tickets/store';
 import { trackInTrash } from '../trash/policy';
 
 const id = z.coerce.number().int().positive();
@@ -123,22 +125,44 @@ export function registerAuthzRoutes(
   app.get('/api/v1/permissions/explain', async (request, reply) => {
     if (!(await requireSiteAdmin(request, reply))) return reply;
     const parsed = z
-      .object({ userId: id.optional(), trackId: id, permission: z.string() })
+      .object({
+        userId: id.optional(),
+        trackId: id.optional(),
+        /** A ticket by id or key: the answer for it, with its visibility level (M1-020). */
+        ticket: z.string().min(1).max(300).optional(),
+        permission: z.string(),
+      })
+      .refine((q) => q.trackId !== undefined || q.ticket !== undefined)
       .safeParse(request.query);
     if (!parsed.success || !isTrackPermission(parsed.data.permission)) return invalid(reply);
+    const { permission } = parsed.data;
     const ws = request.workspaceId;
-    if (!(await inWorkspace('track', ws, parsed.data.trackId))) {
+    const found = parsed.data.ticket ? await resolveTicket(db, ws, parsed.data.ticket) : null;
+    const ticket = found ? await loadTicket(db, ws, found.id) : undefined;
+    if (parsed.data.ticket !== undefined && !ticket) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+    const trackId = ticket?.track_id ?? (parsed.data.trackId as number);
+    if (!(await inWorkspace('track', ws, trackId))) {
       return reply.code(404).send({ error: 'not_found' });
     }
     if (!(await inWorkspace('app_user', ws, parsed.data.userId))) {
       return reply.code(404).send({ error: 'not_found' });
     }
-    return authorizer.explain(
-      ws,
-      { userId: parsed.data.userId ?? null },
-      parsed.data.trackId,
-      parsed.data.permission,
-    );
+    const principal = { userId: parsed.data.userId ?? null };
+    const explanation = await authorizer.explain(ws, principal, trackId, permission);
+    if (!ticket) return explanation;
+    const forTicket = await authorizer.explainTicket(ws, principal, ticket, permission);
+    return {
+      ...explanation,
+      allowed: forTicket.allowed,
+      ticket: {
+        id: ticket.id,
+        key: ticketKey(ticket.track_key, ticket.number),
+        visibilityLevel: forTicket.visibilityLevel,
+        ticketGrants: forTicket.ticketGrants,
+      },
+    };
   });
 
   // Roles.

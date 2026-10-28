@@ -157,7 +157,7 @@ export async function registerAttachmentRoutes(
     }
     const found = await resolveTicket(db, request.workspaceId, params.data.id);
     const row = found ? await loadTicket(db, request.workspaceId, found.id) : undefined;
-    if (!row || row.deleted_at || !(await request.authz.can('browse_track', row.track_id))) {
+    if (!row || row.deleted_at || !(await request.authz.seesTicket(row))) {
       await notFound(reply);
       return null;
     }
@@ -209,7 +209,7 @@ export async function registerAttachmentRoutes(
   /** What the viewer may delete in a track: their own, everyone's, or nothing. */
   async function deleteRights(request: FastifyRequest, ticket: TicketRow) {
     if (ticket.track_archived_at) return { own: false, all: false };
-    const held = await request.authz.track(ticket.track_id);
+    const held = await request.authz.ticket(ticket);
     const all = held.has('delete_all_attachments');
     return { own: all || held.has('delete_own_attachments'), all };
   }
@@ -312,7 +312,7 @@ export async function registerAttachmentRoutes(
           .orderBy('a.id')
           .execute(),
         deleteRights(request, ticket),
-        request.authz.can('create_attachments', ticket.track_id),
+        request.authz.canTicket('create_attachments', ticket),
         maxFileSize(db, request.workspaceId),
       ]);
       return {
@@ -328,7 +328,7 @@ export async function registerAttachmentRoutes(
       if (!user) return reply;
       const ticket = await routeTicket(request, reply, true);
       if (!ticket) return reply;
-      if (!(await request.authz.can('create_attachments', ticket.track_id))) {
+      if (!(await request.authz.canTicket('create_attachments', ticket))) {
         return forbidden(reply, 'create_attachments');
       }
       const store = stores.active;

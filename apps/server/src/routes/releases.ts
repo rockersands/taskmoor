@@ -1,6 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { type Kysely, sql, type Transaction } from 'kysely';
+import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
@@ -105,7 +105,11 @@ const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_fou
 /** Today in UTC, as the day a release ships when none is given. */
 const today = () => new Date().toISOString().slice(0, 10);
 
-function releaseQuery(db: Db, workspaceId: number) {
+/**
+ * Releases with their target tickets counted; `visible` limits the counts to the tickets a
+ * viewer may see (QRY-008 (1), M1-020), as the ticket filter's predicate on `k`.
+ */
+function releaseQuery(db: Db, workspaceId: number, visible: RawBuilder<boolean> = sql`true`) {
   return db
     .selectFrom('release as r')
     .select([
@@ -128,6 +132,7 @@ function releaseQuery(db: Db, workspaceId: number) {
           .whereRef('tr.release_id', '=', 'r.id')
           .where('tr.role', '=', 'target')
           .where('k.deleted_at', 'is', null)
+          .where(visible)
           .as('ticket_count'),
       (eb) =>
         eb
@@ -138,6 +143,7 @@ function releaseQuery(db: Db, workspaceId: number) {
           .where('tr.role', '=', 'target')
           .where('k.deleted_at', 'is', null)
           .where('k.closed_at', 'is not', null)
+          .where(visible)
           .as('closed_count'),
     ])
     .where('r.workspace_id', '=', workspaceId);
@@ -289,8 +295,8 @@ export function registerReleaseRoutes(
     return row !== undefined;
   }
 
-  const loadRelease = (d: Db, ws: number, releaseId: number) =>
-    releaseQuery(d, ws).where('r.id', '=', releaseId).executeTakeFirst();
+  /** The counts a viewer may see: of the tickets visible to them. */
+  const visibleTo = async (request: FastifyRequest) => (await request.authz.ticketFilter()).sql;
 
   async function approverViews(releaseId: number) {
     const rows = await db
@@ -310,8 +316,10 @@ export function registerReleaseRoutes(
   }
 
   /** A release with its approvers, as the release page shows it. */
-  async function fullRelease(ws: number, releaseId: number) {
-    const row = await loadRelease(db, ws, releaseId);
+  async function fullRelease(request: FastifyRequest, releaseId: number) {
+    const row = await releaseQuery(db, request.workspaceId, await visibleTo(request))
+      .where('r.id', '=', releaseId)
+      .executeTakeFirst();
     if (!row) return null;
     return { ...releaseView(row), approvers: await approverViews(releaseId) };
   }
@@ -333,7 +341,11 @@ export function registerReleaseRoutes(
     const query = archivedQuery.safeParse(request.query);
     if (!params.success || !query.success) return invalid(reply);
     if (!(await visibleTrack(request, reply, params.data.id))) return reply;
-    let q = releaseQuery(db, request.workspaceId).where('r.track_id', '=', params.data.id);
+    let q = releaseQuery(db, request.workspaceId, await visibleTo(request)).where(
+      'r.track_id',
+      '=',
+      params.data.id,
+    );
     if (query.data.archived === 'exclude') q = q.where('r.archived_at', 'is', null);
     if (query.data.archived === 'only') q = q.where('r.archived_at', 'is not', null);
     const rows = await q.orderBy('r.sort_order').execute();
@@ -387,7 +399,7 @@ export function registerReleaseRoutes(
         });
         return row.id;
       });
-      return reply.code(201).send({ release: await fullRelease(ws, releaseId) });
+      return reply.code(201).send({ release: await fullRelease(request, releaseId) });
     } catch (error) {
       if (uniqueViolation(error) === 'release_name_idx') {
         return reply.code(409).send({ error: 'name_taken' });
@@ -431,7 +443,7 @@ export function registerReleaseRoutes(
       return true;
     });
     if (!done) return invalid(reply, 'releaseIds must list every release of the track once');
-    const rows = await releaseQuery(db, ws)
+    const rows = await releaseQuery(db, ws, await visibleTo(request))
       .where('r.track_id', '=', trackId)
       .orderBy('r.sort_order')
       .execute();
@@ -446,7 +458,7 @@ export function registerReleaseRoutes(
     const trackId = await trackOf('release', ws, params.data.id);
     if (trackId === null) return notFound(reply);
     if (!(await visibleTrack(request, reply, trackId))) return reply;
-    return { release: await fullRelease(ws, params.data.id) };
+    return { release: await fullRelease(request, params.data.id) };
   });
 
   /** The release's track, checked for the caller; answers the refusal and returns null. */
@@ -518,7 +530,7 @@ export function registerReleaseRoutes(
       });
       if ('missing' in result) return notFound(reply);
       if ('badDates' in result) return invalid(reply, 'startDate comes after releaseDate');
-      return { release: await fullRelease(ws, target.releaseId) };
+      return { release: await fullRelease(request, target.releaseId) };
     } catch (error) {
       if (uniqueViolation(error) === 'release_name_idx') {
         return reply.code(409).send({ error: 'name_taken' });
@@ -631,7 +643,7 @@ export function registerReleaseRoutes(
     if ('conflict' in result) {
       return reply.code(409).send({ error: result.conflict, ...(result.detail ?? {}) });
     }
-    return { release: await fullRelease(ws, target.releaseId) };
+    return { release: await fullRelease(request, target.releaseId) };
   });
 
   for (const action of ['unship', 'archive', 'restore'] as const) {
@@ -675,7 +687,7 @@ export function registerReleaseRoutes(
       });
       if ('missing' in result) return notFound(reply);
       if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
-      return { release: await fullRelease(ws, target.releaseId) };
+      return { release: await fullRelease(request, target.releaseId) };
     });
   }
 
@@ -726,7 +738,7 @@ export function registerReleaseRoutes(
     });
     if ('missing' in result) return notFound(reply);
     if ('badTarget' in result) return invalid(reply, 'into');
-    return { release: await fullRelease(ws, into) };
+    return { release: await fullRelease(request, into) };
   });
 
   /** Deletes a release and closes the gap it leaves in the track's order. */
@@ -829,7 +841,7 @@ export function registerReleaseRoutes(
       return { done: true as const };
     });
     if ('missing' in result) return notFound(reply);
-    return { release: await fullRelease(ws, target.releaseId) };
+    return { release: await fullRelease(request, target.releaseId) };
   });
 
   // An approver's own decision; a later one replaces it until the release ships.
@@ -867,7 +879,7 @@ export function registerReleaseRoutes(
     if ('missing' in result) return notFound(reply);
     if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
     if ('notApprover' in result) return reply.code(403).send({ error: 'not_an_approver' });
-    return { release: await fullRelease(ws, releaseId) };
+    return { release: await fullRelease(request, releaseId) };
   });
 
   // Areas (CORE-015)

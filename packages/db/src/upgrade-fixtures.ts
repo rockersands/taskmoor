@@ -604,6 +604,36 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         WHERE key = 'SEED'`.execute(db);
     },
   },
+  '0029_visibility_levels': {
+    tables: {
+      visibility_policy: "name = 'Seed visibility' AND default_level_id IS NOT NULL",
+      visibility_level: "name = 'Internal' AND position = 0",
+      visibility_member: "grantee = 'user' AND user_id IS NOT NULL",
+      track: "key = 'SEED' AND visibility_policy_id IS NOT NULL",
+      ticket: "summary = 'Seed ticket' AND visibility_level_id IS NOT NULL",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO visibility_policy (workspace_id, name) VALUES (1, 'Seed visibility')`.execute(
+        db,
+      );
+      await sql`INSERT INTO visibility_level (workspace_id, policy_id, name, position)
+        SELECT 1, id, 'Internal', 0 FROM visibility_policy WHERE name = 'Seed visibility'`.execute(
+        db,
+      );
+      await sql`UPDATE visibility_policy SET default_level_id =
+          (SELECT id FROM visibility_level WHERE name = 'Internal')
+        WHERE name = 'Seed visibility'`.execute(db);
+      await sql`INSERT INTO visibility_member (workspace_id, level_id, grantee, user_id)
+        SELECT 1, l.id, 'user', u.id FROM visibility_level l, app_user u
+         WHERE l.name = 'Internal' AND u.email = 'seed@example.com'`.execute(db);
+      await sql`UPDATE track SET visibility_policy_id =
+          (SELECT id FROM visibility_policy WHERE name = 'Seed visibility')
+        WHERE key = 'SEED'`.execute(db);
+      await sql`UPDATE ticket SET visibility_level_id =
+          (SELECT id FROM visibility_level WHERE name = 'Internal')
+        WHERE summary = 'Seed ticket'`.execute(db);
+    },
+  },
   '0031_attachments': {
     tables: {
       attachment_setting: 'max_file_size = 3221225472',
