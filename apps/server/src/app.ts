@@ -23,6 +23,7 @@ import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
 import { registerDirectoryRoutes } from './routes/directories';
+import { registerEmailRoutes } from './routes/email';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
 import { registerLayoutRoutes } from './routes/layouts';
@@ -94,6 +95,8 @@ export interface AppDeps {
   startedAt?: Date;
   /** Where attachments are stored (ADR-040); without one, uploads answer 503. */
   attachments?: AttachmentStores;
+  /** Whether an SMTP server is configured for email notifications (M1-057). */
+  smtpConfigured?: boolean;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -193,6 +196,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerLayoutRoutes(app, db, fieldCatalogs);
     registerVisibilityRoutes(app, db);
     registerNotificationRoutes(app, db);
+    await registerEmailRoutes(app, db, { smtpConfigured: deps.smtpConfigured ?? false });
     registerSearchRoutes(app, db, fieldCatalogs);
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);

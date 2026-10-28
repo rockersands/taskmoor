@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fakeNotificationsClient } from '../notifications/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakePersonalTokensClient } from '../tokens/fixtures';
 import { AccountPage } from './AccountPage';
@@ -8,7 +9,11 @@ import { fakeAccountClient, SIGNED_IN, sampleSessions } from './fixtures';
 const meta = {
   title: 'Account/AccountPage',
   component: AccountPage,
-  args: { client: fakeAccountClient(), tokens: fakePersonalTokensClient() },
+  args: {
+    client: fakeAccountClient(),
+    tokens: fakePersonalTokensClient(),
+    notifications: fakeNotificationsClient(),
+  },
   decorators: [
     (Story) => (
       <SessionProvider session={SIGNED_IN}>

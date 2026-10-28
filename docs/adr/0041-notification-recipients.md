@@ -54,3 +54,31 @@ render content with the recipient's own permissions. Comments (M1-018) add `tick
 with the comment's restriction checked like a restricted time entry. A policy with many group
 or role recipients costs one authorization check per person per event; if that becomes slow,
 the checks can be batched through the list predicate (`visibleTicketIds`).
+
+## Implementation (M1-057): email
+
+- **Delivery** (`apps/server/src/email/deliver.ts`) runs in the worker every 30 seconds when
+  `TASKMOOR_SMTP_URL` is set (nodemailer; the password only from the environment). For each
+  person with unsent email notifications it locks those rows (SKIP LOCKED, so workers never send
+  one twice), then: instant recipients get one email per ticket once the ticket's oldest unsent
+  notification is as old as the workspace's batch window (two minutes by default), carrying
+  every change since; daily and weekly recipients get one digest at the workspace's digest hour
+  in their own time zone (weekly on Mondays), at most once a day or a week; quiet hours hold
+  email until they end; `off` drops it (and the subscriber writes none). Who may see each ticket
+  is checked again before the transaction (the rule that a transaction never waits for a second
+  pooled connection); notifications about tickets now hidden are dropped. A failed send is
+  recorded in `email_delivery` and retried on the next run.
+- **Content** (`render.ts`) is text and HTML in the recipient's locale (English so far), with
+  the ticket's current key and summary, who did what, and the names of changed fields, never
+  their values; every email links to the ticket, to `#/account/notifications` and to an
+  unsubscribe page.
+- **Unsubscribe** links carry a random token stored as a SHA-256 hash (`email_unsubscribe`): an
+  instant email about one kind of event turns that event's email off, a digest or mixed email
+  turns all email off. `GET /api/v1/unsubscribe?token=` changes nothing (mail scanners open
+  links); `POST` with the token applies it, from the page or as the mail client's one-click
+  request (`List-Unsubscribe`, `List-Unsubscribe-Post`, RFC 8058). That route alone accepts a
+  form-encoded body, so the rest of the API stays JSON-only. The token sits in the URL, as RFC
+  8058 requires; it can only turn email off.
+- **Tests:** a real SMTP conversation with a test server: five edits make one email, twenty
+  updates make one digest, quiet hours, one-click unsubscribe, visibility rechecked at send time,
+  a failed send retried, 300 emails in one run with no cap.

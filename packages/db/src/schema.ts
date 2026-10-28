@@ -632,6 +632,11 @@ export interface UserPreferenceTable {
   auto_follow: Generated<boolean>;
   /** Be notified of one's own changes (M1-056; off by default). */
   notify_own_changes: Generated<boolean>;
+  /** Email at once, as a daily or weekly digest, or none (M1-057). */
+  email_delivery: ColumnType<EmailDelivery, EmailDelivery | undefined, EmailDelivery>;
+  /** Quiet hours in the person's time zone, both or neither; email waits until they end. */
+  quiet_start: number | null;
+  quiet_end: number | null;
   updated_at: DefaultTimestamp;
 }
 
@@ -968,6 +973,44 @@ export interface NotificationTable {
   created_at: DefaultTimestamp;
   read_at: Timestamp | null;
   delivered_at: Timestamp | null;
+  /** The email that carried it (M1-057). */
+  email_delivery_id: string | null;
+}
+
+export type EmailDelivery = 'instant' | 'daily' | 'weekly' | 'off';
+export type EmailKind = Exclude<EmailDelivery, 'off'>;
+
+/** A workspace's email batching window and digest hour (M1-057). */
+export interface EmailSettingTable {
+  workspace_id: number;
+  batch_window_seconds: Generated<number>;
+  digest_hour: Generated<number>;
+  updated_at: DefaultTimestamp;
+}
+
+/** One email sent (or that failed), with how many notifications it carried. */
+export interface EmailDeliveryTable {
+  id: Generated<string>;
+  workspace_id: number;
+  user_id: number;
+  kind: EmailKind;
+  ticket_id: number | null;
+  notification_count: number;
+  subject: string;
+  message_id: string | null;
+  error: string | null;
+  sent_at: DefaultTimestamp;
+}
+
+/** A one-click unsubscribe link: the hash of its token, and what it turns off. */
+export interface EmailUnsubscribeTable {
+  token_hash: Buffer;
+  workspace_id: number;
+  user_id: number;
+  /** Null: every email. */
+  event: string | null;
+  created_at: DefaultTimestamp;
+  used_at: Timestamp | null;
 }
 
 /** Whether a field is required or hidden, and its help text, for a ticket type or every type. */
@@ -1486,6 +1529,9 @@ export interface Database {
   notification_rule: NotificationRuleTable;
   notification_preference: NotificationPreferenceTable;
   notification: NotificationTable;
+  email_setting: EmailSettingTable;
+  email_delivery: EmailDeliveryTable;
+  email_unsubscribe: EmailUnsubscribeTable;
   v_text: TextValueTable;
   v_number: NumberValueTable;
   v_date: DateValueTable;

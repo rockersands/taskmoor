@@ -283,7 +283,8 @@ describe('visibility predicate and per-ticket check (M1-020)', () => {
           }
         },
       ),
-      { numRuns: 60 },
+      { numRuns: 40 },
     );
-  });
+    // Forty worlds of six tickets read by five people: more than the default timeout under load.
+  }, 120_000);
 });

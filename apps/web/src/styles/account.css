@@ -205,3 +205,98 @@
     height: 28px;
   }
 }
+
+/* Notification settings (M1-057): email delivery, quiet hours and a table of events by channel. */
+.notification-delivery {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.notification-delivery legend {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.notification-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.notification-choice > span {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.notification-hours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-left: var(--space-5);
+}
+
+.notification-hours label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.notification-events {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.notification-events caption {
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  text-align: left;
+}
+
+.notification-events th,
+.notification-events td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.notification-events td {
+  width: 5rem;
+  text-align: center;
+}
+
+.notification-events thead th:not(:first-child) {
+  text-align: center;
+}
+
+.notification-events tbody th {
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (pointer: coarse) {
+  .notification-choice,
+  .notification-hours label {
+    min-height: var(--hit-target-touch);
+    align-items: center;
+  }
+
+  .notification-choice input,
+  .notification-events input {
+    width: 28px;
+    height: 28px;
+  }
+
+  .notification-hours select {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* The cell is the target: a tap anywhere in it reaches the checkbox. */
+  .notification-events td {
+    height: var(--hit-target-touch);
+    padding: 0;
+  }
+}

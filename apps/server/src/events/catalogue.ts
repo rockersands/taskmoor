@@ -522,6 +522,8 @@ export const EVENT_TYPES = {
     payload: z.object({ changes, trackIds: z.array(id) }),
   },
   'layout_set.deleted': { subject: 'layout_set', payload: z.object({ name: z.string() }) },
+  // Email notifications (M1-057): the batch window and digest hour.
+  'email_settings.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // Notification policies (M1-056); `trackIds` names every track a save reaches.
   'notification_policy.created': {
     subject: 'notification_policy',

@@ -162,6 +162,24 @@ Files already on disk stay readable after a switch to S3 while the data volume i
 Site administrators set the largest file allowed (1 GB by default, no upper limit) with
 `PUT /api/v1/admin/attachment-settings`; there is no storage quota.
 
+## Email notifications
+
+Notification emails go through an SMTP server you name with these variables; the password comes
+from the environment or a secrets manager, never from a file in the kit. Without
+`TASKMOOR_SMTP_URL` notifications still reach the inbox and email waits unsent.
+
+| Variable | Meaning |
+|---|---|
+| `TASKMOOR_SMTP_URL` | `smtp://host:587` (STARTTLS when offered) or `smtps://host:465`; no credentials in it |
+| `TASKMOOR_SMTP_USER`, `TASKMOOR_SMTP_PASSWORD` | The sign-in, both or neither |
+| `TASKMOOR_SMTP_FROM` | The From address, for example `Taskmoor <taskmoor@example.com>` |
+
+`PUBLIC_URL` must be set for the links in emails. Changes to one ticket within two minutes
+arrive in one email (site administrators set the window and the digest hour with
+`PUT /api/v1/admin/email-settings`); people choose instant email, daily or weekly digests, quiet
+hours and events on their Account page. Every email carries a one-click unsubscribe link
+(RFC 8058). There is no daily sending cap; your SMTP provider may have one.
+
 ## Sign-in security
 
 - **Password pepper.** Every password hash also depends on a secret key kept outside the

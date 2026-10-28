@@ -267,7 +267,7 @@ export async function notify(db: Db, authorizer: Authorizer, event: DomainEvent)
   const people = await db
     .selectFrom('app_user as u')
     .leftJoin('user_preference as p', 'p.user_id', 'u.id')
-    .select(['u.id', 'p.notify_own_changes'])
+    .select(['u.id', 'p.notify_own_changes', 'p.email_delivery'])
     .where('u.id', 'in', [...candidates])
     .where('u.workspace_id', '=', ws)
     .where('u.deactivated_at', 'is', null)
@@ -281,6 +281,8 @@ export async function notify(db: Db, authorizer: Authorizer, event: DomainEvent)
           .where('id', '=', occurrence.timeEntryId)
           .executeTakeFirst();
   const recipients: number[] = [];
+  // People who turned email off get none written (M1-057).
+  const noEmail = new Set(people.filter((p) => p.email_delivery === 'off').map((p) => p.id));
   for (const person of people) {
     if (person.id === event.actorId && !person.notify_own_changes) continue;
     // Nobody hears of a ticket they cannot see (NTF-001 (3)).
@@ -306,6 +308,7 @@ export async function notify(db: Db, authorizer: Authorizer, event: DomainEvent)
     .where('enabled', '=', false)
     .execute();
   const muted = new Set(off.map((p) => `${p.user_id}:${p.channel}`));
+  for (const userId of noEmail) muted.add(`${userId}:email`);
   const payload = JSON.stringify({
     key: ticket.key,
     summary: ticket.summary,

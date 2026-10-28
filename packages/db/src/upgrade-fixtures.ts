@@ -689,6 +689,37 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           now() + interval '1 day')`.execute(db);
     },
   },
+  '0032_email': {
+    tables: {
+      email_setting: 'batch_window_seconds = 300 AND digest_hour = 7',
+      user_preference: "email_delivery = 'daily' AND quiet_start = 22 AND quiet_end = 7",
+      email_delivery: "kind = 'daily' AND notification_count = 1 AND subject = 'Seed digest'",
+      notification: 'email_delivery_id IS NOT NULL',
+      email_unsubscribe: "event = 'ticket_updated' AND used_at IS NULL",
+    },
+    seed: async (db) => {
+      await sql`UPDATE email_setting SET batch_window_seconds = 300, digest_hour = 7
+        WHERE workspace_id = 1`.execute(db);
+      await sql`INSERT INTO user_preference (user_id, workspace_id, email_delivery, quiet_start,
+          quiet_end)
+        SELECT id, 1, 'daily', 22, 7 FROM app_user WHERE email = 'seed@example.com'
+        ON CONFLICT (user_id) DO UPDATE
+          SET email_delivery = 'daily', quiet_start = 22, quiet_end = 7`.execute(db);
+      await sql`INSERT INTO email_delivery (workspace_id, user_id, kind, notification_count,
+          subject, message_id)
+        SELECT 1, id, 'daily', 1, 'Seed digest', '<seed@example.com>' FROM app_user
+         WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO notification (workspace_id, user_id, channel, event, ticket_id,
+          domain_event_id, payload, delivered_at, email_delivery_id)
+        SELECT 1, u.id, 'email', 'ticket_updated', k.id, 2, '{"key": "SEED-1"}'::jsonb, now(),
+               (SELECT id FROM email_delivery WHERE subject = 'Seed digest')
+          FROM app_user u, ticket k
+         WHERE u.email = 'seed@example.com' AND k.summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO email_unsubscribe (token_hash, workspace_id, user_id, event)
+        SELECT sha256('seed-token'::bytea), 1, id, 'ticket_updated' FROM app_user
+         WHERE email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

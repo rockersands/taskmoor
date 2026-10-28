@@ -246,6 +246,49 @@
       "CREATE INDEX domain_event_unpublished_idx ON public.domain_event USING btree (id) WHERE (published_at IS NULL)"
     ]
   },
+  "email_delivery": {
+    "columns": [
+      "id bigint not null default nextval('email_delivery_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "kind text not null",
+      "ticket_id integer",
+      "notification_count integer not null",
+      "subject text not null",
+      "message_id text",
+      "error text",
+      "sent_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX email_delivery_pkey ON public.email_delivery USING btree (id)",
+      "CREATE INDEX email_delivery_user_idx ON public.email_delivery USING btree (user_id, sent_at DESC)"
+    ]
+  },
+  "email_setting": {
+    "columns": [
+      "workspace_id integer not null",
+      "batch_window_seconds integer not null default 120",
+      "digest_hour smallint not null default 8",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX email_setting_pkey ON public.email_setting USING btree (workspace_id)"
+    ]
+  },
+  "email_unsubscribe": {
+    "columns": [
+      "token_hash bytea not null",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "event text",
+      "created_at timestamp with time zone not null default now()",
+      "used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX email_unsubscribe_created_idx ON public.email_unsubscribe USING btree (created_at)",
+      "CREATE UNIQUE INDEX email_unsubscribe_pkey ON public.email_unsubscribe USING btree (token_hash)"
+    ]
+  },
   "field": {
     "columns": [
       "id integer not null default nextval('field_id_seq'::regclass)",
@@ -672,7 +715,8 @@
       "payload jsonb not null default '{}'::jsonb",
       "created_at timestamp with time zone not null default now()",
       "read_at timestamp with time zone",
-      "delivered_at timestamp with time zone"
+      "delivered_at timestamp with time zone",
+      "email_delivery_id bigint"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX notification_event_recipient_idx ON public.notification USING btree (domain_event_id, user_id, channel)",
@@ -1511,7 +1555,10 @@
       "workspace_id integer not null",
       "auto_follow boolean not null default true",
       "updated_at timestamp with time zone not null default now()",
-      "notify_own_changes boolean not null default false"
+      "notify_own_changes boolean not null default false",
+      "email_delivery text not null default 'instant'::text",
+      "quiet_start smallint",
+      "quiet_end smallint"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX user_preference_pkey ON public.user_preference USING btree (user_id)"

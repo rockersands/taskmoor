@@ -18,6 +18,13 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-057 email notifications** (migration 0032; ADR-041 "Implementation (M1-057)";
+  deploy/README "Email notifications"). `apps/server/src/email/` (`deliver.ts` mailer,
+  `render.ts`, `transport.ts`); the worker runs it every 30 s when `TASKMOOR_SMTP_URL` is set.
+  New dependencies: `nodemailer` 10.1.0, and `smtp-server` 3.19.21 for tests (both MIT-0,
+  versions over two weeks old). Web: `apps/web/src/notifications/` (Account page section,
+  `#/unsubscribe`). **Not run here:** a real mail provider; set `TASKMOOR_SMTP_*` in an install
+  to try it. Email strings are English only (server-side table in `render.ts`).
 - **M1-056 notification rules** (migration 0030; ADR-041). `apps/server/src/notifications/`:
   `model.ts` (events, recipient types, channels) and `subscriber.ts` (the bus subscriber that
   writes `notification` rows). Routes `/api/v1/notification-policies`,

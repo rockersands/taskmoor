@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { type NotificationsClient, notificationsClient } from '../notifications/client';
+import { NotificationsSection } from '../notifications/NotificationsSection';
 import { useSession } from '../session/SessionProvider';
 import { type PersonalTokensClient, personalTokensClient } from '../tokens/client';
 import { TokensSection } from '../tokens/TokensSection';
@@ -15,19 +17,30 @@ export interface AccountPageProps {
   client?: AccountClient;
   /** The person's API tokens; stories and tests pass their own. */
   tokens?: PersonalTokensClient;
+  /** Notification settings (M1-057); stories and tests pass their own. */
+  notifications?: NotificationsClient;
 }
 
 /**
- * The signed-in person's own settings (#/account): profile (IAM-008), password and two-factor
- * authentication (IAM-001, M1-084), sessions (IAM-004) and API tokens (IAM-007). The route
- * sits behind RequireSession.
+ * The signed-in person's own settings (#/account): profile (IAM-008), appearance, notifications
+ * (NTF-004), password and two-factor authentication (IAM-001, M1-084), sessions (IAM-004) and
+ * API tokens (IAM-007). The route sits behind RequireSession; #/account/notifications, where
+ * notification emails link, opens it at the notification settings.
  */
 export function AccountPage({
   client = accountClient,
   tokens = personalTokensClient,
+  notifications = notificationsClient,
 }: AccountPageProps) {
   const t = useT();
   const { session } = useSession();
+  const signedIn = session.status === 'signed-in';
+  useEffect(() => {
+    if (!signedIn || !window.location.hash.startsWith('#/account/notifications')) return;
+    const section = document.getElementById('notifications');
+    section?.scrollIntoView?.();
+    section?.querySelector<HTMLElement>('h2')?.focus();
+  }, [signedIn]);
   // A password change signs other sessions out; a new key re-reads the list.
   const [sessionsVersion, setSessionsVersion] = useState(0);
   if (session.status !== 'signed-in') return null;
@@ -40,6 +53,7 @@ export function AccountPage({
       <div className="account-sections">
         <ProfileSection user={user} client={client} />
         <AppearanceSection user={user} client={client} />
+        <NotificationsSection client={notifications} />
         <PasswordSection
           email={user.email}
           client={client}

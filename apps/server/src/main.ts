@@ -5,8 +5,11 @@ import { scheduleSweep } from './attachments/cleanup';
 import { registerAttachmentJobs } from './attachments/jobs';
 import { attachmentStores } from './attachments/stores';
 import { registerAuditJobs, scheduleRetention } from './audit/retention';
+import { Authorizer } from './authz/authorizer';
 import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/schedule';
 import { loadConfig } from './config';
+import { deliverEmail } from './email/deliver';
+import { smtpTransport } from './email/transport';
 import { EventBus, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
 import { registerSubscribers } from './events/subscribers';
@@ -97,6 +100,7 @@ const app = await buildApp({
   ...(config.dataDir ? { dataDir: config.dataDir } : {}),
   startedAt,
   attachments,
+  smtpConfigured: config.smtp !== undefined,
 });
 const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
 
@@ -153,6 +157,23 @@ if (config.roles.includes('worker') && db) {
     );
   void scheduleHousekeeping();
   timers.push(setInterval(scheduleHousekeeping, 5 * 60 * 1000));
+  // Email notifications (M1-057): every 30 seconds, what is due goes out. Workers lock each
+  // person's notifications while sending, so several can run.
+  if (config.smtp) {
+    const transport = smtpTransport(config.smtp);
+    const mailer = { transport, from: config.smtp.from, publicUrl: config.publicUrl };
+    const authorizer = new Authorizer(db);
+    const sendEmail = () =>
+      deliverEmail(db, authorizer, mailer)
+        .then((run) => {
+          if (run.sent > 0 || run.failed > 0) app.log.info({ run }, 'notification emails');
+        })
+        .catch((error) => app.log.warn({ error }, 'notification emails not sent'));
+    void sendEmail();
+    timers.push(setInterval(sendEmail, 30 * 1000));
+  } else {
+    app.log.info('email notifications wait unsent: set TASKMOOR_SMTP_URL');
+  }
   const events = startWorker({
     bus,
     runner,

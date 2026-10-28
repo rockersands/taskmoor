@@ -46,6 +46,9 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'GET /api/v1/auth/saml/:id/start',
   'POST /api/v1/auth/saml/:id/acs',
   'GET /api/v1/auth/saml/continue',
+  // A one-click unsubscribe link from a notification email (M1-057): its token is the proof.
+  'GET /api/v1/unsubscribe',
+  'POST /api/v1/unsubscribe',
 ]);
 
 export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([

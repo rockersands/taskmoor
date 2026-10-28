@@ -123,6 +123,7 @@ export const AUDITED_EVENTS = [
   'layout_set.created',
   'layout_set.updated',
   'layout_set.deleted',
+  'email_settings.updated',
   'notification_policy.created',
   'notification_policy.updated',
   'notification_policy.deleted',

@@ -84,6 +84,19 @@ const envSchema = z.object({
   TASKMOOR_S3_URL_TTL: z.coerce.number().int().min(10).max(3600).default(300),
   /** ClamAV's daemon for the scan hook: host:port, tcp://host:port or unix:/path. */
   TASKMOOR_SCAN_CLAMD: z.string().min(1).optional(),
+  /**
+   * Email notifications (M1-057): the SMTP server as smtp://host:port (STARTTLS when offered)
+   * or smtps://host:port (TLS from the start). Unset, notifications wait for it unsent.
+   */
+  TASKMOOR_SMTP_URL: z
+    .string()
+    .regex(/^smtps?:\/\/[^/@]+$/, 'must be smtp://host:port or smtps://host:port, no credentials')
+    .optional(),
+  /** The sign-in for the SMTP server; the password only ever comes from the environment. */
+  TASKMOOR_SMTP_USER: z.string().min(1).optional(),
+  TASKMOOR_SMTP_PASSWORD: z.string().min(1).optional(),
+  /** The From address of notification emails. */
+  TASKMOOR_SMTP_FROM: z.string().min(3).optional(),
 });
 
 export interface ServerConfig {
@@ -113,6 +126,15 @@ export interface ServerConfig {
   shutdownDrainMs: number;
   /** Attachments (M1-016, ADR-040). */
   storage: StorageConfig;
+  /** Email notifications (M1-057); undefined when no SMTP server is configured. */
+  smtp: SmtpConfig | undefined;
+}
+
+export interface SmtpConfig {
+  url: string;
+  user: string | undefined;
+  password: string | undefined;
+  from: string;
 }
 
 export interface StorageConfig {
@@ -164,6 +186,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   if (Boolean(e.TASKMOOR_S3_ACCESS_KEY_ID) !== Boolean(e.TASKMOOR_S3_SECRET_ACCESS_KEY)) {
     throw new Error(
       'Invalid server configuration:\n- TASKMOOR_S3_ACCESS_KEY_ID and TASKMOOR_S3_SECRET_ACCESS_KEY go together',
+    );
+  }
+  if (Boolean(e.TASKMOOR_SMTP_USER) !== Boolean(e.TASKMOOR_SMTP_PASSWORD)) {
+    throw new Error(
+      'Invalid server configuration:\n- TASKMOOR_SMTP_USER and TASKMOOR_SMTP_PASSWORD go together',
     );
   }
   if (e.TASKMOOR_STORAGE === 's3' && !e.TASKMOOR_S3_BUCKET) {
@@ -222,5 +249,15 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       urlTtl: e.TASKMOOR_S3_URL_TTL,
       scanClamd: e.TASKMOOR_SCAN_CLAMD,
     },
+    smtp: e.TASKMOOR_SMTP_URL
+      ? {
+          url: e.TASKMOOR_SMTP_URL,
+          user: e.TASKMOOR_SMTP_USER,
+          password: e.TASKMOOR_SMTP_PASSWORD,
+          from:
+            e.TASKMOOR_SMTP_FROM ??
+            `Taskmoor <taskmoor@${new URL(e.PUBLIC_URL ?? 'http://localhost').hostname}>`,
+        }
+      : undefined,
   };
 }

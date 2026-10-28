@@ -10,6 +10,7 @@ import { buildApp } from '../app';
 import { processAttachment } from '../attachments/jobs';
 import { type AttachmentStores, storesOf } from '../attachments/stores';
 import { SESSION_COOKIE } from '../auth';
+import { unsubscribeHash } from '../email/deliver';
 import { queueRun, runSync } from '../ldap/sync';
 import { issueSetupToken } from '../setup';
 import { FakeIdp } from '../testing/fake-idp';
@@ -1575,6 +1576,43 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/admin/email-settings',
+      expect: 'email_settings.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/email-settings',
+          payload: { batchWindowSeconds: 300, digestHour: 7 },
+        }),
+    },
+    {
+      route: 'POST /api/v1/unsubscribe',
+      expect: 'user.preferences_updated',
+      prepare: async () => {
+        const person = await database.db
+          .selectFrom('app_user')
+          .select('id')
+          .orderBy('id')
+          .executeTakeFirstOrThrow();
+        await database.db
+          .insertInto('email_unsubscribe')
+          .values({
+            token_hash: unsubscribeHash('contract-unsubscribe-token'),
+            workspace_id: 1,
+            user_id: person.id,
+            event: 'ticket_moved',
+          })
+          .execute();
+      },
+      run: () =>
+        call('', {
+          method: 'POST',
+          url: '/api/v1/unsubscribe?token=contract-unsubscribe-token',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          payload: 'List-Unsubscribe=One-Click',
+        }),
+    },
+    {
       route: 'POST /api/v1/notification-policies',
       expect: 'notification_policy.created',
       run: async () => {
@@ -2401,6 +2439,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     ).toEqual([]);
   });
 
+  // Every mutating route in one run, a few hundred requests: more than the default timeout.
   it('[AUT-010] emits exactly one valid event per successful mutation', async () => {
     const produced = new Set<EventType>();
     for (const scenario of scenarios) {
@@ -2436,7 +2475,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       (t) => !produced.has(t) && !JOB_EVENTS.includes(t) && !SCAN_JOB_EVENTS.includes(t),
     );
     expect(missing, 'event types no route produces').toEqual([]);
-  });
+  }, 120_000);
 
   it('[IAM-005] a directory sync emits one valid event per change it makes, with no actor', async () => {
     const people = [1, 2].map((n) =>

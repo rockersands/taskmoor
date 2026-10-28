@@ -8,6 +8,7 @@ import { TicketAttachmentsPage } from './attachments/TicketAttachmentsPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
+import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
 import { RequireSession } from './session/RequireSession';
 import { type Session, SessionProvider, useSession } from './session/SessionProvider';
@@ -85,6 +86,7 @@ const ACCOUNT = '#/account';
 const TICKET = '#/tickets';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
+const UNSUBSCRIBE = '#/unsubscribe';
 const HOME = '#/home';
 
 /** A path segment of the hash, decoded; as it is when it is not valid percent-encoding. */
@@ -214,6 +216,7 @@ function Pages() {
   // First-run setup and password links stand alone: no shell before someone can sign in.
   if (hash.startsWith('#/setup')) return <SetupPage onDone={goHome} />;
   if (isRoute(hash, PASSWORD_LINK)) return <PasswordLinkPage onDone={goHome} />;
+  if (isRoute(hash, UNSUBSCRIBE)) return <UnsubscribePage />;
 
   // Which navigation entry is highlighted, what the main area shows, and whether it needs a
   // session. Account is personal settings, so Settings stays highlighted there.

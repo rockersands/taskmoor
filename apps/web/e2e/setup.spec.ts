@@ -1330,3 +1330,36 @@ test('[WF-002] the workflow editor works on a small phone without sideways scrol
   expect(await overflow()).toBeLessThanOrEqual(0);
   await context.close();
 });
+
+test('[NTF-004] a person chooses a daily digest and turns one email off from the notification settings', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  // Where notification emails link to.
+  await page.goto('./#/account/notifications');
+  const section = page.getByRole('region', { name: 'Notifications' });
+  await expect(section.getByRole('radio', { name: /At once/ })).toBeChecked();
+  await section.getByRole('radio', { name: /Daily digest/ }).check();
+  await expect(section.getByText('Notification settings saved.')).toBeVisible();
+  await section.getByRole('checkbox', { name: 'Email: Ticket moved to another track' }).uncheck();
+  await expect(
+    section.getByRole('checkbox', { name: 'Email: Ticket moved to another track' }),
+  ).not.toBeChecked();
+  // Saved with the account: still so after a reload.
+  await page.reload();
+  await expect(section.getByRole('radio', { name: /Daily digest/ })).toBeChecked();
+  await expect(
+    section.getByRole('checkbox', { name: 'Email: Ticket moved to another track' }),
+  ).not.toBeChecked();
+  await expect(
+    section.getByRole('checkbox', { name: 'Inbox: Ticket moved to another track' }),
+  ).toBeChecked();
+  // Back to the defaults for the tests after this one.
+  await section.getByRole('radio', { name: /At once/ }).check();
+  await section.getByRole('checkbox', { name: 'Email: Ticket moved to another track' }).check();
+  await expect(section.getByText('Notification settings saved.')).toBeVisible();
+  // An unknown unsubscribe link says so, without a session.
+  await page.request.delete('/api/v1/session');
+  await page.goto('./#/unsubscribe?token=no-such-token-0123456789');
+  await expect(page.getByText(/This unsubscribe link is not valid/)).toBeVisible();
+});

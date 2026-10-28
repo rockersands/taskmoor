@@ -2,15 +2,21 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
+import { defaultPreferences } from '../notifications/fixtures';
 import { type Handler, noContent, stubBackend as stubAny } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { personalTokens } from '../tokens/fixtures';
 import { KALO, SIGNED_IN, sampleSessions, TWO_FACTOR_OFF } from './fixtures';
 
-/** The page's backend: two-factor is off unless a test says otherwise. */
+/** The page's backend: two-factor is off and notifications are on unless a test says otherwise. */
 const stubBackend = (handlers: Record<string, Handler>) =>
-  stubAny({ 'GET /account/two-factor': () => jsonResponse(200, TWO_FACTOR_OFF), ...handlers });
+  stubAny({
+    'GET /account/two-factor': () => jsonResponse(200, TWO_FACTOR_OFF),
+    'GET /account/notification-preferences': () =>
+      jsonResponse(200, { preferences: defaultPreferences() }),
+    ...handlers,
+  });
 const sessionsAnswer =
   (sessions = sampleSessions()) =>
   () =>

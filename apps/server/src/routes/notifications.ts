@@ -69,10 +69,15 @@ const updateBody = z
   .strict();
 const listQuery = z.object({ trackId: id.optional() }).strict();
 const channelChoice = z.object({ email: z.boolean(), inbox: z.boolean() }).partial().strict();
+const hour = z.number().int().min(0).max(23);
 const preferencesBody = z
   .object({
     ownChanges: z.boolean(),
     events: z.record(eventName, channelChoice),
+    /** Email at once, as a daily or weekly digest, or none (M1-057). */
+    emailDelivery: z.enum(['instant', 'daily', 'weekly', 'off']),
+    /** Local hours email waits through; null for none. */
+    quietHours: z.object({ start: hour, end: hour }).strict().nullable(),
   })
   .partial()
   .strict();
@@ -427,7 +432,7 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
         .execute(),
       d
         .selectFrom('user_preference')
-        .select('notify_own_changes')
+        .select(['notify_own_changes', 'email_delivery', 'quiet_start', 'quiet_end'])
         .where('user_id', '=', userId)
         .executeTakeFirst(),
     ]);
@@ -436,7 +441,15 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
       events[event] ??= Object.fromEntries(CHANNELS.map((c) => [c, true]));
     }
     for (const r of rows) (events[r.event] as Record<string, boolean>)[r.channel] = r.enabled;
-    return { ownChanges: own?.notify_own_changes ?? false, events };
+    return {
+      ownChanges: own?.notify_own_changes ?? false,
+      emailDelivery: own?.email_delivery ?? 'instant',
+      quietHours:
+        own?.quiet_start == null || own.quiet_end == null
+          ? null
+          : { start: own.quiet_start, end: own.quiet_end },
+      events,
+    };
   }
 
   app.get('/api/v1/account/notification-preferences', async (request, reply) => {
@@ -456,16 +469,34 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
       await trx.selectFrom('app_user').select('id').where('id', '=', user.id).forUpdate().execute();
       const was = await preferencesOf(trx, user.id);
       const changes: Record<string, { from: unknown; to: unknown }> = {};
+      // The settings kept on the person's preference row.
+      const row: {
+        notify_own_changes?: boolean;
+        email_delivery?: 'instant' | 'daily' | 'weekly' | 'off';
+        quiet_start?: number | null;
+        quiet_end?: number | null;
+      } = {};
       if (body.ownChanges !== undefined && body.ownChanges !== was.ownChanges) {
         changes.ownChanges = { from: was.ownChanges, to: body.ownChanges };
+        row.notify_own_changes = body.ownChanges;
+      }
+      if (body.emailDelivery !== undefined && body.emailDelivery !== was.emailDelivery) {
+        changes.emailDelivery = { from: was.emailDelivery, to: body.emailDelivery };
+        row.email_delivery = body.emailDelivery;
+      }
+      if (
+        body.quietHours !== undefined &&
+        JSON.stringify(body.quietHours) !== JSON.stringify(was.quietHours)
+      ) {
+        changes.quietHours = { from: was.quietHours, to: body.quietHours };
+        row.quiet_start = body.quietHours?.start ?? null;
+        row.quiet_end = body.quietHours?.end ?? null;
+      }
+      if (Object.keys(row).length > 0) {
         await trx
           .insertInto('user_preference')
-          .values({ user_id: user.id, workspace_id: ws, notify_own_changes: body.ownChanges })
-          .onConflict((oc) =>
-            oc
-              .column('user_id')
-              .doUpdateSet({ notify_own_changes: body.ownChanges, updated_at: new Date() }),
-          )
+          .values({ user_id: user.id, workspace_id: ws, ...row })
+          .onConflict((oc) => oc.column('user_id').doUpdateSet({ ...row, updated_at: new Date() }))
           .execute();
       }
       for (const [event, choice] of Object.entries(body.events ?? {})) {
