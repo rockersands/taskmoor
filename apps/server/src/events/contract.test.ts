@@ -1028,6 +1028,153 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/link-types',
+      expect: 'link_type.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/link-types',
+          payload: { name: 'Causes', outward: 'causes', inward: 'is caused by' },
+        });
+        state.linkType = res.json().linkType?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/link-types/:id',
+      expect: 'link_type.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/link-types/${state.linkType}`,
+          payload: { inward: 'is the result of' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/links',
+      expect: 'ticket.linked',
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/links`,
+          payload: { linkTypeId: state.linkType, ticket: state.secondTicket },
+        });
+        state.link = res.json().link?.id;
+        return res;
+      },
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/links/:linkId',
+      expect: 'ticket.unlinked',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/links/${state.link}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/link-types/:id',
+      expect: 'link_type.deleted',
+      // A link of the type moves to the replacement: still one event.
+      prepare: async () => {
+        await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/links`,
+          payload: { linkTypeId: state.linkType, ticket: state.secondTicket },
+        });
+        const types = await admin({ method: 'GET', url: '/api/v1/link-types' });
+        state.relates = types
+          .json()
+          .linkTypes.find((t: { name: string }) => t.name === 'Relates').id;
+      },
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/link-types/${state.linkType}?replacementId=${state.relates}`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/web-links',
+      expect: 'ticket.web_link_added',
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/web-links`,
+          payload: { url: 'https://example.com/pr/1', title: 'Pull request 1', globalId: 'pr-1' },
+        });
+        state.webLink = res.json().webLink?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/tickets/:id/web-links/:linkId',
+      expect: 'ticket.web_link_updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}/web-links/${state.webLink}`,
+          payload: { title: 'Pull request 1 (merged)' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/web-links/:linkId',
+      expect: 'ticket.web_link_removed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/web-links/${state.webLink}`,
+        }),
+    },
+    {
+      // Bo follows the ticket already: creating and editing it did that.
+      route: 'DELETE /api/v1/tickets/:id/followers/:userId',
+      expect: 'ticket.unfollowed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/followers/me`,
+        }),
+    },
+    {
+      route: 'PUT /api/v1/tickets/:id/followers/:userId',
+      expect: 'ticket.followed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/tickets/${state.ticket}/followers/${state.bo}`,
+        }),
+    },
+    {
+      route: 'PUT /api/v1/tickets/:id/votes',
+      expect: 'ticket.voted',
+      run: () =>
+        call(String(state.bo1b), { method: 'PUT', url: `/api/v1/tickets/${state.ticket}/votes` }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/votes',
+      expect: 'ticket.unvoted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/votes`,
+        }),
+    },
+    {
+      route: 'PATCH /api/v1/account/preferences',
+      expect: 'user.preferences_updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: '/api/v1/account/preferences',
+          payload: { autoFollow: false },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/link-policy',
+      expect: 'link_policy.updated',
+      run: () => admin({ method: 'PUT', url: '/api/v1/link-policy', payload: { enabled: false } }),
+    },
+    {
       route: 'DELETE /api/v1/track-categories/:id',
       expect: 'track_category.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/track-categories/${state.category}` }),

@@ -17,6 +17,7 @@ import { registerAdminRoutes } from './routes/admin';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerGroupRoutes } from './routes/groups';
+import { registerLinkRoutes } from './routes/links';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerReleaseRoutes } from './routes/releases';
@@ -164,6 +165,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerTicketRoutes(app, db, authorizer);
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
+    registerLinkRoutes(app, db, authorizer);
     registerAuditRoutes(app, db);
     registerTokenRoutes(app, db);
     registerServiceAccountRoutes(app, db);

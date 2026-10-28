@@ -365,6 +365,36 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE k.summary = 'Seed ticket' AND a.name = 'Seed area'`.execute(db);
     },
   },
+  '0019_links': {
+    tables: {
+      link_type: "name = 'Seed link type' AND inward = 'is seeded by'",
+      ticket_link: "link_type_id IN (SELECT id FROM link_type WHERE name = 'Seed link type')",
+      link_policy: 'enabled = false',
+      ticket_web_link: "global_id = 'seed-global-id'",
+      ticket_follower: "user_id IN (SELECT id FROM app_user WHERE email = 'seed@example.com')",
+      ticket_vote: "user_id IN (SELECT id FROM app_user WHERE email = 'seed@example.com')",
+      user_preference: 'auto_follow = false',
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO link_type (workspace_id, name, outward, inward)
+        VALUES (1, 'Seed link type', 'seeds', 'is seeded by')`.execute(db);
+      await sql`INSERT INTO ticket_link (workspace_id, link_type_id, source_id, target_id)
+        SELECT 1, lt.id, s.id, t.id FROM link_type lt, ticket s, ticket t
+         WHERE lt.name = 'Seed link type' AND s.summary = 'Seed ticket'
+           AND t.summary = 'Seed child'`.execute(db);
+      await sql`UPDATE link_policy SET enabled = false WHERE workspace_id = 1`.execute(db);
+      await sql`INSERT INTO ticket_web_link (workspace_id, ticket_id, url, title, global_id)
+        SELECT 1, id, 'https://example.com/seed', 'Seed page', 'seed-global-id' FROM ticket
+         WHERE summary = 'Seed ticket'`.execute(db);
+      for (const table of ['ticket_follower', 'ticket_vote']) {
+        await sql`INSERT INTO ${sql.table(table)} (workspace_id, ticket_id, user_id)
+          SELECT 1, k.id, u.id FROM ticket k, app_user u
+           WHERE k.summary = 'Seed ticket' AND u.email = 'seed@example.com'`.execute(db);
+      }
+      await sql`INSERT INTO user_preference (user_id, workspace_id, auto_follow)
+        SELECT id, 1, false FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

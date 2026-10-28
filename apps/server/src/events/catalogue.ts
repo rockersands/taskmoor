@@ -18,6 +18,14 @@ const typeMapping = z.array(
 );
 /** Where a ticket sits: its key, track and type. */
 const placement = z.object({ key: z.string(), trackId: id, ticketTypeId: id });
+/** A link between two tickets, from the ticket the call was made on. */
+const ticketLink = z.object({
+  key: z.string(),
+  linkId: id,
+  linkTypeId: id,
+  sourceId: id,
+  targetId: id,
+});
 /** A value deleted, and what tickets that had it took instead. */
 const replaced = z.object({
   name: z.string(),
@@ -392,6 +400,47 @@ export const EVENT_TYPES = {
   'area.restored': { subject: 'area', payload: z.object({ name: z.string() }) },
   /** Tickets that had it take the replacement, or lose it when there is none. */
   'area.deleted': { subject: 'area', payload: replaced },
+  // Links, web links, followers and votes (M1-015). Link changes are also ticket history.
+  'link_type.created': {
+    subject: 'link_type',
+    payload: z.object({ name: z.string(), outward: z.string(), inward: z.string() }),
+  },
+  'link_type.updated': { subject: 'link_type', payload: z.object({ changes }) },
+  /** Its links took the replacement. */
+  'link_type.deleted': {
+    subject: 'link_type',
+    payload: z.object({
+      name: z.string(),
+      replacementId: id.nullable(),
+      linkCount: z.number().int().min(0),
+    }),
+  },
+  'link_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  'ticket.linked': { subject: 'ticket', payload: ticketLink },
+  'ticket.unlinked': { subject: 'ticket', payload: ticketLink },
+  /** A URL can carry a token in its query, so web link events name fields, never URLs. */
+  'ticket.web_link_added': {
+    subject: 'ticket',
+    payload: z.object({
+      key: z.string(),
+      webLinkId: id,
+      title: z.string(),
+      globalId: z.string().nullable(),
+    }),
+  },
+  'ticket.web_link_updated': {
+    subject: 'ticket',
+    payload: z.object({ key: z.string(), webLinkId: id, fields: z.array(z.string()) }),
+  },
+  'ticket.web_link_removed': {
+    subject: 'ticket',
+    payload: z.object({ key: z.string(), webLinkId: id }),
+  },
+  'ticket.followed': { subject: 'ticket', payload: z.object({ key: z.string(), userId: id }) },
+  'ticket.unfollowed': { subject: 'ticket', payload: z.object({ key: z.string(), userId: id }) },
+  'ticket.voted': { subject: 'ticket', payload: z.object({ key: z.string() }) },
+  'ticket.unvoted': { subject: 'ticket', payload: z.object({ key: z.string() }) },
+  'user.preferences_updated': { subject: 'user', payload: z.object({ changes }) },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   // API tokens and service accounts (IAM-007). Never the token or its hash.

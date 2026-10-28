@@ -97,6 +97,10 @@ export const AUDITED_EVENTS = [
   'area.archived',
   'area.restored',
   'area.deleted',
+  'link_type.created',
+  'link_type.updated',
+  'link_type.deleted',
+  'link_policy.updated',
   'audit.settings_updated',
   'token.created',
   'token.revoked',
@@ -121,6 +125,17 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'ticket.updated': TICKET_ACTIVITY,
   'ticket.moved': TICKET_ACTIVITY,
   'ticket.ranked': TICKET_ACTIVITY,
+  'ticket.linked': TICKET_ACTIVITY,
+  'ticket.unlinked': TICKET_ACTIVITY,
+  'ticket.web_link_added': TICKET_ACTIVITY,
+  'ticket.web_link_updated': TICKET_ACTIVITY,
+  'ticket.web_link_removed': TICKET_ACTIVITY,
+  'ticket.followed': 'ticket activity: who follows a ticket, not a security or configuration event',
+  'ticket.unfollowed':
+    'ticket activity: who follows a ticket, not a security or configuration event',
+  'ticket.voted': 'ticket activity: a vote, not a security or configuration event',
+  'ticket.unvoted': 'ticket activity: a vote, not a security or configuration event',
+  'user.preferences_updated': 'a personal setting (auto-follow), not a security event',
 };
 
 /**

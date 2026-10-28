@@ -388,7 +388,7 @@ describe('priorities, close reasons, labels, releases and areas (M1-014)', () =>
         del('admin', `/api/v1/priorities/${doomed}?replacementId=${high}`),
         ...tickets
           .slice(10)
-          .map((t) =>
+          .map(() =>
             post('alice', '/api/v1/tickets', { track: 'ABC', summary: 'Late', priorityId: doomed }),
           ),
       ]);

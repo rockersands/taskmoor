@@ -233,6 +233,34 @@ areas), the ticket rules `tickets/fields.ts`.
   `foundInRelease` and `area` (ids by commas, names by ", "). All new events are audited:
   they are configuration.
 
+## Implementation (M1-015: links, web links, followers and votes)
+
+Migration 0019 adds `link_type`, `ticket_link`, `link_policy`, `ticket_web_link`,
+`ticket_follower`, `ticket_vote` and `user_preference`; the routes are `routes/links.ts`.
+
+- **Link types are the workspace's,** with a name and the phrase each side reads; a link is
+  stored once, from source to target, and each ticket reads it from its side ("blocks", "is
+  blocked by"; CORE-018 (2)). The copy type that cloning uses (CORE-023) is marked and cannot
+  be deleted. Deleting another type in use takes a replacement; a pair the replacement
+  already links keeps that single link (CORE-018 (1)). A workspace switch stops new links and
+  leaves existing ones.
+- **Links cross tracks;** a ticket lists only links whose other ticket the viewer may browse,
+  checked once per track rather than once per link, and none to tickets in the trash, whose
+  links return with them. One query reads both directions; 1,000 links load well under
+  300 ms.
+- **Web links** carry a title, an icon and an optional global id; adding the same global id
+  again updates that link, so an integration keeps one per object, and
+  `GET /api/v1/web-links?globalId=` finds the tickets. URLs must be http or https. Events
+  name changed fields, never URLs, which can carry tokens.
+- **History:** a link records a `link` row on both tickets (value `type:side:ticket`, display
+  "blocks ABC-2"); web links record `webLink` (URL, display title). Following and voting are
+  not history.
+- **Followers and votes** (CORE-019): one row per person and ticket, no cap. Everyone who may
+  browse a ticket follows and votes for themselves and sees the counts (also on the ticket
+  view); the names need "View voters and followers", others' following "Manage followers",
+  and a follower must be able to browse the track. People follow what they create and edit
+  unless they turn `autoFollow` off (`/api/v1/account/preferences`); comments join in M1-017.
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

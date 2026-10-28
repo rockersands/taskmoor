@@ -18,6 +18,14 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-015 links, web links, followers and votes** (migration 0019, `routes/links.ts`, ADR-009
+  note): `/api/v1/link-types` (CRUD, delete with `?replacementId=`), `PUT /api/v1/link-policy`,
+  `/api/v1/tickets/:id/links` (GET lists links and web links; POST with `linkTypeId`,
+  `ticket` and `direction`; DELETE `/links/:linkId`), `/tickets/:id/web-links` (a repeated
+  `globalId` updates), `GET /api/v1/web-links?globalId=`, `/tickets/:id/followers[/:userId|me]`
+  and `/tickets/:id/votes`, `/api/v1/account/preferences` (`autoFollow`). The ticket view has
+  `followerCount` and `voteCount`. `tickets/followers.ts` holds `autoFollow`, for comments
+  (M1-017) to call too. Tests: `routes/links.test.ts` (10).
 - **M1-073 and M1-074 AI gateway** (built by a background agent, reviewed and merged; ADR-028
   implementation section): `@taskmoor/ai` has one `ProviderAdapter` interface (generate,
   stream, token counting, model listing, batches, capabilities, typed errors); a Claude adapter
@@ -80,8 +88,8 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Next (in order)
 
-1. `pnpm next-task`: M1-015 (links, followers, votes), M1-019 (time tracking), M1-010 (field
-   types) are ready. Releases, areas, priorities and labels have no admin UI yet (M1-050
+1. `pnpm next-task`: M1-019 (time tracking), M1-016 (attachments), M1-010 (field types) are
+   ready. Releases, areas, priorities and labels have no admin UI yet (M1-050
    releases hub; settings pages with the admin UI tasks).
 2. Run the Entra ID and Okta provisioning validators against a test instance with a public
    URL (IAM-006 (1)); the fixtures here imitate their request shapes.

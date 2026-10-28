@@ -183,6 +183,16 @@ export function ticketQuery(db: Db, workspaceId: number) {
           .orderBy('ar.name')
           .orderBy('ar.id'),
       ).as('areas'),
+      db
+        .selectFrom('ticket_follower')
+        .select(sql<number>`count(*)::int`.as('n'))
+        .where(sql<boolean>`ticket_id = k.id`)
+        .as('follower_count'),
+      db
+        .selectFrom('ticket_vote')
+        .select(sql<number>`count(*)::int`.as('n'))
+        .where(sql<boolean>`ticket_id = k.id`)
+        .as('vote_count'),
     ])
     .where('k.workspace_id', '=', workspaceId);
 }
@@ -264,6 +274,8 @@ export function ticketView(row: TicketRow, canSeeParent: boolean) {
     targetReleases: row.target_releases,
     foundInReleases: row.found_releases,
     areas: row.areas,
+    followerCount: row.follower_count ?? 0,
+    voteCount: row.vote_count ?? 0,
     rank: row.rank,
     version: row.version,
     createdAt: row.created_at.toISOString(),

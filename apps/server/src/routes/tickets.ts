@@ -20,6 +20,7 @@ import {
   setTicketReleases,
   trackPrioritySet,
 } from '../tickets/fields';
+import { autoFollow } from '../tickets/followers';
 import { DEFAULT_PARENT_RULES, parentLevelAllowed, SUBTICKET_RANK } from '../tickets/hierarchy';
 import { changesOf, recordChanges, ticketChanges } from '../tickets/history';
 import {
@@ -736,6 +737,7 @@ export function registerTicketRoutes(
         subjectId: row.id,
         payload: { key: ticketKey(offered.key, number), trackId, ticketTypeId: typeId, parentId },
       });
+      await autoFollow(trx, ws, row.id, user.id);
       const created = await loadTicket(trx, ws, row.id);
       // Every starting value is history too, so "was" finds the first one (ADR-010).
       if (created) await recordChanges(trx, ws, user.id, ticketChanges(null, created));
@@ -976,8 +978,10 @@ export function registerTicketRoutes(
         subjectId: ticketId,
         payload: { key: ticketKey(current.track_key, current.number), changes },
       });
+      const editor = actor(request);
+      if (editor !== null) await autoFollow(trx, ws, ticketId, editor);
       const updated = await loadTicket(trx, ws, ticketId);
-      if (updated) await recordChanges(trx, ws, actor(request), ticketChanges(current, updated));
+      if (updated) await recordChanges(trx, ws, editor, ticketChanges(current, updated));
       return { ticket: updated };
     });
     return answer(request, reply, outcome);

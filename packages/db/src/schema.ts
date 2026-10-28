@@ -510,6 +510,72 @@ export interface TicketAreaTable {
   area_id: number;
 }
 
+/** A link type: its name and the phrase each side reads (M1-015, CORE-018). */
+export interface LinkTypeTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  /** What the source reads, such as "blocks". */
+  outward: string;
+  /** What the target reads, such as "is blocked by". */
+  inward: string;
+  /** The type cloning uses; one per workspace, never deleted. */
+  is_copy: Generated<boolean>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A directed link of a type from one ticket to another, in any tracks. */
+export interface TicketLinkTable {
+  id: Generated<number>;
+  workspace_id: number;
+  link_type_id: number;
+  source_id: number;
+  target_id: number;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+}
+
+/** The workspace's switch for ticket links. */
+export interface LinkPolicyTable {
+  workspace_id: number;
+  enabled: Generated<boolean>;
+  updated_at: DefaultTimestamp;
+}
+
+/** A link from a ticket to something outside; integrations find theirs by global id. */
+export interface TicketWebLinkTable {
+  id: Generated<number>;
+  workspace_id: number;
+  ticket_id: number;
+  url: string;
+  title: string;
+  summary: Generated<string>;
+  icon_url: string | null;
+  relationship: Generated<string>;
+  global_id: string | null;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** Someone following, or voting for, a ticket. */
+export interface TicketPersonTable {
+  workspace_id: number;
+  ticket_id: number;
+  user_id: number;
+  created_at: DefaultTimestamp;
+}
+
+/** A person's own settings. */
+export interface UserPreferenceTable {
+  user_id: number;
+  workspace_id: number;
+  /** Follow the tickets one creates, edits or comments on (CORE-019). */
+  auto_follow: Generated<boolean>;
+  updated_at: DefaultTimestamp;
+}
+
 /** A user or a group acting in a role on one track. */
 export interface TrackRoleActorTable {
   workspace_id: number;
@@ -832,6 +898,13 @@ export interface Database {
   area: AreaTable;
   ticket_release: TicketReleaseTable;
   ticket_area: TicketAreaTable;
+  link_type: LinkTypeTable;
+  ticket_link: TicketLinkTable;
+  link_policy: LinkPolicyTable;
+  ticket_web_link: TicketWebLinkTable;
+  ticket_follower: TicketPersonTable;
+  ticket_vote: TicketPersonTable;
+  user_preference: UserPreferenceTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;
