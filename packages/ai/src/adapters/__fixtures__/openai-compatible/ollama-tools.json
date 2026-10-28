@@ -1,0 +1,125 @@
+{
+  "description": "Ollama reports tool support for the model (/api/show), so strict tools are offered with automatic choice; the call comes back as tool_calls with JSON arguments.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/show",
+        "headers": {
+          "authorization": null,
+          "content-type": "application/json"
+        },
+        "body": {
+          "model": "qwen3"
+        }
+      },
+      "response": {
+        "body": {
+          "modelfile": "",
+          "parameters": "",
+          "template": "",
+          "details": {
+            "family": "qwen3"
+          },
+          "capabilities": ["completion", "tools", "thinking"]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:11434/v1/chat/completions",
+        "headers": {
+          "authorization": null,
+          "content-type": "application/json"
+        },
+        "body": {
+          "model": "qwen3",
+          "max_tokens": 16000,
+          "messages": [
+            {
+              "role": "system",
+              "content": "Draft tickets from a description. Check for similar tickets before drafting."
+            },
+            {
+              "role": "user",
+              "content": "Users report that the password reset email arrives after the link has expired."
+            }
+          ],
+          "tools": [
+            {
+              "type": "function",
+              "function": {
+                "name": "draft_ticket",
+                "description": "Propose a ticket for the user to review.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": ["summary"]
+                },
+                "strict": true
+              }
+            },
+            {
+              "type": "function",
+              "function": {
+                "name": "find_tickets",
+                "description": "Search existing tickets with a query.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "query": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": ["query"]
+                },
+                "strict": true
+              }
+            }
+          ],
+          "tool_choice": "auto"
+        }
+      },
+      "response": {
+        "body": {
+          "id": "chatcmpl-fixture",
+          "object": "chat.completion",
+          "created": 1793178000,
+          "model": "qwen3",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_fixture_01",
+                    "type": "function",
+                    "function": {
+                      "name": "find_tickets",
+                      "arguments": "{\"query\":\"text ~ \\\"password reset\\\"\"}"
+                    }
+                  }
+                ]
+              },
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 120,
+            "completion_tokens": 30,
+            "total_tokens": 150
+          }
+        }
+      }
+    }
+  ]
+}

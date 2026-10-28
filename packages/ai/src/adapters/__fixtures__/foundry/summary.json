@@ -1,0 +1,76 @@
+{
+  "description": "Summary through Microsoft Foundry: the resource endpoint with the API key header.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://taskmoor-fixture.services.ai.azure.com/anthropic/v1/messages?beta=true",
+        "headers": {
+          "x-api-key": "test-foundry-key-placeholder",
+          "authorization": null,
+          "anthropic-beta": null
+        },
+        "body": {
+          "model": "claude-opus-5-5",
+          "max_tokens": 16000,
+          "system": [
+            {
+              "type": "text",
+              "text": "You summarise work tickets for a project team. Keep to the facts in the ticket: purpose, status, who is working on it and what happens next.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            },
+            {
+              "type": "text",
+              "text": "Track WEB is the public website. Ticket keys look like WEB-123.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            }
+          ],
+          "messages": [
+            {
+              "role": "user",
+              "content": "Summarise WEB-42. Description: sign-in fails after a password reset. Comments: Sam is investigating; the fix belongs in the session service."
+            }
+          ],
+          "thinking": {
+            "type": "adaptive"
+          },
+          "output_config": {
+            "effort": "low"
+          }
+        }
+      },
+      "response": {
+        "body": {
+          "id": "msg_fixture_foundry",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-opus-5-5",
+          "content": [
+            {
+              "type": "thinking",
+              "thinking": "",
+              "signature": "signature-placeholder"
+            },
+            {
+              "type": "text",
+              "text": "WEB-42: sign-in fails after a password reset. Sam is investigating; the next step is a fix in the session service."
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "stop_details": null,
+          "usage": {
+            "input_tokens": 96,
+            "output_tokens": 41,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 1450
+          }
+        }
+      }
+    }
+  ]
+}

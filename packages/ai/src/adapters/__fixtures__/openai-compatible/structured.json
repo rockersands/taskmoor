@@ -1,0 +1,72 @@
+{
+  "description": "Structured output through response_format json_schema (strict).",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://vllm.internal:8000/v1/chat/completions",
+        "headers": {
+          "authorization": "Bearer test-local-key-placeholder",
+          "content-type": "application/json"
+        },
+        "body": {
+          "model": "llama3.3",
+          "max_tokens": 16000,
+          "messages": [
+            {
+              "role": "system",
+              "content": "Turn a question about tickets into a query in the tracker's query language."
+            },
+            {
+              "role": "user",
+              "content": "my open bugs updated this week"
+            }
+          ],
+          "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+              "name": "output",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "explanation": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["query", "explanation"]
+              },
+              "strict": true
+            }
+          }
+        }
+      },
+      "response": {
+        "body": {
+          "id": "chatcmpl-fixture",
+          "object": "chat.completion",
+          "created": 1793178000,
+          "model": "llama3.3",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "{\"query\": \"assignee = currentUser() AND type = Bug AND status != Done AND updated >= -7d\", \"explanation\": \"Bugs assigned to you, not done, changed in the last seven days.\"}"
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 120,
+            "completion_tokens": 30,
+            "total_tokens": 150
+          }
+        }
+      }
+    }
+  ]
+}

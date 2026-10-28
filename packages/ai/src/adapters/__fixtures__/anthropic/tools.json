@@ -1,0 +1,247 @@
+{
+  "description": "Strict tools with automatic tool choice, sorted by name. The tool call comes back with a thinking block, which is sent back unchanged with the tool result on the next turn.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages?beta=true",
+        "headers": {
+          "x-api-key": "test-key-placeholder",
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "server-side-fallback-2026-07-01",
+          "authorization": null
+        },
+        "body": {
+          "model": "claude-opus-5-5",
+          "max_tokens": 16000,
+          "system": [
+            {
+              "type": "text",
+              "text": "Draft tickets from a description. Check for similar tickets before drafting.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            }
+          ],
+          "messages": [
+            {
+              "role": "user",
+              "content": "Users report that the password reset email arrives after the link has expired."
+            }
+          ],
+          "thinking": {
+            "type": "adaptive"
+          },
+          "output_config": {
+            "effort": "medium"
+          },
+          "tools": [
+            {
+              "name": "draft_ticket",
+              "description": "Propose a ticket for the user to review.",
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["summary"]
+              },
+              "strict": true
+            },
+            {
+              "name": "find_tickets",
+              "description": "Search existing tickets with a query.",
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["query"]
+              },
+              "strict": true
+            }
+          ],
+          "tool_choice": {
+            "type": "auto"
+          },
+          "fallbacks": "default"
+        }
+      },
+      "response": {
+        "body": {
+          "id": "msg_fixture_tools_1",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-opus-5-5",
+          "content": [
+            {
+              "type": "thinking",
+              "thinking": "",
+              "signature": "signature-placeholder"
+            },
+            {
+              "type": "text",
+              "text": "I will look for similar tickets first."
+            },
+            {
+              "type": "tool_use",
+              "id": "toolu_fixture_01",
+              "name": "find_tickets",
+              "input": {
+                "query": "text ~ \"password reset\""
+              }
+            }
+          ],
+          "stop_reason": "tool_use",
+          "stop_sequence": null,
+          "stop_details": null,
+          "usage": {
+            "input_tokens": 210,
+            "output_tokens": 64,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages?beta=true",
+        "headers": {
+          "x-api-key": "test-key-placeholder",
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "server-side-fallback-2026-07-01",
+          "authorization": null
+        },
+        "body": {
+          "model": "claude-opus-5-5",
+          "max_tokens": 16000,
+          "system": [
+            {
+              "type": "text",
+              "text": "Draft tickets from a description. Check for similar tickets before drafting.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            }
+          ],
+          "messages": [
+            {
+              "role": "user",
+              "content": "Users report that the password reset email arrives after the link has expired."
+            },
+            {
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "thinking",
+                  "thinking": "",
+                  "signature": "signature-placeholder"
+                },
+                {
+                  "type": "text",
+                  "text": "I will look for similar tickets first."
+                },
+                {
+                  "type": "tool_use",
+                  "id": "toolu_fixture_01",
+                  "name": "find_tickets",
+                  "input": {
+                    "query": "text ~ \"password reset\""
+                  }
+                }
+              ]
+            },
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "tool_result",
+                  "tool_use_id": "toolu_fixture_01",
+                  "content": "WEB-40: Reset email arrives late (Done)"
+                }
+              ]
+            }
+          ],
+          "thinking": {
+            "type": "adaptive"
+          },
+          "output_config": {
+            "effort": "medium"
+          },
+          "tools": [
+            {
+              "name": "draft_ticket",
+              "description": "Propose a ticket for the user to review.",
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "summary": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["summary"]
+              },
+              "strict": true
+            },
+            {
+              "name": "find_tickets",
+              "description": "Search existing tickets with a query.",
+              "input_schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["query"]
+              },
+              "strict": true
+            }
+          ],
+          "tool_choice": {
+            "type": "auto"
+          },
+          "fallbacks": "default"
+        }
+      },
+      "response": {
+        "body": {
+          "id": "msg_fixture_tools_2",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-opus-5-5",
+          "content": [
+            {
+              "type": "thinking",
+              "thinking": "",
+              "signature": "signature-placeholder"
+            },
+            {
+              "type": "text",
+              "text": "WEB-40 covered a late email and is done; this looks like a new problem."
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "stop_details": null,
+          "usage": {
+            "input_tokens": 290,
+            "output_tokens": 30,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0
+          }
+        }
+      }
+    }
+  ]
+}

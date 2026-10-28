@@ -1,31 +1,80 @@
-import { AnthropicBedrock } from '@anthropic-ai/bedrock-sdk';
+import { AnthropicBedrockMantle } from '@anthropic-ai/bedrock-sdk';
 import { AnthropicFoundry } from '@anthropic-ai/foundry-sdk';
-import Anthropic, { type ClientOptions } from '@anthropic-ai/sdk';
+import Anthropic, {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+  APIUserAbortError,
+  BetaFallbackState,
+  betaRefusalFallbackMiddleware,
+  type ClientOptions,
+} from '@anthropic-ai/sdk';
+import type { BetaMessageStream } from '@anthropic-ai/sdk/lib/BetaMessageStream';
+import type { BetaMessage } from '@anthropic-ai/sdk/resources/beta/messages/messages';
+import type {
+  MessageCountTokensParams,
+  MessageTokensCount,
+} from '@anthropic-ai/sdk/resources/messages/messages';
 import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
-import type { ClaudeProviderConfig, ProviderId } from '../config';
-import type { AdapterRequest, AdapterResponse, ProviderAdapter } from '../gateway';
+import type { ClaudeProviderConfig, ClaudeProviderId, ProviderId } from '../config';
+import { AiUnsupportedError, kindForHttpStatus } from '../errors';
+import { SERVER_FALLBACK_MODELS } from '../policy';
+import { retryAfterFromHeaders, shouldRetryFromHeaders } from '../retry';
 import type { SecretStore } from '../secrets';
+import type {
+  AdapterRequest,
+  AdapterResponse,
+  BatchAdapter,
+  CallOptions,
+  ErrorClassification,
+  ModelCapabilities,
+  ModelInfo,
+  ProviderAdapter,
+  ProviderErrorKind,
+  StreamCallOptions,
+} from '../types';
+import { ClaudeBatches } from './claude-batches';
+import { buildClaudeParams, type ClaudeParams, fromClaudeMessage } from './claude-request';
 
-/** The four official clients share the Messages API; this is the part the adapter uses. */
+interface ClaudeRequestOptions {
+  signal?: AbortSignal;
+  fallbackState?: BetaFallbackState;
+}
+
+/** The part of the four official clients the adapter uses; they share the Messages API. */
 export interface ClaudeClient {
+  beta: {
+    messages: {
+      create(params: ClaudeParams, options?: ClaudeRequestOptions): Promise<BetaMessage>;
+      stream(params: ClaudeParams, options?: ClaudeRequestOptions): BetaMessageStream;
+    };
+  };
   messages: {
-    create(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message>;
+    countTokens(
+      params: MessageCountTokensParams,
+      options?: ClaudeRequestOptions,
+    ): Promise<MessageTokensCount>;
   };
 }
 
 export interface ClaudeClientBundle {
-  provider: ProviderId;
+  provider: ClaudeProviderId;
   client: ClaudeClient;
-  /** Maps a Claude model ID to the platform's spelling (Bedrock adds a prefix). */
+  /** Maps a Claude model ID to the platform's spelling (Bedrock adds `anthropic.`). */
   platformModelId(model: string): string;
   secretValues: string[];
+  /** How a refusal is retried on another model: by the API, by SDK middleware, or not at all. */
+  refusalFallback: 'server' | 'client' | 'none';
+  /** The first-party client, for what only the Anthropic API offers (batches, model listing). */
+  firstParty?: Anthropic;
 }
 
 export interface ClientFactoryOptions {
   /** Injected in tests so no request leaves the process. */
   fetch?: ClientOptions['fetch'];
   timeoutMs?: number;
-  maxRetries?: number;
+  /** Notified when the SDK fallback middleware could not retry a refusal. */
+  onFallbackError?: (kind: string) => void;
 }
 
 /** Builds the official SDK client for a provider, reading credentials from the secret store. */
@@ -34,40 +83,69 @@ export async function createClaudeClient(
   secrets: SecretStore,
   options: ClientFactoryOptions = {},
 ): Promise<ClaudeClientBundle> {
-  const common: Pick<ClientOptions, 'fetch' | 'timeout' | 'maxRetries'> = {
+  // The gateway owns retries (typed, logged, with a circuit breaker), so the SDK makes one
+  // attempt. The SDK's own logging stays off: it could print request headers.
+  const common = {
     ...(options.fetch ? { fetch: options.fetch } : {}),
-    timeout: options.timeoutMs ?? 60_000,
-    maxRetries: options.maxRetries ?? 2,
+    timeout: options.timeoutMs ?? 600_000,
+    maxRetries: 0,
+    logLevel: 'off' as const,
   };
   const identity = (model: string) => model;
+  const clientSide = (platformModelId: (model: string) => string) => {
+    if (config.provider === 'anthropic' || !config.refusalFallbackModel) return {};
+    return {
+      middleware: [
+        betaRefusalFallbackMiddleware([{ model: platformModelId(config.refusalFallbackModel) }], {
+          onError: (error) => options.onFallbackError?.(error.kind),
+        }),
+      ],
+    };
+  };
+  const refusalFallback =
+    config.provider === 'anthropic' ? 'server' : config.refusalFallbackModel ? 'client' : 'none';
 
   switch (config.provider) {
     case 'anthropic': {
       const apiKey = await secrets.reveal(config.apiKey);
+      const client = new Anthropic({
+        apiKey,
+        authToken: null,
+        baseURL: config.baseUrl ?? null,
+        ...common,
+      });
       return {
         provider: 'anthropic',
-        client: new Anthropic({ apiKey, baseURL: config.baseUrl ?? null, ...common }),
+        client,
         platformModelId: identity,
         secretValues: [apiKey],
+        refusalFallback,
+        firstParty: client,
       };
     }
     case 'bedrock': {
-      const awsAccessKey = await secrets.reveal(config.accessKeyId);
-      const awsSecretKey = await secrets.reveal(config.secretAccessKey);
+      const apiKey = config.apiKey ? await secrets.reveal(config.apiKey) : undefined;
+      const awsAccessKey = config.accessKeyId ? await secrets.reveal(config.accessKeyId) : null;
+      const awsSecretAccessKey = config.secretAccessKey
+        ? await secrets.reveal(config.secretAccessKey)
+        : null;
       const awsSessionToken = config.sessionToken
         ? await secrets.reveal(config.sessionToken)
         : null;
+      const platformModelId = (model: string) => `anthropic.${model}`;
       return {
         provider: 'bedrock',
-        client: new AnthropicBedrock({
+        client: new AnthropicBedrockMantle({
           awsRegion: config.region,
-          awsAccessKey,
-          awsSecretKey,
-          awsSessionToken,
+          ...(apiKey ? { apiKey } : { awsAccessKey, awsSecretAccessKey, awsSessionToken }),
           ...common,
+          ...clientSide(platformModelId),
         }),
-        platformModelId: (model) => `${config.modelPrefix}${model}`,
-        secretValues: [awsAccessKey, awsSecretKey, ...(awsSessionToken ? [awsSessionToken] : [])],
+        platformModelId,
+        secretValues: [apiKey, awsAccessKey, awsSecretAccessKey, awsSessionToken].filter(
+          (value): value is string => typeof value === 'string',
+        ),
+        refusalFallback,
       };
     }
     case 'vertex': {
@@ -83,18 +161,26 @@ export async function createClaudeClient(
             ? { authClient: staticTokenAuthClient(config.projectId, accessToken) }
             : {}),
           ...common,
+          ...clientSide(identity),
         }),
         platformModelId: identity,
         secretValues: accessToken ? [accessToken] : [],
+        refusalFallback,
       };
     }
     case 'foundry': {
       const apiKey = await secrets.reveal(config.apiKey);
       return {
         provider: 'foundry',
-        client: new AnthropicFoundry({ resource: config.resource, apiKey, ...common }),
+        client: new AnthropicFoundry({
+          resource: config.resource,
+          apiKey,
+          ...common,
+          ...clientSide(identity),
+        }),
         platformModelId: identity,
         secretValues: [apiKey],
+        refusalFallback,
       };
     }
   }
@@ -115,14 +201,71 @@ function staticTokenAuthClient(projectId: string, token: string): VertexAuthClie
   return client as unknown as VertexAuthClient;
 }
 
+/** Error `type` values from the API's error body, for errors that arrive mid-stream. */
+function kindForErrorType(type: unknown): ProviderErrorKind {
+  switch (type) {
+    case 'overloaded_error':
+      return 'overloaded';
+    case 'rate_limit_error':
+      return 'rate_limited';
+    case 'api_error':
+      return 'server';
+    case 'timeout_error':
+      return 'timeout';
+    case 'invalid_request_error':
+      return 'invalid_request';
+    case 'authentication_error':
+      return 'authentication';
+    case 'permission_error':
+      return 'permission';
+    case 'not_found_error':
+      return 'not_found';
+    case 'request_too_large':
+      return 'request_too_large';
+    default:
+      return 'unknown';
+  }
+}
+
+/** Reads the SDK's typed errors; never string-matches messages. */
+export function classifyClaudeError(error: unknown): ErrorClassification {
+  const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof APIUserAbortError) return { kind: 'aborted', message };
+  if (error instanceof APIConnectionTimeoutError) return { kind: 'timeout', message };
+  if (error instanceof APIConnectionError) return { kind: 'connection', message };
+  if (error instanceof APIError) {
+    const headers = error.headers instanceof Headers ? error.headers : undefined;
+    const body = error.error as { error?: { type?: unknown } } | undefined;
+    const kind =
+      typeof error.status === 'number'
+        ? kindForHttpStatus(error.status)
+        : kindForErrorType(body?.error?.type);
+    const retryAfterMs = retryAfterFromHeaders(headers);
+    const shouldRetry = shouldRetryFromHeaders(headers);
+    return {
+      kind,
+      message,
+      ...(typeof error.status === 'number' ? { status: error.status } : {}),
+      ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+      ...(shouldRetry !== undefined ? { shouldRetry } : {}),
+    };
+  }
+  return { kind: 'unknown', message };
+}
+
 /**
- * Sends requests the same way on every Claude platform: adaptive thinking with an explicit
- * effort, strict structured output when a schema is given, and a cacheable system prompt.
- * Forced tool choice, `budget_tokens` and sampling parameters are never sent; the current
- * models reject them.
+ * Claude on the Anthropic API, Amazon Bedrock, Google Cloud Vertex AI and Microsoft Foundry.
+ * Requests are built once (`buildClaudeParams`) and checked against the request policy;
+ * only client construction and model spelling differ per platform.
  */
 export class ClaudeAdapter implements ProviderAdapter {
-  constructor(private readonly bundle: ClaudeClientBundle) {}
+  readonly batches: BatchAdapter | undefined;
+
+  constructor(private readonly bundle: ClaudeClientBundle) {
+    this.batches = bundle.firstParty
+      ? new ClaudeBatches(bundle.firstParty, (request) => this.params(request, false))
+      : undefined;
+  }
 
   get provider(): ProviderId {
     return this.bundle.provider;
@@ -132,42 +275,97 @@ export class ClaudeAdapter implements ProviderAdapter {
     return this.bundle.secretValues;
   }
 
-  async generate(request: AdapterRequest): Promise<AdapterResponse> {
-    const message = await this.bundle.client.messages.create({
-      model: this.bundle.platformModelId(request.model),
-      max_tokens: request.maxTokens,
-      system: [
-        {
-          type: 'text',
-          text: request.system,
-          ...(request.cacheSystem ? { cache_control: { type: 'ephemeral' } } : {}),
-        },
-      ],
-      messages: request.messages.map((m) => ({ role: m.role, content: m.content })),
-      thinking: { type: 'adaptive' },
-      output_config: {
-        effort: request.effort,
-        ...(request.jsonSchema
-          ? { format: { type: 'json_schema', schema: request.jsonSchema } }
-          : {}),
-      },
-    });
-
-    const text = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('');
+  capabilities(model: string): ModelCapabilities {
+    const firstParty = this.bundle.provider === 'anthropic';
     return {
-      text,
-      stopReason: message.stop_reason ?? 'unknown',
-      refused: message.stop_reason === 'refusal',
-      model: message.model,
-      usage: {
-        inputTokens: message.usage.input_tokens,
-        outputTokens: message.usage.output_tokens,
-        cacheReadTokens: message.usage.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: message.usage.cache_creation_input_tokens ?? 0,
-      },
+      streaming: true,
+      structuredOutput: true,
+      toolCalls: true,
+      strictTools: true,
+      effort: true,
+      promptCaching: true,
+      tokenCounting: true,
+      modelListing: firstParty,
+      batches: firstParty,
+      refusalFallback:
+        this.bundle.refusalFallback === 'server'
+          ? SERVER_FALLBACK_MODELS.has(model)
+            ? 'server'
+            : 'none'
+          : this.bundle.refusalFallback,
     };
+  }
+
+  /** `serverFallback` is off for batches, which reject the parameter. */
+  private params(request: AdapterRequest, allowFallback = true): ClaudeParams {
+    return buildClaudeParams(request, {
+      model: this.bundle.platformModelId(request.model),
+      serverFallback:
+        allowFallback && this.capabilities(request.model).refusalFallback === 'server',
+    });
+  }
+
+  private requestOptions(options: CallOptions | undefined): ClaudeRequestOptions {
+    return {
+      ...(options?.signal ? { signal: options.signal } : {}),
+      // One state per call: the middleware pins only within it.
+      ...(this.bundle.refusalFallback === 'client'
+        ? { fallbackState: new BetaFallbackState() }
+        : {}),
+    };
+  }
+
+  async generate(request: AdapterRequest, options?: CallOptions): Promise<AdapterResponse> {
+    const message = await this.bundle.client.beta.messages.create(
+      this.params(request),
+      this.requestOptions(options),
+    );
+    return fromClaudeMessage(message);
+  }
+
+  async stream(request: AdapterRequest, options: StreamCallOptions): Promise<AdapterResponse> {
+    const stream = this.bundle.client.beta.messages.stream(
+      this.params(request),
+      this.requestOptions(options),
+    );
+    stream.on('text', (delta) => options.onText(delta));
+    return fromClaudeMessage(await stream.finalMessage());
+  }
+
+  async countTokens(request: AdapterRequest, options?: CallOptions): Promise<number> {
+    const {
+      max_tokens: _max,
+      betas: _betas,
+      fallbacks: _fallbacks,
+      ...rest
+    } = this.params(request, false);
+    // The generally available endpoint: same body, no beta header.
+    const counted = await this.bundle.client.messages.countTokens(
+      rest as unknown as MessageCountTokensParams,
+      options?.signal ? { signal: options.signal } : {},
+    );
+    return counted.input_tokens;
+  }
+
+  async listModels(options?: CallOptions): Promise<ModelInfo[]> {
+    const client = this.bundle.firstParty;
+    if (!client) throw new AiUnsupportedError(this.provider, 'modelListing');
+    const models: ModelInfo[] = [];
+    for await (const model of client.models.list(
+      {},
+      options?.signal ? { signal: options.signal } : {},
+    )) {
+      models.push({
+        id: model.id,
+        displayName: model.display_name,
+        ...(model.max_input_tokens ? { maxInputTokens: model.max_input_tokens } : {}),
+        ...(model.max_tokens ? { maxOutputTokens: model.max_tokens } : {}),
+      });
+    }
+    return models;
+  }
+
+  classifyError(error: unknown): ErrorClassification {
+    return classifyClaudeError(error);
   }
 }

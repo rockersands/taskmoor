@@ -1,0 +1,33 @@
+{
+  "description": "Live model listing from GET /models.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "http://vllm.internal:8000/v1/models",
+        "headers": {
+          "authorization": "Bearer test-local-key-placeholder"
+        }
+      },
+      "response": {
+        "body": {
+          "object": "list",
+          "data": [
+            {
+              "id": "llama3.3",
+              "object": "model",
+              "created": 1793178000,
+              "owned_by": "vllm"
+            },
+            {
+              "id": "qwen3",
+              "object": "model",
+              "created": 1793178000,
+              "owned_by": "vllm"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

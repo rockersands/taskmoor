@@ -1,0 +1,87 @@
+{
+  "description": "Natural language to query: strict JSON schema output through output_config.format.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages?beta=true",
+        "headers": {
+          "x-api-key": "test-key-placeholder",
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "server-side-fallback-2026-07-01",
+          "authorization": null
+        },
+        "body": {
+          "model": "claude-opus-5-5",
+          "max_tokens": 16000,
+          "system": [
+            {
+              "type": "text",
+              "text": "Turn a question about tickets into a query in the tracker's query language.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            }
+          ],
+          "messages": [
+            {
+              "role": "user",
+              "content": "my open bugs updated this week"
+            }
+          ],
+          "thinking": {
+            "type": "adaptive"
+          },
+          "output_config": {
+            "effort": "low",
+            "format": {
+              "type": "json_schema",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  },
+                  "explanation": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": ["query", "explanation"]
+              }
+            }
+          },
+          "fallbacks": "default"
+        }
+      },
+      "response": {
+        "body": {
+          "id": "msg_fixture_query",
+          "type": "message",
+          "role": "assistant",
+          "model": "claude-opus-5-5",
+          "content": [
+            {
+              "type": "thinking",
+              "thinking": "",
+              "signature": "signature-placeholder"
+            },
+            {
+              "type": "text",
+              "text": "{\"query\": \"assignee = currentUser() AND type = Bug AND status != Done AND updated >= -7d\", \"explanation\": \"Bugs assigned to you, not done, changed in the last seven days.\"}"
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "stop_details": null,
+          "usage": {
+            "input_tokens": 60,
+            "output_tokens": 52,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0
+          }
+        }
+      }
+    }
+  ]
+}

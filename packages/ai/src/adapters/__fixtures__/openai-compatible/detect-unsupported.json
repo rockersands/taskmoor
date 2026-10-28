@@ -1,0 +1,23 @@
+{
+  "description": "A server without /api/show (vLLM): capabilities stay at the defaults, so tools are not offered.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://vllm.internal:8000/api/show",
+        "headers": {
+          "authorization": "Bearer test-local-key-placeholder"
+        },
+        "body": {
+          "model": "llama3.3"
+        }
+      },
+      "response": {
+        "status": 404,
+        "body": {
+          "detail": "Not Found"
+        }
+      }
+    }
+  ]
+}

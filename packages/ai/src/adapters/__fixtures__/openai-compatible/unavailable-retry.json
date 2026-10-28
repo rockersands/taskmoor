@@ -1,0 +1,85 @@
+{
+  "description": "A 503 with retry-after 0, then success: retried once.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://vllm.internal:8000/v1/chat/completions",
+        "headers": {
+          "authorization": "Bearer test-local-key-placeholder",
+          "content-type": "application/json"
+        },
+        "body": {
+          "model": "llama3.3",
+          "max_tokens": 16000,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You summarise work tickets for a project team. Keep to the facts in the ticket: purpose, status, who is working on it and what happens next.\n\nTrack WEB is the public website. Ticket keys look like WEB-123."
+            },
+            {
+              "role": "user",
+              "content": "Summarise WEB-42. Description: sign-in fails after a password reset. Comments: Sam is investigating; the fix belongs in the session service."
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "retry-after": "0"
+        },
+        "body": {
+          "error": "model is loading"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "http://vllm.internal:8000/v1/chat/completions",
+        "headers": {
+          "authorization": "Bearer test-local-key-placeholder",
+          "content-type": "application/json"
+        },
+        "body": {
+          "model": "llama3.3",
+          "max_tokens": 16000,
+          "messages": [
+            {
+              "role": "system",
+              "content": "You summarise work tickets for a project team. Keep to the facts in the ticket: purpose, status, who is working on it and what happens next.\n\nTrack WEB is the public website. Ticket keys look like WEB-123."
+            },
+            {
+              "role": "user",
+              "content": "Summarise WEB-42. Description: sign-in fails after a password reset. Comments: Sam is investigating; the fix belongs in the session service."
+            }
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "id": "chatcmpl-fixture",
+          "object": "chat.completion",
+          "created": 1793178000,
+          "model": "llama3.3",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "WEB-42: sign-in fails after a password reset. Sam is investigating; the next step is a fix in the session service."
+              },
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 120,
+            "completion_tokens": 30,
+            "total_tokens": 150
+          }
+        }
+      }
+    }
+  ]
+}

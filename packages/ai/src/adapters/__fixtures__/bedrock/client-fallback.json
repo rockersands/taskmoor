@@ -1,0 +1,148 @@
+{
+  "description": "Client-side refusal fallback (SDK middleware): the refusal carries a fallback credit token, and the request is sent again on the configured fallback model with that token.",
+  "exchanges": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://bedrock-mantle.eu-west-1.api.aws/anthropic/v1/messages?beta=true",
+        "headers": {
+          "authorization": {
+            "pattern": "^AWS4-HMAC-SHA256 Credential=test-access-key-placeholder/\\d{8}/eu-west-1/bedrock-mantle/aws4_request, SignedHeaders=[a-z0-9;-]+, Signature=[0-9a-f]{64}$"
+          },
+          "x-api-key": null,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "fallback-credit-2026-07-01"
+        },
+        "body": {
+          "model": "anthropic.claude-opus-5-5",
+          "max_tokens": 16000,
+          "system": [
+            {
+              "type": "text",
+              "text": "You summarise work tickets for a project team. Keep to the facts in the ticket: purpose, status, who is working on it and what happens next.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            },
+            {
+              "type": "text",
+              "text": "Track WEB is the public website. Ticket keys look like WEB-123.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            }
+          ],
+          "messages": [
+            {
+              "role": "user",
+              "content": "Summarise WEB-42. Description: sign-in fails after a password reset. Comments: Sam is investigating; the fix belongs in the session service."
+            }
+          ],
+          "thinking": {
+            "type": "adaptive"
+          },
+          "output_config": {
+            "effort": "low"
+          }
+        }
+      },
+      "response": {
+        "body": {
+          "id": "msg_fixture_bedrock_refused",
+          "type": "message",
+          "role": "assistant",
+          "model": "anthropic.claude-opus-5-5",
+          "content": [],
+          "stop_reason": "refusal",
+          "stop_sequence": null,
+          "stop_details": {
+            "type": "refusal",
+            "category": "cyber",
+            "explanation": null,
+            "fallback_credit_token": "fallback-credit-placeholder",
+            "fallback_has_prefill_claim": false
+          },
+          "usage": {
+            "input_tokens": 96,
+            "output_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "https://bedrock-mantle.eu-west-1.api.aws/anthropic/v1/messages?beta=true",
+        "headers": {
+          "authorization": {
+            "pattern": "^AWS4-HMAC-SHA256 Credential=test-access-key-placeholder/\\d{8}/eu-west-1/bedrock-mantle/aws4_request, SignedHeaders=[a-z0-9;-]+, Signature=[0-9a-f]{64}$"
+          },
+          "x-api-key": null,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "fallback-credit-2026-07-01"
+        },
+        "body": {
+          "model": "anthropic.claude-opus-5",
+          "max_tokens": 16000,
+          "system": [
+            {
+              "type": "text",
+              "text": "You summarise work tickets for a project team. Keep to the facts in the ticket: purpose, status, who is working on it and what happens next.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            },
+            {
+              "type": "text",
+              "text": "Track WEB is the public website. Ticket keys look like WEB-123.",
+              "cache_control": {
+                "type": "ephemeral"
+              }
+            }
+          ],
+          "messages": [
+            {
+              "role": "user",
+              "content": "Summarise WEB-42. Description: sign-in fails after a password reset. Comments: Sam is investigating; the fix belongs in the session service."
+            }
+          ],
+          "thinking": {
+            "type": "adaptive"
+          },
+          "output_config": {
+            "effort": "low"
+          },
+          "fallback_credit_token": {
+            "token": "fallback-credit-placeholder",
+            "mode": "best_effort"
+          }
+        }
+      },
+      "response": {
+        "body": {
+          "id": "msg_fixture_bedrock_fallback",
+          "type": "message",
+          "role": "assistant",
+          "model": "anthropic.claude-opus-5",
+          "content": [
+            {
+              "type": "text",
+              "text": "WEB-42: sign-in fails after a password reset. Sam is investigating; the next step is a fix in the session service."
+            }
+          ],
+          "stop_reason": "end_turn",
+          "stop_sequence": null,
+          "stop_details": null,
+          "usage": {
+            "input_tokens": 96,
+            "output_tokens": 40,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0
+          }
+        }
+      }
+    }
+  ]
+}
