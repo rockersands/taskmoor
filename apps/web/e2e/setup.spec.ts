@@ -1431,3 +1431,78 @@ test('[NTF-008] a ticket opens from the local copy in under 100 ms and from the 
     .not.toBe(before);
   await context.close();
 });
+
+test('[WF-007] [CORE-013] a locked field and a locked status show read-only, with who may change them', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  // The administrator is not in Approvers: the field and the status keep them out.
+  const group = await page.request.post('/api/v1/groups', { data: { name: 'Approvers' } });
+  expect(group.status()).toBe(201);
+  const approvers = ((await group.json()) as { group: { id: number } }).group.id;
+  const statuses = (
+    (await (await page.request.get('/api/v1/statuses')).json()) as {
+      statuses: { id: number; name: string }[];
+    }
+  ).statuses;
+  const S = (name: string) => statuses.find((s) => s.name === name)?.id as number;
+  const workflow = await page.request.post('/api/v1/workflows', {
+    data: {
+      name: 'Approvers attach',
+      definition: {
+        initialStatusId: S('New'),
+        statuses: [{ statusId: S('New') }, { statusId: S('Approved') }],
+        transitions: [{ id: 1, name: 'Approve', from: [S('New')], to: S('Approved') }],
+        statusPermissions: { [String(S('New'))]: { attach: [{ group: String(approvers) }] } },
+      },
+    },
+  });
+  expect(workflow.status()).toBe(201);
+  const rules = await page.request.post('/api/v1/field-rule-sets', {
+    data: {
+      name: 'Approvers date the work',
+      rules: [{ field: 'dueDate', editableBy: [{ groupId: approvers }] }],
+    },
+  });
+  expect(rules.status()).toBe(201);
+  const track = await page.request.post('/api/v1/tracks', {
+    data: { key: 'LOCK', name: 'Locks', mode: 'shared' },
+  });
+  expect(track.status()).toBe(201);
+  const trackId = ((await track.json()) as { track: { id: number } }).track.id;
+  const set = await page.request.patch(`/api/v1/tracks/${trackId}`, {
+    data: {
+      workflowId: ((await workflow.json()) as { workflow: { id: number } }).workflow.id,
+      fieldRuleSetId: ((await rules.json()) as { fieldRuleSet: { id: number } }).fieldRuleSet.id,
+    },
+  });
+  expect(set.status()).toBe(200);
+
+  // The create form: the due date is read-only and says who sets it.
+  await page.goto('./#/create');
+  await expect(heading(page)).toHaveText('Create ticket');
+  await page.getByLabel('Track').selectOption({ label: 'LOCK Locks' });
+  const due = page.getByLabel('Due date');
+  await expect(due).toBeDisabled();
+  await expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');
+  await expect(page.getByLabel('Summary (required)')).toBeEnabled();
+  // The API refuses it as well, naming the field.
+  const refused = await page.request.post('/api/v1/tickets', {
+    data: { track: 'LOCK', summary: 'Dated', dueDate: '2026-12-01' },
+  });
+  expect(refused.status()).toBe(403);
+  expect(await refused.json()).toMatchObject({ permission: 'edit_field' });
+
+  // The ticket page: in status New only Approvers add files.
+  const created = await page.request.post('/api/v1/tickets', {
+    data: { track: 'LOCK', summary: 'Locked files' },
+  });
+  expect(created.status()).toBe(201);
+  await page.goto('./#/tickets/LOCK-1');
+  const panel = page.getByRole('region', { name: 'Attachments' });
+  await expect(
+    panel.getByText('In status New, only the Approvers group can add or remove files.'),
+  ).toBeVisible();
+  await expect(panel.getByLabel('Attach files')).toHaveCount(0);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+});

@@ -11,6 +11,7 @@ import {
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { type Lock, useLockText } from '../locks/useLockText';
 import { AttachmentPreview, previewable } from './AttachmentPreview';
 import { type Attachment, type AttachmentClient, attachmentClient } from './client';
 import { formatSize } from './format';
@@ -31,6 +32,7 @@ type State =
       maxFileSize: number;
       canCreate: boolean;
       available: boolean;
+      locked?: Lock | null;
     };
 
 /** Images small enough to show from the file itself when there is no thumbnail. */
@@ -60,6 +62,7 @@ function FileGlyph() {
 export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps) {
   const t = useT();
   const intl = useIntl();
+  const lockText = useLockText();
   const client = useMemo(() => given ?? attachmentClient(ticket), [given, ticket]);
   const titleId = useId();
   const hintId = useId();
@@ -260,6 +263,9 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
                 />
               </label>
             </div>
+          ) : loaded.locked ? (
+            // The person's own reason first: the status keeps them out whatever the server has.
+            <p className="page-note">{lockText(loaded.locked, 'attach')}</p>
           ) : !loaded.available ? (
             <p className="page-note">{t('attachments.unavailable')}</p>
           ) : (

@@ -275,6 +275,75 @@ describe('collaborative rich text (M1-017)', () => {
     );
   });
 
+  it('[WF-007] [CORE-013] a status that reserves editing, or a field rule, refuses co-editing too', async () => {
+    const admin = (method: 'POST' | 'PATCH', url: string, payload: Record<string, unknown>) =>
+      as('admin', { method, url, payload });
+    const statuses = (await as('admin', { method: 'GET', url: '/api/v1/statuses' })).json()
+      .statuses as { id: number; name: string }[];
+    const S = (name: string) => statuses.find((x) => x.name === name)?.id as number;
+    const administrators = await roleId('Administrators');
+    const save = (ticketId: number) =>
+      writeCollaborativeText(
+        database.db,
+        new Authorizer(database.db),
+        new FieldCatalogs(database.db),
+        {
+          workspaceId: 1,
+          ticketId,
+          field: 'description',
+          doc: {
+            type: 'doc',
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Changed' }] }],
+          },
+          actorId: users.alice.id,
+          ip: null,
+          state: new Uint8Array(),
+        },
+      );
+    async function trackFor(key: string, settings: Record<string, unknown>) {
+      const track = await admin('POST', '/api/v1/tracks', { key, name: key, mode: 'shared' });
+      const id = track.json().track.id as number;
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: id,
+          role_id: await roleId('Members'),
+          user_id: users.alice.id,
+        })
+        .execute();
+      const set = await admin('PATCH', `/api/v1/tracks/${id}`, settings);
+      expect(set.statusCode, set.body).toBe(200);
+      const made = await admin('POST', '/api/v1/tickets', { track: key, summary: 'Locked' });
+      expect(made.statusCode, made.body).toBe(201);
+      return made.json().ticket.id as number;
+    }
+
+    // In status New only Administrators may edit; Alice is a Member.
+    const workflow = await admin('POST', '/api/v1/workflows', {
+      name: 'Reserved',
+      definition: {
+        initialStatusId: S('New'),
+        statuses: [{ statusId: S('New') }, { statusId: S('Approved') }],
+        transitions: [{ id: 1, name: 'Approve', from: [S('New')], to: S('Approved') }],
+        statusPermissions: { [String(S('New'))]: { edit: [{ role: String(administrators) }] } },
+      },
+    });
+    expect(workflow.statusCode, workflow.body).toBe(201);
+    const inStatus = await trackFor('COLS', { workflowId: workflow.json().workflow.id });
+    expect((await save(inStatus)).status).toBe('refused');
+
+    // The description only Administrators may set.
+    const rules = await admin('POST', '/api/v1/field-rule-sets', {
+      name: 'Reserved description',
+      rules: [{ field: 'description', editableBy: [{ roleId: administrators }] }],
+    });
+    expect(rules.statusCode, rules.body).toBe(201);
+    const byField = await trackFor('COLF', { fieldRuleSetId: rules.json().fieldRuleSet.id });
+    expect((await save(byField)).status).toBe('refused');
+    expect(await descriptionOf(byField)).toBeNull();
+  });
+
   it('[NTF-008] keeps the Yjs state, so people who come back continue from it', async () => {
     const ticket = await newTicket(text('Draft'));
     const name = `ticket/${ticket.id}/description`;

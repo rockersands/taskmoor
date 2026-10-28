@@ -418,7 +418,8 @@
       "field text not null",
       "required boolean not null default false",
       "hidden boolean not null default false",
-      "description text"
+      "description text",
+      "editable_by jsonb"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX field_rule_idx ON public.field_rule USING btree (rule_set_id, COALESCE(ticket_type_id, 0), field)"

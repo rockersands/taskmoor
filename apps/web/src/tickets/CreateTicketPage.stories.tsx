@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { type CreateClient, CreateTicketPage } from './CreateTicketPage';
-import { BUG_FORM, CHORE_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
+import { BUG_FORM, CHORE_FORM, LOCKED_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
 
 /** A backend in memory: Bugs need a due date and a severity, as the form says. */
 function fakeClient(overrides: Partial<CreateClient> = {}): CreateClient {
@@ -58,6 +58,24 @@ export const WithRefusals: Story = {
 
 export const ChoreForm: Story = {
   args: { client: fakeClient({ ticketTypes: async () => ({ defaultTypeId: 4, types: TYPES }) }) },
+};
+
+/** Fields only some may set (M1-029): shown read-only, each with the reason. */
+export const LockedFields: Story = {
+  args: {
+    client: fakeClient({
+      ticketTypes: async () => ({ defaultTypeId: 4, types: TYPES }),
+      form: async () => LOCKED_FORM,
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const due = await canvas.findByLabelText('Due date');
+    await expect(due).toBeDisabled();
+    await expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');
+    await expect(canvas.getByLabelText('Labels')).toBeDisabled();
+    await expect(canvas.getByLabelText('Summary (required)')).toBeEnabled();
+  },
 };
 
 export const NoTracks: Story = {

@@ -1,4 +1,5 @@
 import type { MessageId } from '../i18n/messages.en';
+import type { Lock } from '../locks/useLockText';
 
 /**
  * The create form's data (M1-012; CORE-008, CORE-013): the layout the backend resolves for a
@@ -38,6 +39,8 @@ export interface CustomField {
 export interface TicketForm {
   layout: { operation: string; tabs: FormTab[] };
   customFields: CustomField[];
+  /** What the person may not set here, and why (M1-029); absent in older fixtures. */
+  locks?: Lock[];
 }
 
 /** System fields: the key rules and layouts use, and the body key that writes it. */

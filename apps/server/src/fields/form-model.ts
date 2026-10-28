@@ -90,7 +90,39 @@ export interface RuleDef {
   required: boolean;
   hidden: boolean;
   description: string | null;
+  /** The roles and groups that alone may set the field (M1-029); null for everyone. */
+  editableBy: FieldHolder[] | null;
 }
+
+/** A role or group a field rule lets set the field. */
+export interface FieldHolder {
+  type: 'role' | 'group';
+  id: number;
+}
+
+/** `editableBy` as the API takes it and the column stores it. */
+export const holderList = z
+  .array(
+    z.union([
+      z.object({ roleId: z.number().int().positive() }).strict(),
+      z.object({ groupId: z.number().int().positive() }).strict(),
+    ]),
+  )
+  .min(1)
+  .max(50);
+
+/** The stored list; one this release cannot read lets nobody set the field (fails closed). */
+export function holdersOf(stored: unknown): FieldHolder[] | null {
+  if (stored === null || stored === undefined) return null;
+  const parsed = holderList.safeParse(stored);
+  if (!parsed.success) return [];
+  return parsed.data.map((h) =>
+    'roleId' in h ? { type: 'role', id: h.roleId } : { type: 'group', id: h.groupId },
+  );
+}
+
+export const holdersJson = (holders: readonly FieldHolder[]) =>
+  holders.map((h) => (h.type === 'role' ? { roleId: h.id } : { groupId: h.id }));
 
 export interface RuleSetDef {
   id: number;

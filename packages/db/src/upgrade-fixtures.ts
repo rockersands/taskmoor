@@ -779,6 +779,16 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0038_field_edit_permissions': {
+    tables: {
+      field_rule: "field = 'startDate' AND editable_by @> '[{\"roleId\": 1}]'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO field_rule (workspace_id, rule_set_id, field, editable_by)
+        SELECT 1, id, 'startDate', '[{"roleId": 1}]'::jsonb
+          FROM field_rule_set WHERE name = 'Seed rules'`.execute(db);
+    },
+  },
 };
 
 /**

@@ -3,6 +3,7 @@ import type { Kysely, Transaction } from 'kysely';
 import {
   EMPTY_FORMS,
   type FormConfig,
+  holdersOf,
   type LayoutDefinition,
   type LayoutSetDef,
   layoutDefinition,
@@ -259,6 +260,7 @@ export async function loadForms(db: Db, workspaceId: number): Promise<FormConfig
       required: r.required,
       hidden: r.hidden,
       description: r.description,
+      editableBy: holdersOf(r.editable_by),
     });
   }
   const layoutsBySet = new Map<number, Map<string, LayoutDefinition>>();

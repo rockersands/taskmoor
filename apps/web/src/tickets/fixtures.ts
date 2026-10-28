@@ -87,6 +87,22 @@ export const CHORE_FORM: TicketForm = {
   customFields: [],
 };
 
+/** The chore form for someone the field rules keep from dating or labelling work (M1-029). */
+export const LOCKED_FORM: TicketForm = {
+  ...CHORE_FORM,
+  locks: [
+    { by: 'field', field: 'dueDate', allowed: [{ type: 'group', id: 7, name: 'Approvers' }] },
+    {
+      by: 'field',
+      field: 'labels',
+      allowed: [
+        { type: 'role', id: 1, name: 'Administrators' },
+        { type: 'group', id: 9, name: 'Leads' },
+      ],
+    },
+  ],
+};
+
 export const TRACKS = [{ id: 1, key: 'SHOP', name: 'Shop' }];
 export const TYPES = [
   { id: 3, name: 'Bug' },

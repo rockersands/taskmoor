@@ -5,6 +5,7 @@ import {
   customFieldId,
   customKey,
   FIXED_FIELDS,
+  type FieldHolder,
   type FormPlacement,
   type LayoutDefinition,
   type Operation,
@@ -19,9 +20,13 @@ export {
   customKey,
   EMPTY_FORMS,
   FIXED_FIELDS,
+  type FieldHolder,
   type FormConfig,
   type FormPlacement,
   fieldOfBody,
+  holderList,
+  holdersJson,
+  holdersOf,
   isFieldKey,
   type LayoutDefinition,
   type LayoutSetDef,
@@ -50,14 +55,38 @@ export {
  * - Formula fields (M1-013) are computed: a create form never shows them, and no rule makes
  *   them required.
  */
-const NO_RULE: RuleDef = { required: false, hidden: false, description: null };
+const NO_RULE: RuleDef = { required: false, hidden: false, description: null, editableBy: null };
 
 export function ruleOf(catalog: Catalog, at: FormPlacement, key: string): RuleDef {
-  if (FIXED_FIELDS.has(key)) return { required: true, hidden: false, description: null };
+  if (FIXED_FIELDS.has(key)) {
+    return { required: true, hidden: false, description: null, editableBy: null };
+  }
   const forms = catalog.forms;
   const set = forms.ruleSets.get(at.ruleSetId ?? forms.defaultRuleSetId ?? 0);
   if (!set) return NO_RULE;
   return set.rules.get(`${at.ticketTypeId}|${key}`) ?? set.rules.get(`0|${key}`) ?? NO_RULE;
+}
+
+/**
+ * The fields among `keys` the person may not set (M1-029), with the roles and groups that may:
+ * a rule's `editableBy` lets only them, whatever track permissions the others hold.
+ */
+export function fieldLocks(
+  catalog: Catalog,
+  at: FormPlacement,
+  keys: Iterable<string>,
+  audience: { roleIds: ReadonlySet<number>; groupIds: ReadonlySet<number> },
+): Map<string, FieldHolder[]> {
+  const out = new Map<string, FieldHolder[]>();
+  for (const key of keys) {
+    const allowed = ruleOf(catalog, at, key).editableBy;
+    if (!allowed) continue;
+    const held = allowed.some((h) =>
+      h.type === 'role' ? audience.roleIds.has(h.id) : audience.groupIds.has(h.id),
+    );
+    if (!held) out.set(key, allowed);
+  }
+  return out;
 }
 
 /** Every field that applies to the ticket: the system ones, then its custom ones by name. */

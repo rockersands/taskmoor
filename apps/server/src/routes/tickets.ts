@@ -12,6 +12,7 @@ import { refreshFormulas } from '../fields/formulas';
 import {
   customKey,
   type FormPlacement,
+  fieldLocks,
   fieldOfBody,
   formFields,
   isEmptyOn,
@@ -75,6 +76,15 @@ import {
 import { durationValue, timeSettings } from '../tickets/time';
 import { levelFor, trackVisibility } from '../tickets/visibility';
 import { isKnownField, isWritableField, parseField } from '../workflows/fields';
+import {
+  audienceOf,
+  fieldLockList,
+  type Lock,
+  type LockAction,
+  lockedBody,
+  statusGate,
+  statusLock,
+} from '../workflows/locks';
 import { statusIdsOf } from '../workflows/model';
 import {
   channelOf,
@@ -485,6 +495,7 @@ type Outcome =
   | { fields: FieldErrors }
   | { conflict: string; detail?: Record<string, unknown> }
   | { denied: TrackPermission }
+  | { locked: { action: LockAction | 'edit_field'; locks: Lock[] } }
   | { versionConflict: true };
 
 /**
@@ -649,6 +660,9 @@ export function registerTicketRoutes(
       return reply.code(409).send({ error: outcome.conflict, ...(outcome.detail ?? {}) });
     }
     if ('denied' in outcome) return forbidden(reply, outcome.denied);
+    if ('locked' in outcome) {
+      return reply.code(403).send(lockedBody(outcome.locked.action, outcome.locked.locks));
+    }
     if ('versionConflict' in outcome) return reply.code(409).send({ error: 'version_conflict' });
     if (!outcome.ticket) return notFound(reply);
     return null;
@@ -953,6 +967,11 @@ export function registerTicketRoutes(
       ];
       const placed = layoutProblems(catalog, at, form.shown, written);
       if (placed) return { fields: placed };
+      // Fields only some roles or groups may set (M1-029).
+      const fieldLocked = fieldLocks(catalog, at, written, audienceOf(actor));
+      if (fieldLocked.size > 0) {
+        return { locked: { action: 'edit_field', locks: await fieldLockList(trx, fieldLocked) } };
+      }
       const parent = parentId === null ? null : await lockParent(trx, ws, parentId);
       if (parentId !== null && !parent) return { fields: { parent: 'not_found' } };
       const levels = await typeLevels(trx, ws, [
@@ -1122,6 +1141,7 @@ export function registerTicketRoutes(
     const assigneeOk =
       body.assigneeId == null || (await assignable(ws, found.row.track_id, body.assigneeId));
     const catalog = await catalogs.get(ws);
+    const gate = await statusGate(db, request, found.row.track_id);
 
     const outcome = await transact(async (trx): Promise<Outcome> => {
       // Locks in the order every writer takes them: the hierarchy, the track and its type set,
@@ -1285,6 +1305,24 @@ export function registerTicketRoutes(
       ];
       for (const [field, permission] of needs) {
         if (changes[field] && !held.has(permission)) return { denied: permission };
+      }
+      // Per-status locks (WF-007), for the status the locked row has: an assignee change needs
+      // the status's assign list, any other change its edit list. Then the fields only some
+      // roles or groups may set (M1-029).
+      for (const action of ['edit', 'assign'] as const) {
+        const touches = Object.keys(changes).some((k) =>
+          action === 'assign' ? k === 'assigneeId' : k !== 'assigneeId',
+        );
+        const allowed = touches ? gate.check(current.status_id, action) : null;
+        if (allowed) {
+          return {
+            locked: { action, locks: [await statusLock(trx, ws, current.status_id, allowed)] },
+          };
+        }
+      }
+      const fieldLocked = fieldLocks(catalog, at, changedKeys, gate.audience);
+      if (fieldLocked.size > 0) {
+        return { locked: { action: 'edit_field', locks: await fieldLockList(trx, fieldLocked) } };
       }
       if (changes.priorityId || changes.closeReasonId || Object.keys(lists).length > 0) {
         const problems: FieldErrors = {};
@@ -1493,6 +1531,7 @@ export function registerTicketRoutes(
     }
 
     const catalog = await catalogs.get(ws);
+    const gate = await statusGate(db, request, sourceId);
     const outcome = await transact(async (trx): Promise<Outcome> => {
       // The hierarchy, then the target track, its type set and its workflow, then tickets.
       await shareHierarchy(trx, ws);
@@ -1523,6 +1562,16 @@ export function registerTicketRoutes(
         return { versionConflict: true };
       }
       if (current.level_rank === SUBTICKET_RANK) return { conflict: 'subticket_moves_with_parent' };
+      // A move edits the ticket: a status that limits editing limits moving (WF-007).
+      const lockedEdit = gate.check(current.status_id, 'edit');
+      if (lockedEdit) {
+        return {
+          locked: {
+            action: 'edit',
+            locks: [await statusLock(trx, ws, current.status_id, lockedEdit)],
+          },
+        };
+      }
 
       const fields: FieldErrors = {};
       const typeId =
@@ -1807,9 +1856,20 @@ export function registerTicketRoutes(
           };
         }
         if (result.by === 'permission') {
+          const allowed = (
+            held.definition.statusPermissions?.[String(current.status_id)]?.transition ?? []
+          ).map((p) =>
+            'role' in p
+              ? { type: 'role' as const, id: Number(p.role) }
+              : { type: 'group' as const, id: Number(p.group) },
+          );
           return {
             conflict: 'forbidden_in_status',
-            detail: { permission: 'transition', reason: result.message ?? '' },
+            detail: {
+              permission: 'transition',
+              reason: result.message ?? '',
+              locks: [await statusLock(trx, ws, current.status_id, allowed)],
+            },
           };
         }
         // A check says which one refused, so a client can word it in its own language: the
@@ -1852,6 +1912,16 @@ export function registerTicketRoutes(
       );
       if (hiddenGiven.length > 0) {
         return { fields: Object.fromEntries(hiddenGiven.map((name) => [name, 'hidden'])) };
+      }
+      // A value the person enters on the layout needs the field's editors too (M1-029).
+      const fieldLocked = fieldLocks(
+        catalog,
+        at,
+        Object.keys(entered).map(ruleKeyOfWorkflowField),
+        audienceOf(actor),
+      );
+      if (fieldLocked.size > 0) {
+        return { locked: { action: 'edit_field', locks: await fieldLockList(trx, fieldLocked) } };
       }
       const stored = storedChanges(current, result.ticket);
       if (!stored.ok) return { fields: { [stored.field]: stored.problem } };

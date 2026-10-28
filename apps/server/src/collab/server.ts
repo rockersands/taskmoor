@@ -263,6 +263,7 @@ export class Collaboration {
     const row = await loadTicket(db, context.workspaceId, ticketId);
     if (!row) throw new Refusal('not-found');
     const allowed = await mayEditText(
+      db,
       authorizer,
       catalogs,
       context.workspaceId,
@@ -331,7 +332,7 @@ export class Collaboration {
       let verdict = verdicts.get(userId);
       if (verdict === undefined) {
         verdict = row
-          ? await mayEditText(authorizer, catalogs, open.workspaceId, userId, row, open.field)
+          ? await mayEditText(db, authorizer, catalogs, open.workspaceId, userId, row, open.field)
           : 'missing';
         verdicts.set(userId, verdict);
       }

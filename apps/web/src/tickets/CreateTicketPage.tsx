@@ -1,7 +1,8 @@
 import type { PmJson } from '@taskmoor/richtext';
-import { type FormEvent, useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { lockOfField, useLockText } from '../locks/useLockText';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import {
@@ -75,6 +76,7 @@ export interface CreateTicketPageProps {
  */
 export function CreateTicketPage({ client = createClient }: CreateTicketPageProps) {
   const t = useT();
+  const lockText = useLockText();
   const titleId = useId();
   const prefix = useId();
   const [tracks, setTracks] = useState<Loaded<TrackChoice[]>>({ status: 'loading' });
@@ -128,14 +130,19 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
     };
   }, [client, track]);
 
+  // The form of the track and type chosen now: an answer for an earlier choice that comes late
+  // is dropped, or it would show another type's fields under this one's name.
+  const latestForm = useRef(0);
   const loadForm = useCallback(async () => {
     if (track === '' || typeId === null) return;
+    const asked = ++latestForm.current;
     setForm({ status: 'loading' });
     setErrors({});
     try {
-      setForm({ status: 'loaded', value: await client.form(track, typeId) });
+      const value = await client.form(track, typeId);
+      if (asked === latestForm.current) setForm({ status: 'loaded', value });
     } catch {
-      setForm({ status: 'failed' });
+      if (asked === latestForm.current) setForm({ status: 'failed' });
     }
   }, [client, track, typeId]);
 
@@ -189,6 +196,7 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
     custom: CustomField | undefined,
     id: string,
     described: string,
+    locked: boolean,
   ) {
     const value = values[field.key];
     const text = typeof value === 'string' ? value : '';
@@ -197,6 +205,8 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
       'aria-describedby': described || undefined,
       'aria-required': field.required || undefined,
       'aria-invalid': errors[field.key] ? true : undefined,
+      // A field the person may not set (M1-029) shows, read-only, with the reason beside it.
+      disabled: locked || undefined,
     };
     const type = custom?.type ?? field.key;
     if (RICH_TYPES.has(type)) {
@@ -207,6 +217,7 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
           describedBy={described || undefined}
           required={field.required}
           invalid={Boolean(errors[field.key])}
+          editable={!locked}
           onChange={(doc) => setDocs((d) => ({ ...d, [field.key]: doc }))}
           mentions={mentions}
         />
@@ -282,6 +293,7 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
           {parent && (parent.children?.length ?? 0) > 0 && (
             <select
               aria-label={t('tickets.create.childOption', { label: custom?.name ?? '' })}
+              disabled={locked}
               value={typeof childValue === 'string' ? childValue : ''}
               onChange={(e) => set(`${field.key}/child`, e.target.value)}
             >
@@ -313,20 +325,24 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
     const label = labelOf(field, custom);
     const help = field.description ?? (custom?.description || null);
     const error = errors[field.key];
-    const helpId = help ? `${id}-help` : '';
+    const hint =
+      field.key === 'labels' || custom?.type === 'labels' ? t('tickets.create.labelsHint') : null;
+    const lock = lockOfField(loaded.locks, field.key);
+    const helpId = help || hint ? `${id}-help` : '';
+    const lockId = lock ? `${id}-lock` : '';
     const errorId = error ? `${id}-error` : '';
+    const described = [helpId, lockId, errorId].filter(Boolean).join(' ');
     const editable = custom
       ? EDITABLE_CUSTOM.has(custom.type) && !(custom.type === 'select' && custom.multiple)
       : EDITABLE_SYSTEM.has(field.key);
     const multiple = custom?.type === 'select' && custom.multiple;
-    const hint =
-      field.key === 'labels' || custom?.type === 'labels' ? t('tickets.create.labelsHint') : null;
     return (
       <div key={field.key} className="form-field create-field">
         {multiple ? (
           <fieldset
             className="create-choices"
-            aria-describedby={[helpId, errorId].filter(Boolean).join(' ') || undefined}
+            aria-describedby={described || undefined}
+            disabled={lock !== null}
           >
             <legend className="form-label">{label}</legend>
             {(custom?.options ?? []).map((o) => {
@@ -364,7 +380,7 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
               </label>
             )}
             {editable ? (
-              control(field, custom, id, [helpId, errorId].filter(Boolean).join(' '))
+              control(field, custom, id, described, lock !== null)
             ) : (
               <p id={id} className="page-note">
                 {t('tickets.create.later')}
@@ -375,6 +391,11 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
         {(help || hint) && (
           <p id={helpId || undefined} className="form-hint">
             {help ?? hint}
+          </p>
+        )}
+        {lock && (
+          <p id={lockId} className="form-hint">
+            {lockText(lock)}
           </p>
         )}
         {error && (

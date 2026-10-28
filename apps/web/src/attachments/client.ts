@@ -1,4 +1,5 @@
 import { API_BASE, ApiError, api } from '../api/client';
+import type { Lock } from '../locks/useLockText';
 
 /** An attachment as `GET /api/v1/tickets/:id/attachments` shows it (CORE-021). */
 export interface Attachment {
@@ -24,6 +25,8 @@ export interface AttachmentList {
   canCreate: boolean;
   /** False when the server has no file store configured. */
   available: boolean;
+  /** The ticket's status keeps this person from adding or removing files (WF-007). */
+  locked?: Lock | null;
 }
 
 export interface ZipEntry {

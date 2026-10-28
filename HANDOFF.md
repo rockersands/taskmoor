@@ -18,6 +18,17 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-029 edit locks** (migration 0038; ADR-042). `apps/server/src/workflows/locks.ts`
+  (`statusGate`, `statusGateFor`, `statusLock`, `fieldLockList`, `lockedBody`) and
+  `fieldLocks` in `fields/layouts.ts`. Enforced in ticket create, edit, move and transition
+  layouts, attachment upload and delete, and co-editing (`collab/persist.ts` `mayEditText`).
+  **Comments (M1-018) must check the status's `comment` lock, and bulk operations (M1-021) the
+  edit and assign locks and field locks, through the same helpers.** Routes:
+  `GET /api/v1/tickets/:id/locks`; layouts and the attachment list report locks. Web:
+  `apps/web/src/locks/useLockText.ts` words a lock; the ticket view (M1-051) should grey out
+  what `/locks` lists. Two fixes came with it in the create form: a late layout answer for an
+  earlier ticket type no longer replaces the chosen type's form, and the labels hint is linked
+  to its field. The attachment panel shows a status lock before "not set up".
 - **M1-013 formula fields** (built by a background agent on `work/m1-013-formulas`, reviewed
   and merged; migration 0033; ADR-009 "Implementation (M1-013)"; new package
   `@taskmoor/formula`). Formula custom fields compute from custom number, date and text

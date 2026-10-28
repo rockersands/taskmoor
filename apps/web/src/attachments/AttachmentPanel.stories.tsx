@@ -32,6 +32,31 @@ export const ReadOnly: Story = {
   },
 };
 
+/** In a status that reserves files to the Approvers group (WF-007): the panel says why. */
+export const LockedByStatus: Story = {
+  args: {
+    client: fakeAttachmentClient({
+      canCreate: false,
+      attachments: ATTACHMENTS.map((a) => ({ ...a, canDelete: false })),
+      locked: {
+        by: 'status',
+        statusId: 4,
+        statusName: 'Approved',
+        allowed: [{ type: 'group', id: 7, name: 'Approvers' }],
+      },
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(
+        'In status Approved, only the Approvers group can add or remove files.',
+      ),
+    ).toBeVisible();
+    await expect(canvas.queryByLabelText('Attach files')).toBeNull();
+  },
+};
+
 export const Empty: Story = {
   args: { client: fakeAttachmentClient({ attachments: [] }) },
 };

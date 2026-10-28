@@ -6,7 +6,7 @@ import { MEMBER } from '../admin/fixtures';
 import { type Handler, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
-import { BUG_FORM, CHORE_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
+import { BUG_FORM, CHORE_FORM, LOCKED_FORM, PRIORITIES, TRACKS, TYPES } from './fixtures';
 
 function openCreate(handlers: Record<string, Handler> = {}, locale?: 'en-XA') {
   const calls = stubBackend({
@@ -91,6 +91,50 @@ describe('the create form (M1-012)', () => {
     expect(screen.queryByLabelText('Severity (required)')).toBeNull();
     // One generated tab needs no heading.
     expect(screen.queryByRole('region', { name: 'More fields' })).toBeNull();
+  });
+
+  it('[WF-007] [CORE-013] shows the fields a person may not set read-only, and says who may', async () => {
+    const user = userEvent.setup();
+    const calls = openCreate({
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () =>
+        jsonResponse(200, LOCKED_FORM),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 10, key: 'SHOP-10' } }),
+    });
+    await screen.findByLabelText('Severity (required)');
+    await user.selectOptions(screen.getByLabelText('Ticket type'), 'Chore');
+    const due = await screen.findByLabelText('Due date');
+    expect(due).toBeDisabled();
+    expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');
+    const labels = screen.getByLabelText('Labels');
+    expect(labels).toBeDisabled();
+    expect(labels).toHaveAccessibleDescription(
+      'Separate labels with spaces. Only the Administrators role or the Leads group can set this field.',
+    );
+    await user.type(screen.getByLabelText('Summary (required)'), 'Tidy up');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-10 was created.')).toBeVisible();
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    expect(sent?.body).not.toHaveProperty('dueDate');
+    expect(sent?.body).not.toHaveProperty('labels');
+  });
+
+  it('[CORE-013] a late answer for the type chosen before does not replace the form of this one', async () => {
+    const user = userEvent.setup();
+    let answerBug: () => void = () => {};
+    openCreate({
+      // The Bug form answers only after the Chore form has arrived.
+      'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () =>
+        new Promise<Response>((resolve) => {
+          answerBug = () => resolve(jsonResponse(200, BUG_FORM));
+        }),
+    });
+    await screen.findByRole('option', { name: 'Chore' });
+    await user.selectOptions(screen.getByLabelText('Ticket type'), 'Chore');
+    expect(await screen.findByLabelText('Due date')).toBeVisible();
+    answerBug();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByLabelText('Due date')).toBeVisible();
+    expect(screen.queryByLabelText('Severity (required)')).toBeNull();
   });
 
   it('[CORE-008] fits a small phone', async () => {

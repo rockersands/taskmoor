@@ -6,6 +6,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { refreshFormulas } from '../fields/formulas';
 import {
   type FormPlacement,
+  fieldLocks,
   formFields,
   layoutProblems,
   missingRequired,
@@ -16,6 +17,7 @@ import { recordChanges, ticketChanges } from '../tickets/history';
 import { canonicalJson, ticketKey } from '../tickets/model';
 import { docHash } from '../tickets/rich-text';
 import { loadTicket, type TicketRow } from '../tickets/store';
+import { statusGateFor } from '../workflows/locks';
 
 /**
  * Where collaborative edits land (M1-017; NTF-008; ADR-014 "Implementation (M1-017)"): the
@@ -57,10 +59,12 @@ class Rollback extends Error {
 
 /**
  * Whether a person may edit a rich text field of a ticket now: they see it, hold "Edit
- * tickets" there (none in an archived track or the trash), and the edit form of its type shows
- * the field (field rules and layouts, M1-012).
+ * tickets" there (none in an archived track or the trash), the edit form of its type shows
+ * the field (field rules and layouts, M1-012), and neither the ticket's status nor the field's
+ * rule keeps them from editing it (M1-029, WF-007).
  */
 export async function mayEditText(
+  db: Kysely<Database>,
   authorizer: Authorizer,
   catalogs: FieldCatalogs,
   workspaceId: number,
@@ -69,13 +73,18 @@ export async function mayEditText(
   field: RichTextField,
 ): Promise<'yes' | 'missing' | 'refused'> {
   if (row.deleted_at) return 'missing';
-  const held = await authorizer.context(workspaceId, { userId }).ticket(row);
+  const context = authorizer.context(workspaceId, { userId });
+  const held = await context.ticket(row);
   if (!held.has('browse_track')) return 'missing';
   if (!held.has('edit_tickets')) return 'refused';
   const catalog = await catalogs.get(workspaceId);
   const at = placementOf(row);
   const form = formFields(resolveLayout(catalog, at, 'edit'));
-  return layoutProblems(catalog, at, form.shown, [field]) ? 'refused' : 'yes';
+  if (layoutProblems(catalog, at, form.shown, [field])) return 'refused';
+  const audience = await context.audience(row.track_id);
+  const gate = await statusGateFor(db, workspaceId, row.track_id, audience);
+  if (gate.check(row.status_id, 'edit')) return 'refused';
+  return fieldLocks(catalog, at, [field], audience).size > 0 ? 'refused' : 'yes';
 }
 
 const placementOf = (row: TicketRow): FormPlacement => ({
@@ -99,7 +108,7 @@ export async function writeCollaborativeText(
   const ws = write.workspaceId;
   const seen = await loadTicket(db, ws, write.ticketId);
   if (!seen) return { status: 'missing' };
-  const allowed = await mayEditText(authorizer, catalogs, ws, write.actorId, seen, write.field);
+  const allowed = await mayEditText(db, authorizer, catalogs, ws, write.actorId, seen, write.field);
   if (allowed === 'missing') return { status: 'missing' };
   if (allowed === 'refused') return { status: 'refused', ticket: seen };
   const catalog = await catalogs.get(ws);
@@ -119,7 +128,8 @@ export async function writeCollaborativeText(
       if (
         current.track_id !== seen.track_id ||
         current.visibility_level_id !== seen.visibility_level_id ||
-        current.ticket_type_id !== seen.ticket_type_id
+        current.ticket_type_id !== seen.ticket_type_id ||
+        current.status_id !== seen.status_id
       ) {
         return { status: 'refused', ticket: current };
       }

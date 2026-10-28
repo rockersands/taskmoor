@@ -431,6 +431,14 @@ describe('transitions through the workflow engine (M1-024 to M1-027)', () => {
       error: 'forbidden',
       permission: 'transition',
       reason: `in status ${S('Under review')} only role ${roles.Administrators} may transition`,
+      locks: [
+        {
+          by: 'status',
+          statusId: S('Under review'),
+          statusName: 'Under review',
+          allowed: [{ type: 'role', id: roles.Administrators, name: 'Administrators' }],
+        },
+      ],
     });
     expect((await transition('erin', ticket, { transitionId: 1 })).statusCode).toBe(200);
   });

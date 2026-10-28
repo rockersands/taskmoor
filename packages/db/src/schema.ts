@@ -1095,6 +1095,8 @@ export interface FieldRuleTable {
   required: Generated<boolean>;
   hidden: Generated<boolean>;
   description: string | null;
+  /** The roles and groups that alone may set the field (M1-029); null for everyone. */
+  editable_by: NullableJson;
 }
 
 /** The tabs and sections of a form for a ticket type (or every type) and operation. */

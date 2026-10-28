@@ -9,13 +9,25 @@ import {
   customFieldId,
   FIXED_FIELDS,
   type FormPlacement,
+  fieldLocks,
+  holderList,
+  holdersJson,
+  holdersOf,
   isFieldKey,
   layoutDefinition,
   OPERATIONS,
   resolveLayout,
 } from '../fields/layouts';
 import { describeFields } from '../fields/values';
-import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
+import { loadTicket, resolveTicket, resolveTrack, type TicketRow } from '../tickets/store';
+import {
+  fieldLockList,
+  LOCK_ACTIONS,
+  type Lock,
+  type LockAction,
+  statusGate,
+  statusLock,
+} from '../workflows/locks';
 
 /**
  * Field rule sets and layout sets (M1-012; CORE-003, CORE-008, CORE-013; spec 01a section 1.5).
@@ -48,9 +60,13 @@ const ruleBody = z
     required: z.boolean().default(false),
     hidden: z.boolean().default(false),
     description: z.string().max(2000).nullable().default(null),
+    editableBy: holderList.nullable().default(null),
   })
   .strict()
-  .refine((r) => !(r.required && r.hidden), 'a field is not required and hidden at once');
+  .refine((r) => !(r.required && r.hidden), 'a field is not required and hidden at once')
+  // A field everyone must fill in but only some may set would stop the others from creating.
+  .refine((r) => !(r.required && r.editableBy), 'a field is not required and restricted at once')
+  .refine((r) => !(r.hidden && r.editableBy), 'a hidden field takes no editors');
 const layoutBody = z
   .object({
     ticketTypeId: idValue.nullable().default(null),
@@ -213,6 +229,35 @@ export function registerLayoutRoutes(
     return rows.length === ids.length ? null : problem(400, 'unknown_ticket_type');
   }
 
+  /** Roles and groups a rule names must exist in the workspace. */
+  async function holderProblem(
+    trx: Transaction<Database>,
+    ws: number,
+    holders: readonly ({ roleId: number } | { groupId: number })[],
+  ) {
+    const roleIds = [...new Set(holders.flatMap((h) => ('roleId' in h ? [h.roleId] : [])))];
+    const groupIds = [...new Set(holders.flatMap((h) => ('groupId' in h ? [h.groupId] : [])))];
+    if (roleIds.length > 0) {
+      const rows = await trx
+        .selectFrom('role')
+        .select('id')
+        .where('workspace_id', '=', ws)
+        .where('id', 'in', roleIds)
+        .execute();
+      if (rows.length !== roleIds.length) return problem(400, 'unknown_role');
+    }
+    if (groupIds.length > 0) {
+      const rows = await trx
+        .selectFrom('user_group')
+        .select('id')
+        .where('workspace_id', '=', ws)
+        .where('id', 'in', groupIds)
+        .execute();
+      if (rows.length !== groupIds.length) return problem(400, 'unknown_group');
+    }
+    return null;
+  }
+
   async function writeRules(
     trx: Transaction<Database>,
     ws: number,
@@ -245,6 +290,12 @@ export function registerLayoutRoutes(
       rules.map((r) => r.ticketTypeId),
     );
     if (types) return types;
+    const holders = await holderProblem(
+      trx,
+      ws,
+      rules.flatMap((r) => r.editableBy ?? []),
+    );
+    if (holders) return holders;
     await trx.deleteFrom('field_rule').where('rule_set_id', '=', setId).execute();
     for (let i = 0; i < rules.length; i += 2000) {
       await trx
@@ -258,6 +309,7 @@ export function registerLayoutRoutes(
             required: r.required,
             hidden: r.hidden,
             description: r.description,
+            editable_by: r.editableBy ? JSON.stringify(r.editableBy) : null,
           })),
         )
         .execute();
@@ -332,7 +384,7 @@ export function registerLayoutRoutes(
     if (kind === 'field_rule_set') {
       const rules = await db
         .selectFrom('field_rule')
-        .select(['ticket_type_id', 'field', 'required', 'hidden', 'description'])
+        .select(['ticket_type_id', 'field', 'required', 'hidden', 'description', 'editable_by'])
         .where('rule_set_id', '=', row.id)
         .orderBy('field')
         .orderBy(sql`coalesce(ticket_type_id, 0)`)
@@ -345,6 +397,10 @@ export function registerLayoutRoutes(
           required: r.required,
           hidden: r.hidden,
           description: r.description,
+          editableBy: (() => {
+            const holders = holdersOf(r.editable_by);
+            return holders ? holdersJson(holders) : null;
+          })(),
         })),
       };
     }
@@ -605,7 +661,18 @@ export function registerLayoutRoutes(
 
   // The form an operation shows (CORE-008, CORE-013)
 
-  async function formOf(ws: number, at: FormPlacement, operation: (typeof OPERATIONS)[number]) {
+  /**
+   * The form and, for create and edit, what the person may not change on it and why (M1-029):
+   * the status's edit lock on an existing ticket (every field), then each field only some roles
+   * or groups may set. The client shows those fields read-only with the reason (WF-007 (2)).
+   */
+  async function formOf(
+    request: FastifyRequest,
+    at: FormPlacement,
+    operation: (typeof OPERATIONS)[number],
+    ticket?: TicketRow,
+  ) {
+    const ws = request.workspaceId;
     const catalog = await catalogs.get(ws);
     const layout = resolveLayout(catalog, at, operation);
     const keys = layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key)));
@@ -614,9 +681,17 @@ export function registerLayoutRoutes(
       .filter((fieldId): fieldId is number => fieldId !== null)
       .map((fieldId) => catalog.fields.get(fieldId))
       .filter((f) => f !== undefined);
+    const locks: Lock[] = [];
+    if (operation !== 'view') {
+      const gate = await statusGate(db, request, at.trackId);
+      const edit = ticket ? gate.check(ticket.status_id, 'edit') : null;
+      if (ticket && edit) locks.push(await statusLock(db, ws, ticket.status_id, edit));
+      locks.push(...(await fieldLockList(db, fieldLocks(catalog, at, keys, gate.audience))));
+    }
     return {
       layout,
       customFields: await describeFields(db, ws, catalog, at.trackId, at.ticketTypeId, customs),
+      locks,
     };
   }
 
@@ -636,7 +711,7 @@ export function registerLayoutRoutes(
       .where('id', '=', trackId)
       .executeTakeFirstOrThrow();
     return formOf(
-      ws,
+      request,
       {
         trackId,
         ticketTypeId: q.data.ticketTypeId,
@@ -659,7 +734,7 @@ export function registerLayoutRoutes(
       return notFound(reply);
     }
     return formOf(
-      ws,
+      request,
       {
         trackId: row.track_id,
         ticketTypeId: row.ticket_type_id,
@@ -667,6 +742,28 @@ export function registerLayoutRoutes(
         layoutSetId: row.layout_set_id,
       },
       q.data.operation,
+      row,
     );
+  });
+
+  // What a status keeps the person from doing to a ticket, and who may (WF-007): the ticket
+  // view greys those controls out and says why.
+  app.get('/api/v1/tickets/:id/locks', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = z.object({ id: z.string().min(1).max(300) }).safeParse(request.params);
+    if (!p.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const found = await resolveTicket(db, ws, p.data.id);
+    const row = found ? await loadTicket(db, ws, found.id) : undefined;
+    if (!row || row.deleted_at || !(await request.authz.seesTicket(row))) {
+      return notFound(reply);
+    }
+    const gate = await statusGate(db, request, row.track_id);
+    const locks: Partial<Record<LockAction, Lock>> = {};
+    for (const action of LOCK_ACTIONS) {
+      const allowed = gate.check(row.status_id, action);
+      if (allowed) locks[action] = await statusLock(db, ws, row.status_id, allowed);
+    }
+    return { locks };
   });
 }

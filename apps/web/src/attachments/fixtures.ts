@@ -137,6 +137,7 @@ export function fakeAttachmentClient(
       maxFileSize: list.maxFileSize ?? 1024 ** 3,
       canCreate: list.canCreate ?? true,
       available: list.available ?? true,
+      locked: list.locked ?? null,
     }),
     upload: async (file) => {
       const added: Attachment = {

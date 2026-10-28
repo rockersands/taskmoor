@@ -32,6 +32,7 @@ import { emit, withEvent } from '../events/bus';
 import { recordChanges } from '../tickets/history';
 import { ticketKey } from '../tickets/model';
 import { loadTicket, resolveTicket, type TicketRow } from '../tickets/store';
+import { type Lock, lockedBody, statusGate, statusLock } from '../workflows/locks';
 
 /**
  * Attachments (M1-016; CORE-021, CORE-022, CORE-025 (3); ADR-040).
@@ -166,6 +167,15 @@ export async function registerAttachmentRoutes(
       return null;
     }
     return row;
+  }
+
+  /** The lock of a status that reserves attaching (and removing files) to some (WF-007). */
+  async function attachLock(request: FastifyRequest, ticket: TicketRow): Promise<Lock | null> {
+    const allowed = (await statusGate(db, request, ticket.track_id)).check(
+      ticket.status_id,
+      'attach',
+    );
+    return allowed ? statusLock(db, request.workspaceId, ticket.status_id, allowed) : null;
   }
 
   /** The route's attachment on its ticket, or the refusal. */
@@ -305,7 +315,7 @@ export async function registerAttachmentRoutes(
       if (!user) return reply;
       const ticket = await routeTicket(request, reply, false);
       if (!ticket) return reply;
-      const [rows, rights, canCreate, limit] = await Promise.all([
+      const [rows, rights, canCreate, limit, lock] = await Promise.all([
         attachmentQuery(db)
           .where('a.ticket_id', '=', ticket.id)
           .orderBy('a.created_at')
@@ -314,12 +324,15 @@ export async function registerAttachmentRoutes(
         deleteRights(request, ticket),
         request.authz.canTicket('create_attachments', ticket),
         maxFileSize(db, request.workspaceId),
+        attachLock(request, ticket),
       ]);
       return {
-        attachments: rows.map((r) => attachmentView(r, mayDelete(rights, r, user.id))),
+        attachments: rows.map((r) => attachmentView(r, !lock && mayDelete(rights, r, user.id))),
         maxFileSize: limit,
-        canCreate: canCreate && !ticket.track_archived_at && stores.active !== null,
+        canCreate: canCreate && !lock && !ticket.track_archived_at && stores.active !== null,
         available: stores.active !== null,
+        // Why the panel takes no files here, when a status reserves attaching (WF-007).
+        locked: lock,
       };
     });
 
@@ -331,6 +344,8 @@ export async function registerAttachmentRoutes(
       if (!(await request.authz.canTicket('create_attachments', ticket))) {
         return forbidden(reply, 'create_attachments');
       }
+      const lock = await attachLock(request, ticket);
+      if (lock) return reply.code(403).send(lockedBody('attach', [lock]));
       const store = stores.active;
       if (!store) return unavailable(reply);
       const ws = request.workspaceId;
@@ -630,6 +645,8 @@ export async function registerAttachmentRoutes(
       if (!mayDelete(rights, row, user.id)) {
         return forbidden(reply, own ? 'delete_own_attachments' : 'delete_all_attachments');
       }
+      const lock = await attachLock(request, ticket);
+      if (lock) return reply.code(403).send(lockedBody('attach', [lock]));
       const ws = request.workspaceId;
       const removed = await db.transaction().execute(async (trx) => {
         const current = await lockTicket(trx, ticket.id);
