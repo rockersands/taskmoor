@@ -201,7 +201,7 @@ if (config.roles.includes('worker') && db) {
   app.log.info('worker role: relaying events, running jobs and directory syncs');
 }
 if (config.roles.includes('realtime')) {
-  app.log.info('realtime role: no channels yet (ADR-013, M1-031)');
+  app.log.info('realtime role: change log positions over /api/v1/sync/socket (M1-032)');
 }
 
 const closeApp = gracefulShutdown(app);

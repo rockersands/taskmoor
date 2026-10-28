@@ -30,6 +30,7 @@ import * as m0030 from './0030_notifications';
 import * as m0031 from './0031_attachments';
 import * as m0032 from './0032_email';
 import * as m0036 from './0036_change_log';
+import * as m0037 from './0037_mutation_receipts';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -70,4 +71,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0031_attachments': m0031,
   '0032_email': m0032,
   '0036_change_log': m0036,
+  '0037_mutation_receipts': m0037,
 };

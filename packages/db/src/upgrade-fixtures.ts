@@ -723,14 +723,32 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
   '0036_change_log': {
     tables: {
       change_log:
-        "entity = 'ticket' AND op = 'upsert' AND seq IS NOT NULL AND data->'labels' ? 'logged'",
+        "entity = 'ticket' AND op = 'upsert' AND seq IS NOT NULL AND data->>'summary' = 'Logged ticket'",
       change_log_floor: 'retention_days = 45',
     },
     seed: async (db) => {
-      // A change after the log exists: a row with its snapshot, numbered at commit.
-      await sql`UPDATE ticket SET labels = labels || ARRAY['logged']
-        WHERE summary = 'Seed ticket'`.execute(db);
+      // A ticket made after the log exists: a row with its snapshot, numbered at commit. Its
+      // own ticket, so the other seeds' rows (logged too when they run later) do not count.
+      await sql`INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary,
+          requester_id, creator_id, rank)
+        SELECT 1, t.id, 36, ty.id, 'Logged ticket', u.id, u.id, 'a36'
+          FROM track t, ticket_type ty, app_user u
+         WHERE t.key = 'SEED' AND ty.name = 'Seed type' AND u.email = 'seed@example.com'`.execute(
+        db,
+      );
       await sql`UPDATE change_log_floor SET retention_days = 45 WHERE workspace_id = 1`.execute(db);
+    },
+  },
+  '0037_mutation_receipts': {
+    tables: {
+      mutation_receipt: "client_id = 'seed-client' AND status = 'done' AND status_code = 200",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO mutation_receipt (workspace_id, user_id, client_id, mutation_id,
+          method, path, status, status_code, body, position, finished_at)
+        SELECT 1, id, 'seed-client', 'm-1', 'PATCH', '/api/v1/tickets/SEED-1', 'done', 200,
+               '{"ticket": {"key": "SEED-1"}}'::jsonb, 1, now()
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
 };

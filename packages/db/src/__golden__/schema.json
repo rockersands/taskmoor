@@ -226,6 +226,7 @@
       "CREATE INDEX change_log_created_idx ON public.change_log USING btree (created_at)",
       "CREATE INDEX change_log_group_idx ON public.change_log USING btree (workspace_id, track_id, seq) WHERE (seq IS NOT NULL)",
       "CREATE UNIQUE INDEX change_log_pkey ON public.change_log USING btree (id)",
+      "CREATE INDEX change_log_position_idx ON public.change_log USING btree (workspace_id, seq) WHERE (seq IS NOT NULL)",
       "CREATE UNIQUE INDEX change_log_seq_key ON public.change_log USING btree (seq)"
     ]
   },
@@ -729,6 +730,26 @@
       "CREATE UNIQUE INDEX link_type_copy_idx ON public.link_type USING btree (workspace_id) WHERE is_copy",
       "CREATE UNIQUE INDEX link_type_name_idx ON public.link_type USING btree (workspace_id, lower(name))",
       "CREATE UNIQUE INDEX link_type_pkey ON public.link_type USING btree (id)"
+    ]
+  },
+  "mutation_receipt": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "client_id text not null",
+      "mutation_id text not null",
+      "method text not null",
+      "path text not null",
+      "status text not null",
+      "status_code smallint",
+      "body jsonb",
+      "position bigint",
+      "created_at timestamp with time zone not null default now()",
+      "finished_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX mutation_receipt_created_idx ON public.mutation_receipt USING btree (created_at)",
+      "CREATE UNIQUE INDEX mutation_receipt_pkey ON public.mutation_receipt USING btree (user_id, client_id, mutation_id)"
     ]
   },
   "notification": {

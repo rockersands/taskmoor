@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
+import fastifyWebsocket from '@fastify/websocket';
 import type { Tracer } from '@opentelemetry/api';
 import type { Database } from '@taskmoor/db';
 import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/iam';
@@ -50,6 +51,8 @@ import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
 import { registerVisibilityRoutes } from './routes/visibility';
 import { registerWorkflowRoutes } from './routes/workflows';
+import { registerMutationReceipts } from './sync/mutations';
+import { registerSyncSocket } from './sync/socket';
 import { pruneIdentityData } from './throttle';
 import { bearerToken, pruneApiTokens } from './tokens/api-tokens';
 import { authenticateBearer } from './tokens/bearer';
@@ -159,6 +162,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // Events emitted while handling a request record its client address.
     registerRequestScope(app);
+    // Mutations an outbox sends with a client and mutation id run at most once (M1-032).
+    registerMutationReceipts(app, db);
+    // The realtime channel: where the change log stands, pushed to signed-in clients (M1-032).
+    if (roles.includes('realtime')) {
+      await app.register(fastifyWebsocket);
+      registerSyncSocket(app, db);
+    }
     const passwords = deps.passwords ?? passwordHasher(deps.peppers);
     const cookieOptions = { secureCookies: deps.secureCookies ?? false, passwords };
     // LDAP and Active Directory (M1-082): sign-in against them and read-write write-back.

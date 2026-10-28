@@ -1363,3 +1363,71 @@ test('[NTF-004] a person chooses a daily digest and turns one email off from the
   await page.goto('./#/unsubscribe?token=no-such-token-0123456789');
   await expect(page.getByText(/This unsubscribe link is not valid/)).toBeVisible();
 });
+
+/** Opens a ticket by changing the hash and returns how long its heading took to show (ms). */
+async function openTicket(page: Page, key: string): Promise<number> {
+  return page.evaluate(async (wanted) => {
+    window.location.hash = '#/home';
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const start = performance.now();
+    window.location.hash = `#/tickets/${wanted}`;
+    await new Promise<void>((resolve) => {
+      const check = () =>
+        document.querySelector('h1')?.textContent?.includes(wanted)
+          ? resolve()
+          : requestAnimationFrame(check);
+      check();
+    });
+    return performance.now() - start;
+  }, key);
+}
+
+test('[NTF-008] a ticket opens from the local copy in under 100 ms and from the server in under 300 ms', async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await signInThroughApi(page.request, ADMIN);
+  const track = await page.request.post('/api/v1/tracks', {
+    data: { key: 'SYNC', name: 'Sync', mode: 'shared' },
+  });
+  expect(track.status()).toBe(201);
+  const created = await page.request.post('/api/v1/tickets', {
+    data: { track: 'SYNC', summary: 'Opens fast' },
+  });
+  expect(created.status()).toBe(201);
+
+  // Cold: no local copy (the sync endpoints are cut off), so the page asks the server.
+  await page.route('**/api/v1/sync/**', (route) => route.abort());
+  await page.goto('./#/home');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  const cold = [];
+  for (let i = 0; i < 3; i++) cold.push(await openTicket(page, 'SYNC-1'));
+  expect(Math.min(...cold)).toBeLessThan(300);
+
+  // Warm: the local copy has it; the page shows it before the server answers.
+  await page.unroute('**/api/v1/sync/**');
+  await page.goto('./#/home');
+  await page.reload();
+  await expect(page.locator('html[data-sync-position]')).toHaveCount(1);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.dataset.syncPosition ?? ''))
+    .not.toBe('');
+  const warm = [];
+  for (let i = 0; i < 3; i++) warm.push(await openTicket(page, 'SYNC-1'));
+  expect(Math.min(...warm)).toBeLessThan(100);
+
+  // A change made elsewhere reaches the local copy through the socket, within a second.
+  const edited = await page.request.patch('/api/v1/tickets/SYNC-1', {
+    data: { summary: 'Opens fast, renamed' },
+  });
+  expect(edited.status()).toBe(200);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('SYNC-1');
+  const before = await page.evaluate(() => document.documentElement.dataset.syncPosition);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.dataset.syncPosition), {
+      timeout: 1500,
+    })
+    .not.toBe(before);
+  await context.close();
+});

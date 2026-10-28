@@ -381,6 +381,10 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
                 onChange={(e) => {
                   setTrack(e.target.value);
                   setValues({});
+                  // The old track's types until the new ones arrive would let a choice made
+                  // meanwhile be overwritten, or sent with a type of the wrong track.
+                  setTypes([]);
+                  setTypeId(null);
                 }}
               >
                 {tracks.value.map((k) => (

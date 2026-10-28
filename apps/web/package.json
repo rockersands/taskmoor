@@ -40,6 +40,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
     "axe-core": "4.14.0",
+    "fake-indexeddb": "6.2.5",
     "jsdom": "^27.4.0",
     "storybook": "10.6.1",
     "vite": "^7.3.7"

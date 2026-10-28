@@ -1030,6 +1030,25 @@ export interface ChangeLogTable {
   created_at: DefaultTimestamp;
 }
 
+/**
+ * A (person, client, mutation) pair a client sent (M1-032): written before the mutation runs,
+ * finished with its response, so a second copy is answered without running it again.
+ */
+export interface MutationReceiptTable {
+  workspace_id: number;
+  user_id: number;
+  client_id: string;
+  mutation_id: string;
+  method: string;
+  path: string;
+  status: 'pending' | 'done';
+  status_code: number | null;
+  body: ColumnType<JsonValue | null, string | null | undefined, string | null>;
+  position: string | null;
+  created_at: DefaultTimestamp;
+  finished_at: Timestamp | null;
+}
+
 /** Below `floor_seq` the log was trimmed: a client further behind bootstraps again. */
 export interface ChangeLogFloorTable {
   workspace_id: number;
@@ -1558,6 +1577,7 @@ export interface Database {
   email_unsubscribe: EmailUnsubscribeTable;
   change_log: ChangeLogTable;
   change_log_floor: ChangeLogFloorTable;
+  mutation_receipt: MutationReceiptTable;
   v_text: TextValueTable;
   v_number: NumberValueTable;
   v_date: DateValueTable;

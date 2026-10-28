@@ -107,3 +107,47 @@ the log can be sharded by track with one sequence per shard.
   see, judged by a plain model of the test's memberships (a mutation that lets hidden tickets
   through fails it). A second test shows a transaction that writes first and commits last gets
   the higher sequence, and that trimming makes old positions resync.
+
+## Implementation (M1-032)
+
+- **Mutations at most once** (migration 0037, `apps/server/src/sync/mutations.ts`): any
+  POST, PUT, PATCH or DELETE that carries `taskmoor-client-id` and `taskmoor-mutation-id`
+  first inserts a pending `mutation_receipt` for (person, client, mutation). A later request
+  with the same pair gets the stored answer back (`taskmoor-replayed: true`) without running
+  again; while the first is still running it is answered 409 `mutation_in_progress` (after
+  five minutes `mutation_outcome_unknown`), and the same ids on another method or path 409
+  `mutation_id_reused`. A 5xx answer deletes the receipt, so the client may retry; anything
+  else is kept for seven days with its status, body and the log position after it, which every
+  answer carries in `taskmoor-position` (the "resulting sequence" above). Requests without the
+  headers are unchanged.
+- **Push** (`apps/server/src/sync/socket.ts`, the `realtime` role): `GET /api/v1/sync/socket`
+  is a websocket for signed-in people from the same origin only (anything else is closed with
+  4401). It sends the workspace's log position when it opens and whenever it moves, and
+  answers `ping`. It sends positions, never rows: the client reads `/sync/changes`, where
+  permissions are applied (M1-031), so the socket cannot leak what a person may not see.
+  Instead of `NOTIFY` (which needs a connection held outside the pool) one poller per
+  workspace with open sockets reads the top position every 250 ms.
+- **Client** (`apps/web/src/sync/`): `store.ts` keeps tickets (indexed by track and number),
+  the position, the synced tracks, a client id and the outbox in IndexedDB, one database per
+  person, deleted at sign-out. `engine.ts` bootstraps when there is no position, then follows
+  on every pushed position (every 30 s when there is no socket; reconnects back off from 1 to
+  30 s); an `authz` row or a `resync` answer bootstraps again. `mutate()` stores the entry
+  first, applies the optimistic change to the local copy, then sends the outbox in order; a
+  network failure keeps the entry for the next attempt (reconnect, `online`), a refusal drops
+  it, is reported, and the truth comes back through the log. The ticket page reads the local
+  copy first and the server's answer replaces it. A person with a local copy starts offline
+  and catches up when the server answers; without one, the first bootstrap is retried after a
+  pause that doubles from 2 seconds to a minute, and at once when the browser comes back
+  online, while the app works from the network.
+- **Not yet:** the optimistic function is given by the caller rather than shared with the
+  server (the "Shared code" point waits for the ticket view, M1-051, which is the first screen
+  that edits through the outbox); conflicts are last-write-wins as the server applies them.
+- **Tests:** the server replays a mutation once, refuses reused and in-flight ids, pushes a
+  position within a second of a change, and closes anonymous and cross-site sockets. The
+  engine converges with a fake server through pages, pushes, an authorization change and a
+  trimmed log; starts offline from a local copy, and retries a first bootstrap that could not reach the server; sends an offline outbox exactly once when answers are lost and resent; and keeps
+  its copy in IndexedDB (`fake-indexeddb`). The e2e test opens a ticket with the sync API
+  blocked (from the server, best of three under 300 ms) and from the local copy (under 100 ms),
+  and sees the position move after an edit. These timings are on the e2e instance; the bench
+  generator loads its own schema, not the application's, so the same measurement on a
+  bench-sized workspace belongs to the load tests (M1-104).

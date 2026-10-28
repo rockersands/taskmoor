@@ -139,7 +139,8 @@ await attachApps[1]?.listen({ port: E2E_ATTACH_S3_PORT, host: '127.0.0.1' });
 const app = await buildApp({
   db,
   version: 'e2e',
-  roles: ['api'],
+  // The realtime socket of the sync engine too (M1-032).
+  roles: ['api', 'realtime'],
   logLevel: 'warn',
   publicUrl: 'http://localhost:4173',
 });

@@ -18,6 +18,20 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-032 websocket, local copy and outbox** (migration 0037; ADR-013 "Implementation
+  (M1-032)"). Server: `apps/server/src/sync/mutations.ts` (idempotent mutations by
+  `taskmoor-client-id` and `taskmoor-mutation-id`, answers carry `taskmoor-position`) and
+  `sync/socket.ts` (websocket under the `realtime` role; the Vite proxy has `ws: true`). Web:
+  `apps/web/src/sync/` (`store.ts` IndexedDB, `engine.ts`, `browser.ts`, `SyncProvider.tsx`
+  around the pages in `App.tsx`). Only the ticket page reads the local copy so far; the ticket
+  view (M1-051), boards (M1-046) and the inbox (M1-058) should read it and edit through
+  `engine.mutate()`. Two fixes came with it: the create form clears the ticket type while a new
+  track's types load (a type picked meanwhile was overwritten), and the ticket page no longer
+  resets when the engine starts after it (it remounted the attachment panel mid-upload).
+  The provider retries a first bootstrap that fails (offline at load) and starts from an
+  existing local copy offline.
+  New dependencies: `@fastify/websocket` 11.3.4; `ws` 8.22.0 and `fake-indexeddb` 6.2.5 for
+  tests. Timings measured on the e2e instance only (see the ADR).
 - **M1-031 change log** (migration 0036; ADR-013 "Implementation (M1-031)"). Triggers on
   `ticket`, `track` and `authz_epoch` write `change_log`; a deferred constraint trigger gives
   `seq` at commit. Readers in `apps/server/src/sync/log.ts`, routes `/api/v1/sync/*`, hourly

@@ -2,6 +2,7 @@ import type { Database } from '@taskmoor/db';
 import type { Kysely } from 'kysely';
 import { enqueue, type JobRunner } from '../events/queue';
 import { trimChangeLog } from './log';
+import { trimMutationReceipts } from './mutations';
 
 /** The change log's retention (M1-031): once an hour per workspace, keyed by the hour. */
 export const CHANGE_LOG_TRIM_TASK = 'change_log.trim';
@@ -26,5 +27,6 @@ export async function scheduleChangeLogTrim(
 export function registerChangeLogJobs(runner: JobRunner, db: Kysely<Database>): void {
   runner.handle(CHANGE_LOG_TRIM_TASK, async (job) => {
     await trimChangeLog(db, job.workspaceId);
+    await trimMutationReceipts(db);
   });
 }

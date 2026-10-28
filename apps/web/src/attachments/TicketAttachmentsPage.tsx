@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { useSyncEngine } from '../sync/SyncProvider';
 import { AttachmentPanel } from './AttachmentPanel';
 import type { AttachmentClient } from './client';
 
@@ -23,7 +24,8 @@ const loadTicket = async (ticket: string) =>
 
 /**
  * A ticket's page as far as it exists before the ticket view (M1-051): its key and summary,
- * and its attachments. The ticket view will take the panel over.
+ * and its attachments. The ticket view will take the panel over. With the local copy (M1-032)
+ * the page shows the ticket from it at once, then from the server.
  */
 export function TicketAttachmentsPage({
   ticket,
@@ -32,6 +34,7 @@ export function TicketAttachmentsPage({
 }: TicketAttachmentsPageProps) {
   const t = useT();
   const titleId = useId();
+  const engine = useSyncEngine();
   const [state, setState] = useState<
     { status: 'loading' } | { status: 'missing' } | { status: 'loaded'; ticket: TicketSummary }
   >({ status: 'loading' });
@@ -47,6 +50,25 @@ export function TicketAttachmentsPage({
       live = false;
     };
   }, [ticket, load]);
+
+  // The local copy fills in while the server's answer is on its way, and only then: an engine
+  // that starts later must not reset the page (and the panel's uploads) under the person.
+  useEffect(() => {
+    if (!engine) return;
+    let live = true;
+    void engine.ticketByKey(ticket).then((local) => {
+      if (!live || !local) return;
+      const key = ticket.toUpperCase();
+      setState((s) =>
+        s.status === 'loading'
+          ? { status: 'loaded', ticket: { id: local.id, key, summary: local.summary } }
+          : s,
+      );
+    });
+    return () => {
+      live = false;
+    };
+  }, [ticket, engine]);
 
   if (state.status === 'loading') {
     return (

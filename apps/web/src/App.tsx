@@ -27,6 +27,7 @@ import {
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
+import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
@@ -303,7 +304,9 @@ export function App({ locale, session, onI18nError }: AppProps) {
       {...(onI18nError ? { onError: onI18nError } : {})}
     >
       <SessionProvider {...(session ? { session } : {})}>
-        <Pages />
+        <SyncProvider>
+          <Pages />
+        </SyncProvider>
       </SessionProvider>
     </I18nProvider>
   );
