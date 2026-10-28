@@ -61,6 +61,7 @@ Updated 2026-10-28. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-033 Query conformance suite | Done | 2,220 data cases for QRY-001 to QRY-013 in `@taskmoor/query`; `pnpm conformance query` reports the pass rate per section (grammar 100%, 76% overall); the rates are a golden |
 | M1-034 Native grammar and parser | Done | Grammar spec (file 06), error recovery with line, column and hints, nesting limit, 1,000+ parser tests; two one-hour fuzz runs, the second with no failure in 6.4 million inputs |
 | M1-035 Jira-compatible dialect | Done | `toNative` and `toJira` rename fields and functions between the vocabularies on the shared tree; parse cases 100% green |
+| M1-036 Field and operator resolver | Done | Every field of spec 1.5 under all its names, custom fields by name or id with ambiguity errors, one operator table per type checked by a 17-operator matrix; `GET /api/v1/search/check`; conformance 94% (functions and sprints left for M1-038 and M1-045) |
 | M1-103 Health page, metrics, traces | Done | /metrics on port 9464, OTLP traces when configured, admin System status page, example alerts and dashboard; CI green |
 | M1-099 Helm chart | Done | Chart with lint and render tests; on kind in CI: helm test green and a rolling upgrade with 55,271 requests and none failed |
 | M1-001 Identity foundation | Done | Workspaces, users, nested groups, Argon2id with a pepper keyring, lockout and rate limits, hashed sessions, password links, account UI; ASVS L2 authentication checks as tests |

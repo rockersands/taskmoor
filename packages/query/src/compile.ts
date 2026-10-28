@@ -27,10 +27,15 @@ const SIDE_CAST: Record<CustomField['type'], string> = {
   text: 'text',
   number: 'numeric',
   date: 'date',
+  datetime: 'timestamptz',
   user: 'int',
+  group: 'text',
   option: 'text',
   multi: 'text',
+  cascade: 'text',
   labels: 'text',
+  release: 'text',
+  area: 'text',
 };
 
 /** Types with at most one side row per item and field. */
@@ -46,10 +51,15 @@ const SIDE_TABLE: Record<CustomField['type'], string> = {
   text: 'v_text',
   number: 'v_number',
   date: 'v_date',
+  datetime: 'v_date',
   user: 'v_user',
+  group: 'v_option',
   option: 'v_option',
   multi: 'v_option',
+  cascade: 'v_option',
   labels: 'v_option',
+  release: 'v_option',
+  area: 'v_option',
 };
 
 /**
@@ -207,9 +217,10 @@ class Compiler {
     const h = `${this.options.historyTable}`;
     const name = p.field.kind === 'system' ? (p.field.history ?? p.field.name) : `cf:${p.field.id}`;
     const conditions = [`h.item_id = i.id`, `h.field = ${this.param(name)}`];
-    if (p.op === 'was' && p.values.length > 0) {
+    if (p.op === 'was' && (p.values.length > 0 || p.empty)) {
       const list = `ANY(${this.param(p.values.map((v) => String(v.value)))}::text[])`;
-      conditions.push(`(h.to_value = ${list} OR h.from_value = ${list})`);
+      const empty = p.empty ? ' OR h.to_value IS NULL OR h.from_value IS NULL' : '';
+      conditions.push(`(h.to_value = ${list} OR h.from_value = ${list}${empty})`);
     }
     for (const pred of p.predicates) conditions.push(this.historyPredicate(pred));
     const expr = `EXISTS (SELECT 1 FROM ${h} h WHERE ${conditions.join(' AND ')})`;

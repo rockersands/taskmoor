@@ -18,6 +18,12 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-036 query resolver** (ADR-010 "Implementation (M1-036)"): `packages/query/src/fields.ts`
+  holds the spec's field catalogue and `OPERATORS_BY_TYPE`; `resolve.ts` checks queries against
+  it; `apps/server/src/search/catalogue.ts` builds a person's catalogue (custom fields they may
+  see, track keys old and new) and `GET /api/v1/search/check?q=` checks a query. The M0 spike
+  compiler (`compile.ts`) still targets the spike schema; M1-037 replaces it with the
+  production compiler over `ticket` and the `v_*` side tables.
 - **M1-012 field rules and layouts** (migration 0028; ADR-009 "Implementation (M1-012)"):
   rule sets and layout sets in `fields/layouts.ts` (loaded with the field catalogue), admin
   routes in `routes/layouts.ts`, enforcement in `routes/tickets.ts` (create, PATCH,

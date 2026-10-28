@@ -106,6 +106,34 @@ The permission pre-filter (ADR-012) adds at most 3.6 ms at 10M tickets (filtered
 under 4.5 ms; [report](../spikes/authz-overhead-10m.md)), within its budget of at most 10 ms
 added (absolute since 2026-10-12, `docs/plan/decisions.csv`).
 
+## Implementation (M1-036: the resolver)
+
+- **The catalogue is spec 01b section 1.5**: every system field under its native name, its
+  Jira-compatible names and a display name (`"Due date"`), each with a type
+  (`packages/query/src/fields.ts`). Fields of modules not built yet (sprints, service,
+  journeys, saved searches, visibility) resolve; the compiler (M1-037) names the module when a
+  query needs one. Custom fields come from the workspace's field catalogue
+  (`apps/server/src/search/catalogue.ts`): shared ones and the local ones of tracks the person
+  may browse, by name or `cf[id]`; the server's field types map onto the query types (text
+  types to `text`, single and multiple selects to `option` and `multi`, cascades, people,
+  groups, labels, releases, areas, dates and date-times).
+- **One operator table** (`OPERATORS_BY_TYPE`): ordering comparisons for numbers, dates and
+  date-times, releases and priorities; `~` and `!~` for text, which takes no equality or list
+  operators; attachments only `IS [NOT] EMPTY`; `= EMPTY`, `!= EMPTY` and `IS [NOT] EMPTY`
+  everywhere else; the history operators on every field that changes over time (not on
+  counts such as `votes`, nor `lastViewed`). A refusal names the field and the operator
+  (QRY-002 (1)); a matrix test checks all 17 operators on every field.
+- **Names:** a system field wins over a custom field of the same name; two custom fields of
+  one name are refused with their ids (QRY-003 (2)). Track keys include the old keys a track
+  had, so saved queries survive renames. People are named by id, `currentUser()` or a name or
+  email the compiler looks up; history predicates are kept in a fixed order, so their order in
+  the text does not matter; dates read with dashes or slashes (section 1.4).
+- **Checking without running:** `GET /api/v1/search/check?q=` answers what a query uses or
+  where and why it is wrong, for the query editor (M1-041).
+- **Conformance:** grammar, operators, history, dates, text, ordering and saved searches pass
+  in full, fields at 99%; 94% overall (from 76%). Functions (M1-038, M1-045) and sprint tokens
+  (M1-045) are the rest.
+
 ## Options considered
 
 | Option | For | Against |

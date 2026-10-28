@@ -63,16 +63,15 @@
   },
   "Due <= endOfMonth() AND Due >= startOfMonth() ORDER BY Due ASC": {
     "params": [
-      3,
-      "2026-10-31",
-      "2026-10-01",
       [
         1,
         2
       ],
+      "2026-10-31",
+      "2026-10-01",
       50
     ],
-    "text": "SELECT a.item_id AS id FROM fs_side.v_date a\nWHERE a.field_id = $1\n  AND a.value <= $2::date\n  AND a.value >= $3::date\n  AND a.space_id = ANY($4::int[])\nORDER BY a.value ASC, a.item_id DESC\nLIMIT $5"
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.undefined <= $2::date AND i.undefined >= $3::date)\nORDER BY i.undefined ASC NULLS LAST, i.id DESC\nLIMIT $4"
   },
   "NOT (labels IN (infra) OR type = Subtask) AND track IN (ABC, DEF) ORDER BY created DESC": {
     "params": [
@@ -127,7 +126,7 @@
       "done",
       50
     ],
-    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.assignee_id = $2::int AND i.status_category != $3::text)\nORDER BY i.priority DESC, i.created_at DESC, i.id DESC\nLIMIT $4"
+    "text": "SELECT i.id FROM fs_side.item i\nWHERE i.space_id = ANY($1::int[])\n  AND (i.assignee_id = $2::int AND i.status_category != $3::text)\nORDER BY i.priority DESC NULLS LAST, i.created_at DESC, i.id DESC\nLIMIT $4"
   },
   "assignee CHANGED BY 42 DURING (2026-01-01, 2026-02-01) ORDER BY created DESC": {
     "params": [

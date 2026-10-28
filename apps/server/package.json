@@ -27,6 +27,7 @@
     "@taskmoor/db": "workspace:*",
     "@taskmoor/iam": "workspace:*",
     "@taskmoor/richtext": "workspace:*",
+    "@taskmoor/query": "workspace:*",
     "@taskmoor/workflow": "workspace:*",
     "@xmldom/xmldom": "^0.8.15",
     "fastify": "^5.12.5",

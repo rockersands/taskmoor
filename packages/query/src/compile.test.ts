@@ -87,15 +87,15 @@ describe('resolveQuery errors', () => {
   it.each([
     ['nosuchfield = 1', 'Unknown field "nosuchfield"'],
     ['cf[999] = 1', 'Unknown field cf[999]'],
-    ['"Story Points" ~ 3', '"Story Points" is not a text field; ~ needs one'],
-    ['status > Done', '"status" cannot be compared with >; it is not a number or date'],
-    ['summary IN (a, b)', 'IN cannot be used on the text field "summary"'],
+    ['"Story Points" ~ 3', '"Story Points" (cf[1]) is not a text field; ~ needs one'],
+    ['status > Done', '"status" cannot be compared with >; its values have no order'],
+    ['summary IN (a, b)', '"summary" is a text field: use ~ or !~ to search it, not IN'],
     ['"Story Points" > EMPTY', 'EMPTY is only allowed with =, != and IS'],
     ['created > 2026-13-45', '"2026-13-45" is not a valid date'],
     ['track = ZZZ', 'Unknown track "ZZZ"'],
-    ['created WAS -1d', '"created" keeps no change history'],
+    ['votes WAS 3', '"votes" keeps no change history'],
     ['created > nextLeapYear()', 'Unknown date function nextLeapYear()'],
-    ['assignee = kalo', 'Expected a user ID or currentUser()'],
+    ['assignee = membersOf(devs)', 'membersOf() does not return a user'],
   ])('rejects "%s"', (text, message) => {
     let error: unknown;
     try {

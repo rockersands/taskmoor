@@ -1,11 +1,5 @@
 import type { Clause, Expr, FieldRef, Predicate, Query, Span, Value } from './ast';
-import {
-  type Catalogue,
-  type CustomType,
-  type Field,
-  lookupField,
-  type SystemType,
-} from './fields';
+import { type Catalogue, type Field, findField, type OperatorFamily, takes } from './fields';
 import { QueryError } from './lexer';
 
 /** What the query needs from its surroundings. */
@@ -36,6 +30,9 @@ export type Pred =
       op: 'was' | 'changed';
       negated: boolean;
       values: Typed[];
+      /** `WAS EMPTY`, alone or in a list: a time the field had no value counts. */
+      empty?: boolean;
+      /** In a fixed order (by kind), so the order they were written in does not matter. */
       predicates: HistoryPredicate[];
     };
 
@@ -49,11 +46,25 @@ export interface Plan {
   orderBy: { field: Field; direction: 'asc' | 'desc' }[];
 }
 
-type ValueType = SystemType | CustomType;
-
-const COMPARABLE: ReadonlySet<ValueType> = new Set(['number', 'datetime', 'date']);
-const TEXTUAL: ReadonlySet<ValueType> = new Set(['text']);
 const DURATION = /^([+-]?)(\d+)([mhdwMy])$/;
+
+/** Why a field does not take an operator, naming both (QRY-002 (1)). */
+function refusal(field: Field, family: OperatorFamily, op: string): string {
+  const name = field.kind === 'custom' ? `"${field.name}" (cf[${field.id}])` : `"${field.name}"`;
+  if (field.type === 'attachments') return `${name} only takes IS EMPTY and IS NOT EMPTY`;
+  switch (family) {
+    case 'contains':
+      return `${name} is not a text field; ${op} needs one`;
+    case 'order':
+      return `${name} cannot be compared with ${op}; its values have no order`;
+    case 'history':
+      return `${name} keeps no change history`;
+    default:
+      return field.type === 'text'
+        ? `${name} is a text field: use ~ or !~ to search it, not ${op}`
+        : `${name} does not take ${op}`;
+  }
+}
 
 /** Checks every field and operator against the catalogue and types every value. */
 export function resolveQuery(query: Query, catalogue: Catalogue, ctx: ResolveContext): Plan {
@@ -84,38 +95,46 @@ class Resolver {
   }
 
   field(ref: FieldRef): Field {
-    const field = lookupField(this.catalogue, ref);
-    if (!field) {
-      const label = ref.custom !== undefined ? `cf[${ref.custom}]` : `"${ref.name}"`;
-      throw fail(`Unknown field ${label}`, ref.span);
+    const found = findField(this.catalogue, ref);
+    if ('field' in found) return found.field;
+    if ('ambiguous' in found) {
+      const ids = found.ambiguous.map((f) => `cf[${f.id}]`).join(', ');
+      throw fail(
+        `Several custom fields are called "${ref.name}" (${ids}); name one by its id`,
+        ref.span,
+      );
     }
-    return field;
+    const label = ref.custom !== undefined ? `cf[${ref.custom}]` : `"${ref.name}"`;
+    throw fail(`Unknown field ${label}`, ref.span);
+  }
+
+  /** Refuses an operator the field's type does not take. */
+  private needs(field: Field, family: OperatorFamily, op: string, span: Span): void {
+    if (!takes(field, family)) throw fail(refusal(field, family, op), span);
   }
 
   private clause(c: Clause): Pred {
     const field = this.field(c.field);
     switch (c.kind) {
       case 'compare': {
-        if (c.op === '~' || c.op === '!~') {
-          if (!TEXTUAL.has(field.type))
-            throw fail(`"${field.name}" is not a text field; ~ needs one`, c.span);
-        } else if (c.op !== '=' && c.op !== '!=' && !COMPARABLE.has(field.type)) {
-          throw fail(
-            `"${field.name}" cannot be compared with ${c.op}; it is not a number or date`,
-            c.span,
-          );
-        }
         if (c.value.kind === 'empty') {
           if (c.op !== '=' && c.op !== '!=') {
             throw fail('EMPTY is only allowed with =, != and IS', c.value.span);
           }
+          this.needs(field, 'empty', c.op === '=' ? 'IS EMPTY' : 'IS NOT EMPTY', c.span);
           return { kind: 'empty', field, negated: c.op === '!=' };
         }
+        const family: OperatorFamily =
+          c.op === '~' || c.op === '!~'
+            ? 'contains'
+            : c.op === '=' || c.op === '!='
+              ? 'equality'
+              : 'order';
+        this.needs(field, family, c.op, c.span);
         return { kind: 'compare', field, op: c.op, value: this.typed(field, c.value) };
       }
       case 'in':
-        if (TEXTUAL.has(field.type))
-          throw fail(`IN cannot be used on the text field "${field.name}"`, c.span);
+        this.needs(field, 'list', c.negated ? 'NOT IN' : 'IN', c.span);
         return {
           kind: 'in',
           field,
@@ -123,20 +142,25 @@ class Resolver {
           values: c.values.map((v) => this.typed(field, v)),
         };
       case 'empty':
+        this.needs(field, 'empty', c.negated ? 'IS NOT' : 'IS', c.span);
         return { kind: 'empty', field, negated: c.negated };
       case 'was':
       case 'changed': {
-        if (field.kind === 'system' && !field.history) {
-          throw fail(`"${field.name}" keeps no change history`, c.span);
-        }
-        const values = c.kind === 'was' ? c.values.map((v) => this.typed(field, v)) : [];
+        this.needs(field, 'history', c.kind === 'was' ? 'WAS' : 'CHANGED', c.span);
+        const given = c.kind === 'was' ? c.values : [];
+        const empty = given.some((v) => v.kind === 'empty');
+        const values = given.filter((v) => v.kind !== 'empty').map((v) => this.typed(field, v));
+        const order = ['from', 'to', 'by', 'after', 'before', 'on', 'during'];
         return {
           kind: 'history',
           field,
           op: c.kind,
           negated: c.kind === 'was' ? c.negated : false,
           values,
-          predicates: c.predicates.map((p) => this.predicate(field, p)),
+          ...(empty ? { empty: true } : {}),
+          predicates: c.predicates
+            .map((p) => this.predicate(field, p))
+            .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)),
         };
       }
     }
@@ -169,6 +193,10 @@ class Resolver {
         return { type: 'date', value: this.datetime(v).value.toISOString().slice(0, 10) };
       case 'user':
         return this.user(v);
+      case 'key':
+        // A key (ABC-12) or a ticket id.
+        if (v.kind === 'number') return { type: 'number', value: v.value };
+        return { type: 'text', value: this.text(v).toUpperCase() };
       case 'track': {
         if (v.kind === 'number') return { type: 'number', value: v.value };
         const key = this.text(v);
@@ -214,7 +242,9 @@ class Resolver {
     if (v.kind === 'number') return { type: 'number', value: v.value };
     if (v.kind === 'word' && /^\d+$/.test(v.value))
       return { type: 'number', value: Number(v.value) };
-    throw fail('Expected a user ID or currentUser()', v.span);
+    // A name or an email; the compiler finds the person.
+    if (v.kind === 'word' || v.kind === 'string') return { type: 'text', value: v.value };
+    throw fail('Expected a person, a user ID or currentUser()', v.span);
   }
 
   private datetime(v: Value): { type: 'datetime'; value: Date } {
@@ -224,7 +254,8 @@ class Resolver {
         return { type: 'datetime', value: shift(now, v.value, v.span) };
       case 'string':
       case 'word': {
-        const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/.exec(v.value);
+        // yyyy-MM-dd or yyyy/MM/dd, with an optional HH:mm (section 1.4).
+        const m = /^(\d{4})[-/](\d{2})[-/](\d{2})(?:[ T](\d{2}):(\d{2}))?$/.exec(v.value);
         if (m) {
           const [year, month, day, hour, minute] = [m[1], m[2], m[3], m[4] ?? '0', m[5] ?? '0'].map(
             Number,

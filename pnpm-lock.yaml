@@ -77,6 +77,9 @@ importers:
       '@taskmoor/iam':
         specifier: workspace:*
         version: link:../../packages/iam
+      '@taskmoor/query':
+        specifier: workspace:*
+        version: link:../../packages/query
       '@taskmoor/richtext':
         specifier: workspace:*
         version: link:../../packages/richtext

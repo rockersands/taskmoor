@@ -29,6 +29,7 @@ import { registerPriorityRoutes } from './routes/priorities';
 import { registerReleaseRoutes } from './routes/releases';
 import { registerSamlRoutes } from './routes/saml';
 import { registerScimRoutes } from './routes/scim';
+import { registerSearchRoutes } from './routes/search';
 import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
@@ -183,6 +184,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerTicketRoutes(app, db, authorizer, fieldCatalogs);
     registerFieldRoutes(app, db, fieldCatalogs);
     registerLayoutRoutes(app, db, fieldCatalogs);
+    registerSearchRoutes(app, db, fieldCatalogs);
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
