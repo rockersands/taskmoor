@@ -1,0 +1,66 @@
+/* Creating a ticket (M1-012): the form a layout describes, its context sections beside the
+   main ones on wide screens and below them on phones. */
+.create-page {
+  max-width: 64rem;
+}
+
+.create-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.create-choosers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: var(--space-3);
+}
+
+.create-tab {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.create-sections {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 60rem) {
+  .create-sections:has(.create-context) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.create-main,
+.create-context,
+.create-cascade {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  min-width: 0;
+}
+
+.create-choices {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.create-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (pointer: coarse) {
+  .create-choice {
+    min-height: var(--hit-target);
+  }
+}

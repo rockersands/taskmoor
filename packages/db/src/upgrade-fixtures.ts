@@ -580,6 +580,30 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT r.*, o.id FROM (${row}) r, field_option o WHERE o.value = 'Seed option'`.execute(db);
     },
   },
+  '0028_field_rules_layouts': {
+    tables: {
+      field_rule_set: "name = 'Seed rules' AND NOT is_default",
+      field_rule: "field = 'dueDate' AND required",
+      layout_set: "name = 'Seed layouts'",
+      layout: "operation = 'create' AND definition ? 'tabs'",
+      track: "key = 'SEED' AND field_rule_set_id IS NOT NULL AND layout_set_id IS NOT NULL",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO field_rule_set (workspace_id, name) VALUES (1, 'Seed rules')`.execute(
+        db,
+      );
+      await sql`INSERT INTO field_rule (workspace_id, rule_set_id, field, required)
+        SELECT 1, id, 'dueDate', true FROM field_rule_set WHERE name = 'Seed rules'`.execute(db);
+      await sql`INSERT INTO layout_set (workspace_id, name) VALUES (1, 'Seed layouts')`.execute(db);
+      await sql`INSERT INTO layout (workspace_id, layout_set_id, operation, definition)
+        SELECT 1, id, 'create', '{"tabs": [], "others": "show"}'::jsonb
+          FROM layout_set WHERE name = 'Seed layouts'`.execute(db);
+      await sql`UPDATE track SET
+          field_rule_set_id = (SELECT id FROM field_rule_set WHERE name = 'Seed rules'),
+          layout_set_id = (SELECT id FROM layout_set WHERE name = 'Seed layouts')
+        WHERE key = 'SEED'`.execute(db);
+    },
+  },
 };
 
 /**

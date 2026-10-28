@@ -22,6 +22,7 @@ import { registerBackupRoutes } from './routes/backups';
 import { registerDirectoryRoutes } from './routes/directories';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
+import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -181,6 +182,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerTicketTypeRoutes(app, db);
     registerTicketRoutes(app, db, authorizer, fieldCatalogs);
     registerFieldRoutes(app, db, fieldCatalogs);
+    registerLayoutRoutes(app, db, fieldCatalogs);
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);

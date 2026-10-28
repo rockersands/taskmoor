@@ -1270,6 +1270,73 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'DELETE', url: `/api/v1/fields/${state.field}` }),
     },
     {
+      route: 'POST /api/v1/field-rule-sets',
+      expect: 'field_rule_set.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/field-rule-sets',
+          payload: {
+            name: 'Contract field_rule_set',
+            rules: [{ field: 'dueDate', required: true }],
+          },
+        });
+        state.ruleSet = res.json().fieldRuleSet?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/field-rule-sets/:id',
+      expect: 'field_rule_set.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/field-rule-sets/${state.ruleSet}`,
+          payload: { description: 'Changed' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/field-rule-sets/:id',
+      expect: 'field_rule_set.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/field-rule-sets/${state.ruleSet}` }),
+    },
+    {
+      route: 'POST /api/v1/layout-sets',
+      expect: 'layout_set.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/layout-sets',
+          payload: {
+            name: 'Contract layout_set',
+            layouts: [
+              {
+                operation: 'view',
+                definition: { tabs: [{ name: 'Main', sections: [{ fields: ['summary'] }] }] },
+              },
+            ],
+          },
+        });
+        state.layoutSet = res.json().layoutSet?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/layout-sets/:id',
+      expect: 'layout_set.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/layout-sets/${state.layoutSet}`,
+          payload: { description: 'Changed' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/layout-sets/:id',
+      expect: 'layout_set.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/layout-sets/${state.layoutSet}` }),
+    },
+    {
       route: 'POST /api/v1/tickets/:id/links',
       expect: 'ticket.linked',
       run: async () => {

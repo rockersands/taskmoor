@@ -214,6 +214,9 @@ export interface TrackTable {
   priority_set_id: number | null;
   /** Its workflow; null for the workspace's default (M1-023). */
   workflow_id: number | null;
+  /** Its field rule set and layout set; null for the workspace's defaults (M1-012). */
+  field_rule_set_id: ColumnType<number | null, number | null | undefined, number | null>;
+  layout_set_id: ColumnType<number | null, number | null | undefined, number | null>;
   /** In the trash since (M1-101, CORE-025); restorable until the purge starts. */
   deleted_at: Timestamp | null;
   deleted_by: number | null;
@@ -796,6 +799,40 @@ export type DateValueTable = SideRow<string>;
 export type TimeValueTable = SideRow<ColumnType<Date, Date | string, Date | string>>;
 export type IdValueTable = SideRow<number>;
 
+/** A field rule set or a layout set (M1-012); a local-mode track's own name it. */
+export interface ConfigurationSetTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number | null;
+  name: string;
+  description: Generated<string>;
+  is_default: Generated<boolean>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** Whether a field is required or hidden, and its help text, for a ticket type or every type. */
+export interface FieldRuleTable {
+  workspace_id: number;
+  rule_set_id: number;
+  ticket_type_id: number | null;
+  /** As the query language names it: `dueDate`, `cf[12]`. */
+  field: string;
+  required: Generated<boolean>;
+  hidden: Generated<boolean>;
+  description: string | null;
+}
+
+/** The tabs and sections of a form for a ticket type (or every type) and operation. */
+export interface LayoutTable {
+  id: Generated<number>;
+  workspace_id: number;
+  layout_set_id: number;
+  ticket_type_id: number | null;
+  operation: 'create' | 'edit' | 'view';
+  definition: Json;
+}
+
 /** Moves on every change to the field catalogue; cached copies carry it. */
 export interface FieldEpochTable {
   workspace_id: number;
@@ -1276,6 +1313,10 @@ export interface Database {
   field_option: FieldOptionTable;
   field_label: FieldLabelTable;
   field_epoch: FieldEpochTable;
+  field_rule_set: ConfigurationSetTable;
+  field_rule: FieldRuleTable;
+  layout_set: ConfigurationSetTable;
+  layout: LayoutTable;
   v_text: TextValueTable;
   v_number: NumberValueTable;
   v_date: DateValueTable;

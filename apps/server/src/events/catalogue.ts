@@ -501,6 +501,25 @@ export const EVENT_TYPES = {
     subject: 'field_context',
     payload: z.object({ fieldId: id, parentId: id.nullable(), optionIds: z.array(id) }),
   },
+  // Field rule sets and layout sets (M1-012); `trackIds` names every track a save reaches.
+  'field_rule_set.created': {
+    subject: 'field_rule_set',
+    payload: z.object({ name: z.string(), trackId: id.nullable(), count: z.number().int().min(0) }),
+  },
+  'field_rule_set.updated': {
+    subject: 'field_rule_set',
+    payload: z.object({ changes, trackIds: z.array(id) }),
+  },
+  'field_rule_set.deleted': { subject: 'field_rule_set', payload: z.object({ name: z.string() }) },
+  'layout_set.created': {
+    subject: 'layout_set',
+    payload: z.object({ name: z.string(), trackId: id.nullable(), count: z.number().int().min(0) }),
+  },
+  'layout_set.updated': {
+    subject: 'layout_set',
+    payload: z.object({ changes, trackIds: z.array(id) }),
+  },
+  'layout_set.deleted': { subject: 'layout_set', payload: z.object({ name: z.string() }) },
   'field_option.deleted': {
     subject: 'field_option',
     payload: z.object({ fieldId: id, contextId: id, value: z.string() }),

@@ -337,6 +337,45 @@ catalogue in `fields/catalog.ts`, values on tickets in `fields/values.ts`, the r
   values go, M1-011), and mapping options between contexts on a move waits for bulk move
   (M1-021).
 
+## Implementation (M1-012: field rules and layouts)
+
+Migration 0028 adds `field_rule_set`, `field_rule`, `layout_set`, `layout` and the track
+columns `field_rule_set_id` and `layout_set_id`; the rules are in `fields/layouts.ts`, the
+routes in `routes/layouts.ts` (`/api/v1/field-rule-sets`, `/api/v1/layout-sets`,
+`GET /api/v1/tracks/:id/layout`, `GET /api/v1/tickets/:id/layout`).
+
+- **One field rule set** per track (Jira's field configuration and its scheme as one object,
+  spec 01a section 1.5): per ticket type or for every type, a field is required, hidden or
+  neither, with optional help text. The type's rule wins over the every-type rule. Fields are
+  named as the query language names them (`dueDate`, `cf[12]`). The summary is always
+  required and shown; required and hidden together is refused.
+- **One layout set** per track: per ticket type (or every type) and operation (create, edit,
+  view), tabs of sections (main or context, optionally hidden when empty) listing fields, and
+  whether fields the layout does not place follow it. Without a layout the form shows every
+  field that applies, in one tab. Hidden fields never appear; required fields always do (a
+  layout that omits one gets it in a section of its own), so a form can always be completed.
+  Transition layouts stay on their transitions (WF-006) and take the same rules.
+- **Enforcement on every write path the forms govern** (CORE-013 (1), (2)): create refuses
+  values for hidden fields or fields off the create layout (an empty value writes nothing and
+  passes), then checks required fields on the ticket as created, defaults and create effects
+  included; an edit refuses changes to hidden or off-layout fields and may not empty a required
+  one (a change of type checks all of the new type's); a transition refuses values for hidden
+  fields and needs a value for required fields of its layout. A refusal found after the write
+  rolls the transaction back (`Rollback` in `routes/tickets.ts`). Hidden values stay stored;
+  the REST view keeps showing system fields, and the layouts leave hidden ones out.
+- **Sharing** (CORE-003 (2)): the workspace has a default set of each; a track names another
+  or keeps the default. A set's read shows `usedBy`, and each save's event names every track
+  it reaches. Local-mode tracks own sets of their own, naming only shared fields or their own.
+  Default sets and sets in use are not deleted.
+- **Caching:** the sets load with the field catalogue and move `field_epoch`, so a change is
+  what the next form shows (CORE-008 (2)).
+- **The create page** (`#/create`, a first piece of M1-052) renders the resolved create layout
+  and puts the backend's refusals at each field; people, releases and areas are set once the
+  ticket exists until their pickers arrive.
+- **Not yet:** renderer choice per field (plain or rich text), the importer's mapping of Jira
+  field configurations and screens (CORE-013 (3), M1-089), the admin pages for the sets
+  (M1-053).
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

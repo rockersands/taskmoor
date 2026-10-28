@@ -1,0 +1,457 @@
+import { useMigratedDatabase } from '@taskmoor/db/testing';
+import { hashPassword } from '@taskmoor/iam';
+import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { buildApp } from '../app';
+import { SESSION_COOKIE } from '../auth';
+
+const PASSWORD = 'ladder violet harbour';
+let address = 0;
+const nextAddress = () => `100.73.${Math.floor(++address / 250)}.${(address % 250) + 1}`;
+
+function sessionCookie(header: string | string[] | undefined): string {
+  const list = Array.isArray(header) ? header : header ? [header] : [];
+  return (
+    (
+      list.find(
+        (c) => c.startsWith(`${SESSION_COOKIE}=`) && !c.startsWith(`${SESSION_COOKIE}=;`),
+      ) ?? ''
+    ).split(';')[0] ?? ''
+  );
+}
+
+interface FormJson {
+  layout: {
+    operation: string;
+    tabs: {
+      name: string | null;
+      sections: {
+        kind: string;
+        hideWhenEmpty: boolean;
+        fields: { key: string; required: boolean; description: string | null }[];
+      }[];
+    }[];
+  };
+  customFields: { id: number; name: string }[];
+}
+
+/**
+ * Field rule sets and layout sets through the API (M1-012; CORE-003, CORE-008, CORE-013).
+ */
+describe('field rules and layouts (M1-012)', () => {
+  const database = useMigratedDatabase();
+  let app: FastifyInstance;
+  const users: Record<string, { id: number; cookie: string }> = {};
+  const types: Record<string, number> = {};
+  const tracks: Record<string, number> = {};
+  let trackCount = 0;
+
+  const as = (who: string, options: InjectOptions) =>
+    app.inject({
+      ...options,
+      remoteAddress: nextAddress(),
+      headers: { ...(options.headers ?? {}), cookie: users[who]?.cookie ?? '' },
+    });
+  const get = (who: string, url: string) => as(who, { method: 'GET', url });
+  const post = (who: string, url: string, payload: Record<string, unknown>) =>
+    as(who, { method: 'POST', url, payload });
+  const patch = (who: string, url: string, payload: Record<string, unknown>) =>
+    as(who, { method: 'PATCH', url, payload });
+  const errorsOf = (res: LightMyRequestResponse) => res.json().fields as Record<string, string>;
+  const keysOf = (form: FormJson) =>
+    form.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.map((f) => f.key)));
+
+  /** A shared track whose members are Alice and Bob; Carol administers it. */
+  async function track(extra: Record<string, unknown> = {}): Promise<string> {
+    const key = `L${++trackCount}`;
+    const res = await post('admin', '/api/v1/tracks', { key, name: key, mode: 'shared', ...extra });
+    expect(res.statusCode, res.body).toBe(201);
+    tracks[key] = res.json().track.id;
+    const roles = await database.db.selectFrom('role').select(['id', 'name']).execute();
+    for (const [who, role] of [
+      ['alice', 'Members'],
+      ['bob', 'Members'],
+      ['carol', 'Administrators'],
+    ] as const) {
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: tracks[key] as number,
+          role_id: roles.find((r) => r.name === role)?.id as number,
+          user_id: users[who]?.id as number,
+        })
+        .execute();
+    }
+    return key;
+  }
+  async function ruleSet(rules: Record<string, unknown>[], name = `Rules ${trackCount}`) {
+    const res = await post('admin', '/api/v1/field-rule-sets', { name, rules });
+    expect(res.statusCode, res.body).toBe(201);
+    return res.json().fieldRuleSet as { id: number; usedBy: { key: string }[] };
+  }
+  async function layoutSet(layouts: Record<string, unknown>[], name = `Layouts ${trackCount}`) {
+    const res = await post('admin', '/api/v1/layout-sets', { name, layouts });
+    expect(res.statusCode, res.body).toBe(201);
+    return res.json().layoutSet as { id: number };
+  }
+  async function use(key: string, sets: { fieldRuleSetId?: number; layoutSetId?: number }) {
+    const res = await patch('admin', `/api/v1/tracks/${tracks[key]}`, sets);
+    expect(res.statusCode, res.body).toBe(200);
+  }
+  const create = (key: string, body: Record<string, unknown>, who = 'alice') =>
+    post(who, '/api/v1/tickets', { track: key, summary: 'Work', ...body });
+  const form = async (key: string, typeId: number, operation = 'create') =>
+    (
+      await get(
+        'alice',
+        `/api/v1/tracks/${key}/layout?ticketTypeId=${typeId}&operation=${operation}`,
+      )
+    ).json() as FormJson;
+
+  beforeAll(async () => {
+    app = await buildApp({ db: database.db, version: 'test', roles: ['api'] });
+    const hash = await hashPassword(PASSWORD);
+    for (const [name, admin] of [
+      ['admin', true],
+      ['alice', false],
+      ['bob', false],
+      ['carol', false],
+    ] as const) {
+      const row = await database.db
+        .insertInto('app_user')
+        .values({
+          workspace_id: 1,
+          email: `${name}@example.com`,
+          name,
+          password_hash: hash,
+          is_site_admin: admin,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/session',
+        payload: { email: `${name}@example.com`, password: PASSWORD },
+        remoteAddress: nextAddress(),
+      });
+      users[name] = { id: row.id, cookie: sessionCookie(res.headers['set-cookie']) };
+    }
+    for (const t of await database.db.selectFrom('ticket_type').select(['id', 'name']).execute()) {
+      types[t.name] = t.id;
+    }
+  });
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('[CORE-013] enforces a field required for Bug and optional for Chore only on Bugs', async () => {
+    const key = await track();
+    const severity = (
+      await post('admin', '/api/v1/fields', {
+        name: `Severity ${key}`,
+        type: 'select',
+        context: { options: [{ value: 'High' }, { value: 'Low' }] },
+      })
+    ).json().field;
+    const high = severity.contexts[0].options[0].id as number;
+    const rules = await ruleSet([
+      { ticketTypeId: types.Bug, field: 'dueDate', required: true },
+      { ticketTypeId: types.Bug, field: `cf[${severity.id}]`, required: true },
+    ]);
+    await use(key, { fieldRuleSetId: rules.id });
+    // Missing required fields block creation, each named (CORE-008 (3)).
+    const bug = await create(key, { ticketTypeId: types.Bug });
+    expect(bug.statusCode).toBe(400);
+    expect(errorsOf(bug)).toEqual({ dueDate: 'required', [`fields.${severity.id}`]: 'required' });
+    // Nothing was written: the next ticket still gets the track's first number.
+    const chore = await create(key, { ticketTypeId: types.Chore });
+    expect(chore.statusCode, chore.body).toBe(201);
+    expect(chore.json().ticket.key).toBe(`${key}-1`);
+    const ok = await create(key, {
+      ticketTypeId: types.Bug,
+      dueDate: '2026-12-01',
+      fields: { [severity.id]: high },
+    });
+    expect(ok.statusCode, ok.body).toBe(201);
+    const id = ok.json().ticket.id as number;
+    // An edit may not empty a required field, and changes nothing when refused.
+    const cleared = await patch('alice', `/api/v1/tickets/${id}`, {
+      dueDate: null,
+      summary: 'Renamed',
+    });
+    expect(cleared.statusCode).toBe(400);
+    expect(errorsOf(cleared)).toEqual({ dueDate: 'required' });
+    const unchanged = (await get('alice', `/api/v1/tickets/${id}`)).json().ticket;
+    expect(unchanged).toMatchObject({ summary: 'Work', dueDate: '2026-12-01' });
+    // A Chore that becomes a Bug needs a Bug's required fields.
+    const retype = await patch('alice', `/api/v1/tickets/${chore.json().ticket.id}`, {
+      ticketTypeId: types.Bug,
+    });
+    expect(errorsOf(retype)).toEqual({
+      dueDate: 'required',
+      [`fields.${severity.id}`]: 'required',
+    });
+    // The create form marks them for Bugs only.
+    const required = (f: FormJson) =>
+      f.layout.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields.filter((x) => x.required)));
+    expect(required(await form(key, types.Bug as number)).map((f) => f.key)).toEqual([
+      'summary',
+      'dueDate',
+      `cf[${severity.id}]`,
+    ]);
+    expect(required(await form(key, types.Chore as number)).map((f) => f.key)).toEqual(['summary']);
+  });
+
+  it('[CORE-013] does not show or take a hidden field, and keeps its stored value', async () => {
+    const key = await track();
+    const notes = (
+      await post('admin', '/api/v1/fields', { name: `Notes ${key}`, type: 'text' })
+    ).json().field;
+    const made = await create(key, {
+      ticketTypeId: types.Feature,
+      environment: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Linux' }] }],
+      },
+      fields: { [notes.id]: 'Kept' },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const id = made.json().ticket.id as number;
+    const rules = await ruleSet([
+      { ticketTypeId: null, field: 'environment', hidden: true, description: null },
+      { ticketTypeId: null, field: `cf[${notes.id}]`, hidden: true },
+    ]);
+    await use(key, { fieldRuleSetId: rules.id });
+    for (const operation of ['create', 'edit', 'view']) {
+      const keys = keysOf(await form(key, types.Feature as number, operation));
+      expect(keys).not.toContain('environment');
+      expect(keys).not.toContain(`cf[${notes.id}]`);
+      expect(keys).toContain('summary');
+    }
+    const write = await patch('alice', `/api/v1/tickets/${id}`, {
+      fields: { [notes.id]: 'Changed' },
+    });
+    expect(write.statusCode).toBe(400);
+    expect(errorsOf(write)).toEqual({ [`fields.${notes.id}`]: 'hidden' });
+    expect(
+      errorsOf(await create(key, { ticketTypeId: types.Feature, environment: null })),
+    ).toBeUndefined();
+    const created = await create(key, {
+      ticketTypeId: types.Feature,
+      environment: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'macOS' }] }],
+      },
+    });
+    expect(errorsOf(created)).toEqual({ environment: 'hidden' });
+    // The stored values stay; other edits go through.
+    const renamed = await patch('alice', `/api/v1/tickets/${id}`, { summary: 'Renamed' });
+    expect(renamed.statusCode, renamed.body).toBe(200);
+    expect(renamed.json().ticket.fields[notes.id]).toBe('Kept');
+    expect(renamed.json().ticket.environment).not.toBeNull();
+    // Rules check: never the summary, never required and hidden together, known fields only.
+    for (const rules of [
+      [{ field: 'summary', hidden: true }],
+      [{ field: 'dueDate', required: true, hidden: true }],
+      [{ field: 'cf[999999]', required: true }],
+      [{ field: 'nonsense', required: true }],
+    ]) {
+      expect(
+        (await post('admin', '/api/v1/field-rule-sets', { name: 'Bad', rules })).statusCode,
+      ).toBe(400);
+    }
+  });
+
+  it('[CORE-008] arranges forms in tabs and sections per type and operation; required fields always appear', async () => {
+    const key = await track();
+    const area = (
+      await post('admin', '/api/v1/fields', { name: `Region ${key}`, type: 'text' })
+    ).json().field;
+    const layouts = await layoutSet([
+      {
+        ticketTypeId: types.Bug,
+        operation: 'create',
+        definition: {
+          tabs: [
+            {
+              name: 'Report',
+              sections: [
+                { kind: 'main', fields: ['summary', 'description', `cf[${area.id}]`] },
+                { kind: 'context', hideWhenEmpty: true, fields: ['assignee', 'priority'] },
+              ],
+            },
+          ],
+          others: 'omit',
+        },
+      },
+    ]);
+    const rules = await ruleSet([
+      { ticketTypeId: types.Bug, field: 'dueDate', required: true },
+      { ticketTypeId: null, field: `cf[${area.id}]`, description: 'Where it happens' },
+    ]);
+    await use(key, { layoutSetId: layouts.id, fieldRuleSetId: rules.id });
+    const bug = await form(key, types.Bug as number);
+    expect(bug.layout.tabs.map((t) => t.name)).toEqual(['Report', null]);
+    expect(bug.layout.tabs[0]?.sections.map((s) => [s.kind, s.hideWhenEmpty])).toEqual([
+      ['main', false],
+      ['context', true],
+    ]);
+    expect(bug.layout.tabs[0]?.sections[0]?.fields[2]).toEqual({
+      key: `cf[${area.id}]`,
+      required: false,
+      description: 'Where it happens',
+    });
+    // The layout leaves the required due date out; it gets a section of its own.
+    expect(bug.layout.tabs[1]?.sections[0]?.fields.map((f) => f.key)).toEqual(['dueDate']);
+    expect(bug.customFields.map((f) => f.id)).toEqual([area.id]);
+    // A field the layout leaves out is not written through the create form's API either.
+    const off = await create(key, {
+      ticketTypeId: types.Bug,
+      dueDate: '2026-12-01',
+      labels: ['x'],
+    });
+    expect(off.statusCode).toBe(400);
+    expect(errorsOf(off)).toEqual({ labels: 'not_on_layout' });
+    // Types without a layout of their own get every field.
+    expect(keysOf(await form(key, types.Chore as number))).toContain('labels');
+    // An administrator's change is what the next form shows (CORE-008 (2)).
+    const changed = await patch('admin', `/api/v1/layout-sets/${layouts.id}`, {
+      layouts: [
+        {
+          ticketTypeId: types.Bug,
+          operation: 'create',
+          definition: {
+            tabs: [{ name: 'Short', sections: [{ fields: ['summary', 'labels'] }] }],
+            others: 'omit',
+          },
+        },
+      ],
+    });
+    expect(changed.statusCode, changed.body).toBe(200);
+    expect(keysOf(await form(key, types.Bug as number))).toEqual(['summary', 'labels', 'dueDate']);
+    const ticket = await create(key, {
+      ticketTypeId: types.Bug,
+      dueDate: '2026-12-01',
+      labels: ['x'],
+    });
+    expect(ticket.statusCode, ticket.body).toBe(201);
+    // A ticket's own forms follow its type.
+    const own = (
+      await get('alice', `/api/v1/tickets/${ticket.json().ticket.id}/layout?operation=view`)
+    ).json() as FormJson;
+    expect(keysOf(own)).toContain('dueDate');
+    // A layout names each field once.
+    const twice = await patch('admin', `/api/v1/layout-sets/${layouts.id}`, {
+      layouts: [
+        {
+          ticketTypeId: null,
+          operation: 'view',
+          definition: { tabs: [{ name: 'A', sections: [{ fields: ['summary', 'summary'] }] }] },
+        },
+      ],
+    });
+    expect(twice.statusCode).toBe(400);
+  });
+
+  it('[CORE-003] a shared set names every track it reaches; defaults and sets in use stay', async () => {
+    const one = await track();
+    const two = await track();
+    const rules = await ruleSet(
+      [{ ticketTypeId: null, field: 'priority', required: true }],
+      'Shared',
+    );
+    await use(one, { fieldRuleSetId: rules.id });
+    await use(two, { fieldRuleSetId: rules.id });
+    const read = (await get('alice', `/api/v1/field-rule-sets/${rules.id}`)).json().fieldRuleSet;
+    expect(read.usedBy.map((t: { key: string }) => t.key)).toEqual([one, two]);
+    const saved = await patch('admin', `/api/v1/field-rule-sets/${rules.id}`, {
+      rules: [{ ticketTypeId: null, field: 'labels', required: true }],
+    });
+    expect(saved.statusCode, saved.body).toBe(200);
+    const event = await database.db
+      .selectFrom('domain_event')
+      .select('payload')
+      .where('type', '=', 'field_rule_set.updated')
+      .orderBy('id', 'desc')
+      .executeTakeFirstOrThrow();
+    expect((event.payload as { trackIds: number[] }).trackIds).toEqual([tracks[one], tracks[two]]);
+    // Both tracks follow at once.
+    for (const key of [one, two]) {
+      expect(errorsOf(await create(key, { ticketTypeId: types.Feature }))).toEqual({
+        labels: 'required',
+      });
+    }
+    expect(
+      (await as('admin', { method: 'DELETE', url: `/api/v1/field-rule-sets/${rules.id}` })).json(),
+    ).toEqual({ error: 'in_use', trackCount: 2 });
+    const defaults = (await get('alice', '/api/v1/field-rule-sets')).json().fieldRuleSets as {
+      id: number;
+      isDefault: boolean;
+    }[];
+    const fallback = defaults.find((s) => s.isDefault) as { id: number };
+    expect(
+      (
+        await as('admin', { method: 'DELETE', url: `/api/v1/field-rule-sets/${fallback.id}` })
+      ).json(),
+    ).toEqual({ error: 'default' });
+    // Members read sets; only administrators change shared ones.
+    expect(
+      (await patch('alice', `/api/v1/field-rule-sets/${rules.id}`, { name: 'Mine' })).statusCode,
+    ).toBe(403);
+    // A track's administrator may not put a shared set on the track.
+    const other = await ruleSet([], 'Other');
+    expect(
+      (await patch('carol', `/api/v1/tracks/${tracks[one]}`, { fieldRuleSetId: other.id }))
+        .statusCode,
+    ).toBe(403);
+  });
+
+  it('[CORE-013] applies rules to transition layouts: hidden fields take no value, required ones need one', async () => {
+    const statuses = (await get('admin', '/api/v1/statuses')).json().statuses as {
+      id: number;
+      name: string;
+    }[];
+    const s = (name: string) => statuses.find((x) => x.name === name)?.id as number;
+    const workflow = await post('admin', '/api/v1/workflows', {
+      name: 'Plan flow',
+      definition: {
+        initialStatusId: s('New'),
+        statuses: [{ statusId: s('New') }, { statusId: s('Active') }],
+        transitions: [
+          {
+            id: 1,
+            name: 'Plan',
+            from: [s('New')],
+            to: s('Active'),
+            layout: ['due-date', 'labels'],
+          },
+        ],
+      },
+    });
+    expect(workflow.statusCode, workflow.body).toBe(201);
+    const key = await track();
+    await use(key, {});
+    expect(
+      (
+        await patch('admin', `/api/v1/tracks/${tracks[key]}`, {
+          workflowId: workflow.json().workflow.id,
+        })
+      ).statusCode,
+    ).toBe(200);
+    const rules = await ruleSet([
+      { ticketTypeId: null, field: 'dueDate', required: true },
+      { ticketTypeId: null, field: 'labels', hidden: true },
+    ]);
+    // The ticket is made before the rules apply, so it has no due date yet.
+    const ticket = (await create(key, { ticketTypeId: types.Feature })).json().ticket;
+    await use(key, { fieldRuleSetId: rules.id });
+    const run = (fields: Record<string, unknown>) =>
+      post('alice', `/api/v1/tickets/${ticket.id}/transitions`, { transitionId: 1, fields });
+    expect(errorsOf(await run({ labels: ['x'] }))).toEqual({ labels: 'hidden' });
+    expect(errorsOf(await run({}))).toEqual({ 'due-date': 'required' });
+    const done = await run({ 'due-date': '2026-12-01' });
+    expect(done.statusCode, done.body).toBe(200);
+    expect(done.json().ticket).toMatchObject({ status: { name: 'Active' }, dueDate: '2026-12-01' });
+  });
+});

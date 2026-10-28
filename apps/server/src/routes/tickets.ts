@@ -8,6 +8,19 @@ import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import {
+  customKey,
+  type FormPlacement,
+  fieldOfBody,
+  formFields,
+  isEmptyOn,
+  layoutProblems,
+  missingRequired,
+  resolveLayout,
+  ruleKeyOfWorkflowField,
+  ruleOf,
+  SYSTEM_FIELDS,
+} from '../fields/layouts';
 import { changedFieldIds, syncFieldValues } from '../fields/storage';
 import {
   checkCustomValues,
@@ -446,6 +459,16 @@ type Outcome =
   | { denied: TrackPermission }
   | { versionConflict: true };
 
+/**
+ * Thrown inside a write's transaction to undo what it wrote and answer `outcome`: a refusal
+ * found after the ticket was written (a required field the create left empty) must not commit.
+ */
+class Rollback extends Error {
+  constructor(readonly outcome: Outcome) {
+    super('rolled back');
+  }
+}
+
 export function registerTicketRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
@@ -457,6 +480,18 @@ export function registerTicketRoutes(
     actorId: request.user?.id ?? null,
   });
   const actor = (request: FastifyRequest) => request.user?.id ?? null;
+
+  /** A ticket write in a transaction; a `Rollback` thrown inside undoes it and answers. */
+  async function transact(
+    work: (trx: Transaction<Database>) => Promise<Outcome>,
+  ): Promise<Outcome> {
+    try {
+      return await db.transaction().execute(work);
+    } catch (error) {
+      if (error instanceof Rollback) return error.outcome;
+      throw error;
+    }
+  }
 
   /** A ticket the caller may browse, trash included, by id or key. */
   async function findTicket(request: FastifyRequest, ticketRef: string | number) {
@@ -754,7 +789,7 @@ export function registerTicketRoutes(
     const held = await request.authz.track(trackId);
     const track = await db
       .selectFrom('track')
-      .select('archived_at')
+      .select(['archived_at', 'field_rule_set_id', 'layout_set_id'])
       .where('id', '=', trackId)
       .executeTakeFirstOrThrow();
     if (track.archived_at) return reply.code(409).send({ error: 'track_archived' });
@@ -816,7 +851,7 @@ export function registerTicketRoutes(
     ]);
     const catalog = await catalogs.get(ws);
 
-    const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
+    const outcome = await transact(async (trx): Promise<Outcome> => {
       await shareHierarchy(trx, ws);
       const offered = await offeredTypes(trx, ws, trackId);
       if (!offered) return { missing: true };
@@ -857,6 +892,26 @@ export function registerTicketRoutes(
         true,
       );
       if (!custom.ok) return { fields: custom.errors };
+      // The create layout and field rules of the type (M1-012): hidden fields and fields the
+      // layout leaves out are not written; required ones are checked once the ticket exists.
+      const at: FormPlacement = {
+        trackId,
+        ticketTypeId: typeId,
+        ruleSetId: track.field_rule_set_id,
+        layoutSetId: track.layout_set_id,
+      };
+      const form = formFields(resolveLayout(catalog, at, 'create'));
+      // A value left empty writes nothing, so it passes even for a hidden field.
+      const given = (v: unknown) =>
+        v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
+      const written = [
+        ...SYSTEM_FIELDS.filter((f) => given(body[f.body])).map((f) => f.key),
+        ...Object.entries(body.fields ?? {})
+          .filter(([, v]) => given(v))
+          .map(([id]) => customKey(Number(id))),
+      ];
+      const placed = layoutProblems(catalog, at, form.shown, written);
+      if (placed) return { fields: placed };
       const parent = parentId === null ? null : await lockParent(trx, ws, parentId);
       if (parentId !== null && !parent) return { fields: { parent: 'not_found' } };
       const levels = await typeLevels(trx, ws, [
@@ -939,10 +994,10 @@ export function registerTicketRoutes(
           closeReason: writes('close-reason') ? (made.ticket.closeReason ?? null) : null,
           closedAt: writes('close-reason') ? (made.ticket.closedAt ?? null) : null,
         });
-        if (!stored.ok) return { fields: { [stored.field]: stored.problem } };
+        if (!stored.ok) throw new Rollback({ fields: { [stored.field]: stored.problem } });
         const set = stored.changes;
         if (set.assigneeId != null && !candidates.has(set.assigneeId)) {
-          return { fields: { assignee: 'not_assignable' } };
+          throw new Rollback({ fields: { assignee: 'not_assignable' } });
         }
         if (Object.keys(set.ticket).length > 0) {
           await trx.updateTable('ticket').set(set.ticket).where('id', '=', row.id).execute();
@@ -967,6 +1022,10 @@ export function registerTicketRoutes(
       await autoFollow(trx, ws, row.id, user.id);
       if (Object.keys(custom.fields).length > 0) await syncFieldValues(trx, catalog, [row.id]);
       const created = await loadTicket(trx, ws, row.id);
+      // Required fields (CORE-013 (1), CORE-008 (3)): the values given, defaults and create
+      // effects all count.
+      const missing = created ? missingRequired(created, form.required) : null;
+      if (missing) throw new Rollback({ fields: missing });
       // Every starting value is history too, so "was" finds the first one (ADR-010).
       if (created) {
         await recordChanges(trx, ws, user.id, [
@@ -1012,7 +1071,7 @@ export function registerTicketRoutes(
       body.assigneeId == null || (await assignable(ws, found.row.track_id, body.assigneeId));
     const catalog = await catalogs.get(ws);
 
-    const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
+    const outcome = await transact(async (trx): Promise<Outcome> => {
       // Locks in the order every writer takes them: the hierarchy, the track and its type set,
       // then tickets. A type set change holds its set and then rewrites tickets.
       const structural = body.ticketTypeId !== undefined || body.parent !== undefined;
@@ -1133,6 +1192,20 @@ export function registerTicketRoutes(
       }
       if (Object.keys(changes).length === 0) return { ticket: current };
       if (customFields !== null && !held.has('edit_tickets')) return { denied: 'edit_tickets' };
+      // The edit layout and field rules of the type the ticket will have (M1-012): fields that
+      // change must be on it and not hidden; required ones are checked after the write.
+      const at: FormPlacement = {
+        trackId: current.track_id,
+        ticketTypeId: body.ticketTypeId ?? current.ticket_type_id,
+        ruleSetId: current.rule_set_id,
+        layoutSetId: current.layout_set_id,
+      };
+      const form = formFields(resolveLayout(catalog, at, 'edit'));
+      const changedKeys = Object.keys(changes).flatMap((k) =>
+        k.startsWith('cf[') ? [k] : k === 'parentId' ? ['parent'] : (fieldOfBody(k) ?? []),
+      );
+      const placed = layoutProblems(catalog, at, form.shown, changedKeys);
+      if (placed) return { fields: placed };
 
       // Each changed field needs its own permission.
       const needs: [string, TrackPermission][] = [
@@ -1284,6 +1357,15 @@ export function registerTicketRoutes(
       const editor = actor(request);
       if (editor !== null) await autoFollow(trx, ws, ticketId, editor);
       const updated = await loadTicket(trx, ws, ticketId);
+      // A change may not empty a required field; a new type checks all of its required ones.
+      const missing = updated
+        ? missingRequired(
+            updated,
+            form.required,
+            changes.ticketTypeId ? form.required : changedKeys,
+          )
+        : null;
+      if (missing) throw new Rollback({ fields: missing });
       if (updated) {
         await recordChanges(trx, ws, editor, [
           ...ticketChanges(current, updated),
@@ -1574,7 +1656,8 @@ export function registerTicketRoutes(
       ...(await ownersOf(found)),
       entered.assignee == null ? undefined : Number(entered.assignee),
     ]);
-    return db.transaction().execute(async (trx): Promise<Outcome> => {
+    const catalog = await catalogs.get(ws);
+    return transact(async (trx): Promise<Outcome> => {
       // The track, its workflow and the values given, then the ticket (lock order in
       // workflows/store): a publish or a switch of workflow waits, or this waits for it.
       await trx
@@ -1659,6 +1742,21 @@ export function registerTicketRoutes(
           },
         };
       }
+      // Field rules apply to the transition's layout too (M1-012): a hidden field takes no
+      // value there, and a required one must have one once the transition is done.
+      const at: FormPlacement = {
+        trackId: current.track_id,
+        ticketTypeId: current.ticket_type_id,
+        ruleSetId: current.rule_set_id,
+        layoutSetId: current.layout_set_id,
+      };
+      const transition = held.definition.transitions.find((t) => String(t.id) === transitionId);
+      const hiddenGiven = Object.keys(entered).filter(
+        (name) => ruleOf(catalog, at, ruleKeyOfWorkflowField(name)).hidden,
+      );
+      if (hiddenGiven.length > 0) {
+        return { fields: Object.fromEntries(hiddenGiven.map((name) => [name, 'hidden'])) };
+      }
       const stored = storedChanges(current, result.ticket);
       if (!stored.ok) return { fields: { [stored.field]: stored.problem } };
       const changes = stored.changes;
@@ -1706,6 +1804,18 @@ export function registerTicketRoutes(
       if (changes.areas) await setTicketAreas(trx, ws, ticketId, changes.areas);
       if (changes.ticket.labels) await rememberLabels(trx, ws, changes.ticket.labels as string[]);
       const updated = await loadTicket(trx, ws, ticketId);
+      // Required fields of the layout left empty, named as the layout names them.
+      const missing = (transition?.layout ?? []).filter((name) => {
+        const key = ruleKeyOfWorkflowField(name);
+        return (
+          updated !== undefined && ruleOf(catalog, at, key).required && isEmptyOn(updated, key)
+        );
+      });
+      if (missing.length > 0) {
+        throw new Rollback({
+          fields: Object.fromEntries(missing.map((name) => [name, 'required'])),
+        });
+      }
       if (updated) {
         await recordChanges(
           trx,

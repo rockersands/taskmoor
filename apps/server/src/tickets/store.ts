@@ -128,6 +128,8 @@ export function ticketQuery(db: Db, workspaceId: number) {
       't.key as track_key',
       't.name as track_name',
       't.archived_at as track_archived_at',
+      't.field_rule_set_id as rule_set_id',
+      't.layout_set_id',
       'k.ticket_type_id',
       'ty.name as type_name',
       'ty.icon as type_icon',

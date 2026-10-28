@@ -9,6 +9,7 @@ import '../src/styles/api-tokens.css';
 import '../src/styles/twofactor.css';
 import '../src/styles/sso.css';
 import '../src/styles/directories.css';
+import '../src/styles/tickets.css';
 import '../src/styles/trash.css';
 
 const preview: Preview = {

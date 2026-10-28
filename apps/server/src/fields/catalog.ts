@@ -1,5 +1,14 @@
 import type { Database } from '@taskmoor/db';
 import type { Kysely, Transaction } from 'kysely';
+import {
+  EMPTY_FORMS,
+  type FormConfig,
+  type LayoutDefinition,
+  type LayoutSetDef,
+  layoutDefinition,
+  type RuleDef,
+  type RuleSetDef,
+} from './form-model';
 import type { FieldConfig, FieldShape, FieldType, Stored } from './types';
 
 /**
@@ -67,6 +76,8 @@ export class Catalog {
     readonly contexts: ReadonlyMap<number, ContextDef>,
     readonly options: ReadonlyMap<number, OptionDef>,
     scopeRows: readonly { field_id: number; context_id: number; key: string }[],
+    /** Field rule sets and layout sets (M1-012). */
+    readonly forms: FormConfig = EMPTY_FORMS,
   ) {
     for (const option of options.values()) {
       const list = this.byContext.get(option.contextId);
@@ -228,7 +239,54 @@ export async function loadCatalog(
       context_id: s.context_id,
       key: scopeKey(s.track_id, s.ticket_type_id),
     })),
+    fieldId === undefined ? await loadForms(db, workspaceId) : EMPTY_FORMS,
   );
+}
+
+/** The workspace's field rule sets and layout sets. */
+export async function loadForms(db: Db, workspaceId: number): Promise<FormConfig> {
+  const [ruleSets, rules, layoutSets, layouts] = await Promise.all([
+    db.selectFrom('field_rule_set').selectAll().where('workspace_id', '=', workspaceId).execute(),
+    db.selectFrom('field_rule').selectAll().where('workspace_id', '=', workspaceId).execute(),
+    db.selectFrom('layout_set').selectAll().where('workspace_id', '=', workspaceId).execute(),
+    db.selectFrom('layout').selectAll().where('workspace_id', '=', workspaceId).execute(),
+  ]);
+  const rulesBySet = new Map<number, Map<string, RuleDef>>();
+  for (const r of rules) {
+    const map = rulesBySet.get(r.rule_set_id) ?? new Map<string, RuleDef>();
+    rulesBySet.set(r.rule_set_id, map);
+    map.set(`${r.ticket_type_id ?? 0}|${r.field}`, {
+      required: r.required,
+      hidden: r.hidden,
+      description: r.description,
+    });
+  }
+  const layoutsBySet = new Map<number, Map<string, LayoutDefinition>>();
+  for (const l of layouts) {
+    const parsed = layoutDefinition.safeParse(l.definition);
+    // A definition this release cannot read is left out: the generated layout stands in.
+    if (!parsed.success) continue;
+    const map = layoutsBySet.get(l.layout_set_id) ?? new Map<string, LayoutDefinition>();
+    layoutsBySet.set(l.layout_set_id, map);
+    map.set(`${l.ticket_type_id ?? 0}|${l.operation}`, parsed.data);
+  }
+  const base = (r: (typeof ruleSets)[number]) => ({
+    id: r.id,
+    trackId: r.track_id,
+    name: r.name,
+    description: r.description,
+    isDefault: r.is_default,
+  });
+  return {
+    ruleSets: new Map<number, RuleSetDef>(
+      ruleSets.map((r) => [r.id, { ...base(r), rules: rulesBySet.get(r.id) ?? new Map() }]),
+    ),
+    layoutSets: new Map<number, LayoutSetDef>(
+      layoutSets.map((r) => [r.id, { ...base(r), layouts: layoutsBySet.get(r.id) ?? new Map() }]),
+    ),
+    defaultRuleSetId: ruleSets.find((r) => r.is_default)?.id ?? null,
+    defaultLayoutSetId: layoutSets.find((r) => r.is_default)?.id ?? null,
+  };
 }
 
 /** Catalogues per workspace, reloaded when the epoch moves. One per server process. */

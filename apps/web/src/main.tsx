@@ -10,6 +10,7 @@ import './styles/api-tokens.css';
 import './styles/twofactor.css';
 import './styles/sso.css';
 import './styles/directories.css';
+import './styles/tickets.css';
 import './styles/trash.css';
 
 const root = document.getElementById('root');

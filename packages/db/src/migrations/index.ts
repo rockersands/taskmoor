@@ -24,6 +24,7 @@ import * as m0024 from './0024_workflows';
 import * as m0025 from './0025_transition_history';
 import * as m0026 from './0026_custom_fields';
 import * as m0027 from './0027_field_values';
+import * as m0028 from './0028_field_rules_layouts';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -58,4 +59,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0025_transition_history': m0025,
   '0026_custom_fields': m0026,
   '0027_field_values': m0027,
+  '0028_field_rules_layouts': m0028,
 };

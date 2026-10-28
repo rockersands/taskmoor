@@ -25,6 +25,7 @@ import {
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
+import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
 
@@ -74,6 +75,7 @@ const ADMIN_SECURITY = '#/admin/security';
 const ADMIN_IDENTITY_PROVIDERS = '#/admin/identity-providers';
 const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_DIRECTORIES = '#/admin/directories';
+const CREATE_TICKET = '#/create';
 const ACCOUNT = '#/account';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
@@ -104,6 +106,14 @@ function Pages() {
       // The person's own account, once there is one to show.
       ...(signedIn
         ? [
+            {
+              id: 'create-ticket',
+              labelId: 'tickets.create.title' as const,
+              keywords: ['new', 'issue', 'add'],
+              run: () => {
+                window.location.hash = CREATE_TICKET;
+              },
+            },
             {
               id: 'go-account',
               labelId: 'account.title' as const,
@@ -201,6 +211,9 @@ function Pages() {
     content = <TrashPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
+  } else if (isRoute(hash, CREATE_TICKET)) {
+    active = 'tracks';
+    content = <CreateTicketPage />;
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
   } else if (isRoute(hash, SIGN_IN)) {

@@ -26,7 +26,7 @@ import {
   SELECT_DISPLAYS,
   type Stored,
 } from '../fields/types';
-import { allowedPeople, loadResolver } from '../fields/values';
+import { allowedPeople, describeFields, loadResolver } from '../fields/values';
 import { resolveTrack } from '../tickets/store';
 
 /**
@@ -901,6 +901,8 @@ export function registerFieldRoutes(
       const ticketCount = await ticketsWithField(trx, ws, field.id);
       if (ticketCount > 0) return problem(409, 'in_use', { ticketCount });
       await trx.deleteFrom('field').where('id', '=', field.id).execute();
+      // Rules naming it go with it; layouts that place it skip it from now on (M1-012).
+      await trx.deleteFrom('field_rule').where('field', '=', `cf[${field.id}]`).execute();
       await emit(trx, by(request), {
         type: 'field.deleted',
         subjectId: field.id,
@@ -1236,47 +1238,15 @@ export function registerFieldRoutes(
       return notFound(reply);
     }
     const catalog = await catalogs.get(ws);
-    const fields = catalog.applicable(trackId, q.data.ticketTypeId);
-    const wanted = new Map<Reference, Set<number>>();
-    for (const f of fields) {
-      const c = catalog.contextOf(f.id, trackId, q.data.ticketTypeId) as ContextDef;
-      const ref = REFERENCE_OF[f.type];
-      if (!ref || c.defaultValue === undefined) continue;
-      const set = wanted.get(ref) ?? new Set<number>();
-      const values = Array.isArray(c.defaultValue) ? c.defaultValue : [c.defaultValue];
-      for (const v of values as number[]) set.add(v);
-      wanted.set(ref, set);
-    }
-    const resolver = await loadResolver(db, ws, catalog, wanted);
-    const enabled = (contextId: number, parentId: number | null = null) =>
-      catalog
-        .optionsOf(contextId, parentId)
-        .filter((o) => !o.disabled)
-        .map((o) => ({ id: o.id, value: o.value }));
     return {
-      fields: fields.map((f) => {
-        const c = catalog.contextOf(f.id, trackId, q.data.ticketTypeId) as ContextDef;
-        return {
-          id: f.id,
-          name: f.name,
-          description: f.description,
-          type: f.type,
-          multiple: f.multiple,
-          config: f.config,
-          contextId: c.id,
-          defaultValue:
-            c.defaultValue === undefined ? null : restValue(f, c.defaultValue, resolver),
-          restricted: c.config.userGroupId !== undefined || c.config.userRoleId !== undefined,
-          ...(f.type === 'select' || f.type === 'cascading-select'
-            ? {
-                options: enabled(c.id).map((o) => ({
-                  ...o,
-                  ...(f.type === 'cascading-select' ? { children: enabled(c.id, o.id) } : {}),
-                })),
-              }
-            : {}),
-        };
-      }),
+      fields: await describeFields(
+        db,
+        ws,
+        catalog,
+        trackId,
+        q.data.ticketTypeId,
+        catalog.applicable(trackId, q.data.ticketTypeId),
+      ),
     };
   });
 

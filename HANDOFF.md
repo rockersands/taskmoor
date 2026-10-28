@@ -18,6 +18,13 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-012 field rules and layouts** (migration 0028; ADR-009 "Implementation (M1-012)"):
+  rule sets and layout sets in `fields/layouts.ts` (loaded with the field catalogue), admin
+  routes in `routes/layouts.ts`, enforcement in `routes/tickets.ts` (create, PATCH,
+  `runTransition`). Writes whose refusal is found after the ticket is written throw `Rollback`
+  inside `transact()`; returning an outcome from a Kysely transaction commits it, so do the same
+  for any new post-write check. The create page `#/create` (`apps/web/src/tickets/`) is the
+  first ticket UI; the ticket view and its edit form come with M1-051.
 - **M1-102 upgrade command** (built by a background agent, reviewed and merged; ADR-022
   "Implementation (M1-102)"; no migration). `node cli.mjs upgrade [--dry-run] [--no-backup]
   [--unattended]` (`apps/server/src/upgrade.ts`): read-only pre-flight checks (lock, unknown

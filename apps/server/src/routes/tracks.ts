@@ -124,6 +124,9 @@ const updateBody = z
     prioritySetId: id.nullable().optional(),
     /** Its workflow (M1-023); null for the workspace's default workflow. */
     workflowId: id.nullable().optional(),
+    /** Its field rule set and layout set (M1-012); null for the workspace's defaults. */
+    fieldRuleSetId: id.nullable().optional(),
+    layoutSetId: id.nullable().optional(),
     /** For each status the new workflow lacks that tickets are in: where they go. */
     statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
     features: trackFields.features.optional(),
@@ -185,6 +188,8 @@ function trackQuery(db: Db, workspaceId: number) {
       't.type_set_id',
       't.priority_set_id',
       't.workflow_id',
+      't.field_rule_set_id',
+      't.layout_set_id',
       't.feature_board',
       't.feature_backlog',
       't.feature_sprints',
@@ -230,6 +235,8 @@ function trackView(row: TrackRow) {
     typeSetId: row.type_set_id,
     prioritySetId: row.priority_set_id,
     workflowId: row.workflow_id,
+    fieldRuleSetId: row.field_rule_set_id,
+    layoutSetId: row.layout_set_id,
     features: featuresOf(row),
     archived: row.archived_at !== null,
     archivedAt: row.archived_at?.toISOString() ?? null,
@@ -628,6 +635,30 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
         if (!workflow) return invalid(reply, 'workflowId');
       }
     }
+    // A shared set needs administrators; a local-mode track's own set, its administrators.
+    for (const [kind, value, had] of [
+      ['field_rule_set', body.fieldRuleSetId, current.field_rule_set_id],
+      ['layout_set', body.layoutSetId, current.layout_set_id],
+    ] as const) {
+      if (value === undefined || value === had || value === null) {
+        if (value === null && value !== had && !(await isAdmin(request))) {
+          return reply.code(403).send({ error: 'forbidden' });
+        }
+        continue;
+      }
+      const set = await db
+        .selectFrom(kind)
+        .select('track_id')
+        .where('id', '=', value)
+        .where('workspace_id', '=', ws)
+        .executeTakeFirst();
+      if (!set || (set.track_id !== null && set.track_id !== trackId)) {
+        return invalid(reply, kind === 'field_rule_set' ? 'fieldRuleSetId' : 'layoutSetId');
+      }
+      if (set.track_id === null && !(await isAdmin(request))) {
+        return reply.code(403).send({ error: 'forbidden' });
+      }
+    }
     if (body.prioritySetId !== undefined && body.prioritySetId !== current.priority_set_id) {
       // Priority sets are the workspace's; a ticket keeps a priority its track stops offering.
       if (!(await isAdmin(request))) return reply.code(403).send({ error: 'forbidden' });
@@ -667,6 +698,8 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           typeSetId: locked.type_set_id,
           prioritySetId: locked.priority_set_id,
           workflowId: locked.workflow_id,
+          fieldRuleSetId: locked.field_rule_set_id,
+          layoutSetId: locked.layout_set_id,
           ...Object.fromEntries(
             TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
           ),
@@ -684,6 +717,8 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           typeSetId: body.typeSetId,
           prioritySetId: body.prioritySetId,
           workflowId: body.workflowId,
+          fieldRuleSetId: body.fieldRuleSetId,
+          layoutSetId: body.layoutSetId,
           ...Object.fromEntries(
             Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
           ),
@@ -785,6 +820,12 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           }
           if (changes.workflowId && body.workflowId !== undefined) {
             set.workflow_id = body.workflowId;
+          }
+          if (changes.fieldRuleSetId && body.fieldRuleSetId !== undefined) {
+            set.field_rule_set_id = body.fieldRuleSetId;
+          }
+          if (changes.layoutSetId && body.layoutSetId !== undefined) {
+            set.layout_set_id = body.layoutSetId;
           }
           for (const feature of TRACK_FEATURES) {
             const on = body.features?.[feature];

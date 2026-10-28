@@ -1060,3 +1060,86 @@ test('[IAM-005] the administrator adds a directory; it syncs and its people sign
     await page.request.delete('/api/v1/session');
   }
 });
+
+test("[CORE-013] [CORE-008] the create form follows the track's field rules: required for Bugs only, hidden never shown", async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  const track = await page.request.post('/api/v1/tracks', {
+    data: { key: 'FORM', name: 'Forms', mode: 'shared' },
+  });
+  expect(track.status()).toBe(201);
+  const trackId = ((await track.json()) as { track: { id: number } }).track.id;
+  const types = (
+    (await (await page.request.get('/api/v1/tracks/FORM/ticket-types')).json()) as {
+      ticketTypes: { id: number; name: string }[];
+    }
+  ).ticketTypes;
+  const bug = types.find((t) => t.name === 'Bug')?.id as number;
+  const field = await page.request.post('/api/v1/fields', {
+    data: {
+      name: 'Severity',
+      type: 'select',
+      context: { trackIds: [trackId], options: [{ value: 'Blocker' }, { value: 'Minor' }] },
+    },
+  });
+  expect(field.status()).toBe(201);
+  const fieldId = ((await field.json()) as { field: { id: number } }).field.id;
+  const rules = await page.request.post('/api/v1/field-rule-sets', {
+    data: {
+      name: 'Form rules',
+      rules: [
+        { ticketTypeId: bug, field: 'dueDate', required: true },
+        { ticketTypeId: bug, field: `cf[${fieldId}]`, required: true },
+        { ticketTypeId: null, field: 'environment', hidden: true },
+      ],
+    },
+  });
+  expect(rules.status()).toBe(201);
+  const ruleSetId = ((await rules.json()) as { fieldRuleSet: { id: number } }).fieldRuleSet.id;
+  expect(
+    (
+      await page.request.patch(`/api/v1/tracks/${trackId}`, {
+        data: { fieldRuleSetId: ruleSetId },
+      })
+    ).status(),
+  ).toBe(200);
+
+  await page.goto('./#/create');
+  await expect(heading(page)).toHaveText('Create ticket');
+  await page.getByLabel('Track').selectOption({ label: 'FORM Forms' });
+  await page.getByLabel('Ticket type').selectOption({ label: 'Bug' });
+  await expect(page.getByLabel('Due date (required)')).toBeVisible();
+  await expect(page.getByLabel('Severity (required)')).toBeVisible();
+  // Hidden by the rules: not on the form at all.
+  await expect(page.getByLabel('Environment')).toHaveCount(0);
+  // The backend refuses what is missing, at each field (CORE-008 (3)).
+  await page.getByLabel('Summary (required)').fill('Checkout fails');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(
+    page.getByText('Some fields need attention before the ticket can be created.'),
+  ).toBeVisible();
+  await expect(page.getByLabel('Due date (required)')).toHaveAccessibleDescription(
+    'This field is required.',
+  );
+  await expect(page.getByLabel('Severity (required)')).toHaveAccessibleDescription(
+    'This field is required.',
+  );
+  await page.getByLabel('Due date (required)').fill('2026-12-01');
+  await page.getByLabel('Severity (required)').selectOption({ label: 'Blocker' });
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByText('FORM-1 was created.')).toBeVisible();
+  const created = (await (await page.request.get('/api/v1/tickets/FORM-1')).json()) as {
+    ticket: { dueDate: string; fields: Record<string, { value: string }> };
+  };
+  expect(created.ticket.dueDate).toBe('2026-12-01');
+  expect(created.ticket.fields[String(fieldId)]?.value).toBe('Blocker');
+
+  // A Chore needs neither: optional there, so a summary is enough.
+  await page.getByLabel('Ticket type').selectOption({ label: 'Chore' });
+  await expect(page.getByLabel('Due date', { exact: true })).toBeVisible();
+  await page.getByLabel('Summary (required)').fill('Tidy the cart code');
+  await page.getByRole('button', { name: 'Create' }).click();
+  await expect(page.getByText('FORM-2 was created.')).toBeVisible();
+  await page.request.delete('/api/v1/session');
+});

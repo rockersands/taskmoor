@@ -444,3 +444,51 @@ export function withoutTrackValues(catalog: Catalog, fields: FieldValues): Field
   }
   return dropped ? kept : null;
 }
+
+/**
+ * Custom fields as a form for a ticket of a type in a track needs them: type and settings, the
+ * context's default (REST form) and its enabled options, and whether a user picker is
+ * restricted (`GET /api/v1/fields/:id/people` offers its people).
+ */
+export async function describeFields(
+  db: Db,
+  workspaceId: number,
+  catalog: Catalog,
+  trackId: number,
+  ticketTypeId: number,
+  fields: readonly FieldDef[],
+) {
+  const contextOf = (f: FieldDef) => catalog.contextOf(f.id, trackId, ticketTypeId) as ContextDef;
+  const defaults = fields.flatMap((f) => {
+    const value = contextOf(f).defaultValue;
+    return value === undefined ? [] : [{ [f.id]: value as JsonValue }];
+  });
+  const resolver = await loadResolver(db, workspaceId, catalog, wantedOf(catalog, defaults));
+  const enabled = (contextId: number, parentId: number | null = null) =>
+    catalog
+      .optionsOf(contextId, parentId)
+      .filter((o) => !o.disabled)
+      .map((o) => ({ id: o.id, value: o.value }));
+  return fields.map((f) => {
+    const c = contextOf(f);
+    return {
+      id: f.id,
+      name: f.name,
+      description: f.description,
+      type: f.type,
+      multiple: f.multiple,
+      config: f.config,
+      contextId: c.id,
+      defaultValue: c.defaultValue === undefined ? null : restValue(f, c.defaultValue, resolver),
+      restricted: c.config.userGroupId !== undefined || c.config.userRoleId !== undefined,
+      ...(f.type === 'select' || f.type === 'cascading-select'
+        ? {
+            options: enabled(c.id).map((o) => ({
+              ...o,
+              ...(f.type === 'cascading-select' ? { children: enabled(c.id, o.id) } : {}),
+            })),
+          }
+        : {}),
+    };
+  });
+}
