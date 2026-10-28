@@ -18,6 +18,22 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-081 SAML 2.0** (built by a background agent, reviewed and merged; migration 0020,
+  renumbered from 0016 on merge because 0018 and 0019 had landed; ADR-019 "Single sign-on
+  with SAML 2.0"): SAML providers are `identity_provider` rows with `kind` 'saml' and share
+  domains, enforcement, break-glass, JIT, group maps and audit with OIDC through
+  `sso/sign-in.ts`. The verifier in `sso/saml.ts` (xml-crypto 6.4, @xmldom/xmldom 0.8) refuses
+  signature wrapping and reads only the signed bytes; trust comes from the configured
+  certificates, never KeyInfo. Endpoints: `/api/v1/auth/saml/:id/{metadata,start,acs}` and
+  `/auth/saml/continue` (the ACS answers 303 to `/continue`, where the Lax cookie travels).
+  `saml_assertion` is the replay cache; IdP-initiated sign-in is off by default. The admin
+  page takes pasted metadata or manual settings and shows the addresses to register. The fake
+  SAML IdP (`testing/fake-saml-idp.ts`) generates its keys at run time; e2e now needs ports
+  4173, 8787, 8788 and 8789.
+  - **Not run here:** the Keycloak SAML e2e (`bash tools/sso/keycloak-test.sh saml`; CI's
+    `sso.yml`, whose path filter now includes `routes/saml.ts`). The `taskmoor-saml` realm
+    client is untried against a real Keycloak and may need a small fix on its first run.
+  - Left for later: signed AuthnRequests, encrypted assertions, metadata from a URL.
 - **M1-015 links, web links, followers and votes** (migration 0019, `routes/links.ts`, ADR-009
   note): `/api/v1/link-types` (CRUD, delete with `?replacementId=`), `PUT /api/v1/link-policy`,
   `/api/v1/tickets/:id/links` (GET lists links and web links; POST with `linkTypeId`,
