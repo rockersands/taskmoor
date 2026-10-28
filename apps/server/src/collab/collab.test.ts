@@ -6,12 +6,16 @@ import { hashPassword } from '@taskmoor/iam';
 import type { PmJson } from '@taskmoor/richtext';
 import { docFromYDoc, schema, writeDocToYDoc } from '@taskmoor/richtext';
 import type { FastifyInstance, InjectOptions } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { Authorizer } from '../authz/authorizer';
 import { EVENT_TYPES } from '../events/catalogue';
+import { FieldCatalogs } from '../fields/catalog';
+import { writeCollaborativeText } from './persist';
 
 const PASSWORD = 'ladder violet harbour';
 const PUBLIC_URL = 'http://app.example.test';
@@ -221,6 +225,54 @@ describe('collaborative rich text (M1-017)', () => {
     }
     alice.destroy();
     bob.destroy();
+  });
+
+  it("[CORE-011] a collaborative save refreshes the ticket's formulas, as any other write does", async () => {
+    const field = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/fields',
+      payload: {
+        name: 'Last touched',
+        type: 'formula',
+        config: { expression: '{Updated}', output: 'date' },
+      },
+    });
+    expect(field.statusCode, field.body).toBe(201);
+    const fieldId = String(field.json().field.id);
+    const ticket = await newTicket(null);
+    // A value left over from before: the save must compute it again.
+    await database.db
+      .updateTable('ticket')
+      .set({ fields: sql`jsonb_set(fields, ${sql.lit(`{${fieldId}}`)}, '"2000-01-01"')` })
+      .where('id', '=', ticket.id)
+      .execute();
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Saved together' }] }],
+    };
+    const outcome = await writeCollaborativeText(
+      database.db,
+      new Authorizer(database.db),
+      new FieldCatalogs(database.db),
+      {
+        workspaceId: 1,
+        ticketId: ticket.id,
+        field: 'description',
+        doc,
+        actorId: users.alice.id,
+        ip: null,
+        state: new Uint8Array(),
+      },
+    );
+    expect(outcome.status).toBe('written');
+    const row = await database.db
+      .selectFrom('ticket')
+      .select('fields')
+      .where('id', '=', ticket.id)
+      .executeTakeFirstOrThrow();
+    expect((row.fields as Record<string, unknown>)[fieldId]).toBe(
+      new Date().toISOString().slice(0, 10),
+    );
   });
 
   it('[NTF-008] keeps the Yjs state, so people who come back continue from it', async () => {

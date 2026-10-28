@@ -390,6 +390,86 @@ storage design is ADR-040.
   (the id, the file name for display). Deleting a file deletes it for good; the trash purge
   deletes the attachments of the tickets it removes, and their files after commit.
 
+## Implementation (M1-013: formula fields)
+
+Migration 0033 lets `field.type` be `formula`; the language and its evaluator are the package
+`@taskmoor/formula`, the server side `apps/server/src/fields/formulas.ts` and
+`fields/formula-jobs.ts` (CORE-011, spec 01a section 1.4).
+
+- **The language.** Fields in braces by name (`{Points}`, `{Due date}`), any case, or by id
+  (`{cf[12]}`); system fields Summary, Due date, Start date, Created, Updated, Closed (their
+  UTC day), Original estimate, Remaining estimate and Time spent. Numbers, text in single or
+  double quotes, `true`, `false`, `null`; `+ - * / ^` with the usual precedence (`^` right to
+  left, `-2 ^ 2` is -4), `&` joins text, comparisons `= != <> < <= > >=` (text ignores case),
+  `and or not` (also `&& || !`). Functions: `if`, `isEmpty`, `ifEmpty`, `sum`, `avg`, `min`,
+  `max`, `count`, `abs`, `round` (half away from zero, on the shortest decimal form), `floor`,
+  `ceil`, `mod`, `pow`, `sqrt`, `today`, `date`, `daysBetween`, `workingDaysBetween`,
+  `workingDaysUntil`, `addDays`, `year`, `month`, `day`, `weekday`, `hours`, `minutes`,
+  `text`, `concat`, `upper`, `lower`, `len`. Roll-ups read the child tickets (live ones, the
+  trash left out): `sum(children.{Points})`, `count(children)`, `max(children.{Due date})`.
+- **Types** are checked before anything runs: number, text, date (a day), duration (seconds),
+  true/false, and empty (`null`). A date minus a date is days, a date plus a number is a date,
+  a duration over a duration a number; `if` with a text branch gives text, so a formula can
+  answer "Overdue" or a number of days. The output chosen at creation (number, currency,
+  percentage, date, duration, text) must fit the formula's type. Percentages store the percent
+  (40 means 40%). Fields of other types (selects, people, labels, rich text) cannot be read yet.
+- **Empty, never an error, at run time:** a missing value spreads through arithmetic; division
+  by zero, an impossible power, a number past plus or minus 10^12, a date outside 1000 to 9999
+  or text longer than 10,000 characters give empty; a comparison with an empty value is false;
+  aggregates skip empty values (a sum of nothing is 0, an average of nothing empty).
+- **Working days** use the workspace's time tracking setting (TIM-001): the week is Monday and
+  the days after it, as many as days per week rounds up to (5 is Monday to Friday, 4.5 counts
+  Friday). `workingDaysUntil(d)` counts the working days after today up to `d`; once `d` has
+  passed it is minus the working days from `d` up to today, and at least -1, so any past due
+  date, a weekend one included, reads as overdue (CORE-011 (2)). Today is the UTC day until
+  workspaces have a time zone. There is no holiday calendar.
+- **The sandbox:** a hand-written lexer, Pratt parser and type checker produce a tree of
+  operations that a plain interpreter runs. There is no `eval`, `Function` or generated code;
+  function names are looked up in a fixed table (`constructor(1)` is an unknown function), and
+  the evaluator reads only the field values the server hands it, for the ids the checker
+  resolved. Limits: 4,000 characters, 64 levels of nesting, 1,000 parts, 1,000,000 evaluation
+  steps (each part evaluated and each child value read is a step; past the budget the value is
+  empty), 10,000 characters of text built on the way. The fuzzer (`pnpm fuzz formula`) checks
+  that compiling gives a program or a refusal with a place inside the text, that evaluating
+  never throws or gives a number that is not finite, and that stored values fit their output.
+- **Refused on save with the place of the mistake** (CORE-011 (3)): 400 `invalid_formula` with
+  `formula: {code, message, start, end, line, column}`, for syntax, unknown or ambiguous fields
+  (a name several fields share is written as `{cf[12]}`), types, the output, and cycles:
+  formulas that need each other's values on the same ticket, named in order. A roll-up of a
+  formula over the children (`{Size} + sum(children.{Tree size})` in Tree size) is no cycle,
+  since the hierarchy has none. `GET /api/v1/formulas/check` answers the same while typing.
+  A shared formula reads shared fields only; a local track's formula reads its own too.
+- **Stored with ids, shown with names:** the expression is kept as written but with every field
+  as `{cf[12]}` or `{due}`, so renaming a field never breaks a formula; the API shows names.
+  A field a formula reads cannot be deleted (409 `used_by_formula`); a formula field can, and
+  its values go with it.
+- **Values are stored like any custom value:** in `ticket.fields` and in the side table of the
+  output (`v_number` for numbers and durations, `v_date`, `v_text`), so the query language
+  reads a formula as a number, date or text field and sorts it through its side table
+  (ADR-008, ADR-010). A request never writes them (`read_only`), a create form never shows
+  them, and no rule makes them required.
+- **Recompute.** Every ticket write calls `refreshFormulas` in its transaction after writing
+  and before its history: create (effects included), edit, transition, move, delete, restore
+  and time entries; the bulk edit of M1-021 is to call it once per batch. It recomputes the
+  written tickets' formulas in dependency order, so the answer to the write already shows them
+  (CORE-011 (1); an edit took 21 to 50 ms through the whole API here, p50 29 ms; 200 tickets
+  of a bulk batch with their parent's roll-up 214 ms), then the parent's roll-ups, climbing
+  while values change. A parent is taken with `FOR NO KEY UPDATE SKIP LOCKED`: a write never
+  waits for a parent, so roll-ups add no deadlock. A parent someone holds is queued
+  (`formula.recompute`); the worker, which waits for that one row and holds no other, has it
+  recomputed within its 0.5 s poll after the holder commits (69 ms measured). A change of a
+  formula, of the contexts of a formula or of a field one reads, of the working week, or a
+  ticket type mapping queues `formula.refresh`, which walks the tickets in transactions of 200
+  (one-minute runs that chain) and climbs to parents. Formulas that read today's date are
+  refreshed once a day by the worker's housekeeping (the first run after midnight UTC).
+  Computed values change neither a ticket's version nor its update time.
+- **History** records computed changes as `cf[<id>]` rows with the write that caused them (a
+  parent's too, by the same person); the worker's walks record them without a person.
+  Formulas that read today's date record none: their values move with the clock, not with a
+  change, and a row per ticket per day would swamp the history.
+- **Not yet:** select, people, label and rich-text fields in formulas; a workspace time zone and
+  a holiday calendar for working days; the formula editor (M1-053); the bulk edit (M1-021).
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

@@ -8,6 +8,7 @@ import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { refreshFormulas } from '../fields/formulas';
 import {
   customKey,
   type FormPlacement,
@@ -113,6 +114,10 @@ import { holdWorkflow, statusInfo, trackWorkflowId } from '../workflows/store';
  *   be the track's own and not archived (a ticket keeps one it has). Setting a close reason
  *   needs "Set close reason"; the rest "Edit tickets". Moving drops releases and areas, which
  *   belong to the old track.
+ * - Formula fields (M1-013, CORE-011) are recomputed in every write's transaction, after the
+ *   write and before its history (`refreshFormulas`): the ticket's own, then its parent's
+ *   roll-ups (a parent someone else holds is left to the worker). Their changes join the
+ *   write's history; formula values are never written by a request.
  * - A ticket in an archived track is read-only (409 `track_archived`).
  * - `version` counts changes; a write that names the version it read fails with 409
  *   `version_conflict` when someone else saved in between.
@@ -1063,6 +1068,8 @@ export function registerTicketRoutes(
       });
       await autoFollow(trx, ws, row.id, user.id);
       if (Object.keys(custom.fields).length > 0) await syncFieldValues(trx, catalog, [row.id]);
+      // Formulas see the ticket as created, create effects included (M1-013).
+      const computed = await refreshFormulas(trx, catalog, ws, [row.id]);
       const created = await loadTicket(trx, ws, row.id);
       // Required fields (CORE-013 (1), CORE-008 (3)): the values given, defaults and create
       // effects all count.
@@ -1073,6 +1080,7 @@ export function registerTicketRoutes(
         await recordChanges(trx, ws, user.id, [
           ...ticketChanges(null, created),
           ...(await customChanges(trx, ws, catalog, created.id, {}, created.fields)),
+          ...computed,
         ]);
       }
       return { ticket: created };
@@ -1417,6 +1425,10 @@ export function registerTicketRoutes(
       });
       const editor = actor(request);
       if (editor !== null) await autoFollow(trx, ws, ticketId, editor);
+      // Formulas of the ticket and its parents' roll-ups, the one it left included (M1-013).
+      const computed = await refreshFormulas(trx, catalog, ws, [ticketId], {
+        parents: changes.parentId ? [current.parent_id] : [],
+      });
       const updated = await loadTicket(trx, ws, ticketId);
       // A change may not empty a required field; a new type checks all of its required ones.
       const missing = updated
@@ -1431,6 +1443,7 @@ export function registerTicketRoutes(
         await recordChanges(trx, ws, editor, [
           ...ticketChanges(current, updated),
           ...(await customChanges(trx, ws, catalog, ticketId, current.fields, updated.fields)),
+          ...computed,
         ]);
       }
       return { ticket: updated };
@@ -1674,9 +1687,14 @@ export function registerTicketRoutes(
         lostValues.push(...(await customChanges(trx, ws, catalog, t.id, t.fields, kept)));
       }
       await syncFieldValues(trx, catalog, touched);
+      // Formulas apply per track and type, and the parent left behind loses a child (M1-013).
+      const computed = await refreshFormulas(trx, catalog, ws, touched, {
+        parents: [current.parent_id],
+      });
       await recordChanges(trx, ws, actor(request), [
         ...changesOf(before, await loadTickets(trx, ws, touched)),
         ...lostValues,
+        ...computed,
       ]);
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
@@ -1881,6 +1899,8 @@ export function registerTicketRoutes(
       }
       if (changes.areas) await setTicketAreas(trx, ws, ticketId, changes.areas);
       if (changes.ticket.labels) await rememberLabels(trx, ws, changes.ticket.labels as string[]);
+      // Effects may have moved what formulas read: dates, estimates, the close (M1-013).
+      const computed = await refreshFormulas(trx, catalog, ws, [ticketId]);
       const updated = await loadTicket(trx, ws, ticketId);
       // Required fields of the layout left empty, named as the layout names them.
       const missing = (transition?.layout ?? []).filter((name) => {
@@ -1899,7 +1919,7 @@ export function registerTicketRoutes(
           trx,
           ws,
           request.user?.id ?? null,
-          ticketChanges(current, updated).map((c) => ({
+          [...ticketChanges(current, updated), ...computed].map((c) => ({
             ...c,
             transitionId: Number(transitionId),
           })),
@@ -2226,7 +2246,14 @@ export function registerTicketRoutes(
       });
       // Tickets in the trash have no side rows; they come back with them (ADR-008).
       await syncFieldValues(trx, catalog, touched);
-      await recordChanges(trx, ws, user.id, changesOf(before, await loadTickets(trx, ws, touched)));
+      // The parent's roll-ups lose a child; tickets in the trash keep their values (M1-013).
+      const computed = await refreshFormulas(trx, catalog, ws, [], {
+        parents: [before.get(ticketId)?.parent_id],
+      });
+      await recordChanges(trx, ws, user.id, [
+        ...changesOf(before, await loadTickets(trx, ws, touched)),
+        ...computed,
+      ]);
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
     const refused = refusal(reply, outcome);
@@ -2371,12 +2398,12 @@ export function registerTicketRoutes(
         },
       });
       await syncFieldValues(trx, catalog, touched);
-      await recordChanges(
-        trx,
-        ws,
-        actor(request),
-        changesOf(before, await loadTickets(trx, ws, touched)),
-      );
+      // Restored tickets and the children they take back, then their parents (M1-013).
+      const computed = await refreshFormulas(trx, catalog, ws, touched);
+      await recordChanges(trx, ws, actor(request), [
+        ...changesOf(before, await loadTickets(trx, ws, touched)),
+        ...computed,
+      ]);
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
     return answer(request, reply, outcome);

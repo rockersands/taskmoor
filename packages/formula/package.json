@@ -1,0 +1,15 @@
+{
+  "name": "@taskmoor/formula",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Formula fields: the language, its type checker and a sandboxed evaluator (M1-013, CORE-011).",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@taskmoor/testkit": "workspace:*"
+  }
+}

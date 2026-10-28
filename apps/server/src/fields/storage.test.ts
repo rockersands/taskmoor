@@ -192,6 +192,28 @@ describe('custom field side tables (M1-011)', () => {
           return fc.constantFrom(releases[track], null);
       }
     };
+    // A value of every kind, for the fixed first run: random runs need not write each kind.
+    const full = (track: string): Record<string, unknown> => {
+      const one: Record<string, unknown> = {
+        text: 'Alpha',
+        notes: {
+          type: 'doc',
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello there' }] }],
+        },
+        points: 1.5,
+        day: '2026-01-01',
+        when: '2026-10-28T10:00:00+02:00',
+        one: options.one?.[0],
+        many: options.many,
+        cascade: [options.cascade?.[0], options.cascade?.[1]],
+        people: [adminId],
+        tags: ['red'],
+        link: 'https://example.com/a',
+      };
+      return Object.fromEntries(
+        Object.keys(fieldIds).map((n) => [fieldIds[n], n in one ? one[n] : releases[track]]),
+      );
+    };
     const values = (track: string) =>
       fc
         .subarray(Object.keys(fieldIds), { minLength: 1 })
@@ -268,7 +290,19 @@ describe('custom field side tables (M1-011)', () => {
         const report = await verify();
         expect(report.mismatched).toEqual([]);
       }),
-      { numRuns: 15 },
+      {
+        numRuns: 15,
+        // Rows of every kind from the start, so the check compares each kind on every seed.
+        examples: [
+          [
+            [
+              { kind: 'create', track: 'SA', sub: false, fields: full('SA') },
+              { kind: 'create', track: 'SB', sub: false, fields: full('SB') },
+              { kind: 'edit', pick: 0, fields: full('SA') },
+            ],
+          ],
+        ],
+      },
     );
     // The sequences wrote rows of every kind, so the check above compared something.
     for (const table of SIDE_TABLES) {

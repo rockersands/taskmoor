@@ -3,6 +3,7 @@ import type { Kysely, Transaction } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { refreshFormulas } from '../fields/formulas';
 import {
   type FormPlacement,
   formFields,
@@ -148,6 +149,8 @@ export async function writeCollaborativeText(
         },
       );
       await autoFollow(trx, ws, write.ticketId, write.actorId);
+      // Formulas may read the update time (M1-013), as after any other write.
+      const computed = await refreshFormulas(trx, catalog, ws, [write.ticketId]);
       const updated = (await loadTicket(trx, ws, write.ticketId)) as TicketRow;
       // A required field may not be emptied (CORE-013 (1)).
       const form = formFields(resolveLayout(catalog, placementOf(updated), 'edit'));
@@ -155,7 +158,10 @@ export async function writeCollaborativeText(
         throw new Rollback({ status: 'refused', ticket: current });
       }
       // Last write wins: the text it replaced stays in the history (NTF-008 (3)).
-      await recordChanges(trx, ws, write.actorId, ticketChanges(current, updated));
+      await recordChanges(trx, ws, write.actorId, [
+        ...ticketChanges(current, updated),
+        ...computed,
+      ]);
       await saveState(trx, write);
       return { status: 'written', ticket: updated };
     });

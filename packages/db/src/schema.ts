@@ -810,7 +810,9 @@ export type CustomFieldType =
   | 'url'
   | 'read-only-text'
   | 'release'
-  | 'area';
+  | 'area'
+  /** Computed from other fields (M1-013, CORE-011); `config` holds the expression and output. */
+  | 'formula';
 export interface FieldTable {
   id: Generated<number>;
   workspace_id: number;

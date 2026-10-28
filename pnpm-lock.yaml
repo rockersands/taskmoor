@@ -83,6 +83,9 @@ importers:
       '@taskmoor/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@taskmoor/formula':
+        specifier: workspace:*
+        version: link:../../packages/formula
       '@taskmoor/iam':
         specifier: workspace:*
         version: link:../../packages/iam
@@ -339,6 +342,9 @@ importers:
 
   packages/devtools:
     dependencies:
+      '@taskmoor/formula':
+        specifier: workspace:*
+        version: link:../formula
       '@taskmoor/query':
         specifier: workspace:*
         version: link:../query
@@ -352,6 +358,12 @@ importers:
       dependency-cruiser:
         specifier: ^18.6.0
         version: 18.6.0
+
+  packages/formula:
+    devDependencies:
+      '@taskmoor/testkit':
+        specifier: workspace:*
+        version: link:../testkit
 
   packages/iam:
     dependencies:

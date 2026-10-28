@@ -720,6 +720,17 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0033_formula_fields': {
+    tables: {
+      field: "type = 'formula' AND config ->> 'output' = 'number'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO field (workspace_id, name, type, config)
+        VALUES (1, 'Seed formula', 'formula', '{"expression": "{due} - {created}", "output": "number"}')`.execute(
+        db,
+      );
+    },
+  },
   '0034_rich_text': {
     tables: {
       ticket_text_original: "field = 'description' AND format = 'adf' AND source ? 'version'",

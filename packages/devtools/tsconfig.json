@@ -13,6 +13,9 @@
       "path": "../query"
     },
     {
+      "path": "../formula"
+    },
+    {
       "path": "../workflow"
     }
   ]

@@ -1,7 +1,7 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Catalog, FieldDef } from './catalog';
-import { fold, plainText, STORAGE_OF, type Stored } from './types';
+import { type FieldConfig, type FieldType, fold, plainText, type Stored, storageOf } from './types';
 
 /**
  * The side tables of custom field values (M1-011; ADR-008): what each stored value becomes as
@@ -41,10 +41,18 @@ export interface SideValue {
 }
 
 /** The side rows one stored value makes: one per label, person, option or other id. */
-export function sideValues(field: Pick<FieldDef, 'type'>, value: Stored): SideValue[] {
-  const table = TABLE_OF[STORAGE_OF[field.type]];
+export function sideValues(
+  field: { type: FieldType; config?: FieldConfig },
+  value: Stored,
+): SideValue[] {
+  const table = TABLE_OF[storageOf(field)];
   const text = (s: string): SideValue => ({ table, value: s, sortKey: fold(s) });
   switch (field.type) {
+    case 'formula':
+      // A formula is indexed as its output: text, a date, or a number (durations in seconds).
+      return table === 'v_text'
+        ? [text(value as string)]
+        : [{ table, value: value as string | number }];
     case 'paragraph': {
       const start = [...plainText(value)].slice(0, INDEXED_TEXT_MAX).join('');
       return start === '' ? [] : [text(start)];
@@ -127,11 +135,7 @@ export async function syncFieldValues(
   const tables =
     fieldIds === undefined || fieldIds.some((id) => !catalog.fields.has(id))
       ? SIDE_TABLES
-      : [
-          ...new Set(
-            fieldIds.map((id) => TABLE_OF[STORAGE_OF[(catalog.fields.get(id) as FieldDef).type]]),
-          ),
-        ];
+      : [...new Set(fieldIds.map((id) => TABLE_OF[storageOf(catalog.fields.get(id) as FieldDef)]))];
   for (const table of tables) {
     let query = trx.deleteFrom(table).where('ticket_id', 'in', ids);
     if (fieldIds !== undefined) query = query.where('field_id', 'in', [...fieldIds]);

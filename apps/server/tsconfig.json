@@ -22,6 +22,9 @@
       "path": "../../packages/query"
     },
     {
+      "path": "../../packages/formula"
+    },
+    {
       "path": "../../packages/storage"
     }
   ]

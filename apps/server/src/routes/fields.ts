@@ -1,4 +1,5 @@
 import type { Database } from '@taskmoor/db';
+import { OUTPUT_TYPES, outputValueType } from '@taskmoor/formula';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
@@ -14,6 +15,13 @@ import {
   type OptionDef,
 } from '../fields/catalog';
 import {
+  checkFormula,
+  formulaPlan,
+  formulasReading,
+  publicConfig,
+  queueFormulaRefresh,
+} from '../fields/formulas';
+import {
   FIELD_TYPES,
   type FieldConfig,
   MULTIPLE_TYPES,
@@ -27,6 +35,7 @@ import {
   type Stored,
 } from '../fields/types';
 import { allowedPeople, describeFields, loadResolver } from '../fields/values';
+import { canonicalJson } from '../tickets/model';
 import { resolveTrack } from '../tickets/store';
 
 /**
@@ -48,6 +57,13 @@ import { resolveTrack } from '../tickets/store';
  *   (CORE-009 (3)); one in use on a ticket, the trash included, is disabled rather than
  *   deleted. A field, or a context whose options are in use, is deleted once no ticket holds
  *   its values.
+ *
+ * - Formula fields (M1-013, CORE-011) take an expression and an output; the expression is
+ *   checked on save and refused with its place (400 `invalid_formula`), stored with fields by id
+ *   and shown with names. Their values are computed (`fields/formulas.ts`): a new or changed
+ *   formula, and a context change of a formula or of a field one reads, queue a recompute of
+ *   every ticket. A field a formula reads is not deleted (409 `used_by_formula`); a formula
+ *   field is, values and all, unless another formula reads it.
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -74,6 +90,9 @@ const configBody = z
     decimals: z.number().int().min(0).max(3),
     currency: z.string().regex(/^[A-Z]{3}$/, 'an ISO 4217 code'),
     display: z.enum(SELECT_DISPLAYS),
+    /** Formula: checked by the formula language, which refuses one too long with its place. */
+    expression: z.string().max(100_000),
+    output: z.enum(OUTPUT_TYPES),
   })
   .partial()
   .strict();
@@ -158,6 +177,16 @@ const suggestQuery = z
   })
   .strict();
 const peopleQuery = suggestQuery.extend({ track: z.string().min(1).max(300), ticketTypeId: id });
+const formulaQuery = z
+  .object({
+    expression: z.string().max(100_000),
+    output: z.enum(OUTPUT_TYPES).default('number'),
+    /** The formula field being edited: its track, and cycles through it. */
+    fieldId: id.optional(),
+    /** The local-mode track a new formula field will belong to. */
+    trackId: id.optional(),
+  })
+  .strict();
 
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -183,6 +212,7 @@ function configProblem(type: string, multiple: boolean, config: FieldConfig): st
     paragraph: ['maxChars'],
     number: ['format', 'decimals', 'currency'],
     select: ['display'],
+    formula: ['expression', 'output', 'decimals', 'currency'],
   };
   const extra = Object.keys(config).filter(
     (k) => !(allowed[type] ?? []).includes(k as keyof FieldConfig),
@@ -190,6 +220,17 @@ function configProblem(type: string, multiple: boolean, config: FieldConfig): st
   if (extra.length > 0) return `config: ${extra.join(', ')} not used by ${type}`;
   if (type === 'number' && (config.format === 'currency') !== (config.currency !== undefined)) {
     return 'config: currency goes with the currency format';
+  }
+  if (type === 'formula') {
+    if (config.expression === undefined || config.output === undefined) {
+      return 'config: a formula takes an expression and an output';
+    }
+    if ((config.output === 'currency') !== (config.currency !== undefined)) {
+      return 'config: currency goes with the currency output';
+    }
+    if (config.decimals !== undefined && outputValueType(config.output) !== 'number') {
+      return `config: decimals do not fit the ${config.output} output`;
+    }
   }
   if (type === 'select' && config.display !== undefined) {
     const fits = multiple ? ['dropdown', 'checkboxes'] : ['dropdown', 'radio'];
@@ -235,7 +276,7 @@ async function fieldView(
     description: field.description,
     type: field.type,
     multiple: field.multiple,
-    config: field.config,
+    config: publicConfig(catalog, field),
     trackId: field.trackId,
     contexts: contexts.map((c) => ({
       id: c.id,
@@ -287,6 +328,23 @@ const problem = (status: number, error: string, extra: Record<string, unknown> =
 });
 const isProblem = (value: unknown): value is Problem =>
   typeof value === 'object' && value !== null && 'status' in value && 'body' in value;
+
+/** Formula fields that read a field directly (M1-013), other than the field itself. */
+function readersOf(catalog: Catalog, fieldId: number): FieldDef[] {
+  const ref = `cf[${fieldId}]`;
+  return formulaPlan(catalog)
+    .order.filter(
+      (d) =>
+        d.field.id !== fieldId &&
+        d.program !== null &&
+        [...d.program.refs, ...d.program.childRefs].some((r) => r.id === ref),
+    )
+    .map((d) => d.field);
+}
+
+/** Whether a change to a field's contexts moves formula values: its own, or of formulas reading it. */
+const contextsMoveFormulas = (catalog: Catalog, field: FieldDef) =>
+  field.type === 'formula' || formulasReading(catalog, [field.id]).length > 0;
 
 export function registerFieldRoutes(
   app: FastifyInstance,
@@ -488,7 +546,12 @@ export function registerFieldRoutes(
     input: unknown,
   ): Promise<Stored | null | Problem> {
     if (input === null) return null;
-    if (field.type === 'release' || field.type === 'area' || field.type === 'read-only-text') {
+    if (
+      field.type === 'release' ||
+      field.type === 'area' ||
+      field.type === 'read-only-text' ||
+      field.type === 'formula'
+    ) {
       return problem(400, 'invalid_request', { detail: `a ${field.type} field has no default` });
     }
     const parsed = parseValue(field, input);
@@ -692,9 +755,11 @@ export function registerFieldRoutes(
     fieldId: number,
     code = 200,
   ) {
-    const catalog = await loadCatalog(db, request.workspaceId, undefined, fieldId);
+    let catalog = await loadCatalog(db, request.workspaceId, undefined, fieldId);
     const field = catalog.fields.get(fieldId);
     if (!field) return notFound(reply);
+    // A formula names other fields: its expression reads with their names from the whole catalogue.
+    if (field.type === 'formula') catalog = await catalogs.get(request.workspaceId);
     return reply
       .code(code)
       .send({ field: await fieldView(db, request.workspaceId, catalog, field) });
@@ -803,7 +868,21 @@ export function registerFieldRoutes(
         .executeTakeFirst();
       if (track?.mode !== 'local') return reply.code(409).send({ error: 'track_not_local' });
     }
+    const catalog = await catalogs.get(ws);
+    let newExpression: ((fieldId: number) => string) | null = null;
     const made = await change(reply, async (trx) => {
+      if (body.type === 'formula') {
+        // Checked against the fields as they are now (CORE-011 (3)); stored with ids.
+        const checked = checkFormula(
+          catalog,
+          { id: null, trackId: body.trackId ?? null, name: body.name },
+          config.expression as string,
+          config.output ?? 'number',
+        );
+        if (!checked.ok)
+          return problem(400, 'invalid_formula', { formula: checked.error.toJSON() });
+        newExpression = checked.expressionFor;
+      }
       const row = await trx
         .insertInto('field')
         .values({
@@ -817,6 +896,15 @@ export function registerFieldRoutes(
         })
         .returning(['id', 'created_at', 'updated_at'])
         .executeTakeFirstOrThrow();
+      if (newExpression !== null) {
+        // Stored with fields by id, its own included now that it has one.
+        config.expression = (newExpression as (fieldId: number) => string)(row.id);
+        await trx
+          .updateTable('field')
+          .set({ config: JSON.stringify(config) })
+          .where('id', '=', row.id)
+          .execute();
+      }
       const field: FieldDef = {
         id: row.id,
         trackId: body.trackId ?? null,
@@ -845,6 +933,9 @@ export function registerFieldRoutes(
           optionCount: context.optionCount,
         },
       });
+      if (field.type === 'formula') {
+        await queueFormulaRefresh(trx, ws, { reason: `field ${field.id} created` });
+      }
       return field.id;
     });
     if (made === null) return reply;
@@ -863,12 +954,29 @@ export function registerFieldRoutes(
       const issue = configProblem(field.type, field.multiple, config);
       if (issue) return invalid(reply, issue);
     }
+    const catalog = await catalogs.get(request.workspaceId);
     const done = await change(reply, async (trx) => {
       if (!(await holdField(trx, field.id))) return problem(404, 'not_found');
+      if (field.type === 'formula' && config !== undefined) {
+        // Refused with its place (CORE-011 (3)), cycles through other formulas included.
+        const checked = checkFormula(
+          catalog,
+          { id: field.id, trackId: field.trackId },
+          config.expression as string,
+          config.output ?? 'number',
+        );
+        if (!checked.ok)
+          return problem(400, 'invalid_formula', { formula: checked.error.toJSON() });
+        config.expression = checked.expression;
+      }
       const changes = diff<Record<string, unknown>>(
         { name: field.name, description: field.description, config: field.config },
         { name: body.name, description: body.description, config },
       );
+      // Settings that differ only in the order of their keys (as jsonb keeps them) are the same.
+      if (changes.config && canonicalJson(field.config) === canonicalJson(config ?? {})) {
+        delete changes.config;
+      }
       if (Object.keys(changes).length === 0) return true;
       await trx
         .updateTable('field')
@@ -885,6 +993,11 @@ export function registerFieldRoutes(
         subjectId: field.id,
         payload: { changes },
       });
+      if (field.type === 'formula' && changes.config) {
+        await queueFormulaRefresh(trx, request.workspaceId, {
+          reason: `field ${field.id} changed`,
+        });
+      }
       return true;
     });
     if (done === null) return reply;
@@ -896,10 +1009,24 @@ export function registerFieldRoutes(
     if (!t) return reply;
     const { field } = t;
     const ws = request.workspaceId;
+    const catalog = await catalogs.get(ws);
     const done = await change(reply, async (trx) => {
       if (!(await holdField(trx, field.id))) return problem(404, 'not_found');
-      const ticketCount = await ticketsWithField(trx, ws, field.id);
-      if (ticketCount > 0) return problem(409, 'in_use', { ticketCount });
+      const readers = readersOf(catalog, field.id);
+      if (readers.length > 0) {
+        return problem(409, 'used_by_formula', {
+          fields: readers.map((f) => ({ id: f.id, name: f.name })),
+        });
+      }
+      if (field.type === 'formula') {
+        // Computed values go with their formula; its side rows cascade with the field.
+        await sql`
+          UPDATE ticket SET fields = fields - ${String(field.id)}
+           WHERE workspace_id = ${ws} AND fields ? ${String(field.id)}`.execute(trx);
+      } else {
+        const ticketCount = await ticketsWithField(trx, ws, field.id);
+        if (ticketCount > 0) return problem(409, 'in_use', { ticketCount });
+      }
       await trx.deleteFrom('field').where('id', '=', field.id).execute();
       // Rules naming it go with it; layouts that place it skip it from now on (M1-012).
       await trx.deleteFrom('field_rule').where('field', '=', `cf[${field.id}]`).execute();
@@ -921,6 +1048,7 @@ export function registerFieldRoutes(
     if (!t) return reply;
     const parsed = createContextBody.safeParse(request.body);
     if (!parsed.success) return invalid(reply, zodDetail(parsed.error));
+    const catalog = await catalogs.get(request.workspaceId);
     const done = await change(reply, async (trx) => {
       if (!(await holdField(trx, t.field.id))) return problem(404, 'not_found');
       const made = await createContext(trx, request.workspaceId, t.field, parsed.data);
@@ -930,6 +1058,11 @@ export function registerFieldRoutes(
         subjectId: made.contextId,
         payload: { fieldId: t.field.id, name: parsed.data.name, optionCount: made.optionCount },
       });
+      if (contextsMoveFormulas(catalog, t.field)) {
+        await queueFormulaRefresh(trx, request.workspaceId, {
+          reason: `field ${t.field.id} contexts`,
+        });
+      }
       return made.contextId;
     });
     if (done === null) return reply;
@@ -944,6 +1077,7 @@ export function registerFieldRoutes(
     const body = parsed.data;
     const { field, context } = t;
     const ws = request.workspaceId;
+    const catalog = await catalogs.get(ws);
     const done = await change(reply, async (trx) => {
       if (!(await holdField(trx, field.id))) return problem(404, 'not_found');
       let config: ContextConfig | undefined;
@@ -1006,6 +1140,9 @@ export function registerFieldRoutes(
         subjectId: context.id,
         payload: { fieldId: field.id, changes },
       });
+      if ((changes.trackIds || changes.ticketTypeIds) && contextsMoveFormulas(catalog, field)) {
+        await queueFormulaRefresh(trx, ws, { reason: `field ${field.id} contexts` });
+      }
       return true;
     });
     if (done === null) return reply;
@@ -1017,6 +1154,7 @@ export function registerFieldRoutes(
     if (!t?.context) return reply;
     const { field, context } = t;
     const ws = request.workspaceId;
+    const catalog = await catalogs.get(ws);
     const done = await change(reply, async (trx) => {
       if (!(await holdField(trx, field.id))) return problem(404, 'not_found');
       const optionIds = (
@@ -1034,6 +1172,9 @@ export function registerFieldRoutes(
         subjectId: context.id,
         payload: { fieldId: field.id, name: context.name },
       });
+      if (contextsMoveFormulas(catalog, field)) {
+        await queueFormulaRefresh(trx, ws, { reason: `field ${field.id} contexts` });
+      }
       return true;
     });
     if (done === null) return reply;
@@ -1222,6 +1363,40 @@ export function registerFieldRoutes(
     });
     if (done === null) return reply;
     return reply.code(204).send();
+  });
+
+  // Checking a formula as it is typed (M1-013; CORE-011 (3)): what it gives and what it reads,
+  // or where and why it is wrong. Nothing is stored.
+  app.get('/api/v1/formulas/check', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const q = formulaQuery.safeParse(request.query);
+    if (!q.success) return invalid(reply, zodDetail(q.error));
+    const ws = request.workspaceId;
+    let owner: { id: number | null; trackId: number | null } = {
+      id: null,
+      trackId: q.data.trackId ?? null,
+    };
+    if (q.data.fieldId !== undefined) {
+      const field = await readable(request, q.data.fieldId);
+      if (field?.type !== 'formula') return notFound(reply);
+      owner = { id: field.id, trackId: field.trackId };
+    } else if (owner.trackId !== null && !(await canSeeTrack(request, owner.trackId))) {
+      return notFound(reply);
+    }
+    const catalog = await catalogs.get(ws);
+    const checked = checkFormula(catalog, owner, q.data.expression, q.data.output);
+    if (!checked.ok) return { ok: false, error: checked.error.toJSON() };
+    const p = checked.program;
+    return {
+      ok: true,
+      type: p.type,
+      expression: checked.expression,
+      reads: [...new Set(p.refs.map((r) => r.id))],
+      readsChildren: p.readsChildren,
+      childReads: [...new Set(p.childRefs.map((r) => r.id))],
+      volatile: p.volatile,
+      workingWeek: p.workingWeek,
+    };
   });
 
   // Reading for tickets: the fields a create offers, label suggestions, people to pick

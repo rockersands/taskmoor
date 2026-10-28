@@ -1,3 +1,4 @@
+import { OUTPUT_TYPES, outputValueType } from '@taskmoor/formula';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import {
@@ -56,6 +57,12 @@ const word = fc
 
 /** Stored values a field of each type can hold, for the round-trip properties. */
 function storedValues(field: FieldShape): fc.Arbitrary<Stored> {
+  if (field.type === 'formula') {
+    // What each output stores (M1-013): as its kind of field, durations in whole seconds.
+    const kind = outputValueType(field.config.output ?? 'number');
+    if (kind === 'duration') return fc.integer({ min: -1e12, max: 1e12 });
+    return storedValues(shape(kind === 'number' ? 'number' : kind));
+  }
   switch (field.type) {
     case 'text':
     case 'read-only-text':
@@ -95,9 +102,13 @@ function storedValues(field: FieldShape): fc.Arbitrary<Stored> {
   }
 }
 
-/** Every type, and the multiple variant of those that have one. */
+/** Every type, the multiple variant of those that have one, and a formula of every output. */
 const SHAPES: FieldShape[] = FIELD_TYPES.flatMap((type) =>
-  MULTIPLE_TYPES.has(type) ? [shape(type), shape(type, true)] : [shape(type)],
+  type === 'formula'
+    ? OUTPUT_TYPES.map((output) => shape(type, false, { expression: '1', output }))
+    : MULTIPLE_TYPES.has(type)
+      ? [shape(type), shape(type, true)]
+      : [shape(type)],
 );
 
 describe('custom field types (M1-010)', () => {
@@ -114,6 +125,7 @@ describe('custom field types (M1-010)', () => {
       'url',
       'release',
       'area',
+      'formula',
     ]) {
       expect(FIELD_TYPES).toContain(type);
     }

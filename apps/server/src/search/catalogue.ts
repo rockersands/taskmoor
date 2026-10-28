@@ -1,4 +1,5 @@
 import type { Database } from '@taskmoor/db';
+import { outputValueType } from '@taskmoor/formula';
 import { type Catalogue, type CustomField, type CustomType, makeCatalogue } from '@taskmoor/query';
 import type { Kysely, Transaction } from 'kysely';
 import type { Catalog, FieldDef } from '../fields/catalog';
@@ -10,9 +11,16 @@ import type { Catalog, FieldDef } from '../fields/catalog';
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
-/** How the query language reads each custom field type (ADR-010). */
-export function queryType(field: Pick<FieldDef, 'type' | 'multiple'>): CustomType {
+/**
+ * How the query language reads each custom field type (ADR-010). A formula reads as its output
+ * (M1-013): numbers (durations in seconds), dates or text, as the side table it is kept in.
+ */
+export function queryType(field: Pick<FieldDef, 'type' | 'multiple' | 'config'>): CustomType {
   switch (field.type) {
+    case 'formula': {
+      const kind = outputValueType(field.config.output ?? 'number');
+      return kind === 'duration' ? 'number' : kind;
+    }
     case 'text':
     case 'paragraph':
     case 'url':

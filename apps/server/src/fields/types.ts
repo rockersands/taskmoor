@@ -1,4 +1,5 @@
 import type { JsonValue } from '@taskmoor/db';
+import { type OutputType, outputValueType } from '@taskmoor/formula';
 import { checkLabels } from '../tickets/fields';
 import { canonicalJson, checkRichText, isCalendarDay } from '../tickets/model';
 
@@ -16,6 +17,8 @@ import { canonicalJson, checkRichText, isCalendarDay } from '../tickets/model';
  * - select, user, group, release, area: an id, or ids in ascending order for a multiple field
  * - cascading select: [parent option id] or [parent, child]
  * - labels: the labels in the order given, each once
+ * - formula (M1-013): what its output stores (`@taskmoor/formula` `storedValue`): a number, whole
+ *   seconds for a duration, YYYY-MM-DD for a date, a line of text. Computed, never written.
  */
 export const FIELD_TYPES = [
   'text',
@@ -32,6 +35,7 @@ export const FIELD_TYPES = [
   'read-only-text',
   'release',
   'area',
+  'formula',
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
@@ -55,10 +59,10 @@ export const REFERENCE_OF: Readonly<Partial<Record<FieldType, Reference>>> = {
   area: 'area',
 };
 
-/** The side table M1-011 indexes a type's values in (ADR-008). */
-export const STORAGE_OF: Readonly<
-  Record<FieldType, 'text' | 'number' | 'date' | 'time' | 'user' | 'option'>
-> = {
+export type Storage = 'text' | 'number' | 'date' | 'time' | 'user' | 'option';
+
+/** The side table M1-011 indexes a type's values in (ADR-008); a formula's: `storageOf`. */
+export const STORAGE_OF: Readonly<Record<Exclude<FieldType, 'formula'>, Storage>> = {
   text: 'text',
   paragraph: 'text',
   number: 'number',
@@ -74,6 +78,14 @@ export const STORAGE_OF: Readonly<
   release: 'option',
   area: 'option',
 };
+
+/** Where a field's values are indexed: a formula's by its output (durations as seconds). */
+export function storageOf(field: { type: FieldType; config?: FieldConfig }): Storage {
+  if (field.type !== 'formula') return STORAGE_OF[field.type];
+  const output = field.config?.output ?? 'number';
+  const kind = outputValueType(output);
+  return kind === 'text' ? 'text' : kind === 'date' ? 'date' : 'number';
+}
 
 export const TEXT_MAX = 255;
 export const URL_MAX = 2000;
@@ -97,6 +109,13 @@ export interface FieldConfig {
   currency?: string;
   /** Select: how the picker presents the options. */
   display?: (typeof SELECT_DISPLAYS)[number];
+  /**
+   * Formula (M1-013): the expression, stored with fields by id (`{cf[12]} * 2`); the API shows
+   * and takes it with names (`fields/formulas.ts`).
+   */
+  expression?: string;
+  /** Formula: what it gives; number, currency and percentage also take `decimals` and `currency`. */
+  output?: OutputType;
 }
 
 export interface FieldShape {
@@ -323,6 +342,28 @@ export function parseValue(field: FieldShape, input: unknown): Parsed {
       return labels(input);
     case 'url':
       return url(input);
+    case 'formula':
+      return formulaValue(input, field.config.output ?? 'number');
+  }
+}
+
+/** A formula's stored value read back (history, CSV, the conformance suite): never input. */
+function formulaValue(input: unknown, output: OutputType): Parsed {
+  if (input === null || input === undefined || input === '') return EMPTY;
+  switch (outputValueType(output)) {
+    case 'number':
+      return roundedNumber(input);
+    case 'duration': {
+      const n = typeof input === 'string' ? Number(input.trim()) : input;
+      if (typeof n !== 'number' || !Number.isInteger(n)) return bad('invalid');
+      return Math.abs(n) > NUMBER_LIMIT ? bad('out_of_range') : ok(n);
+    }
+    case 'date':
+      return typeof input === 'string' && isCalendarDay(input.trim())
+        ? ok(input.trim())
+        : bad('invalid');
+    case 'text':
+      return line(input, TEXT_MAX);
   }
 }
 
@@ -342,6 +383,7 @@ export function serialise(field: FieldShape, value: Stored): string {
     case 'paragraph':
       return canonicalJson(value);
     case 'number':
+    case 'formula':
       return String(value);
     case 'cascading-select':
       return (value as number[]).join(':');
@@ -428,6 +470,12 @@ export function sortKey(field: FieldShape, value: Stored, resolver: Resolver): K
   switch (field.type) {
     case 'number':
       return [value as number];
+    case 'formula':
+      return typeof value === 'number'
+        ? [value]
+        : storageOf(field) === 'date'
+          ? [value as string]
+          : text(value as string);
     case 'date':
     case 'datetime':
       return [value as string];

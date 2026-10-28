@@ -13,6 +13,8 @@ import { smtpTransport } from './email/transport';
 import { EventBus, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
 import { registerSubscribers } from './events/subscribers';
+import { FieldCatalogs } from './fields/catalog';
+import { registerFormulaJobs, scheduleFormulaRefresh } from './fields/formula-jobs';
 import { registerFieldValueJobs, scheduleFieldValueCheck } from './fields/jobs';
 import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
@@ -149,17 +151,22 @@ if (config.roles.includes('worker') && db) {
   );
   // The change log keeps 30 days unless set otherwise (M1-031, ADR-013).
   registerChangeLogJobs(runner, db);
+  // Formula fields (M1-013): roll-ups of parents a write could not take, recomputes after a
+  // formula or what it reads changed, and the daily refresh of formulas that read the date.
+  registerFormulaJobs(runner, db);
+  const formulaCatalogs = new FieldCatalogs(db);
   const scheduleHousekeeping = () =>
     Promise.all([
       schedulePurge(db),
       scheduleBackups(db),
       scheduleFieldValueCheck(db),
       scheduleChangeLogTrim(db),
+      scheduleFormulaRefresh(db, formulaCatalogs),
       defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
     ]).catch((error) =>
       app.log.warn(
         { error },
-        'trash purge, backup, field value check, change log trim or storage sweep not queued',
+        'trash purge, backup, field value check, change log trim, formula refresh or storage sweep not queued',
       ),
     );
   void scheduleHousekeeping();

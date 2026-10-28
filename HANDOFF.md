@@ -18,6 +18,27 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-013 formula fields** (built by a background agent on `work/m1-013-formulas`, reviewed
+  and merged; migration 0033; ADR-009 "Implementation (M1-013)"; new package
+  `@taskmoor/formula`). Formula custom fields compute from custom number, date and text
+  fields and the system dates, estimates, time spent and summary: arithmetic,
+  avg/min/max/sum/count, rounding, date differences, `workingDaysUntil` (the workspace's
+  working week; "Overdue" through `if`) and roll-ups over children (`sum(children.{Points})`).
+  A hand-written parser, checker and interpreter with limits (4,000 characters, 64 levels,
+  1,000 parts, 1M steps); refusals give their place (400 `invalid_formula`), cycles included.
+  Values live in `ticket.fields` and the side table of their output. **Every write path must
+  call `refreshFormulas` in its transaction and append the history rows it returns; the M1-021
+  bulk edit included.** Collaborative saves (M1-017) do since the merge. Also fixed at the
+  merge: `workingDaysUntil`/`workingDaysBetween` looped for ever on a date value far outside
+  the calendar (a random property-test seed hung the gate); such values now give empty. Parents are
+  recomputed with SKIP LOCKED; held ones go to the `formula.recompute` job; `formula.refresh`
+  walks all tickets after formula, context or working-week changes, and daily for date-based
+  formulas. `GET /api/v1/formulas/check`; `pnpm fuzz formula`; `pnpm conformance formula`
+  (CLAUDE.md's Commands and Layout tables do not list these yet). Not yet: select, people,
+  label and rich-text inputs; a workspace time zone and holidays; the editor UI (M1-053).
+- **Flaky test fixed:** `storage.test.ts` [NFR-002] "keeps the side tables in step" now runs a
+  fixed first example that writes every kind of value, so its closing "rows of every kind"
+  check no longer depends on the random seed.
 - **M1-017 rich text** (built by a background agent on `work/m1-017-rich-text`, reviewed and
   merged; migration 0034 adds `ticket_text_original` and `ticket_text_state`; ADR-014
   "Implementation (M1-017)"). The editor lives in `apps/web/src/richtext/`, the conversions in
@@ -29,9 +50,7 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
   stored documents (`canView` logic in `routes/rich-text.ts`). Several realtime processes need
   routing by document until updates are relayed between them. At the merge both realtime
   features share one upgrade dispatcher in `app.ts` (co-editing takes `/api/v1/collab`, the
-  rest goes to Fastify's WebSocket routes). Known flaky: `storage.test.ts` [NFR-002] "keeps
-  the side tables in step" fails on some random seeds (its "rows of every kind" check can
-  find `v_user` empty); worth a fix.
+  rest goes to Fastify's WebSocket routes).
 - **M1-032 websocket, local copy and outbox** (migration 0037; ADR-013 "Implementation
   (M1-032)"). Server: `apps/server/src/sync/mutations.ts` (idempotent mutations by
   `taskmoor-client-id` and `taskmoor-mutation-id`, answers carry `taskmoor-position`) and

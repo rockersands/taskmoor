@@ -47,6 +47,8 @@ export {
  *   form shows every field that applies, in one tab. Hidden fields never appear; required fields
  *   always do (a layout that leaves one out gets it in a section of its own), so a form can
  *   always be completed. `others: 'show'` appends the fields a layout does not place.
+ * - Formula fields (M1-013) are computed: a create form never shows them, and no rule makes
+ *   them required.
  */
 const NO_RULE: RuleDef = { required: false, hidden: false, description: null };
 
@@ -110,6 +112,10 @@ export function resolveLayout(
     if (rule.hidden) return null;
     let description = rule.description;
     const id = customFieldId(key);
+    // There is nothing to enter for a computed value before the ticket exists.
+    if (operation === 'create' && id !== null && catalog.fields.get(id)?.type === 'formula') {
+      return null;
+    }
     if (description === null && id !== null) {
       const def = catalog.fields.get(id) as FieldDef;
       const context = catalog.contextOf(id, at.trackId, at.ticketTypeId) as ContextDef;

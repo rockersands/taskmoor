@@ -3,6 +3,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { effectiveMemberIds } from '../directory';
 import type { FieldChange } from '../tickets/history';
 import type { Catalog, ContextDef, FieldDef } from './catalog';
+import { publicConfig } from './formulas';
 import {
   fold,
   parseValue,
@@ -67,6 +68,11 @@ export async function checkCustomValues(
     const context = catalog.contextOf(field.id, at.trackId, at.ticketTypeId);
     if (!context) {
       errors[errorKey(key)] = 'not_applicable';
+      continue;
+    }
+    // A formula's values are computed (M1-013), never written, whoever asks.
+    if (field.type === 'formula') {
+      errors[errorKey(key)] = 'read_only';
       continue;
     }
     // Read-only text is written by integrations and automation, never from the UI.
@@ -379,7 +385,8 @@ export async function customFieldViews(
 
 /**
  * History rows for custom values that changed between two versions of a ticket: the values as
- * text (`serialise`) and, for references, the names they had.
+ * text (`serialise`) and, for references, the names they had. Formula values are left out: the
+ * formula module records their changes (`fields/formulas.ts`, `formulaHistory`).
  */
 export async function customChanges(
   db: Db,
@@ -391,7 +398,7 @@ export async function customChanges(
 ): Promise<FieldChange[]> {
   const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])]
     .map(Number)
-    .filter((id) => catalog.fields.has(id))
+    .filter((id) => catalog.fields.has(id) && catalog.fields.get(id)?.type !== 'formula')
     .sort((a, b) => a - b);
   const text = (field: FieldDef, value: JsonValue | undefined) =>
     value === undefined ? null : serialise(field, value as Stored);
@@ -477,7 +484,7 @@ export async function describeFields(
       description: f.description,
       type: f.type,
       multiple: f.multiple,
-      config: f.config,
+      config: publicConfig(catalog, f),
       contextId: c.id,
       defaultValue: c.defaultValue === undefined ? null : restValue(f, c.defaultValue, resolver),
       restricted: c.config.userGroupId !== undefined || c.config.userRoleId !== undefined,

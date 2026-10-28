@@ -230,6 +230,11 @@ export function registerLayoutRoutes(
       }
       const issue = fieldProblem(catalog, ownerTrackId, r.field);
       if (issue) return problem(400, 'invalid_request', { detail: issue });
+      const fieldId = customFieldId(r.field);
+      if (r.required && fieldId !== null && catalog.fields.get(fieldId)?.type === 'formula') {
+        // A formula's value is computed (M1-013): no one could fill it in.
+        return problem(400, 'invalid_request', { detail: `${r.field} is computed` });
+      }
       const key = `${r.ticketTypeId ?? 0}|${r.field}`;
       if (seen.has(key)) return problem(400, 'invalid_request', { detail: `${r.field} twice` });
       seen.add(key);

@@ -236,7 +236,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
-    registerTimeRoutes(app, db);
+    registerTimeRoutes(app, db, fieldCatalogs);
     await registerAttachmentRoutes(app, db, deps.attachments ?? NO_STORAGE);
     registerWorkflowRoutes(app, db);
     registerTrashRoutes(app, db);

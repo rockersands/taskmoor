@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { requireGlobal, requireUser } from '../auth';
 import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
+import type { FieldCatalogs } from '../fields/catalog';
+import { formulaPlan, queueFormulaRefresh, refreshFormulas } from '../fields/formulas';
 import { DISPLAY_FORMATS, DURATION_UNITS } from '../tickets/duration';
 import { type FieldChange, recordChanges, ticketChanges } from '../tickets/history';
 import { ticketKey } from '../tickets/model';
@@ -155,7 +157,11 @@ const entryChange = (
   toDisplay: null,
 });
 
-export function registerTimeRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+export function registerTimeRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  catalogs: FieldCatalogs,
+): void {
   const by = (request: FastifyRequest) => ({
     workspaceId: request.workspaceId,
     actorId: request.user?.id ?? null,
@@ -252,11 +258,14 @@ export function registerTimeRoutes(app: FastifyInstance, db: Kysely<Database>): 
       })
       .where('id', '=', before.id)
       .execute();
+    // Formulas reading time spent or the remaining estimate, and the parent's roll-ups (M1-013).
+    const computed = await refreshFormulas(trx, await catalogs.get(ws, trx), ws, [before.id]);
     const after = await loadTicket(trx, ws, before.id);
     if (after) {
       await recordChanges(trx, ws, request.user?.id ?? null, [
         change,
         ...ticketChanges(before, after),
+        ...computed,
       ]);
     }
     return after;
@@ -322,6 +331,10 @@ export function registerTimeRoutes(app: FastifyInstance, db: Kysely<Database>): 
         subjectId: ws,
         payload: { changes },
       });
+      // Formulas counting working days read the working week (CORE-011 (2)).
+      if (changes.daysPerWeek && formulaPlan(await catalogs.get(ws, trx)).workingWeek) {
+        await queueFormulaRefresh(trx, ws, { reason: 'working week changed' });
+      }
       return timeSettings(trx, ws);
     });
     return { settings: settingsView(settings) };
