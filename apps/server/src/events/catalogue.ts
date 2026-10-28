@@ -283,6 +283,7 @@ export const EVENT_TYPES = {
   'type_set.deleted': { subject: 'type_set', payload: z.object({ name: z.string() }) },
 
   // Tickets (M1-008). The change history (M1-009) keeps the field-by-field detail.
+  /** With the event the create transition fires and the webhook effects it queued (WF-005). */
   'ticket.created': {
     subject: 'ticket',
     payload: z.object({
@@ -290,6 +291,8 @@ export const EVENT_TYPES = {
       trackId: id,
       ticketTypeId: id,
       parentId: id.nullable(),
+      event: z.string(),
+      webhookCount: z.number().int().min(0),
     }),
   },
   /** Fields as the API names them; rich text changes carry both documents. */
@@ -488,9 +491,24 @@ export const EVENT_TYPES = {
     }),
   },
   'workflow.deleted': { subject: 'workflow', payload: z.object({ name: z.string() }) },
+  /**
+   * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
+   * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay
+   * in the workflow, as they can carry tokens.
+   */
   'ticket.transitioned': {
     subject: 'ticket',
-    payload: z.object({ key: z.string(), transitionId: id, from: id, to: id }),
+    payload: z.object({
+      key: z.string(),
+      transitionId: id,
+      from: id,
+      to: id,
+      workflowId: id,
+      version: z.number().int().positive(),
+      event: z.string(),
+      webhookCount: z.number().int().min(0),
+      channel: z.enum(['ui', 'rest', 'automation']),
+    }),
   },
   // Time tracking (M1-019). Durations in seconds; the ticket history keeps the detail.
   'time_tracking.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },

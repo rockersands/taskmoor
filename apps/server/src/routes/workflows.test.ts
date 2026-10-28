@@ -257,7 +257,8 @@ describe('statuses and workflows (M1-023)', () => {
       expect(await offered('alice', ticket)).toEqual(['Finish', 'Cancel', 'Restart']);
       expect((await move(ticket, 4)).status.name).toBe('Active');
       await move(ticket, 3);
-      expect(await offered('alice', ticket)).toEqual([]);
+      // A global transition is offered from every status, its own target included.
+      expect(await offered('alice', ticket)).toEqual(['Cancel']);
       // Viewers see no transitions and may not move tickets.
       const other = await create('GLB');
       expect(await offered('bob', other)).toEqual([]);
@@ -273,22 +274,35 @@ describe('statuses and workflows (M1-023)', () => {
 
     it('[WF-008] closes with a close reason and the Closed time stamp; reopening clears both', async () => {
       const ticket = await create('DEF');
-      const closed = await move(ticket, 4);
+      const reasons = (await get('alice', '/api/v1/close-reasons')).json().closeReasons as Named[];
+      const reason = (name: string) => reasons.find((r) => r.name === name)?.id;
+      // The default workflow's Close asks for a close reason on its layout.
+      const missing = await post('alice', `/api/v1/tickets/${ticket.id}/transitions`, {
+        transitionId: 4,
+      });
+      expect(missing.json()).toEqual({
+        error: 'transition_refused',
+        by: 'check',
+        name: 'field-required',
+        message: 'close-reason is required',
+        check: { type: 'field-required', field: 'close-reason', configured: false },
+      });
+      const closed = await move(ticket, 4, { fields: { 'close-reason': reason('Completed') } });
       expect(closed.status.name).toBe('Closed');
       expect(closed.closeReason?.name).toBe('Completed');
       expect(closed.closedAt).not.toBeNull();
       expect(closed.version).toBe(ticket.version + 1);
+      // Reopen clears it with an effect.
       const reopened = await move(ticket, 5);
       expect([reopened.status.name, reopened.closeReason, reopened.closedAt]).toEqual([
         'New',
         null,
         null,
       ]);
-      const reasons = (await get('alice', '/api/v1/close-reasons')).json().closeReasons as Named[];
-      const duplicate = reasons.find((r) => r.name === 'Duplicate')?.id;
-      expect((await move(ticket, 4, { closeReasonId: duplicate })).closeReason?.name).toBe(
-        'Duplicate',
-      );
+      const duplicate = reason('Duplicate');
+      expect(
+        (await move(ticket, 4, { fields: { 'close-reason': duplicate } })).closeReason?.name,
+      ).toBe('Duplicate');
       expect((await history(ticket, 'status')).map((c) => c.to.display)).toEqual([
         'New',
         'Closed',
@@ -508,7 +522,10 @@ describe('statuses and workflows (M1-023)', () => {
       const started = await create('SWT');
       await move(started, 1);
       const done = await create('SWT');
-      await move(done, 4);
+      const completed = (
+        (await get('alice', '/api/v1/close-reasons')).json().closeReasons as Named[]
+      ).find((r) => r.name === 'Completed')?.id;
+      await move(done, 4, { fields: { 'close-reason': completed } });
       // New and Active? Kanban has Active, so only New needs a home.
       const asked = await patch('admin', `/api/v1/tracks/${tracks.SWT}`, { workflowId: kanban });
       expect(asked.json()).toEqual({
@@ -535,10 +552,8 @@ describe('statuses and workflows (M1-023)', () => {
         track: 'DEF',
         statusId: Closed,
       });
-      expect(ticketOf(closedMove)).toMatchObject({
-        status: { name: 'Closed' },
-        closeReason: { name: 'Completed' },
-      });
+      // A move only maps the status; the close reason is the transitions' to set.
+      expect(ticketOf(closedMove)).toMatchObject({ status: { name: 'Closed' }, closeReason: null });
       expect(
         (
           await post('alice', `/api/v1/tickets/${started.id}/move`, {

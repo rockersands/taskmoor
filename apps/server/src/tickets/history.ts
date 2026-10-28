@@ -17,6 +17,8 @@ export interface FieldChange {
   to: string | null;
   fromDisplay: string | null;
   toDisplay: string | null;
+  /** The workflow transition that made it (M1-024). */
+  transitionId?: number;
 }
 
 const idText = (id: number | null) => (id === null ? null : String(id));
@@ -135,6 +137,7 @@ export async function recordChanges(
         to_value: c.to,
         from_display: c.fromDisplay,
         to_display: c.toDisplay,
+        transition_id: c.transitionId ?? null,
       })),
     )
     .execute();

@@ -125,8 +125,22 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         { id: 1, name: 'Start', from: [fresh], to: active },
         { id: 2, name: 'Send to review', from: [active], to: review },
         { id: 3, name: 'Back to active', from: [review], to: active },
-        { id: 4, name: 'Close', from: 'any', to: closed },
-        { id: 5, name: 'Reopen', from: [closed], to: fresh },
+        // Closing asks for a close reason (WF-008); reopening clears it.
+        {
+          id: 4,
+          name: 'Close',
+          from: 'any',
+          to: closed,
+          layout: ['close-reason'],
+          checks: [{ type: 'field-required', field: 'close-reason' }],
+        },
+        {
+          id: 5,
+          name: 'Reopen',
+          from: [closed],
+          to: fresh,
+          effects: [{ type: 'clear-field', field: 'close-reason' }],
+        },
       ],
     };
     const workflow = await sql<{ id: number }>`

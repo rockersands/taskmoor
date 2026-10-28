@@ -14,6 +14,9 @@
     },
     {
       "path": "../../packages/iam"
+    },
+    {
+      "path": "../../packages/workflow"
     }
   ]
 }

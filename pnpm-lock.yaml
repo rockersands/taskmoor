@@ -80,6 +80,9 @@ importers:
       '@taskmoor/richtext':
         specifier: workspace:*
         version: link:../../packages/richtext
+      '@taskmoor/workflow':
+        specifier: workspace:*
+        version: link:../../packages/workflow
       '@xmldom/xmldom':
         specifier: ^0.8.15
         version: 0.8.15

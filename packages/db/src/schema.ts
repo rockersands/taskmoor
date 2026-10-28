@@ -395,6 +395,8 @@ export interface TicketChangeTable {
   to_value: string | null;
   from_display: string | null;
   to_display: string | null;
+  /** The workflow transition that made the change (M1-024); null for other changes. */
+  transition_id: number | null;
 }
 
 /** A child that lost its parent link when the parent went to the trash; a restore puts it back. */

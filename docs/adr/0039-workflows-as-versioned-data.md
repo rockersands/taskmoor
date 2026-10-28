@@ -32,9 +32,11 @@ progress (CORE-016) and reports read.
 - **Statuses are the workspace's**, each in one of three stages (new, active, closed) that give
   colour and meaning. A status keeps its stage while tickets are in it; it is deleted only
   when no ticket and no current version uses it.
-- **Closing follows the stage:** entering the closed stage sets the close reason (the one given,
-  the one the ticket has, or the workspace's first) and the Closed time stamp; leaving it
-  clears both; a close reason set or cleared by hand does the same to the time stamp.
+- **The close reason is a field, not a side effect of the stage** (corrected in M1-024, see
+  below): transitions set it through their layout (`close-reason`) or an effect and clear it
+  with an effect, as the conformance suite (WF-008) requires. Setting it stamps Closed with the
+  time; clearing it clears the stamp. Publishing, switching workflow and moving tickets map
+  statuses only and leave the close reason as it is.
 - **One workflow per track for now** (`track.workflow_id`, null for the default). Switching
   workflow, or moving a ticket to a track with another workflow, maps statuses the new one
   lacks. Workflow maps per ticket type, local-mode workflows and a background migration for
@@ -55,3 +57,37 @@ which keeps guards and effects (M1-025 to M1-027) as data the editor (M1-030) an
 can write. Large status removals hold the workflow for the length of the remap; if that proves
 too long on 100k-ticket tracks, publishing moves to the background job M1-028 brings, keeping
 the same rule that a ticket never sits in a status its workflow lacks.
+
+## Implementation (M1-024 to M1-027)
+
+- **One engine for the server and the tests.** `@taskmoor/workflow` exports `engine`, a
+  production implementation of the same `WorkflowEngine` interface as the reference model. It
+  compiles each definition once (transitions by id, the transitions offered from each status,
+  status stages) and evaluates guards over a lazily built situation (statuses the ticket has
+  been in, owner relations). It passes all 374 conformance cases; a fast-check property test
+  (2,000 runs of random nested `all`/`any` guards over random tickets and actors) agrees with
+  the reference on every verdict and on the transitions offered. `pnpm conformance` runs both.
+- **The server maps, the engine decides.** `workflows/state.ts` turns a ticket row, its status
+  history (from `ticket_change`, which now records the transition that made each status
+  change: migration 0025), its parent, subtickets and owners into the engine's state, and the
+  engine's result back into column updates, releases, areas and labels. `workflows/fields.ts`
+  is the registry of fields workflows read and write, with the same validation as the edit
+  route; a definition naming an unknown or read-only field, an invalid value or pattern, or
+  guards nested deeper than 8 is refused on save (WF-002).
+- **Order of work in a transition** (WF-005): status, layout values, effects in the essential
+  order, then rules, all inside the transaction that holds the track, the workflow (key share),
+  the configuration values and the ticket. Lookups through the shared pool (the actor's roles,
+  who may be assigned) run before the transaction opens, so a burst of transitions cannot
+  exhaust the pool while each holds a connection.
+- **Refusals carry their reason:** 409 `transition_unavailable`, 409 `transition_refused` with
+  the guard, check or rule that refused (`by`, `name`, the configured message, and the check's
+  parameters so the client words it in the reader's language), 403 `forbidden` with
+  `permission: 'transition'` when a status forbids it (WF-007). Nothing is written on refusal.
+- **Global transitions are offered from every status, the target included** (the suite's
+  WF-001 cases); a self-loop runs its effects and records no status change.
+- **The trigger hook** (`POST /api/v1/tickets/:id/trigger {event}`) fires the first offered
+  transition whose `triggers` name the event, on the automation channel; M2 automation and
+  external events call it. Custom events from transitions and `onCreate` ride on
+  `ticket.transitioned` and `ticket.created` (`event`, `webhookCount`).
+- **Defaults:** the seeded workflow's Close asks for a close reason (layout and a required
+  check); Reopen clears it.

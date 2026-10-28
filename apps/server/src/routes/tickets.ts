@@ -1,4 +1,5 @@
 import type { Database, JsonValue } from '@taskmoor/db';
+import { engine } from '@taskmoor/workflow';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction, type Updateable } from 'kysely';
 import { z } from 'zod';
@@ -44,14 +45,16 @@ import {
   ticketView,
 } from '../tickets/store';
 import { durationValue, timeSettings } from '../tickets/time';
-import { closing, statusIdsOf, transitionsFrom } from '../workflows/model';
+import { isKnownField, isWritableField, parseField } from '../workflows/fields';
+import { statusIdsOf } from '../workflows/model';
 import {
-  defaultCloseReason,
-  holdWorkflow,
-  loadDefinition,
-  statusInfo,
-  trackWorkflowId,
-} from '../workflows/store';
+  channelOf,
+  engineActor,
+  engineWorkflow,
+  storedChanges,
+  ticketState,
+} from '../workflows/state';
+import { holdWorkflow, statusInfo, trackWorkflowId } from '../workflows/store';
 
 /**
  * Tickets (M1-008; CORE-001, CORE-008, CORE-023, CORE-025, AGL-009; spec 01a sections 1.2 and
@@ -157,8 +160,9 @@ const moveBody = z
 const transitionBody = z
   .object({
     transitionId: idValue,
-    /** For a transition into the closed stage; the workspace's first close reason otherwise. */
-    closeReasonId: idValue.optional(),
+    /** Values for the transition's layout, by field name (`close-reason`, `assignee`, ...). */
+    fields: z.record(z.string().max(100), z.unknown()).optional(),
+    comment: z.string().max(32_000).optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -509,6 +513,32 @@ export function registerTicketRoutes(
     return out;
   }
 
+  /** The people among `ids` who may be assigned in a track (read outside any transaction). */
+  async function assignableAmong(
+    workspaceId: number,
+    trackId: number,
+    ids: readonly (number | null | undefined)[],
+  ): Promise<Set<number>> {
+    const out = new Set<number>();
+    for (const id of new Set(ids)) {
+      if (id != null && (await assignable(workspaceId, trackId, id))) out.add(id);
+    }
+    return out;
+  }
+
+  /** The owners an "assign to owner" effect may pick: the ticket's areas' and its track's. */
+  async function ownersOf(row: TicketRow): Promise<number[]> {
+    const owners = await db
+      .selectFrom('ticket_area as ta')
+      .innerJoin('area as a', 'a.id', 'ta.area_id')
+      .select('a.owner_id')
+      .where('ta.ticket_id', '=', row.id)
+      .where('a.owner_id', 'is not', null)
+      .union(db.selectFrom('track').select('owner_id').where('id', '=', row.track_id))
+      .execute();
+    return owners.map((o) => o.owner_id).filter((id): id is number => id !== null);
+  }
+
   /** Answers an outcome that is not a ticket; null when it is one. */
   function refusal(reply: FastifyReply, outcome: Outcome) {
     if ('missing' in outcome) return notFound(reply);
@@ -610,6 +640,7 @@ export function registerTicketRoutes(
         'c.to_value',
         'c.from_display',
         'c.to_display',
+        'c.transition_id',
       ])
       .where('c.ticket_id', '=', found.row.id)
       .where('c.workspace_id', '=', request.workspaceId);
@@ -630,6 +661,7 @@ export function registerTicketRoutes(
         field: c.field,
         from: { value: c.from_value, display: c.from_display },
         to: { value: c.to_value, display: c.to_display },
+        transitionId: c.transition_id,
       })),
       next: rows.length > q.limit ? (page[page.length - 1]?.id ?? null) : null,
     };
@@ -724,6 +756,31 @@ export function registerTicketRoutes(
       else parentId = parent.row.id;
     }
     if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
+    // Read before the transaction, which never waits for a second pooled connection: who is
+    // creating, and who an area's rule or a create effect could assign.
+    const actor = await engineActor(request, trackId);
+    const areaOwners =
+      body.areaIds === undefined || body.areaIds.length === 0
+        ? []
+        : (
+            await db
+              .selectFrom('area')
+              .select('owner_id')
+              .where('track_id', '=', trackId)
+              .where('id', 'in', body.areaIds)
+              .execute()
+          ).map((a) => a.owner_id);
+    const trackOwner = await db
+      .selectFrom('track')
+      .select('owner_id')
+      .where('id', '=', trackId)
+      .executeTakeFirst();
+    const candidates = await assignableAmong(ws, trackId, [
+      user.id,
+      requesterId,
+      trackOwner?.owner_id,
+      ...areaOwners,
+    ]);
 
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
       await shareHierarchy(trx, ws);
@@ -771,9 +828,7 @@ export function registerTicketRoutes(
       let assigneeId = body.assigneeId ?? null;
       if (body.assigneeId === undefined && body.areaIds !== undefined) {
         const candidate = await areaDefaultAssignee(trx, trackId, body.areaIds);
-        if (candidate !== null && (await assignable(ws, trackId, candidate))) {
-          assigneeId = candidate;
-        }
+        if (candidate !== null && candidates.has(candidate)) assigneeId = candidate;
       }
       const number = await nextNumber(trx, ws, trackId);
       const row = await trx
@@ -810,10 +865,57 @@ export function registerTicketRoutes(
       await setTicketReleases(trx, ws, row.id, 'found', body.foundInReleaseIds ?? []);
       await setTicketAreas(trx, ws, row.id, body.areaIds ?? []);
       await rememberLabels(trx, ws, values.labels ?? []);
+      // The create transition's effects (WF-005 (3)): what they write is the starting value.
+      let fired = { event: 'generic', webhookCount: 0 };
+      const effects = workflow.definition.onCreate?.effects ?? [];
+      if (workflow.definition.onCreate) {
+        const fresh = (await loadTicket(trx, ws, row.id)) as TicketRow;
+        const start = await ticketState(trx, ws, fresh);
+        const { workflow: engineDef } = await engineWorkflow(
+          trx,
+          ws,
+          workflow.id,
+          workflow.published_version,
+        );
+        const made = engine.create(engineDef, actor, start.fields);
+        const writes = (name: string) =>
+          effects.some(
+            (e) =>
+              (name === 'assignee' && e.type.startsWith('assign-')) ||
+              ('field' in e && e.field === name) ||
+              (e.type === 'copy-field' && e.to === name),
+          );
+        const stored = storedChanges(fresh, {
+          ...start,
+          fields: made.ticket.fields,
+          assignee: writes('assignee') ? (made.ticket.assignee ?? null) : (start.assignee ?? null),
+          closeReason: writes('close-reason') ? (made.ticket.closeReason ?? null) : null,
+          closedAt: writes('close-reason') ? (made.ticket.closedAt ?? null) : null,
+        });
+        if (!stored.ok) return { fields: { [stored.field]: stored.problem } };
+        const set = stored.changes;
+        if (set.assigneeId != null && !candidates.has(set.assigneeId)) {
+          return { fields: { assignee: 'not_assignable' } };
+        }
+        if (Object.keys(set.ticket).length > 0) {
+          await trx.updateTable('ticket').set(set.ticket).where('id', '=', row.id).execute();
+        }
+        if (set.targetReleases)
+          await setTicketReleases(trx, ws, row.id, 'target', set.targetReleases);
+        if (set.foundReleases) await setTicketReleases(trx, ws, row.id, 'found', set.foundReleases);
+        if (set.areas) await setTicketAreas(trx, ws, row.id, set.areas);
+        fired = { event: made.event, webhookCount: made.webhooks.length };
+      }
       await emit(trx, by(request), {
         type: 'ticket.created',
         subjectId: row.id,
-        payload: { key: ticketKey(offered.key, number), trackId, ticketTypeId: typeId, parentId },
+        payload: {
+          key: ticketKey(offered.key, number),
+          trackId,
+          ticketTypeId: typeId,
+          parentId,
+          ...fired,
+        },
       });
       await autoFollow(trx, ws, row.id, user.id);
       const created = await loadTicket(trx, ws, row.id);
@@ -850,6 +952,11 @@ export function registerTicketRoutes(
       else parentId = parent.row.id;
     }
     if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
+    // Permissions and assignability are read before the transaction (see the create route);
+    // a ticket that moves meanwhile is refused inside it, so they stay the right track's.
+    const held = await request.authz.track(found.row.track_id);
+    const assigneeOk =
+      body.assigneeId == null || (await assignable(ws, found.row.track_id, body.assigneeId));
 
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
       // Locks in the order every writer takes them: the hierarchy, the track and its type set,
@@ -941,7 +1048,6 @@ export function registerTicketRoutes(
       if (Object.keys(changes).length === 0) return { ticket: current };
 
       // Each changed field needs its own permission.
-      const held = await request.authz.track(current.track_id);
       const needs: [string, TrackPermission][] = [
         ['summary', 'edit_tickets'],
         ['description', 'edit_tickets'],
@@ -984,11 +1090,7 @@ export function registerTicketRoutes(
         );
         if (Object.keys(problems).length > 0) return { fields: problems };
       }
-      if (
-        changes.assigneeId &&
-        body.assigneeId != null &&
-        !(await assignable(ws, current.track_id, body.assigneeId))
-      ) {
+      if (changes.assigneeId && !assigneeOk) {
         return { fields: { assigneeId: 'not_assignable' } };
       }
       if (changes.requesterId && body.requesterId !== undefined) {
@@ -1062,9 +1164,9 @@ export function registerTicketRoutes(
       if (changes.priorityId) set.priority_id = body.priorityId ?? null;
       if (changes.closeReasonId) {
         set.close_reason_id = body.closeReasonId ?? null;
-        // Setting a close reason closes the ticket; clearing it reopens it (WF-008).
-        if (body.closeReasonId == null) set.closed_at = null;
-        else if (current.closed_at === null) set.closed_at = new Date();
+        // The Closed stamp follows the close reason: set (or renewed) with it, cleared with it
+        // (WF-008).
+        set.closed_at = body.closeReasonId == null ? null : new Date();
       }
       if (changes.labels && values.labels !== undefined) set.labels = values.labels;
       if (changes.originalEstimate) set.original_estimate = estimates.original ?? null;
@@ -1266,26 +1368,18 @@ export function registerTicketRoutes(
       await trx.deleteFrom('ticket_release').where('ticket_id', 'in', touched).execute();
       await trx.deleteFrom('ticket_area').where('ticket_id', 'in', touched).execute();
       // A status the target workflow lacks becomes the one asked for, or its initial status.
+      // The close reason stays: only transitions, layouts and effects set or clear it.
       const lost = [...before.values()].filter((t) => !targetStatuses.has(t.status_id));
       if (lost.length > 0) {
-        const to = body.statusId ?? targetWorkflow.definition.initialStatusId;
-        const stages = await statusInfo(trx, ws, [to, ...lost.map((t) => t.status_id)]);
-        const reason = await defaultCloseReason(trx, ws);
-        for (const t of lost) {
-          const next = closing(
-            stages.get(t.status_id)?.stage ?? 'new',
-            stages.get(to)?.stage ?? 'new',
-            { closeReasonId: t.close_reason_id, closedAt: t.closed_at },
-            undefined,
-            reason,
-            now,
-          );
-          await trx
-            .updateTable('ticket')
-            .set({ status_id: to, close_reason_id: next.closeReasonId, closed_at: next.closedAt })
-            .where('id', '=', t.id)
-            .execute();
-        }
+        await trx
+          .updateTable('ticket')
+          .set({ status_id: body.statusId ?? targetWorkflow.definition.initialStatusId })
+          .where(
+            'id',
+            'in',
+            lost.map((t) => t.id),
+          )
+          .execute();
       }
       await emit(trx, by(request), {
         type: 'ticket.moved',
@@ -1316,8 +1410,221 @@ export function registerTicketRoutes(
     return answer(request, reply, outcome);
   });
 
-  // The transitions a ticket offers from its status (WF-001); none without "Transition
-  // tickets". Guards hide more of them from M1-025.
+  /** A ticket's workflow: the published version, as stored and as the engine reads it. */
+  async function workflowOf(d: Db, ws: number, trackId: number) {
+    const workflowId = await trackWorkflowId(d, ws, trackId);
+    const row = await d
+      .selectFrom('workflow')
+      .select('published_version')
+      .where('id', '=', workflowId)
+      .executeTakeFirstOrThrow();
+    return { workflowId, version: row.published_version };
+  }
+
+  /** The values a transition layout was given, in engine form; problems in `fields`. */
+  function layoutValues(given: Record<string, unknown>, fields: FieldErrors) {
+    const out: Record<string, unknown> = {};
+    for (const [name, value] of Object.entries(given)) {
+      if (!isKnownField(name)) fields[name] = 'unknown';
+      else if (!isWritableField(name)) fields[name] = 'not_writable';
+      else {
+        const parsed = parseField(name, value);
+        if (parsed.ok) out[name] = parsed.value;
+        else fields[name] = parsed.problem;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Runs a transition through the engine (M1-024 to M1-027): guards, checks and rules first,
+   * then the essential effects in their fixed order: status and layout values with the optional
+   * effects, history, store, event (WF-005). A refusal changes nothing.
+   */
+  async function runTransition(
+    request: FastifyRequest,
+    found: TicketRow,
+    pick: { transitionId: number } | { event: string },
+    entered: Record<string, unknown>,
+    channel: 'ui' | 'rest' | 'automation',
+    version?: number,
+  ): Promise<Outcome> {
+    const ws = request.workspaceId;
+    const ticketId = found.id;
+    // Who is asking, and who could become the assignee, are read before the transaction: a
+    // transaction never waits for a second pooled connection, which under load would leave
+    // every connection waiting for another.
+    const actor = await engineActor(request, found.track_id);
+    const candidates = await assignableAmong(ws, found.track_id, [
+      request.user?.id,
+      found.requester_id,
+      ...(await ownersOf(found)),
+      entered.assignee == null ? undefined : Number(entered.assignee),
+    ]);
+    return db.transaction().execute(async (trx): Promise<Outcome> => {
+      // The track, its workflow and the values given, then the ticket (lock order in
+      // workflows/store): a publish or a switch of workflow waits, or this waits for it.
+      await trx
+        .selectFrom('track')
+        .select('id')
+        .where('id', '=', found.track_id)
+        .forKeyShare()
+        .execute();
+      const held = await holdWorkflow(trx, await trackWorkflowId(trx, ws, found.track_id), 'share');
+      if (!held) return { missing: true };
+      const { workflow } = await engineWorkflow(trx, ws, held.id, held.published_version);
+      const reference = (name: string) =>
+        entered[name] === undefined || entered[name] === null ? undefined : Number(entered[name]);
+      const list = (name: string) => (entered[name] as string[] | undefined)?.map(Number) ?? [];
+      const pointed = await holdValues(trx, ws, {
+        priorityId: reference('priority'),
+        closeReasonId: reference('close-reason'),
+        releaseIds: [...list('target-release'), ...list('found-in-release')],
+        areaIds: list('area'),
+      });
+      const current = await lockTicketRow(trx, ws, ticketId);
+      if (!current) return { missing: true };
+      if (current.track_id !== found.track_id) return { conflict: 'moved_meanwhile' };
+      if (version !== undefined && version !== current.version) return { versionConflict: true };
+      const state = await ticketState(trx, ws, current);
+      let transitionId: string | undefined;
+      if ('transitionId' in pick) {
+        transitionId = String(pick.transitionId);
+      } else {
+        // The first transition the event triggers that the engine offers from here.
+        const offered = new Set(engine.availableTransitions(workflow, state, actor, channel));
+        transitionId = held.definition.transitions
+          .filter((t) => t.triggers?.some((x) => x.event === pick.event))
+          .map((t) => String(t.id))
+          .find((id) => offered.has(id));
+        if (transitionId === undefined) {
+          return { conflict: 'no_transition_for_event', detail: { event: pick.event } };
+        }
+      }
+      const result = engine.transition(workflow, state, actor, {
+        transition: transitionId,
+        channel,
+        fields: entered,
+        now: new Date().toISOString(),
+      });
+      if (result.outcome === 'blocked') {
+        if (result.by === 'unknown-transition' || result.by === 'wrong-status') {
+          return {
+            conflict: 'transition_unavailable',
+            detail: { transitionId: Number(transitionId) },
+          };
+        }
+        if (result.by === 'permission') {
+          return {
+            conflict: 'forbidden_in_status',
+            detail: { permission: 'transition', reason: result.message ?? '' },
+          };
+        }
+        // A check says which one refused, so a client can word it in its own language: the
+        // check's parameters, and whether an administrator wrote the message (WF-004).
+        const refusedCheck =
+          result.by === 'check'
+            ? (() => {
+                const checks = held.definition.transitions.find(
+                  (t) => String(t.id) === transitionId,
+                )?.checks;
+                const failed =
+                  checks?.find((c) => c.type === result.name && c.message === result.message) ??
+                  checks?.find((c) => c.type === result.name && c.message === undefined);
+                if (!failed) return undefined;
+                const { message, ...params } = failed;
+                return { ...params, configured: message !== undefined };
+              })()
+            : undefined;
+        return {
+          conflict: 'transition_refused',
+          detail: {
+            by: result.by,
+            name: result.name,
+            ...(result.message ? { message: result.message } : {}),
+            ...(refusedCheck ? { check: refusedCheck } : {}),
+          },
+        };
+      }
+      const stored = storedChanges(current, result.ticket);
+      if (!stored.ok) return { fields: { [stored.field]: stored.problem } };
+      const changes = stored.changes;
+      // What the transition points at must exist; a new assignee must be assignable.
+      if (changes.assigneeId != null && !candidates.has(changes.assigneeId)) {
+        return { fields: { assignee: 'not_assignable' } };
+      }
+      if (changes.priorityId != null || changes.closeReasonId != null) {
+        const exists = await holdValues(trx, ws, {
+          priorityId: changes.priorityId,
+          closeReasonId: changes.closeReasonId,
+        });
+        if (changes.priorityId != null && !exists.priority)
+          return { fields: { priority: 'not_found' } };
+        if (changes.closeReasonId != null && !exists.closeReason) {
+          return { fields: { 'close-reason': 'not_found' } };
+        }
+      }
+      const lists = [
+        ['target-release', pointed.releases, changes.targetReleases, current.target_releases],
+        ['found-in-release', pointed.releases, changes.foundReleases, current.found_releases],
+        ['area', pointed.areas, changes.areas, current.areas],
+      ] as const;
+      for (const [name, values, next, had] of lists) {
+        if (!next) continue;
+        const problem = placementOf(
+          values,
+          current.track_id,
+          next,
+          had.map((v) => v.id),
+        );
+        if (problem) return { fields: { [name]: problem } };
+      }
+      await trx
+        .updateTable('ticket')
+        .set({ ...changes.ticket, version: current.version + 1, updated_at: new Date() })
+        .where('id', '=', ticketId)
+        .execute();
+      if (changes.targetReleases) {
+        await setTicketReleases(trx, ws, ticketId, 'target', changes.targetReleases);
+      }
+      if (changes.foundReleases) {
+        await setTicketReleases(trx, ws, ticketId, 'found', changes.foundReleases);
+      }
+      if (changes.areas) await setTicketAreas(trx, ws, ticketId, changes.areas);
+      if (changes.ticket.labels) await rememberLabels(trx, ws, changes.ticket.labels as string[]);
+      const updated = await loadTicket(trx, ws, ticketId);
+      if (updated) {
+        await recordChanges(
+          trx,
+          ws,
+          request.user?.id ?? null,
+          ticketChanges(current, updated).map((c) => ({
+            ...c,
+            transitionId: Number(transitionId),
+          })),
+        );
+      }
+      await emit(trx, by(request), {
+        type: 'ticket.transitioned',
+        subjectId: ticketId,
+        payload: {
+          key: ticketKey(current.track_key, current.number),
+          transitionId: Number(transitionId),
+          from: current.status_id,
+          to: Number(result.ticket.status),
+          workflowId: held.id,
+          version: held.published_version,
+          event: result.event,
+          webhookCount: result.webhooks.length,
+          channel,
+        },
+      });
+      return { ticket: updated };
+    });
+  }
+
+  // The transitions a ticket offers to the caller (WF-001, WF-003), with the layout each asks
+  // for and its properties (WF-006); none without "Transition tickets".
   app.get('/api/v1/tickets/:id/transitions', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
@@ -1329,30 +1636,33 @@ export function registerTicketRoutes(
     if (row.track_archived_at || !(await request.authz.can('transition_tickets', row.track_id))) {
       return { transitions: [] };
     }
-    const workflowId = await trackWorkflowId(db, ws, row.track_id);
-    const workflow = await db
-      .selectFrom('workflow')
-      .select('published_version')
-      .where('id', '=', workflowId)
-      .executeTakeFirstOrThrow();
-    const definition = await loadDefinition(db, workflowId, workflow.published_version);
-    const offered = transitionsFrom(definition, row.status_id);
+    const { workflowId, version } = await workflowOf(db, ws, row.track_id);
+    const { definition, workflow } = await engineWorkflow(db, ws, workflowId, version);
+    const offered = new Set(
+      engine.availableTransitions(
+        workflow,
+        await ticketState(db, ws, row),
+        await engineActor(request, row.track_id),
+        channelOf(request),
+      ),
+    );
+    const transitions = definition.transitions.filter((t) => offered.has(String(t.id)));
     const statuses = await statusInfo(
       db,
       ws,
-      offered.map((t) => t.to),
+      transitions.map((t) => t.to),
     );
     return {
-      transitions: offered.map((t) => ({
+      transitions: transitions.map((t) => ({
         id: t.id,
         name: t.name,
         to: { id: t.to, ...(statuses.get(t.to) ?? { name: '', stage: 'new' }) },
+        layout: t.layout ?? [],
+        properties: t.properties ?? {},
       })),
     };
   });
 
-  // Moves a ticket along a transition: the status, the close reason and the Closed time stamp
-  // (WF-008), its history and one event, in that order (WF-005's essential effects).
   app.post('/api/v1/tickets/:id/transitions', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
@@ -1361,82 +1671,67 @@ export function registerTicketRoutes(
     const parsed = transitionBody.safeParse(request.body);
     if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
     const body = parsed.data;
-    const ws = request.workspaceId;
     const found = await findTicket(request, p.data.id);
     if (!found) return notFound(reply);
     if (found.row.deleted_at) return inTrash(request, reply, found.row);
     if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
     const held = await request.authz.track(found.row.track_id);
     if (!held.has('transition_tickets')) return forbidden(reply, 'transition_tickets');
-    if (body.closeReasonId !== undefined && !held.has('set_close_reason')) {
+    const given = body.fields ?? {};
+    if ('assignee' in given && !held.has('assign_tickets'))
+      return forbidden(reply, 'assign_tickets');
+    if ('close-reason' in given && !held.has('set_close_reason')) {
       return forbidden(reply, 'set_close_reason');
     }
-    const ticketId = found.row.id;
-    const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
-      // The track, its workflow, the close reason, then the ticket (lock order in
-      // workflows/store): a switch of the track's workflow waits, or this waits for it.
-      await trx
-        .selectFrom('track')
-        .select('id')
-        .where('id', '=', found.row.track_id)
-        .forKeyShare()
-        .execute();
-      const workflow = await holdWorkflow(
-        trx,
-        await trackWorkflowId(trx, ws, found.row.track_id),
-        'share',
-      );
-      if (!workflow) return { missing: true };
-      const pointed = await holdValues(trx, ws, { closeReasonId: body.closeReasonId });
-      if (body.closeReasonId !== undefined && !pointed.closeReason) {
-        return { fields: { closeReasonId: 'not_found' } };
-      }
-      const current = await lockTicketRow(trx, ws, ticketId);
-      if (!current) return { missing: true };
-      if (current.track_id !== found.row.track_id) return { conflict: 'moved_meanwhile' };
-      if (body.version !== undefined && body.version !== current.version) {
-        return { versionConflict: true };
-      }
-      const transition = transitionsFrom(workflow.definition, current.status_id).find(
-        (t) => t.id === body.transitionId,
-      );
-      if (!transition) {
-        return { conflict: 'transition_unavailable', detail: { transitionId: body.transitionId } };
-      }
-      const stages = await statusInfo(trx, ws, [current.status_id, transition.to]);
-      const next = closing(
-        stages.get(current.status_id)?.stage ?? 'new',
-        stages.get(transition.to)?.stage ?? 'new',
-        { closeReasonId: current.close_reason_id, closedAt: current.closed_at },
-        body.closeReasonId,
-        await defaultCloseReason(trx, ws),
-        new Date(),
-      );
-      await trx
-        .updateTable('ticket')
-        .set({
-          status_id: transition.to,
-          close_reason_id: next.closeReasonId,
-          closed_at: next.closedAt,
-          version: current.version + 1,
-          updated_at: new Date(),
-        })
-        .where('id', '=', ticketId)
-        .execute();
-      const updated = await loadTicket(trx, ws, ticketId);
-      if (updated) await recordChanges(trx, ws, user.id, ticketChanges(current, updated));
-      await emit(trx, by(request), {
-        type: 'ticket.transitioned',
-        subjectId: ticketId,
-        payload: {
-          key: ticketKey(current.track_key, current.number),
-          transitionId: transition.id,
-          from: current.status_id,
-          to: transition.to,
-        },
-      });
-      return { ticket: updated };
-    });
+    if (body.comment !== undefined) {
+      // Comments arrive with M1-017; until then a transition takes none.
+      return invalidFields(reply, { comment: 'unsupported' });
+    }
+    const fields: FieldErrors = {};
+    const entered = layoutValues(given, fields);
+    if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
+    const outcome = await runTransition(
+      request,
+      found.row,
+      { transitionId: body.transitionId },
+      entered,
+      channelOf(request),
+      body.version,
+    );
+    if ('conflict' in outcome && outcome.conflict === 'forbidden_in_status') {
+      return reply.code(403).send({ error: 'forbidden', ...(outcome.detail ?? {}) });
+    }
+    return answer(request, reply, outcome);
+  });
+
+  // An external event moves a ticket along the first transition it triggers that is offered,
+  // as automation (M1-024): the hook M2's development integrations call.
+  app.post('/api/v1/tickets/:id/trigger', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = params.safeParse(request.params);
+    if (!p.success) return invalid(reply);
+    const parsed = z
+      .object({ event: z.string().regex(/^[a-z][a-z0-9.:-]{0,199}$/) })
+      .strict()
+      .safeParse(request.body);
+    if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
+    const found = await findTicket(request, p.data.id);
+    if (!found) return notFound(reply);
+    if (found.row.deleted_at) return inTrash(request, reply, found.row);
+    if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
+    if (!(await request.authz.can('transition_tickets', found.row.track_id))) {
+      return forbidden(reply, 'transition_tickets');
+    }
+    const outcome = await runTransition(
+      request,
+      found.row,
+      { event: parsed.data.event },
+      {},
+      'automation',
+    );
+    if ('conflict' in outcome && outcome.conflict === 'forbidden_in_status') {
+      return reply.code(403).send({ error: 'forbidden', ...(outcome.detail ?? {}) });
+    }
     return answer(request, reply, outcome);
   });
 

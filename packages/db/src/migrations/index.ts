@@ -19,6 +19,7 @@ import * as m0019 from './0019_links';
 import * as m0020 from './0020_saml';
 import * as m0023 from './0023_time_tracking';
 import * as m0024 from './0024_workflows';
+import * as m0025 from './0025_transition_history';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -46,4 +47,5 @@ export const migrations: Record<string, Migration> = {
   '0020_saml': m0020,
   '0023_time_tracking': m0023,
   '0024_workflows': m0024,
+  '0025_transition_history': m0025,
 };

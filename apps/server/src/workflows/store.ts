@@ -82,18 +82,6 @@ export async function statusInfo(
   return new Map(rows.map((r) => [r.id, { name: r.name, stage: r.stage }]));
 }
 
-/** The close reason a ticket closed without one takes: the first in the list. */
-export async function defaultCloseReason(db: Db, workspaceId: number): Promise<number | null> {
-  const row = await db
-    .selectFrom('close_reason')
-    .select('id')
-    .where('workspace_id', '=', workspaceId)
-    .orderBy('sort_order')
-    .limit(1)
-    .executeTakeFirst();
-  return row?.id ?? null;
-}
-
 /**
  * Tickets, the trash included, whose track uses a workflow and whose status is one of
  * `statusIds`, by status.
@@ -129,9 +117,9 @@ export async function ticketsInStatuses(
 }
 
 /**
- * Moves tickets from statuses to others (`mapping` from → to), with the closed-stage rules
- * of WF-008, a new version per ticket and their history as one change set. Returns how many
- * tickets moved.
+ * Moves tickets from statuses to others (`mapping` from → to), each with a new version and its
+ * history, as one change set. The close reason stays: only transitions, layouts and effects
+ * set or clear it (WF-008). Returns how many tickets moved.
  */
 export async function remapStatuses(
   trx: Transaction<Database>,
@@ -142,20 +130,10 @@ export async function remapStatuses(
 ): Promise<number> {
   const all = [...tickets.values()].flat();
   if (all.length === 0) return 0;
-  const stages = await statusInfo(trx, workspaceId, [...mapping.keys(), ...mapping.values()]);
-  const reason = await defaultCloseReason(trx, workspaceId);
   return rewriteTickets(trx, workspaceId, actorId, all, async (ids) => {
     for (const [from, to] of mapping) {
-      const fromStage = stages.get(from)?.stage;
-      const toStage = stages.get(to)?.stage;
-      const closing =
-        toStage === 'closed' && fromStage !== 'closed'
-          ? sql`, close_reason_id = coalesce(close_reason_id, ${reason}::int), closed_at = now()`
-          : toStage !== 'closed' && fromStage === 'closed'
-            ? sql`, close_reason_id = NULL, closed_at = NULL`
-            : sql``;
       await sql`
-        UPDATE ticket SET status_id = ${to}${closing}
+        UPDATE ticket SET status_id = ${to}
          WHERE id = ANY(${ids}::int[]) AND status_id = ${from}`.execute(trx);
     }
   });

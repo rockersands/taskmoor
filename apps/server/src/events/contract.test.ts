@@ -1340,12 +1340,46 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     {
       route: 'POST /api/v1/tickets/:id/transitions',
       expect: 'ticket.transitioned',
-      // Into the closed stage: the status, close reason and Closed stamp change, one event.
+      // Closing with a close reason on the layout: status, close reason and Closed stamp
+      // change, one event.
+      prepare: async () => {
+        const reasons = await admin({ method: 'GET', url: '/api/v1/close-reasons' });
+        state.completed = reasons
+          .json()
+          .closeReasons.find((r: { name: string }) => r.name === 'Completed').id;
+      },
       run: () =>
         call(String(state.bo1b), {
           method: 'POST',
           url: `/api/v1/tickets/${state.ticket}/transitions`,
-          payload: { transitionId: 4 },
+          payload: { transitionId: 4, fields: { 'close-reason': state.completed } },
+        }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/trigger',
+      expect: 'ticket.transitioned',
+      // An external event runs the Reopen transition it triggers, which clears the reason.
+      prepare: async () => {
+        const workflows = await admin({ method: 'GET', url: '/api/v1/workflows' });
+        const fallback = workflows.json().workflows.find((w: { isDefault: boolean }) => w.isDefault)
+          .id as number;
+        const current = await admin({ method: 'GET', url: `/api/v1/workflows/${fallback}` });
+        const definition = current.json().workflow.published.definition;
+        definition.transitions = definition.transitions.map((t: { id: number }) =>
+          t.id === 5 ? { ...t, triggers: [{ event: 'dev.reopened' }] } : t,
+        );
+        await admin({
+          method: 'PUT',
+          url: `/api/v1/workflows/${fallback}/draft`,
+          payload: { definition },
+        });
+        await admin({ method: 'POST', url: `/api/v1/workflows/${fallback}/publish`, payload: {} });
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/trigger`,
+          payload: { event: 'dev.reopened' },
         }),
     },
     {

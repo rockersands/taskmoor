@@ -439,8 +439,10 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     tables: {
       status: "name = 'Seed status' AND stage = 'active'",
       workflow: "name = 'Seed workflow' AND draft_version = 2",
-      workflow_version: "workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow')",
-      workflow_version_status: "status_id IN (SELECT id FROM status WHERE name = 'Seed status')",
+      workflow_version:
+        "workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow') AND version = 2",
+      workflow_version_status:
+        "status_id IN (SELECT id FROM status WHERE name = 'Seed status') AND version = 2",
       track: "key = 'SEED' AND workflow_id IS NOT NULL",
       ticket:
         "summary = 'Seed ticket' AND status_id IN (SELECT id FROM status WHERE name = 'Seed status')",
@@ -462,6 +464,17 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       }
       await sql`UPDATE track SET workflow_id = ${workflow} WHERE key = 'SEED'`.execute(db);
       await sql`UPDATE ticket SET status_id = ${status} WHERE summary = 'Seed ticket'`.execute(db);
+    },
+  },
+  '0025_transition_history': {
+    tables: {
+      ticket_change: "field = 'status' AND transition_id = 7 AND to_display = 'Seeded'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, field, to_value,
+          to_display, transition_id)
+        SELECT 1, id, 990001, 'status', '1', 'Seeded', 7 FROM ticket
+         WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
 };

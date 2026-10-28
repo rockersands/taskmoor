@@ -708,7 +708,8 @@
       "from_value text",
       "to_value text",
       "from_display text",
-      "to_display text"
+      "to_display text",
+      "transition_id integer"
     ],
     "indexes": [
       "CREATE INDEX ticket_change_actor_idx ON ONLY public.ticket_change USING btree (actor_id, at) WHERE (actor_id IS NOT NULL)",

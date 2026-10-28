@@ -18,13 +18,36 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-024 to M1-027 transitions, guards, checks and effects** (migration 0025, ADR-039
+  "Implementation (M1-024 to M1-027)"). `packages/workflow/src/engine.ts` is the production
+  engine (all 374 conformance cases; property test against the reference in `engine.test.ts`).
+  The server feeds it through `workflows/state.ts` (ticket to engine state, results to column
+  updates) and `workflows/fields.ts` (fields workflows read and write). Definitions now carry
+  `layout`, `guards` (nested `all`/`any`), `checks`, `effects`, `properties`, `event`,
+  `triggers`, plus `onCreate`, `rules` and `statusPermissions` (`workflows/model.ts`, refused on
+  save when they name unknown or read-only fields). `POST /tickets/:id/transitions` takes
+  `{transitionId, fields?, version?}`; `comment` answers 400 until M1-017 brings comments.
+  Refusals: 409 `transition_unavailable`, 409 `transition_refused {by, name, message?, check?}`,
+  403 `forbidden` with `permission: 'transition'`. `POST /tickets/:id/trigger {event}` is the
+  hook M2 automation calls. `GET .../transitions` lists layout and properties. The web side has
+  `apps/web/src/workflow/refusal.ts`, which words refusals from the `workflow.*` messages.
+  - **Changed behaviour (M1-023 corrected):** the close reason is set only by a layout or an
+    effect and cleared only by an effect; the seeded Close asks for one, Reopen clears it.
+    Publish, workflow switch and move map statuses only. Global transitions are offered from
+    their own target too. `closing` and `transitionsFrom` are gone from `model.ts`.
+  - Lookups through the pooled `db` (authz, assignable people) must happen before
+    `db.transaction()`; doing them inside exhausted the pool under concurrent transitions.
+  - Tests: `routes/transitions.test.ts` (8), `workflows.test.ts` updated, two new contract
+    scenarios (transition fields, trigger), `workflow/refusal.test.ts` (4).
+  - Next for workflows: M1-028 workflow maps and local workflows, M1-029 per-status edit locks
+    (the engine's `checkPermission` is ready), M1-030 the editor.
 - **M1-023 statuses and workflows** (migration 0024, ADR-039): `/api/v1/statuses` (CRUD,
   order), `/api/v1/workflows` (create published as version 1, `PUT/DELETE .../draft`,
   `GET .../impact`, `POST .../publish` with `statusMapping`, `.../versions`,
   `.../versions/:v/restore`), `GET /api/v1/tracks/:id/workflow` (read-only), and
   `GET/POST /api/v1/tickets/:id/transitions`. Tickets have `status`; track PATCH takes
   `workflowId` with `statusMapping`; move takes `statusId`. The rules are in
-  `workflows/model.ts` (definition schema, `transitionsFrom`, `closing`) and
+  `workflows/model.ts` (definition schema) and
   `workflows/store.ts` (`holdWorkflow`, `remapStatuses`). A ticket inserted without a status
   gets its workflow's initial status from a trigger. Entering the closed stage sets the close
   reason and `closedAt`; a close reason set by hand now also sets `closedAt` (it meant
