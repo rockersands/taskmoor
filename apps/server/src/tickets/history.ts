@@ -76,6 +76,10 @@ export const TRACKED_FIELDS: readonly Tracked[] = [
     display: (r) => nameList(r.found_releases),
   },
   { field: 'area', value: (r) => idList(r.areas), display: (r) => nameList(r.areas) },
+  // Seconds; a client formats them with the settings it reads them with.
+  { field: 'originalEstimate', value: (r) => idText(r.original_estimate) },
+  { field: 'remainingEstimate', value: (r) => idText(r.remaining_estimate) },
+  { field: 'timeSpent', value: (r) => (r.time_spent === 0 ? null : String(r.time_spent)) },
   { field: 'rank', value: (r) => r.rank },
   { field: 'trash', value: (r) => (r.deleted_at === null ? null : 'in_trash') },
 ];

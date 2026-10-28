@@ -275,6 +275,28 @@ export class Authorizer {
   }
 
   /**
+   * The roles a person holds in a track and every group they are in (nested ones included):
+   * what a restricted time entry or comment is checked against (M1-019, CORE-020).
+   */
+  async audience(
+    workspaceId: number,
+    userId: number,
+    trackId: number,
+  ): Promise<{ roleIds: ReadonlySet<number>; groupIds: ReadonlySet<number> }> {
+    const { rows } = await sql<{ kind: 'role' | 'group'; id: number }>`
+      WITH RECURSIVE ${GROUPS_CTE(workspaceId, userId)}
+      SELECT 'group' AS kind, id FROM g
+      UNION
+      SELECT 'role', a.role_id FROM track_role_actor a
+       WHERE a.track_id = ${trackId}
+         AND (a.user_id = ${userId} OR a.group_id IN (SELECT id FROM g))`.execute(this.db);
+    return {
+      roleIds: new Set(rows.filter((r) => r.kind === 'role').map((r) => r.id)),
+      groupIds: new Set(rows.filter((r) => r.kind === 'group').map((r) => r.id)),
+    };
+  }
+
+  /**
    * The tracks where the principal holds a permission: the search pre-filter (QRY-008).
    * Archived tracks are left out (CORE-025). 'all' means no filter is needed: a site
    * administrator while no track is archived, or one who asks to include the archive.
@@ -489,6 +511,14 @@ export class AuthzContext {
 
   async can(permission: TrackPermission, trackId: number): Promise<boolean> {
     return (await this.track(trackId)).has(permission);
+  }
+
+  /** The caller's roles in a track and groups; empty for a principal without a user. */
+  async audience(trackId: number) {
+    if (this.principal.userId === null) {
+      return { roleIds: new Set<number>(), groupIds: new Set<number>() };
+    }
+    return this.authorizer.audience(this.workspaceId, this.principal.userId, trackId);
   }
 
   async allowedTracks(

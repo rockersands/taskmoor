@@ -101,6 +101,7 @@ export const AUDITED_EVENTS = [
   'link_type.updated',
   'link_type.deleted',
   'link_policy.updated',
+  'time_tracking.settings_updated',
   'audit.settings_updated',
   'token.created',
   'token.revoked',
@@ -136,6 +137,9 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'ticket.voted': 'ticket activity: a vote, not a security or configuration event',
   'ticket.unvoted': 'ticket activity: a vote, not a security or configuration event',
   'user.preferences_updated': 'a personal setting (auto-follow), not a security event',
+  'time_entry.created': TICKET_ACTIVITY,
+  'time_entry.updated': TICKET_ACTIVITY,
+  'time_entry.deleted': TICKET_ACTIVITY,
 };
 
 /**

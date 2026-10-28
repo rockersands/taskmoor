@@ -170,6 +170,9 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'cr.name as close_reason_name',
       'k.closed_at',
       'k.labels',
+      'k.original_estimate',
+      'k.remaining_estimate',
+      'k.time_spent',
     ])
     .select([
       releasesOf(db, 'target').as('target_releases'),
@@ -276,6 +279,17 @@ export function ticketView(row: TicketRow, canSeeParent: boolean) {
     areas: row.areas,
     followerCount: row.follower_count ?? 0,
     voteCount: row.vote_count ?? 0,
+    // Seconds; the client formats them with the time tracking settings (M1-019).
+    timeTracking: {
+      originalEstimate: row.original_estimate,
+      remainingEstimate: row.remaining_estimate,
+      timeSpent: row.time_spent,
+      // Time spent against the original estimate, in percent (spec 01a section 1.3).
+      effortRatio:
+        row.original_estimate === null || row.original_estimate === 0
+          ? null
+          : Math.round((row.time_spent / row.original_estimate) * 1000) / 10,
+    },
     rank: row.rank,
     version: row.version,
     createdAt: row.created_at.toISOString(),

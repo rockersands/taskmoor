@@ -446,6 +446,26 @@ export const EVENT_TYPES = {
   'ticket.voted': { subject: 'ticket', payload: z.object({ key: z.string() }) },
   'ticket.unvoted': { subject: 'ticket', payload: z.object({ key: z.string() }) },
   'user.preferences_updated': { subject: 'user', payload: z.object({ changes }) },
+  // Time tracking (M1-019). Durations in seconds; the ticket history keeps the detail.
+  'time_tracking.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
+  'time_entry.created': {
+    subject: 'time_entry',
+    payload: z.object({
+      key: z.string(),
+      ticketId: id,
+      duration: z.number().int().positive(),
+      startedAt: z.string(),
+    }),
+  },
+  /** The names of the fields that changed; a description can be long and restricted. */
+  'time_entry.updated': {
+    subject: 'time_entry',
+    payload: z.object({ key: z.string(), ticketId: id, fields: z.array(z.string()) }),
+  },
+  'time_entry.deleted': {
+    subject: 'time_entry',
+    payload: z.object({ key: z.string(), ticketId: id, duration: z.number().int().positive() }),
+  },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   // API tokens and service accounts (IAM-007). Never the token or its hash.

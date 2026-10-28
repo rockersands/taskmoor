@@ -43,6 +43,7 @@ import {
   ticketQuery,
   ticketView,
 } from '../tickets/store';
+import { durationValue, timeSettings } from '../tickets/time';
 
 /**
  * Tickets (M1-008; CORE-001, CORE-008, CORE-023, CORE-025, AGL-009; spec 01a sections 1.2 and
@@ -87,6 +88,8 @@ const day = z.string().nullable();
 const labels = z.array(z.string().max(1000)).max(1000);
 const releaseIds = z.array(idValue).max(RELEASES_PER_TICKET);
 const areaIds = z.array(idValue).max(AREAS_PER_TICKET);
+/** Seconds, or text such as "1w 2d" read with the time tracking settings; null clears it. */
+const estimate = z.union([z.string().max(100), z.number()]).nullable();
 
 const createBody = z
   .object({
@@ -106,6 +109,8 @@ const createBody = z
     targetReleaseIds: releaseIds.optional(),
     foundInReleaseIds: releaseIds.optional(),
     areaIds: areaIds.optional(),
+    originalEstimate: estimate.optional(),
+    remainingEstimate: estimate.optional(),
   })
   .strict();
 const updateBody = z
@@ -125,6 +130,8 @@ const updateBody = z
     targetReleaseIds: releaseIds.optional(),
     foundInReleaseIds: releaseIds.optional(),
     areaIds: areaIds.optional(),
+    originalEstimate: estimate.optional(),
+    remainingEstimate: estimate.optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -443,6 +450,35 @@ export function registerTicketRoutes(
     );
   }
 
+  /**
+   * The estimates a create or an edit gives, in seconds (M1-019); problems go into `fields`.
+   * 'disabled' when time tracking is off.
+   */
+  async function estimateValues(
+    body: {
+      originalEstimate?: string | number | null | undefined;
+      remainingEstimate?: string | number | null | undefined;
+    },
+    workspaceId: number,
+    fields: FieldErrors,
+  ): Promise<{ original?: number | null; remaining?: number | null } | 'disabled'> {
+    if (body.originalEstimate === undefined && body.remainingEstimate === undefined) return {};
+    const settings = await timeSettings(db, workspaceId);
+    if (!settings.enabled) return 'disabled';
+    const out: { original?: number | null; remaining?: number | null } = {};
+    for (const [name, key] of [
+      ['originalEstimate', 'original'],
+      ['remainingEstimate', 'remaining'],
+    ] as const) {
+      const input = body[name];
+      if (input === undefined) continue;
+      const parsed = durationValue(input, settings);
+      if (parsed.ok) out[key] = parsed.seconds;
+      else fields[name] = parsed.problem;
+    }
+    return out;
+  }
+
   /** Answers an outcome that is not a ticket; null when it is one. */
   function refusal(reply: FastifyReply, outcome: Outcome) {
     if ('missing' in outcome) return notFound(reply);
@@ -643,6 +679,8 @@ export function registerTicketRoutes(
     }
     const fields: FieldErrors = {};
     const values = contentValues(body, fields, true);
+    const estimates = await estimateValues(body, ws, fields);
+    if (estimates === 'disabled') return reply.code(409).send({ error: 'time_tracking_disabled' });
     if (body.assigneeId != null && !(await assignable(ws, trackId, body.assigneeId))) {
       fields.assigneeId = 'not_assignable';
     }
@@ -725,6 +763,10 @@ export function registerTicketRoutes(
           priority_id: priorityId,
           close_reason_id: body.closeReasonId ?? null,
           labels: values.labels ?? [],
+          original_estimate: estimates.original ?? null,
+          // A new ticket's remaining estimate starts at its original estimate.
+          remaining_estimate:
+            estimates.remaining !== undefined ? estimates.remaining : (estimates.original ?? null),
         })
         .returning('id')
         .executeTakeFirstOrThrow();
@@ -761,6 +803,8 @@ export function registerTicketRoutes(
     const ticketId = found.row.id;
     const fields: FieldErrors = {};
     const values = contentValues(body, fields, false);
+    const estimates = await estimateValues(body, ws, fields);
+    if (estimates === 'disabled') return reply.code(409).send({ error: 'time_tracking_disabled' });
     let parentId: number | null | undefined;
     if (body.parent === null) parentId = null;
     else if (body.parent !== undefined) {
@@ -817,6 +861,18 @@ export function registerTicketRoutes(
         const ids = body[name];
         if (ids !== undefined && !sameIds(ids, had[name])) lists[name] = [...new Set(ids)];
       }
+      // A new original estimate carries the remaining one along while no time is recorded
+      // and the remaining one has not been set apart from it.
+      let remainingEstimate = estimates.remaining;
+      if (
+        estimates.original !== undefined &&
+        estimates.remaining === undefined &&
+        current.time_spent === 0 &&
+        (current.remaining_estimate === null ||
+          current.remaining_estimate === current.original_estimate)
+      ) {
+        remainingEstimate = estimates.original;
+      }
       const before = {
         summary: current.summary,
         description: current.description,
@@ -827,6 +883,8 @@ export function registerTicketRoutes(
         requesterId: current.requester_id,
         startDate: current.start_date,
         dueDate: current.due_date,
+        originalEstimate: current.original_estimate,
+        remainingEstimate: current.remaining_estimate,
         priorityId: current.priority_id,
         closeReasonId: current.close_reason_id,
         labels: current.labels,
@@ -840,6 +898,8 @@ export function registerTicketRoutes(
         requesterId: body.requesterId,
         priorityId: body.priorityId,
         closeReasonId: body.closeReasonId,
+        originalEstimate: estimates.original,
+        remainingEstimate,
         ...lists,
       });
       if (Object.keys(changes).length === 0) return { ticket: current };
@@ -862,6 +922,8 @@ export function registerTicketRoutes(
         ['targetReleaseIds', 'edit_tickets'],
         ['foundInReleaseIds', 'edit_tickets'],
         ['areaIds', 'edit_tickets'],
+        ['originalEstimate', 'edit_tickets'],
+        ['remainingEstimate', 'edit_tickets'],
       ];
       for (const [field, permission] of needs) {
         if (changes[field] && !held.has(permission)) return { denied: permission };
@@ -964,6 +1026,8 @@ export function registerTicketRoutes(
       if (changes.priorityId) set.priority_id = body.priorityId ?? null;
       if (changes.closeReasonId) set.close_reason_id = body.closeReasonId ?? null;
       if (changes.labels && values.labels !== undefined) set.labels = values.labels;
+      if (changes.originalEstimate) set.original_estimate = estimates.original ?? null;
+      if (changes.remainingEstimate) set.remaining_estimate = remainingEstimate ?? null;
       await trx.updateTable('ticket').set(set).where('id', '=', ticketId).execute();
       if (lists.targetReleaseIds) {
         await setTicketReleases(trx, ws, ticketId, 'target', lists.targetReleaseIds);

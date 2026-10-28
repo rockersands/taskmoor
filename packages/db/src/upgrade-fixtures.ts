@@ -395,6 +395,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT id, 1, false FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0023_time_tracking': {
+    tables: {
+      time_tracking_setting: "hours_per_day = 7.5 AND default_unit = 'hour'",
+      ticket: "summary = 'Seed ticket' AND original_estimate = 36000 AND time_spent = 5400",
+      time_entry: "duration = 5400 AND description = 'Seed work'",
+    },
+    seed: async (db) => {
+      await sql`UPDATE time_tracking_setting SET hours_per_day = 7.5, default_unit = 'hour'
+         WHERE workspace_id = 1`.execute(db);
+      await sql`UPDATE ticket SET original_estimate = 36000, remaining_estimate = 30600,
+          time_spent = 5400 WHERE summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO time_entry (workspace_id, ticket_id, author_id, started_at, duration,
+          description)
+        SELECT 1, k.id, u.id, '2026-10-01T09:00:00Z', 5400, 'Seed work' FROM ticket k, app_user u
+         WHERE k.summary = 'Seed ticket' AND u.email = 'seed@example.com'`.execute(db);
+    },
+  },
   '0020_saml': {
     tables: {
       identity_provider:

@@ -1186,6 +1186,45 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'PUT', url: '/api/v1/link-policy', payload: { enabled: false } }),
     },
     {
+      route: 'PATCH /api/v1/time-tracking',
+      expect: 'time_tracking.settings_updated',
+      run: () =>
+        admin({ method: 'PATCH', url: '/api/v1/time-tracking', payload: { hoursPerDay: 7.5 } }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/time-entries',
+      expect: 'time_entry.created',
+      // The ticket's time spent and remaining estimate change too: still one event.
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/time-entries`,
+          payload: { duration: '1h 30m', description: 'Investigation' },
+        });
+        state.timeEntry = res.json().timeEntry?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/tickets/:id/time-entries/:entryId',
+      expect: 'time_entry.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}/time-entries/${state.timeEntry}`,
+          payload: { duration: '2h' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/time-entries/:entryId',
+      expect: 'time_entry.deleted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/time-entries/${state.timeEntry}`,
+        }),
+    },
+    {
       route: 'DELETE /api/v1/track-categories/:id',
       expect: 'track_category.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/track-categories/${state.category}` }),

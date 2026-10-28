@@ -18,6 +18,14 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-019 time tracking** (migration 0023, ADR-009 note): `GET/PATCH /api/v1/time-tracking`
+  (settings), `/api/v1/tickets/:id/time-entries` (list, record with `remainingEstimate`
+  `{mode: auto|leave|set|reduce}`, edit, delete with `?remainingEstimate=`), and
+  `originalEstimate`/`remainingEstimate` on ticket create and edit (seconds or text such as
+  "1w 2d"). The ticket view has `timeTracking` in seconds with `effortRatio`. Durations are
+  parsed in `tickets/duration.ts`; `Authorizer.audience(trackId)` gives a person's roles in a
+  track and groups, for restricted comments (M1-017) as well. Tests: `routes/time.test.ts` (7),
+  `tickets/duration.test.ts` (5).
 - **M1-081 SAML 2.0** (built by a background agent, reviewed and merged; migration 0020,
   renumbered from 0016 on merge because 0018 and 0019 had landed; ADR-019 "Single sign-on
   with SAML 2.0"): SAML providers are `identity_provider` rows with `kind` 'saml' and share
@@ -104,8 +112,10 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Next (in order)
 
-1. `pnpm next-task`: M1-019 (time tracking), M1-016 (attachments), M1-010 (field types) are
-   ready. Releases, areas, priorities and labels have no admin UI yet (M1-050
+1. `pnpm next-task`: M1-023 (workflows), M1-010 (field types), M1-016 (attachments), M1-017
+   (rich text and comments), M1-020 (visibility levels) are ready. Background agents are on
+   M1-082 (LDAP, migration 0021) and M1-101 (backups and trash, migration 0022) in worktrees
+   `/home/user/wt-ldap` and `/home/user/wt-backup`. Releases, areas, priorities and labels have no admin UI yet (M1-050
    releases hub; settings pages with the admin UI tasks).
 2. Run the Entra ID and Okta provisioning validators against a test instance with a public
    URL (IAM-006 (1)); the fixtures here imitate their request shapes.

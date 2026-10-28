@@ -346,6 +346,11 @@ export interface TicketTable {
   /** When the ticket reached a closed stage (set by workflows, M1-023). */
   closed_at: Timestamp | null;
   labels: ColumnType<string[], string[] | undefined, string[]>;
+  /** Seconds; null when there is no estimate (M1-019). */
+  original_estimate: number | null;
+  remaining_estimate: number | null;
+  /** Seconds: the sum of the ticket's time entries. */
+  time_spent: Generated<number>;
 }
 
 /** The last ticket number given out in each track. */
@@ -573,6 +578,36 @@ export interface UserPreferenceTable {
   workspace_id: number;
   /** Follow the tickets one creates, edits or comments on (CORE-019). */
   auto_follow: Generated<boolean>;
+  updated_at: DefaultTimestamp;
+}
+
+/** The workspace's time tracking settings (M1-019, TIM-001). */
+export interface TimeTrackingSettingTable {
+  workspace_id: number;
+  enabled: Generated<boolean>;
+  /** numeric columns read as text. */
+  hours_per_day: ColumnType<string, number | string | undefined, number | string>;
+  days_per_week: ColumnType<string, number | string | undefined, number | string>;
+  display_format: Generated<'pretty' | 'days' | 'hours'>;
+  default_unit: Generated<'week' | 'day' | 'hour' | 'minute'>;
+  copy_transition_comments: Generated<boolean>;
+  updated_at: DefaultTimestamp;
+}
+
+/** Time someone worked on a ticket. */
+export interface TimeEntryTable {
+  id: Generated<number>;
+  workspace_id: number;
+  ticket_id: number;
+  author_id: number;
+  started_at: Timestamp;
+  /** Seconds. */
+  duration: number;
+  description: Generated<string>;
+  visible_role_id: number | null;
+  visible_group_id: number | null;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
 }
 
@@ -944,6 +979,8 @@ export interface Database {
   ticket_follower: TicketPersonTable;
   ticket_vote: TicketPersonTable;
   user_preference: UserPreferenceTable;
+  time_tracking_setting: TimeTrackingSettingTable;
+  time_entry: TimeEntryTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

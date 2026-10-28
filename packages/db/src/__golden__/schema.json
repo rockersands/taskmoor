@@ -646,7 +646,10 @@
       "priority_id integer",
       "close_reason_id integer",
       "closed_at timestamp with time zone",
-      "labels ARRAY not null default '{}'::text[]"
+      "labels ARRAY not null default '{}'::text[]",
+      "original_estimate integer",
+      "remaining_estimate integer",
+      "time_spent integer not null default 0"
     ],
     "indexes": [
       "CREATE INDEX ticket_assignee_idx ON public.ticket USING btree (assignee_id) WHERE (assignee_id IS NOT NULL)",
@@ -825,6 +828,42 @@
       "CREATE INDEX ticket_web_link_global_lookup_idx ON public.ticket_web_link USING btree (workspace_id, global_id) WHERE (global_id IS NOT NULL)",
       "CREATE UNIQUE INDEX ticket_web_link_pkey ON public.ticket_web_link USING btree (id)",
       "CREATE INDEX ticket_web_link_ticket_idx ON public.ticket_web_link USING btree (ticket_id)"
+    ]
+  },
+  "time_entry": {
+    "columns": [
+      "id integer not null default nextval('time_entry_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "author_id integer not null",
+      "started_at timestamp with time zone not null",
+      "duration integer not null",
+      "description text not null default ''::text",
+      "visible_role_id integer",
+      "visible_group_id integer",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX time_entry_author_idx ON public.time_entry USING btree (author_id, started_at)",
+      "CREATE UNIQUE INDEX time_entry_pkey ON public.time_entry USING btree (id)",
+      "CREATE INDEX time_entry_ticket_idx ON public.time_entry USING btree (ticket_id, started_at, id)"
+    ]
+  },
+  "time_tracking_setting": {
+    "columns": [
+      "workspace_id integer not null",
+      "enabled boolean not null default true",
+      "hours_per_day numeric not null default 8",
+      "days_per_week numeric not null default 5",
+      "display_format text not null default 'pretty'::text",
+      "default_unit text not null default 'minute'::text",
+      "copy_transition_comments boolean not null default false",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX time_tracking_setting_pkey ON public.time_tracking_setting USING btree (workspace_id)"
     ]
   },
   "token_policy": {

@@ -261,6 +261,31 @@ Migration 0019 adds `link_type`, `ticket_link`, `link_policy`, `ticket_web_link`
   and a follower must be able to browse the track. People follow what they create and edit
   unless they turn `autoFollow` off (`/api/v1/account/preferences`); comments join in M1-017.
 
+## Implementation (M1-019: time tracking)
+
+Migration 0023 adds `time_tracking_setting`, `time_entry` and the ticket columns
+`original_estimate`, `remaining_estimate` and `time_spent`; the rules are in
+`tickets/duration.ts` and `tickets/time.ts`, the routes in `routes/time.ts`.
+
+- **Durations are whole seconds** everywhere: columns, API values, history and events. Text
+  such as "1w 2d 3h 30m" (or a bare number in the default unit) is read with the
+  workspace's working hours per day and days per week (TIM-001 (2)); clients format values
+  with the same settings (`GET /api/v1/time-tracking`), so the server never stores a
+  formatted duration. Formatting and parsing round-trip to the minute (property-tested).
+- **Time spent is kept, not computed:** every time entry write updates `ticket.time_spent`
+  under the ticket's row lock, so lists and queries read one column. The remaining estimate
+  moves as the writer asks (automatically, unchanged, set, reduced by an amount; TIM-001 (1))
+  and never below zero; a ticket without one keeps none. A new original estimate carries the
+  remaining one along until time is recorded or the remaining one is set apart.
+- **Time entry writes are ticket changes:** a new version and one change set with
+  `timeEntry` (`id:seconds`), `timeSpent` and `remainingEstimate`.
+- **Visibility:** an entry restricted to a role or a group is shown to holders of that role
+  in the track, members of that group (nested ones included; `Authorizer.audience`) and its
+  author; the ticket's total still counts it. Only a group one belongs to can be chosen.
+- **Permissions** follow spec 05a: "Record time on tickets" to record, "Edit/Delete own" and
+  "Edit/Delete all time entries" for changes, "Edit tickets" for estimates. With time
+  tracking off, writes answer 409 `time_tracking_disabled` and stored values stay.
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not
