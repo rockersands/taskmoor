@@ -39,6 +39,7 @@ import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSsoRoutes } from './routes/sso';
+import { registerSyncRoutes } from './routes/sync';
 import { registerTicketTypeRoutes } from './routes/ticket-types';
 import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
@@ -197,6 +198,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerVisibilityRoutes(app, db);
     registerNotificationRoutes(app, db);
     await registerEmailRoutes(app, db, { smtpConfigured: deps.smtpConfigured ?? false });
+    registerSyncRoutes(app, db, authorizer);
     registerSearchRoutes(app, db, fieldCatalogs);
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);

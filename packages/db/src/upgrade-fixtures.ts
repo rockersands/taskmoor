@@ -720,6 +720,19 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0036_change_log': {
+    tables: {
+      change_log:
+        "entity = 'ticket' AND op = 'upsert' AND seq IS NOT NULL AND data->'labels' ? 'logged'",
+      change_log_floor: 'retention_days = 45',
+    },
+    seed: async (db) => {
+      // A change after the log exists: a row with its snapshot, numbered at commit.
+      await sql`UPDATE ticket SET labels = labels || ARRAY['logged']
+        WHERE summary = 'Seed ticket'`.execute(db);
+      await sql`UPDATE change_log_floor SET retention_days = 45 WHERE workspace_id = 1`.execute(db);
+    },
+  },
 };
 
 /**

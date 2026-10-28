@@ -20,6 +20,7 @@ import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
 import { gracefulShutdown } from './shutdown';
 import { waitForDatabase } from './startup';
+import { registerChangeLogJobs, scheduleChangeLogTrim } from './sync/jobs';
 import { registerTrashJobs, schedulePurge } from './trash/purge';
 import { defaultWorkspaceId } from './workspace';
 
@@ -146,14 +147,20 @@ if (config.roles.includes('worker') && db) {
   registerFieldValueJobs(runner, db, (run) =>
     app.log.warn({ run }, 'custom field side rows repaired'),
   );
+  // The change log keeps 30 days unless set otherwise (M1-031, ADR-013).
+  registerChangeLogJobs(runner, db);
   const scheduleHousekeeping = () =>
     Promise.all([
       schedulePurge(db),
       scheduleBackups(db),
       scheduleFieldValueCheck(db),
+      scheduleChangeLogTrim(db),
       defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
     ]).catch((error) =>
-      app.log.warn({ error }, 'trash purge, backup, field value check or storage sweep not queued'),
+      app.log.warn(
+        { error },
+        'trash purge, backup, field value check, change log trim or storage sweep not queued',
+      ),
     );
   void scheduleHousekeeping();
   timers.push(setInterval(scheduleHousekeeping, 5 * 60 * 1000));

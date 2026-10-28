@@ -73,3 +73,37 @@ Every write path must append to the log, enforced by a fitness test over the mut
 functions. The realtime role (ADR-021) relays `NOTIFY` to WebSocket clients. The lock
 serialises the tail of mutating transactions; if a site ever exceeds the measured throughput,
 the log can be sharded by track with one sequence per shard.
+
+## Implementation (M1-031)
+
+- **Triggers write the log** (migration 0036): row triggers on `ticket` and `track` append one
+  row per change with a snapshot (a ticket without its rich text, which clients read when they
+  open it); a ticket that changes track leaves a delete in its old track's group and an upsert in
+  the new one; a change to `authz_epoch` appends one workspace row per transaction. Every write
+  path reaches the log, bulk rewrites included, without the application's help. Other entities
+  (statuses, fields, comments) join when clients need them (M1-032).
+- **Numbered at commit.** Rows are written without a sequence; a deferred constraint trigger
+  takes a transaction-scoped advisory lock and numbers the transaction's rows as it commits.
+  Sequence order is therefore commit order, and the lock is held only from the numbering to the
+  end of the commit, after the transaction's own row locks, so it cannot deadlock with them (a
+  lock taken at the first append and held to commit could). Readers read the top position
+  before the rows, so nothing numbered meanwhile is skipped.
+- **Permissions when read** (`apps/server/src/sync/log.ts`): sync groups are the tracks the
+  person may browse or browse tickets of through a ticket-level grant, plus the workspace group.
+  Each ticket row is judged with the person's current permissions against its own snapshot
+  (`ticketPermissions`, ADR-012): one they may see comes with its data, any other as a bare
+  removal of its id. An `authz` row tells the client its groups or visibility may have changed,
+  and it bootstraps again.
+- **API:** `GET /api/v1/sync/groups`, `GET /api/v1/sync/bootstrap?track=&after=` (id-ordered
+  pages and the position to follow from, read before the first page) and
+  `GET /api/v1/sync/changes?after=`. Websocket push, the client store and the outbox are M1-032.
+- **Retention** deletes rows older than 30 days (per workspace, `change_log_floor`) hourly in
+  batches instead of the monthly partitions this ADR planned: rows are written by triggers,
+  which cannot create a month's partition on demand. `floor_seq` records the highest sequence
+  removed; a client behind it is answered `resync` and bootstraps again.
+- **Tests:** a property test runs random creates, edits, level changes, moves, trash and
+  membership changes while three replicas bootstrap and follow; at the end each replica holds
+  exactly what its person may see, and no replica ever received a ticket its person may not
+  see, judged by a plain model of the test's memberships (a mutation that lets hidden tickets
+  through fails it). A second test shows a transaction that writes first and commits last gets
+  the higher sequence, and that trimming makes old positions resync.

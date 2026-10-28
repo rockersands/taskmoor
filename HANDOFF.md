@@ -18,6 +18,12 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-031 change log** (migration 0036; ADR-013 "Implementation (M1-031)"). Triggers on
+  `ticket`, `track` and `authz_epoch` write `change_log`; a deferred constraint trigger gives
+  `seq` at commit. Readers in `apps/server/src/sync/log.ts`, routes `/api/v1/sync/*`, hourly
+  trim job in `sync/jobs.ts`. Every ticket write now also writes a log row (and numbers it at
+  commit): keep an eye on bulk rewrites (M1-021) and the edit p95. M1-032 adds the websocket
+  push, the IndexedDB client store and the outbox on top.
 - **M1-057 email notifications** (migration 0032; ADR-041 "Implementation (M1-057)";
   deploy/README "Email notifications"). `apps/server/src/email/` (`deliver.ts` mailer,
   `render.ts`, `transport.ts`); the worker runs it every 30 s when `TASKMOOR_SMTP_URL` is set.

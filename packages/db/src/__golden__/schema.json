@@ -210,6 +210,35 @@
       "CREATE UNIQUE INDEX backup_run_running_idx ON public.backup_run USING btree (((kind = 'drill'::text))) WHERE (state = 'running'::text)"
     ]
   },
+  "change_log": {
+    "columns": [
+      "id bigint not null default nextval('change_log_id_seq'::regclass)",
+      "seq bigint",
+      "workspace_id integer not null",
+      "track_id integer",
+      "entity text not null",
+      "entity_id integer not null",
+      "op text not null",
+      "data jsonb",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX change_log_created_idx ON public.change_log USING btree (created_at)",
+      "CREATE INDEX change_log_group_idx ON public.change_log USING btree (workspace_id, track_id, seq) WHERE (seq IS NOT NULL)",
+      "CREATE UNIQUE INDEX change_log_pkey ON public.change_log USING btree (id)",
+      "CREATE UNIQUE INDEX change_log_seq_key ON public.change_log USING btree (seq)"
+    ]
+  },
+  "change_log_floor": {
+    "columns": [
+      "workspace_id integer not null",
+      "floor_seq bigint not null default 0",
+      "retention_days integer not null default 30"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX change_log_floor_pkey ON public.change_log_floor USING btree (workspace_id)"
+    ]
+  },
   "close_reason": {
     "columns": [
       "id integer not null default nextval('close_reason_id_seq'::regclass)",

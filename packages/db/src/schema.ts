@@ -1013,6 +1013,30 @@ export interface EmailUnsubscribeTable {
   used_at: Timestamp | null;
 }
 
+/**
+ * The change log of ADR-013 (M1-031): triggers write a row per change to a ticket, track or
+ * the authorization data; `seq` is given at commit, so its order is commit order.
+ */
+export interface ChangeLogTable {
+  id: Generated<string>;
+  seq: string | null;
+  workspace_id: number;
+  /** The sync group: a track, or null for the workspace's. */
+  track_id: number | null;
+  entity: 'ticket' | 'track' | 'authz';
+  entity_id: number;
+  op: 'upsert' | 'delete';
+  data: ColumnType<Record<string, JsonValue> | null, string | null | undefined, string | null>;
+  created_at: DefaultTimestamp;
+}
+
+/** Below `floor_seq` the log was trimmed: a client further behind bootstraps again. */
+export interface ChangeLogFloorTable {
+  workspace_id: number;
+  floor_seq: Generated<string>;
+  retention_days: Generated<number>;
+}
+
 /** Whether a field is required or hidden, and its help text, for a ticket type or every type. */
 export interface FieldRuleTable {
   workspace_id: number;
@@ -1532,6 +1556,8 @@ export interface Database {
   email_setting: EmailSettingTable;
   email_delivery: EmailDeliveryTable;
   email_unsubscribe: EmailUnsubscribeTable;
+  change_log: ChangeLogTable;
+  change_log_floor: ChangeLogFloorTable;
   v_text: TextValueTable;
   v_number: NumberValueTable;
   v_date: DateValueTable;
