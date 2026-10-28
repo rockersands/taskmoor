@@ -380,7 +380,8 @@ describe('authorization service against the reference model (M1-002)', () => {
         }
       }
     }
-  });
+    // About 10 s alone; the whole suite running beside it can double that.
+  }, 60_000);
 
   it('[IAM-010] agrees with the reference on small random worlds', async () => {
     const db = database.db;

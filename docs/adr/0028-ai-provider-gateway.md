@@ -97,7 +97,7 @@ corpus) are nightly jobs from M1 and need the user's key with a spend cap.
   even partial ones; the stream emits a `refused` event so the UI discards what it showed.
   Assistant turns keep the provider's own content (`message.native`), so thinking blocks go back
   unchanged on the next turn.
-- **Refusal fallbacks**: on the Anthropic API, requests for Opus 5.5, Sonnet 5.5 and Fable 5.1
+- **Refusal fallbacks**: on the Anthropic API, requests for Opus 5.5, Opus 5, Sonnet 5.5 and Fable 5.1
   carry `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), so the API retries a
   refusal on the model it recommends for the category. Bedrock, Vertex AI and Foundry have no
   server-side fallback; when the admin sets `refusalFallbackModel`, the SDK's

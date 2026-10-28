@@ -10,6 +10,7 @@ export const SERVER_FALLBACK_BETA = 'server-side-fallback-2026-07-01';
  */
 export const SERVER_FALLBACK_MODELS: ReadonlySet<string> = new Set([
   'claude-opus-5-5',
+  'claude-opus-5',
   'claude-sonnet-5-5',
   'claude-fable-5-1',
 ]);

@@ -18,6 +18,26 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-073 and M1-074 AI gateway** (built by a background agent, reviewed and merged; ADR-028
+  implementation section): `@taskmoor/ai` has one `ProviderAdapter` interface (generate,
+  stream, token counting, model listing, batches, capabilities, typed errors); a Claude adapter
+  for the Anthropic API, Bedrock (Mantle client, `anthropic.` model IDs), Vertex and Foundry;
+  an OpenAI-compatible adapter for Ollama and vLLM; `createProviderAdapter(config, secrets)`.
+  The request policy is checked before every send: adaptive thinking, explicit effort per
+  feature (spec 1.2), strict structured output and strict tools with automatic choice, cache
+  breakpoints, refusals as data with fallbacks, retries honouring Retry-After and a circuit
+  breaker, one repair attempt, streaming with cancel, batches resumable by id. 30 recorded
+  fixtures (placeholder credentials only) drive the contract tests.
+  - **Half-done:** `packages/ai/src/live.test.ts` has never run. Run it once with
+    `TASKMOOR_AI_TEST_KEY=<key with a spend cap> pnpm verify --only=tests -- --project=ai` to
+    close M1-073's live smoke test and M1-074's live cache read. The key comes from the
+    environment only; it never goes into the repository.
+  - The fallback beta names (`server-side-fallback-2026-07-01`, `fallback-credit-2026-07-01`)
+    and the Mantle client were checked against the Claude API reference; `claude-opus-5` was
+    added to the server-side fallback models.
+  - Next for AI: M1-075 key storage, M1-076 settings page (`gateway.listModels()`,
+    `availability()`, `capabilities()`), M1-077 spend limits and audit (cost from
+    `result.usage`; fallback answers already sum every attempt).
 - **M1-014 priorities, close reasons, labels, releases and areas** (migration 0018, ADR-009
   note):
   - `routes/priorities.ts`: `/api/v1/priorities`, `/priority-sets`, `/close-reasons` (CRUD,
