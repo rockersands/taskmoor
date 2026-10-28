@@ -620,6 +620,23 @@
       "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
     ]
   },
+  "status": {
+    "columns": [
+      "id integer not null default nextval('status_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "stage text not null",
+      "sort_order integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX status_name_idx ON public.status USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX status_order_key ON public.status USING btree (workspace_id, sort_order)",
+      "CREATE UNIQUE INDEX status_pkey ON public.status USING btree (id)"
+    ]
+  },
   "ticket": {
     "columns": [
       "id integer not null default nextval('ticket_id_seq'::regclass)",
@@ -649,7 +666,8 @@
       "labels ARRAY not null default '{}'::text[]",
       "original_estimate integer",
       "remaining_estimate integer",
-      "time_spent integer not null default 0"
+      "time_spent integer not null default 0",
+      "status_id integer not null"
     ],
     "indexes": [
       "CREATE INDEX ticket_assignee_idx ON public.ticket USING btree (assignee_id) WHERE (assignee_id IS NOT NULL)",
@@ -659,6 +677,7 @@
       "CREATE UNIQUE INDEX ticket_pkey ON public.ticket USING btree (id)",
       "CREATE INDEX ticket_priority_idx ON public.ticket USING btree (priority_id) WHERE (priority_id IS NOT NULL)",
       "CREATE UNIQUE INDEX ticket_rank_key ON public.ticket USING btree (workspace_id, rank)",
+      "CREATE INDEX ticket_status_idx ON public.ticket USING btree (status_id)",
       "CREATE UNIQUE INDEX ticket_track_number_key ON public.ticket USING btree (track_id, number)",
       "CREATE INDEX ticket_track_rank_idx ON public.ticket USING btree (track_id, rank) WHERE (deleted_at IS NULL)",
       "CREATE INDEX ticket_trash_idx ON public.ticket USING btree (workspace_id, deleted_at) WHERE (deleted_at IS NOT NULL)",
@@ -917,7 +936,8 @@
       "archived_by integer",
       "updated_at timestamp with time zone not null default now()",
       "type_set_id integer",
-      "priority_set_id integer"
+      "priority_set_id integer",
+      "workflow_id integer"
     ],
     "indexes": [
       "CREATE INDEX track_archived_idx ON public.track USING btree (workspace_id) WHERE (archived_at IS NOT NULL)",
@@ -927,6 +947,7 @@
       "CREATE INDEX track_policy_idx ON public.track USING btree (access_policy_id)",
       "CREATE INDEX track_priority_set_idx ON public.track USING btree (priority_set_id) WHERE (priority_set_id IS NOT NULL)",
       "CREATE INDEX track_type_set_idx ON public.track USING btree (type_set_id)",
+      "CREATE INDEX track_workflow_idx ON public.track USING btree (workflow_id) WHERE (workflow_id IS NOT NULL)",
       "CREATE UNIQUE INDEX track_workspace_key_idx ON public.track USING btree (workspace_id, upper(key))"
     ]
   },
@@ -1111,6 +1132,51 @@
       "CREATE UNIQUE INDEX webauthn_credential_credential_id_key ON public.webauthn_credential USING btree (credential_id)",
       "CREATE UNIQUE INDEX webauthn_credential_pkey ON public.webauthn_credential USING btree (id)",
       "CREATE INDEX webauthn_credential_user_idx ON public.webauthn_credential USING btree (user_id)"
+    ]
+  },
+  "workflow": {
+    "columns": [
+      "id integer not null default nextval('workflow_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "is_default boolean not null default false",
+      "published_version integer not null default 1",
+      "draft_version integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_default_idx ON public.workflow USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX workflow_name_idx ON public.workflow USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX workflow_pkey ON public.workflow USING btree (id)"
+    ]
+  },
+  "workflow_version": {
+    "columns": [
+      "workspace_id integer not null",
+      "workflow_id integer not null",
+      "version integer not null",
+      "definition jsonb not null",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "published_at timestamp with time zone",
+      "published_by integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_version_pkey ON public.workflow_version USING btree (workflow_id, version)"
+    ]
+  },
+  "workflow_version_status": {
+    "columns": [
+      "workspace_id integer not null",
+      "workflow_id integer not null",
+      "version integer not null",
+      "status_id integer not null"
+    ],
+    "indexes": [
+      "CREATE INDEX workflow_version_status_idx ON public.workflow_version_status USING btree (status_id)",
+      "CREATE UNIQUE INDEX workflow_version_status_pkey ON public.workflow_version_status USING btree (workflow_id, version, status_id)"
     ]
   },
   "workspace": {

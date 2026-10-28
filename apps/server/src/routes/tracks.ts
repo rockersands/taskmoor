@@ -24,6 +24,13 @@ import {
   TRACK_TYPES,
   type TrackFeatures,
 } from '../tracks/model';
+import { statusIdsOf } from '../workflows/model';
+import {
+  defaultWorkflowId,
+  holdWorkflow,
+  remapStatuses,
+  ticketsInStatuses,
+} from '../workflows/store';
 
 /**
  * Tracks and track categories (M1-006; CORE-001, CORE-002, CORE-003, CORE-025).
@@ -106,6 +113,10 @@ const updateBody = z
     typeSetId: trackFields.typeSetId.optional(),
     /** The priorities it offers (CORE-014 (2)); null for the workspace's default set. */
     prioritySetId: id.nullable().optional(),
+    /** Its workflow (M1-023); null for the workspace's default workflow. */
+    workflowId: id.nullable().optional(),
+    /** For each status the new workflow lacks that tickets are in: where they go. */
+    statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
     features: trackFields.features.optional(),
   })
   .strict();
@@ -162,6 +173,7 @@ function trackQuery(db: Db, workspaceId: number) {
       't.access_policy_id',
       't.type_set_id',
       't.priority_set_id',
+      't.workflow_id',
       't.feature_board',
       't.feature_backlog',
       't.feature_sprints',
@@ -201,6 +213,7 @@ function trackView(row: TrackRow) {
     accessPolicyId: row.access_policy_id,
     typeSetId: row.type_set_id,
     prioritySetId: row.priority_set_id,
+    workflowId: row.workflow_id,
     features: featuresOf(row),
     archived: row.archived_at !== null,
     archivedAt: row.archived_at?.toISOString() ?? null,
@@ -560,6 +573,18 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       }
       if (!(await isSharedTypeSet(db, ws, body.typeSetId))) return invalid(reply, 'typeSetId');
     }
+    if (body.workflowId !== undefined && body.workflowId !== current.workflow_id) {
+      if (!(await isAdmin(request))) return reply.code(403).send({ error: 'forbidden' });
+      if (body.workflowId !== null) {
+        const workflow = await db
+          .selectFrom('workflow')
+          .select('id')
+          .where('id', '=', body.workflowId)
+          .where('workspace_id', '=', ws)
+          .executeTakeFirst();
+        if (!workflow) return invalid(reply, 'workflowId');
+      }
+    }
     if (body.prioritySetId !== undefined && body.prioritySetId !== current.priority_set_id) {
       // Priority sets are the workspace's; a ticket keeps a priority its track stops offering.
       if (!(await isAdmin(request))) return reply.code(403).send({ error: 'forbidden' });
@@ -597,6 +622,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           accessPolicyId: locked.access_policy_id,
           typeSetId: locked.type_set_id,
           prioritySetId: locked.priority_set_id,
+          workflowId: locked.workflow_id,
           ...Object.fromEntries(
             TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
           ),
@@ -613,6 +639,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           accessPolicyId: body.accessPolicyId,
           typeSetId: body.typeSetId,
           prioritySetId: body.prioritySetId,
+          workflowId: body.workflowId,
           ...Object.fromEntries(
             Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
           ),
@@ -641,6 +668,53 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
         } else if (body.ticketTypeMapping !== undefined) {
           return { badMapping: true as const };
         }
+        let statusMapped = 0;
+        if (changes.workflowId && body.workflowId !== undefined) {
+          // Tickets in statuses the new workflow lacks go where the mapping says, first.
+          const fallback = await defaultWorkflowId(trx, ws);
+          const wanted = body.workflowId ?? fallback;
+          const was = locked.workflow_id ?? fallback;
+          // Both workflows, in id order, so neither is published under the switch.
+          const held = new Map<number, Awaited<ReturnType<typeof holdWorkflow>>>();
+          for (const workflowId of [...new Set([was, wanted])].sort((a, b) => a - b)) {
+            held.set(workflowId, await holdWorkflow(trx, workflowId, 'share'));
+          }
+          const next = held.get(wanted);
+          if (!next) return { badWorkflow: true as const };
+          const keeps = statusIdsOf(next.definition);
+          const inTrack = await trx
+            .selectFrom('ticket')
+            .select('status_id')
+            .distinct()
+            .where('track_id', '=', trackId)
+            .execute();
+          const lost = inTrack.map((t) => t.status_id).filter((s) => !keeps.has(s));
+          const mapping = new Map(
+            Object.entries(body.statusMapping ?? {}).map(([from, to]) => [Number(from), to]),
+          );
+          const tickets = await ticketsInStatuses(trx, ws, was, lost, trackId);
+          const needed = [...tickets.keys()].sort((a, b) => a - b);
+          if (needed.some((s) => !mapping.has(s))) {
+            return {
+              statusMappingRequired: needed.map((statusId) => ({
+                statusId,
+                ticketCount: tickets.get(statusId)?.length ?? 0,
+              })),
+            };
+          }
+          if (needed.some((s) => !keeps.has(mapping.get(s) as number))) {
+            return { badStatusMapping: true as const };
+          }
+          statusMapped = await remapStatuses(
+            trx,
+            ws,
+            request.user?.id ?? null,
+            tickets,
+            new Map(needed.map((s) => [s, mapping.get(s) as number])),
+          );
+        } else if (body.statusMapping !== undefined) {
+          return { badStatusMapping: true as const };
+        }
         if (Object.keys(changes).length > 0) {
           // Only what changed is written; `changes` has an entry only for a given value.
           const set: Updateable<Database['track']> = { updated_at: new Date() };
@@ -665,6 +739,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           if (changes.prioritySetId && body.prioritySetId !== undefined) {
             set.priority_set_id = body.prioritySetId;
           }
+          if (changes.workflowId && body.workflowId !== undefined) {
+            set.workflow_id = body.workflowId;
+          }
           for (const feature of TRACK_FEATURES) {
             const on = body.features?.[feature];
             if (changes[`features.${feature}`] && on !== undefined)
@@ -674,7 +751,11 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           await emit(trx, by(request), {
             type: 'track.updated',
             subjectId: trackId,
-            payload: { changes, ...(mapped.length > 0 ? { mapped } : {}) },
+            payload: {
+              changes,
+              ...(mapped.length > 0 ? { mapped } : {}),
+              ...(statusMapped > 0 ? { statusMapped } : {}),
+            },
           });
         }
         return { track: await loadTrack(trx, ws, trackId) };
@@ -685,6 +766,13 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
         return reply.code(updated.refused.status).send(updated.refused.body);
       }
       if ('badMapping' in updated) return invalid(reply, 'ticketTypeMapping');
+      if ('statusMappingRequired' in updated) {
+        return reply
+          .code(409)
+          .send({ error: 'status_mapping_required', statuses: updated.statusMappingRequired });
+      }
+      if ('badStatusMapping' in updated) return invalid(reply, 'statusMapping');
+      if ('badWorkflow' in updated) return invalid(reply, 'workflowId');
       if (!updated.track) return notFound(reply);
       return { track: trackView(updated.track) };
     } catch (error) {

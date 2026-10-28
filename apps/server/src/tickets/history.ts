@@ -51,6 +51,7 @@ export const TRACKED_FIELDS: readonly Tracked[] = [
         ? null
         : ticketKey(r.parent_track_key, r.parent_number),
   },
+  { field: 'status', value: (r) => String(r.status_id), display: (r) => r.status_name },
   { field: 'summary', value: (r) => r.summary },
   { field: 'description', value: (r) => richText(r.description) },
   { field: 'environment', value: (r) => richText(r.environment) },

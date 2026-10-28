@@ -1225,6 +1225,140 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/statuses',
+      expect: 'status.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/statuses',
+          payload: { name: 'QA', stage: 'active' },
+        });
+        state.status = res.json().status?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/statuses/:id',
+      expect: 'status.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/statuses/${state.status}`,
+          payload: { description: 'Being tested' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/statuses/order',
+      expect: 'status.reordered',
+      run: async () => {
+        const list = await admin({ method: 'GET', url: '/api/v1/statuses' });
+        const ids = list.json().statuses.map((x: { id: number }) => x.id);
+        return admin({
+          method: 'PUT',
+          url: '/api/v1/statuses/order',
+          payload: { statusIds: ids.reverse() },
+        });
+      },
+    },
+    {
+      route: 'POST /api/v1/workflows',
+      expect: 'workflow.created',
+      prepare: async () => {
+        const list = await admin({ method: 'GET', url: '/api/v1/statuses' });
+        const byName = (n: string) =>
+          list.json().statuses.find((x: { name: string }) => x.name === n).id as number;
+        state.statusNew = byName('New');
+        state.statusClosed = byName('Closed');
+      },
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/workflows',
+          payload: {
+            name: 'Testing workflow',
+            definition: {
+              initialStatusId: state.statusNew,
+              statuses: [
+                { statusId: state.statusNew },
+                { statusId: state.status },
+                { statusId: state.statusClosed },
+              ],
+              transitions: [
+                { id: 1, name: 'Test', from: [state.statusNew], to: state.status },
+                { id: 2, name: 'Done', from: 'any', to: state.statusClosed },
+              ],
+            },
+          },
+        });
+        state.workflow = res.json().workflow?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/workflows/:id',
+      expect: 'workflow.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/workflows/${state.workflow}`,
+          payload: { description: 'For QA' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/workflows/:id/draft',
+      expect: 'workflow.draft_saved',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/workflows/${state.workflow}/draft`,
+          payload: {
+            definition: {
+              initialStatusId: state.statusNew,
+              statuses: [{ statusId: state.statusNew }, { statusId: state.statusClosed }],
+              transitions: [{ id: 2, name: 'Done', from: 'any', to: state.statusClosed }],
+            },
+          },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/workflows/:id/draft',
+      expect: 'workflow.draft_discarded',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/workflows/${state.workflow}/draft` }),
+    },
+    {
+      route: 'POST /api/v1/workflows/:id/versions/:version/restore',
+      expect: 'workflow.draft_saved',
+      run: () =>
+        admin({ method: 'POST', url: `/api/v1/workflows/${state.workflow}/versions/1/restore` }),
+    },
+    {
+      route: 'POST /api/v1/workflows/:id/publish',
+      expect: 'workflow.published',
+      run: () =>
+        admin({ method: 'POST', url: `/api/v1/workflows/${state.workflow}/publish`, payload: {} }),
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/transitions',
+      expect: 'ticket.transitioned',
+      // Into the closed stage: the status, close reason and Closed stamp change, one event.
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/transitions`,
+          payload: { transitionId: 4 },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/workflows/:id',
+      expect: 'workflow.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/workflows/${state.workflow}` }),
+    },
+    {
+      route: 'DELETE /api/v1/statuses/:id',
+      expect: 'status.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/statuses/${state.status}` }),
+    },
+    {
       route: 'DELETE /api/v1/track-categories/:id',
       expect: 'track_category.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/track-categories/${state.category}` }),

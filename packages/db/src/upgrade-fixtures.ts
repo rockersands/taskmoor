@@ -435,6 +435,35 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 'seed-assertion', ${provider}, now() + interval '5 minutes')`.execute(db);
     },
   },
+  '0024_workflows': {
+    tables: {
+      status: "name = 'Seed status' AND stage = 'active'",
+      workflow: "name = 'Seed workflow' AND draft_version = 2",
+      workflow_version: "workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow')",
+      workflow_version_status: "status_id IN (SELECT id FROM status WHERE name = 'Seed status')",
+      track: "key = 'SEED' AND workflow_id IS NOT NULL",
+      ticket:
+        "summary = 'Seed ticket' AND status_id IN (SELECT id FROM status WHERE name = 'Seed status')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO status (workspace_id, name, stage, sort_order)
+        VALUES (1, 'Seed status', 'active', 100)`.execute(db);
+      await sql`INSERT INTO workflow (workspace_id, name, published_version, draft_version)
+        VALUES (1, 'Seed workflow', 1, 2)`.execute(db);
+      const workflow = sql`(SELECT id FROM workflow WHERE name = 'Seed workflow')`;
+      const status = sql`(SELECT id FROM status WHERE name = 'Seed status')`;
+      for (const version of [1, 2]) {
+        await sql`INSERT INTO workflow_version (workspace_id, workflow_id, version, definition)
+          SELECT 1, ${workflow}, ${version}, jsonb_build_object('initialStatusId', ${status},
+            'statuses', jsonb_build_array(jsonb_build_object('statusId', ${status})),
+            'transitions', '[]'::jsonb)`.execute(db);
+        await sql`INSERT INTO workflow_version_status (workspace_id, workflow_id, version, status_id)
+          SELECT 1, ${workflow}, ${version}, ${status}`.execute(db);
+      }
+      await sql`UPDATE track SET workflow_id = ${workflow} WHERE key = 'SEED'`.execute(db);
+      await sql`UPDATE ticket SET status_id = ${status} WHERE summary = 'Seed ticket'`.execute(db);
+    },
+  },
 };
 
 /**

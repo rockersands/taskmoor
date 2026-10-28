@@ -34,6 +34,7 @@ import { registerTokenRoutes } from './routes/tokens';
 import { registerTrackRoutes } from './routes/tracks';
 import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
+import { registerWorkflowRoutes } from './routes/workflows';
 import { pruneIdentityData } from './throttle';
 import { bearerToken, pruneApiTokens } from './tokens/api-tokens';
 import { authenticateBearer } from './tokens/bearer';
@@ -173,6 +174,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
     registerTimeRoutes(app, db);
+    registerWorkflowRoutes(app, db);
     registerAuditRoutes(app, db);
     registerTokenRoutes(app, db);
     registerServiceAccountRoutes(app, db);

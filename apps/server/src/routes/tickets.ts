@@ -44,6 +44,14 @@ import {
   ticketView,
 } from '../tickets/store';
 import { durationValue, timeSettings } from '../tickets/time';
+import { closing, statusIdsOf, transitionsFrom } from '../workflows/model';
+import {
+  defaultCloseReason,
+  holdWorkflow,
+  loadDefinition,
+  statusInfo,
+  trackWorkflowId,
+} from '../workflows/store';
 
 /**
  * Tickets (M1-008; CORE-001, CORE-008, CORE-023, CORE-025, AGL-009; spec 01a sections 1.2 and
@@ -140,7 +148,17 @@ const moveBody = z
     track: ref,
     ticketTypeId: idValue.optional(),
     subticketTypeId: idValue.optional(),
+    /** For tickets whose status the target track's workflow lacks; its initial status if left out. */
+    statusId: idValue.optional(),
     parent: ref.nullable().optional(),
+    version: idValue.optional(),
+  })
+  .strict();
+const transitionBody = z
+  .object({
+    transitionId: idValue,
+    /** For a transition into the closed stage; the workspace's first close reason otherwise. */
+    closeReasonId: idValue.optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -351,6 +369,18 @@ async function offeredTypes(trx: Transaction<Database>, workspaceId: number, tra
   offered.defaultTypeId = set.default_type_id;
   for (const m of members) offered.typeIds.add(m.ticket_type_id);
   return offered;
+}
+
+/** A ticket outside the trash, locked for an update, as it is now. */
+async function lockTicketRow(trx: Transaction<Database>, workspaceId: number, ticketId: number) {
+  const locked = await trx
+    .selectFrom('ticket')
+    .select('id')
+    .where('id', '=', ticketId)
+    .where('deleted_at', 'is', null)
+    .forUpdate()
+    .executeTakeFirst();
+  return locked ? loadTicket(trx, workspaceId, ticketId) : undefined;
 }
 
 /** A live parent, held (share) so it cannot change type, move or go to the trash first. */
@@ -703,6 +733,9 @@ export function registerTicketRoutes(
       const typeId = body.ticketTypeId ?? offered.defaultTypeId;
       if (typeId === null) return { fields: { ticketTypeId: 'required' } };
       if (!offered.typeIds.has(typeId)) return { fields: { ticketTypeId: 'not_in_track' } };
+      // The track's workflow, held so a publish waits; new tickets take its initial status.
+      const workflow = await holdWorkflow(trx, await trackWorkflowId(trx, ws, trackId), 'share');
+      if (!workflow) return { missing: true };
       // The track's default priority unless one is given (CORE-014 (2)). Values are held
       // before any ticket, as their deletions lock them before their tickets.
       const prioritySet = await trackPrioritySet(trx, ws, trackId);
@@ -763,6 +796,9 @@ export function registerTicketRoutes(
           priority_id: priorityId,
           close_reason_id: body.closeReasonId ?? null,
           labels: values.labels ?? [],
+          status_id: workflow.definition.initialStatusId,
+          // A close reason means closed (WF-008).
+          closed_at: body.closeReasonId != null ? new Date() : null,
           original_estimate: estimates.original ?? null,
           // A new ticket's remaining estimate starts at its original estimate.
           remaining_estimate:
@@ -1024,7 +1060,12 @@ export function registerTicketRoutes(
       if (changes.startDate) set.start_date = values.startDate ?? null;
       if (changes.dueDate) set.due_date = values.dueDate ?? null;
       if (changes.priorityId) set.priority_id = body.priorityId ?? null;
-      if (changes.closeReasonId) set.close_reason_id = body.closeReasonId ?? null;
+      if (changes.closeReasonId) {
+        set.close_reason_id = body.closeReasonId ?? null;
+        // Setting a close reason closes the ticket; clearing it reopens it (WF-008).
+        if (body.closeReasonId == null) set.closed_at = null;
+        else if (current.closed_at === null) set.closed_at = new Date();
+      }
       if (changes.labels && values.labels !== undefined) set.labels = values.labels;
       if (changes.originalEstimate) set.original_estimate = estimates.original ?? null;
       if (changes.remainingEstimate) set.remaining_estimate = remainingEstimate ?? null;
@@ -1087,11 +1128,21 @@ export function registerTicketRoutes(
     }
 
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
-      // The hierarchy, then the target track and its type set, then tickets (see PATCH).
+      // The hierarchy, then the target track, its type set and its workflow, then tickets.
       await shareHierarchy(trx, ws);
       const offered = await offeredTypes(trx, ws, targetId);
       if (!offered) return { missing: true };
       if (offered.archived) return { conflict: 'track_archived' };
+      const targetWorkflow = await holdWorkflow(
+        trx,
+        await trackWorkflowId(trx, ws, targetId),
+        'share',
+      );
+      if (!targetWorkflow) return { missing: true };
+      const targetStatuses = statusIdsOf(targetWorkflow.definition);
+      if (body.statusId !== undefined && !targetStatuses.has(body.statusId)) {
+        return { fields: { statusId: 'not_in_workflow' } };
+      }
       const locked = await trx
         .selectFrom('ticket')
         .select('id')
@@ -1214,6 +1265,28 @@ export function registerTicketRoutes(
       // Releases and areas belong to the old track.
       await trx.deleteFrom('ticket_release').where('ticket_id', 'in', touched).execute();
       await trx.deleteFrom('ticket_area').where('ticket_id', 'in', touched).execute();
+      // A status the target workflow lacks becomes the one asked for, or its initial status.
+      const lost = [...before.values()].filter((t) => !targetStatuses.has(t.status_id));
+      if (lost.length > 0) {
+        const to = body.statusId ?? targetWorkflow.definition.initialStatusId;
+        const stages = await statusInfo(trx, ws, [to, ...lost.map((t) => t.status_id)]);
+        const reason = await defaultCloseReason(trx, ws);
+        for (const t of lost) {
+          const next = closing(
+            stages.get(t.status_id)?.stage ?? 'new',
+            stages.get(to)?.stage ?? 'new',
+            { closeReasonId: t.close_reason_id, closedAt: t.closed_at },
+            undefined,
+            reason,
+            now,
+          );
+          await trx
+            .updateTable('ticket')
+            .set({ status_id: to, close_reason_id: next.closeReasonId, closed_at: next.closedAt })
+            .where('id', '=', t.id)
+            .execute();
+        }
+      }
       await emit(trx, by(request), {
         type: 'ticket.moved',
         subjectId: ticketId,
@@ -1239,6 +1312,130 @@ export function registerTicketRoutes(
         changesOf(before, await loadTickets(trx, ws, touched)),
       );
       return { ticket: await loadTicket(trx, ws, ticketId) };
+    });
+    return answer(request, reply, outcome);
+  });
+
+  // The transitions a ticket offers from its status (WF-001); none without "Transition
+  // tickets". Guards hide more of them from M1-025.
+  app.get('/api/v1/tickets/:id/transitions', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = params.safeParse(request.params);
+    if (!p.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const found = await findTicket(request, p.data.id);
+    if (!found || found.row.deleted_at) return notFound(reply);
+    const row = found.row;
+    if (row.track_archived_at || !(await request.authz.can('transition_tickets', row.track_id))) {
+      return { transitions: [] };
+    }
+    const workflowId = await trackWorkflowId(db, ws, row.track_id);
+    const workflow = await db
+      .selectFrom('workflow')
+      .select('published_version')
+      .where('id', '=', workflowId)
+      .executeTakeFirstOrThrow();
+    const definition = await loadDefinition(db, workflowId, workflow.published_version);
+    const offered = transitionsFrom(definition, row.status_id);
+    const statuses = await statusInfo(
+      db,
+      ws,
+      offered.map((t) => t.to),
+    );
+    return {
+      transitions: offered.map((t) => ({
+        id: t.id,
+        name: t.name,
+        to: { id: t.to, ...(statuses.get(t.to) ?? { name: '', stage: 'new' }) },
+      })),
+    };
+  });
+
+  // Moves a ticket along a transition: the status, the close reason and the Closed time stamp
+  // (WF-008), its history and one event, in that order (WF-005's essential effects).
+  app.post('/api/v1/tickets/:id/transitions', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const p = params.safeParse(request.params);
+    if (!p.success) return invalid(reply);
+    const parsed = transitionBody.safeParse(request.body);
+    if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
+    const body = parsed.data;
+    const ws = request.workspaceId;
+    const found = await findTicket(request, p.data.id);
+    if (!found) return notFound(reply);
+    if (found.row.deleted_at) return inTrash(request, reply, found.row);
+    if (found.row.track_archived_at) return reply.code(409).send({ error: 'track_archived' });
+    const held = await request.authz.track(found.row.track_id);
+    if (!held.has('transition_tickets')) return forbidden(reply, 'transition_tickets');
+    if (body.closeReasonId !== undefined && !held.has('set_close_reason')) {
+      return forbidden(reply, 'set_close_reason');
+    }
+    const ticketId = found.row.id;
+    const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
+      // The track, its workflow, the close reason, then the ticket (lock order in
+      // workflows/store): a switch of the track's workflow waits, or this waits for it.
+      await trx
+        .selectFrom('track')
+        .select('id')
+        .where('id', '=', found.row.track_id)
+        .forKeyShare()
+        .execute();
+      const workflow = await holdWorkflow(
+        trx,
+        await trackWorkflowId(trx, ws, found.row.track_id),
+        'share',
+      );
+      if (!workflow) return { missing: true };
+      const pointed = await holdValues(trx, ws, { closeReasonId: body.closeReasonId });
+      if (body.closeReasonId !== undefined && !pointed.closeReason) {
+        return { fields: { closeReasonId: 'not_found' } };
+      }
+      const current = await lockTicketRow(trx, ws, ticketId);
+      if (!current) return { missing: true };
+      if (current.track_id !== found.row.track_id) return { conflict: 'moved_meanwhile' };
+      if (body.version !== undefined && body.version !== current.version) {
+        return { versionConflict: true };
+      }
+      const transition = transitionsFrom(workflow.definition, current.status_id).find(
+        (t) => t.id === body.transitionId,
+      );
+      if (!transition) {
+        return { conflict: 'transition_unavailable', detail: { transitionId: body.transitionId } };
+      }
+      const stages = await statusInfo(trx, ws, [current.status_id, transition.to]);
+      const next = closing(
+        stages.get(current.status_id)?.stage ?? 'new',
+        stages.get(transition.to)?.stage ?? 'new',
+        { closeReasonId: current.close_reason_id, closedAt: current.closed_at },
+        body.closeReasonId,
+        await defaultCloseReason(trx, ws),
+        new Date(),
+      );
+      await trx
+        .updateTable('ticket')
+        .set({
+          status_id: transition.to,
+          close_reason_id: next.closeReasonId,
+          closed_at: next.closedAt,
+          version: current.version + 1,
+          updated_at: new Date(),
+        })
+        .where('id', '=', ticketId)
+        .execute();
+      const updated = await loadTicket(trx, ws, ticketId);
+      if (updated) await recordChanges(trx, ws, user.id, ticketChanges(current, updated));
+      await emit(trx, by(request), {
+        type: 'ticket.transitioned',
+        subjectId: ticketId,
+        payload: {
+          key: ticketKey(current.track_key, current.number),
+          transitionId: transition.id,
+          from: current.status_id,
+          to: transition.to,
+        },
+      });
+      return { ticket: updated };
     });
     return answer(request, reply, outcome);
   });

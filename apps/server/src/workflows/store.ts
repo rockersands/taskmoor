@@ -1,0 +1,162 @@
+import type { Database, StatusStage } from '@taskmoor/db';
+import { type Kysely, sql, type Transaction } from 'kysely';
+import { rewriteTickets } from '../tickets/fields';
+import { definitionSchema, type WorkflowDefinition } from './model';
+
+/**
+ * Reading workflows and moving tickets between statuses (M1-023). Lock order, as for the
+ * other configuration values: a ticket write holds its track (key share), then its workflow
+ * (key share), then the ticket; publishing a workflow holds the workflow (update) and then
+ * rewrites tickets; a track's switch of workflow holds the track (update), then both
+ * workflows, then tickets.
+ */
+type Db = Kysely<Database> | Transaction<Database>;
+
+export async function defaultWorkflowId(db: Db, workspaceId: number): Promise<number> {
+  const row = await db
+    .selectFrom('workflow')
+    .select('id')
+    .where('workspace_id', '=', workspaceId)
+    .where('is_default', '=', true)
+    .executeTakeFirstOrThrow();
+  return row.id;
+}
+
+/** The workflow a track's tickets move through. */
+export async function trackWorkflowId(db: Db, workspaceId: number, trackId: number) {
+  const track = await db
+    .selectFrom('track')
+    .select('workflow_id')
+    .where('id', '=', trackId)
+    .where('workspace_id', '=', workspaceId)
+    .executeTakeFirst();
+  return track?.workflow_id ?? defaultWorkflowId(db, workspaceId);
+}
+
+export async function loadDefinition(
+  db: Db,
+  workflowId: number,
+  version: number,
+): Promise<WorkflowDefinition> {
+  const row = await db
+    .selectFrom('workflow_version')
+    .select('definition')
+    .where('workflow_id', '=', workflowId)
+    .where('version', '=', version)
+    .executeTakeFirstOrThrow();
+  return definitionSchema.parse(row.definition);
+}
+
+/**
+ * A workflow and its published definition, the row held until the transaction ends: key
+ * share for a ticket write (a publish waits for it, and it for a publish), update for a
+ * change to the workflow itself.
+ */
+export async function holdWorkflow(
+  trx: Transaction<Database>,
+  workflowId: number,
+  mode: 'share' | 'update',
+) {
+  const query = trx
+    .selectFrom('workflow')
+    .select(['id', 'name', 'published_version', 'draft_version', 'is_default'])
+    .where('id', '=', workflowId);
+  const row = await (mode === 'share' ? query.forKeyShare() : query.forUpdate()).executeTakeFirst();
+  if (!row) return null;
+  return { ...row, definition: await loadDefinition(trx, row.id, row.published_version) };
+}
+
+/** Name and stage of statuses by id. */
+export async function statusInfo(
+  db: Db,
+  workspaceId: number,
+  ids: readonly number[],
+): Promise<Map<number, { name: string; stage: StatusStage }>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .selectFrom('status')
+    .select(['id', 'name', 'stage'])
+    .where('workspace_id', '=', workspaceId)
+    .where('id', 'in', [...new Set(ids)])
+    .execute();
+  return new Map(rows.map((r) => [r.id, { name: r.name, stage: r.stage }]));
+}
+
+/** The close reason a ticket closed without one takes: the first in the list. */
+export async function defaultCloseReason(db: Db, workspaceId: number): Promise<number | null> {
+  const row = await db
+    .selectFrom('close_reason')
+    .select('id')
+    .where('workspace_id', '=', workspaceId)
+    .orderBy('sort_order')
+    .limit(1)
+    .executeTakeFirst();
+  return row?.id ?? null;
+}
+
+/**
+ * Tickets, the trash included, whose track uses a workflow and whose status is one of
+ * `statusIds`, by status.
+ */
+export async function ticketsInStatuses(
+  db: Db,
+  workspaceId: number,
+  workflowId: number,
+  statusIds: readonly number[],
+  trackId?: number,
+): Promise<Map<number, number[]>> {
+  if (statusIds.length === 0) return new Map();
+  const isDefault = (await defaultWorkflowId(db, workspaceId)) === workflowId;
+  let query = db
+    .selectFrom('ticket as k')
+    .innerJoin('track as t', 't.id', 'k.track_id')
+    .select(['k.id', 'k.status_id'])
+    .where('k.workspace_id', '=', workspaceId)
+    .where('k.status_id', 'in', [...statusIds]);
+  query =
+    trackId !== undefined
+      ? query.where('k.track_id', '=', trackId)
+      : query.where((eb) =>
+          isDefault
+            ? eb.or([eb('t.workflow_id', '=', workflowId), eb('t.workflow_id', 'is', null)])
+            : eb('t.workflow_id', '=', workflowId),
+        );
+  const out = new Map<number, number[]>();
+  for (const row of await query.orderBy('k.id').execute()) {
+    out.set(row.status_id, [...(out.get(row.status_id) ?? []), row.id]);
+  }
+  return out;
+}
+
+/**
+ * Moves tickets from statuses to others (`mapping` from → to), with the closed-stage rules
+ * of WF-008, a new version per ticket and their history as one change set. Returns how many
+ * tickets moved.
+ */
+export async function remapStatuses(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  actorId: number | null,
+  tickets: ReadonlyMap<number, readonly number[]>,
+  mapping: ReadonlyMap<number, number>,
+): Promise<number> {
+  const all = [...tickets.values()].flat();
+  if (all.length === 0) return 0;
+  const stages = await statusInfo(trx, workspaceId, [...mapping.keys(), ...mapping.values()]);
+  const reason = await defaultCloseReason(trx, workspaceId);
+  return rewriteTickets(trx, workspaceId, actorId, all, async (ids) => {
+    for (const [from, to] of mapping) {
+      const fromStage = stages.get(from)?.stage;
+      const toStage = stages.get(to)?.stage;
+      const closing =
+        toStage === 'closed' && fromStage !== 'closed'
+          ? sql`, close_reason_id = coalesce(close_reason_id, ${reason}::int), closed_at = now()`
+          : toStage !== 'closed' && fromStage === 'closed'
+            ? sql`, close_reason_id = NULL, closed_at = NULL`
+            : sql``;
+      await sql`
+        UPDATE ticket SET status_id = ${to}${closing}
+         WHERE id = ANY(${ids}::int[]) AND status_id = ${from}`.execute(trx);
+    }
+  });
+}

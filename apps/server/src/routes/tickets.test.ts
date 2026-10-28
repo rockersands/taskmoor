@@ -934,6 +934,8 @@ describe('tickets (M1-008)', () => {
         'track',
         'key',
         'type',
+        // The workflow's initial status (M1-023).
+        'status',
         'summary',
         'description',
         'assignee',
@@ -948,6 +950,7 @@ describe('tickets (M1-008)', () => {
       );
       const by = Object.fromEntries(changes.map((c) => [c.field, c.to]));
       expect(by.priority?.display).toBe('Normal');
+      expect(by.status?.display).toBe('New');
       expect(by.track).toEqual({ value: String(tracks.ABC), display: 'ABC' });
       expect(by.type).toEqual({ value: String(types.Feature), display: 'Feature' });
       expect(by.assignee).toEqual({ value: String(users.dave?.id), display: 'dave' });

@@ -122,6 +122,7 @@ export function ticketQuery(db: Db, workspaceId: number) {
     .leftJoin('track as wt', 'wt.id', 'w.track_id')
     .leftJoin('priority as pr', 'pr.id', 'k.priority_id')
     .leftJoin('close_reason as cr', 'cr.id', 'k.close_reason_id')
+    .innerJoin('status as st', 'st.id', 'k.status_id')
     .select([
       'k.id',
       'k.number',
@@ -141,6 +142,9 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'p.summary as parent_summary',
       'p.track_id as parent_track_id',
       'pt.key as parent_track_key',
+      'k.status_id',
+      'st.name as status_name',
+      'st.stage as status_stage',
       'k.summary',
       'k.description',
       'k.environment',
@@ -251,6 +255,7 @@ export function ticketView(row: TicketRow, canSeeParent: boolean) {
               : null,
             summary: parentVisible ? row.parent_summary : null,
           },
+    status: { id: row.status_id, name: row.status_name, stage: row.status_stage },
     summary: row.summary,
     description: row.description,
     environment: row.environment,

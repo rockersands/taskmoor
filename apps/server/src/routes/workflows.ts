@@ -1,0 +1,849 @@
+import type { Database } from '@taskmoor/db';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { type Kysely, sql, type Transaction } from 'kysely';
+import { z } from 'zod';
+import { requireGlobal, requireUser } from '../auth';
+import { diff, emit } from '../events/bus';
+import { lockList, writeOrder } from '../tickets/fields';
+import {
+  definitionProblem,
+  definitionSchema,
+  removedStatuses,
+  statusIdsOf,
+  type WorkflowDefinition,
+} from '../workflows/model';
+import {
+  defaultWorkflowId,
+  holdWorkflow,
+  loadDefinition,
+  remapStatuses,
+  ticketsInStatuses,
+} from '../workflows/store';
+
+/**
+ * Statuses and workflows (M1-023; CORE-014, WF-001, WF-002; spec 01a sections 1.6 and 3).
+ *
+ * - Statuses are the workspace's ordered list, each in a stage (new, active, closed).
+ *   Everyone signed in reads them; site and configuration administrators change them. A
+ *   status keeps its stage while tickets are in it (their Closed time stamps depend on it),
+ *   and is deleted only when no ticket and no current workflow version uses it.
+ * - A workflow is versioned data. Administrators save a draft (`PUT .../draft`), see what
+ *   publishing it would do (`GET .../impact`), and publish it: statuses the draft drops take
+ *   their tickets to the statuses `statusMapping` names, with history, and the next
+ *   transition uses the new version (WF-002 (1), (2)). Any earlier version can be restored
+ *   as the draft (WF-002 (3)). A new workflow is published as version 1.
+ * - A track's members holding "View read-only workflow" (or administering it) read its
+ *   workflow at `GET /api/v1/tracks/:id/workflow`.
+ *
+ * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
+ */
+const MAX_INT = 2_147_483_647;
+const id = z.coerce.number().int().positive().max(MAX_INT);
+const name = z.string().trim().min(1).max(255);
+const description = z.string().max(2000);
+const stage = z.enum(['new', 'active', 'closed']);
+const unique = <T>(list: readonly T[]) => new Set(list).size === list.length;
+
+const createStatusBody = z.object({ name, description: description.optional(), stage }).strict();
+const updateStatusBody = z.object({ name, description, stage }).partial().strict();
+const createWorkflowBody = z
+  .object({ name, description: description.optional(), definition: definitionSchema })
+  .strict();
+const updateWorkflowBody = z.object({ name, description }).partial().strict();
+/** For each status a draft drops that tickets are in: the status they go to. */
+const statusMapping = z.record(z.string().regex(/^\d{1,10}$/), id);
+const publishBody = z.object({ statusMapping: statusMapping.optional() }).strict();
+
+type Db = Kysely<Database> | Transaction<Database>;
+
+function uniqueViolation(error: unknown): string | null {
+  const e = error as { code?: string; constraint?: string };
+  return e.code === '23505' ? (e.constraint ?? '') : null;
+}
+
+const invalid = (reply: FastifyReply, detail?: unknown) =>
+  reply.code(400).send({ error: 'invalid_request', ...(detail ? { detail } : {}) });
+const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
+
+function statusRows(db: Db, workspaceId: number) {
+  return db
+    .selectFrom('status')
+    .select(['id', 'name', 'description', 'stage', 'sort_order'])
+    .where('workspace_id', '=', workspaceId)
+    .orderBy('sort_order')
+    .execute();
+}
+type StatusRow = Awaited<ReturnType<typeof statusRows>>[number];
+const statusView = (s: StatusRow) => ({
+  id: s.id,
+  name: s.name,
+  description: s.description,
+  stage: s.stage,
+  order: s.sort_order,
+});
+
+/** Tracks that use a workflow, the default's included. */
+async function tracksUsing(db: Db, workspaceId: number, workflowId: number, isDefault: boolean) {
+  return db
+    .selectFrom('track')
+    .select(['id', 'key', 'name'])
+    .where('workspace_id', '=', workspaceId)
+    .where((eb) =>
+      isDefault
+        ? eb.or([eb('workflow_id', '=', workflowId), eb('workflow_id', 'is', null)])
+        : eb('workflow_id', '=', workflowId),
+    )
+    .orderBy('key')
+    .execute();
+}
+
+async function knownStatuses(db: Db, workspaceId: number): Promise<Set<number>> {
+  const rows = await db
+    .selectFrom('status')
+    .select('id')
+    .where('workspace_id', '=', workspaceId)
+    .execute();
+  return new Set(rows.map((r) => r.id));
+}
+
+/** Stores a version's definition and the statuses it uses. */
+async function writeVersion(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  workflowId: number,
+  version: number,
+  definition: WorkflowDefinition,
+  actorId: number | null,
+  published: boolean,
+) {
+  await trx
+    .deleteFrom('workflow_version')
+    .where('workflow_id', '=', workflowId)
+    .where('version', '=', version)
+    .execute();
+  await trx
+    .insertInto('workflow_version')
+    .values({
+      workspace_id: workspaceId,
+      workflow_id: workflowId,
+      version,
+      definition: JSON.stringify(definition),
+      created_by: actorId,
+      ...(published ? { published_at: new Date(), published_by: actorId } : {}),
+    })
+    .execute();
+  await trx
+    .insertInto('workflow_version_status')
+    .values(
+      [...statusIdsOf(definition)].map((status_id) => ({
+        workspace_id: workspaceId,
+        workflow_id: workflowId,
+        version,
+        status_id,
+      })),
+    )
+    .execute();
+}
+
+export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+  const by = (request: FastifyRequest) => ({
+    workspaceId: request.workspaceId,
+    actorId: request.user?.id ?? null,
+  });
+  const configAdmin = (request: FastifyRequest, reply: FastifyReply) =>
+    requireGlobal(request, reply, 'site_admin', 'configuration_admin');
+
+  async function workflowRow(workspaceId: number, workflowId: number) {
+    return db
+      .selectFrom('workflow')
+      .selectAll()
+      .where('id', '=', workflowId)
+      .where('workspace_id', '=', workspaceId)
+      .executeTakeFirst();
+  }
+
+  /** A workflow with its published version, its draft and the tracks using it. */
+  async function workflowView(workspaceId: number, workflowId: number) {
+    const row = await workflowRow(workspaceId, workflowId);
+    if (!row) return null;
+    const versions = await db
+      .selectFrom('workflow_version')
+      .select(['version', 'definition', 'created_at', 'published_at'])
+      .where('workflow_id', '=', workflowId)
+      .where('version', 'in', [row.published_version, row.draft_version ?? row.published_version])
+      .execute();
+    const version = (v: number | null) => {
+      const found = versions.find((x) => x.version === v);
+      return found
+        ? {
+            version: found.version,
+            definition: definitionSchema.parse(found.definition),
+            createdAt: found.created_at.toISOString(),
+            publishedAt: found.published_at?.toISOString() ?? null,
+          }
+        : null;
+    };
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      isDefault: row.is_default,
+      published: version(row.published_version),
+      draft: version(row.draft_version),
+      tracks: await tracksUsing(db, workspaceId, row.id, row.is_default),
+    };
+  }
+
+  /** What publishing the draft does: the statuses it drops, with their tickets. */
+  async function impactOf(trx: Db, workspaceId: number, workflowId: number) {
+    const row = await trx
+      .selectFrom('workflow')
+      .select(['published_version', 'draft_version', 'is_default'])
+      .where('id', '=', workflowId)
+      .executeTakeFirstOrThrow();
+    if (row.draft_version === null) return null;
+    const published = await loadDefinition(trx, workflowId, row.published_version);
+    const draft = await loadDefinition(trx, workflowId, row.draft_version);
+    const removed = removedStatuses(published, draft);
+    const tickets = await ticketsInStatuses(trx, workspaceId, workflowId, removed);
+    return {
+      draft,
+      tickets,
+      removedStatuses: removed.map((statusId) => ({
+        statusId,
+        ticketCount: tickets.get(statusId)?.length ?? 0,
+      })),
+    };
+  }
+
+  // Statuses (CORE-014)
+
+  app.get('/api/v1/statuses', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    return { statuses: (await statusRows(db, request.workspaceId)).map(statusView) };
+  });
+
+  app.post('/api/v1/statuses', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const parsed = createStatusBody.safeParse(request.body);
+    if (!parsed.success) return invalid(reply);
+    const body = parsed.data;
+    const ws = request.workspaceId;
+    try {
+      const row = await db.transaction().execute(async (trx) => {
+        await lockList(trx, ws, 'status');
+        const last = await trx
+          .selectFrom('status')
+          .select(sql<number>`coalesce(max(sort_order), 0)`.as('n'))
+          .where('workspace_id', '=', ws)
+          .executeTakeFirstOrThrow();
+        const created = await trx
+          .insertInto('status')
+          .values({
+            workspace_id: ws,
+            name: body.name,
+            description: body.description ?? '',
+            stage: body.stage,
+            sort_order: Number(last.n) + 1,
+          })
+          .returning(['id', 'name', 'description', 'stage', 'sort_order'])
+          .executeTakeFirstOrThrow();
+        await emit(trx, by(request), {
+          type: 'status.created',
+          subjectId: created.id,
+          payload: { name: created.name, stage: created.stage },
+        });
+        return created;
+      });
+      return reply.code(201).send({ status: statusView(row) });
+    } catch (error) {
+      if (uniqueViolation(error) === 'status_name_idx') {
+        return reply.code(409).send({ error: 'name_taken' });
+      }
+      throw error;
+    }
+  });
+
+  app.put('/api/v1/statuses/order', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const parsed = z
+      .object({ statusIds: z.array(id).min(1).max(10_000).refine(unique, 'each id once') })
+      .strict()
+      .safeParse(request.body);
+    if (!parsed.success) return invalid(reply);
+    const ids = parsed.data.statusIds;
+    const ws = request.workspaceId;
+    const done = await db.transaction().execute(async (trx) => {
+      await lockList(trx, ws, 'status');
+      const all = await knownStatuses(trx, ws);
+      if (all.size !== ids.length || ids.some((i) => !all.has(i))) return false;
+      await writeOrder(trx, 'status', ids);
+      await emit(trx, by(request), {
+        type: 'status.reordered',
+        subjectId: ws,
+        payload: { statusIds: ids },
+      });
+      return true;
+    });
+    if (!done) return invalid(reply, 'statusIds must list every status once');
+    return { statuses: (await statusRows(db, ws)).map(statusView) };
+  });
+
+  app.patch('/api/v1/statuses/:id', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    const parsed = updateStatusBody.safeParse(request.body);
+    if (!params.success || !parsed.success) return invalid(reply);
+    const body = parsed.data;
+    const ws = request.workspaceId;
+    try {
+      const result = await db.transaction().execute(async (trx) => {
+        const current = await trx
+          .selectFrom('status')
+          .select(['id', 'name', 'description', 'stage', 'sort_order'])
+          .where('id', '=', params.data.id)
+          .where('workspace_id', '=', ws)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!current) return { missing: true as const };
+        const changes = diff<Record<string, unknown>>(
+          { name: current.name, description: current.description, stage: current.stage },
+          body,
+        );
+        if (Object.keys(changes).length === 0) return { status: current };
+        if (changes.stage) {
+          // Tickets in it would cross into or out of the closed stage without closing.
+          const used = await trx
+            .selectFrom('ticket')
+            .select(sql<string>`count(*)`.as('n'))
+            .where('status_id', '=', current.id)
+            .executeTakeFirstOrThrow();
+          if (Number(used.n) > 0) return { inUse: Number(used.n) };
+        }
+        const updated = await trx
+          .updateTable('status')
+          .set({ ...body, updated_at: new Date() })
+          .where('id', '=', current.id)
+          .returning(['id', 'name', 'description', 'stage', 'sort_order'])
+          .executeTakeFirstOrThrow();
+        await emit(trx, by(request), {
+          type: 'status.updated',
+          subjectId: current.id,
+          payload: { changes },
+        });
+        return { status: updated };
+      });
+      if ('missing' in result) return notFound(reply);
+      if ('inUse' in result) {
+        return reply.code(409).send({ error: 'status_in_use', ticketCount: result.inUse });
+      }
+      return { status: statusView(result.status) };
+    } catch (error) {
+      if (uniqueViolation(error) === 'status_name_idx') {
+        return reply.code(409).send({ error: 'name_taken' });
+      }
+      throw error;
+    }
+  });
+
+  app.delete('/api/v1/statuses/:id', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const result = await db.transaction().execute(async (trx) => {
+      await lockList(trx, ws, 'status');
+      const current = await trx
+        .selectFrom('status')
+        .select(['id', 'name'])
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', ws)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!current) return { missing: true as const };
+      const workflows = await trx
+        .selectFrom('workflow_version_status as s')
+        .innerJoin('workflow as w', 'w.id', 's.workflow_id')
+        .select(['w.id', 'w.name'])
+        .distinct()
+        .where('s.status_id', '=', current.id)
+        .where((eb) =>
+          eb.or([
+            eb('s.version', '=', eb.ref('w.published_version')),
+            eb('s.version', '=', eb.ref('w.draft_version')),
+          ]),
+        )
+        .execute();
+      const tickets = await trx
+        .selectFrom('ticket')
+        .select(sql<string>`count(*)`.as('n'))
+        .where('status_id', '=', current.id)
+        .executeTakeFirstOrThrow();
+      if (workflows.length > 0 || Number(tickets.n) > 0) {
+        return { inUse: { workflows, ticketCount: Number(tickets.n) } };
+      }
+      // Older versions keep the id in their definitions; restoring one now names the status
+      // as unknown.
+      await trx.deleteFrom('workflow_version_status').where('status_id', '=', current.id).execute();
+      await trx.deleteFrom('status').where('id', '=', current.id).execute();
+      const rest = await statusRows(trx, ws);
+      await writeOrder(
+        trx,
+        'status',
+        rest.map((s) => s.id),
+      );
+      await emit(trx, by(request), {
+        type: 'status.deleted',
+        subjectId: current.id,
+        payload: { name: current.name },
+      });
+      return { done: true as const };
+    });
+    if ('missing' in result) return notFound(reply);
+    if ('inUse' in result) return reply.code(409).send({ error: 'status_in_use', ...result.inUse });
+    return reply.code(204).send();
+  });
+
+  // Workflows (WF-001, WF-002)
+
+  app.get('/api/v1/workflows', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const ws = request.workspaceId;
+    const defaultId = await defaultWorkflowId(db, ws);
+    const rows = await db
+      .selectFrom('workflow as w')
+      .select([
+        'w.id',
+        'w.name',
+        'w.description',
+        'w.is_default',
+        'w.published_version',
+        'w.draft_version',
+        (eb) =>
+          eb
+            .selectFrom('track as t')
+            .select(sql<string>`count(*)`.as('n'))
+            .where('t.workspace_id', '=', ws)
+            .where((t) =>
+              t.or([
+                t('t.workflow_id', '=', t.ref('w.id')),
+                t.and([t('t.workflow_id', 'is', null), t(t.ref('w.id'), '=', defaultId)]),
+              ]),
+            )
+            .as('track_count'),
+      ])
+      .where('w.workspace_id', '=', ws)
+      .orderBy('w.is_default', 'desc')
+      .orderBy(sql`lower(w.name)`)
+      .execute();
+    return {
+      workflows: rows.map((w) => ({
+        id: w.id,
+        name: w.name,
+        description: w.description,
+        isDefault: w.is_default,
+        publishedVersion: w.published_version,
+        draftVersion: w.draft_version,
+        trackCount: Number(w.track_count ?? 0),
+      })),
+    };
+  });
+
+  app.get('/api/v1/workflows/:id', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const view = await workflowView(request.workspaceId, params.data.id);
+    if (!view) return notFound(reply);
+    return { workflow: view };
+  });
+
+  // A track's workflow, read-only, for those who may see it (WF-002).
+  app.get('/api/v1/tracks/:id/workflow', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const held = await request.authz.track(params.data.id);
+    const global = await request.authz.global();
+    const admin = global.has('site_admin') || global.has('configuration_admin');
+    if (!admin && !held.has('view_readonly_workflow') && !held.has('administer_track')) {
+      return held.has('browse_track')
+        ? reply.code(403).send({ error: 'forbidden', permission: 'view_readonly_workflow' })
+        : notFound(reply);
+    }
+    const track = await db
+      .selectFrom('track')
+      .select('workflow_id')
+      .where('id', '=', params.data.id)
+      .where('workspace_id', '=', ws)
+      .executeTakeFirst();
+    if (!track) return notFound(reply);
+    const workflowId = track.workflow_id ?? (await defaultWorkflowId(db, ws));
+    const row = await workflowRow(ws, workflowId);
+    if (!row) return notFound(reply);
+    return {
+      workflow: {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        version: row.published_version,
+        definition: await loadDefinition(db, row.id, row.published_version),
+      },
+    };
+  });
+
+  app.post('/api/v1/workflows', async (request, reply) => {
+    const user = await configAdmin(request, reply);
+    if (!user) return reply;
+    const parsed = createWorkflowBody.safeParse(request.body);
+    if (!parsed.success) return invalid(reply);
+    const body = parsed.data;
+    const ws = request.workspaceId;
+    const problem = definitionProblem(body.definition, await knownStatuses(db, ws));
+    if (problem) return invalid(reply, problem);
+    try {
+      const workflowId = await db.transaction().execute(async (trx) => {
+        const row = await trx
+          .insertInto('workflow')
+          .values({ workspace_id: ws, name: body.name, description: body.description ?? '' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        await writeVersion(trx, ws, row.id, 1, body.definition, user.id, true);
+        await emit(trx, by(request), {
+          type: 'workflow.created',
+          subjectId: row.id,
+          payload: {
+            name: body.name,
+            statusIds: [...statusIdsOf(body.definition)],
+            transitionCount: body.definition.transitions.length,
+          },
+        });
+        return row.id;
+      });
+      return reply.code(201).send({ workflow: await workflowView(ws, workflowId) });
+    } catch (error) {
+      if (uniqueViolation(error) === 'workflow_name_idx') {
+        return reply.code(409).send({ error: 'name_taken' });
+      }
+      throw error;
+    }
+  });
+
+  app.patch('/api/v1/workflows/:id', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    const parsed = updateWorkflowBody.safeParse(request.body);
+    if (!params.success || !parsed.success) return invalid(reply);
+    const body = parsed.data;
+    const ws = request.workspaceId;
+    try {
+      const found = await db.transaction().execute(async (trx) => {
+        const current = await trx
+          .selectFrom('workflow')
+          .select(['id', 'name', 'description'])
+          .where('id', '=', params.data.id)
+          .where('workspace_id', '=', ws)
+          .forNoKeyUpdate()
+          .executeTakeFirst();
+        if (!current) return false;
+        const changes = diff<Record<string, unknown>>(
+          { name: current.name, description: current.description },
+          body,
+        );
+        if (Object.keys(changes).length === 0) return true;
+        await trx
+          .updateTable('workflow')
+          .set({ ...body, updated_at: new Date() })
+          .where('id', '=', current.id)
+          .execute();
+        await emit(trx, by(request), {
+          type: 'workflow.updated',
+          subjectId: current.id,
+          payload: { changes },
+        });
+        return true;
+      });
+      if (!found) return notFound(reply);
+      return { workflow: await workflowView(ws, params.data.id) };
+    } catch (error) {
+      if (uniqueViolation(error) === 'workflow_name_idx') {
+        return reply.code(409).send({ error: 'name_taken' });
+      }
+      throw error;
+    }
+  });
+
+  /** Saves a definition as the draft, after the published version. */
+  async function saveDraft(
+    request: FastifyRequest,
+    workflowId: number,
+    definition: WorkflowDefinition,
+    restoredFrom: number | null,
+  ) {
+    const ws = request.workspaceId;
+    return db.transaction().execute(async (trx) => {
+      const row = await trx
+        .selectFrom('workflow')
+        .select(['id', 'published_version', 'draft_version'])
+        .where('id', '=', workflowId)
+        .where('workspace_id', '=', ws)
+        .forNoKeyUpdate()
+        .executeTakeFirst();
+      if (!row) return null;
+      const version = row.draft_version ?? row.published_version + 1;
+      // A draft number may have been used by a discarded draft: it is replaced.
+      await writeVersion(trx, ws, row.id, version, definition, request.user?.id ?? null, false);
+      await trx
+        .updateTable('workflow')
+        .set({ draft_version: version, updated_at: new Date() })
+        .where('id', '=', row.id)
+        .execute();
+      await emit(trx, by(request), {
+        type: 'workflow.draft_saved',
+        subjectId: row.id,
+        payload: { version, restoredFrom },
+      });
+      return version;
+    });
+  }
+
+  app.put('/api/v1/workflows/:id/draft', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    const parsed = z.object({ definition: definitionSchema }).strict().safeParse(request.body);
+    if (!params.success || !parsed.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const problem = definitionProblem(parsed.data.definition, await knownStatuses(db, ws));
+    if (problem) return invalid(reply, problem);
+    const version = await saveDraft(request, params.data.id, parsed.data.definition, null);
+    if (version === null) return notFound(reply);
+    return { workflow: await workflowView(ws, params.data.id) };
+  });
+
+  app.delete('/api/v1/workflows/:id/draft', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const result = await db.transaction().execute(async (trx) => {
+      const row = await trx
+        .selectFrom('workflow')
+        .select(['id', 'draft_version'])
+        .where('id', '=', params.data.id)
+        .where('workspace_id', '=', ws)
+        .forNoKeyUpdate()
+        .executeTakeFirst();
+      if (!row) return 'missing';
+      if (row.draft_version === null) return 'no_draft';
+      await trx
+        .updateTable('workflow')
+        .set({ draft_version: null, updated_at: new Date() })
+        .where('id', '=', row.id)
+        .execute();
+      await trx
+        .deleteFrom('workflow_version')
+        .where('workflow_id', '=', row.id)
+        .where('version', '=', row.draft_version)
+        .execute();
+      await emit(trx, by(request), {
+        type: 'workflow.draft_discarded',
+        subjectId: row.id,
+        payload: { version: row.draft_version },
+      });
+      return 'done';
+    });
+    if (result === 'missing') return notFound(reply);
+    if (result === 'no_draft') return reply.code(409).send({ error: 'no_draft' });
+    return reply.code(204).send();
+  });
+
+  app.get('/api/v1/workflows/:id/impact', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const row = await workflowRow(ws, params.data.id);
+    if (!row) return notFound(reply);
+    const impact = await impactOf(db, ws, row.id);
+    if (!impact) return reply.code(409).send({ error: 'no_draft' });
+    return {
+      removedStatuses: impact.removedStatuses,
+      tracks: await tracksUsing(db, ws, row.id, row.is_default),
+    };
+  });
+
+  // The draft becomes current; dropped statuses take their tickets where the mapping says.
+  app.post('/api/v1/workflows/:id/publish', async (request, reply) => {
+    const user = await configAdmin(request, reply);
+    if (!user) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    const parsed = publishBody.safeParse(request.body ?? {});
+    if (!params.success || !parsed.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const mapping = new Map(
+      Object.entries(parsed.data.statusMapping ?? {}).map(([from, to]) => [Number(from), to]),
+    );
+    const result = await db.transaction().execute(async (trx) => {
+      // The workflow first, so no ticket write against the old version is in between.
+      const held = await holdWorkflow(trx, params.data.id, 'update');
+      if (!held) return { missing: true as const };
+      const impact = await impactOf(trx, ws, held.id);
+      if (!impact) return { conflict: 'no_draft' };
+      const statuses = statusIdsOf(impact.draft);
+      const needed = impact.removedStatuses.filter((r) => r.ticketCount > 0);
+      const unmapped = needed.filter((r) => !mapping.has(r.statusId));
+      if (unmapped.length > 0) {
+        return { mappingRequired: needed };
+      }
+      for (const r of needed) {
+        if (!statuses.has(mapping.get(r.statusId) as number)) {
+          return { badMapping: r.statusId };
+        }
+      }
+      const used = new Map(needed.map((r) => [r.statusId, mapping.get(r.statusId) as number]));
+      const ticketCount = await remapStatuses(trx, ws, user.id, impact.tickets, used);
+      const version = held.draft_version as number;
+      await trx
+        .updateTable('workflow_version')
+        .set({ published_at: new Date(), published_by: user.id })
+        .where('workflow_id', '=', held.id)
+        .where('version', '=', version)
+        .execute();
+      await trx
+        .updateTable('workflow')
+        .set({ published_version: version, draft_version: null, updated_at: new Date() })
+        .where('id', '=', held.id)
+        .execute();
+      await emit(trx, by(request), {
+        type: 'workflow.published',
+        subjectId: held.id,
+        payload: {
+          version,
+          removedStatuses: impact.removedStatuses.map((r) => r.statusId),
+          statusMapping: Object.fromEntries([...used].map(([from, to]) => [String(from), to])),
+          ticketCount,
+        },
+      });
+      return { done: true as const };
+    });
+    if ('missing' in result) return notFound(reply);
+    if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
+    if ('mappingRequired' in result) {
+      return reply
+        .code(409)
+        .send({ error: 'status_mapping_required', statuses: result.mappingRequired });
+    }
+    if ('badMapping' in result) {
+      return invalid(reply, { statusMapping: result.badMapping, problem: 'not_in_workflow' });
+    }
+    return { workflow: await workflowView(ws, params.data.id) };
+  });
+
+  app.get('/api/v1/workflows/:id/versions', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const row = await workflowRow(request.workspaceId, params.data.id);
+    if (!row) return notFound(reply);
+    const versions = await db
+      .selectFrom('workflow_version as v')
+      .leftJoin('app_user as c', 'c.id', 'v.created_by')
+      .leftJoin('app_user as p', 'p.id', 'v.published_by')
+      .select([
+        'v.version',
+        'v.created_at',
+        'c.id as created_by',
+        'c.name as created_by_name',
+        'v.published_at',
+        'p.id as published_by',
+        'p.name as published_by_name',
+      ])
+      .where('v.workflow_id', '=', row.id)
+      .orderBy('v.version', 'desc')
+      .execute();
+    return {
+      versions: versions.map((v) => ({
+        version: v.version,
+        state:
+          v.version === row.published_version
+            ? 'published'
+            : v.version === row.draft_version
+              ? 'draft'
+              : 'earlier',
+        createdAt: v.created_at.toISOString(),
+        createdBy: v.created_by === null ? null : { id: v.created_by, name: v.created_by_name },
+        publishedAt: v.published_at?.toISOString() ?? null,
+        publishedBy:
+          v.published_by === null ? null : { id: v.published_by, name: v.published_by_name },
+      })),
+    };
+  });
+
+  app.get('/api/v1/workflows/:id/versions/:version', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id, version: id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const row = await workflowRow(request.workspaceId, params.data.id);
+    if (!row) return notFound(reply);
+    const version = await db
+      .selectFrom('workflow_version')
+      .select(['version', 'definition'])
+      .where('workflow_id', '=', row.id)
+      .where('version', '=', params.data.version)
+      .executeTakeFirst();
+    if (!version) return notFound(reply);
+    return { version: version.version, definition: definitionSchema.parse(version.definition) };
+  });
+
+  // An earlier version comes back as the draft, to publish like any other (WF-002 (3)).
+  app.post('/api/v1/workflows/:id/versions/:version/restore', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id, version: id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const row = await workflowRow(ws, params.data.id);
+    if (!row) return notFound(reply);
+    if (params.data.version === row.draft_version)
+      return reply.code(409).send({ error: 'is_draft' });
+    const source = await db
+      .selectFrom('workflow_version')
+      .select('definition')
+      .where('workflow_id', '=', row.id)
+      .where('version', '=', params.data.version)
+      .executeTakeFirst();
+    if (!source) return notFound(reply);
+    const definition = definitionSchema.parse(source.definition);
+    const problem = definitionProblem(definition, await knownStatuses(db, ws));
+    if (problem) return reply.code(409).send({ error: 'cannot_restore', detail: problem });
+    await saveDraft(request, row.id, definition, params.data.version);
+    return { workflow: await workflowView(ws, row.id) };
+  });
+
+  app.delete('/api/v1/workflows/:id', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const result = await db.transaction().execute(async (trx) => {
+      const held = await holdWorkflow(trx, params.data.id, 'update');
+      if (!held) return { missing: true as const };
+      if (held.is_default) return { conflict: 'default_workflow' };
+      const tracks = await tracksUsing(trx, ws, held.id, false);
+      if (tracks.length > 0) return { inUse: tracks };
+      await trx.deleteFrom('workflow').where('id', '=', held.id).execute();
+      await emit(trx, by(request), {
+        type: 'workflow.deleted',
+        subjectId: held.id,
+        payload: { name: held.name },
+      });
+      return { done: true as const };
+    });
+    if ('missing' in result) return notFound(reply);
+    if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
+    if ('inUse' in result) {
+      return reply.code(409).send({ error: 'workflow_in_use', tracks: result.inUse });
+    }
+    return reply.code(204).send();
+  });
+}

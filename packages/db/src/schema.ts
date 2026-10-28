@@ -212,6 +212,8 @@ export interface TrackTable {
   type_set_id: number | null;
   /** The priorities it offers (M1-014); null for the workspace's default set. */
   priority_set_id: number | null;
+  /** Its workflow; null for the workspace's default (M1-023). */
+  workflow_id: number | null;
 }
 
 export type HierarchyLevelKind = 'subticket' | 'standard' | 'outcome' | 'custom';
@@ -351,6 +353,8 @@ export interface TicketTable {
   remaining_estimate: number | null;
   /** Seconds: the sum of the ticket's time entries. */
   time_spent: Generated<number>;
+  /** Left out on insert, a trigger sets the track workflow's initial status (M1-023). */
+  status_id: ColumnType<number, number | undefined, number>;
 }
 
 /** The last ticket number given out in each track. */
@@ -609,6 +613,52 @@ export interface TimeEntryTable {
   created_by: number | null;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
+}
+
+/** A status, in one of three stages (M1-023, CORE-014). */
+export type StatusStage = 'new' | 'active' | 'closed';
+export interface StatusTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  stage: StatusStage;
+  sort_order: number;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A workflow: versioned data, one version published, at most one draft (WF-001, WF-002). */
+export interface WorkflowTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  is_default: Generated<boolean>;
+  published_version: Generated<number>;
+  draft_version: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface WorkflowVersionTable {
+  workspace_id: number;
+  workflow_id: number;
+  version: number;
+  /** Statuses, the initial status and transitions (`apps/server/src/workflows/model.ts`). */
+  definition: Json;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  published_at: Timestamp | null;
+  published_by: number | null;
+}
+
+/** The statuses a workflow version uses. */
+export interface WorkflowVersionStatusTable {
+  workspace_id: number;
+  workflow_id: number;
+  version: number;
+  status_id: number;
 }
 
 /** A user or a group acting in a role on one track. */
@@ -981,6 +1031,10 @@ export interface Database {
   user_preference: UserPreferenceTable;
   time_tracking_setting: TimeTrackingSettingTable;
   time_entry: TimeEntryTable;
+  status: StatusTable;
+  workflow: WorkflowTable;
+  workflow_version: WorkflowVersionTable;
+  workflow_version_status: WorkflowVersionStatusTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

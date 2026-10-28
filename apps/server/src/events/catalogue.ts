@@ -211,7 +211,12 @@ export const EVENT_TYPES = {
    */
   'track.updated': {
     subject: 'track',
-    payload: z.object({ changes, mapped: typeMapping.optional() }),
+    payload: z.object({
+      changes,
+      mapped: typeMapping.optional(),
+      /** Tickets moved to another status by a switch of workflow (M1-023). */
+      statusMapped: z.number().int().min(1).optional(),
+    }),
   },
   'track.archived': { subject: 'track', payload: z.object({ key: z.string() }) },
   'track.restored': { subject: 'track', payload: z.object({ key: z.string() }) },
@@ -446,6 +451,47 @@ export const EVENT_TYPES = {
   'ticket.voted': { subject: 'ticket', payload: z.object({ key: z.string() }) },
   'ticket.unvoted': { subject: 'ticket', payload: z.object({ key: z.string() }) },
   'user.preferences_updated': { subject: 'user', payload: z.object({ changes }) },
+  // Statuses and workflows (M1-023). Status changes of tickets are also their history.
+  'status.created': {
+    subject: 'status',
+    payload: z.object({ name: z.string(), stage: z.enum(['new', 'active', 'closed']) }),
+  },
+  'status.updated': { subject: 'status', payload: z.object({ changes }) },
+  'status.reordered': { subject: 'workspace', payload: z.object({ statusIds: z.array(id) }) },
+  'status.deleted': { subject: 'status', payload: z.object({ name: z.string() }) },
+  'workflow.created': {
+    subject: 'workflow',
+    payload: z.object({
+      name: z.string(),
+      statusIds: z.array(id),
+      transitionCount: z.number().int().min(0),
+    }),
+  },
+  'workflow.updated': { subject: 'workflow', payload: z.object({ changes }) },
+  /** A draft saved, or an earlier version (`restoredFrom`) brought back as the draft. */
+  'workflow.draft_saved': {
+    subject: 'workflow',
+    payload: z.object({ version: z.number().int().positive(), restoredFrom: id.nullable() }),
+  },
+  'workflow.draft_discarded': {
+    subject: 'workflow',
+    payload: z.object({ version: z.number().int().positive() }),
+  },
+  /** The draft is current; tickets in statuses it dropped moved as `statusMapping` says. */
+  'workflow.published': {
+    subject: 'workflow',
+    payload: z.object({
+      version: z.number().int().positive(),
+      removedStatuses: z.array(id),
+      statusMapping: z.record(z.string(), id),
+      ticketCount: z.number().int().min(0),
+    }),
+  },
+  'workflow.deleted': { subject: 'workflow', payload: z.object({ name: z.string() }) },
+  'ticket.transitioned': {
+    subject: 'ticket',
+    payload: z.object({ key: z.string(), transitionId: id, from: id, to: id }),
+  },
   // Time tracking (M1-019). Durations in seconds; the ticket history keeps the detail.
   'time_tracking.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   'time_entry.created': {

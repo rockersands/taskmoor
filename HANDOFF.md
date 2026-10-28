@@ -18,6 +18,18 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-023 statuses and workflows** (migration 0024, ADR-039): `/api/v1/statuses` (CRUD,
+  order), `/api/v1/workflows` (create published as version 1, `PUT/DELETE .../draft`,
+  `GET .../impact`, `POST .../publish` with `statusMapping`, `.../versions`,
+  `.../versions/:v/restore`), `GET /api/v1/tracks/:id/workflow` (read-only), and
+  `GET/POST /api/v1/tickets/:id/transitions`. Tickets have `status`; track PATCH takes
+  `workflowId` with `statusMapping`; move takes `statusId`. The rules are in
+  `workflows/model.ts` (definition schema, `transitionsFrom`, `closing`) and
+  `workflows/store.ts` (`holdWorkflow`, `remapStatuses`). A ticket inserted without a status
+  gets its workflow's initial status from a trigger. Entering the closed stage sets the close
+  reason and `closedAt`; a close reason set by hand now also sets `closedAt` (it meant
+  nothing before workflows). Next for workflows: M1-024 transitions (layouts, properties,
+  trigger hook), M1-025 guards, M1-026 checks, M1-027 effects, M1-028 workflow maps.
 - **M1-019 time tracking** (migration 0023, ADR-009 note): `GET/PATCH /api/v1/time-tracking`
   (settings), `/api/v1/tickets/:id/time-entries` (list, record with `remainingEstimate`
   `{mode: auto|leave|set|reduce}`, edit, delete with `?remainingEstimate=`), and
@@ -112,7 +124,7 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Next (in order)
 
-1. `pnpm next-task`: M1-023 (workflows), M1-010 (field types), M1-016 (attachments), M1-017
+1. `pnpm next-task`: M1-024 (transitions), M1-010 (field types), M1-016 (attachments), M1-017
    (rich text and comments), M1-020 (visibility levels) are ready. Background agents are on
    M1-082 (LDAP, migration 0021) and M1-101 (backups and trash, migration 0022) in worktrees
    `/home/user/wt-ldap` and `/home/user/wt-backup`. Releases, areas, priorities and labels have no admin UI yet (M1-050

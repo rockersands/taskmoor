@@ -308,22 +308,21 @@ export async function areaDefaultAssignee(
 
 /**
  * One change at a time to a workspace's ordered list, so two never take the same position.
- * Keys 3 and 4 sit beside the group nesting (1) and hierarchy (2) locks.
+ * Keys 3 to 5 sit beside the group nesting (1) and hierarchy (2) locks.
  */
 export async function lockList(
   trx: Transaction<Database>,
   workspaceId: number,
-  list: 'priority' | 'close_reason',
+  list: 'priority' | 'close_reason' | 'status',
 ): Promise<void> {
-  await sql`SELECT pg_advisory_xact_lock(${workspaceId}, ${list === 'priority' ? 3 : 4})`.execute(
-    trx,
-  );
+  const key = list === 'priority' ? 3 : list === 'close_reason' ? 4 : 5;
+  await sql`SELECT pg_advisory_xact_lock(${workspaceId}, ${key})`.execute(trx);
 }
 
 /** Writes a gapless order: each id takes its position from 1. */
 export async function writeOrder(
   trx: Transaction<Database>,
-  table: 'priority' | 'close_reason' | 'release',
+  table: 'priority' | 'close_reason' | 'release' | 'status',
   ids: readonly number[],
 ): Promise<void> {
   if (ids.length === 0) return;
