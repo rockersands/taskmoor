@@ -1,4 +1,4 @@
-import type { Database } from '@taskmoor/db';
+import type { Database, JsonValue } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { looksLikeKey, normalizeKey } from '../tracks/model';
@@ -179,6 +179,7 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'k.remaining_estimate',
       'k.time_spent',
       'tp.retention_days as trash_retention_days',
+      'k.fields',
     ])
     .select([
       releasesOf(db, 'target').as('target_releases'),
@@ -232,8 +233,13 @@ const person = (id: number | null, name: string | null) =>
 /**
  * A ticket as the API shows it. `canSeeParent` says whether the viewer may browse the parent's
  * track (spec 01a section 1.2 rule 5): a parent elsewhere shows only its id otherwise.
+ * `fields` holds its custom values in REST form (`fields/values.ts`), keyed by field id.
  */
-export function ticketView(row: TicketRow, canSeeParent: boolean) {
+export function ticketView(
+  row: TicketRow,
+  canSeeParent: boolean,
+  fields: Record<string, JsonValue> = {},
+) {
   const parentVisible = canSeeParent && row.parent_track_key !== null;
   return {
     id: row.id,
@@ -297,6 +303,7 @@ export function ticketView(row: TicketRow, canSeeParent: boolean) {
           ? null
           : Math.round((row.time_spent / row.original_estimate) * 1000) / 10,
     },
+    fields,
     rank: row.rank,
     version: row.version,
     createdAt: row.created_at.toISOString(),

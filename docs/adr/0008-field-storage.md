@@ -94,3 +94,11 @@ statistics above; and a bulk-loaded table needs `VACUUM` before index-only scans
 The first 10M runs were taken on a 5,400 rpm hard disk by mistake: random reads there cost
 13 ms, which made single-ticket reads 30 ms and hid the plan problems behind the disk; the
 figures above are from NVMe.
+
+## Implementation note (M1-010)
+
+`ticket.fields` holds values keyed by field id in the stored forms of
+`apps/server/src/fields/types.ts`: strings, numbers, ISO dates, ids (ascending for multiple
+values), `[parent, child]` for cascades, label lists and ProseMirror documents. Empty values
+have no key. Each type names the side table M1-011 indexes it in (`STORAGE_OF`); M1-011 also
+stores the application's sort key beside each value (ADR-009, M1-010 section).

@@ -21,6 +21,7 @@ import * as m0022 from './0022_trash_backups';
 import * as m0023 from './0023_time_tracking';
 import * as m0024 from './0024_workflows';
 import * as m0025 from './0025_transition_history';
+import * as m0026 from './0026_custom_fields';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -50,4 +51,5 @@ export const migrations: Record<string, Migration> = {
   '0023_time_tracking': m0023,
   '0024_workflows': m0024,
   '0025_transition_history': m0025,
+  '0026_custom_fields': m0026,
 };

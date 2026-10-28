@@ -360,6 +360,8 @@ export interface TicketTable {
   time_spent: Generated<number>;
   /** Left out on insert, a trigger sets the track workflow's initial status (M1-023). */
   status_id: ColumnType<number, number | undefined, number>;
+  /** Custom field values by field id, in the forms of `apps/server/src/fields/types.ts`. */
+  fields: ColumnType<Record<string, JsonValue>, string | undefined, string>;
 }
 
 /** The last ticket number given out in each track. */
@@ -696,6 +698,87 @@ export interface WorkflowVersionStatusTable {
   workflow_id: number;
   version: number;
   status_id: number;
+}
+
+/** A custom field (M1-010, CORE-010); type and `multiple` never change after creation. */
+export type CustomFieldType =
+  | 'text'
+  | 'paragraph'
+  | 'number'
+  | 'date'
+  | 'datetime'
+  | 'select'
+  | 'cascading-select'
+  | 'user'
+  | 'group'
+  | 'labels'
+  | 'url'
+  | 'read-only-text'
+  | 'release'
+  | 'area';
+export interface FieldTable {
+  id: Generated<number>;
+  workspace_id: number;
+  /** The local-mode track that owns the field; null for a shared field. */
+  track_id: number | null;
+  name: string;
+  description: Generated<string>;
+  type: CustomFieldType;
+  multiple: Generated<boolean>;
+  config: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** Where a field applies and what it offers there (CORE-009). */
+export interface FieldContextTable {
+  id: Generated<number>;
+  workspace_id: number;
+  field_id: number;
+  name: string;
+  description: Generated<string>;
+  /** In stored form; null for none. */
+  default_value: NullableJson;
+  config: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A track and ticket type a context covers; null is every track or every type. */
+export interface FieldContextScopeTable {
+  workspace_id: number;
+  field_id: number;
+  context_id: number;
+  track_id: number | null;
+  ticket_type_id: number | null;
+}
+
+/** An option of a context; a cascading child names its parent. */
+export interface FieldOptionTable {
+  id: Generated<number>;
+  workspace_id: number;
+  field_id: number;
+  context_id: number;
+  parent_id: number | null;
+  value: string;
+  sort_order: number;
+  disabled: Generated<boolean>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A labels field's own vocabulary. */
+export interface FieldLabelTable {
+  workspace_id: number;
+  field_id: number;
+  name: string;
+  created_at: DefaultTimestamp;
+}
+
+/** Moves on every change to the field catalogue; cached copies carry it. */
+export interface FieldEpochTable {
+  workspace_id: number;
+  epoch: ColumnType<string, string | number | undefined, string | number>;
 }
 
 /** A user or a group acting in a role on one track. */
@@ -1074,6 +1157,12 @@ export interface Database {
   workflow: WorkflowTable;
   workflow_version: WorkflowVersionTable;
   workflow_version_status: WorkflowVersionStatusTable;
+  field: FieldTable;
+  field_context: FieldContextTable;
+  field_context_scope: FieldContextScopeTable;
+  field_option: FieldOptionTable;
+  field_label: FieldLabelTable;
+  field_epoch: FieldEpochTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

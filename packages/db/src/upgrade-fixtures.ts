@@ -494,6 +494,35 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0026_custom_fields': {
+    tables: {
+      field: "name = 'Seed field' AND type = 'select' AND multiple",
+      field_context: "name = 'Seed context' AND default_value IS NOT NULL",
+      field_context_scope:
+        "context_id IN (SELECT id FROM field_context WHERE name = 'Seed context') AND track_id IS NULL",
+      field_option: "value = 'Seed option' AND NOT disabled",
+      field_label: "name = 'seed-label'",
+      field_epoch: 'epoch > 1',
+      ticket: "summary = 'Seed ticket' AND fields <> '{}'::jsonb",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO field (workspace_id, name, type, multiple)
+        VALUES (1, 'Seed field', 'select', true)`.execute(db);
+      const field = sql`(SELECT id FROM field WHERE name = 'Seed field')`;
+      await sql`INSERT INTO field_context (workspace_id, field_id, name, default_value)
+        SELECT 1, ${field}, 'Seed context', '[1]'::jsonb`.execute(db);
+      const context = sql`(SELECT id FROM field_context WHERE name = 'Seed context')`;
+      await sql`INSERT INTO field_context_scope (workspace_id, field_id, context_id)
+        SELECT 1, ${field}, ${context}`.execute(db);
+      await sql`INSERT INTO field_option (workspace_id, field_id, context_id, value, sort_order)
+        SELECT 1, ${field}, ${context}, 'Seed option', 1`.execute(db);
+      await sql`INSERT INTO field_label (workspace_id, field_id, name)
+        SELECT 1, ${field}, 'seed-label'`.execute(db);
+      await sql`UPDATE ticket SET fields = jsonb_build_object(${field}::text,
+          jsonb_build_array((SELECT id FROM field_option WHERE value = 'Seed option')))
+        WHERE summary = 'Seed ticket'`.execute(db);
+    },
+  },
 };
 
 /**

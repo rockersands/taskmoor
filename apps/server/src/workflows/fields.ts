@@ -9,7 +9,7 @@ import type { TicketRow } from '../tickets/store';
  * names them (spec 01a section 3: `close-reason`, `due-date` and so on). Guards and checks read
  * them; transition layouts and effects write the writable ones. References read and travel as
  * strings of ids, as the engine compares values by content; the server turns them back into
- * ids when it stores them. Custom fields join with M1-010.
+ * ids when it stores them. Custom fields (M1-010) join with field rules and layouts (M1-012).
  */
 export type FieldValue = unknown;
 type Parsed = { ok: true; value: FieldValue } | { ok: false; problem: string };

@@ -7,6 +7,15 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
+import type { FieldCatalogs } from '../fields/catalog';
+import {
+  checkCustomValues,
+  customChanges,
+  customFieldViews,
+  type FieldValues,
+  historyName,
+  rememberFieldLabels,
+} from '../fields/values';
 import { shareHierarchy } from '../tickets/configuration';
 import {
   AREAS_PER_TICKET,
@@ -41,6 +50,7 @@ import {
   resolveTicket,
   resolveTrack,
   type TicketRow,
+  type TicketView,
   ticketQuery,
   ticketView,
 } from '../tickets/store';
@@ -101,6 +111,8 @@ const releaseIds = z.array(idValue).max(RELEASES_PER_TICKET);
 const areaIds = z.array(idValue).max(AREAS_PER_TICKET);
 /** Seconds, or text such as "1w 2d" read with the time tracking settings; null clears it. */
 const estimate = z.union([z.string().max(100), z.number()]).nullable();
+/** Custom field values by field id (M1-010); null or empty clears one. */
+const customValues = z.record(z.string().max(12), z.unknown());
 
 const createBody = z
   .object({
@@ -122,6 +134,7 @@ const createBody = z
     areaIds: areaIds.optional(),
     originalEstimate: estimate.optional(),
     remainingEstimate: estimate.optional(),
+    fields: customValues.optional(),
   })
   .strict();
 const updateBody = z
@@ -143,6 +156,7 @@ const updateBody = z
     areaIds: areaIds.optional(),
     originalEstimate: estimate.optional(),
     remainingEstimate: estimate.optional(),
+    fields: customValues.optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -434,6 +448,7 @@ export function registerTicketRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
   authorizer: Authorizer,
+  catalogs: FieldCatalogs,
 ): void {
   const by = (request: FastifyRequest) => ({
     workspaceId: request.workspaceId,
@@ -455,7 +470,19 @@ export function registerTicketRoutes(
     const parentVisible =
       row.parent_track_id === null ||
       (await request.authz.can('browse_track', row.parent_track_id));
-    return ticketView(row, parentVisible);
+    const [view] = await viewsOf(request, [row], () => parentVisible);
+    return view as TicketView;
+  }
+
+  /** Views of several tickets, their custom values read together. */
+  async function viewsOf(
+    request: FastifyRequest,
+    rows: readonly TicketRow[],
+    canSeeParent: (row: TicketRow) => boolean,
+  ): Promise<TicketView[]> {
+    const ws = request.workspaceId;
+    const custom = await customFieldViews(db, ws, await catalogs.get(ws), rows);
+    return rows.map((r) => ticketView(r, canSeeParent(r), custom.get(r.id)));
   }
 
   /** A ticket in the trash exists only for those who may restore it. */
@@ -590,8 +617,10 @@ export function registerTicketRoutes(
       .execute();
     const page = rows.slice(0, q.limit);
     return {
-      tickets: page.map((r) =>
-        ticketView(r, r.parent_track_id === null || inTracks(browse, r.parent_track_id)),
+      tickets: await viewsOf(
+        request,
+        page,
+        (r) => r.parent_track_id === null || inTracks(browse, r.parent_track_id),
       ),
       next: rows.length > q.limit ? (page[page.length - 1]?.rank ?? null) : null,
     };
@@ -697,8 +726,10 @@ export function registerTicketRoutes(
     const last = page[page.length - 1];
     const browse = await request.authz.allowedTracks('browse_track');
     return {
-      tickets: page.map((r) =>
-        ticketView(r, r.parent_track_id === null || inTracks(browse, r.parent_track_id)),
+      tickets: await viewsOf(
+        request,
+        page,
+        (r) => r.parent_track_id === null || inTracks(browse, r.parent_track_id),
       ),
       next:
         rows.length > q.limit && last?.deleted_at
@@ -781,6 +812,7 @@ export function registerTicketRoutes(
       trackOwner?.owner_id,
       ...areaOwners,
     ]);
+    const catalog = await catalogs.get(ws);
 
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
       await shareHierarchy(trx, ws);
@@ -812,6 +844,17 @@ export function registerTicketRoutes(
           : pointed.priority
             ? (prioritySet?.defaultPriorityId ?? null)
             : null;
+      // Custom values, and the defaults of the fields left out (M1-010).
+      const custom = await checkCustomValues(
+        trx,
+        catalog,
+        { workspaceId: ws, trackId, ticketTypeId: typeId },
+        channelOf(request),
+        {},
+        body.fields,
+        true,
+      );
+      if (!custom.ok) return { fields: custom.errors };
       const parent = parentId === null ? null : await lockParent(trx, ws, parentId);
       if (parentId !== null && !parent) return { fields: { parent: 'not_found' } };
       const levels = await typeLevels(trx, ws, [
@@ -858,9 +901,11 @@ export function registerTicketRoutes(
           // A new ticket's remaining estimate starts at its original estimate.
           remaining_estimate:
             estimates.remaining !== undefined ? estimates.remaining : (estimates.original ?? null),
+          fields: JSON.stringify(custom.fields),
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      await rememberFieldLabels(trx, ws, custom.labels);
       await setTicketReleases(trx, ws, row.id, 'target', body.targetReleaseIds ?? []);
       await setTicketReleases(trx, ws, row.id, 'found', body.foundInReleaseIds ?? []);
       await setTicketAreas(trx, ws, row.id, body.areaIds ?? []);
@@ -920,7 +965,12 @@ export function registerTicketRoutes(
       await autoFollow(trx, ws, row.id, user.id);
       const created = await loadTicket(trx, ws, row.id);
       // Every starting value is history too, so "was" finds the first one (ADR-010).
-      if (created) await recordChanges(trx, ws, user.id, ticketChanges(null, created));
+      if (created) {
+        await recordChanges(trx, ws, user.id, [
+          ...ticketChanges(null, created),
+          ...(await customChanges(trx, ws, catalog, created.id, {}, created.fields)),
+        ]);
+      }
       return { ticket: created };
     });
     return answer(request, reply, outcome, 201);
@@ -957,6 +1007,7 @@ export function registerTicketRoutes(
     const held = await request.authz.track(found.row.track_id);
     const assigneeOk =
       body.assigneeId == null || (await assignable(ws, found.row.track_id, body.assigneeId));
+    const catalog = await catalogs.get(ws);
 
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
       // Locks in the order every writer takes them: the hierarchy, the track and its type set,
@@ -1045,7 +1096,40 @@ export function registerTicketRoutes(
         remainingEstimate,
         ...lists,
       });
+      // Custom values (M1-010), checked for the type the ticket will have.
+      let customFields: FieldValues | null = null;
+      if (body.fields !== undefined) {
+        const custom = await checkCustomValues(
+          trx,
+          catalog,
+          {
+            workspaceId: ws,
+            trackId: current.track_id,
+            ticketTypeId: body.ticketTypeId ?? current.ticket_type_id,
+          },
+          channelOf(request),
+          current.fields,
+          body.fields,
+          false,
+        );
+        if (!custom.ok) return { fields: custom.errors };
+        for (const key of new Set([
+          ...Object.keys(current.fields),
+          ...Object.keys(custom.fields),
+        ])) {
+          const from = current.fields[key];
+          const to = custom.fields[key];
+          if (canonicalJson(from ?? null) !== canonicalJson(to ?? null)) {
+            changes[historyName(Number(key))] = { from: from ?? null, to: to ?? null };
+          }
+        }
+        if (Object.keys(changes).some((k) => k.startsWith('cf['))) {
+          customFields = custom.fields;
+          await rememberFieldLabels(trx, ws, custom.labels);
+        }
+      }
       if (Object.keys(changes).length === 0) return { ticket: current };
+      if (customFields !== null && !held.has('edit_tickets')) return { denied: 'edit_tickets' };
 
       // Each changed field needs its own permission.
       const needs: [string, TrackPermission][] = [
@@ -1171,6 +1255,7 @@ export function registerTicketRoutes(
       if (changes.labels && values.labels !== undefined) set.labels = values.labels;
       if (changes.originalEstimate) set.original_estimate = estimates.original ?? null;
       if (changes.remainingEstimate) set.remaining_estimate = remainingEstimate ?? null;
+      if (customFields !== null) set.fields = JSON.stringify(customFields);
       await trx.updateTable('ticket').set(set).where('id', '=', ticketId).execute();
       if (lists.targetReleaseIds) {
         await setTicketReleases(trx, ws, ticketId, 'target', lists.targetReleaseIds);
@@ -1188,7 +1273,12 @@ export function registerTicketRoutes(
       const editor = actor(request);
       if (editor !== null) await autoFollow(trx, ws, ticketId, editor);
       const updated = await loadTicket(trx, ws, ticketId);
-      if (updated) await recordChanges(trx, ws, editor, ticketChanges(current, updated));
+      if (updated) {
+        await recordChanges(trx, ws, editor, [
+          ...ticketChanges(current, updated),
+          ...(await customChanges(trx, ws, catalog, ticketId, current.fields, updated.fields)),
+        ]);
+      }
       return { ticket: updated };
     });
     return answer(request, reply, outcome);

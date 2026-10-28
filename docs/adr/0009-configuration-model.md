@@ -287,6 +287,56 @@ Migration 0023 adds `time_tracking_setting`, `time_entry` and the ticket columns
   "Edit/Delete all time entries" for changes, "Edit tickets" for estimates. With time
   tracking off, writes answer 409 `time_tracking_disabled` and stored values stay.
 
+## Implementation (M1-010: custom fields, contexts and options)
+
+Migration 0026 adds `field`, `field_context`, `field_context_scope`, `field_option`,
+`field_label`, `field_epoch` and `ticket.fields`; the types are in `fields/types.ts`, the
+catalogue in `fields/catalog.ts`, values on tickets in `fields/values.ts`, the routes in
+`routes/fields.ts` (`/api/v1/fields`, `GET /api/v1/tracks/:id/fields?ticketTypeId=`).
+
+- **Fourteen types** (spec 01a section 1.4): short text, paragraph, number, date, date-time,
+  select (one or several, shown as a dropdown, radio buttons or checkboxes), cascading select,
+  user, group, labels, URL, read-only text, release and area pickers. Type and multiplicity
+  are fixed at creation. Each type defines its input forms, stored form, text form (history,
+  CSV), REST form and ordering, and a conformance suite checks all five for every type
+  (`fields/types.test.ts`): every stored value reads back from its text and from its REST
+  form, empty input clears the field and is never stored, ordering is a total order with
+  empty last.
+- **Numbers are rounded on their decimal digits**, half away from zero to 0.001, so 1.2345
+  stores as 1.235 although the nearest double lies below it; scientific notation is read; the
+  range is plus or minus 10^12 (CORE-010 (1)).
+- **Ordering:** numbers by value, dates as written, text case-folded (NFKC, lower case) in
+  code point order with the text as written breaking ties, references by their object's order
+  (options, releases) or name (people, groups, areas). Empty sorts last ascending, as Postgres
+  orders nulls, so the query engine can walk an index the same way. M1-011's side tables store
+  the sort key the application computes, so database and application order agree.
+- **Contexts** (CORE-009) cover tracks and ticket types, one `field_context_scope` row per pair
+  (null for all). A unique index keeps two contexts of a field off the same pair (409
+  `context_overlap` names the other context). A ticket's context is the most specific match:
+  track and type, track, type, then global. Rows cascade with their track or type, so a
+  context whose tracks are all gone applies nowhere.
+- **Options** keep their ids through renames, reordering and disabling; a disabled option
+  stays on tickets that have it and is refused for new values (CORE-009 (3)). Options,
+  contexts with options in use and fields with values on tickets (the trash included) are
+  refused deletion with the ticket count; disabling is the way out.
+- **User pickers** may be restricted per context to a group (nested members included) or the
+  holders of a track role (CORE-009 (2)); `GET /api/v1/fields/:id/people` offers those.
+- **Local fields** (CORE-003): a local-mode track's administrators create fields it owns,
+  whose contexts cover only that track. There is no cap below the spec's guardrails.
+- **References are not foreign keys.** A value naming a user, group, release, area or option
+  that is gone reads as empty in views and keeps its id until the field is next written.
+  Release and area pickers take only the ticket's track's objects, so they have no default.
+- **Read-only text** is written through API tokens and automation, never from a browser
+  session (`read_only`).
+- **One catalogue per server process**, reloaded when `field_epoch` moves; statement triggers
+  on the four field tables move it once per statement, so saving 20,000 options moves it once.
+- **History** names custom fields as the query language does (`cf[12]`), with values as text
+  and references by name.
+- **Not yet:** workflows naming custom fields (guards, checks, layouts and effects) arrive with
+  field rules and layouts (M1-012); a move keeps values as they are, and mapping options
+  between contexts on a move waits for bulk move (M1-021); the side tables and their indexes
+  are M1-011.
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

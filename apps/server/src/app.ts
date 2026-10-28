@@ -10,6 +10,7 @@ import { type Kysely, sql } from 'kysely';
 import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
 import type { Role, ServerConfig } from './config';
+import { FieldCatalogs } from './fields/catalog';
 import { instrumentApp, type Metrics } from './observability';
 import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
@@ -17,6 +18,7 @@ import { registerAdminRoutes } from './routes/admin';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
+import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
 import { registerLinkRoutes } from './routes/links';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
@@ -126,6 +128,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     app.decorateRequest('workspaceId', 0);
     app.decorateRequest('authz', null as unknown as never);
     const authorizer = deps.authorizer ?? new Authorizer(db);
+    const fieldCatalogs = new FieldCatalogs(db);
     app.addHook('onRequest', async (request, reply) => {
       if (!request.url.startsWith('/api/')) return;
       request.workspaceId = await defaultWorkspaceId(db);
@@ -171,7 +174,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerTrackRoutes(app, db);
     registerTicketTypeRoutes(app, db);
-    registerTicketRoutes(app, db, authorizer);
+    registerTicketRoutes(app, db, authorizer, fieldCatalogs);
+    registerFieldRoutes(app, db, fieldCatalogs);
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);

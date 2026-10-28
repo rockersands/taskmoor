@@ -458,6 +458,51 @@ export const EVENT_TYPES = {
     }),
   },
   'link_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
+
+  // Custom fields (M1-010)
+  'field.created': {
+    subject: 'field',
+    payload: z.object({
+      name: z.string(),
+      type: z.string(),
+      multiple: z.boolean(),
+      /** The local-mode track that owns it; null when shared. */
+      trackId: id.nullable(),
+      contextId: id,
+      optionCount: z.number().int().min(0),
+    }),
+  },
+  'field.updated': { subject: 'field', payload: z.object({ changes }) },
+  'field.deleted': { subject: 'field', payload: z.object({ name: z.string(), type: z.string() }) },
+  'field_context.created': {
+    subject: 'field_context',
+    payload: z.object({ fieldId: id, name: z.string(), optionCount: z.number().int().min(0) }),
+  },
+  'field_context.updated': {
+    subject: 'field_context',
+    payload: z.object({ fieldId: id, changes }),
+  },
+  'field_context.deleted': {
+    subject: 'field_context',
+    payload: z.object({ fieldId: id, name: z.string() }),
+  },
+  'field_option.created': {
+    subject: 'field_option',
+    payload: z.object({ fieldId: id, contextId: id, parentId: id.nullable(), value: z.string() }),
+  },
+  'field_option.updated': {
+    subject: 'field_option',
+    payload: z.object({ fieldId: id, contextId: id, changes }),
+  },
+  /** The subject is the context; the options under one parent in their new order. */
+  'field_option.reordered': {
+    subject: 'field_context',
+    payload: z.object({ fieldId: id, parentId: id.nullable(), optionIds: z.array(id) }),
+  },
+  'field_option.deleted': {
+    subject: 'field_option',
+    payload: z.object({ fieldId: id, contextId: id, value: z.string() }),
+  },
   'ticket.linked': { subject: 'ticket', payload: ticketLink },
   'ticket.unlinked': { subject: 'ticket', payload: ticketLink },
   /** A URL can carry a token in its query, so web link events name fields, never URLs. */

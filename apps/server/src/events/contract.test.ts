@@ -1125,6 +1125,123 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/fields',
+      expect: 'field.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/fields',
+          payload: {
+            name: 'Severity',
+            type: 'select',
+            context: { options: [{ value: 'S1' }, { value: 'S2', default: true }] },
+          },
+        });
+        const field = res.json().field;
+        state.field = field?.id;
+        state.fieldContext = field?.contexts[0]?.id;
+        state.fieldOptions = (field?.contexts[0]?.options ?? [])
+          .map((o: { id: number }) => o.id)
+          .join(',');
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/fields/:id',
+      expect: 'field.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/fields/${state.field}`,
+          payload: { description: 'How bad it is' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/fields/:id/contexts',
+      expect: 'field_context.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/fields/${state.field}/contexts`,
+          payload: { name: 'One track', trackIds: [state.track], options: [{ value: 'X' }] },
+        });
+        state.fieldContext2 = res.json().field?.contexts[1]?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/fields/:id/contexts/:contextId',
+      expect: 'field_context.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/fields/${state.field}/contexts/${state.fieldContext2}`,
+          payload: { name: 'Track context' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/fields/:id/contexts/:contextId/options',
+      expect: 'field_option.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/fields/${state.field}/contexts/${state.fieldContext}/options`,
+          payload: { value: 'S3' },
+        });
+        const options = res.json().field?.contexts[0]?.options ?? [];
+        state.fieldOption = options[options.length - 1]?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/fields/:id/contexts/:contextId/options/:optionId',
+      expect: 'field_option.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/fields/${state.field}/contexts/${state.fieldContext}/options/${state.fieldOption}`,
+          payload: { value: 'S3 (minor)', disabled: true },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/fields/:id/contexts/:contextId/options/order',
+      expect: 'field_option.reordered',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/fields/${state.field}/contexts/${state.fieldContext}/options/order`,
+          payload: {
+            optionIds: [
+              Number(state.fieldOption),
+              ...String(state.fieldOptions).split(',').map(Number),
+            ],
+          },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/fields/:id/contexts/:contextId/options/:optionId',
+      expect: 'field_option.deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/fields/${state.field}/contexts/${state.fieldContext}/options/${state.fieldOption}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/fields/:id/contexts/:contextId',
+      expect: 'field_context.deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/fields/${state.field}/contexts/${state.fieldContext2}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/fields/:id',
+      expect: 'field.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/fields/${state.field}` }),
+    },
+    {
       route: 'POST /api/v1/tickets/:id/links',
       expect: 'ticket.linked',
       run: async () => {

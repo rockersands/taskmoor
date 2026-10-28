@@ -18,6 +18,17 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-010 custom field types, contexts and options** (migration 0026; ADR-009 "Implementation
+  (M1-010)", ADR-008 note). Types in `fields/types.ts` (conformance suite beside it), the
+  catalogue in `fields/catalog.ts` (one per process, reloaded when `field_epoch` moves),
+  values in `fields/values.ts`, routes in `routes/fields.ts`: `/api/v1/fields` (CRUD,
+  `/contexts`, `/contexts/:id/options`, `.../options/order`, `/labels`, `/people`) and
+  `GET /api/v1/tracks/:id/fields?ticketTypeId=` (what a create form offers). Tickets take
+  `fields: {"<fieldId>": value}` on create and PATCH and show `fields` in REST form; history
+  rows are named `cf[<id>]`. `FieldCatalogs` is built in `app.ts` and passed to the ticket and
+  field routes.
+  - Not yet: workflows naming custom fields (M1-012), side tables and indexes (M1-011), option
+    mapping on move (M1-021), a UI (M1-053).
 - **M1-024 to M1-027 transitions, guards, checks and effects** (migration 0025, ADR-039
   "Implementation (M1-024 to M1-027)"). `packages/workflow/src/engine.ts` is the production
   engine (all 374 conformance cases; property test against the reference in `engine.test.ts`).
