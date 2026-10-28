@@ -1215,6 +1215,42 @@ export interface JobTable {
   done_at: Timestamp | null;
 }
 
+/** A change asked for many tickets at once, run as a job for the person who asked (M1-021). */
+export interface BulkOperationTable {
+  id: Generated<string>;
+  workspace_id: number;
+  user_id: number;
+  action: 'edit' | 'move' | 'transition' | 'delete';
+  params: Json;
+  status: ColumnType<
+    'queued' | 'running' | 'done' | 'cancelled',
+    'queued' | 'running' | 'done' | 'cancelled' | undefined,
+    'queued' | 'running' | 'done' | 'cancelled'
+  >;
+  cancel_requested: Generated<boolean>;
+  total: number;
+  succeeded: Generated<number>;
+  failed: Generated<number>;
+  skipped: Generated<number>;
+  created_at: DefaultTimestamp;
+  started_at: Timestamp | null;
+  finished_at: Timestamp | null;
+}
+
+/** One ticket of a bulk operation and, once run, what became of it. */
+export interface BulkItemTable {
+  operation_id: string;
+  workspace_id: number;
+  position: number;
+  /** What was asked: an id or a key. */
+  ref: string;
+  ticket_id: number | null;
+  outcome: 'done' | 'failed' | 'skipped' | null;
+  status_code: number | null;
+  error: NullableJson;
+  finished_at: Timestamp | null;
+}
+
 /** An authenticator-app secret, sealed under the password pepper (M1-084). */
 export interface TotpCredentialTable {
   user_id: number;
@@ -1621,6 +1657,8 @@ export interface Database {
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;
   job: JobTable;
+  bulk_operation: BulkOperationTable;
+  bulk_item: BulkItemTable;
   totp_credential: TotpCredentialTable;
   webauthn_credential: WebauthnCredentialTable;
   recovery_code: RecoveryCodeTable;

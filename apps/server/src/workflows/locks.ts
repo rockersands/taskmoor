@@ -1,6 +1,5 @@
 import type { Database } from '@taskmoor/db';
 import type { StatusPermissions } from '@taskmoor/workflow';
-import type { FastifyRequest } from 'fastify';
 import type { Kysely, Transaction } from 'kysely';
 import { loadDefinition, trackWorkflowId } from './store';
 
@@ -111,7 +110,7 @@ export interface StatusGate {
 
 export async function statusGate(
   db: Db,
-  request: FastifyRequest,
+  request: { workspaceId: number; authz: { audience(trackId: number): Promise<Audience> } },
   trackId: number,
 ): Promise<StatusGate> {
   const [table, audience] = await Promise.all([

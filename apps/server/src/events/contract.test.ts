@@ -774,6 +774,29 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/bulk-operations',
+      expect: 'bulk_operation.created',
+      // The changes run later in a job, each as its own ticket event.
+      run: async () => {
+        const res = await call(String(state.admin), {
+          method: 'POST',
+          url: '/api/v1/bulk-operations',
+          payload: { action: 'edit', tickets: [state.ticket], edit: { summary: 'Bulk' } },
+        });
+        state.bulk = res.json().bulkOperation?.id;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/bulk-operations/:id/cancel',
+      expect: 'bulk_operation.cancelled',
+      run: () =>
+        call(String(state.admin), {
+          method: 'POST',
+          url: `/api/v1/bulk-operations/${state.bulk}/cancel`,
+        }),
+    },
+    {
       route: 'POST /api/v1/tickets/:id/purge',
       expect: 'ticket.purged',
       prepare: async () => {

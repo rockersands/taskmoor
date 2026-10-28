@@ -195,7 +195,10 @@ export async function revokeUserSessions(
 }
 
 /** 401 for anonymous callers; returns the user otherwise. */
-export function requireUser(request: FastifyRequest, reply: FastifyReply): SessionUser | null {
+export function requireUser(
+  request: { user: SessionUser | null },
+  reply: { code(statusCode: number): { send(payload?: unknown): unknown } },
+): SessionUser | null {
   if (!request.user) {
     void reply.code(401).send({ error: 'not_signed_in' });
     return null;

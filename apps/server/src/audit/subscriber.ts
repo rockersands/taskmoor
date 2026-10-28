@@ -13,6 +13,8 @@ import { appendAudit } from './chain';
  */
 export const AUDITED_EVENTS = [
   'setup.completed',
+  'bulk_operation.created',
+  'bulk_operation.cancelled',
   'session.started',
   'session.ended',
   'session.revoked',

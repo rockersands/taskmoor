@@ -1,6 +1,6 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import { engine } from '@taskmoor/workflow';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql, type Transaction, type Updateable } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
@@ -33,6 +33,7 @@ import {
   rememberFieldLabels,
   withoutTrackValues,
 } from '../fields/values';
+import type { Answer, Caller, TicketHandler, TicketRoute } from '../tickets/caller';
 import { shareHierarchy } from '../tickets/configuration';
 import {
   AREAS_PER_TICKET,
@@ -218,6 +219,9 @@ const transitionBody = z
     version: idValue.optional(),
   })
   .strict();
+/** What a bulk change asks of each ticket (M1-021): an edit or a move, without a version. */
+export const bulkEditBody = updateBody.omit({ version: true });
+export const bulkMoveBody = moveBody.omit({ version: true });
 const rankBody = z
   .object({
     before: ref.optional(),
@@ -276,11 +280,11 @@ function shapeErrors(error: z.ZodError): FieldErrors {
   return fields;
 }
 
-const invalid = (reply: FastifyReply) => reply.code(400).send({ error: 'invalid_request' });
-const invalidFields = (reply: FastifyReply, fields: FieldErrors) =>
+const invalid = (reply: Answer) => reply.code(400).send({ error: 'invalid_request' });
+const invalidFields = (reply: Answer, fields: FieldErrors) =>
   reply.code(400).send({ error: 'invalid_fields', fields });
-const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
-const forbidden = (reply: FastifyReply, permission: TrackPermission) =>
+const notFound = (reply: Answer) => reply.code(404).send({ error: 'not_found' });
+const forbidden = (reply: Answer, permission: TrackPermission) =>
   reply.code(403).send({ error: 'forbidden', permission });
 
 interface ContentInput {
@@ -514,11 +518,33 @@ export function registerTicketRoutes(
   authorizer: Authorizer,
   catalogs: FieldCatalogs,
 ): void {
-  const by = (request: FastifyRequest) => ({
+  for (const r of ticketRoutes(db, authorizer, catalogs)) {
+    app.route({
+      method: r.method,
+      url: r.url,
+      handler: (request, reply) => r.handler(request, reply),
+    });
+  }
+}
+
+/**
+ * The ticket routes as plain handlers, so a background job can run a person's change through
+ * exactly the checks a request does (M1-021): `registerTicketRoutes` serves them over HTTP.
+ */
+export function ticketRoutes(
+  db: Kysely<Database>,
+  authorizer: Authorizer,
+  catalogs: FieldCatalogs,
+): TicketRoute[] {
+  const routes: TicketRoute[] = [];
+  const route = (method: TicketRoute['method'], url: string, handler: TicketHandler) => {
+    routes.push({ method, url, handler });
+  };
+  const by = (request: Caller) => ({
     workspaceId: request.workspaceId,
     actorId: request.user?.id ?? null,
   });
-  const actor = (request: FastifyRequest) => request.user?.id ?? null;
+  const actor = (request: Caller) => request.user?.id ?? null;
 
   /** A ticket write in a transaction; a `Rollback` thrown inside undoes it and answers. */
   async function transact(
@@ -536,7 +562,7 @@ export function registerTicketRoutes(
    * A ticket the caller may see, trash included, by id or key: they browse it and belong to
    * its visibility level (M1-020).
    */
-  async function findTicket(request: FastifyRequest, ticketRef: string | number) {
+  async function findTicket(request: Caller, ticketRef: string | number) {
     const ws = request.workspaceId;
     const found = await resolveTicket(db, ws, ticketRef);
     if (!found) return null;
@@ -545,7 +571,7 @@ export function registerTicketRoutes(
     return { row, asked: found.asked };
   }
 
-  async function viewOf(request: FastifyRequest, row: TicketRow) {
+  async function viewOf(request: Caller, row: TicketRow) {
     const parent =
       row.parent_id === null ? undefined : await loadTicket(db, request.workspaceId, row.parent_id);
     const parentVisible = parent !== undefined && (await request.authz.seesTicket(parent));
@@ -554,7 +580,7 @@ export function registerTicketRoutes(
   }
 
   /** Views of a page of tickets, with the parents the caller may see named. */
-  async function pageViews(request: FastifyRequest, rows: readonly TicketRow[]) {
+  async function pageViews(request: Caller, rows: readonly TicketRow[]) {
     const parents = rows.flatMap((r) => (r.parent_id === null ? [] : [r.parent_id]));
     const visible = await request.authz.visibleTickets(parents);
     return viewsOf(request, rows, (r) => r.parent_id !== null && visible.has(r.parent_id));
@@ -562,7 +588,7 @@ export function registerTicketRoutes(
 
   /** Views of several tickets, their custom values read together. */
   async function viewsOf(
-    request: FastifyRequest,
+    request: Caller,
     rows: readonly TicketRow[],
     canSeeParent: (row: TicketRow) => boolean,
   ): Promise<TicketView[]> {
@@ -572,7 +598,7 @@ export function registerTicketRoutes(
   }
 
   /** A ticket in the trash exists only for those who may restore it. */
-  async function inTrash(request: FastifyRequest, reply: FastifyReply, row: TicketRow) {
+  async function inTrash(request: Caller, reply: Answer, row: TicketRow) {
     return (await request.authz.canTicket('delete_tickets', row))
       ? reply.code(409).send({ error: 'in_trash' })
       : notFound(reply);
@@ -653,7 +679,7 @@ export function registerTicketRoutes(
   }
 
   /** Answers an outcome that is not a ticket; null when it is one. */
-  function refusal(reply: FastifyReply, outcome: Outcome) {
+  function refusal(reply: Answer, outcome: Outcome) {
     if ('missing' in outcome) return notFound(reply);
     if ('fields' in outcome) return invalidFields(reply, outcome.fields);
     if ('conflict' in outcome) {
@@ -668,12 +694,7 @@ export function registerTicketRoutes(
     return null;
   }
 
-  async function answer(
-    request: FastifyRequest,
-    reply: FastifyReply,
-    outcome: Outcome,
-    code = 200,
-  ) {
+  async function answer(request: Caller, reply: Answer, outcome: Outcome, code = 200) {
     const refused = refusal(reply, outcome);
     if (refused) return refused;
     const row = (outcome as { ticket: TicketRow }).ticket;
@@ -683,7 +704,7 @@ export function registerTicketRoutes(
       .send({ ticket: inFormat(view, requestedFormat(request.query) ?? 'doc') });
   }
 
-  app.get('/api/v1/tickets', async (request, reply) => {
+  route('GET', '/api/v1/tickets', async (request, reply) => {
     const parsed = listQuery.safeParse(request.query);
     if (!parsed.success) return invalid(reply);
     const q = parsed.data;
@@ -714,7 +735,7 @@ export function registerTicketRoutes(
     };
   });
 
-  app.get('/api/v1/tickets/:id', async (request, reply) => {
+  route('GET', '/api/v1/tickets/:id', async (request, reply) => {
     const p = params.safeParse(request.params);
     const format = requestedFormat(request.query);
     if (!p.success || !format) return invalid(reply);
@@ -734,7 +755,7 @@ export function registerTicketRoutes(
 
   // A ticket's change history (CORE-022), newest first unless asked otherwise, page by page:
   // each page reads one partition through the primary key, however long the history is.
-  app.get('/api/v1/tickets/:id/history', async (request, reply) => {
+  route('GET', '/api/v1/tickets/:id/history', async (request, reply) => {
     const p = params.safeParse(request.params);
     const parsed = historyQuery.safeParse(request.query);
     if (!p.success || !parsed.success) return invalid(reply);
@@ -786,7 +807,7 @@ export function registerTicketRoutes(
   });
 
   // The trash: tickets the caller may restore, most recently deleted first (CORE-025 (3)).
-  app.get('/api/v1/trash', async (request, reply) => {
+  route('GET', '/api/v1/trash', async (request, reply) => {
     const parsed = trashQuery.safeParse(request.query);
     if (!parsed.success) return invalid(reply);
     const q = parsed.data;
@@ -825,7 +846,7 @@ export function registerTicketRoutes(
     };
   });
 
-  app.post('/api/v1/tickets', async (request, reply) => {
+  route('POST', '/api/v1/tickets', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
     const format = requestedFormat(request.query);
@@ -1107,7 +1128,7 @@ export function registerTicketRoutes(
     return answer(request, reply, outcome, 201);
   });
 
-  app.patch('/api/v1/tickets/:id', async (request, reply) => {
+  route('PATCH', '/api/v1/tickets/:id', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
     if (!p.success) return invalid(reply);
@@ -1490,7 +1511,7 @@ export function registerTicketRoutes(
   });
 
   // To another track (CORE-023): new numbers there for the ticket and its subtickets.
-  app.post('/api/v1/tickets/:id/move', async (request, reply) => {
+  route('POST', '/api/v1/tickets/:id/move', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
     if (!p.success) return invalid(reply);
@@ -1782,7 +1803,7 @@ export function registerTicketRoutes(
    * effects, history, store, event (WF-005). A refusal changes nothing.
    */
   async function runTransition(
-    request: FastifyRequest,
+    request: Caller,
     found: TicketRow,
     pick: { transitionId: number } | { event: string },
     entered: Record<string, unknown>,
@@ -2016,7 +2037,7 @@ export function registerTicketRoutes(
 
   // The transitions a ticket offers to the caller (WF-001, WF-003), with the layout each asks
   // for and its properties (WF-006); none without "Transition tickets".
-  app.get('/api/v1/tickets/:id/transitions', async (request, reply) => {
+  route('GET', '/api/v1/tickets/:id/transitions', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
     if (!p.success) return invalid(reply);
@@ -2054,7 +2075,7 @@ export function registerTicketRoutes(
     };
   });
 
-  app.post('/api/v1/tickets/:id/transitions', async (request, reply) => {
+  route('POST', '/api/v1/tickets/:id/transitions', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
     const p = params.safeParse(request.params);
@@ -2097,7 +2118,7 @@ export function registerTicketRoutes(
 
   // An external event moves a ticket along the first transition it triggers that is offered,
   // as automation (M1-024): the hook M2's development integrations call.
-  app.post('/api/v1/tickets/:id/trigger', async (request, reply) => {
+  route('POST', '/api/v1/tickets/:id/trigger', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
     if (!p.success) return invalid(reply);
@@ -2127,7 +2148,7 @@ export function registerTicketRoutes(
   });
 
   // The global rank (AGL-009): before or after another ticket, or to the top or bottom.
-  app.put('/api/v1/tickets/:id/rank', async (request, reply) => {
+  route('PUT', '/api/v1/tickets/:id/rank', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
     if (!p.success) return invalid(reply);
@@ -2238,7 +2259,7 @@ export function registerTicketRoutes(
   });
 
   // To the trash, with the subtickets; other children lose the link until a restore.
-  app.delete('/api/v1/tickets/:id', async (request, reply) => {
+  route('DELETE', '/api/v1/tickets/:id', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
     const p = params.safeParse(request.params);
@@ -2331,7 +2352,7 @@ export function registerTicketRoutes(
     return reply.code(204).send();
   });
 
-  app.post('/api/v1/tickets/:id/restore', async (request, reply) => {
+  route('POST', '/api/v1/tickets/:id/restore', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = params.safeParse(request.params);
     if (!p.success) return invalid(reply);
@@ -2478,4 +2499,5 @@ export function registerTicketRoutes(
     });
     return answer(request, reply, outcome);
   });
+  return routes;
 }

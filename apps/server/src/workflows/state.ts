@@ -1,7 +1,7 @@
 import type { Database } from '@taskmoor/db';
 import type { Actor, Channel, HistoryEntry, TicketState, WorkflowDef } from '@taskmoor/workflow';
-import type { FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction, type Updateable } from 'kysely';
+import type { AuthzContext } from '../authz/authorizer';
 import { SUBTICKET_RANK } from '../tickets/hierarchy';
 import { loadTicket, type TicketRow } from '../tickets/store';
 import { engineFields, type FieldValue, parseField } from './fields';
@@ -110,7 +110,10 @@ export async function ticketState(
 }
 
 /** The caller as the engine sees them in a track: groups, roles there and permissions there. */
-export async function engineActor(request: FastifyRequest, trackId: number): Promise<Actor> {
+export async function engineActor(
+  request: { user: { id: number } | null; authz: AuthzContext },
+  trackId: number,
+): Promise<Actor> {
   const audience = await request.authz.audience(trackId);
   const held = await request.authz.track(trackId);
   return {
@@ -122,7 +125,7 @@ export async function engineActor(request: FastifyRequest, trackId: number): Pro
 }
 
 /** A browser session is the UI; a token is REST (WF-003 (3): "hide from user"). */
-export const channelOf = (request: FastifyRequest): Extract<Channel, 'ui' | 'rest'> =>
+export const channelOf = (request: { apiToken: unknown }): Extract<Channel, 'ui' | 'rest'> =>
   request.apiToken ? 'rest' : 'ui';
 
 export interface StoredChanges {

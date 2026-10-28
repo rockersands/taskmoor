@@ -210,6 +210,46 @@
       "CREATE UNIQUE INDEX backup_run_running_idx ON public.backup_run USING btree (((kind = 'drill'::text))) WHERE (state = 'running'::text)"
     ]
   },
+  "bulk_item": {
+    "columns": [
+      "operation_id bigint not null",
+      "workspace_id integer not null",
+      "position integer not null",
+      "ref text not null",
+      "ticket_id integer",
+      "outcome text",
+      "status_code smallint",
+      "error jsonb",
+      "finished_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX bulk_item_failed_idx ON public.bulk_item USING btree (operation_id, \"position\") WHERE (outcome = 'failed'::text)",
+      "CREATE INDEX bulk_item_pending_idx ON public.bulk_item USING btree (operation_id, \"position\") WHERE (outcome IS NULL)",
+      "CREATE UNIQUE INDEX bulk_item_pkey ON public.bulk_item USING btree (operation_id, \"position\")"
+    ]
+  },
+  "bulk_operation": {
+    "columns": [
+      "id bigint not null default nextval('bulk_operation_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "action text not null",
+      "params jsonb not null default '{}'::jsonb",
+      "status text not null default 'queued'::text",
+      "cancel_requested boolean not null default false",
+      "total integer not null",
+      "succeeded integer not null default 0",
+      "failed integer not null default 0",
+      "skipped integer not null default 0",
+      "created_at timestamp with time zone not null default now()",
+      "started_at timestamp with time zone",
+      "finished_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX bulk_operation_pkey ON public.bulk_operation USING btree (id)",
+      "CREATE INDEX bulk_operation_user_idx ON public.bulk_operation USING btree (workspace_id, user_id, created_at DESC)"
+    ]
+  },
   "change_log": {
     "columns": [
       "id bigint not null default nextval('change_log_id_seq'::regclass)",

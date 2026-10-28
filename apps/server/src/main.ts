@@ -7,6 +7,7 @@ import { attachmentStores } from './attachments/stores';
 import { registerAuditJobs, scheduleRetention } from './audit/retention';
 import { Authorizer } from './authz/authorizer';
 import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/schedule';
+import { registerBulkJobs } from './bulk/jobs';
 import { loadConfig } from './config';
 import { deliverEmail } from './email/deliver';
 import { smtpTransport } from './email/transport';
@@ -154,6 +155,8 @@ if (config.roles.includes('worker') && db) {
   // Formula fields (M1-013): roll-ups of parents a write could not take, recomputes after a
   // formula or what it reads changed, and the daily refresh of formulas that read the date.
   registerFormulaJobs(runner, db);
+  // Bulk operations (M1-021): each runs ticket by ticket through the ticket routes' checks.
+  registerBulkJobs(runner, db, new Authorizer(db), new FieldCatalogs(db));
   const formulaCatalogs = new FieldCatalogs(db);
   const scheduleHousekeeping = () =>
     Promise.all([

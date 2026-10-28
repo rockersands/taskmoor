@@ -789,6 +789,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM field_rule_set WHERE name = 'Seed rules'`.execute(db);
     },
   },
+  '0040_bulk_operations': {
+    tables: {
+      bulk_operation: "action = 'edit' AND total = 1 AND status = 'done' AND succeeded = 1",
+      bulk_item: "ref = 'SEED-1' AND outcome = 'done' AND status_code = 200",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO bulk_operation (workspace_id, user_id, action, params, status, total,
+          succeeded, started_at, finished_at)
+        SELECT 1, id, 'edit', '{"edit": {"summary": "Seeded"}}'::jsonb, 'done', 1, 1, now(), now()
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO bulk_item (operation_id, workspace_id, position, ref, ticket_id,
+          outcome, status_code, finished_at)
+        SELECT o.id, 1, 0, 'SEED-1', k.id, 'done', 200, now()
+          FROM bulk_operation o, ticket k
+         WHERE o.action = 'edit' AND k.summary = 'Seed ticket'`.execute(db);
+    },
+  },
 };
 
 /**

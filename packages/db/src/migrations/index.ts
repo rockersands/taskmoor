@@ -34,6 +34,7 @@ import * as m0034 from './0034_rich_text';
 import * as m0036 from './0036_change_log';
 import * as m0037 from './0037_mutation_receipts';
 import * as m0038 from './0038_field_edit_permissions';
+import * as m0040 from './0040_bulk_operations';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -78,4 +79,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0036_change_log': m0036,
   '0037_mutation_receipts': m0037,
   '0038_field_edit_permissions': m0038,
+  '0040_bulk_operations': m0040,
 };

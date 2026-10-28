@@ -935,6 +935,22 @@ export const EVENT_TYPES = {
   'service_account.updated': { subject: 'user', payload: z.object({ changes }) },
   'service_account.deactivated': { subject: 'user', payload: z.object({}) },
   'service_account.reactivated': { subject: 'user', payload: z.object({}) },
+  // Bulk operations (M1-021): the request and its cancellation; each ticket's change is its own
+  // ticket event, emitted by the ticket's route as for a single change.
+  'bulk_operation.created': {
+    subject: 'bulk_operation',
+    payload: z.object({
+      action: z.enum(['edit', 'move', 'transition', 'delete']),
+      total: z.number().int().min(1),
+    }),
+  },
+  'bulk_operation.cancelled': {
+    subject: 'bulk_operation',
+    payload: z.object({
+      action: z.enum(['edit', 'move', 'transition', 'delete']),
+      total: z.number().int().min(1),
+    }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;
