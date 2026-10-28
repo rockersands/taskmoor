@@ -104,6 +104,8 @@ const updateBody = z
     color: trackFields.color.optional(),
     accessPolicyId: trackFields.accessPolicyId.optional(),
     typeSetId: trackFields.typeSetId.optional(),
+    /** The priorities it offers (CORE-014 (2)); null for the workspace's default set. */
+    prioritySetId: id.nullable().optional(),
     features: trackFields.features.optional(),
   })
   .strict();
@@ -159,6 +161,7 @@ function trackQuery(db: Db, workspaceId: number) {
       't.color',
       't.access_policy_id',
       't.type_set_id',
+      't.priority_set_id',
       't.feature_board',
       't.feature_backlog',
       't.feature_sprints',
@@ -197,6 +200,7 @@ function trackView(row: TrackRow) {
     color: row.color,
     accessPolicyId: row.access_policy_id,
     typeSetId: row.type_set_id,
+    prioritySetId: row.priority_set_id,
     features: featuresOf(row),
     archived: row.archived_at !== null,
     archivedAt: row.archived_at?.toISOString() ?? null,
@@ -250,6 +254,16 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       .selectFrom('track_category')
       .select('id')
       .where('id', '=', categoryId)
+      .where('workspace_id', '=', workspaceId)
+      .executeTakeFirst();
+    return row !== undefined;
+  }
+
+  async function prioritySetExists(workspaceId: number, setId: number): Promise<boolean> {
+    const row = await db
+      .selectFrom('priority_set')
+      .select('id')
+      .where('id', '=', setId)
       .where('workspace_id', '=', workspaceId)
       .executeTakeFirst();
     return row !== undefined;
@@ -546,6 +560,13 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       }
       if (!(await isSharedTypeSet(db, ws, body.typeSetId))) return invalid(reply, 'typeSetId');
     }
+    if (body.prioritySetId !== undefined && body.prioritySetId !== current.priority_set_id) {
+      // Priority sets are the workspace's; a ticket keeps a priority its track stops offering.
+      if (!(await isAdmin(request))) return reply.code(403).send({ error: 'forbidden' });
+      if (body.prioritySetId !== null && !(await prioritySetExists(ws, body.prioritySetId))) {
+        return invalid(reply, 'prioritySetId');
+      }
+    }
     if (body.ownerId !== undefined && !(await activeUser(ws, body.ownerId))) {
       return invalid(reply, 'ownerId');
     }
@@ -575,6 +596,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           color: locked.color,
           accessPolicyId: locked.access_policy_id,
           typeSetId: locked.type_set_id,
+          prioritySetId: locked.priority_set_id,
           ...Object.fromEntries(
             TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
           ),
@@ -590,6 +612,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           color: body.color,
           accessPolicyId: body.accessPolicyId,
           typeSetId: body.typeSetId,
+          prioritySetId: body.prioritySetId,
           ...Object.fromEntries(
             Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
           ),
@@ -639,6 +662,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           if (changes.typeSetId && body.typeSetId !== undefined) {
             set.type_set_id = body.typeSetId;
           }
+          if (changes.prioritySetId && body.prioritySetId !== undefined) {
+            set.priority_set_id = body.prioritySetId;
+          }
           for (const feature of TRACK_FEATURES) {
             const on = body.features?.[feature];
             if (changes[`features.${feature}`] && on !== undefined)
@@ -665,6 +691,10 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       const constraint = uniqueViolation(error);
       if (constraint !== null && KEY_CONSTRAINTS.includes(constraint)) {
         return reply.code(409).send({ error: 'key_taken' });
+      }
+      // The priority set was deleted after the check.
+      if ((error as { constraint?: string }).constraint === 'track_priority_set_id_fkey') {
+        return invalid(reply, 'prioritySetId');
       }
       throw error;
     }

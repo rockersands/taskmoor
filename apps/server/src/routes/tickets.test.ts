@@ -939,12 +939,15 @@ describe('tickets (M1-008)', () => {
         'assignee',
         'requester',
         'dueDate',
+        // The track's default priority (M1-014).
+        'priority',
         'rank',
       ]);
       expect(changes.every((c) => c.from.value === null && c.actor?.id === users.alice?.id)).toBe(
         true,
       );
       const by = Object.fromEntries(changes.map((c) => [c.field, c.to]));
+      expect(by.priority?.display).toBe('Normal');
       expect(by.track).toEqual({ value: String(tracks.ABC), display: 'ABC' });
       expect(by.type).toEqual({ value: String(types.Feature), display: 'Feature' });
       expect(by.assignee).toEqual({ value: String(users.dave?.id), display: 'dave' });

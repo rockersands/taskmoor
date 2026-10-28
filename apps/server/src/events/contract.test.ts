@@ -720,6 +720,314 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/priorities',
+      expect: 'priority.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/priorities',
+          payload: { name: 'Blocker', icon: 'priority-blocker' },
+        });
+        state.priority = res.json().priority?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/priorities/:id',
+      expect: 'priority.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/priorities/${state.priority}`,
+          payload: { color: '#aa0000' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/priorities/order',
+      expect: 'priority.reordered',
+      run: async () => {
+        const list = await admin({ method: 'GET', url: '/api/v1/priorities' });
+        const ids = list.json().priorities.map((p: { id: number }) => p.id);
+        return admin({
+          method: 'PUT',
+          url: '/api/v1/priorities/order',
+          payload: { priorityIds: ids.reverse() },
+        });
+      },
+    },
+    {
+      route: 'POST /api/v1/priority-sets',
+      expect: 'priority_set.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/priority-sets',
+          payload: {
+            name: 'Blockers only',
+            priorityIds: [state.priority],
+            defaultPriorityId: state.priority,
+          },
+        });
+        state.prioritySet = res.json().prioritySet?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/priority-sets/:id',
+      expect: 'priority_set.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/priority-sets/${state.prioritySet}`,
+          payload: { description: 'For incidents' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/priority-sets/:id',
+      expect: 'priority_set.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/priority-sets/${state.prioritySet}` }),
+    },
+    {
+      route: 'DELETE /api/v1/priorities/:id',
+      expect: 'priority.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/priorities/${state.priority}` }),
+    },
+    {
+      route: 'POST /api/v1/close-reasons',
+      expect: 'close_reason.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/close-reasons',
+          payload: { name: 'Obsolete' },
+        });
+        state.closeReason = res.json().closeReason?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/close-reasons/:id',
+      expect: 'close_reason.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/close-reasons/${state.closeReason}`,
+          payload: { description: 'Nobody needs it any more' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/close-reasons/order',
+      expect: 'close_reason.reordered',
+      run: async () => {
+        const list = await admin({ method: 'GET', url: '/api/v1/close-reasons' });
+        const ids = list.json().closeReasons.map((r: { id: number }) => r.id);
+        return admin({
+          method: 'PUT',
+          url: '/api/v1/close-reasons/order',
+          payload: { closeReasonIds: ids.reverse() },
+        });
+      },
+    },
+    {
+      route: 'DELETE /api/v1/close-reasons/:id',
+      expect: 'close_reason.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/close-reasons/${state.closeReason}` }),
+    },
+    {
+      route: 'POST /api/v1/labels/merge',
+      expect: 'label.merged',
+      // A ticket with the label: the merge rewrites it, still one event.
+      prepare: async () => {
+        await call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}`,
+          payload: { labels: ['front-end'] },
+        });
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: '/api/v1/labels/merge',
+          payload: { labels: ['front-end'], into: 'frontend' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/tracks/:id/releases',
+      expect: 'release.created',
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tracks/${state.moveTrack}/releases`,
+          payload: { name: '1.0', releaseDate: '2026-12-01' },
+        });
+        state.release = res.json().release?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/releases/:id',
+      expect: 'release.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/releases/${state.release}`,
+          payload: { description: 'The first one' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/tracks/:id/releases/order',
+      expect: 'release.reordered',
+      prepare: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tracks/${state.moveTrack}/releases`,
+          payload: { name: '2.0' },
+        });
+        state.release2 = res.json().release.id;
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/tracks/${state.moveTrack}/releases/order`,
+          payload: { releaseIds: [state.release2, state.release] },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/releases/:id/approvers',
+      expect: 'release.approvers_set',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/releases/${state.release}/approvers`,
+          payload: { userIds: [state.bo] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/releases/:id/approval',
+      expect: 'release.approval_decided',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/releases/${state.release}/approval`,
+          payload: { decision: 'approved' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/releases/:id/ship',
+      expect: 'release.shipped',
+      // An open ticket moves to the next release: still one event.
+      prepare: async () => {
+        await call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}`,
+          payload: { targetReleaseIds: [state.release] },
+        });
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/releases/${state.release}/ship`,
+          payload: { moveOpenTo: state.release2 },
+        }),
+    },
+    {
+      route: 'POST /api/v1/releases/:id/unship',
+      expect: 'release.unshipped',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/releases/${state.release}/unship`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/releases/:id/archive',
+      expect: 'release.archived',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/releases/${state.release}/archive`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/releases/:id/restore',
+      expect: 'release.restored',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/releases/${state.release}/restore`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/releases/:id/merge',
+      expect: 'release.merged',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/releases/${state.release}/merge`,
+          payload: { into: state.release2 },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/releases/:id',
+      expect: 'release.deleted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/releases/${state.release2}?removeFromTickets=true`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/tracks/:id/areas',
+      expect: 'area.created',
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tracks/${state.moveTrack}/areas`,
+          payload: { name: 'API', ownerId: state.bo, defaultAssignee: 'area_owner' },
+        });
+        state.area = res.json().area?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/areas/:id',
+      expect: 'area.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/areas/${state.area}`,
+          payload: { description: 'The public interface' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/areas/:id/archive',
+      expect: 'area.archived',
+      run: () =>
+        call(String(state.bo1b), { method: 'POST', url: `/api/v1/areas/${state.area}/archive` }),
+    },
+    {
+      route: 'POST /api/v1/areas/:id/restore',
+      expect: 'area.restored',
+      run: () =>
+        call(String(state.bo1b), { method: 'POST', url: `/api/v1/areas/${state.area}/restore` }),
+    },
+    {
+      route: 'DELETE /api/v1/areas/:id',
+      expect: 'area.deleted',
+      prepare: async () => {
+        await call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}`,
+          payload: { areaIds: [state.area] },
+        });
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/areas/${state.area}?removeFromTickets=true`,
+        }),
+    },
+    {
       route: 'DELETE /api/v1/track-categories/:id',
       expect: 'track_category.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/track-categories/${state.category}` }),

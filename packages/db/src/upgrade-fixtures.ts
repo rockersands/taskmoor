@@ -312,6 +312,59 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE t.summary = 'Seed ticket' AND u.email = 'seed@example.com'`.execute(db);
     },
   },
+  '0018_ticket_fields': {
+    tables: {
+      priority: "name = 'Seed priority'",
+      priority_set: "name = 'Seed priority set' AND default_priority_id IS NOT NULL",
+      priority_set_member: "priority_id IN (SELECT id FROM priority WHERE name = 'Seed priority')",
+      close_reason: "name = 'Seed reason'",
+      label: "name = 'seed-label'",
+      release: "name = 'Seed release' AND release_date = '2026-12-01'",
+      release_approver: "decision = 'approved'",
+      area: "name = 'Seed area' AND default_assignee = 'area_owner'",
+      track: "key = 'SEED' AND priority_set_id IS NOT NULL",
+      ticket:
+        "summary = 'Seed ticket' AND labels = ARRAY['seed-label'] AND priority_id IS NOT NULL",
+      ticket_release: "role = 'target'",
+      ticket_area: "area_id IN (SELECT id FROM area WHERE name = 'Seed area')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO priority (workspace_id, name, sort_order) VALUES (1, 'Seed priority', 5)`.execute(
+        db,
+      );
+      await sql`INSERT INTO priority_set (workspace_id, name) VALUES (1, 'Seed priority set')`.execute(
+        db,
+      );
+      await sql`INSERT INTO priority_set_member (workspace_id, priority_set_id, priority_id)
+        SELECT 1, s.id, p.id FROM priority_set s, priority p
+         WHERE s.name = 'Seed priority set' AND p.name = 'Seed priority'`.execute(db);
+      await sql`UPDATE priority_set SET default_priority_id = (SELECT id FROM priority WHERE name = 'Seed priority')
+         WHERE name = 'Seed priority set'`.execute(db);
+      await sql`UPDATE track SET priority_set_id = (SELECT id FROM priority_set WHERE name = 'Seed priority set')
+         WHERE key = 'SEED'`.execute(db);
+      await sql`INSERT INTO close_reason (workspace_id, name, sort_order) VALUES (1, 'Seed reason', 5)`.execute(
+        db,
+      );
+      await sql`INSERT INTO label (workspace_id, name) VALUES (1, 'seed-label')`.execute(db);
+      await sql`INSERT INTO release (workspace_id, track_id, name, release_date, sort_order)
+        SELECT 1, id, 'Seed release', '2026-12-01', 1 FROM track WHERE key = 'SEED'`.execute(db);
+      await sql`INSERT INTO release_approver (workspace_id, release_id, user_id, decision, decided_at)
+        SELECT 1, r.id, u.id, 'approved', now() FROM release r, app_user u
+         WHERE r.name = 'Seed release' AND u.email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO area (workspace_id, track_id, name, owner_id, default_assignee)
+        SELECT 1, t.id, 'Seed area', u.id, 'area_owner' FROM track t, app_user u
+         WHERE t.key = 'SEED' AND u.email = 'seed@example.com'`.execute(db);
+      await sql`UPDATE ticket SET labels = ARRAY['seed-label'],
+          priority_id = (SELECT id FROM priority WHERE name = 'Seed priority')
+         WHERE summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO ticket_release (workspace_id, ticket_id, release_id, role)
+        SELECT 1, k.id, r.id, 'target' FROM ticket k, release r
+         WHERE k.summary = 'Seed ticket' AND r.name = 'Seed release'`.execute(db);
+      await sql`INSERT INTO ticket_area (workspace_id, ticket_id, area_id)
+        SELECT 1, k.id, a.id FROM ticket k, area a
+         WHERE k.summary = 'Seed ticket' AND a.name = 'Seed area'`.execute(db);
+    },
+  },
 };
 
 /**

@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { looksLikeKey, normalizeKey } from '../tracks/model';
 import { parseTicketKey, TRASH_RETENTION_DAYS, ticketKey } from './model';
 import { sequenceKey } from './rank';
@@ -91,6 +92,19 @@ export async function bottomRank(db: Db): Promise<string> {
   return sequenceKey(rows[0]?.n as string);
 }
 
+/** The releases of one role of the ticket `k` in the outer query, in the track's order. */
+const releasesOf = (db: Db, role: 'target' | 'found') =>
+  jsonArrayFrom(
+    db
+      .selectFrom('ticket_release as tr')
+      .innerJoin('release as rl', 'rl.id', 'tr.release_id')
+      .select(['rl.id', 'rl.name', sql<boolean>`rl.shipped_at IS NOT NULL`.as('shipped')])
+      .where(sql<boolean>`tr.ticket_id = k.id`)
+      .where('tr.role', '=', role)
+      .orderBy('rl.sort_order')
+      .orderBy('rl.id'),
+  );
+
 /** The columns a ticket view needs, joined with the names it shows. */
 export function ticketQuery(db: Db, workspaceId: number) {
   return db
@@ -106,6 +120,8 @@ export function ticketQuery(db: Db, workspaceId: number) {
     .leftJoin('app_user as d', 'd.id', 'k.deleted_by')
     .leftJoin('ticket as w', 'w.id', 'k.trashed_with')
     .leftJoin('track as wt', 'wt.id', 'w.track_id')
+    .leftJoin('priority as pr', 'pr.id', 'k.priority_id')
+    .leftJoin('close_reason as cr', 'cr.id', 'k.close_reason_id')
     .select([
       'k.id',
       'k.number',
@@ -146,6 +162,27 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'k.trashed_with',
       'w.number as trashed_with_number',
       'wt.key as trashed_with_track_key',
+      'k.priority_id',
+      'pr.name as priority_name',
+      'pr.icon as priority_icon',
+      'pr.color as priority_color',
+      'k.close_reason_id',
+      'cr.name as close_reason_name',
+      'k.closed_at',
+      'k.labels',
+    ])
+    .select([
+      releasesOf(db, 'target').as('target_releases'),
+      releasesOf(db, 'found').as('found_releases'),
+      jsonArrayFrom(
+        db
+          .selectFrom('ticket_area as ta')
+          .innerJoin('area as ar', 'ar.id', 'ta.area_id')
+          .select(['ar.id', 'ar.name'])
+          .where(sql<boolean>`ta.ticket_id = k.id`)
+          .orderBy('ar.name')
+          .orderBy('ar.id'),
+      ).as('areas'),
     ])
     .where('k.workspace_id', '=', workspaceId);
 }
@@ -209,6 +246,24 @@ export function ticketView(row: TicketRow, canSeeParent: boolean) {
     creator: person(row.creator_id, row.creator_name),
     startDate: row.start_date,
     dueDate: row.due_date,
+    priority:
+      row.priority_id === null
+        ? null
+        : {
+            id: row.priority_id,
+            name: row.priority_name ?? '',
+            icon: row.priority_icon,
+            color: row.priority_color,
+          },
+    closeReason:
+      row.close_reason_id === null
+        ? null
+        : { id: row.close_reason_id, name: row.close_reason_name ?? '' },
+    closedAt: row.closed_at?.toISOString() ?? null,
+    labels: row.labels,
+    targetReleases: row.target_releases,
+    foundInReleases: row.found_releases,
+    areas: row.areas,
     rank: row.rank,
     version: row.version,
     createdAt: row.created_at.toISOString(),

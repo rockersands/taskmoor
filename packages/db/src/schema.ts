@@ -210,6 +210,8 @@ export interface TrackTable {
   updated_at: DefaultTimestamp;
   /** The type set the track offers (M1-007); a local-mode track owns its set. */
   type_set_id: number | null;
+  /** The priorities it offers (M1-014); null for the workspace's default set. */
+  priority_set_id: number | null;
 }
 
 export type HierarchyLevelKind = 'subticket' | 'standard' | 'outcome' | 'custom';
@@ -339,6 +341,11 @@ export interface TicketTable {
   deleted_at: Timestamp | null;
   deleted_by: number | null;
   trashed_with: number | null;
+  priority_id: number | null;
+  close_reason_id: number | null;
+  /** When the ticket reached a closed stage (set by workflows, M1-023). */
+  closed_at: Timestamp | null;
+  labels: ColumnType<string[], string[] | undefined, string[]>;
 }
 
 /** The last ticket number given out in each track. */
@@ -387,6 +394,120 @@ export interface TicketDetachedParentTable {
   workspace_id: number;
   parent_id: number;
   detached_at: DefaultTimestamp;
+}
+
+/** A priority of the workspace's ordered list (CORE-014). */
+export interface PriorityTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  icon: string | null;
+  color: string | null;
+  /** Position from 1, gapless (deferred unique constraint). */
+  sort_order: number;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** The priorities a track offers, with the one new tickets take (CORE-014 (2)). */
+export interface PrioritySetTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  /** The set of tracks whose `priority_set_id` is null; one per workspace. */
+  is_default: Generated<boolean>;
+  default_priority_id: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface PrioritySetMemberTable {
+  workspace_id: number;
+  priority_set_id: number;
+  priority_id: number;
+}
+
+/** Why a ticket was closed (CORE-014; Jira: resolution). */
+export interface CloseReasonTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  sort_order: number;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** The workspace's label vocabulary, for autocomplete (CORE-017). */
+export interface LabelTable {
+  workspace_id: number;
+  name: string;
+  created_at: DefaultTimestamp;
+}
+
+/** A release of a track (CORE-016; Jira: version). */
+export interface ReleaseTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number;
+  name: string;
+  description: Generated<string>;
+  start_date: DateText;
+  release_date: DateText;
+  /** Manual order within the track, from 1. */
+  sort_order: number;
+  shipped_at: Timestamp | null;
+  archived_at: Timestamp | null;
+  require_approvals: Generated<boolean>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface ReleaseApproverTable {
+  workspace_id: number;
+  release_id: number;
+  user_id: number;
+  decision: 'approved' | 'declined' | null;
+  comment: Generated<string>;
+  decided_at: Timestamp | null;
+}
+
+export type AreaDefaultAssignee = 'area_owner' | 'track_owner' | 'unassigned';
+
+/** An area of a track, with its owner (CORE-015; Jira: component). */
+export interface AreaTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number;
+  name: string;
+  description: Generated<string>;
+  owner_id: number | null;
+  default_assignee: ColumnType<
+    AreaDefaultAssignee,
+    AreaDefaultAssignee | undefined,
+    AreaDefaultAssignee
+  >;
+  archived_at: Timestamp | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export type TicketReleaseRole = 'target' | 'found';
+
+/** Target releases and found-in releases of tickets. */
+export interface TicketReleaseTable {
+  workspace_id: number;
+  ticket_id: number;
+  release_id: number;
+  role: TicketReleaseRole;
+}
+
+export interface TicketAreaTable {
+  workspace_id: number;
+  ticket_id: number;
+  area_id: number;
 }
 
 /** A user or a group acting in a role on one track. */
@@ -701,6 +822,16 @@ export interface Database {
   ticket_key_history: TicketKeyHistoryTable;
   ticket_detached_parent: TicketDetachedParentTable;
   ticket_change: TicketChangeTable;
+  priority: PriorityTable;
+  priority_set: PrioritySetTable;
+  priority_set_member: PrioritySetMemberTable;
+  close_reason: CloseReasonTable;
+  label: LabelTable;
+  release: ReleaseTable;
+  release_approver: ReleaseApproverTable;
+  area: AreaTable;
+  ticket_release: TicketReleaseTable;
+  ticket_area: TicketAreaTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

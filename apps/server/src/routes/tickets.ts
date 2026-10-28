@@ -7,6 +7,19 @@ import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
 import { shareHierarchy } from '../tickets/configuration';
+import {
+  AREAS_PER_TICKET,
+  areaDefaultAssignee,
+  checkLabels,
+  holdValues,
+  placementOf,
+  RELEASES_PER_TICKET,
+  rememberLabels,
+  sameIds,
+  setTicketAreas,
+  setTicketReleases,
+  trackPrioritySet,
+} from '../tickets/fields';
 import { DEFAULT_PARENT_RULES, parentLevelAllowed, SUBTICKET_RANK } from '../tickets/hierarchy';
 import { changesOf, recordChanges, ticketChanges } from '../tickets/history';
 import {
@@ -53,6 +66,12 @@ import {
  * - Deleting sends the ticket and its subtickets to the trash; children above that level lose
  *   the link and get it back on restore (CORE-025 (3)). Both need "Delete tickets"; only those
  *   who may restore a ticket see it in the trash.
+ * - Priority, close reason, labels, releases and areas (M1-014, CORE-014 to CORE-017): a new
+ *   ticket takes its track's default priority, and the assignee its areas' rule names when it
+ *   has none. A priority must be one the track's priority set offers; releases and areas must
+ *   be the track's own and not archived (a ticket keeps one it has). Setting a close reason
+ *   needs "Set close reason"; the rest "Edit tickets". Moving drops releases and areas, which
+ *   belong to the old track.
  * - A ticket in an archived track is read-only (409 `track_archived`).
  * - `version` counts changes; a write that names the version it read fails with 409
  *   `version_conflict` when someone else saved in between.
@@ -64,6 +83,9 @@ const idValue = z.number().int().positive().max(MAX_INT);
 /** A ticket or a track: its id, or a key. */
 const ref = z.union([idValue, z.string().trim().min(1).max(300)]);
 const day = z.string().nullable();
+const labels = z.array(z.string().max(1000)).max(1000);
+const releaseIds = z.array(idValue).max(RELEASES_PER_TICKET);
+const areaIds = z.array(idValue).max(AREAS_PER_TICKET);
 
 const createBody = z
   .object({
@@ -77,6 +99,12 @@ const createBody = z
     requesterId: idValue.optional(),
     startDate: day.optional(),
     dueDate: day.optional(),
+    priorityId: idValue.nullable().optional(),
+    closeReasonId: idValue.nullable().optional(),
+    labels: labels.optional(),
+    targetReleaseIds: releaseIds.optional(),
+    foundInReleaseIds: releaseIds.optional(),
+    areaIds: areaIds.optional(),
   })
   .strict();
 const updateBody = z
@@ -90,6 +118,12 @@ const updateBody = z
     requesterId: idValue.optional(),
     startDate: day.optional(),
     dueDate: day.optional(),
+    priorityId: idValue.nullable().optional(),
+    closeReasonId: idValue.nullable().optional(),
+    labels: labels.optional(),
+    targetReleaseIds: releaseIds.optional(),
+    foundInReleaseIds: releaseIds.optional(),
+    areaIds: areaIds.optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -172,6 +206,7 @@ interface ContentInput {
   environment?: unknown;
   startDate?: string | null | undefined;
   dueDate?: string | null | undefined;
+  labels?: string[] | undefined;
 }
 interface ContentValues {
   summary?: string;
@@ -179,6 +214,7 @@ interface ContentValues {
   environment?: JsonValue | null;
   startDate?: string | null;
   dueDate?: string | null;
+  labels?: string[];
 }
 
 /** Checks the plain values of a create or edit; problems go into `fields`. */
@@ -203,7 +239,56 @@ function contentValues(body: ContentInput, fields: FieldErrors, creating: boolea
     if (value !== null && !isCalendarDay(value)) fields[name] = 'invalid';
     else out[name] = value;
   }
+  if (body.labels !== undefined) {
+    const checked = checkLabels(body.labels);
+    if (checked.ok) out.labels = checked.labels;
+    else fields.labels = checked.problem;
+  }
   return out;
+}
+
+interface ValueInput {
+  priorityId?: number | null | undefined;
+  closeReasonId?: number | null | undefined;
+  targetReleaseIds?: number[] | undefined;
+  foundInReleaseIds?: number[] | undefined;
+  areaIds?: number[] | undefined;
+}
+
+/**
+ * Checks the priority, close reason, releases and areas a write gives against the values
+ * held for it; `current` is the ticket as it is (null for a new one). Problems go into
+ * `fields`.
+ */
+function valueProblems(
+  body: ValueInput,
+  held: Awaited<ReturnType<typeof holdValues>>,
+  offered: { priorityIds: Set<number> } | null,
+  trackId: number,
+  current: TicketRow | null,
+  fields: FieldErrors,
+): void {
+  if (body.priorityId != null && body.priorityId !== current?.priority_id) {
+    if (!held.priority) fields.priorityId = 'not_found';
+    else if (!offered?.priorityIds.has(body.priorityId)) fields.priorityId = 'not_in_track';
+  }
+  if (body.closeReasonId != null && !held.closeReason) fields.closeReasonId = 'not_found';
+  const lists = [
+    ['targetReleaseIds', held.releases, current?.target_releases],
+    ['foundInReleaseIds', held.releases, current?.found_releases],
+    ['areaIds', held.areas, current?.areas],
+  ] as const;
+  for (const [name, values, had] of lists) {
+    const ids = body[name];
+    if (ids === undefined) continue;
+    const problem = placementOf(
+      values,
+      trackId,
+      ids,
+      (had ?? []).map((v) => v.id),
+    );
+    if (problem) fields[name] = problem;
+  }
 }
 
 /** The level rank of each ticket type named. */
@@ -552,6 +637,9 @@ export function registerTicketRoutes(
     if ((body.startDate != null || body.dueDate != null) && !held.has('schedule_tickets')) {
       return forbidden(reply, 'schedule_tickets');
     }
+    if (body.closeReasonId != null && !held.has('set_close_reason')) {
+      return forbidden(reply, 'set_close_reason');
+    }
     const fields: FieldErrors = {};
     const values = contentValues(body, fields, true);
     if (body.assigneeId != null && !(await assignable(ws, trackId, body.assigneeId))) {
@@ -576,6 +664,25 @@ export function registerTicketRoutes(
       const typeId = body.ticketTypeId ?? offered.defaultTypeId;
       if (typeId === null) return { fields: { ticketTypeId: 'required' } };
       if (!offered.typeIds.has(typeId)) return { fields: { ticketTypeId: 'not_in_track' } };
+      // The track's default priority unless one is given (CORE-014 (2)). Values are held
+      // before any ticket, as their deletions lock them before their tickets.
+      const prioritySet = await trackPrioritySet(trx, ws, trackId);
+      const pointed = await holdValues(trx, ws, {
+        priorityId:
+          body.priorityId === undefined ? prioritySet?.defaultPriorityId : body.priorityId,
+        closeReasonId: body.closeReasonId,
+        releaseIds: [...(body.targetReleaseIds ?? []), ...(body.foundInReleaseIds ?? [])],
+        areaIds: body.areaIds,
+      });
+      const problems: FieldErrors = {};
+      valueProblems(body, pointed, prioritySet, trackId, null, problems);
+      if (Object.keys(problems).length > 0) return { fields: problems };
+      const priorityId =
+        body.priorityId !== undefined
+          ? body.priorityId
+          : pointed.priority
+            ? (prioritySet?.defaultPriorityId ?? null)
+            : null;
       const parent = parentId === null ? null : await lockParent(trx, ws, parentId);
       if (parentId !== null && !parent) return { fields: { parent: 'not_found' } };
       const levels = await typeLevels(trx, ws, [
@@ -588,6 +695,14 @@ export function registerTicketRoutes(
         trackId,
       );
       if (problem) return { fields: { parent: problem } };
+      // No assignee given: the first of its areas whose rule names someone (CORE-015 (1)).
+      let assigneeId = body.assigneeId ?? null;
+      if (body.assigneeId === undefined && body.areaIds !== undefined) {
+        const candidate = await areaDefaultAssignee(trx, trackId, body.areaIds);
+        if (candidate !== null && (await assignable(ws, trackId, candidate))) {
+          assigneeId = candidate;
+        }
+      }
       const number = await nextNumber(trx, ws, trackId);
       const row = await trx
         .insertInto('ticket')
@@ -600,15 +715,22 @@ export function registerTicketRoutes(
           summary: values.summary as string,
           description: values.description == null ? null : JSON.stringify(values.description),
           environment: values.environment == null ? null : JSON.stringify(values.environment),
-          assignee_id: body.assigneeId ?? null,
+          assignee_id: assigneeId,
           requester_id: requesterId,
           creator_id: user.id,
           start_date: values.startDate ?? null,
           due_date: values.dueDate ?? null,
           rank: await bottomRank(trx),
+          priority_id: priorityId,
+          close_reason_id: body.closeReasonId ?? null,
+          labels: values.labels ?? [],
         })
         .returning('id')
         .executeTakeFirstOrThrow();
+      await setTicketReleases(trx, ws, row.id, 'target', body.targetReleaseIds ?? []);
+      await setTicketReleases(trx, ws, row.id, 'found', body.foundInReleaseIds ?? []);
+      await setTicketAreas(trx, ws, row.id, body.areaIds ?? []);
+      await rememberLabels(trx, ws, values.labels ?? []);
       await emit(trx, by(request), {
         type: 'ticket.created',
         subjectId: row.id,
@@ -654,6 +776,12 @@ export function registerTicketRoutes(
       if (structural) await shareHierarchy(trx, ws);
       const offered =
         body.ticketTypeId !== undefined ? await offeredTypes(trx, ws, found.row.track_id) : null;
+      const pointed = await holdValues(trx, ws, {
+        priorityId: body.priorityId,
+        closeReasonId: body.closeReasonId,
+        releaseIds: [...(body.targetReleaseIds ?? []), ...(body.foundInReleaseIds ?? [])],
+        areaIds: body.areaIds,
+      });
       const locked = await trx
         .selectFrom('ticket')
         .select('id')
@@ -676,6 +804,17 @@ export function registerTicketRoutes(
           delete values[name];
         }
       }
+      // Releases and areas compare as sets: the view lists them in its own order.
+      const had = {
+        targetReleaseIds: current.target_releases.map((r) => r.id),
+        foundInReleaseIds: current.found_releases.map((r) => r.id),
+        areaIds: current.areas.map((a) => a.id),
+      };
+      const lists: Partial<Record<keyof typeof had, number[]>> = {};
+      for (const name of Object.keys(had) as (keyof typeof had)[]) {
+        const ids = body[name];
+        if (ids !== undefined && !sameIds(ids, had[name])) lists[name] = [...new Set(ids)];
+      }
       const before = {
         summary: current.summary,
         description: current.description,
@@ -686,6 +825,10 @@ export function registerTicketRoutes(
         requesterId: current.requester_id,
         startDate: current.start_date,
         dueDate: current.due_date,
+        priorityId: current.priority_id,
+        closeReasonId: current.close_reason_id,
+        labels: current.labels,
+        ...had,
       };
       const changes = diff<Record<string, unknown>>(before, {
         ...values,
@@ -693,6 +836,9 @@ export function registerTicketRoutes(
         parentId,
         assigneeId: body.assigneeId,
         requesterId: body.requesterId,
+        priorityId: body.priorityId,
+        closeReasonId: body.closeReasonId,
+        ...lists,
       });
       if (Object.keys(changes).length === 0) return { ticket: current };
 
@@ -708,9 +854,35 @@ export function registerTicketRoutes(
         ['requesterId', 'modify_requester'],
         ['startDate', 'schedule_tickets'],
         ['dueDate', 'schedule_tickets'],
+        ['priorityId', 'edit_tickets'],
+        ['closeReasonId', 'set_close_reason'],
+        ['labels', 'edit_tickets'],
+        ['targetReleaseIds', 'edit_tickets'],
+        ['foundInReleaseIds', 'edit_tickets'],
+        ['areaIds', 'edit_tickets'],
       ];
       for (const [field, permission] of needs) {
         if (changes[field] && !held.has(permission)) return { denied: permission };
+      }
+      if (changes.priorityId || changes.closeReasonId || Object.keys(lists).length > 0) {
+        const problems: FieldErrors = {};
+        const prioritySet =
+          changes.priorityId && body.priorityId != null
+            ? await trackPrioritySet(trx, ws, current.track_id)
+            : null;
+        valueProblems(
+          {
+            ...(changes.priorityId ? { priorityId: body.priorityId } : {}),
+            ...(changes.closeReasonId ? { closeReasonId: body.closeReasonId } : {}),
+            ...lists,
+          },
+          pointed,
+          prioritySet,
+          current.track_id,
+          current,
+          problems,
+        );
+        if (Object.keys(problems).length > 0) return { fields: problems };
       }
       if (
         changes.assigneeId &&
@@ -787,7 +959,18 @@ export function registerTicketRoutes(
         set.requester_id = body.requesterId;
       if (changes.startDate) set.start_date = values.startDate ?? null;
       if (changes.dueDate) set.due_date = values.dueDate ?? null;
+      if (changes.priorityId) set.priority_id = body.priorityId ?? null;
+      if (changes.closeReasonId) set.close_reason_id = body.closeReasonId ?? null;
+      if (changes.labels && values.labels !== undefined) set.labels = values.labels;
       await trx.updateTable('ticket').set(set).where('id', '=', ticketId).execute();
+      if (lists.targetReleaseIds) {
+        await setTicketReleases(trx, ws, ticketId, 'target', lists.targetReleaseIds);
+      }
+      if (lists.foundInReleaseIds) {
+        await setTicketReleases(trx, ws, ticketId, 'found', lists.foundInReleaseIds);
+      }
+      if (lists.areaIds) await setTicketAreas(trx, ws, ticketId, lists.areaIds);
+      if (changes.labels) await rememberLabels(trx, ws, values.labels ?? []);
       await emit(trx, by(request), {
         type: 'ticket.updated',
         subjectId: ticketId,
@@ -960,6 +1143,9 @@ export function registerTicketRoutes(
           ticketTypeId: subType,
         });
       }
+      // Releases and areas belong to the old track.
+      await trx.deleteFrom('ticket_release').where('ticket_id', 'in', touched).execute();
+      await trx.deleteFrom('ticket_area').where('ticket_id', 'in', touched).execute();
       await emit(trx, by(request), {
         type: 'ticket.moved',
         subjectId: ticketId,

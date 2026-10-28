@@ -18,6 +18,20 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-014 priorities, close reasons, labels, releases and areas** (migration 0018, ADR-009
+  note):
+  - `routes/priorities.ts`: `/api/v1/priorities`, `/priority-sets`, `/close-reasons` (CRUD,
+    `PUT .../order`, delete with `?replacementId=`), `/labels?q=` suggestions and
+    `POST /labels/merge` (administrators). Track PATCH takes `prioritySetId`.
+  - `routes/releases.ts`: `/api/v1/tracks/:id/releases` and `/areas` (list, create, release
+    order) and `/api/v1/releases/:id` (edit, ship, unship, archive, restore, merge, delete,
+    approvers, approval decision), `/api/v1/areas/:id` (edit, archive, restore, delete).
+  - Tickets take `priorityId`, `closeReasonId`, `labels`, `targetReleaseIds`,
+    `foundInReleaseIds` and `areaIds`; the view shows them, history records them. Mass
+    rewrites go through `rewriteTickets` in `tickets/fields.ts` (locks, versions, one change
+    set); ticket writes call `holdValues` before locking the ticket (lock order in ADR-009).
+  - Tests: `routes/ticket-fields.test.ts` (15, CORE-014 to CORE-017) and 28 contract
+    scenarios.
 - **M1-083 SCIM 2.0** (ADR-038; ADR-019 points to it), finished from the WIP branch, whose
   filter, PATCH, schema and resource modules held up under the new tests:
   - `/api/v1/scim/v2` (`routes/scim.ts`, data in `scim/store.ts`): discovery, Users and Groups
@@ -46,8 +60,9 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Next (in order)
 
-1. `pnpm next-task`: M1-014 (priorities, close reasons, labels, releases, areas), M1-015
-   (links, followers, votes), M1-010 (field types) are ready.
+1. `pnpm next-task`: M1-015 (links, followers, votes), M1-019 (time tracking), M1-010 (field
+   types) are ready. Releases, areas, priorities and labels have no admin UI yet (M1-050
+   releases hub; settings pages with the admin UI tasks).
 2. Run the Entra ID and Okta provisioning validators against a test instance with a public
    URL (IAM-006 (1)); the fixtures here imitate their request shapes.
 3. Later for tickets: the trash retention setting and purge (M1-101; `TRASH_RETENTION_DAYS` is

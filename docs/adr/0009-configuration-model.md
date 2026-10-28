@@ -192,6 +192,47 @@ sequence `ticket_change_set_seq`; the rules are in `apps/server/src/tickets/hist
 - Comments, links, attachments and time entries add their own fields to the same table when
   they arrive (M1-015 to M1-019).
 
+## Implementation (M1-014: priorities, close reasons, labels, releases and areas)
+
+Migration 0018 adds the lists, sets and side tables; the routes are `routes/priorities.ts`
+(priorities, priority sets, close reasons, labels) and `routes/releases.ts` (releases and
+areas), the ticket rules `tickets/fields.ts`.
+
+- **Priorities and close reasons are the workspace's ordered lists,** with a gapless order
+  under a deferred unique constraint; `PUT .../order` names every value once. A fresh install
+  has the defaults of spec 01a section 1.6.
+- **A priority set chooses which priorities a track offers and the default for new tickets**
+  (CORE-014 (2)). `track.priority_set_id` null means the workspace's default set, which every
+  new priority joins and which cannot be deleted; deleting another set sends its tracks back to
+  it. A ticket keeps a priority its track stops offering until someone changes it, so a switch
+  of set rewrites no tickets.
+- **Deleting a value tickets use takes a replacement** (CORE-014 (3)): the tickets take it,
+  each with a new version and a history row, as one change set; for a priority, the sets that
+  offered it offer the replacement, as their default where it was. Areas take a replacement or
+  `removeFromTickets=true`; releases merge or take that flag.
+- **Lock order:** a change that rewrites tickets locks the value first (`FOR UPDATE`) and the
+  tickets after, in id order; ticket writes hold the values they point at (`FOR KEY SHARE`)
+  before they lock the ticket. A ticket write that loses the race finds the value gone
+  (`not_found`), never a dangling reference; a test races 20 writes against a deletion.
+- **Labels are a `text[]` on the ticket** (GIN-indexed), one word each, in the order given,
+  with the `label` table as the workspace's vocabulary for suggestions (CORE-017 (1)). Merging
+  replaces labels in place on every ticket that has one, keeping the first position
+  (CORE-017 (2)); a rename is a merge into a new name. Suggestions are workspace-wide, as the
+  spec asks, so a label name is visible to everyone signed in.
+- **Releases and areas belong to a track;** its administrators manage them. Archived ones stay
+  on tickets that have them; no ticket takes one anew. A ticket lists its releases in the
+  track's release order and its areas by name; moving it to another track drops both.
+- **Shipping** (CORE-016): open target tickets (outside the trash, `closed_at` null) make it
+  answer 409 `open_tickets` until the call names `moveOpenTo` another upcoming release, or
+  null to leave them. With approvals required, every approver must approve; a decline blocks
+  and is recorded (`release.approval_decided`). A release with approvals required and no
+  approvers ships. `closed_at` is set by workflows from M1-023.
+- **An area's rule assigns new tickets** that name no assignee (CORE-015 (1)): the first of
+  their areas whose rule names someone (its owner, or the track's owner) who may be assigned.
+- History fields: `priority`, `closeReason`, `labels` (space-separated), `targetRelease`,
+  `foundInRelease` and `area` (ids by commas, names by ", "). All new events are audited:
+  they are configuration.
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not

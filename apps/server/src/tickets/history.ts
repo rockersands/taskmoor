@@ -21,6 +21,13 @@ export interface FieldChange {
 
 const idText = (id: number | null) => (id === null ? null : String(id));
 const richText = (doc: unknown) => (doc === null || doc === undefined ? null : canonicalJson(doc));
+/** A list of values: labels by spaces, as a label holds none; empty is no value. */
+const listText = (values: readonly string[]) => (values.length === 0 ? null : values.join(' '));
+/** A list of references: ids by commas in the ticket's order, names by ", ". */
+const idList = (items: readonly { id: number }[]) =>
+  items.length === 0 ? null : items.map((i) => i.id).join(',');
+const nameList = (items: readonly { name: string }[]) =>
+  items.length === 0 ? null : items.map((i) => i.name).join(', ');
 
 interface Tracked {
   field: string;
@@ -51,6 +58,24 @@ export const TRACKED_FIELDS: readonly Tracked[] = [
   { field: 'requester', value: (r) => idText(r.requester_id), display: (r) => r.requester_name },
   { field: 'startDate', value: (r) => r.start_date },
   { field: 'dueDate', value: (r) => r.due_date },
+  { field: 'priority', value: (r) => idText(r.priority_id), display: (r) => r.priority_name },
+  {
+    field: 'closeReason',
+    value: (r) => idText(r.close_reason_id),
+    display: (r) => r.close_reason_name,
+  },
+  { field: 'labels', value: (r) => listText(r.labels) },
+  {
+    field: 'targetRelease',
+    value: (r) => idList(r.target_releases),
+    display: (r) => nameList(r.target_releases),
+  },
+  {
+    field: 'foundInRelease',
+    value: (r) => idList(r.found_releases),
+    display: (r) => nameList(r.found_releases),
+  },
+  { field: 'area', value: (r) => idList(r.areas), display: (r) => nameList(r.areas) },
   { field: 'rank', value: (r) => r.rank },
   { field: 'trash', value: (r) => (r.deleted_at === null ? null : 'in_trash') },
 ];
@@ -77,18 +102,21 @@ export function ticketChanges(before: TicketRow | null, after: TicketRow): Field
   return out;
 }
 
-/** Writes changes as one change set; returns its number, or null when nothing changed. */
+/**
+ * Writes changes as one change set, or adds them to `changeSet` when given (a mutation that
+ * writes in slices); returns the change set, or null when nothing changed.
+ */
 export async function recordChanges(
   trx: Transaction<Database>,
   workspaceId: number,
   actorId: number | null,
   changes: readonly FieldChange[],
+  changeSet: string | null = null,
 ): Promise<string | null> {
-  if (changes.length === 0) return null;
-  const { rows } = await sql<{ n: string }>`SELECT nextval('ticket_change_set_seq') AS n`.execute(
-    trx,
-  );
-  const changeSet = rows[0]?.n as string;
+  if (changes.length === 0) return changeSet;
+  changeSet ??= (
+    await sql<{ n: string }>`SELECT nextval('ticket_change_set_seq') AS n`.execute(trx)
+  ).rows[0]?.n as string;
   await trx
     .insertInto('ticket_change')
     .values(

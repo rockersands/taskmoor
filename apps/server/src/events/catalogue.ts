@@ -18,6 +18,12 @@ const typeMapping = z.array(
 );
 /** Where a ticket sits: its key, track and type. */
 const placement = z.object({ key: z.string(), trackId: id, ticketTypeId: id });
+/** A value deleted, and what tickets that had it took instead. */
+const replaced = z.object({
+  name: z.string(),
+  replacementId: id.nullable(),
+  ticketCount: z.number().int().min(0),
+});
 
 export const EVENT_TYPES = {
   // Instance and sessions
@@ -306,6 +312,86 @@ export const EVENT_TYPES = {
       detachedFrom: id.nullable(),
     }),
   },
+  // Priorities, close reasons, labels, releases and areas (M1-014). Tickets a change rewrites
+  // record it in their own history.
+  'priority.created': { subject: 'priority', payload: z.object({ name: z.string() }) },
+  'priority.updated': { subject: 'priority', payload: z.object({ changes }) },
+  /** Tickets and priority sets that had it take the replacement. */
+  'priority.deleted': { subject: 'priority', payload: replaced },
+  'priority.reordered': { subject: 'workspace', payload: z.object({ priorityIds: z.array(id) }) },
+  'priority_set.created': {
+    subject: 'priority_set',
+    payload: z.object({
+      name: z.string(),
+      priorityIds: z.array(id),
+      defaultPriorityId: id.nullable(),
+    }),
+  },
+  'priority_set.updated': { subject: 'priority_set', payload: z.object({ changes }) },
+  /** Tracks that used it offer the default set. */
+  'priority_set.deleted': {
+    subject: 'priority_set',
+    payload: z.object({ name: z.string(), trackCount: z.number().int().min(0) }),
+  },
+  'close_reason.created': { subject: 'close_reason', payload: z.object({ name: z.string() }) },
+  'close_reason.updated': { subject: 'close_reason', payload: z.object({ changes }) },
+  'close_reason.deleted': { subject: 'close_reason', payload: replaced },
+  'close_reason.reordered': {
+    subject: 'workspace',
+    payload: z.object({ closeReasonIds: z.array(id) }),
+  },
+  /** Labels merged into one (a rename is a merge of one label into a new name). */
+  'label.merged': {
+    subject: 'workspace',
+    payload: z.object({
+      labels: z.array(z.string()),
+      into: z.string(),
+      ticketCount: z.number().int().min(0),
+    }),
+  },
+  'release.created': {
+    subject: 'release',
+    payload: z.object({ trackId: id, name: z.string() }),
+  },
+  'release.updated': { subject: 'release', payload: z.object({ changes }) },
+  'release.reordered': { subject: 'track', payload: z.object({ releaseIds: z.array(id) }) },
+  /** Its open tickets (target release, not closed) moved to `movedTo`, or stayed. */
+  'release.shipped': {
+    subject: 'release',
+    payload: z.object({
+      name: z.string(),
+      releaseDate: z.string(),
+      openTickets: z.number().int().min(0),
+      movedTo: id.nullable(),
+    }),
+  },
+  'release.unshipped': { subject: 'release', payload: z.object({ name: z.string() }) },
+  'release.archived': { subject: 'release', payload: z.object({ name: z.string() }) },
+  'release.restored': { subject: 'release', payload: z.object({ name: z.string() }) },
+  /** Its tickets point at `into` instead, in both roles; the release is gone. */
+  'release.merged': {
+    subject: 'release',
+    payload: z.object({ name: z.string(), into: id, ticketCount: z.number().int().min(0) }),
+  },
+  /** Gone; tickets that had it lost it. */
+  'release.deleted': {
+    subject: 'release',
+    payload: z.object({ name: z.string(), ticketCount: z.number().int().min(0) }),
+  },
+  'release.approvers_set': {
+    subject: 'release',
+    payload: z.object({ added: z.array(id), removed: z.array(id) }),
+  },
+  'release.approval_decided': {
+    subject: 'release',
+    payload: z.object({ decision: z.enum(['approved', 'declined']), comment: z.string() }),
+  },
+  'area.created': { subject: 'area', payload: z.object({ trackId: id, name: z.string() }) },
+  'area.updated': { subject: 'area', payload: z.object({ changes }) },
+  'area.archived': { subject: 'area', payload: z.object({ name: z.string() }) },
+  'area.restored': { subject: 'area', payload: z.object({ name: z.string() }) },
+  /** Tickets that had it take the replacement, or lose it when there is none. */
+  'area.deleted': { subject: 'area', payload: replaced },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   // API tokens and service accounts (IAM-007). Never the token or its hash.
