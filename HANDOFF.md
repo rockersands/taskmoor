@@ -18,6 +18,14 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-056 notification rules** (migration 0030; ADR-041). `apps/server/src/notifications/`:
+  `model.ts` (events, recipient types, channels) and `subscriber.ts` (the bus subscriber that
+  writes `notification` rows). Routes `/api/v1/notification-policies`,
+  `/api/v1/notification-events`, `/api/v1/account/notification-preferences`, and
+  `notificationPolicyId` on track PATCH. Nothing delivers yet: email is M1-057 (SMTP, batching,
+  digests) and the inbox M1-058; both read `notification` rows (`delivered_at`, `read_at`) and
+  must render content with the recipient's own permissions. Comments (M1-018) should add
+  `ticket_commented` and check a restricted comment like a restricted time entry.
 - **M1-020 visibility levels** (migration 0029; ADR-012 "Visibility levels and ticket-level
   grantees"). `apps/server/src/authz/visibility.ts` holds the rules; `request.authz.ticket(row)`,
   `canTicket(p, row)` and `seesTicket(row)` replace track checks wherever a ticket is at hand,

@@ -1565,6 +1565,51 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PATCH /api/v1/account/notification-preferences',
+      expect: 'user.preferences_updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: '/api/v1/account/notification-preferences',
+          payload: { ownChanges: true, events: { ticket_updated: { email: false } } },
+        }),
+    },
+    {
+      route: 'POST /api/v1/notification-policies',
+      expect: 'notification_policy.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/notification-policies',
+          payload: {
+            name: 'Contract notification_policy',
+            rules: [{ event: 'ticket_created', recipient: 'track_owner' }],
+          },
+        });
+        state.notificationPolicy = res.json().notificationPolicy?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/notification-policies/:id',
+      expect: 'notification_policy.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/notification-policies/${state.notificationPolicy}`,
+          payload: { rules: [{ event: 'custom:Escalated', recipient: 'assignee' }] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/notification-policies/:id',
+      expect: 'notification_policy.deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/notification-policies/${state.notificationPolicy}`,
+        }),
+    },
+    {
       route: 'PUT /api/v1/link-policy',
       expect: 'link_policy.updated',
       run: () => admin({ method: 'PUT', url: '/api/v1/link-policy', payload: { enabled: false } }),

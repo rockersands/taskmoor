@@ -46,5 +46,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [038](0038-scim-provisioning.md) | SCIM provisioning through a service account's scim token | Accepted |
 | [039](0039-workflows-as-versioned-data.md) | Workflows as versioned data with instant publish | Accepted |
 | [040](0040-attachment-storage.md) | Attachment storage: random keys, streamed uploads, signed URLs, a scan hook | Accepted |
+| [041](0041-notification-recipients.md) | Notification recipients resolved by a bus subscriber, redacted per recipient | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

@@ -130,6 +130,8 @@ const updateBody = z
     layoutSetId: id.nullable().optional(),
     /** Null for none; tickets at a level the new policy lacks take its default (M1-020). */
     visibilityPolicyId: id.nullable().optional(),
+    /** Null for the workspace's default notification policy (M1-056). */
+    notificationPolicyId: id.nullable().optional(),
     /** For each status the new workflow lacks that tickets are in: where they go. */
     statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
     features: trackFields.features.optional(),
@@ -194,6 +196,7 @@ function trackQuery(db: Db, workspaceId: number) {
       't.field_rule_set_id',
       't.layout_set_id',
       't.visibility_policy_id',
+      't.notification_policy_id',
       't.feature_board',
       't.feature_backlog',
       't.feature_sprints',
@@ -242,6 +245,7 @@ function trackView(row: TrackRow) {
     fieldRuleSetId: row.field_rule_set_id,
     layoutSetId: row.layout_set_id,
     visibilityPolicyId: row.visibility_policy_id,
+    notificationPolicyId: row.notification_policy_id,
     features: featuresOf(row),
     archived: row.archived_at !== null,
     archivedAt: row.archived_at?.toISOString() ?? null,
@@ -645,6 +649,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       ['field_rule_set', body.fieldRuleSetId, current.field_rule_set_id],
       ['layout_set', body.layoutSetId, current.layout_set_id],
       ['visibility_policy', body.visibilityPolicyId, current.visibility_policy_id],
+      ['notification_policy', body.notificationPolicyId, current.notification_policy_id],
     ] as const) {
       if (value === undefined || value === had || value === null) {
         if (value === null && value !== had && !(await isAdmin(request))) {
@@ -665,7 +670,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
             ? 'fieldRuleSetId'
             : kind === 'layout_set'
               ? 'layoutSetId'
-              : 'visibilityPolicyId',
+              : kind === 'visibility_policy'
+                ? 'visibilityPolicyId'
+                : 'notificationPolicyId',
         );
       }
       if (set.track_id === null && !(await isAdmin(request))) {
@@ -714,6 +721,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           fieldRuleSetId: locked.field_rule_set_id,
           layoutSetId: locked.layout_set_id,
           visibilityPolicyId: locked.visibility_policy_id,
+          notificationPolicyId: locked.notification_policy_id,
           ...Object.fromEntries(
             TRACK_FEATURES.map((f) => [`features.${f}`, locked[featureColumn(f)]]),
           ),
@@ -734,6 +742,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           fieldRuleSetId: body.fieldRuleSetId,
           layoutSetId: body.layoutSetId,
           visibilityPolicyId: body.visibilityPolicyId,
+          notificationPolicyId: body.notificationPolicyId,
           ...Object.fromEntries(
             Object.entries(body.features ?? {}).map(([f, on]) => [`features.${f}`, on]),
           ),
@@ -874,6 +883,9 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           }
           if (changes.visibilityPolicyId && body.visibilityPolicyId !== undefined) {
             set.visibility_policy_id = body.visibilityPolicyId;
+          }
+          if (changes.notificationPolicyId && body.notificationPolicyId !== undefined) {
+            set.notification_policy_id = body.notificationPolicyId;
           }
           for (const feature of TRACK_FEATURES) {
             const on = body.features?.[feature];

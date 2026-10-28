@@ -26,6 +26,7 @@ import * as m0026 from './0026_custom_fields';
 import * as m0027 from './0027_field_values';
 import * as m0028 from './0028_field_rules_layouts';
 import * as m0029 from './0029_visibility_levels';
+import * as m0030 from './0030_notifications';
 import * as m0031 from './0031_attachments';
 
 /**
@@ -63,5 +64,6 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0027_field_values': m0027,
   '0028_field_rules_layouts': m0028,
   '0029_visibility_levels': m0029,
+  '0030_notifications': m0030,
   '0031_attachments': m0031,
 };

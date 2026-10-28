@@ -219,6 +219,8 @@ export interface TrackTable {
   layout_set_id: ColumnType<number | null, number | null | undefined, number | null>;
   /** Its visibility policy; null for none (M1-020). */
   visibility_policy_id: ColumnType<number | null, number | null | undefined, number | null>;
+  /** Its notification policy; null for the workspace's default (M1-056). */
+  notification_policy_id: ColumnType<number | null, number | null | undefined, number | null>;
   /** In the trash since (M1-101, CORE-025); restorable until the purge starts. */
   deleted_at: Timestamp | null;
   deleted_by: number | null;
@@ -628,6 +630,8 @@ export interface UserPreferenceTable {
   workspace_id: number;
   /** Follow the tickets one creates, edits or comments on (CORE-019). */
   auto_follow: Generated<boolean>;
+  /** Be notified of one's own changes (M1-056; off by default). */
+  notify_own_changes: Generated<boolean>;
   updated_at: DefaultTimestamp;
 }
 
@@ -901,6 +905,69 @@ export interface VisibilityMemberTable {
   group_id: number | null;
   user_id: number | null;
   field_key: string | null;
+}
+
+export type NotificationRecipient =
+  | 'assignee'
+  | 'requester'
+  | 'area_owner'
+  | 'user'
+  | 'group'
+  | 'role'
+  | 'follower'
+  | 'track_owner'
+  | 'current_user'
+  | 'user_field'
+  | 'group_field';
+export type NotificationChannel = 'email' | 'inbox';
+
+/** A notification policy (M1-056; NTF-001): which recipients each event reaches. */
+export interface NotificationPolicyTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number | null;
+  name: string;
+  description: Generated<string>;
+  is_default: Generated<boolean>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface NotificationRuleTable {
+  id: Generated<number>;
+  workspace_id: number;
+  policy_id: number;
+  event: string;
+  recipient: NotificationRecipient;
+  user_id: number | null;
+  group_id: number | null;
+  role_id: number | null;
+  field_key: string | null;
+}
+
+/** A person's choice for one event and channel; no row means on (NTF-004). */
+export interface NotificationPreferenceTable {
+  user_id: number;
+  workspace_id: number;
+  event: string;
+  channel: NotificationChannel;
+  enabled: boolean;
+}
+
+/** One notification to one person on one channel, for one domain event (M1-056). */
+export interface NotificationTable {
+  id: Generated<string>;
+  workspace_id: number;
+  user_id: number;
+  channel: NotificationChannel;
+  event: string;
+  ticket_id: number | null;
+  domain_event_id: string;
+  actor_id: number | null;
+  payload: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  created_at: DefaultTimestamp;
+  read_at: Timestamp | null;
+  delivered_at: Timestamp | null;
 }
 
 /** Whether a field is required or hidden, and its help text, for a ticket type or every type. */
@@ -1415,6 +1482,10 @@ export interface Database {
   visibility_policy: VisibilityPolicyTable;
   visibility_level: VisibilityLevelTable;
   visibility_member: VisibilityMemberTable;
+  notification_policy: NotificationPolicyTable;
+  notification_rule: NotificationRuleTable;
+  notification_preference: NotificationPreferenceTable;
+  notification: NotificationTable;
   v_text: TextValueTable;
   v_number: NumberValueTable;
   v_date: DateValueTable;

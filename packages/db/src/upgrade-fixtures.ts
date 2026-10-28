@@ -634,6 +634,37 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0030_notifications': {
+    tables: {
+      notification_policy: "name = 'Seed notifications' AND NOT is_default",
+      notification_rule: "event = 'ticket_created' AND recipient = 'track_owner'",
+      notification_preference: "event = 'ticket_updated' AND channel = 'email' AND NOT enabled",
+      user_preference: 'notify_own_changes',
+      notification: "event = 'ticket_created' AND channel = 'inbox' AND payload ? 'key'",
+      track: "key = 'SEED' AND notification_policy_id IS NOT NULL",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO notification_policy (workspace_id, name)
+        VALUES (1, 'Seed notifications')`.execute(db);
+      await sql`INSERT INTO notification_rule (workspace_id, policy_id, event, recipient)
+        SELECT 1, id, 'ticket_created', 'track_owner' FROM notification_policy
+         WHERE name = 'Seed notifications'`.execute(db);
+      await sql`UPDATE track SET notification_policy_id =
+          (SELECT id FROM notification_policy WHERE name = 'Seed notifications')
+        WHERE key = 'SEED'`.execute(db);
+      await sql`INSERT INTO notification_preference (user_id, workspace_id, event, channel, enabled)
+        SELECT id, 1, 'ticket_updated', 'email', false FROM app_user
+         WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO user_preference (user_id, workspace_id, notify_own_changes)
+        SELECT id, 1, true FROM app_user WHERE email = 'seed@example.com'
+        ON CONFLICT (user_id) DO UPDATE SET notify_own_changes = true`.execute(db);
+      await sql`INSERT INTO notification (workspace_id, user_id, channel, event, ticket_id,
+          domain_event_id, payload)
+        SELECT 1, u.id, 'inbox', 'ticket_created', k.id, 1, '{"key": "SEED-1"}'::jsonb
+          FROM app_user u, ticket k
+         WHERE u.email = 'seed@example.com' AND k.summary = 'Seed ticket'`.execute(db);
+    },
+  },
   '0031_attachments': {
     tables: {
       attachment_setting: 'max_file_size = 3221225472',

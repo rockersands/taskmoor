@@ -522,6 +522,19 @@ export const EVENT_TYPES = {
     payload: z.object({ changes, trackIds: z.array(id) }),
   },
   'layout_set.deleted': { subject: 'layout_set', payload: z.object({ name: z.string() }) },
+  // Notification policies (M1-056); `trackIds` names every track a save reaches.
+  'notification_policy.created': {
+    subject: 'notification_policy',
+    payload: z.object({ name: z.string(), trackId: id.nullable(), count: z.number().int().min(0) }),
+  },
+  'notification_policy.updated': {
+    subject: 'notification_policy',
+    payload: z.object({ changes, trackIds: z.array(id) }),
+  },
+  'notification_policy.deleted': {
+    subject: 'notification_policy',
+    payload: z.object({ name: z.string() }),
+  },
   // Visibility policies and levels (M1-020); `trackIds` names every track a change reaches.
   'visibility_policy.created': {
     subject: 'visibility_policy',
