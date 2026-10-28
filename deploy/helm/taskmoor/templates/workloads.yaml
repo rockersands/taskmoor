@@ -54,6 +54,12 @@ spec:
             # Point TASKMOOR_BACKUP_DIR at a mounted volume through extraEnv to turn them on.
             - name: TASKMOOR_BACKUP_DIR
               value: "off"
+            {{- if eq $root.Values.storage.type "local" }}
+            # Attachments on the app's volume (M1-016): the worker cannot see them, so it
+            # leaves their cleanup to the app pod (which sweeps its own store).
+            - name: TASKMOOR_FILES_DIR
+              value: "off"
+            {{- end }}
             {{- end }}
             {{- include "taskmoor.env" $root | nindent 12 }}
           ports:

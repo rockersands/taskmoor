@@ -11,6 +11,7 @@ import '../src/styles/sso.css';
 import '../src/styles/directories.css';
 import '../src/styles/tickets.css';
 import '../src/styles/trash.css';
+import '../src/styles/attachments.css';
 
 const preview: Preview = {
   parameters: {

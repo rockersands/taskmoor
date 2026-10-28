@@ -124,6 +124,9 @@ export const AUDITED_EVENTS = [
   'layout_set.updated',
   'layout_set.deleted',
   'time_tracking.settings_updated',
+  'attachment_settings.updated',
+  // Malware found, or a file the scanner could not judge: a security event.
+  'attachment.quarantined',
   'status.created',
   'status.updated',
   'status.reordered',
@@ -186,6 +189,8 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'time_entry.created': TICKET_ACTIVITY,
   'time_entry.updated': TICKET_ACTIVITY,
   'time_entry.deleted': TICKET_ACTIVITY,
+  'attachment.created': TICKET_ACTIVITY,
+  'attachment.deleted': TICKET_ACTIVITY,
 };
 
 /**

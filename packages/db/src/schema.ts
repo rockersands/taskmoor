@@ -657,6 +657,58 @@ export interface TimeEntryTable {
   updated_at: DefaultTimestamp;
 }
 
+/** The workspace's attachment settings (M1-016, CORE-021). */
+export interface AttachmentSettingTable {
+  workspace_id: number;
+  /** Bytes; bigint reads as text. No upper bound: there is no fixed ceiling. */
+  max_file_size: ColumnType<string, number | string | undefined, number | string>;
+  updated_at: DefaultTimestamp;
+}
+
+export type StorageKindColumn = 'local' | 's3';
+export type AttachmentScanState = 'pending' | 'clean' | 'infected' | 'failed';
+export type AttachmentThumbnailState = 'none' | 'pending' | 'ready' | 'failed';
+
+/**
+ * A file on a ticket (CORE-021). `name` is for display only; the bytes are in `storage` under
+ * `storage_key`, a random key (ADR-040). Only `clean` files are served.
+ */
+export interface AttachmentTable {
+  id: Generated<number>;
+  workspace_id: number;
+  ticket_id: number;
+  name: string;
+  declared_type: string;
+  sniffed_type: string | null;
+  /** Bytes; bigint reads as text. */
+  size: ColumnType<string, number | string, number | string>;
+  sha256: string;
+  storage: StorageKindColumn;
+  storage_key: string;
+  scan_state: Generated<AttachmentScanState>;
+  scan_detail: string | null;
+  scanned_at: Timestamp | null;
+  thumbnail_state: Generated<AttachmentThumbnailState>;
+  thumbnail_key: string | null;
+  width: number | null;
+  height: number | null;
+  author_id: number | null;
+  created_at: DefaultTimestamp;
+}
+
+/** Stored objects waiting to be deleted (ADR-040): gone attachments and unfinished uploads. */
+export interface StorageCleanupTable {
+  id: ColumnType<string, never, never>;
+  workspace_id: number;
+  storage: StorageKindColumn;
+  storage_key: string;
+  reason: 'upload' | 'deleted';
+  not_before: DefaultTimestamp;
+  attempts: Generated<number>;
+  last_error: string | null;
+  created_at: DefaultTimestamp;
+}
+
 /** A status, in one of three stages (M1-023, CORE-014). */
 export type StatusStage = 'new' | 'active' | 'closed';
 export interface StatusTable {
@@ -1303,6 +1355,9 @@ export interface Database {
   user_preference: UserPreferenceTable;
   time_tracking_setting: TimeTrackingSettingTable;
   time_entry: TimeEntryTable;
+  attachment_setting: AttachmentSettingTable;
+  attachment: AttachmentTable;
+  storage_cleanup: StorageCleanupTable;
   status: StatusTable;
   workflow: WorkflowTable;
   workflow_version: WorkflowVersionTable;

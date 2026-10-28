@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { queueSweep } from '../attachments/cleanup';
 import { emit } from '../events/bus';
 import { enqueue, type JobRunner } from '../events/queue';
 import { shareHierarchy } from '../tickets/configuration';
@@ -15,8 +16,9 @@ import { retentionCutoff, trashRetentionDays } from './policy';
  *
  * - A ticket leaves with what cannot live without it: the subtickets that went to the trash
  *   with it, and any subticket of it still in the trash. Its history, links, web links,
- *   followers, votes, releases and areas go with it (the foreign keys cascade); the audit log
- *   keeps `ticket.deleted` and `ticket.purged`.
+ *   followers, votes, releases, areas and attachments go with it (the foreign keys cascade);
+ *   the attachments' files leave the store after commit, through `storage_cleanup` and the
+ *   worker's sweep (M1-016). The audit log keeps `ticket.deleted` and `ticket.purged`.
  * - The tickets it leaves behind record the loss in their own history: a link to it, or a
  *   parent link (children lose the parent, as when it went to the trash).
  * - A track leaves in batches: its tickets first, whatever their state, then its releases,
@@ -132,6 +134,12 @@ export async function purgeTicketSet(
     );
   }
   await recordChanges(trx, workspaceId, options.actorId, changes);
+
+  // Their attachments' files leave the store after commit (M1-016): the rows cascade, a
+  // trigger lists their keys in storage_cleanup, and the worker's sweep deletes the objects.
+  const { rows: attached } = await sql<{ n: number }>`
+    SELECT count(*)::int AS n FROM attachment WHERE ticket_id = ANY(${ids}::int[])`.execute(trx);
+  if ((attached[0]?.n ?? 0) > 0) await queueSweep(trx, workspaceId);
 
   // One statement, so references among the doomed tickets (parent, trashed with) never dangle.
   await trx.deleteFrom('ticket').where('id', 'in', ids).execute();

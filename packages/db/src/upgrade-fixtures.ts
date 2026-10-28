@@ -604,6 +604,30 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         WHERE key = 'SEED'`.execute(db);
     },
   },
+  '0031_attachments': {
+    tables: {
+      attachment_setting: 'max_file_size = 3221225472',
+      attachment:
+        "name = 'seed.png' AND scan_state = 'clean' AND thumbnail_state = 'ready' AND size = 2048",
+      storage_cleanup: "storage_key = 'w1/00/11/00112233445566778899aabbccddeeff'",
+    },
+    seed: async (db) => {
+      await sql`UPDATE attachment_setting SET max_file_size = 3221225472 WHERE workspace_id = 1`.execute(
+        db,
+      );
+      await sql`INSERT INTO attachment (workspace_id, ticket_id, name, declared_type, sniffed_type,
+          size, sha256, storage, storage_key, scan_state, scanned_at, thumbnail_state,
+          thumbnail_key, width, height, author_id)
+        SELECT 1, k.id, 'seed.png', 'image/png', 'image/png', 2048, repeat('ab', 32), 'local',
+          'w1/ab/cd/abcd0000000000000000000000000000', 'clean', now(), 'ready',
+          'w1/ef/01/ef010000000000000000000000000000', 64, 48, u.id
+          FROM ticket k, app_user u
+         WHERE k.summary = 'Seed ticket' AND u.email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO storage_cleanup (workspace_id, storage, storage_key, reason, not_before)
+        VALUES (1, 's3', 'w1/00/11/00112233445566778899aabbccddeeff', 'upload',
+          now() + interval '1 day')`.execute(db);
+    },
+  },
 };
 
 /**

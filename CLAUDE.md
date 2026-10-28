@@ -73,6 +73,7 @@ on another disk (for example while a benchmark saturates this one).
 | `apps/web` | Static React frontend (Vite); Playwright tests in `apps/web/e2e` |
 | `packages/ai` | AI gateway: `AiGateway`, provider adapters (Anthropic API, Bedrock, Vertex, Foundry, OpenAI-compatible), feature registry |
 | `packages/db` | Kysely client, `Database` types, forward-only migrations, `useMigratedDatabase()` |
+| `packages/storage` | Attachment stores: local disk and S3-compatible behind one interface, `FakeS3` for tests |
 | `packages/iam` | Identity and access: password hashing (scrypt), one-time and session tokens; the providers of ADR-019 join in M1 |
 | `deploy/` | Install kits: `compose/` (bundled or external Postgres) and `allinone/` (image with Postgres inside) |
 | `packages/richtext` | Document schema (Tiptap/ProseMirror) and lossless conversion to and from the Jira-compatible document format |

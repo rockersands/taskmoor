@@ -103,6 +103,46 @@
       "CREATE UNIQUE INDEX area_pkey ON public.area USING btree (id)"
     ]
   },
+  "attachment": {
+    "columns": [
+      "id integer not null default nextval('attachment_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "name text not null",
+      "declared_type text not null",
+      "sniffed_type text",
+      "size bigint not null",
+      "sha256 text not null",
+      "storage text not null",
+      "storage_key text not null",
+      "scan_state text not null default 'pending'::text",
+      "scan_detail text",
+      "scanned_at timestamp with time zone",
+      "thumbnail_state text not null default 'none'::text",
+      "thumbnail_key text",
+      "width integer",
+      "height integer",
+      "author_id integer",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX attachment_pending_idx ON public.attachment USING btree (id) WHERE ((scan_state = 'pending'::text) OR (thumbnail_state = 'pending'::text))",
+      "CREATE UNIQUE INDEX attachment_pkey ON public.attachment USING btree (id)",
+      "CREATE UNIQUE INDEX attachment_storage_key_idx ON public.attachment USING btree (storage, storage_key)",
+      "CREATE UNIQUE INDEX attachment_thumbnail_key_idx ON public.attachment USING btree (storage, thumbnail_key)",
+      "CREATE INDEX attachment_ticket_idx ON public.attachment USING btree (ticket_id, id)"
+    ]
+  },
+  "attachment_setting": {
+    "columns": [
+      "workspace_id integer not null",
+      "max_file_size bigint not null default 1073741824",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX attachment_setting_pkey ON public.attachment_setting USING btree (workspace_id)"
+    ]
+  },
   "audit_chain": {
     "columns": [
       "workspace_id integer not null",
@@ -902,6 +942,24 @@
       "CREATE UNIQUE INDEX status_name_idx ON public.status USING btree (workspace_id, lower(name))",
       "CREATE UNIQUE INDEX status_order_key ON public.status USING btree (workspace_id, sort_order)",
       "CREATE UNIQUE INDEX status_pkey ON public.status USING btree (id)"
+    ]
+  },
+  "storage_cleanup": {
+    "columns": [
+      "id bigint not null default nextval('storage_cleanup_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "storage text not null",
+      "storage_key text not null",
+      "reason text not null",
+      "not_before timestamp with time zone not null default now()",
+      "attempts integer not null default 0",
+      "last_error text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX storage_cleanup_due_idx ON public.storage_cleanup USING btree (not_before)",
+      "CREATE UNIQUE INDEX storage_cleanup_key_unique ON public.storage_cleanup USING btree (storage, storage_key)",
+      "CREATE UNIQUE INDEX storage_cleanup_pkey ON public.storage_cleanup USING btree (id)"
     ]
   },
   "ticket": {

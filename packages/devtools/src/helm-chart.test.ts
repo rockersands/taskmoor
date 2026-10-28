@@ -102,7 +102,7 @@ describe.skipIf(!helm)('Helm chart', () => {
       Ingress: 1,
     });
     expect(counts.PersistentVolumeClaim).toBeUndefined();
-    expect(out).toContain('name: S3_BUCKET');
+    expect(out).toContain('name: TASKMOOR_S3_BUCKET');
   });
 
   it('[OPS-018] refuses settings that cannot work', () => {

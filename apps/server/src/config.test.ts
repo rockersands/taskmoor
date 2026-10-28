@@ -20,7 +20,56 @@ describe('loadConfig', () => {
       metricsPort: 9464,
       metricsHost: '0.0.0.0',
       shutdownDrainMs: 2000,
+      storage: { urlTtl: 300 },
     });
+  });
+
+  it('[CORE-021] reads the attachment store, S3 credentials and the scanner from the environment', () => {
+    // Placeholders only: real credentials come from the environment at run time.
+    const config = loadConfig({
+      DATABASE_URL: DB,
+      TASKMOOR_S3_BUCKET: 'taskmoor-files',
+      TASKMOOR_S3_ENDPOINT: 'http://minio:9000',
+      TASKMOOR_S3_PUBLIC_ENDPOINT: 'https://files.example.com',
+      TASKMOOR_S3_PREFIX: 'attachments/',
+      TASKMOOR_S3_ACCESS_KEY_ID: 'placeholder-id',
+      TASKMOOR_S3_SECRET_ACCESS_KEY: 'placeholder-secret',
+      TASKMOOR_S3_URL_TTL: '120',
+      TASKMOOR_SCAN_CLAMD: 'clamav:3310',
+    });
+    expect(config.storage).toEqual({
+      backend: undefined,
+      filesDir: undefined,
+      urlTtl: 120,
+      scanClamd: 'clamav:3310',
+      s3: {
+        bucket: 'taskmoor-files',
+        region: 'us-east-1',
+        endpoint: 'http://minio:9000',
+        publicEndpoint: 'https://files.example.com',
+        forcePathStyle: true,
+        prefix: 'attachments/',
+        credentials: { accessKeyId: 'placeholder-id', secretAccessKey: 'placeholder-secret' },
+      },
+    });
+    // AWS itself: virtual-hosted addressing, the default credential chain.
+    expect(loadConfig({ DATABASE_URL: DB, TASKMOOR_S3_BUCKET: 'files-1' }).storage.s3).toEqual({
+      bucket: 'files-1',
+      region: 'us-east-1',
+      forcePathStyle: false,
+      prefix: '',
+    });
+    const refused = (env: Record<string, string>) => () => loadConfig({ DATABASE_URL: DB, ...env });
+    expect(refused({ TASKMOOR_STORAGE: 's3' })).toThrow(/needs TASKMOOR_S3_BUCKET/);
+    expect(
+      refused({ TASKMOOR_S3_BUCKET: 'files-1', TASKMOOR_S3_SECRET_ACCESS_KEY: 'only-the-secret' }),
+    ).toThrow(/go together/);
+    expect(
+      refused({ TASKMOOR_S3_BUCKET: 'files-1', TASKMOOR_S3_SECRET_ACCESS_KEY: 'only-the-secret' }),
+    ).not.toThrow(/only-the-secret/);
+    expect(refused({ TASKMOOR_S3_BUCKET: 'Not_A_Bucket' })).toThrow(/TASKMOOR_S3_BUCKET/);
+    expect(refused({ TASKMOOR_S3_PREFIX: '../x' })).toThrow(/TASKMOOR_S3_PREFIX/);
+    expect(refused({ TASKMOOR_S3_URL_TTL: '86400' })).toThrow(/TASKMOOR_S3_URL_TTL/);
   });
 
   it('[OPS-011] reads the metrics listener and the data directory', () => {

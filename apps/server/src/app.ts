@@ -7,6 +7,8 @@ import type { Database } from '@taskmoor/db';
 import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/iam';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
+import { sweepStorage } from './attachments/cleanup';
+import { type AttachmentStores, NO_STORAGE } from './attachments/stores';
 import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
 import type { Role, ServerConfig } from './config';
@@ -16,6 +18,7 @@ import { instrumentApp, type Metrics } from './observability';
 import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
 import { registerAdminRoutes } from './routes/admin';
+import { registerAttachmentRoutes } from './routes/attachments';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
@@ -87,6 +90,8 @@ export interface AppDeps {
   dataDir?: string;
   /** When the process started; defaults to when the app was built. */
   startedAt?: Date;
+  /** Where attachments are stored (ADR-040); without one, uploads answer 503. */
+  attachments?: AttachmentStores;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -189,6 +194,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
     registerTimeRoutes(app, db);
+    await registerAttachmentRoutes(app, db, deps.attachments ?? NO_STORAGE);
     registerWorkflowRoutes(app, db);
     registerTrashRoutes(app, db);
     registerAuditRoutes(app, db);
@@ -204,12 +210,27 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         app.log.warn({ error }, 'prune failed'),
       );
     let pruneTimer: NodeJS.Timeout | undefined;
+    // Files of deleted attachments leave this process's stores every ten minutes too, so a
+    // store only the API can see (local disk on its own volume) is cleaned as well (ADR-040).
+    const attachments = deps.attachments ?? NO_STORAGE;
+    const sweep = () =>
+      sweepStorage(db, attachments).catch((error) =>
+        app.log.warn({ error }, 'attachment storage sweep failed'),
+      );
+    let sweepTimer: NodeJS.Timeout | undefined;
     app.addHook('onReady', async () => {
       void prune();
       pruneTimer = setInterval(prune, 6 * 60 * 60 * 1000);
       pruneTimer.unref();
+      if (Object.keys(attachments.stores).length > 0) {
+        sweepTimer = setInterval(sweep, 10 * 60 * 1000);
+        sweepTimer.unref();
+      }
     });
-    app.addHook('onClose', async () => clearInterval(pruneTimer));
+    app.addHook('onClose', async () => {
+      clearInterval(pruneTimer);
+      clearInterval(sweepTimer);
+    });
     registerAdminRoutes(app, db, {
       version: deps.version,
       roles,

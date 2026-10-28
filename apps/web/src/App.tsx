@@ -4,6 +4,7 @@ import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
+import { TicketAttachmentsPage } from './attachments/TicketAttachmentsPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
@@ -77,9 +78,20 @@ const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
 const ACCOUNT = '#/account';
+/** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
+const TICKET = '#/tickets';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
 const HOME = '#/home';
+
+/** A path segment of the hash, decoded; as it is when it is not valid percent-encoding. */
+function decodedSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
 
 const goHome = () => {
   window.location.hash = HOME;
@@ -216,6 +228,10 @@ function Pages() {
     content = <CreateTicketPage />;
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
+  } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {
+    active = 'tracks';
+    const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
+    content = <TicketAttachmentsPage key={ticket} ticket={ticket} />;
   } else if (isRoute(hash, SIGN_IN)) {
     active = '';
     guarded = false;

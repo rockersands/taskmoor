@@ -2,9 +2,18 @@
 // the API on a fixed port with a fixed setup token, fake OpenID Connect and SAML providers
 // for the single sign-on tests, and a fake LDAP directory with the worker's sync loop. Playwright starts it as a web server and the Vite preview proxies /api
 // to it. Started with: tsx apps/web/e2e/api-server.ts
+//
+// Attachments (M1-016) get a database of their own, set up here, served twice: on 8791 with
+// files on local disk and on 8792 with files in an S3-compatible bucket (a fake one on 8793,
+// checking every request's signature). Two more previews (4174, 4175) proxy to them.
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createDb, migrateToLatest } from '@taskmoor/db';
-import { buildApp, issueSetupToken, startDirectorySync } from '@taskmoor/server';
+import { buildApp, issueSetupToken, startDirectorySync, storesOf } from '@taskmoor/server';
 import { FakeIdp, FakeLdap, FakeSamlIdp } from '@taskmoor/server/testing';
+import { LocalStore, S3Store } from '@taskmoor/storage';
+import { FakeS3 } from '@taskmoor/storage/testing';
 import { createDatabase } from '@taskmoor/testkit/pg';
 import { startEmbeddedPostgres } from '@taskmoor/testkit/server';
 
@@ -13,6 +22,10 @@ export const E2E_SETUP_TOKEN = 'e2e-setup-token-0123456789';
 export const E2E_IDP_PORT = 8788;
 export const E2E_SAML_IDP_PORT = 8789;
 export const E2E_LDAP_PORT = 8790;
+export const E2E_ATTACH_LOCAL_PORT = 8791;
+export const E2E_ATTACH_S3_PORT = 8792;
+export const E2E_FAKE_S3_PORT = 8793;
+export const E2E_ATTACH_ADMIN = 'ada@attach.test';
 
 // Always signs in the same synthetic person; the tests register it as a provider first.
 const idp = new FakeIdp('taskmoor-e2e', 'e2e-client-secret-0123456789');
@@ -57,6 +70,72 @@ const db = createDb({ connectionString: database.url, maxConnections: 5 });
 await migrateToLatest(db);
 await issueSetupToken(db, E2E_SETUP_TOKEN);
 
+// Attachments: their own database with its administrator and a track, then two APIs on it.
+const attachDatabase = await createDatabase(server.adminUrl);
+const attachDb = createDb({ connectionString: attachDatabase.url, maxConnections: 5 });
+await migrateToLatest(attachDb);
+const files = mkdtempSync(join(tmpdir(), 'taskmoor-e2e-files-'));
+const local = await LocalStore.open(files);
+const bucket = new FakeS3(['taskmoor-e2e']);
+await bucket.start(E2E_FAKE_S3_PORT);
+const s3 = new S3Store({
+  bucket: 'taskmoor-e2e',
+  region: bucket.region,
+  endpoint: bucket.endpoint,
+  forcePathStyle: true,
+  prefix: '',
+  credentials: bucket.credentials,
+});
+const attachApps = [
+  await buildApp({
+    db: attachDb,
+    version: 'e2e',
+    roles: ['api'],
+    logLevel: 'warn',
+    publicUrl: 'http://localhost:4174',
+    attachments: storesOf(local, { others: [s3] }),
+  }),
+  await buildApp({
+    db: attachDb,
+    version: 'e2e',
+    roles: ['api'],
+    logLevel: 'warn',
+    publicUrl: 'http://localhost:4175',
+    attachments: storesOf(s3, { others: [local] }),
+  }),
+];
+{
+  const [first] = attachApps;
+  const setup = await first?.inject({
+    method: 'POST',
+    url: '/api/v1/setup',
+    payload: {
+      token: await issueSetupToken(attachDb),
+      instanceName: 'Attachments',
+      admin: {
+        name: 'Ada Attach',
+        email: E2E_ATTACH_ADMIN,
+        password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD as string,
+      },
+    },
+  });
+  const cookies = [setup?.headers['set-cookie'] ?? []].flat();
+  const cookie =
+    cookies
+      .find((c) => c.startsWith('taskmoor_session=') && !c.startsWith('taskmoor_session=;'))
+      ?.split(';')[0] ?? '';
+  if (!cookie) throw new Error(`attachments e2e setup failed: ${setup?.body}`);
+  const track = await first?.inject({
+    method: 'POST',
+    url: '/api/v1/tracks',
+    headers: { cookie },
+    payload: { key: 'ATT', name: 'Attachments', mode: 'shared' },
+  });
+  if (track?.statusCode !== 201) throw new Error(`attachments e2e setup failed: ${track?.body}`);
+}
+await attachApps[0]?.listen({ port: E2E_ATTACH_LOCAL_PORT, host: '127.0.0.1' });
+await attachApps[1]?.listen({ port: E2E_ATTACH_S3_PORT, host: '127.0.0.1' });
+
 const app = await buildApp({
   db,
   version: 'e2e',
@@ -72,6 +151,12 @@ process.stdout.write(`e2e API listening on http://127.0.0.1:${E2E_API_PORT}\n`);
 async function stop(): Promise<void> {
   await directories.stop();
   await app.close();
+  for (const attachApp of attachApps) await attachApp.close();
+  s3.destroy();
+  await bucket.stop();
+  rmSync(files, { recursive: true, force: true });
+  await attachDb.destroy();
+  await attachDatabase.drop();
   await ldap.stop();
   await idp.stop();
   await samlIdp.stop();

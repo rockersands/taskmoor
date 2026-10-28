@@ -1,6 +1,8 @@
 # ADR-020: File storage through the S3 API with a local-disk fallback
 
-- Status: Accepted
+- Status: Accepted; refined by ADR-040 (M1-016), which keeps the interface and the two stores
+  but uses random keys without deduplication, scans with a hook from the start and makes
+  thumbnails in pure JavaScript
 - Date: 2026-10-12
 - Backlog: M0-024
 

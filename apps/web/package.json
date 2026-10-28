@@ -28,6 +28,7 @@
     "@storybook/react-vite": "10.6.1",
     "@taskmoor/db": "workspace:*",
     "@taskmoor/server": "workspace:*",
+    "@taskmoor/storage": "workspace:*",
     "@taskmoor/testkit": "workspace:*",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",

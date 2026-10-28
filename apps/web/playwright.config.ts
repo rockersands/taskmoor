@@ -6,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
 // again and keep the values they inherited.
 process.env.TASKMOOR_E2E_LDAP_BIND_PASSWORD ??= `bind-${randomBytes(18).toString('base64url')}`;
 process.env.TASKMOOR_E2E_LDAP_USER_PASSWORD ??= `user-${randomBytes(18).toString('base64url')}`;
+// The attachments administrator's password (M1-016), made the same way.
+process.env.TASKMOOR_E2E_ATTACH_PASSWORD ??= `files-${randomBytes(18).toString('base64url')}`;
 
 const PORT = 4173;
 const API_PORT = 8787;
@@ -49,5 +51,17 @@ export default defineConfig({
       timeout: 120_000,
       env: { VITE_API_PROXY: `http://127.0.0.1:${API_PORT}` },
     },
+    // Attachments (M1-016) on local disk and on S3: the same build, proxied to the two APIs
+    // the API server starts on 8791 and 8792. Servers start in order, so the build is there.
+    ...[
+      [4174, 8791],
+      [4175, 8792],
+    ].map(([port, api]) => ({
+      command: `${vite} preview --port ${port} --strictPort`,
+      url: `http://localhost:${port}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+      env: { VITE_API_PROXY: `http://127.0.0.1:${api}` },
+    })),
   ],
 });

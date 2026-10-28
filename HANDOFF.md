@@ -18,6 +18,22 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-016 attachments** (built by a background agent, reviewed and merged; migration 0031;
+  ADR-040; new package `@taskmoor/storage`). Files go to local disk (`TASKMOOR_DATA/files` or
+  `TASKMOOR_FILES_DIR`) or an S3-compatible bucket (`TASKMOOR_S3_*`, from the environment only)
+  under random keys never derived from file names. Routes `/api/v1/tickets/:id/attachments`
+  (list, upload, metadata, content, thumbnail, text, entries, entry content, archive, delete)
+  and `/api/v1/admin/attachment-settings` (maximum size, default 1 GiB, no ceiling). Uploads
+  stream and are refused with 413 `file_too_large` past the limit. S3 files are served only by
+  a 302 to a URL signed for 5 minutes after the browse check. `storage_cleanup` is swept after
+  deletes, the trash purge, hourly in the worker and every 10 minutes per API process.
+  `TASKMOOR_SCAN_CLAMD` plugs in ClamAV. The UI is `AttachmentPanel` on `#/tickets/<key>` until
+  the ticket view (M1-051) takes it over.
+  - e2e now also needs ports 4174, 4175 and 8791 to 8793 (local-disk and fake-S3 servers).
+  - **Not run here:** a real S3-compatible store (`bash tools/storage/minio-test.sh`, CI
+    `storage.yml`; the MinIO image tag is unchecked), a real ClamAV, the Helm chart.
+  - Left for later: copying attachments on clone (CORE-023 (1)), the Jira-compatible
+    attachment API, attachment files in S3 backups, moving files between stores.
 - **M1-036 query resolver** (ADR-010 "Implementation (M1-036)"): `packages/query/src/fields.ts`
   holds the spec's field catalogue and `OPERATORS_BY_TYPE`; `resolve.ts` checks queries against
   it; `apps/server/src/search/catalogue.ts` builds a person's catalogue (custom fields they may

@@ -1,3 +1,4 @@
+import type { S3StoreConfig } from '@taskmoor/storage';
 import { z } from 'zod';
 
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
@@ -49,6 +50,40 @@ const envSchema = z.object({
    * its keyring in TASKMOOR_DATA/secrets/password-peppers (created on first start).
    */
   TASKMOOR_PASSWORD_PEPPER: z.string().min(32).optional(),
+  /**
+   * Attachments (M1-016, ADR-040): `local` (files under TASKMOOR_FILES_DIR, by default
+   * TASKMOOR_DATA/files) or `s3` (a bucket). Defaults to s3 when a bucket is named.
+   */
+  TASKMOOR_STORAGE: z.enum(['local', 's3']).optional(),
+  /** `off`: no local store in this process (a worker without the app's volume). */
+  TASKMOOR_FILES_DIR: z.string().min(1).optional(),
+  TASKMOOR_S3_BUCKET: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, 'must be a bucket name')
+    .optional(),
+  TASKMOOR_S3_REGION: z
+    .string()
+    .regex(/^[a-z0-9-]{1,40}$/, 'must be a region name')
+    .default('us-east-1'),
+  /** For S3-compatible stores (MinIO, Garage, Ceph, R2); unset for AWS. */
+  TASKMOOR_S3_ENDPOINT: z.string().url().optional(),
+  /** What browsers reach the store at, when it differs from the endpoint; signed URLs use it. */
+  TASKMOOR_S3_PUBLIC_ENDPOINT: z.string().url().optional(),
+  TASKMOOR_S3_FORCE_PATH_STYLE: z.enum(['true', 'false']).optional(),
+  TASKMOOR_S3_PREFIX: z
+    .string()
+    .regex(/^([A-Za-z0-9._-]+\/)+$/, 'must be folder names ending in "/"')
+    .optional(),
+  /** Both or neither; unset, the AWS default chain applies (instance role, IRSA, profile). */
+  TASKMOOR_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  TASKMOOR_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  TASKMOOR_S3_SESSION_TOKEN: z.string().min(1).optional(),
+  TASKMOOR_S3_SSE: z.enum(['AES256', 'aws:kms']).optional(),
+  TASKMOOR_S3_SSE_KMS_KEY_ID: z.string().min(1).optional(),
+  /** Seconds a signed download URL lives: short (default 5 minutes, at most an hour). */
+  TASKMOOR_S3_URL_TTL: z.coerce.number().int().min(10).max(3600).default(300),
+  /** ClamAV's daemon for the scan hook: host:port, tcp://host:port or unix:/path. */
+  TASKMOOR_SCAN_CLAMD: z.string().min(1).optional(),
 });
 
 export interface ServerConfig {
@@ -76,6 +111,18 @@ export interface ServerConfig {
    * before it stops: keep-alive clients hang up cleanly instead of losing a request.
    */
   shutdownDrainMs: number;
+  /** Attachments (M1-016, ADR-040). */
+  storage: StorageConfig;
+}
+
+export interface StorageConfig {
+  /** Where new files go; unset means s3 when a bucket is configured, else local. */
+  backend: 'local' | 's3' | undefined;
+  /** The local store's directory as configured: a path, `off`, or unset for TASKMOOR_DATA/files. */
+  filesDir: string | undefined;
+  s3: S3StoreConfig | undefined;
+  urlTtl: number;
+  scanClamd: string | undefined;
 }
 
 export function parseRoles(text: string): Role[] {
@@ -114,6 +161,42 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       `Invalid server configuration:\n- DATABASE_URL is required for the ${roles.join(', ')} role(s)`,
     );
   }
+  if (Boolean(e.TASKMOOR_S3_ACCESS_KEY_ID) !== Boolean(e.TASKMOOR_S3_SECRET_ACCESS_KEY)) {
+    throw new Error(
+      'Invalid server configuration:\n- TASKMOOR_S3_ACCESS_KEY_ID and TASKMOOR_S3_SECRET_ACCESS_KEY go together',
+    );
+  }
+  if (e.TASKMOOR_STORAGE === 's3' && !e.TASKMOOR_S3_BUCKET) {
+    throw new Error(
+      'Invalid server configuration:\n- TASKMOOR_STORAGE=s3 needs TASKMOOR_S3_BUCKET',
+    );
+  }
+  const s3: S3StoreConfig | undefined = e.TASKMOOR_S3_BUCKET
+    ? {
+        bucket: e.TASKMOOR_S3_BUCKET,
+        region: e.TASKMOOR_S3_REGION,
+        ...(e.TASKMOOR_S3_ENDPOINT ? { endpoint: e.TASKMOOR_S3_ENDPOINT } : {}),
+        ...(e.TASKMOOR_S3_PUBLIC_ENDPOINT ? { publicEndpoint: e.TASKMOOR_S3_PUBLIC_ENDPOINT } : {}),
+        // S3-compatible stores mostly want path-style addressing; AWS prefers virtual hosts.
+        forcePathStyle: e.TASKMOOR_S3_FORCE_PATH_STYLE
+          ? e.TASKMOOR_S3_FORCE_PATH_STYLE === 'true'
+          : Boolean(e.TASKMOOR_S3_ENDPOINT),
+        prefix: e.TASKMOOR_S3_PREFIX ?? '',
+        ...(e.TASKMOOR_S3_ACCESS_KEY_ID && e.TASKMOOR_S3_SECRET_ACCESS_KEY
+          ? {
+              credentials: {
+                accessKeyId: e.TASKMOOR_S3_ACCESS_KEY_ID,
+                secretAccessKey: e.TASKMOOR_S3_SECRET_ACCESS_KEY,
+                ...(e.TASKMOOR_S3_SESSION_TOKEN
+                  ? { sessionToken: e.TASKMOOR_S3_SESSION_TOKEN }
+                  : {}),
+              },
+            }
+          : {}),
+        ...(e.TASKMOOR_S3_SSE ? { serverSideEncryption: e.TASKMOOR_S3_SSE } : {}),
+        ...(e.TASKMOOR_S3_SSE_KMS_KEY_ID ? { kmsKeyId: e.TASKMOOR_S3_SSE_KMS_KEY_ID } : {}),
+      }
+    : undefined;
   return {
     databaseUrl: e.DATABASE_URL,
     port: e.PORT,
@@ -132,5 +215,12 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     trustedProxies: e.TASKMOOR_TRUSTED_PROXIES,
     passwordPepper: e.TASKMOOR_PASSWORD_PEPPER,
     shutdownDrainMs: e.TASKMOOR_SHUTDOWN_DRAIN_MS,
+    storage: {
+      backend: e.TASKMOOR_STORAGE,
+      filesDir: e.TASKMOOR_FILES_DIR,
+      s3,
+      urlTtl: e.TASKMOOR_S3_URL_TTL,
+      scanClamd: e.TASKMOOR_SCAN_CLAMD,
+    },
   };
 }

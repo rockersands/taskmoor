@@ -15,7 +15,13 @@ export function stubBackend(handlers: Record<string, Handler>): Call[] {
     vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
       const path = url.replace(/^\/api\/v1/, '');
-      const body: unknown = init?.body ? JSON.parse(String(init.body)) : undefined;
+      // Uploads send FormData; everything else JSON.
+      const body: unknown =
+        init?.body instanceof FormData
+          ? init.body
+          : init?.body
+            ? JSON.parse(String(init.body))
+            : undefined;
       calls.push({ method, path, body });
       const key = `${method} ${path}`;
       const handler =

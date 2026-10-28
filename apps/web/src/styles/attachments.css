@@ -1,0 +1,273 @@
+/* Attachments (M1-016): a list of cards, so phones never scroll sideways; 44px on touch. */
+.ticket-page {
+  max-width: 60rem;
+}
+
+.attachment-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-5);
+  border: 2px dashed transparent;
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.attachment-panel[data-dragging] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.attachment-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.attachment-title {
+  margin: 0;
+  font-size: var(--font-size-400);
+}
+
+.attachment-count {
+  flex: 1 1 auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.attachment-drop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--color-field-border);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
+}
+
+.attachment-drop:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.attachment-hint {
+  flex: 1 1 16rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.attachment-choose {
+  display: inline-flex;
+  align-items: center;
+}
+
+.attachment-choose:focus-within {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.attachment-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachment-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
+}
+
+.attachment-thumb {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-1);
+  object-fit: cover;
+  background: var(--color-surface-raised);
+}
+
+.attachment-glyph {
+  display: inline-grid;
+  place-items: center;
+  color: var(--color-text-muted);
+}
+
+.attachment-main {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.attachment-name {
+  display: inline-block;
+  color: var(--color-accent);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+span.attachment-name {
+  color: var(--color-text);
+}
+
+.attachment-meta {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.attachment-warning {
+  margin: var(--space-1) 0 0;
+  color: var(--color-warning);
+  font-size: var(--font-size-200);
+  font-weight: 600;
+}
+
+.attachment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.attachment-confirm {
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}
+
+a.attachment-action {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* The preview: a modal over a dimmed page, as large as the window allows. */
+.attachment-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--color-backdrop);
+}
+
+.attachment-preview {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-3);
+  width: min(64rem, 100%);
+  max-height: calc(100dvh - 2 * var(--space-4));
+  box-sizing: border-box;
+  padding: var(--space-4);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-3);
+}
+
+.attachment-preview-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.attachment-preview-title {
+  flex: 1 1 12rem;
+  margin: 0;
+  font-size: var(--font-size-400);
+  overflow-wrap: anywhere;
+}
+
+.attachment-preview-body {
+  min-height: 0;
+  overflow: auto;
+}
+
+.attachment-preview-image,
+.attachment-preview-video {
+  display: block;
+  max-width: 100%;
+  max-height: 70dvh;
+  margin: 0 auto;
+}
+
+.attachment-preview-frame {
+  width: 100%;
+  height: 70dvh;
+  border: 0;
+  border-radius: var(--radius-1);
+  background: var(--color-surface-raised);
+}
+
+.attachment-preview-text {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-1);
+  background: var(--color-surface-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-200);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.attachment-zip-title {
+  margin: 0;
+  font-size: var(--font-size-300);
+}
+
+.attachment-zip-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attachment-zip-entry {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.attachment-zip-path {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}
+
+a.attachment-zip-path {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  color: var(--color-accent);
+}
+
+@media (pointer: coarse) {
+  .attachment-choose,
+  .attachment-action,
+  a.attachment-name,
+  a.attachment-zip-path {
+    min-height: var(--hit-target-touch);
+  }
+
+  a.attachment-name {
+    display: inline-flex;
+    align-items: center;
+  }
+}

@@ -625,6 +625,42 @@ export const EVENT_TYPES = {
     subject: 'time_entry',
     payload: z.object({ key: z.string(), ticketId: id, duration: z.number().int().positive() }),
   },
+  // Attachments (M1-016). The file name is display text; the bytes and their key stay out.
+  'attachment.created': {
+    subject: 'attachment',
+    payload: z.object({
+      key: z.string(),
+      ticketId: id,
+      name: z.string(),
+      size: z.number().int().min(0),
+      contentType: z.string(),
+      sniffedType: z.string().nullable(),
+      scan: z.enum(['pending', 'clean']),
+    }),
+  },
+  'attachment.deleted': {
+    subject: 'attachment',
+    payload: z.object({
+      key: z.string(),
+      ticketId: id,
+      name: z.string(),
+      size: z.number().int().min(0),
+      /** The person deleted their own attachment (or someone else's). */
+      own: z.boolean(),
+    }),
+  },
+  /** The scanner found malware, or could not judge the file; either way it is never served. */
+  'attachment.quarantined': {
+    subject: 'attachment',
+    payload: z.object({
+      key: z.string(),
+      ticketId: id,
+      name: z.string(),
+      result: z.enum(['infected', 'failed']),
+      detail: z.string().nullable(),
+    }),
+  },
+  'attachment_settings.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   /** The schedule, retention and verification of scheduled backups (M1-101, OPS-008). */

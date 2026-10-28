@@ -1,6 +1,9 @@
 import { createDb, migrateToLatest, poolStats } from '@taskmoor/db';
 import { passwordHasher } from '@taskmoor/iam';
 import { buildApp } from './app';
+import { scheduleSweep } from './attachments/cleanup';
+import { registerAttachmentJobs } from './attachments/jobs';
+import { attachmentStores } from './attachments/stores';
 import { registerAuditJobs, scheduleRetention } from './audit/retention';
 import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/schedule';
 import { loadConfig } from './config';
@@ -15,6 +18,7 @@ import { issueSetupToken, setupLink } from './setup';
 import { gracefulShutdown } from './shutdown';
 import { waitForDatabase } from './startup';
 import { registerTrashJobs, schedulePurge } from './trash/purge';
+import { defaultWorkspaceId } from './workspace';
 
 const config = loadConfig();
 const startedAt = new Date();
@@ -67,6 +71,16 @@ if (!peppers?.active && config.roles.includes('api')) {
   );
 }
 
+// Attachments (M1-016, ADR-040): local disk under TASKMOOR_DATA/files, or an S3 bucket.
+const attachments = await attachmentStores(config);
+if (config.roles.includes('api') && !attachments.active) {
+  console.log(
+    JSON.stringify({
+      msg: 'attachments are off: set TASKMOOR_DATA, TASKMOOR_FILES_DIR or TASKMOOR_S3_BUCKET',
+    }),
+  );
+}
+
 const app = await buildApp({
   passwords: passwordHasher(peppers),
   ...(peppers ? { peppers } : {}),
@@ -82,6 +96,7 @@ const app = await buildApp({
   ...(tracing ? { tracer: tracing.tracer } : {}),
   ...(config.dataDir ? { dataDir: config.dataDir } : {}),
   startedAt,
+  attachments,
 });
 const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
 
@@ -105,6 +120,9 @@ if (config.roles.includes('worker') && db) {
   timers.push(setInterval(scheduleAudit, 60 * 60 * 1000));
   // The trash purge (M1-101): one run an hour across all workers, keyed by the hour.
   registerTrashJobs(runner, db, (report) => app.log.info({ report }, 'trash purged'));
+  // Attachments (M1-016): scans and thumbnails of new files, and the storage sweep that
+  // deletes the files of deleted attachments (queued by deletions and the purge, and hourly).
+  registerAttachmentJobs(runner, db, attachments);
   // Scheduled backups and their weekly verification (M1-101): checked every five minutes,
   // queued once per scheduled time across all workers.
   const backupDir = backupDirectory(config);
@@ -125,8 +143,13 @@ if (config.roles.includes('worker') && db) {
     app.log.warn({ run }, 'custom field side rows repaired'),
   );
   const scheduleHousekeeping = () =>
-    Promise.all([schedulePurge(db), scheduleBackups(db), scheduleFieldValueCheck(db)]).catch(
-      (error) => app.log.warn({ error }, 'trash purge, backup or field value check not queued'),
+    Promise.all([
+      schedulePurge(db),
+      scheduleBackups(db),
+      scheduleFieldValueCheck(db),
+      defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
+    ]).catch((error) =>
+      app.log.warn({ error }, 'trash purge, backup, field value check or storage sweep not queued'),
     );
   void scheduleHousekeeping();
   timers.push(setInterval(scheduleHousekeeping, 5 * 60 * 1000));

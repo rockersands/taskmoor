@@ -29,6 +29,9 @@
       "path": "packages/workflow"
     },
     {
+      "path": "packages/storage"
+    },
+    {
       "path": "apps/server"
     },
     {

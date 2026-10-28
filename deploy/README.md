@@ -137,6 +137,31 @@ and records each permanent deletion in the audit log. `node cli.mjs purge-trash`
 The Builder (M1) generates these files with fresh secrets and a reverse proxy with HTTPS; until
 then, copy the examples and fill them by hand.
 
+## Attachments
+
+Files attached to tickets live on local disk by default, under `/data/files` on the data volume
+(`TASKMOOR_FILES_DIR` names another directory), so they are in every backup. Larger sites put
+them in an S3-compatible bucket (AWS S3, MinIO, Garage, Ceph, R2) with these variables; keys
+and secrets come from the environment or a secrets manager, never from a file in the kit:
+
+| Variable | Meaning |
+|---|---|
+| `TASKMOOR_S3_BUCKET` | The bucket; setting it makes S3 the store for new files (`TASKMOOR_STORAGE=local` keeps disk) |
+| `TASKMOOR_S3_ENDPOINT` | The store's address, for anything but AWS (path-style addressing then) |
+| `TASKMOOR_S3_PUBLIC_ENDPOINT` | The address browsers reach it at, when it differs; downloads are signed for it |
+| `TASKMOOR_S3_REGION`, `TASKMOOR_S3_PREFIX` | Region (default `us-east-1`) and a key prefix such as `taskmoor/` |
+| `TASKMOOR_S3_ACCESS_KEY_ID`, `TASKMOOR_S3_SECRET_ACCESS_KEY` | Credentials; without them the AWS default chain (instance role, IRSA) applies |
+| `TASKMOOR_S3_SSE`, `TASKMOOR_S3_SSE_KMS_KEY_ID` | Server-side encryption (`AES256` or `aws:kms`) |
+| `TASKMOOR_S3_URL_TTL` | Seconds a signed download URL lives (default 300, at most 3600) |
+| `TASKMOOR_SCAN_CLAMD` | ClamAV's daemon (`host:3310` or `unix:/path`); files are served once it finds them clean |
+
+The bucket stays private: browsers download through URLs the server signs for five minutes,
+after checking that the person may see the ticket. Give the bucket a lifecycle rule that aborts
+incomplete multipart uploads after a day (the worker also aborts those older than a day).
+Files already on disk stay readable after a switch to S3 while the data volume is mounted.
+Site administrators set the largest file allowed (1 GB by default, no upper limit) with
+`PUT /api/v1/admin/attachment-settings`; there is no storage quota.
+
 ## Sign-in security
 
 - **Password pepper.** Every password hash also depends on a secret key kept outside the

@@ -1,0 +1,38 @@
+name: Storage
+
+# The S3 attachment store (M1-016, ADR-040) against a real S3-compatible service:
+# tools/storage/minio-test.sh starts MinIO with credentials made per run and runs
+# packages/storage/src/s3.live.test.ts. The unit tests use an in-process fake that checks
+# signatures; this job checks the same store against a real implementation. Runs when the
+# storage code changes, weekly, and on demand.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/storage/**"
+      - "apps/server/src/attachments/**"
+      - "apps/server/src/routes/attachments.ts"
+      - "tools/storage/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/storage.yml"
+  schedule:
+    - cron: "0 6 * * 4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  minio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: S3 store against MinIO
+        run: bash tools/storage/minio-test.sh

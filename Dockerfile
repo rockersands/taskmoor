@@ -18,6 +18,7 @@ COPY packages/iam/package.json packages/iam/
 COPY packages/query/package.json packages/query/
 COPY packages/richtext/package.json packages/richtext/
 COPY packages/spikes/package.json packages/spikes/
+COPY packages/storage/package.json packages/storage/
 COPY packages/testkit/package.json packages/testkit/
 COPY packages/workflow/package.json packages/workflow/
 RUN pnpm install --frozen-lockfile --ignore-scripts \

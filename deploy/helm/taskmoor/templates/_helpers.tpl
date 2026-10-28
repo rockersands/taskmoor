@@ -72,21 +72,22 @@ app.kubernetes.io/component: {{ .component }}
       key: {{ .Values.setupToken.existingSecretKey }}
 {{- end }}
 {{- if eq .Values.storage.type "s3" }}
+# Attachments in a bucket (M1-016, ADR-040); keys come from the Secret, never from values.
 - name: TASKMOOR_STORAGE
   value: s3
-- name: S3_ENDPOINT
+- name: TASKMOOR_S3_ENDPOINT
   value: {{ .Values.storage.s3.endpoint | quote }}
-- name: S3_BUCKET
+- name: TASKMOOR_S3_BUCKET
   value: {{ required "storage.s3.bucket is required when storage.type is s3" .Values.storage.s3.bucket | quote }}
-- name: S3_REGION
+- name: TASKMOOR_S3_REGION
   value: {{ .Values.storage.s3.region | quote }}
-- name: S3_FORCE_PATH_STYLE
+- name: TASKMOOR_S3_FORCE_PATH_STYLE
   value: {{ .Values.storage.s3.forcePathStyle | quote }}
 {{- if .Values.storage.s3.existingSecret }}
-- name: S3_ACCESS_KEY_ID
+- name: TASKMOOR_S3_ACCESS_KEY_ID
   valueFrom:
     secretKeyRef: { name: {{ .Values.storage.s3.existingSecret }}, key: S3_ACCESS_KEY_ID }
-- name: S3_SECRET_ACCESS_KEY
+- name: TASKMOOR_S3_SECRET_ACCESS_KEY
   valueFrom:
     secretKeyRef: { name: {{ .Values.storage.s3.existingSecret }}, key: S3_SECRET_ACCESS_KEY }
 {{- end }}

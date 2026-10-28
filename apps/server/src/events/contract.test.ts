@@ -1,14 +1,21 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword, totpCode, totpStep } from '@taskmoor/iam';
+import { LocalStore } from '@taskmoor/storage';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
+import { processAttachment } from '../attachments/jobs';
+import { type AttachmentStores, storesOf } from '../attachments/stores';
 import { SESSION_COOKIE } from '../auth';
 import { queueRun, runSync } from '../ldap/sync';
 import { issueSetupToken } from '../setup';
 import { FakeIdp } from '../testing/fake-idp';
 import { FakeLdap } from '../testing/fake-ldap';
 import { FakeSamlIdp } from '../testing/fake-saml-idp';
+import { multipartFile } from '../testing/multipart';
 import { SoftAuthenticator } from '../testing/webauthn';
 import { EVENT_TYPES, type EventType } from './catalogue';
 
@@ -58,6 +65,8 @@ const JOB_EVENTS: readonly EventType[] = [
   'directory.group_updated',
   'directory.group_deleted',
 ];
+/** The attachment worker's own event (M1-016): checked by its own test below. */
+const SCAN_JOB_EVENTS: readonly EventType[] = ['attachment.quarantined'];
 const PASSWORD = 'ladder violet harbour';
 
 function sessionCookie(res: LightMyRequestResponse): string {
@@ -125,15 +134,20 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     baseDn: ldap.baseDn,
   });
 
+  const files = mkdtempSync(join(tmpdir(), 'taskmoor-contract-'));
+  let attachments: AttachmentStores;
+
   beforeAll(async () => {
     await idp.start();
     await ldap.start();
-    app = await buildApp({ db: database.db, version: 'test', roles: ['api'] });
+    attachments = storesOf(await LocalStore.open(files));
+    app = await buildApp({ db: database.db, version: 'test', roles: ['api'], attachments });
   });
   afterAll(async () => {
     await app.close();
     await idp.stop();
     await ldap.stop();
+    rmSync(files, { recursive: true, force: true });
   });
 
   const scenarios: Scenario[] = [
@@ -1500,6 +1514,40 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/tickets/:id/attachments',
+      expect: 'attachment.created',
+      // A new ticket version and a history row too: still one event.
+      run: async () => {
+        const upload = multipartFile('notes.txt', 'text/plain', 'Investigation notes');
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/attachments`,
+          ...upload,
+        });
+        state.attachment = res.json().attachment?.id;
+        return res;
+      },
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/attachments/:attachmentId',
+      expect: 'attachment.deleted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/attachments/${state.attachment}`,
+        }),
+    },
+    {
+      route: 'PUT /api/v1/admin/attachment-settings',
+      expect: 'attachment_settings.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/attachment-settings',
+          payload: { maxFileSize: 3 * 1024 ** 3 },
+        }),
+    },
+    {
       route: 'POST /api/v1/statuses',
       expect: 'status.created',
       run: async () => {
@@ -2245,7 +2293,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       produced.add(scenario.expect);
     }
     const missing = (Object.keys(EVENT_TYPES) as EventType[]).filter(
-      (t) => !produced.has(t) && !JOB_EVENTS.includes(t),
+      (t) => !produced.has(t) && !JOB_EVENTS.includes(t) && !SCAN_JOB_EVENTS.includes(t),
     );
     expect(missing, 'event types no route produces').toEqual([]);
   });
@@ -2303,5 +2351,52 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect(text).not.toContain(ldap.bindPassword);
     }
     expect([...new Set(events.map((e) => e.type))].sort()).toEqual([...JOB_EVENTS].sort());
+  });
+
+  it('[CORE-021] a scan that finds malware emits one valid event, with no actor', async () => {
+    const upload = multipartFile(
+      'setup.exe',
+      'application/octet-stream',
+      'pretend this is malware',
+    );
+    const res = await call(String(state.bo1b), {
+      method: 'POST',
+      url: `/api/v1/tickets/${state.ticket}/attachments`,
+      ...upload,
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    const attachmentId = res.json().attachment.id as number;
+    // As if a scanner had been configured when it arrived.
+    await database.db
+      .updateTable('attachment')
+      .set({ scan_state: 'pending', scanned_at: null })
+      .where('id', '=', attachmentId)
+      .execute();
+    const before = await database.db
+      .selectFrom('domain_event')
+      .select((eb) => eb.fn.max('id').as('max'))
+      .executeTakeFirstOrThrow();
+    await processAttachment(
+      database.db,
+      {
+        ...attachments,
+        scanner: {
+          name: 'test',
+          scan: async () => ({ result: 'infected', signature: 'Test.Sig' }),
+        },
+      },
+      attachmentId,
+    );
+    const events = await database.db
+      .selectFrom('domain_event')
+      .select(['type', 'payload', 'subject_type', 'actor_id'])
+      .where('id', '>', String(before.max ?? 0))
+      .execute();
+    expect(events.map((e) => e.type)).toEqual(SCAN_JOB_EVENTS);
+    const [event] = events;
+    const spec = EVENT_TYPES['attachment.quarantined'];
+    expect(event?.subject_type).toBe(spec.subject);
+    expect(() => spec.payload.parse(event?.payload)).not.toThrow();
+    expect(event?.actor_id).toBeNull();
   });
 });

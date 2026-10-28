@@ -376,6 +376,20 @@ routes in `routes/layouts.ts` (`/api/v1/field-rule-sets`, `/api/v1/layout-sets`,
   field configurations and screens (CORE-013 (3), M1-089), the admin pages for the sets
   (M1-053).
 
+## Implementation (M1-016: attachments)
+
+Migration 0031 adds `attachment_setting`, `attachment` and `storage_cleanup`; the routes are
+`routes/attachments.ts`, the rules in `attachments/`, the stores in `@taskmoor/storage`; the
+storage design is ADR-040.
+
+- **An attachment is a ticket sub-resource** like a time entry: browsing the ticket lists,
+  previews and downloads; "Create attachments" uploads; "Delete own/all attachments" delete.
+  A ticket in the trash shows none and gets them back when restored; an archived track allows
+  reading only.
+- **Adding and removing are ticket changes:** a new version and a history row `attachment`
+  (the id, the file name for display). Deleting a file deletes it for good; the trash purge
+  deletes the attachments of the tickets it removes, and their files after commit.
+
 ## Consequences
 
 Admin pages are organised around objects (fields, workflows, policies) and their users, not
