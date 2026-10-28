@@ -731,6 +731,69 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/tickets/:id/purge',
+      expect: 'ticket.purged',
+      prepare: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/tickets',
+          payload: { track: state.newTrack, summary: 'Short-lived' },
+        });
+        state.doomedTicket = res.json().ticket.id;
+        await call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.doomedTicket}`,
+        });
+      },
+      run: () => admin({ method: 'POST', url: `/api/v1/tickets/${state.doomedTicket}/purge` }),
+    },
+    {
+      route: 'DELETE /api/v1/tracks/:id',
+      expect: 'track.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/tracks/${state.moveTrack}` }),
+    },
+    {
+      route: 'POST /api/v1/tracks/:id/undelete',
+      expect: 'track.undeleted',
+      run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.moveTrack}/undelete` }),
+    },
+    {
+      route: 'POST /api/v1/tracks/:id/purge',
+      expect: 'track.purged',
+      prepare: async () => {
+        // A local-mode track with a ticket: its policy, type set and types go with it.
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'GONE', name: 'Gone', mode: 'local' },
+        });
+        state.goneTrack = res.json().track.id;
+        await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/tickets',
+          payload: { track: 'GONE', summary: 'Goes with its track' },
+        });
+        await admin({ method: 'DELETE', url: `/api/v1/tracks/${state.goneTrack}` });
+      },
+      run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.goneTrack}/purge` }),
+    },
+    {
+      route: 'PUT /api/v1/admin/trash-policy',
+      expect: 'trash_policy.updated',
+      run: () =>
+        admin({ method: 'PUT', url: '/api/v1/admin/trash-policy', payload: { retentionDays: 14 } }),
+    },
+    {
+      route: 'PUT /api/v1/admin/backups/schedule',
+      expect: 'backup_schedule.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/backups/schedule',
+          payload: { time: '03:15', keep: 7 },
+        }),
+    },
+    {
       route: 'POST /api/v1/priorities',
       expect: 'priority.created',
       run: async () => {

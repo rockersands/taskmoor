@@ -2,8 +2,14 @@
 //   node cli.mjs check-upgrade          pre-upgrade check (OPS-006); exit 1 while anything blocks
 //   node cli.mjs migrate                apply pending migrations and exit
 //   node cli.mjs status                 migration status as JSON
-//   node cli.mjs backup [--out <dir>]   database, files and config into <dir> (OPS-008)
+//   node cli.mjs backup [--out <dir>]   database, files and config into <dir> (OPS-008); waits
+//                                       while a scheduled backup runs
 //   node cli.mjs restore <dir> --yes    put a backup back; stop the other roles first (OPS-009)
+//   node cli.mjs drill [<dir>] [--keep] the restore drill (M1-101): restores the latest backup
+//                                       (or <dir>) into a scratch database, checks every
+//                                       table's rows, reports the time, drops it; exit 1 on a
+//                                       mismatch
+//   node cli.mjs purge-trash            deletes for good what outlived the trash retention
 //   node cli.mjs checksum [--wait]      one checksum per table, for restore drills; --wait first
 //                                       lets the worker finish relaying events and running jobs
 //   node cli.mjs password-link <email>  a one-time link to set a password (an administrator who
@@ -14,10 +20,14 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
 import { verifyChain } from './audit/chain';
-import { backup, backupSize, restore, tableChecksums, waitForIdleQueue } from './backup';
+import { backupSize, redactSecrets, restore, tableChecksums, waitForIdleQueue } from './backup';
+import { latestBackup, recordedDrill } from './backups/drill';
+import { BackupBusyError } from './backups/runs';
+import { backupDirectory, recordedBackup } from './backups/schedule';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
 import { emit } from './events/bus';
+import { purgeExpired } from './trash/purge';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 import { defaultWorkspaceId } from './workspace';
 
@@ -27,11 +37,12 @@ const { positionals, values } = parseArgs({
     out: { type: 'string' },
     yes: { type: 'boolean', default: false },
     wait: { type: 'boolean', default: false },
+    keep: { type: 'boolean', default: false },
   },
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | checksum | password-link <email> | audit-verify>';
+  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | checksum | password-link <email> | audit-verify>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -74,7 +85,7 @@ try {
     case 'backup': {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const out = values.out ?? join(dataDir ?? '.', 'backups', stamp);
-      const manifest = await backup(db, out, {
+      const target = {
         databaseUrl,
         ...(dataDir ? { dataDir } : {}),
         version: config.version,
@@ -84,10 +95,53 @@ try {
           TASKMOOR_VERSION: config.version,
         },
         log: say,
-      });
+      };
+      // One backup at a time: wait (up to an hour) for a scheduled one to finish.
+      const deadline = Date.now() + 60 * 60_000;
+      for (;;) {
+        try {
+          const { manifest } = await recordedBackup(db, 'manual', out, target);
+          say(
+            `${out}: ${Math.round(backupSize(out) / 1e6)} MB, ${manifest.migrations.length} migrations`,
+          );
+          break;
+        } catch (error) {
+          if (!(error instanceof BackupBusyError) || Date.now() > deadline) throw error;
+          say('another backup is running; waiting for it to finish');
+          await new Promise((resolve) => setTimeout(resolve, 5_000));
+        }
+      }
+      break;
+    }
+    case 'drill': {
+      const root =
+        backupDirectory({ backupDir: config.backupDir, dataDir }) ?? join('.', 'backups');
+      const dir = positionals[1] ?? latestBackup(root);
+      if (!dir) {
+        process.stderr.write(`no backup found under ${root}; name one: node cli.mjs drill <dir>\n`);
+        process.exitCode = 2;
+        break;
+      }
+      const report = await recordedDrill(db, { databaseUrl, dir, keep: values.keep, log: say });
       say(
-        `${out}: ${Math.round(backupSize(out) / 1e6)} MB, ${manifest.migrations.length} migrations`,
+        `restore drill ${report.ok ? 'passed' : 'FAILED'}: ${report.tables} tables, ${report.rows} rows; ` +
+          `verify ${report.seconds.verify} s, restore ${report.seconds.restore} s, ` +
+          `check ${report.seconds.check} s, total ${report.seconds.total} s`,
       );
+      if (!report.countsChecked) say('this backup holds no row counts (taken before M1-101)');
+      for (const m of report.mismatches) {
+        say(
+          `  ${m.table}: ${m.expected ?? 'missing'} in the backup, ${m.actual ?? 'missing'} restored`,
+        );
+      }
+      if (!report.migrationsMatch) say('  the restored migrations differ from the backup');
+      say(JSON.stringify(report));
+      if (!report.ok) process.exitCode = 1;
+      break;
+    }
+    case 'purge-trash': {
+      const report = await purgeExpired(db);
+      say(`purged ${report.tickets} ticket(s) and ${report.tracks} track(s)`);
       break;
     }
     case 'restore': {
@@ -176,6 +230,12 @@ try {
       process.stderr.write(`${USAGE}\n`);
       process.exitCode = 2;
   }
+} catch (error) {
+  // Never print a connection password, whatever the error quotes.
+  process.stderr.write(
+    `${redactSecrets(error instanceof Error ? error.message : String(error))}\n`,
+  );
+  process.exitCode = 1;
 } finally {
   await db.destroy();
 }

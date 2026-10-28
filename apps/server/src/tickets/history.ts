@@ -153,3 +153,25 @@ export function changesOf(
   for (const [id, row] of after) out.push(...ticketChanges(before.get(id) ?? null, row));
   return out;
 }
+
+/**
+ * A link as history records it on one side: the type, the side and the other ticket by id,
+ * and the phrase with the other ticket's key for display.
+ */
+export function linkChange(
+  ticketId: number,
+  link: { typeId: number; direction: 'outward' | 'inward'; phrase: string; otherId: number },
+  otherKey: string,
+  added: boolean,
+): FieldChange {
+  const value = `${link.typeId}:${link.direction}:${link.otherId}`;
+  const display = `${link.phrase} ${otherKey}`;
+  return {
+    ticketId,
+    field: 'link',
+    from: added ? null : value,
+    to: added ? value : null,
+    fromDisplay: added ? null : display,
+    toDisplay: added ? display : null,
+  };
+}

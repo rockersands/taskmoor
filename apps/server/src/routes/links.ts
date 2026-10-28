@@ -6,7 +6,7 @@ import { requireGlobal, requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
 import { autoFollows } from '../tickets/followers';
-import { type FieldChange, recordChanges } from '../tickets/history';
+import { type FieldChange, linkChange, recordChanges } from '../tickets/history';
 import { ticketKey } from '../tickets/model';
 import { loadTicket, resolveTicket, type TicketRow } from '../tickets/store';
 
@@ -186,28 +186,6 @@ const webLinkView = (w: WebLinkRow) => ({
   createdAt: w.created_at.toISOString(),
   updatedAt: w.updated_at.toISOString(),
 });
-
-/**
- * A link as history records it on one side: the type, the side and the other ticket by id,
- * and the phrase with the other ticket's key for display.
- */
-function linkChange(
-  ticketId: number,
-  link: { typeId: number; direction: 'outward' | 'inward'; phrase: string; otherId: number },
-  otherKey: string,
-  added: boolean,
-): FieldChange {
-  const value = `${link.typeId}:${link.direction}:${link.otherId}`;
-  const display = `${link.phrase} ${otherKey}`;
-  return {
-    ticketId,
-    field: 'link',
-    from: added ? null : value,
-    to: added ? value : null,
-    fromDisplay: added ? null : display,
-    toDisplay: added ? display : null,
-  };
-}
 
 const webLinkChange = (
   ticketId: number,

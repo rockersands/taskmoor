@@ -25,6 +25,11 @@ import {
  * Archived tracks (M1-006, CORE-025) are read-only for everyone, site administrators included:
  * whatever a person held there shrinks to the read permissions of ARCHIVED_TRACK_PERMISSIONS,
  * and the search pre-filter leaves them out unless a site administrator asks for them.
+ *
+ * Tracks in the trash (M1-101) grant nothing to anyone, site administrators included, and
+ * never pass the pre-filter: their tickets are invisible everywhere. Only the trash routes,
+ * which check the global permissions themselves, show them to the administrators who may
+ * restore them.
  */
 export interface Principal {
   /** Null for anonymous visitors, who hold only what is granted to "anyone". */
@@ -49,6 +54,8 @@ export interface Explanation {
   allowed: boolean;
   /** The track is archived: only read permissions hold there, whatever the grants say. */
   trackArchived: boolean;
+  /** The track is in the trash: nothing holds there until it is restored. */
+  trackInTrash: boolean;
   /** Why it is allowed: the grants or administrator rights that decided it. */
   reasons: Reason[];
   /** Grants that may allow it for single tickets (requester, assignee, fields). */
@@ -219,7 +226,7 @@ export class Authorizer {
         SELECT DISTINCT gr.permission, t.archived_at IS NOT NULL AS archived FROM track t
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
          WHERE t.id = ${trackId} AND t.workspace_id = ${workspaceId}
-           AND gr.grantee = 'anyone'`.execute(this.db);
+           AND t.deleted_at IS NULL AND gr.grantee = 'anyone'`.execute(this.db);
       const held = rows.map((r) => r.permission);
       return rows[0]?.archived ? readOnly(held) : new Set(held);
     }
@@ -230,11 +237,11 @@ export class Authorizer {
     if (global.has('site_admin')) {
       const track = await this.db
         .selectFrom('track')
-        .select(['id', 'archived_at'])
+        .select(['id', 'archived_at', 'deleted_at'])
         .where('id', '=', trackId)
         .where('workspace_id', '=', workspaceId)
         .executeTakeFirst();
-      if (!track) return new Set();
+      if (!track || track.deleted_at) return new Set();
       return track.archived_at ? new Set(ARCHIVED_TRACK_PERMISSIONS) : new Set(TRACK_PERMISSIONS);
     }
     // One round trip: the grants that match, for an active person only, plus a marker row
@@ -251,7 +258,7 @@ export class Authorizer {
         JOIN app_user u ON u.id = ${userId} AND u.workspace_id = ${workspaceId}
                        AND u.deactivated_at IS NULL
         JOIN access_grant gr ON gr.policy_id = t.access_policy_id
-       WHERE t.id = ${trackId} AND t.workspace_id = ${workspaceId}
+       WHERE t.id = ${trackId} AND t.workspace_id = ${workspaceId} AND t.deleted_at IS NULL
          AND (gr.grantee IN ('anyone', 'any_user')
               OR (gr.grantee = 'user' AND gr.user_id = ${userId})
               OR (gr.grantee = 'group' AND gr.group_id IN (SELECT id FROM g))
@@ -260,7 +267,8 @@ export class Authorizer {
       UNION
       SELECT CASE WHEN t.archived_at IS NULL THEN '' ELSE '!archived' END FROM track t
         JOIN app_user u ON u.id = ${userId} AND u.deactivated_at IS NULL
-       WHERE t.id = ${trackId} AND t.workspace_id = ${workspaceId}`.execute(this.db);
+       WHERE t.id = ${trackId} AND t.workspace_id = ${workspaceId}
+         AND t.deleted_at IS NULL`.execute(this.db);
     const archived = rows.some((r) => r.permission === '!archived');
     const exists = archived || rows.some((r) => r.permission === '');
     const result = new Set(
@@ -298,8 +306,9 @@ export class Authorizer {
 
   /**
    * The tracks where the principal holds a permission: the search pre-filter (QRY-008).
-   * Archived tracks are left out (CORE-025). 'all' means no filter is needed: a site
-   * administrator while no track is archived, or one who asks to include the archive.
+   * Archived tracks are left out (CORE-025), tracks in the trash always. 'all' means no filter
+   * is needed: a site administrator while no track is archived or in the trash, or one who
+   * asks to include the archive while none is in the trash.
    */
   async allowedTracks(
     workspaceId: number,
@@ -314,7 +323,7 @@ export class Authorizer {
         SELECT DISTINCT t.id FROM track t
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
          WHERE t.workspace_id = ${workspaceId} AND gr.permission = ${permission}
-           AND gr.grantee = 'anyone' AND t.archived_at IS NULL
+           AND gr.grantee = 'anyone' AND t.archived_at IS NULL AND t.deleted_at IS NULL
          ORDER BY t.id`.execute(this.db);
       return rows.map((r) => r.id);
     }
@@ -323,22 +332,26 @@ export class Authorizer {
       principal,
     );
     if (global.has('site_admin')) {
-      if (options.includeArchived && isReadOnlyPermission(permission)) return 'all';
-      const archived = await this.db
+      const archive = options.includeArchived === true && isReadOnlyPermission(permission);
+      const hidden = await this.db
         .selectFrom('track')
         .select('id')
         .where('workspace_id', '=', workspaceId)
-        .where('archived_at', 'is not', null)
+        .where((eb) =>
+          archive
+            ? eb('deleted_at', 'is not', null)
+            : eb.or([eb('archived_at', 'is not', null), eb('deleted_at', 'is not', null)]),
+        )
         .limit(1)
         .executeTakeFirst();
-      if (!archived) return 'all';
-      const rows = await this.db
+      if (!hidden) return 'all';
+      let query = this.db
         .selectFrom('track')
         .select('id')
         .where('workspace_id', '=', workspaceId)
-        .where('archived_at', 'is', null)
-        .orderBy('id')
-        .execute();
+        .where('deleted_at', 'is', null);
+      if (!archive) query = query.where('archived_at', 'is', null);
+      const rows = await query.orderBy('id').execute();
       return rows.map((r) => r.id);
     }
     if (global.size === 0) {
@@ -361,6 +374,7 @@ export class Authorizer {
         .select('id')
         .where('workspace_id', '=', workspaceId)
         .where('archived_at', 'is', null)
+        .where('deleted_at', 'is', null)
         .orderBy('id')
         .execute();
       return rows.map((r) => r.id);
@@ -372,7 +386,7 @@ export class Authorizer {
       SELECT DISTINCT id FROM (
         SELECT t.id FROM access_grant gr JOIN track t ON t.access_policy_id = gr.policy_id
          WHERE gr.permission = ${permission} AND t.workspace_id = ${workspaceId}
-           AND t.archived_at IS NULL
+           AND t.archived_at IS NULL AND t.deleted_at IS NULL
            AND (gr.grantee IN ('anyone', 'any_user')
                 OR (gr.grantee = 'user' AND gr.user_id = ${userId})
                 OR (gr.grantee = 'group' AND gr.group_id IN (SELECT id FROM g)))
@@ -381,14 +395,14 @@ export class Authorizer {
           JOIN track t ON t.id = a.track_id
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
                AND gr.permission = ${permission} AND gr.grantee = 'role' AND gr.role_id = a.role_id
-         WHERE t.workspace_id = ${workspaceId} AND t.archived_at IS NULL
+         WHERE t.workspace_id = ${workspaceId} AND t.archived_at IS NULL AND t.deleted_at IS NULL
            AND (a.user_id = ${userId} OR a.group_id IN (SELECT id FROM g))
         UNION ALL
         SELECT t.id FROM track t
           JOIN access_grant gr ON gr.policy_id = t.access_policy_id
                AND gr.permission = ${permission} AND gr.grantee = 'track_owner'
          WHERE t.workspace_id = ${workspaceId} AND t.owner_id = ${userId}
-           AND t.archived_at IS NULL
+           AND t.archived_at IS NULL AND t.deleted_at IS NULL
       ) allowed
       ORDER BY id`.execute(this.db);
     return rows.map((r) => r.id);
@@ -456,13 +470,15 @@ export class Authorizer {
     }
     const track = await this.db
       .selectFrom('track')
-      .select('archived_at')
+      .select(['archived_at', 'deleted_at'])
       .where('id', '=', trackId)
       .where('workspace_id', '=', workspaceId)
       .executeTakeFirst();
     const trackArchived = Boolean(track?.archived_at);
-    const allowed = reasons.length > 0 && (!trackArchived || isReadOnlyPermission(permission));
-    return { allowed, trackArchived, reasons, ticketLevel };
+    const trackInTrash = Boolean(track?.deleted_at);
+    const allowed =
+      reasons.length > 0 && !trackInTrash && (!trackArchived || isReadOnlyPermission(permission));
+    return { allowed, trackArchived, trackInTrash, reasons, ticketLevel };
   }
 }
 

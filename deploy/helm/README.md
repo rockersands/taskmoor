@@ -44,6 +44,17 @@ app pod applies pending migrations, which are forward-compatible with the releas
 `tools/helm/kind-test.sh` checks this: two app pods, `helm test`, then a rolling upgrade while
 clients keep calling, with zero failed requests allowed.
 
+## Backups
+
+Scheduled backups (M1-101) run in the worker and write to a directory, which the chart's worker
+does not have: its `/data` is an `emptyDir`, so the chart sets `TASKMOOR_BACKUP_DIR=off` there and
+the admin status page reports that scheduled backups have nowhere to go. Back up the database
+with its provider's tooling (managed snapshots, point-in-time recovery) and turn scheduled
+backups off (`PUT /api/v1/admin/backups/schedule` with `{"enabled": false}`), or mount a
+persistent volume into the worker and name it with `extraEnv`
+(`TASKMOOR_BACKUP_DIR=/backups`). `node cli.mjs drill` restores the newest backup into a scratch
+database and checks it, from any pod that can read the backups.
+
 ## Monitoring
 
 Every pod serves Prometheus metrics on port 9464 through the `<release>-metrics` Service;

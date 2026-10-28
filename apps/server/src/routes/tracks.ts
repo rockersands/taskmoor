@@ -13,6 +13,7 @@ import {
   ticketTypeMapping,
   ticketTypeView,
 } from '../tickets/configuration';
+import { DEFAULT_TRASH_RETENTION_DAYS, purgeAfter } from '../tickets/model';
 import {
   checkKey,
   FEATURE_DEFAULTS,
@@ -24,6 +25,7 @@ import {
   TRACK_TYPES,
   type TrackFeatures,
 } from '../tracks/model';
+import { purgeTrack } from '../trash/purge';
 import { statusIdsOf } from '../workflows/model';
 import {
   defaultWorkflowId,
@@ -53,6 +55,13 @@ import {
  * - Archive and restore belong to site and configuration administrators. An archived track is
  *   read-only for everyone (the authorizer keeps only read permissions there) and hidden from
  *   the search pre-filter.
+ * - Deleting sends a track to the trash (M1-101, CORE-025) with its tickets, releases and
+ *   areas, for the workspace's retention (30 days by default). Site and configuration
+ *   administrators delete, list (`GET /api/v1/trash/tracks`) and undelete; nobody else sees a
+ *   track in the trash or anything in it, and no other route touches it. It keeps its keys,
+ *   so no new track can take them. Site administrators may purge it at once; otherwise the
+ *   purge job removes it after the retention (`trash/purge.ts`), and only then are its keys
+ *   free again.
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -157,6 +166,8 @@ function trackQuery(db: Db, workspaceId: number) {
     .leftJoin('app_user as o', 'o.id', 't.owner_id')
     .leftJoin('track_category as c', 'c.id', 't.category_id')
     .leftJoin('app_user as ab', 'ab.id', 't.archived_by')
+    .leftJoin('app_user as del', 'del.id', 't.deleted_by')
+    .leftJoin('trash_policy as tp', 'tp.workspace_id', 't.workspace_id')
     .select([
       't.id',
       't.key',
@@ -188,6 +199,11 @@ function trackQuery(db: Db, workspaceId: number) {
       'ab.name as archived_by_name',
       't.created_at',
       't.updated_at',
+      't.deleted_at',
+      't.deleted_by',
+      'del.name as deleted_by_name',
+      't.purge_started_at',
+      'tp.retention_days as trash_retention_days',
     ])
     .where('t.workspace_id', '=', workspaceId);
 }
@@ -221,11 +237,34 @@ function trackView(row: TrackRow) {
       row.archived_by === null ? null : { id: row.archived_by, name: row.archived_by_name ?? '' },
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
+    trash:
+      row.deleted_at === null
+        ? null
+        : {
+            deletedAt: row.deleted_at.toISOString(),
+            deletedBy:
+              row.deleted_by === null
+                ? null
+                : { id: row.deleted_by, name: row.deleted_by_name ?? '' },
+            purgeAfter: purgeAfter(
+              row.deleted_at,
+              row.trash_retention_days ?? DEFAULT_TRASH_RETENTION_DAYS,
+            ).toISOString(),
+            purging: row.purge_started_at !== null,
+          },
   };
 }
 
-function loadTrack(db: Db, workspaceId: number, trackId: number) {
-  return trackQuery(db, workspaceId).where('t.id', '=', trackId).executeTakeFirst();
+/** A track by id; one in the trash only when asked for (the trash routes). */
+function loadTrack(
+  db: Db,
+  workspaceId: number,
+  trackId: number,
+  trash: 'include' | 'exclude' = 'exclude',
+) {
+  let query = trackQuery(db, workspaceId).where('t.id', '=', trackId);
+  if (trash === 'exclude') query = query.where('t.deleted_at', 'is', null);
+  return query.executeTakeFirst();
 }
 
 /** Escapes LIKE wildcards so a search for "50%" means those characters. */
@@ -349,7 +388,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
         : q.archived === 'only'
           ? sql<boolean>`t.archived_at IS NOT NULL`
           : sql<boolean>`(${active} OR t.archived_at IS NOT NULL)`;
-    let query = trackQuery(db, ws).where(visible);
+    let query = trackQuery(db, ws).where(visible).where('t.deleted_at', 'is', null);
     if (q.categoryId !== undefined) query = query.where('t.category_id', '=', q.categoryId);
     if (q.type !== undefined) query = query.where('t.type', '=', q.type);
     if (q.mode !== undefined) query = query.where('t.mode', '=', q.mode);
@@ -375,9 +414,13 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
     const ws = request.workspaceId;
     const found = await resolve(ws, params.data.id);
     if (!found) return notFound(reply);
-    const row = await loadTrack(db, ws, found.id);
-    // Tracks the caller may not see do not exist for them.
-    if (!row || !(await canSee(request, row.id))) return notFound(reply);
+    const row = await loadTrack(db, ws, found.id, 'include');
+    // Tracks the caller may not see do not exist for them; one in the trash only for those who
+    // may restore it.
+    if (!row) return notFound(reply);
+    if (row.deleted_at ? !(await isAdmin(request)) : !(await canSee(request, row.id))) {
+      return notFound(reply);
+    }
     const history = await db
       .selectFrom('track_key_history')
       .select('key')
@@ -607,7 +650,8 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           .where('workspace_id', '=', ws)
           .forUpdate()
           .executeTakeFirst();
-        if (!locked) return { missing: true as const };
+        // Deleted between the check and the lock: gone for everyone.
+        if (!locked || locked.deleted_at) return { missing: true as const };
         // Archived between the check and the lock: still read-only.
         if (locked.archived_at) return { archived: true as const };
         const before: Record<string, unknown> = {
@@ -808,6 +852,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           .where('id', '=', trackId)
           .where('workspace_id', '=', ws)
           .where('archived_at', archiving ? 'is' : 'is not', null)
+          .where('deleted_at', 'is', null)
           .returning('key')
           .executeTakeFirst();
         if (!changed) {
@@ -828,6 +873,116 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       return { track: trackView(result.track) };
     });
   }
+
+  // The trash for tracks (M1-101, CORE-025): administrators delete, list and undelete; the
+  // track and everything in it are invisible to everyone else until it comes back.
+  app.delete('/api/v1/tracks/:id', async (request, reply) => {
+    const user = await configAdmin(request, reply);
+    if (!user) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const trackId = params.data.id;
+    const result = await db.transaction().execute(async (trx) => {
+      const locked = await trx
+        .selectFrom('track')
+        .select(['key', 'deleted_at'])
+        .where('id', '=', trackId)
+        .where('workspace_id', '=', ws)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!locked) return { error: null };
+      if (locked.deleted_at) return { error: 'in_trash' as const };
+      const now = new Date();
+      await trx
+        .updateTable('track')
+        .set({ deleted_at: now, deleted_by: user.id, updated_at: now })
+        .where('id', '=', trackId)
+        .execute();
+      await emit(trx, by(request), {
+        type: 'track.deleted',
+        subjectId: trackId,
+        payload: { key: locked.key },
+      });
+      return { ok: true as const };
+    });
+    if ('error' in result) {
+      return result.error ? reply.code(409).send({ error: result.error }) : notFound(reply);
+    }
+    return reply.code(204).send();
+  });
+
+  app.post('/api/v1/tracks/:id/undelete', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const trackId = params.data.id;
+    const result = await db.transaction().execute(async (trx) => {
+      const locked = await trx
+        .selectFrom('track')
+        .select(['key', 'deleted_at', 'purge_started_at'])
+        .where('id', '=', trackId)
+        .where('workspace_id', '=', ws)
+        .forUpdate()
+        .executeTakeFirst();
+      if (!locked) return { error: null };
+      if (!locked.deleted_at) return { error: 'not_in_trash' as const };
+      // Its permanent deletion has begun: part of it is gone already.
+      if (locked.purge_started_at) return { error: 'purging' as const };
+      await trx
+        .updateTable('track')
+        .set({ deleted_at: null, deleted_by: null, updated_at: new Date() })
+        .where('id', '=', trackId)
+        .execute();
+      await emit(trx, by(request), {
+        type: 'track.undeleted',
+        subjectId: trackId,
+        payload: { key: locked.key },
+      });
+      return { track: await loadTrack(trx, ws, trackId) };
+    });
+    if ('error' in result) {
+      return result.error ? reply.code(409).send({ error: result.error }) : notFound(reply);
+    }
+    if (!result.track) return notFound(reply);
+    return { track: trackView(result.track) };
+  });
+
+  // Deleting for good before the retention ends: site administrators only. Large tracks go in
+  // batches; an interrupted purge is finished by the next purge run.
+  app.post('/api/v1/tracks/:id/purge', async (request, reply) => {
+    const user = await requireGlobal(request, reply, 'site_admin');
+    if (!user) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    if (!params.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const row = await loadTrack(db, ws, params.data.id, 'include');
+    if (!row) return notFound(reply);
+    if (!row.deleted_at) return reply.code(409).send({ error: 'not_in_trash' });
+    const done = await purgeTrack(db, ws, row.id, { actorId: user.id, reason: 'admin' });
+    if (!done || done === 'unfinished') return notFound(reply);
+    return { purged: { id: row.id, key: done.key, tickets: done.tickets } };
+  });
+
+  app.get('/api/v1/trash/tracks', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const rows = await trackQuery(db, request.workspaceId)
+      .where('t.deleted_at', 'is not', null)
+      .orderBy('t.deleted_at', 'desc')
+      .orderBy('t.id', 'desc')
+      .execute();
+    const counts = await db
+      .selectFrom('ticket')
+      .select(['track_id', (eb) => eb.fn.countAll<string>().as('n')])
+      .where('track_id', 'in', rows.length > 0 ? rows.map((r) => r.id) : [0])
+      .groupBy('track_id')
+      .execute();
+    const ticketCount = new Map(counts.map((c) => [c.track_id, Number(c.n)]));
+    return {
+      tracks: rows.map((r) => ({ ...trackView(r), ticketCount: ticketCount.get(r.id) ?? 0 })),
+    };
+  });
 
   // Categories: everyone signed in reads them; configuration administrators change them.
   app.get('/api/v1/track-categories', async (request, reply) => {

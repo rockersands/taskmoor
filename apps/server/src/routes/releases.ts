@@ -234,6 +234,8 @@ export function registerReleaseRoutes(
       .select(['id', 'archived_at'])
       .where('id', '=', trackId)
       .where('workspace_id', '=', request.workspaceId)
+      // A track in the trash and everything in it are invisible (M1-101).
+      .where('deleted_at', 'is', null)
       .executeTakeFirst();
     if (!track || !(await canSeeTrack(request, trackId))) {
       await notFound(reply);

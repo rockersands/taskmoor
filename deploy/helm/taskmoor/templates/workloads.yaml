@@ -49,6 +49,12 @@ spec:
           env:
             - name: TASKMOOR_ROLE
               value: {{ if eq $component "app" }}{{ $c.roles | quote }}{{ else }}"worker"{{ end }}
+            {{- if eq $component "worker" }}
+            # Scheduled backups (M1-101) need a persistent directory; this /data is an emptyDir.
+            # Point TASKMOOR_BACKUP_DIR at a mounted volume through extraEnv to turn them on.
+            - name: TASKMOOR_BACKUP_DIR
+              value: "off"
+            {{- end }}
             {{- include "taskmoor.env" $root | nindent 12 }}
           ports:
             - { name: http, containerPort: 8080 }

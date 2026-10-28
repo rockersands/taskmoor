@@ -3,6 +3,7 @@ import { AccountPage } from './account/AccountPage';
 import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
+import { TrashPage } from './admin/TrashPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
@@ -70,6 +71,7 @@ const ADMIN_TOKENS = '#/admin/tokens';
 const ADMIN_SERVICE_ACCOUNTS = '#/admin/service-accounts';
 const ADMIN_SECURITY = '#/admin/security';
 const ADMIN_IDENTITY_PROVIDERS = '#/admin/identity-providers';
+const ADMIN_TRASH = '#/admin/trash';
 const ACCOUNT = '#/account';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
@@ -145,6 +147,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-trash',
+              labelId: 'admin.trash.title' as const,
+              keywords: ['restore', 'undelete', 'deleted', 'retention'],
+              run: () => {
+                window.location.hash = ADMIN_TRASH;
+              },
+            },
+            {
               id: 'go-identity-providers',
               labelId: 'admin.sso.title' as const,
               keywords: ['sso', 'oidc', 'openid', 'identity provider', 'domains'],
@@ -177,6 +187,8 @@ function Pages() {
     content = <SecurityPage />;
   } else if (isRoute(hash, ADMIN_IDENTITY_PROVIDERS)) {
     content = <IdentityProvidersPage />;
+  } else if (isRoute(hash, ADMIN_TRASH)) {
+    content = <TrashPage />;
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
   } else if (isRoute(hash, SIGN_IN)) {

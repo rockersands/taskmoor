@@ -28,6 +28,11 @@ const envSchema = z.object({
   TASKMOOR_SETUP_TOKEN: z.string().min(16).optional(),
   /** Files, backups and the backup marker (ADR-021); the image sets /data. */
   TASKMOOR_DATA: z.string().min(1).optional(),
+  /**
+   * Where scheduled backups go (M1-101); defaults to TASKMOOR_DATA/backups. `off` keeps this
+   * process from taking them (a worker without a persistent volume).
+   */
+  TASKMOOR_BACKUP_DIR: z.string().min(1).optional(),
   /** Internal Prometheus port (ADR-023); 0 turns the metrics listener off. */
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
   TASKMOOR_SHUTDOWN_DRAIN_MS: z.coerce.number().int().min(0).max(60_000).default(2000),
@@ -59,6 +64,8 @@ export interface ServerConfig {
   secureCookies: boolean;
   setupToken: string | undefined;
   dataDir: string | undefined;
+  /** Scheduled backups' directory as configured: a path, `off`, or unset for the default. */
+  backupDir: string | undefined;
   /** 0 when the metrics listener is off. */
   metricsPort: number;
   metricsHost: string;
@@ -119,6 +126,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     secureCookies: (e.PUBLIC_URL ?? '').startsWith('https://'),
     setupToken: e.TASKMOOR_SETUP_TOKEN,
     dataDir: e.TASKMOOR_DATA,
+    backupDir: e.TASKMOOR_BACKUP_DIR,
     metricsPort: e.METRICS_PORT,
     metricsHost: e.METRICS_HOST ?? e.HOST,
     trustedProxies: e.TASKMOOR_TRUSTED_PROXIES,

@@ -37,6 +37,13 @@ describe('system status page', () => {
     expect(fact('Storage', 'Free space')).toBe('182.3 GB free of 250 GB');
     expect(fact('Storage', 'Last backup')).toMatch(/\(0 d 6 h 0 min ago\)$/);
     expect(fact('Runtime', 'Memory')).toBe('187.4 MB');
+    expect(fact('Scheduled backups', 'Schedule')).toBe(
+      'Every day at 02:30 UTC, keeping the last 14',
+    );
+    expect(fact('Scheduled backups', 'Last success')).toMatch(/, 912\.4 MB$/);
+    // An older failure is history once a backup succeeded after it.
+    expect(within(section('Scheduled backups')).getByText(/could not connect/).className).toBe('');
+    expect(fact('Scheduled backups', 'Restore drill')).toMatch(/restored in 412\.5 s$/);
     // The settings entry stays highlighted in the navigation.
     expect(screen.getAllByRole('link', { name: 'Settings' })[0]?.getAttribute('aria-current')).toBe(
       'page',
@@ -61,6 +68,15 @@ describe('system status page', () => {
     expect(
       screen.getByText('Older than a day: take a backup before the next upgrade.'),
     ).toBeTruthy();
+  });
+
+  it('[OPS-008] flags a scheduled backup that failed since the last success, and a failed drill', async () => {
+    window.location.hash = '#/admin/system';
+    stubSystem(() => jsonResponse(200, STALE_BACKUP));
+    render(<App session={ADMIN} />);
+    expect((await screen.findByText(/No space left on device/)).className).toBe('status-bad');
+    expect(screen.getByText(/restored with other row counts/).className).toBe('status-bad');
+    expect(fact('Scheduled backups', 'Next backup')).not.toBe('None');
   });
 
   it('[OPS-010] tells other users the page is for administrators, without asking the backend', async () => {

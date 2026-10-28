@@ -15,8 +15,18 @@ export const RICH_TEXT_MAX_CHARS = 100_000;
 /** A guard on the stored document, whose markup outweighs its text. */
 export const RICH_TEXT_MAX_BYTES = 2_000_000;
 
-/** Days a deleted ticket stays restorable (CORE-025 (3)); an administrator setting in M1-101. */
-export const TRASH_RETENTION_DAYS = 30;
+/**
+ * Days the trash keeps a deleted ticket or track before the purge removes it for good
+ * (CORE-025 (3)): the default and the bounds of the workspace setting (`trash_policy`, M1-101).
+ */
+export const DEFAULT_TRASH_RETENTION_DAYS = 30;
+export const MIN_TRASH_RETENTION_DAYS = 1;
+export const MAX_TRASH_RETENTION_DAYS = 365;
+
+/** When something deleted at `deletedAt` leaves the trash for good. */
+export function purgeAfter(deletedAt: Date, retentionDays: number): Date {
+  return new Date(deletedAt.getTime() + retentionDays * 86_400_000);
+}
 
 /** Ticket numbers are positive and fit the integer column. */
 const MAX_NUMBER = 2_147_483_647;

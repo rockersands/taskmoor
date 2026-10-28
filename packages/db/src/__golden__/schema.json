@@ -150,6 +150,26 @@
       "CREATE UNIQUE INDEX authz_epoch_pkey ON public.authz_epoch USING btree (workspace_id)"
     ]
   },
+  "backup_run": {
+    "columns": [
+      "id bigint not null default nextval('backup_run_id_seq'::regclass)",
+      "kind text not null",
+      "state text not null default 'running'::text",
+      "started_at timestamp with time zone not null default now()",
+      "heartbeat_at timestamp with time zone not null default now()",
+      "finished_at timestamp with time zone",
+      "path text",
+      "size_bytes bigint",
+      "details jsonb not null default '{}'::jsonb",
+      "error text",
+      "pruned_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX backup_run_kind_idx ON public.backup_run USING btree (kind, started_at DESC)",
+      "CREATE UNIQUE INDEX backup_run_pkey ON public.backup_run USING btree (id)",
+      "CREATE UNIQUE INDEX backup_run_running_idx ON public.backup_run USING btree (((kind = 'drill'::text))) WHERE (state = 'running'::text)"
+    ]
+  },
   "close_reason": {
     "columns": [
       "id integer not null default nextval('close_reason_id_seq'::regclass)",
@@ -938,6 +958,9 @@
       "updated_at timestamp with time zone not null default now()",
       "type_set_id integer",
       "priority_set_id integer",
+      "deleted_at timestamp with time zone",
+      "deleted_by integer",
+      "purge_started_at timestamp with time zone",
       "workflow_id integer"
     ],
     "indexes": [
@@ -947,6 +970,7 @@
       "CREATE UNIQUE INDEX track_pkey ON public.track USING btree (id)",
       "CREATE INDEX track_policy_idx ON public.track USING btree (access_policy_id)",
       "CREATE INDEX track_priority_set_idx ON public.track USING btree (priority_set_id) WHERE (priority_set_id IS NOT NULL)",
+      "CREATE INDEX track_trash_idx ON public.track USING btree (workspace_id, deleted_at) WHERE (deleted_at IS NOT NULL)",
       "CREATE INDEX track_type_set_idx ON public.track USING btree (type_set_id)",
       "CREATE INDEX track_workflow_idx ON public.track USING btree (workflow_id) WHERE (workflow_id IS NOT NULL)",
       "CREATE UNIQUE INDEX track_workspace_key_idx ON public.track USING btree (workspace_id, upper(key))"
@@ -994,6 +1018,16 @@
       "CREATE INDEX track_role_actor_group_idx ON public.track_role_actor USING btree (group_id) WHERE (group_id IS NOT NULL)",
       "CREATE UNIQUE INDEX track_role_actor_unique_idx ON public.track_role_actor USING btree (track_id, role_id, COALESCE(user_id, 0), COALESCE(group_id, 0))",
       "CREATE INDEX track_role_actor_user_idx ON public.track_role_actor USING btree (user_id) WHERE (user_id IS NOT NULL)"
+    ]
+  },
+  "trash_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "retention_days integer not null default 30",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX trash_policy_pkey ON public.trash_policy USING btree (workspace_id)"
     ]
   },
   "two_factor_policy": {

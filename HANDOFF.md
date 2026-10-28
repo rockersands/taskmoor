@@ -41,6 +41,27 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
     scenarios (transition fields, trigger), `workflow/refusal.test.ts` (4).
   - Next for workflows: M1-028 workflow maps and local workflows, M1-029 per-status edit locks
     (the engine's `checkPermission` is ready), M1-030 the editor.
+- **M1-101 scheduled backups, restore drill, trash retention, track trash** (built by a
+  background agent, reviewed and merged; migration 0022; ADR-022 "Implementation (M1-101)").
+  Scheduled backups are on by default: daily 02:30 UTC in the worker, keep 14, weekly restore
+  drill, through the CLI backup path into `TASKMOOR_BACKUP_DIR` (or `TASKMOOR_DATA/backups`;
+  folder 0700; `off` disables them for that process). Every run is in `backup_run`; status and
+  settings at `GET /api/v1/admin/backups` and `PUT .../schedule`, and on the System status page.
+  Manifests carry row counts from the dumped snapshot. `node cli.mjs drill` restores the latest
+  backup into a scratch database, checks every table and drops it; `purge-trash` runs the purge
+  now. Trash retention is a workspace setting (`/api/v1/admin/trash-policy`, 1 to 365, default
+  30); an hourly job purges tickets and tracks past retention with audited
+  `ticket.purged`/`track.purged` and history rows on the tickets that remain. Tracks have a
+  trash (`DELETE /api/v1/tracks/:id`, `POST .../undelete`, `GET /api/v1/trash/tracks`); the
+  authorizer grants nothing in a trashed track and its keys stay reserved until the purge.
+  Admin Trash page at `#/admin/trash`. With 1M synthetic tickets: backup 22 s, drill 36 s,
+  in-place restore 39 s (`tools/backup/bench-restore.sh`).
+  - `linkChange` moved from `routes/links.ts` to `tickets/history.ts`; track views carry
+    `trash: null` outside the trash.
+  - **Not run here:** the Helm chart (the worker now sets `TASKMOOR_BACKUP_DIR=off` because its
+    `/data` is an emptyDir; CI's `helm.yml` lints it) and the Compose kits. Next for backups:
+    encryption, S3/SFTP targets, PITR, single-track or deleted-ticket restore from a backup
+    (OPS-009 (2)).
 - **M1-023 statuses and workflows** (migration 0024, ADR-039): `/api/v1/statuses` (CRUD,
   order), `/api/v1/workflows` (create published as version 1, `PUT/DELETE .../draft`,
   `GET .../impact`, `POST .../publish` with `statusMapping`, `.../versions`,

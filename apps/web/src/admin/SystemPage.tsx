@@ -21,6 +21,32 @@ export interface SystemInfo {
   };
   disk: { path: string; freeBytes: number; totalBytes: number } | null;
   backup: { lastAt: string; ageSeconds: number } | null;
+  /** Scheduled backups and restore drills (M1-101); null when they cannot be read. */
+  backups?: BackupsInfo | null;
+}
+
+/** One backup or restore drill from the backup log. */
+export interface BackupRun {
+  id: string;
+  kind: 'scheduled' | 'manual' | 'drill';
+  state: 'running' | 'succeeded' | 'failed';
+  startedAt: string;
+  finishedAt: string | null;
+  path: string | null;
+  sizeBytes: number | null;
+  details: unknown;
+  error: string | null;
+  pruned: boolean;
+}
+
+export interface BackupsInfo {
+  schedule: { enabled: boolean; time: string; keep: number; verify: boolean };
+  nextAt: string | null;
+  running: BackupRun | null;
+  lastSuccess: BackupRun | null;
+  lastFailure: BackupRun | null;
+  lastDrill: BackupRun | null;
+  kept: number;
 }
 
 export function loadSystemInfo(): Promise<SystemInfo> {
@@ -194,6 +220,7 @@ function Details({ info }: { info: SystemInfo }) {
           )}
         </Fact>
       </Facts>
+      {info.backups && <Backups backups={info.backups} bytes={bytes} when={when} plain={plain} />}
       <Facts title={t('admin.system.runtime')}>
         <Fact label={t('admin.system.node')}>{plain(info.runtime.node)}</Fact>
         <Fact label={t('admin.system.platform')}>
@@ -202,6 +229,91 @@ function Details({ info }: { info: SystemInfo }) {
         <Fact label={t('admin.system.memory')}>{bytes(info.runtime.memoryRssBytes)}</Fact>
       </Facts>
     </div>
+  );
+}
+
+/** Scheduled backups (M1-101, OPS-008): the schedule and how the last runs went. */
+function Backups({
+  backups,
+  bytes,
+  when,
+  plain,
+}: {
+  backups: BackupsInfo;
+  bytes: (n: number) => string;
+  when: (iso: string) => string;
+  plain: (value: string | number) => string;
+}) {
+  const t = useT();
+  const { schedule, lastSuccess, lastFailure, lastDrill } = backups;
+  // A failure matters until a backup succeeds after it.
+  const failing =
+    lastFailure !== null &&
+    (lastSuccess === null || Date.parse(lastFailure.startedAt) > Date.parse(lastSuccess.startedAt));
+  const restoreSeconds = (run: BackupRun) => {
+    const seconds = (run.details as { seconds?: { restore?: unknown } } | null)?.seconds?.restore;
+    return typeof seconds === 'number' ? seconds : null;
+  };
+  return (
+    <Facts title={t('admin.system.backups')}>
+      <Fact label={t('admin.system.schedule')}>
+        {schedule.enabled ? (
+          t('admin.system.scheduleValue', { time: schedule.time, keep: schedule.keep })
+        ) : (
+          <span className="status-warn">{t('admin.system.scheduleOff')}</span>
+        )}
+      </Fact>
+      <Fact label={t('admin.system.nextBackup')}>
+        {backups.running
+          ? t('admin.system.backupRunning', { at: when(backups.running.startedAt) })
+          : backups.nextAt
+            ? plain(when(backups.nextAt))
+            : t('admin.system.none')}
+      </Fact>
+      <Fact label={t('admin.system.lastSuccess')}>
+        {lastSuccess ? (
+          t('admin.system.successValue', {
+            at: when(lastSuccess.startedAt),
+            size: lastSuccess.sizeBytes === null ? '' : bytes(lastSuccess.sizeBytes),
+          })
+        ) : (
+          <span className="status-warn">{t('admin.system.noneYet')}</span>
+        )}
+      </Fact>
+      <Fact label={t('admin.system.lastFailure')}>
+        {lastFailure ? (
+          <span className={failing ? 'status-bad' : ''}>
+            {t('admin.system.failureValue', {
+              at: when(lastFailure.startedAt),
+              error: lastFailure.error ?? '',
+            })}
+          </span>
+        ) : (
+          t('admin.system.none')
+        )}
+      </Fact>
+      <Fact label={t('admin.system.verification')}>
+        {lastDrill === null ? (
+          t(schedule.verify ? 'admin.system.noneYet' : 'admin.system.verificationOff')
+        ) : lastDrill.state === 'succeeded' ? (
+          <span className="status-ok">
+            {restoreSeconds(lastDrill) === null
+              ? t('admin.system.drillPassed', { at: when(lastDrill.startedAt) })
+              : t('admin.system.drillPassedIn', {
+                  at: when(lastDrill.startedAt),
+                  seconds: restoreSeconds(lastDrill) ?? 0,
+                })}
+          </span>
+        ) : (
+          <span className="status-bad">
+            {t('admin.system.drillFailed', {
+              at: when(lastDrill.startedAt),
+              error: lastDrill.error ?? '',
+            })}
+          </span>
+        )}
+      </Fact>
+    </Facts>
   );
 }
 

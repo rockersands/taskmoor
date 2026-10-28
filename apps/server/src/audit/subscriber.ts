@@ -54,6 +54,9 @@ export const AUDITED_EVENTS = [
   'track.updated',
   'track.archived',
   'track.restored',
+  'track.deleted',
+  'track.undeleted',
+  'track.purged',
   'track_category.created',
   'track_category.updated',
   'track_category.deleted',
@@ -69,6 +72,9 @@ export const AUDITED_EVENTS = [
   // Deleting outlives the ticket's own history, which the trash purge removes with it.
   'ticket.deleted',
   'ticket.restored',
+  // A permanent deletion is the only trace a purged ticket leaves.
+  'ticket.purged',
+  'trash_policy.updated',
   'priority.created',
   'priority.updated',
   'priority.deleted',
@@ -113,6 +119,7 @@ export const AUDITED_EVENTS = [
   'workflow.published',
   'workflow.deleted',
   'audit.settings_updated',
+  'backup_schedule.updated',
   'token.created',
   'token.revoked',
   'token.rotated',

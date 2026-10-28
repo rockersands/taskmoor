@@ -2,6 +2,7 @@ import { createDb, migrateToLatest, poolStats } from '@taskmoor/db';
 import { passwordHasher } from '@taskmoor/iam';
 import { buildApp } from './app';
 import { registerAuditJobs, scheduleRetention } from './audit/retention';
+import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/schedule';
 import { loadConfig } from './config';
 import { EventBus, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
@@ -11,6 +12,7 @@ import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
 import { gracefulShutdown } from './shutdown';
 import { waitForDatabase } from './startup';
+import { registerTrashJobs, schedulePurge } from './trash/purge';
 
 const config = loadConfig();
 const startedAt = new Date();
@@ -99,6 +101,29 @@ if (config.roles.includes('worker') && db) {
     scheduleRetention(db).catch((error) => app.log.warn({ error }, 'audit retention not queued'));
   void scheduleAudit();
   timers.push(setInterval(scheduleAudit, 60 * 60 * 1000));
+  // The trash purge (M1-101): one run an hour across all workers, keyed by the hour.
+  registerTrashJobs(runner, db, (report) => app.log.info({ report }, 'trash purged'));
+  // Scheduled backups and their weekly verification (M1-101): checked every five minutes,
+  // queued once per scheduled time across all workers.
+  const backupDir = backupDirectory(config);
+  registerBackupJobs(runner, db, {
+    databaseUrl: config.databaseUrl as string,
+    backupDir,
+    ...(config.dataDir ? { dataDir: config.dataDir } : {}),
+    version: config.version,
+    config: {
+      PUBLIC_URL: config.publicUrl,
+      TASKMOOR_ROLE: config.roles.join(','),
+      TASKMOOR_VERSION: config.version,
+    },
+    log: (msg) => app.log.info({ backupDir }, msg),
+  });
+  const scheduleHousekeeping = () =>
+    Promise.all([schedulePurge(db), scheduleBackups(db)]).catch((error) =>
+      app.log.warn({ error }, 'trash purge or backup not queued'),
+    );
+  void scheduleHousekeeping();
+  timers.push(setInterval(scheduleHousekeeping, 5 * 60 * 1000));
   worker = startWorker({
     bus,
     runner,

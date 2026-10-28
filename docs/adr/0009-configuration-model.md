@@ -162,7 +162,8 @@ data access in `tickets/store.ts`, the rules in `tickets/model.ts` and the rank 
   restore brings back the subtickets and re-attaches the children that have no other parent
   since. A ticket whose parent is still in the trash comes back without the link, which the
   parent's restore puts back; a subticket waits for its parent. The trash keeps tickets for
-  30 days; the setting and the purge job are M1-101.
+  the workspace's retention (30 days by default), then the purge job deletes them for good
+  (M1-101, ADR-022); tracks have a trash of their own.
 - **Permissions per field:** create, edit, assign, modify requester and schedule (dates and
   rank) as in spec 05a; moving needs "Move tickets" in the source and "Create tickets" in the
   target; deleting and restoring "Delete tickets". Ticket-level grantees (requester, assignee)

@@ -11,10 +11,11 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { cpus } from 'node:os';
 import { join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import { type Database, migrationStatus } from '@taskmoor/db';
-import { type Kysely, sql } from 'kysely';
+import { type Kysely, sql, type Transaction } from 'kysely';
 import { mergePepperFile, PEPPER_FILE, pepperFile } from './secrets';
 
 const run = promisify(execFile);
@@ -42,6 +43,33 @@ export function clientBinary(
   return name;
 }
 
+/**
+ * A database URL as the client tools take it: the password moves to PGPASSWORD, so it never
+ * shows in the process list or in an error message that quotes the command line.
+ */
+export function pgConnection(databaseUrl: string): { url: string; env: NodeJS.ProcessEnv } {
+  try {
+    const url = new URL(databaseUrl);
+    if (!url.password) return { url: databaseUrl, env: process.env };
+    const password = decodeURIComponent(url.password);
+    url.password = '';
+    return { url: url.toString(), env: { ...process.env, PGPASSWORD: password } };
+  } catch {
+    return { url: databaseUrl, env: process.env };
+  }
+}
+
+/** Removes passwords from connection URLs in a message (errors, logs, the backup log). */
+export function redactSecrets(message: string): string {
+  return message.replace(/([a-z][a-z0-9+.-]*:\/\/[^:/@\s]*:)[^@\s]*@/gi, '$1***@');
+}
+
+/**
+ * Tables whose rows a backup leaves out: the backup log describes the backups on this host,
+ * so a restore keeps the live one (see `restore`) instead of rolling it back.
+ */
+export const NOT_BACKED_UP = ['backup_run'] as const;
+
 export async function serverMajor(db: Kysely<Database>): Promise<number> {
   const { rows } = await sql<{ server_version_num: string }>`SHOW server_version_num`.execute(db);
   return Math.floor(Number(rows[0]?.server_version_num ?? 0) / 10000);
@@ -51,8 +79,9 @@ export async function serverMajor(db: Kysely<Database>): Promise<number> {
  * Backup and restore (OPS-008, OPS-009, M0-030): the database through pg_dump's custom format,
  * the files directory as a copy, the password keyring (secrets.ts), the non-secret
  * configuration as JSON, and a manifest with checksums so a restore can refuse a damaged
- * archive. The keyring makes a backup as sensitive as the live install: keep it protected. Scheduling, encryption, remote targets
- * and single-track restore come in M1.
+ * archive. The keyring makes a backup as sensitive as the live install: keep it protected.
+ * Scheduling, retention and the restore drill are in `backups/` (M1-101); encryption, remote
+ * targets and single-track restore come later.
  */
 export interface BackupManifest {
   version: string;
@@ -60,6 +89,11 @@ export interface BackupManifest {
   migrations: string[];
   /** sha256 per archive entry, keyed by relative path. */
   checksums: Record<string, string>;
+  /**
+   * Rows per table in the very snapshot the dump holds (since M1-101), so a restore drill can
+   * prove every row came back. Older backups have none.
+   */
+  rowCounts?: Record<string, number>;
 }
 
 export interface BackupOptions {
@@ -95,13 +129,32 @@ export async function backup(
   mkdirSync(out, { recursive: true });
   const pgDump = clientBinary('pg_dump', await serverMajor(db));
   log(`dumping the database to ${join(out, 'db.dump')} with ${pgDump}`);
-  await run(pgDump, [
-    '--format=custom',
-    '--no-owner',
-    '--no-privileges',
-    `--file=${join(out, 'db.dump')}`,
-    options.databaseUrl,
-  ]);
+  // The row counts and the dump read one snapshot: pg_dump joins the one this transaction
+  // exports, which stays open until the dump is done.
+  const rowCounts = await db
+    .transaction()
+    .setIsolationLevel('repeatable read')
+    .execute(async (trx) => {
+      await sql`SET TRANSACTION READ ONLY`.execute(trx);
+      const { rows } = await sql<{ snapshot: string }>`
+        SELECT pg_export_snapshot() AS snapshot`.execute(trx);
+      const counts = await countRows(trx);
+      const connection = pgConnection(options.databaseUrl);
+      await run(
+        pgDump,
+        [
+          '--format=custom',
+          '--no-owner',
+          '--no-privileges',
+          `--snapshot=${rows[0]?.snapshot}`,
+          ...NOT_BACKED_UP.map((t) => `--exclude-table-data=${t}`),
+          `--file=${join(out, 'db.dump')}`,
+          connection.url,
+        ],
+        { env: connection.env },
+      );
+      return counts;
+    });
   const files = options.dataDir ? join(options.dataDir, 'files') : undefined;
   if (files && existsSync(files)) {
     log('copying files');
@@ -127,6 +180,7 @@ export async function backup(
     createdAt: new Date().toISOString(),
     migrations: (await migrationStatus(db)).applied,
     checksums,
+    rowCounts,
   };
   writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   if (options.dataDir) {
@@ -151,6 +205,32 @@ export function verifyBackup(dir: string): BackupManifest {
   return manifest;
 }
 
+/** Parallel restore workers: pg_restore loads tables and builds indexes side by side. */
+export function restoreJobs(): number {
+  return Math.max(1, Math.min(4, cpus().length));
+}
+
+/**
+ * Rows per table of the public schema that a backup holds (partitioned tables counted whole,
+ * the tables of NOT_BACKED_UP left out).
+ */
+export async function countRows(
+  db: Kysely<Database> | Transaction<Database>,
+): Promise<Record<string, number>> {
+  const { rows } = await sql<{ name: string }>`
+    SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+       AND NOT (c.relname = ANY(${[...NOT_BACKED_UP]}::text[]))
+     ORDER BY c.relname`.execute(db);
+  const out: Record<string, number> = {};
+  for (const { name } of rows) {
+    const { rows: n } = await sql<{ n: string }>`
+      SELECT count(*) AS n FROM ${sql.table(name)}`.execute(db);
+    out[name] = Number(n[0]?.n ?? 0);
+  }
+  return out;
+}
+
 export async function restore(
   db: Kysely<Database>,
   dir: string,
@@ -170,19 +250,29 @@ export async function restore(
   log(
     `restoring the database from ${join(dir, 'db.dump')} (${manifest.createdAt}) with ${pgRestore}`,
   );
+  // The live backup log stays: it describes the backups on this host, which the restore does
+  // not bring back or remove.
+  const backupLog = await readBackupLog(db);
   // pg_restore --clean drops each partition's constraints before the parent's, which Postgres
   // refuses ("cannot drop inherited constraint"). Partitioned tables go first, with their
   // partitions; the restore's own drops for them then find nothing (--if-exists).
   await dropPartitionedTables(db);
-  await run(pgRestore, [
-    '--clean',
-    '--if-exists',
-    '--no-owner',
-    '--no-privileges',
-    '--exit-on-error',
-    `--dbname=${options.databaseUrl}`,
-    join(dir, 'db.dump'),
-  ]);
+  const connection = pgConnection(options.databaseUrl);
+  await run(
+    pgRestore,
+    [
+      '--clean',
+      '--if-exists',
+      '--no-owner',
+      '--no-privileges',
+      '--exit-on-error',
+      `--jobs=${restoreJobs()}`,
+      `--dbname=${connection.url}`,
+      join(dir, 'db.dump'),
+    ],
+    { env: connection.env },
+  );
+  if (backupLog) await writeBackupLog(db, backupLog);
   const files = join(dir, 'files');
   if (options.dataDir && existsSync(files)) {
     log('restoring files');
@@ -196,6 +286,37 @@ export async function restore(
   }
   log('restore complete');
   return manifest;
+}
+
+type BackupLogRow = Record<string, unknown>;
+
+/** The backup log's rows, or null when the table does not exist (a database before M1-101). */
+async function readBackupLog(db: Kysely<Database>): Promise<BackupLogRow[] | null> {
+  const { rows } = await sql<{ ok: boolean }>`
+    SELECT to_regclass('public.backup_run') IS NOT NULL AS ok`.execute(db);
+  if (!rows[0]?.ok) return null;
+  const { rows: log } = await sql<BackupLogRow>`SELECT * FROM backup_run ORDER BY id`.execute(db);
+  return log;
+}
+
+/** Puts the live backup log back after a restore (when the restored schema has the table). */
+async function writeBackupLog(db: Kysely<Database>, log: BackupLogRow[]): Promise<void> {
+  const { rows } = await sql<{ ok: boolean }>`
+    SELECT to_regclass('public.backup_run') IS NOT NULL AS ok`.execute(db);
+  if (!rows[0]?.ok) return;
+  await db.transaction().execute(async (trx) => {
+    await sql`DELETE FROM backup_run`.execute(trx);
+    if (log.length > 0) {
+      await sql`
+        INSERT INTO backup_run
+        SELECT * FROM jsonb_populate_recordset(NULL::backup_run, ${JSON.stringify(log)}::jsonb)`.execute(
+        trx,
+      );
+    }
+    await sql`
+      SELECT setval(pg_get_serial_sequence('backup_run', 'id'),
+                    greatest((SELECT max(id) FROM backup_run), 1))`.execute(trx);
+  });
 }
 
 /** Drops every top-level partitioned table outside the system schemas, partitions included. */
@@ -219,6 +340,7 @@ export async function tableChecksums(db: Kysely<Database>): Promise<Record<strin
     SELECT table_name FROM information_schema.tables
      WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
        AND table_name NOT IN ('schema_migration_lock')
+       AND NOT (table_name = ANY(${[...NOT_BACKED_UP]}::text[]))
      ORDER BY table_name`.execute(db);
   const out: Record<string, string> = {};
   for (const { table_name } of rows) {

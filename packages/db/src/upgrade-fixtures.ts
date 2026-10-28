@@ -395,6 +395,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT id, 1, false FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0022_trash_backups': {
+    tables: {
+      track: "key = 'SEEDTRASH' AND deleted_at IS NOT NULL AND purge_started_at IS NULL",
+      trash_policy: 'retention_days = 45',
+      backup_run: "kind = 'scheduled' AND path = '/data/backups/seed'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO track (workspace_id, key, name, access_policy_id, deleted_at, deleted_by)
+        SELECT 1, 'SEEDTRASH', 'Seed trash', ap.id, now(), u.id
+          FROM access_policy ap, app_user u
+         WHERE ap.name = 'Seed policy' AND u.email = 'seed@example.com'`.execute(db);
+      await sql`UPDATE trash_policy SET retention_days = 45 WHERE workspace_id = 1`.execute(db);
+      await sql`INSERT INTO backup_run (kind, state, finished_at, path, size_bytes, details)
+        VALUES ('scheduled', 'succeeded', now(), '/data/backups/seed', 1024,
+                '{"entries": 3}')`.execute(db);
+    },
+  },
   '0023_time_tracking': {
     tables: {
       time_tracking_setting: "hours_per_day = 7.5 AND default_unit = 'hour'",

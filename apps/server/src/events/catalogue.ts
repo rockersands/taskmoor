@@ -220,6 +220,20 @@ export const EVENT_TYPES = {
   },
   'track.archived': { subject: 'track', payload: z.object({ key: z.string() }) },
   'track.restored': { subject: 'track', payload: z.object({ key: z.string() }) },
+  /** To the trash (M1-101), with its tickets, releases and areas; it keeps its keys. */
+  'track.deleted': { subject: 'track', payload: z.object({ key: z.string() }) },
+  /** Out of the trash, as it was. */
+  'track.undeleted': { subject: 'track', payload: z.object({ key: z.string() }) },
+  /** Deleted for good: by the retention purge or a site administrator, with its tickets. */
+  'track.purged': {
+    subject: 'track',
+    payload: z.object({
+      key: z.string(),
+      name: z.string(),
+      tickets: z.number().int().min(0),
+      reason: z.enum(['retention', 'admin']),
+    }),
+  },
   'track_category.created': { subject: 'track_category', payload: z.object({ name: z.string() }) },
   'track_category.updated': { subject: 'track_category', payload: z.object({ changes }) },
   'track_category.deleted': {
@@ -333,6 +347,21 @@ export const EVENT_TYPES = {
       detachedFrom: id.nullable(),
     }),
   },
+  /**
+   * Deleted for good from the trash (M1-101), by the retention purge or a site administrator,
+   * with the subtickets in the trash that cannot outlive it; children elsewhere lost the link.
+   */
+  'ticket.purged': {
+    subject: 'ticket',
+    payload: z.object({
+      key: z.string(),
+      subtickets: z.array(id),
+      detachedChildren: z.array(id),
+      reason: z.enum(['retention', 'admin']),
+    }),
+  },
+  /** The trash retention in days (M1-101, CORE-025 (3)). */
+  'trash_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // Priorities, close reasons, labels, releases and areas (M1-014). Tickets a change rewrites
   // record it in their own history.
   'priority.created': { subject: 'priority', payload: z.object({ name: z.string() }) },
@@ -532,6 +561,8 @@ export const EVENT_TYPES = {
   },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
+  /** The schedule, retention and verification of scheduled backups (M1-101, OPS-008). */
+  'backup_schedule.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // API tokens and service accounts (IAM-007). Never the token or its hash.
   'token.created': {
     subject: 'api_token',

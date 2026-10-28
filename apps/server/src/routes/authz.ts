@@ -13,6 +13,7 @@ import {
   TRACK_PERMISSION_GROUPS,
 } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
+import { trackInTrash } from '../trash/policy';
 
 const id = z.coerce.number().int().positive();
 const nameBody = z
@@ -650,7 +651,10 @@ export function registerAuthzRoutes(
   // Track role actors: whoever may administer the track.
   async function trackAdmin(request: FastifyRequest, reply: FastifyReply, trackId: number) {
     if (!requireUser(request, reply)) return false;
-    if (!(await inWorkspace('track', request.workspaceId, trackId))) {
+    if (
+      !(await inWorkspace('track', request.workspaceId, trackId)) ||
+      (await trackInTrash(db, trackId))
+    ) {
       await reply.code(404).send({ error: 'not_found' });
       return false;
     }

@@ -214,6 +214,11 @@ export interface TrackTable {
   priority_set_id: number | null;
   /** Its workflow; null for the workspace's default (M1-023). */
   workflow_id: number | null;
+  /** In the trash since (M1-101, CORE-025); restorable until the purge starts. */
+  deleted_at: Timestamp | null;
+  deleted_by: number | null;
+  /** Its permanent deletion has begun (it runs in batches); no restore any more. */
+  purge_started_at: Timestamp | null;
 }
 
 export type HierarchyLevelKind = 'subticket' | 'standard' | 'outcome' | 'custom';
@@ -545,6 +550,36 @@ export interface TicketLinkTable {
   target_id: number;
   created_by: number | null;
   created_at: DefaultTimestamp;
+}
+
+/** How long the workspace's trash keeps tickets and tracks (M1-101, CORE-025 (3)). */
+export interface TrashPolicyTable {
+  workspace_id: number;
+  retention_days: Generated<number>;
+  updated_at: DefaultTimestamp;
+}
+
+/**
+ * A backup the scheduler or the operator CLI took, or a restore drill (M1-101, OPS-008):
+ * instance-wide, like the backups themselves. `details` holds what the run measured (entries,
+ * row counts, seconds); `pruned_at` is set when retention removed the backup's directory.
+ */
+export interface BackupRunTable {
+  id: Generated<string>;
+  kind: 'scheduled' | 'manual' | 'drill';
+  state: ColumnType<
+    'running' | 'succeeded' | 'failed',
+    'running' | 'succeeded' | 'failed' | undefined,
+    'running' | 'succeeded' | 'failed'
+  >;
+  started_at: DefaultTimestamp;
+  heartbeat_at: DefaultTimestamp;
+  finished_at: Timestamp | null;
+  path: string | null;
+  size_bytes: ColumnType<string | null, number | string | null | undefined, number | string | null>;
+  details: ColumnType<JsonValue, string | undefined, string>;
+  error: string | null;
+  pruned_at: Timestamp | null;
 }
 
 /** The workspace's switch for ticket links. */
@@ -1027,6 +1062,8 @@ export interface Database {
   link_type: LinkTypeTable;
   ticket_link: TicketLinkTable;
   link_policy: LinkPolicyTable;
+  trash_policy: TrashPolicyTable;
+  backup_run: BackupRunTable;
   ticket_web_link: TicketWebLinkTable;
   ticket_follower: TicketPersonTable;
   ticket_vote: TicketPersonTable;

@@ -132,3 +132,13 @@ export class JobRunner {
     return done.length;
   }
 }
+
+/**
+ * Keeps a long job's lock fresh, so `releaseStale` never hands it to a second worker while it
+ * still runs (a backup of a large database takes minutes).
+ */
+export async function extendLock(db: Db, jobId: string): Promise<void> {
+  await sql`
+    UPDATE job SET locked_at = clock_timestamp()
+     WHERE id = ${Number(jobId)} AND done_at IS NULL AND locked_at IS NOT NULL`.execute(db);
+}

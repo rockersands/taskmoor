@@ -2,7 +2,7 @@ import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { looksLikeKey, normalizeKey } from '../tracks/model';
-import { parseTicketKey, TRASH_RETENTION_DAYS, ticketKey } from './model';
+import { DEFAULT_TRASH_RETENTION_DAYS, parseTicketKey, purgeAfter, ticketKey } from './model';
 import { sequenceKey } from './rank';
 
 /**
@@ -123,6 +123,7 @@ export function ticketQuery(db: Db, workspaceId: number) {
     .leftJoin('priority as pr', 'pr.id', 'k.priority_id')
     .leftJoin('close_reason as cr', 'cr.id', 'k.close_reason_id')
     .innerJoin('status as st', 'st.id', 'k.status_id')
+    .leftJoin('trash_policy as tp', 'tp.workspace_id', 'k.workspace_id')
     .select([
       'k.id',
       'k.number',
@@ -177,6 +178,7 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'k.original_estimate',
       'k.remaining_estimate',
       'k.time_spent',
+      'tp.retention_days as trash_retention_days',
     ])
     .select([
       releasesOf(db, 'target').as('target_releases'),
@@ -305,8 +307,9 @@ export function ticketView(row: TicketRow, canSeeParent: boolean) {
         : {
             deletedAt: row.deleted_at.toISOString(),
             deletedBy: person(row.deleted_by, row.deleted_by_name),
-            purgeAfter: new Date(
-              row.deleted_at.getTime() + TRASH_RETENTION_DAYS * 86_400_000,
+            purgeAfter: purgeAfter(
+              row.deleted_at,
+              row.trash_retention_days ?? DEFAULT_TRASH_RETENTION_DAYS,
             ).toISOString(),
             deletedWith:
               row.trashed_with === null

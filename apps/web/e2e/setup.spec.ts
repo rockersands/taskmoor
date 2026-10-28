@@ -956,3 +956,54 @@ test('[IAM-002] the administrator adds a SAML identity provider from its metadat
     await page.request.delete('/api/v1/session');
   }
 });
+
+test('[CORE-025] [OPS-009] the administrator undeletes a ticket and a whole track from the trash', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  const track = await page.request.post('/api/v1/tracks', {
+    data: { key: 'BIN', name: 'Bin', mode: 'shared' },
+  });
+  expect(track.status()).toBe(201);
+  const trackId = ((await track.json()) as { track: { id: number } }).track.id;
+  const created = await page.request.post('/api/v1/tickets', {
+    data: { track: 'BIN', summary: 'Deleted by mistake' },
+  });
+  expect(created.status()).toBe(201);
+  const { key } = ((await created.json()) as { ticket: { key: string } }).ticket;
+  await page.request.patch(`/api/v1/tickets/${key}`, {
+    data: { summary: 'Deleted by mistake, renamed' },
+  });
+  expect((await page.request.delete(`/api/v1/tickets/${key}`)).status()).toBe(204);
+
+  await page.goto('./#/settings');
+  await page.getByRole('link', { name: 'Trash' }).click();
+  await expect(heading(page)).toHaveText('Trash');
+  await expect(page.getByText(/wait here for 30 days/)).toBeVisible();
+  const tickets = page.getByRole('region', { name: 'Tickets' });
+  await expect(tickets.getByText(`${key} Deleted by mistake, renamed`)).toBeVisible();
+  await tickets.getByRole('button', { name: `Restore ${key}` }).click();
+  await expect(page.getByText(`${key} is back.`)).toBeVisible();
+  await expect(tickets.getByText(`${key} Deleted by mistake, renamed`)).toHaveCount(0);
+  // It came back with its history: the edit, the deletion and the restore.
+  const restored = await page.request.get(`/api/v1/tickets/${key}`);
+  expect(((await restored.json()) as { ticket: { trash: unknown } }).ticket.trash).toBeNull();
+  const history = await page.request.get(`/api/v1/tickets/${key}/history?order=asc`);
+  const fields = ((await history.json()) as { changes: { field: string }[] }).changes.map(
+    (c) => c.field,
+  );
+  expect(fields.filter((f) => f === 'summary').length).toBe(2);
+  expect(fields.filter((f) => f === 'trash')).toEqual(['trash', 'trash']);
+
+  // The whole track goes to the trash: its tickets with it, then back.
+  expect((await page.request.delete(`/api/v1/tracks/${trackId}`)).status()).toBe(204);
+  expect((await page.request.get(`/api/v1/tickets/${key}`)).status()).toBe(404);
+  await page.reload();
+  const tracks = page.getByRole('region', { name: 'Tracks' });
+  await expect(tracks.getByText('BIN Bin (1 ticket)')).toBeVisible();
+  await tracks.getByRole('button', { name: 'Restore track BIN' }).click();
+  await expect(page.getByText('Track BIN is back.')).toBeVisible();
+  await expect(tracks.getByText('No tracks in the trash.')).toBeVisible();
+  expect((await page.request.get(`/api/v1/tickets/${key}`)).status()).toBe(200);
+  await page.request.delete('/api/v1/session');
+});

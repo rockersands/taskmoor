@@ -4,6 +4,7 @@ import { type Database, migrationStatus, poolStats } from '@taskmoor/db';
 import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { requireSiteAdmin } from '../auth';
+import { type BackupStatus, backupStatus } from '../backups/schedule';
 
 /** What the admin status page shows (OPS-010, M1-103). Never includes settings or secrets. */
 export interface SystemInfo {
@@ -21,6 +22,8 @@ export interface SystemInfo {
   };
   disk: { path: string; freeBytes: number; totalBytes: number } | null;
   backup: { lastAt: string; ageSeconds: number } | null;
+  /** Scheduled backups and restore drills (M1-101); null when the database is unreachable. */
+  backups: BackupStatus | null;
 }
 
 export interface SystemInfoOptions {
@@ -79,6 +82,14 @@ export async function systemInfo(
       };
     }
   }
+  let backups: SystemInfo['backups'] = null;
+  if (database.reachable) {
+    try {
+      backups = await backupStatus(db, now);
+    } catch {
+      // Shown as unknown; the rest of the page still helps.
+    }
+  }
   return {
     version: options.version,
     roles: [...options.roles],
@@ -93,6 +104,7 @@ export async function systemInfo(
     database,
     disk,
     backup,
+    backups,
   };
 }
 

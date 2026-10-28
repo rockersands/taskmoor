@@ -56,7 +56,31 @@ leaves the instance exactly as it was backed up, including the administrators an
 sessions. The backup's password keys are added to this instance's keyring, never replacing it,
 so the restored passwords keep working. `node cli.mjs checksum` prints one checksum per table; CI runs the whole drill
 (back up, wipe, restore, compare) with `tools/image/drill-backup.sh` on every push.
-Scheduled backups come with M1.
+
+**Scheduled backups are on by default** (M1-101, OPS-008). Once first-run setup is done, the
+worker backs up every day at 02:30 UTC into `/data/backups/scheduled-<time>` (the
+`TASKMOOR_BACKUP_DIR` variable names another directory; `off` stops this process from taking
+them) and keeps the last 14; backups taken by hand are never removed by that retention. The
+directory is created owner-only (0700) and the database password never appears on a command
+line or in the backup log. Once a week a scheduled backup is followed by the restore drill.
+Site administrators see the schedule, the last success, the last failure and the last drill
+under Settings, System status, and change the time, the number kept and the weekly drill with
+`PUT /api/v1/admin/backups/schedule`.
+
+The restore drill proves a backup can be put back without touching the live database
+(`node cli.mjs drill [<dir>]`, by default the newest backup): it checks the checksums, restores
+into a scratch database on the same server, compares every table's row count with the counts
+the backup took from the very snapshot it dumped, prints how long each step took and drops the
+scratch database (`--keep` leaves it for a look). It needs a database user that may create
+databases, which the kits' user may.
+
+```
+docker compose exec taskmoor node cli.mjs drill
+```
+
+The trash keeps deleted tickets and tracks for 30 days (Settings, Trash; site administrators
+choose 1 to 365); an hourly job in the worker then deletes them for good, with their history,
+and records each permanent deletion in the audit log. `node cli.mjs purge-trash` runs it now.
 
 The Builder (M1) generates these files with fresh secrets and a reverse proxy with HTTPS; until
 then, copy the examples and fill them by hand.
