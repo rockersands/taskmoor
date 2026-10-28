@@ -95,10 +95,34 @@ The first 10M runs were taken on a 5,400 rpm hard disk by mistake: random reads 
 13 ms, which made single-ticket reads 30 ms and hid the plan problems behind the disk; the
 figures above are from NVMe.
 
-## Implementation note (M1-010)
+## Implementation (M1-010 and M1-011)
 
-`ticket.fields` holds values keyed by field id in the stored forms of
-`apps/server/src/fields/types.ts`: strings, numbers, ISO dates, ids (ascending for multiple
-values), `[parent, child]` for cascades, label lists and ProseMirror documents. Empty values
-have no key. Each type names the side table M1-011 indexes it in (`STORAGE_OF`); M1-011 also
-stores the application's sort key beside each value (ADR-009, M1-010 section).
+- **Values** (M1-010): `ticket.fields` holds values keyed by field id in the stored forms of
+  `apps/server/src/fields/types.ts`: strings, numbers, ISO dates and instants, ids (ascending
+  for multiple values), `[parent, child]` for cascades, label lists and ProseMirror documents.
+  Empty values have no key.
+- **Side tables** (M1-011, migration 0027): `v_text`, `v_number`, `v_date`, `v_time`
+  (date-times, which the spike did not have), `v_user` and `v_option` (options, groups,
+  releases and areas; a cascade is two rows), with `ticket_id`, `track_id`, `field_id`,
+  `value` and the ticket's `created_at` (the spike's `item_id` and `space_id`). Primary keys
+  and the three indexes of the decision above; `v_text` adds `sort_key`, the application's
+  case-folded text in the C collation, and an index by field and sort key, so text orders the
+  same in SQL as in `compareValues`. Options, people and releases order by their objects
+  (option and release order, names), which the query joins. A paragraph contributes the first
+  255 characters of its text; full-text search of paragraphs belongs to ADR-011. Extended
+  statistics on `(field_id, value)` and statistics targets of 5,000 are in the migration.
+- **Writes:** `syncFieldValues` (`fields/storage.ts`) rewrites a ticket's rows in the
+  transaction that writes its values: create, edit (only the changed fields' tables), move
+  (new track; release and area values are dropped with history, as the system ones are),
+  deletion to the trash (rows go) and restore (rows come back). Purges cascade. Tickets of a
+  track in the trash keep their rows; the permission pre-filter leaves that track out.
+- **Consistency:** a property test drives random sequences of creates, edits, moves,
+  deletions and restores through the API and finds the side rows equal to the values every
+  time; `verifyFieldValues` compares the two in batches, and the repair job
+  (`field_values.verify`, daily, in 3-minute runs that chain) rewrites tickets that differ and
+  re-analyses. `node cli.mjs field-values [--repair]` runs the same check by hand.
+- **Edit latency** with 1,500 fields defined and 60 values on the ticket: p50 about 27 ms and
+  p95 35 to 46 ms through the whole API path in tests on a shared 4-vCPU container (budget
+  50 ms). Profiling showed the planner spending 4 to 7 ms on the ticket view's sixteen-table
+  join for each of the three reads an edit makes; its single-row lookups are now scalar
+  subqueries (1 to 2 ms planning), which took a plain edit from about 49 to 27 ms at p50.

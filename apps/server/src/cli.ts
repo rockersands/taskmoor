@@ -10,6 +10,9 @@
 //                                       table's rows, reports the time, drops it; exit 1 on a
 //                                       mismatch
 //   node cli.mjs purge-trash            deletes for good what outlived the trash retention
+//   node cli.mjs field-values [--repair] checks the custom field side tables against the
+//                                       tickets' values (M1-011); --repair rewrites the ones
+//                                       that differ; exit 1 when some differ and are not repaired
 //   node cli.mjs checksum [--wait]      one checksum per table, for restore drills; --wait first
 //                                       lets the worker finish relaying events and running jobs
 //   node cli.mjs password-link <email>  a one-time link to set a password (an administrator who
@@ -27,6 +30,8 @@ import { backupDirectory, recordedBackup } from './backups/schedule';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
 import { emit } from './events/bus';
+import { FieldCatalogs } from './fields/catalog';
+import { checkFieldValues } from './fields/jobs';
 import { purgeExpired } from './trash/purge';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 import { defaultWorkspaceId } from './workspace';
@@ -38,11 +43,12 @@ const { positionals, values } = parseArgs({
     yes: { type: 'boolean', default: false },
     wait: { type: 'boolean', default: false },
     keep: { type: 'boolean', default: false },
+    repair: { type: 'boolean', default: false },
   },
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | checksum | password-link <email> | audit-verify>';
+  'Usage: node cli.mjs <check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | checksum | password-link <email> | audit-verify>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -142,6 +148,28 @@ try {
     case 'purge-trash': {
       const report = await purgeExpired(db);
       say(`purged ${report.tickets} ticket(s) and ${report.tracks} track(s)`);
+      break;
+    }
+    case 'field-values': {
+      const catalogs = new FieldCatalogs(db);
+      const workspaces = await db
+        .selectFrom('workspace')
+        .select(['id', 'key'])
+        .orderBy('id')
+        .execute();
+      for (const workspace of workspaces) {
+        const run = await checkFieldValues(db, catalogs, workspace.id, { repair: values.repair });
+        say(
+          JSON.stringify({
+            workspace: workspace.key,
+            tickets: run.tickets,
+            mismatched: run.mismatched.length,
+            repaired: run.repaired.length,
+            ...(run.mismatched.length > 0 ? { ticketIds: run.mismatched.slice(0, 100) } : {}),
+          }),
+        );
+        if (run.mismatched.length > 0 && !values.repair) process.exitCode = 1;
+      }
       break;
     }
     case 'restore': {

@@ -105,25 +105,22 @@ const releasesOf = (db: Db, role: 'target' | 'found') =>
       .orderBy('rl.id'),
   );
 
-/** The columns a ticket view needs, joined with the names it shows. */
+/**
+ * The columns a ticket view needs, with the names it shows. Lookups of one row (people,
+ * priority, close reason, parent, the trash) are scalar subqueries rather than joins: with
+ * sixteen joined tables the planner spent 4 to 7 ms ordering joins for a query that runs in
+ * under 1 ms (M1-011), and every ticket write reads this view twice.
+ */
 export function ticketQuery(db: Db, workspaceId: number) {
+  const one = <T>(query: string) => sql<T>`(${sql.raw(query)})`;
+  const userName = (column: string) =>
+    one<string | null>(`SELECT name FROM app_user WHERE id = k.${column}`);
   return db
     .selectFrom('ticket as k')
     .innerJoin('track as t', 't.id', 'k.track_id')
     .innerJoin('ticket_type as ty', 'ty.id', 'k.ticket_type_id')
     .innerJoin('hierarchy_level as l', 'l.id', 'ty.level_id')
-    .leftJoin('ticket as p', 'p.id', 'k.parent_id')
-    .leftJoin('track as pt', 'pt.id', 'p.track_id')
-    .leftJoin('app_user as a', 'a.id', 'k.assignee_id')
-    .leftJoin('app_user as r', 'r.id', 'k.requester_id')
-    .leftJoin('app_user as c', 'c.id', 'k.creator_id')
-    .leftJoin('app_user as d', 'd.id', 'k.deleted_by')
-    .leftJoin('ticket as w', 'w.id', 'k.trashed_with')
-    .leftJoin('track as wt', 'wt.id', 'w.track_id')
-    .leftJoin('priority as pr', 'pr.id', 'k.priority_id')
-    .leftJoin('close_reason as cr', 'cr.id', 'k.close_reason_id')
     .innerJoin('status as st', 'st.id', 'k.status_id')
-    .leftJoin('trash_policy as tp', 'tp.workspace_id', 'k.workspace_id')
     .select([
       'k.id',
       'k.number',
@@ -139,10 +136,14 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'l.rank as level_rank',
       'l.name as level_name',
       'k.parent_id',
-      'p.number as parent_number',
-      'p.summary as parent_summary',
-      'p.track_id as parent_track_id',
-      'pt.key as parent_track_key',
+      one<number | null>('SELECT number FROM ticket WHERE id = k.parent_id').as('parent_number'),
+      one<string | null>('SELECT summary FROM ticket WHERE id = k.parent_id').as('parent_summary'),
+      one<number | null>('SELECT track_id FROM ticket WHERE id = k.parent_id').as(
+        'parent_track_id',
+      ),
+      one<string | null>(
+        'SELECT pt.key FROM ticket p JOIN track pt ON pt.id = p.track_id WHERE p.id = k.parent_id',
+      ).as('parent_track_key'),
       'k.status_id',
       'st.name as status_name',
       'st.stage as status_stage',
@@ -150,11 +151,11 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'k.description',
       'k.environment',
       'k.assignee_id',
-      'a.name as assignee_name',
+      userName('assignee_id').as('assignee_name'),
       'k.requester_id',
-      'r.name as requester_name',
+      userName('requester_id').as('requester_name'),
       'k.creator_id',
-      'c.name as creator_name',
+      userName('creator_id').as('creator_name'),
       'k.start_date',
       'k.due_date',
       'k.rank',
@@ -163,22 +164,32 @@ export function ticketQuery(db: Db, workspaceId: number) {
       'k.updated_at',
       'k.deleted_at',
       'k.deleted_by',
-      'd.name as deleted_by_name',
+      userName('deleted_by').as('deleted_by_name'),
       'k.trashed_with',
-      'w.number as trashed_with_number',
-      'wt.key as trashed_with_track_key',
+      one<number | null>('SELECT number FROM ticket WHERE id = k.trashed_with').as(
+        'trashed_with_number',
+      ),
+      one<string | null>(
+        'SELECT wt.key FROM ticket w JOIN track wt ON wt.id = w.track_id WHERE w.id = k.trashed_with',
+      ).as('trashed_with_track_key'),
       'k.priority_id',
-      'pr.name as priority_name',
-      'pr.icon as priority_icon',
-      'pr.color as priority_color',
+      one<string | null>('SELECT name FROM priority WHERE id = k.priority_id').as('priority_name'),
+      one<string | null>('SELECT icon FROM priority WHERE id = k.priority_id').as('priority_icon'),
+      one<string | null>('SELECT color FROM priority WHERE id = k.priority_id').as(
+        'priority_color',
+      ),
       'k.close_reason_id',
-      'cr.name as close_reason_name',
+      one<string | null>('SELECT name FROM close_reason WHERE id = k.close_reason_id').as(
+        'close_reason_name',
+      ),
       'k.closed_at',
       'k.labels',
       'k.original_estimate',
       'k.remaining_estimate',
       'k.time_spent',
-      'tp.retention_days as trash_retention_days',
+      one<number | null>(
+        'SELECT retention_days FROM trash_policy WHERE workspace_id = k.workspace_id',
+      ).as('trash_retention_days'),
       'k.fields',
     ])
     .select([

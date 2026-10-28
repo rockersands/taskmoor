@@ -552,6 +552,34 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0027_field_values': {
+    tables: {
+      v_text: "value = 'seed text' AND sort_key = 'seed text'",
+      v_number: 'value = 1.235',
+      v_date: "value = '2026-10-28'",
+      v_time: "value = '2026-10-28T12:00:00Z'",
+      v_user: "value IN (SELECT id FROM app_user WHERE email = 'seed@example.com')",
+      v_option: "value IN (SELECT id FROM field_option WHERE value = 'Seed option')",
+    },
+    seed: async (db) => {
+      const row = sql`SELECT t.workspace_id, t.id, t.track_id, f.id, t.created_at
+        FROM ticket t, field f WHERE t.summary = 'Seed ticket' AND f.name = 'Seed field'`;
+      await sql`INSERT INTO v_text (workspace_id, ticket_id, track_id, field_id, created_at, value, sort_key)
+        SELECT *, 'seed text', 'seed text' FROM (${row}) r`.execute(db);
+      await sql`INSERT INTO v_number (workspace_id, ticket_id, track_id, field_id, created_at, value)
+        SELECT *, 1.235 FROM (${row}) r`.execute(db);
+      await sql`INSERT INTO v_date (workspace_id, ticket_id, track_id, field_id, created_at, value)
+        SELECT *, '2026-10-28'::date FROM (${row}) r`.execute(db);
+      await sql`INSERT INTO v_time (workspace_id, ticket_id, track_id, field_id, created_at, value)
+        SELECT *, '2026-10-28T12:00:00Z'::timestamptz FROM (${row}) r`.execute(db);
+      await sql`INSERT INTO v_user (workspace_id, ticket_id, track_id, field_id, created_at, value)
+        SELECT r.*, u.id FROM (${row}) r, app_user u WHERE u.email = 'seed@example.com'`.execute(
+        db,
+      );
+      await sql`INSERT INTO v_option (workspace_id, ticket_id, track_id, field_id, created_at, value)
+        SELECT r.*, o.id FROM (${row}) r, field_option o WHERE o.value = 'Seed option'`.execute(db);
+    },
+  },
 };
 
 /**

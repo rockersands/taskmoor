@@ -775,6 +775,27 @@ export interface FieldLabelTable {
   created_at: DefaultTimestamp;
 }
 
+/**
+ * A custom field value for filtering, sorting and counting (M1-011, ADR-008): the ticket's
+ * track and creation time are copied so a side index serves track-scoped, newest-first pages.
+ */
+interface SideRow<V> {
+  workspace_id: number;
+  ticket_id: number;
+  track_id: number;
+  field_id: number;
+  value: V;
+  created_at: Date | string;
+}
+export interface TextValueTable extends SideRow<string> {
+  /** Case-folded, in the C collation: the order the application sorts text in. */
+  sort_key: string;
+}
+export type NumberValueTable = SideRow<ColumnType<string, number | string, number | string>>;
+export type DateValueTable = SideRow<string>;
+export type TimeValueTable = SideRow<ColumnType<Date, Date | string, Date | string>>;
+export type IdValueTable = SideRow<number>;
+
 /** Moves on every change to the field catalogue; cached copies carry it. */
 export interface FieldEpochTable {
   workspace_id: number;
@@ -1255,6 +1276,12 @@ export interface Database {
   field_option: FieldOptionTable;
   field_label: FieldLabelTable;
   field_epoch: FieldEpochTable;
+  v_text: TextValueTable;
+  v_number: NumberValueTable;
+  v_date: DateValueTable;
+  v_time: TimeValueTable;
+  v_user: IdValueTable;
+  v_option: IdValueTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

@@ -4,6 +4,7 @@ import { effectiveMemberIds } from '../directory';
 import type { FieldChange } from '../tickets/history';
 import type { Catalog, ContextDef, FieldDef } from './catalog';
 import {
+  fold,
   parseValue,
   REFERENCE_OF,
   type Reference,
@@ -250,7 +251,6 @@ export async function loadResolver(
     const option = catalog.options.get(id);
     if (option) found.set(key('option', id), { name: option.value, rank: option.sortOrder });
   }
-  const fold = (s: string) => s.normalize('NFKC').toLowerCase();
   const read = async (
     ref: Reference,
     rows: () => Promise<{ id: number; name: string; sort_order?: number }[]>,
@@ -400,7 +400,15 @@ export async function customChanges(
     return text(field, before[id]) !== text(field, after[id]);
   });
   if (changed.length === 0) return [];
-  const resolver = await loadResolver(db, workspaceId, catalog, wantedOf(catalog, [before, after]));
+  // Names only of what changed: a ticket may hold hundreds of other values.
+  const pick = (fields: FieldValues) =>
+    Object.fromEntries(changed.filter((id) => id in fields).map((id) => [id, fields[id]]));
+  const resolver = await loadResolver(
+    db,
+    workspaceId,
+    catalog,
+    wantedOf(catalog, [pick(before), pick(after)] as FieldValues[]),
+  );
   const display = (field: FieldDef, value: JsonValue | undefined) => {
     const ref = REFERENCE_OF[field.type];
     if (value === undefined || !ref) return null;
@@ -420,4 +428,19 @@ export async function customChanges(
       toDisplay: display(field, after[id]),
     };
   });
+}
+
+/**
+ * A ticket's values without those that name its track's objects (release and area pickers),
+ * for a move to another track; null when it has none.
+ */
+export function withoutTrackValues(catalog: Catalog, fields: FieldValues): FieldValues | null {
+  const kept: FieldValues = {};
+  let dropped = false;
+  for (const [key, value] of Object.entries(fields)) {
+    const type = catalog.fields.get(Number(key))?.type;
+    if (type === 'release' || type === 'area') dropped = true;
+    else kept[key] = value;
+  }
+  return dropped ? kept : null;
 }

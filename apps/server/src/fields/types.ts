@@ -57,13 +57,13 @@ export const REFERENCE_OF: Readonly<Partial<Record<FieldType, Reference>>> = {
 
 /** The side table M1-011 indexes a type's values in (ADR-008). */
 export const STORAGE_OF: Readonly<
-  Record<FieldType, 'text' | 'number' | 'date' | 'user' | 'option'>
+  Record<FieldType, 'text' | 'number' | 'date' | 'time' | 'user' | 'option'>
 > = {
   text: 'text',
   paragraph: 'text',
   number: 'number',
   date: 'date',
-  datetime: 'date',
+  datetime: 'time',
   select: 'option',
   'cascading-select': 'option',
   user: 'user',
@@ -394,7 +394,7 @@ export interface Resolver {
 type Key = string | number;
 
 /** Case-folded for ordering; ties fall back to the text as written. */
-const fold = (s: string) => s.normalize('NFKC').toLowerCase();
+export const fold = (s: string) => s.normalize('NFKC').toLowerCase();
 
 /** Code point order, as the C collation orders UTF-8 bytes (not UTF-16 code units). */
 export function compareText(a: string, b: string): number {

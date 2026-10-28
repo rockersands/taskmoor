@@ -18,6 +18,15 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-011 field storage** (migration 0027; ADR-008 "Implementation (M1-010 and M1-011)"):
+  side tables `v_text`, `v_number`, `v_date`, `v_time`, `v_user`, `v_option`, written by
+  `syncFieldValues` (`fields/storage.ts`) in every transaction that changes a ticket's values,
+  track or trash state. Any new write path to `ticket.fields` (bulk edit, import, workflow
+  effects on custom fields) must call it too; the property test in `fields/storage.test.ts`
+  catches a path that forgets. Daily repair job `field_values.verify` (`fields/jobs.ts`) and
+  `node cli.mjs field-values [--repair]`.
+  - `ticketQuery` (the ticket view) now reads one-row lookups as scalar subqueries: planning
+    the sixteen-table join cost 4 to 7 ms per read.
 - **M1-082 LDAP and Active Directory** (built by a background agent, reviewed and merged;
   migration 0021; ADR-019 "LDAP and Active Directory"): directories in `ldap_directory`
   (LDAPS or StartTLS, sealed bind password, precedence, schedule), synced by the worker

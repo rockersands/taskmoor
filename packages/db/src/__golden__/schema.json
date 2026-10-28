@@ -1336,6 +1336,104 @@
       "CREATE INDEX user_session_user_idx ON public.user_session USING btree (user_id)"
     ]
   },
+  "v_date": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value date not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_date_field_created_idx ON public.v_date USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_date_field_value_idx ON public.v_date USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_date_pkey ON public.v_date USING btree (ticket_id, field_id)",
+      "CREATE INDEX v_date_track_field_value_idx ON public.v_date USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_number": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value numeric not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_number_field_created_idx ON public.v_number USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_number_field_value_idx ON public.v_number USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_number_pkey ON public.v_number USING btree (ticket_id, field_id)",
+      "CREATE INDEX v_number_track_field_value_idx ON public.v_number USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_option": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value integer not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_option_field_created_idx ON public.v_option USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_option_field_value_idx ON public.v_option USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_option_pkey ON public.v_option USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX v_option_track_field_value_idx ON public.v_option USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_text": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value text not null",
+      "sort_key text not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_text_field_created_idx ON public.v_text USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_text_field_sort_idx ON public.v_text USING btree (field_id, sort_key, ticket_id)",
+      "CREATE INDEX v_text_field_value_idx ON public.v_text USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_text_pkey ON public.v_text USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX v_text_track_field_value_idx ON public.v_text USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_time": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value timestamp with time zone not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_time_field_created_idx ON public.v_time USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_time_field_value_idx ON public.v_time USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_time_pkey ON public.v_time USING btree (ticket_id, field_id)",
+      "CREATE INDEX v_time_track_field_value_idx ON public.v_time USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_user": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value integer not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_user_field_created_idx ON public.v_user USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_user_field_value_idx ON public.v_user USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_user_pkey ON public.v_user USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX v_user_track_field_value_idx ON public.v_user USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
   "webauthn_credential": {
     "columns": [
       "id integer not null default nextval('webauthn_credential_id_seq'::regclass)",

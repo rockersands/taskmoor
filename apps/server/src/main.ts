@@ -7,6 +7,7 @@ import { loadConfig } from './config';
 import { EventBus, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
 import { registerSubscribers } from './events/subscribers';
+import { registerFieldValueJobs, scheduleFieldValueCheck } from './fields/jobs';
 import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
 import { loadPeppers } from './secrets';
@@ -119,9 +120,13 @@ if (config.roles.includes('worker') && db) {
     },
     log: (msg) => app.log.info({ backupDir }, msg),
   });
+  // The custom field side tables, checked against the tickets once a day (M1-011, ADR-008).
+  registerFieldValueJobs(runner, db, (run) =>
+    app.log.warn({ run }, 'custom field side rows repaired'),
+  );
   const scheduleHousekeeping = () =>
-    Promise.all([schedulePurge(db), scheduleBackups(db)]).catch((error) =>
-      app.log.warn({ error }, 'trash purge or backup not queued'),
+    Promise.all([schedulePurge(db), scheduleBackups(db), scheduleFieldValueCheck(db)]).catch(
+      (error) => app.log.warn({ error }, 'trash purge, backup or field value check not queued'),
     );
   void scheduleHousekeeping();
   timers.push(setInterval(scheduleHousekeeping, 5 * 60 * 1000));

@@ -8,6 +8,7 @@ import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { changedFieldIds, syncFieldValues } from '../fields/storage';
 import {
   checkCustomValues,
   customChanges,
@@ -15,6 +16,7 @@ import {
   type FieldValues,
   historyName,
   rememberFieldLabels,
+  withoutTrackValues,
 } from '../fields/values';
 import { shareHierarchy } from '../tickets/configuration';
 import {
@@ -963,6 +965,7 @@ export function registerTicketRoutes(
         },
       });
       await autoFollow(trx, ws, row.id, user.id);
+      if (Object.keys(custom.fields).length > 0) await syncFieldValues(trx, catalog, [row.id]);
       const created = await loadTicket(trx, ws, row.id);
       // Every starting value is history too, so "was" finds the first one (ADR-010).
       if (created) {
@@ -1257,6 +1260,14 @@ export function registerTicketRoutes(
       if (changes.remainingEstimate) set.remaining_estimate = remainingEstimate ?? null;
       if (customFields !== null) set.fields = JSON.stringify(customFields);
       await trx.updateTable('ticket').set(set).where('id', '=', ticketId).execute();
+      if (customFields !== null) {
+        await syncFieldValues(
+          trx,
+          catalog,
+          [ticketId],
+          changedFieldIds(current.fields, customFields),
+        );
+      }
       if (lists.targetReleaseIds) {
         await setTicketReleases(trx, ws, ticketId, 'target', lists.targetReleaseIds);
       }
@@ -1319,6 +1330,7 @@ export function registerTicketRoutes(
       parentId = parent.row.id;
     }
 
+    const catalog = await catalogs.get(ws);
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
       // The hierarchy, then the target track, its type set and its workflow, then tickets.
       await shareHierarchy(trx, ws);
@@ -1489,12 +1501,23 @@ export function registerTicketRoutes(
           subtickets: moved,
         },
       });
-      await recordChanges(
-        trx,
-        ws,
-        actor(request),
-        changesOf(before, await loadTickets(trx, ws, touched)),
-      );
+      // Custom release and area values name the old track's objects, as the system ones do.
+      const lostValues = [];
+      for (const t of before.values()) {
+        const kept = withoutTrackValues(catalog, t.fields);
+        if (kept === null) continue;
+        await trx
+          .updateTable('ticket')
+          .set({ fields: JSON.stringify(kept) })
+          .where('id', '=', t.id)
+          .execute();
+        lostValues.push(...(await customChanges(trx, ws, catalog, t.id, t.fields, kept)));
+      }
+      await syncFieldValues(trx, catalog, touched);
+      await recordChanges(trx, ws, actor(request), [
+        ...changesOf(before, await loadTickets(trx, ws, touched)),
+        ...lostValues,
+      ]);
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
     return answer(request, reply, outcome);
@@ -1951,6 +1974,7 @@ export function registerTicketRoutes(
       return forbidden(reply, 'delete_tickets');
     }
     const ticketId = found.row.id;
+    const catalog = await catalogs.get(ws);
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
       await shareHierarchy(trx, ws);
       const locked = await trx
@@ -2012,6 +2036,8 @@ export function registerTicketRoutes(
           detachedChildren: detached,
         },
       });
+      // Tickets in the trash have no side rows; they come back with them (ADR-008).
+      await syncFieldValues(trx, catalog, touched);
       await recordChanges(trx, ws, user.id, changesOf(before, await loadTickets(trx, ws, touched)));
       return { ticket: await loadTicket(trx, ws, ticketId) };
     });
@@ -2040,6 +2066,7 @@ export function registerTicketRoutes(
         .send({ error: 'deleted_with_parent', parent: view.trash?.deletedWith });
     }
     const ticketId = row.id;
+    const catalog = await catalogs.get(ws);
     const outcome = await db.transaction().execute(async (trx): Promise<Outcome> => {
       await shareHierarchy(trx, ws);
       const locked = await trx
@@ -2155,6 +2182,7 @@ export function registerTicketRoutes(
           detachedFrom,
         },
       });
+      await syncFieldValues(trx, catalog, touched);
       await recordChanges(
         trx,
         ws,

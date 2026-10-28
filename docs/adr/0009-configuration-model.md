@@ -308,8 +308,8 @@ catalogue in `fields/catalog.ts`, values on tickets in `fields/values.ts`, the r
 - **Ordering:** numbers by value, dates as written, text case-folded (NFKC, lower case) in
   code point order with the text as written breaking ties, references by their object's order
   (options, releases) or name (people, groups, areas). Empty sorts last ascending, as Postgres
-  orders nulls, so the query engine can walk an index the same way. M1-011's side tables store
-  the sort key the application computes, so database and application order agree.
+  orders nulls, so the query engine can walk an index the same way. M1-011's `v_text` stores
+  the case-folded key the application computes, so database and application order text alike.
 - **Contexts** (CORE-009) cover tracks and ticket types, one `field_context_scope` row per pair
   (null for all). A unique index keeps two contexts of a field off the same pair (409
   `context_overlap` names the other context). A ticket's context is the most specific match:
@@ -333,9 +333,9 @@ catalogue in `fields/catalog.ts`, values on tickets in `fields/values.ts`, the r
 - **History** names custom fields as the query language does (`cf[12]`), with values as text
   and references by name.
 - **Not yet:** workflows naming custom fields (guards, checks, layouts and effects) arrive with
-  field rules and layouts (M1-012); a move keeps values as they are, and mapping options
-  between contexts on a move waits for bulk move (M1-021); the side tables and their indexes
-  are M1-011.
+  field rules and layouts (M1-012); a move keeps option values as they are (release and area
+  values go, M1-011), and mapping options between contexts on a move waits for bulk move
+  (M1-021).
 
 ## Consequences
 
