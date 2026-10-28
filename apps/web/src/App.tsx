@@ -29,6 +29,8 @@ import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
+import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
+import { WorkflowsPage } from './workflow/WorkflowsPage';
 
 export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
   { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon },
@@ -77,6 +79,7 @@ const ADMIN_IDENTITY_PROVIDERS = '#/admin/identity-providers';
 const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
+const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -194,6 +197,14 @@ function Pages() {
                 window.location.hash = ADMIN_DIRECTORIES;
               },
             },
+            {
+              id: 'go-workflows',
+              labelId: 'admin.workflows.title' as const,
+              keywords: ['status', 'transition', 'guard', 'check', 'effect', 'publish'],
+              run: () => {
+                window.location.hash = ADMIN_WORKFLOWS;
+              },
+            },
           ]
         : []),
     ],
@@ -226,6 +237,13 @@ function Pages() {
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
+  } else if (isRoute(hash, ADMIN_WORKFLOWS)) {
+    const workflowId = /^#\/admin\/workflows\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    content = workflowId ? (
+      <WorkflowEditorPage key={workflowId} workflowId={Number(workflowId)} />
+    ) : (
+      <WorkflowsPage />
+    );
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
   } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {

@@ -91,3 +91,65 @@ the same rule that a ticket never sits in a status its workflow lacks.
   `ticket.transitioned` and `ticket.created` (`event`, `webhookCount`).
 - **Defaults:** the seeded workflow's Close asks for a close reason (layout and a required
   check); Reopen clears it.
+
+## Implementation (M1-030)
+
+The workflow editor (WF-002, WF-012) is a client of the M1-023 API; no endpoint, event or
+migration was added. Its code is in `apps/web/src/workflow/`.
+
+- **Where it lives.** `#/admin/workflows` lists the workflows (default, published version,
+  draft, tracks using them), creates one (empty with an initial status, or a copy of another's
+  published version), deletes an unused one, and manages the workspace's statuses (add with a
+  stage, rename, change the stage while no ticket is in it, reorder, delete when unused).
+  `#/admin/workflows/<id>` is the editor. Both are offered from Settings and the command
+  palette; the API decides who may use them (site and configuration administrators).
+- **One draft in the page.** The editor works on a copy of the draft (or of the published
+  version when there is none) and changes it through pure operations (`definition.ts`); it
+  saves with `PUT .../draft`, discards with `DELETE .../draft`, publishes through
+  `GET .../impact` and `POST .../publish` with a mapping for each dropped status that holds
+  tickets, and restores an earlier version as the draft. Publishing saves unsaved changes
+  first. New transition ids are above every id in the draft and the published version, so a
+  removed transition's id is not given to another one while history still names it.
+- **Diagram mode is a picture plus lists.** The diagram (`diagram.ts`) is laid out from the
+  definition every time, so it is never saved: layers by breadth-first distance from the
+  initial status over transitions with a source list, statuses reached only by global
+  transitions or not at all in one last layer, one barycentre pass to order each layer, forward
+  transitions as curves between box sides, transitions back to an earlier layer below the
+  boxes, transitions within a layer to the right, self-loops on a corner, and a global
+  transition as a dashed tab above its target rather than lines from every status. No graph
+  library: about two hundred lines that a property test keeps honest (no overlapping boxes,
+  one labelled edge per transition, everything inside the frame). `x` and `y` in a definition
+  are kept as they are and not read yet. The picture is hidden from assistive technology and
+  its parts are out of the tab order; the frame takes focus so it scrolls with the keys. The
+  lists of statuses and transitions beside it are the equivalent structure that keyboards and
+  screen readers use, and choosing an entry there or in the picture opens the same details
+  panel, with focus on its heading. On phones the picture waits behind a button and scrolls
+  inside its frame.
+- **Rule forms come from one catalogue.** `catalogue.ts` lists every guard, check, effect and
+  local-mode rule with its parameters and the control each needs (field, comparison, status or
+  statuses, transition, role, group, permission, value, and so on). It is typed against the
+  workflow model of `@taskmoor/workflow` (a type-only dev dependency of the web app), so a
+  type or parameter the model gains or renames fails to compile; a test compares the type
+  names with the server's schema, the fields with `workflows/fields.ts` and the problem codes
+  with `definitionProblem`. Guards edit as a tree of all/any groups, at most as deep as the
+  server allows. Effects show inside the essential sequence the engine runs: status, layout
+  values, the optional effects in list order, local-mode rules, then comment, history, index
+  and event, notifications after all of them.
+- **Text mode is the API's JSON.** The text is the definition exactly as the API stores,
+  imports and exports it (WF-011), pretty-printed, with a key from status ids to names.
+  Switching modes is lossless: the text reads back as the same definition (property test),
+  and a text that does not read keeps the editor in text mode. The editor finds the position
+  of a JSON syntax error itself (browsers word `JSON.parse` errors differently), and a shape
+  check that mirrors the server's schema (`shape.ts`) names each problem by its path. What
+  needs the workspace is the server's `definitionProblem`, shown in words after a save.
+- **Checks before publishing (WF-012, `lint.ts`)**, computed from the definition alone:
+  errors the server would refuse (unknown or repeated statuses, an initial status or a
+  transition end outside the workflow, repeated transition ids, guards nested deeper than ten)
+  block saving; warnings do not. A status is unreachable when no path of runnable transitions
+  leads to it from the initial status, breadth first (a stronger reading than the engine's
+  `lint`, which flags only statuses no transition enters; a property test shows the two agree
+  on those, and a plain fixpoint agrees with the breadth-first search). A transition whose
+  guards can never pass does not count as a path, and a self-loop does not either. A status
+  outside the closed stage with no transition to another status has no exit; a global
+  transition is an exit from every status but its own target. Unsatisfiable guards are judged
+  as the engine judges them. Statuses unmapped on boards join with boards (M1-043).

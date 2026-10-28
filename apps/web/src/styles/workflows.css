@@ -1,0 +1,771 @@
+/* Workflows (M1-030): the list with the workspace's statuses, and the editor with its diagram,
+   lists, details panel, checks, publish step and history. Desktop first: the details panel sits
+   beside the diagram and stacks below it on narrow screens; the diagram scrolls inside its own
+   frame, never the page. Stages colour statuses: new grey, active blue, closed green. */
+
+.workflows-page {
+  max-width: 60rem;
+}
+
+/* ---- Stages ---- */
+
+.stage-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+.stage-badge.stage-new {
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  box-shadow: inset 0 0 0 1px var(--color-field-border);
+}
+
+.stage-badge.stage-active {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.stage-badge.stage-closed {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.stage-dot {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-right: var(--space-1);
+  border-radius: 50%;
+}
+
+.stage-dot.stage-new {
+  background: var(--color-text-muted);
+}
+
+.stage-dot.stage-active {
+  background: var(--color-blue);
+}
+
+.stage-dot.stage-closed {
+  background: var(--color-success);
+}
+
+/* ---- The list page ---- */
+
+.workflow-list,
+.status-list,
+.workflow-versions {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-item,
+.status-item,
+.workflow-version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
+}
+
+.workflow-name-link {
+  color: var(--color-accent);
+}
+
+.status-main {
+  display: flex;
+  flex: 1 1 14rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.status-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.status-form {
+  flex-basis: 100%;
+}
+
+.status-form label .stage-dot {
+  vertical-align: middle;
+}
+
+/* A link that looks like a secondary button. */
+.button-link {
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* ---- The editor ---- */
+
+.workflow-editor {
+  min-width: 0;
+}
+
+.workflow-back {
+  margin: 0;
+}
+
+.workflow-back a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.workflow-details {
+  margin-top: var(--space-2);
+}
+
+.workflow-details summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  color: var(--color-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.workflow-details summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.workflow-details .form {
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.workflow-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 var(--space-3);
+}
+
+/* Diagram or text: two buttons in a pill, the pressed one raised. */
+.workflow-modes {
+  display: inline-flex;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  box-shadow: var(--shadow-inset);
+}
+
+.workflow-mode {
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.workflow-mode[aria-pressed="true"] {
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-1);
+  font-weight: 600;
+}
+
+.workflow-mode:focus-visible,
+.workflow-pick:focus-visible,
+.workflow-diagram:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.workflow-editor > .form-status,
+.workflow-editor > .form-error,
+.workflow-editor > .token-confirm {
+  margin-bottom: var(--space-3);
+}
+
+/* ---- Checks ---- */
+
+.workflow-checks {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.workflow-checks .facts-title {
+  margin: 0;
+}
+
+.workflow-checks .facts-title:focus,
+.workflow-panel .facts-title:focus,
+.workflow-structure .facts-title:focus {
+  outline: none;
+}
+
+.lint-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lint-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
+}
+
+.lint-error {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.lint-warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.lint-severity {
+  font-weight: 700;
+}
+
+.lint-text {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.lint-tag {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+/* ---- Workspace: diagram and lists, with the details panel beside them ---- */
+
+.workflow-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.workflow-main {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.workflow-inspector {
+  min-width: 0;
+}
+
+/* With something chosen, its details sit beside the diagram and stay in view. */
+.workflow-workspace-split {
+  grid-template-columns: minmax(0, 1fr) minmax(22rem, 30rem);
+}
+
+.workflow-workspace-split .workflow-inspector {
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - 2 * var(--space-4));
+  overflow-y: auto;
+  border-radius: var(--radius-3);
+}
+
+@media (max-width: 72rem) {
+  .workflow-workspace-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workflow-workspace-split .workflow-inspector {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* ---- The diagram ---- */
+
+.workflow-diagram-frame {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.workflow-diagram {
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.workflow-diagram-canvas {
+  position: relative;
+}
+
+.workflow-diagram-lines {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.workflow-edge {
+  fill: none;
+  stroke: var(--color-text-muted);
+  stroke-width: 1.6;
+}
+
+.workflow-edge-global {
+  stroke-dasharray: 5 4;
+}
+
+.workflow-edge-flagged {
+  stroke: var(--color-warning);
+}
+
+.workflow-edge-selected {
+  stroke: var(--color-accent);
+  stroke-width: 2.6;
+}
+
+.workflow-arrow {
+  fill: var(--color-text-muted);
+}
+
+.workflow-arrow-selected {
+  fill: var(--color-accent);
+}
+
+.workflow-node {
+  position: absolute;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 0 var(--space-3);
+  border: 2px solid var(--color-field-border);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-sunken);
+  box-shadow: var(--shadow-1);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workflow-node.stage-active {
+  border-color: var(--color-blue);
+  background: var(--color-blue-soft);
+}
+
+.workflow-node.stage-closed {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.workflow-node.stage-unknown {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.workflow-node-flagged {
+  border-style: dashed;
+  border-color: var(--color-warning);
+}
+
+.workflow-node-selected {
+  box-shadow:
+    0 0 0 3px var(--color-surface),
+    0 0 0 6px var(--color-accent);
+}
+
+.workflow-node-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-node-mark {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.workflow-edge-label {
+  position: absolute;
+  overflow: hidden;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-100);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.workflow-edge-tab {
+  border-style: dashed;
+  border-color: var(--color-field-border);
+}
+
+.workflow-edge-label-selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+/* ---- The lists beside the diagram ---- */
+
+.workflow-structure {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-4);
+}
+
+.workflow-structure-part {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.workflow-structure-part .facts-title {
+  margin: 0;
+}
+
+.workflow-entries {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+}
+
+.workflow-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.workflow-pick {
+  max-width: 100%;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.workflow-pick.stage-new {
+  border-left: 6px solid var(--color-text-muted);
+}
+
+.workflow-pick.stage-active {
+  border-left: 6px solid var(--color-blue);
+}
+
+.workflow-pick.stage-closed {
+  border-left: 6px solid var(--color-success);
+}
+
+.workflow-pick[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+/* ---- Details panel, publish step and history ---- */
+
+.workflow-panel {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-bottom: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.workflow-panel .facts-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-panel p {
+  margin: 0;
+}
+
+.workflow-inspector .workflow-panel {
+  margin-bottom: 0;
+}
+
+.workflow-form {
+  max-width: none;
+}
+
+/* Fieldsets and selects size to their column, never to their longest option. */
+.workflow-form fieldset,
+.workflow-form .form-field {
+  min-width: 0;
+}
+
+.workflow-form .form-field {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workflow-form .form-field-inline {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.workflow-form select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Fieldsets inside the panel's fieldsets drop the card look and take a thin edge. */
+.workflow-form fieldset fieldset {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  background: transparent;
+  box-shadow: none;
+}
+
+.workflow-form fieldset.rule-choices {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10rem), 1fr));
+  gap: var(--space-1) var(--space-3);
+}
+
+.workflow-form fieldset.rule-choices > p {
+  grid-column: 1 / -1;
+}
+
+.rule-list,
+.guard-group {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.rule-items {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rule-item {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.rule-fields {
+  min-width: 0;
+}
+
+.rule-actions,
+.rule-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.rule-add .form-field {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.rule-invalid {
+  color: var(--color-danger);
+}
+
+.guard-combine {
+  max-width: 16rem;
+}
+
+.effect-order {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.effect-fixed {
+  color: var(--color-text-muted);
+}
+
+.effect-fixed > span:first-child {
+  margin-right: var(--space-2);
+}
+
+.effect-tag {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.effect-optional-body {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.effect-optional-title {
+  font-weight: 600;
+}
+
+.property-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+@media (max-width: 40rem) {
+  .property-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+}
+
+.workflow-danger {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.workflow-publish-warnings {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.workflow-version-draft {
+  background: var(--color-butter-soft);
+  color: var(--color-butter);
+}
+
+.workflow-version-earlier {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+/* ---- Text mode ---- */
+
+.workflow-text {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 18rem);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.form-field textarea.workflow-text-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28rem;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-200);
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+  resize: vertical;
+}
+
+.workflow-text-legend {
+  padding: var(--space-4);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.workflow-text-legend ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 48rem) {
+  .workflow-text {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (pointer: coarse) {
+  .workflow-mode,
+  .workflow-pick,
+  .workflow-back a,
+  .workflow-details summary {
+    min-height: var(--hit-target-touch);
+  }
+}

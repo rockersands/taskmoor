@@ -18,6 +18,14 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ### Done
 
+- **M1-030 workflow editor** (built by a background agent, reviewed and merged; ADR-039
+  "Implementation (M1-030)"). Web only, on the M1-023 API: `#/admin/workflows` (list, create,
+  copy, delete, statuses) and `#/admin/workflows/<id>` (the editor), both in Settings and the
+  command palette. Code in `apps/web/src/workflow/`: `definition.ts` (pure draft operations),
+  `diagram.ts` (layout), `catalogue.ts` (rule forms, typed against `@taskmoor/workflow`, a
+  type-only dev dependency of the web app), `shape.ts` and `lint.ts` (checks before
+  publishing). `axe-core` is a dev dependency of the web app for the e2e axe check. Board
+  column mapping waits for boards (M1-043).
 - **M1-016 attachments** (built by a background agent, reviewed and merged; migration 0031;
   ADR-040; new package `@taskmoor/storage`). Files go to local disk (`TASKMOOR_DATA/files` or
   `TASKMOOR_FILES_DIR`) or an S3-compatible bucket (`TASKMOOR_S3_*`, from the environment only)

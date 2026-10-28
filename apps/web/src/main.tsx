@@ -13,6 +13,7 @@ import './styles/directories.css';
 import './styles/tickets.css';
 import './styles/trash.css';
 import './styles/attachments.css';
+import './styles/workflows.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element in index.html');

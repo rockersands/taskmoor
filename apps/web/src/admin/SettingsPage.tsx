@@ -57,6 +57,10 @@ export function SettingsPage() {
               <a href="#/admin/directories">{t('settings.directories')}</a>
               <p className="page-note">{t('settings.directoriesHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/workflows">{t('settings.workflows')}</a>
+              <p className="page-note">{t('settings.workflowsHint')}</p>
+            </li>
           </ul>
         </section>
       )}

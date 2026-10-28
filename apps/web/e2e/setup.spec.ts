@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { type APIRequestContext, devices, expect, type Page, test } from '@playwright/test';
 
 const TOKEN = 'e2e-setup-token-0123456789';
@@ -1142,4 +1143,190 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByText('FORM-2 was created.')).toBeVisible();
   await page.request.delete('/api/v1/session');
+});
+
+/** axe on the page as it stands: its serious and critical violations, each with its count. */
+const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
+async function seriousAxeViolations(page: Page): Promise<string[]> {
+  await page.addScriptTag({ path: AXE });
+  return page.evaluate(async () => {
+    const axe = (
+      window as unknown as {
+        axe: {
+          run: (context: Document) => Promise<{
+            violations: { id: string; impact?: string | null; nodes: unknown[] }[];
+          }>;
+        };
+      }
+    ).axe;
+    const { violations } = await axe.run(document);
+    return violations
+      .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+      .map((v) => `${v.id} (${v.nodes.length})`);
+  });
+}
+
+// The workflow editor (M1-030): a workflow built in the browser, checked, published, and read
+// back through the API with its rules.
+test('[WF-002] [WF-012] the administrator builds a workflow with rules in the editor, fixes an unreachable status and publishes it, with no serious axe issue', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  let workflowId: string | undefined;
+  try {
+    await page.goto('./#/settings');
+    await page.getByRole('link', { name: 'Workflows' }).click();
+    await expect(heading(page)).toHaveText('Workflows');
+    await page.getByRole('button', { name: 'Create a workflow' }).click();
+    const form = page.getByRole('form', { name: 'New workflow' });
+    expect(await seriousAxeViolations(page)).toEqual([]);
+    await form.getByLabel('Name', { exact: true }).fill('Support flow');
+    await expect(form.getByLabel('Initial status')).toHaveValue(/\d+/);
+    await form.getByRole('button', { name: 'Create workflow' }).click();
+    await expect(heading(page)).toHaveText('Support flow');
+    workflowId = /#\/admin\/workflows\/(\d+)/.exec(page.url())?.[1];
+    expect(workflowId).toBeTruthy();
+
+    for (const status of ['Active', 'Closed']) {
+      await page.getByLabel('Add a status').selectOption({ label: status });
+      await page.getByRole('button', { name: 'Add to workflow' }).click();
+    }
+    const statuses = page.getByRole('list', { name: 'Statuses in this workflow' });
+    await expect(statuses.getByRole('button')).toHaveText(['Open', 'Active', 'Closed']);
+
+    // A transition with a guard, a check and an effect.
+    await page.getByRole('button', { name: 'Add a transition' }).click();
+    await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
+    await page.getByLabel('Name', { exact: true }).fill('Start work');
+    const panel = page.getByRole('region', { name: 'Transition: Start work' });
+    await panel.getByLabel('Goes to').selectOption({ label: 'Active' });
+    await panel.getByLabel('New guard').selectOption({ label: 'Holds a track permission' });
+    await panel.getByRole('button', { name: 'Add guard' }).click();
+    await expect(
+      panel.getByRole('group', { name: 'Guard 1: Holds a track permission' }),
+    ).toBeVisible();
+    await panel.getByLabel('New check').selectOption({ label: 'A field is filled in' });
+    await panel.getByRole('button', { name: 'Add check' }).click();
+    const check = panel.getByRole('group', { name: 'Check 1: A field is filled in' });
+    await check.getByLabel('Field').selectOption({ label: 'Assignee' });
+    await panel.getByLabel('New effect').selectOption({ label: 'Assign to the person running it' });
+    await panel.getByRole('button', { name: 'Add effect' }).click();
+    expect(await seriousAxeViolations(page)).toEqual([]);
+    await page.getByRole('button', { name: 'Save draft' }).click();
+    await expect(page.getByText('Saved draft version 2.')).toBeVisible();
+
+    // Nothing leads to Closed yet: the checks say so, and a global transition fixes it.
+    const checks = page.getByRole('region', { name: 'Checks before publishing' });
+    await expect(
+      checks.getByText('No transition leads to Closed: tickets can never get there.'),
+    ).toBeVisible();
+    await checks.getByRole('button', { name: 'Show Closed' }).click();
+    await expect(page.getByRole('heading', { name: 'Status: Closed' })).toBeFocused();
+    await page.getByRole('button', { name: 'Add a transition from Closed' }).click();
+    await page.getByLabel('Name', { exact: true }).fill('Close');
+    const close = page.getByRole('region', { name: 'Transition: Close' });
+    await close.getByRole('radio', { name: 'Any status (a global transition)' }).check();
+    await close.getByLabel('Goes to').selectOption({ label: 'Closed' });
+    await expect(checks.getByText('No problems found.')).toBeVisible();
+
+    // Publishing saves the draft first, then shows what it changes.
+    await page.getByRole('button', { name: 'Publish' }).click();
+    const publish = page.getByRole('region', { name: 'Publish version 2' });
+    await expect(publish.getByText('No track uses this workflow yet.')).toBeVisible();
+    expect(await seriousAxeViolations(page)).toEqual([]);
+    await publish.getByRole('button', { name: 'Publish now' }).click();
+    await expect(
+      page.getByText('Version 2 is published. The next transition of every ticket uses it.'),
+    ).toBeVisible();
+    await expect(page.getByText('Published version 2')).toBeVisible();
+
+    // The published version holds the rules, as the API reads them.
+    const read = await page.request.get(`/api/v1/workflows/${workflowId}`);
+    expect(read.status()).toBe(200);
+    const { workflow } = (await read.json()) as {
+      workflow: {
+        published: {
+          version: number;
+          definition: {
+            statuses: { statusId: number }[];
+            transitions: {
+              name: string;
+              from: unknown;
+              guards?: unknown;
+              checks?: unknown;
+              effects?: unknown;
+            }[];
+          };
+        };
+        draft: unknown;
+      };
+    };
+    expect(workflow.published.version).toBe(2);
+    expect(workflow.draft).toBeNull();
+    expect(workflow.published.definition.statuses).toHaveLength(3);
+    const start = workflow.published.definition.transitions.find((x) => x.name === 'Start work');
+    expect(start?.guards).toEqual({
+      all: [{ type: 'permission', permission: 'transition_tickets' }],
+    });
+    expect(start?.checks).toEqual([{ type: 'field-required', field: 'assignee' }]);
+    expect(start?.effects).toEqual([{ type: 'assign-to-current-user' }]);
+    expect(workflow.published.definition.transitions.find((x) => x.name === 'Close')?.from).toBe(
+      'any',
+    );
+  } finally {
+    if (workflowId) await page.request.delete(`/api/v1/workflows/${workflowId}`);
+    await page.request.delete('/api/v1/session');
+  }
+});
+
+test('[WF-002] the workflow editor works on a small phone without sideways scrolling', async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({
+    ...devices['Pixel 7'],
+    viewport: { width: 360, height: 740 },
+    ...at(baseURL),
+  });
+  const page = await context.newPage();
+  await signInThroughApi(context.request, ADMIN);
+  const listed = await context.request.get('/api/v1/workflows');
+  const { workflows } = (await listed.json()) as {
+    workflows: { id: number; isDefault: boolean }[];
+  };
+  const standard = workflows.find((w) => w.isDefault);
+  await page.goto(`./#/admin/workflows/${standard?.id}`);
+  await expect(heading(page)).toHaveText('Default workflow');
+  const overflow = () =>
+    page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(await overflow()).toBeLessThanOrEqual(0);
+
+  const targets = [
+    page.getByRole('button', { name: 'Diagram', exact: true }),
+    page.getByRole('button', { name: 'Text', exact: true }),
+    page.getByRole('button', { name: 'Version history' }),
+    page.getByRole('button', { name: 'Show the diagram' }),
+    page.getByRole('button', { name: 'Add a transition' }),
+    page.getByLabel('Add a status'),
+    ...(await page.getByRole('list', { name: 'Transitions' }).getByRole('button').all()),
+  ];
+  for (const target of targets) {
+    expect((await target.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
+
+  // The diagram scrolls inside its own frame; the page stays put.
+  await page.getByRole('button', { name: 'Show the diagram' }).tap();
+  const diagram = page.getByRole('region', { name: 'Diagram' });
+  await expect(diagram).toBeVisible();
+  expect(await diagram.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+
+  await page
+    .getByRole('list', { name: 'Transitions' })
+    .getByRole('button', { name: 'Close' })
+    .tap();
+  await expect(page.getByRole('heading', { name: 'Transition: Close' })).toBeFocused();
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await context.close();
 });
