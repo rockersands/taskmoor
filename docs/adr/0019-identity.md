@@ -20,7 +20,8 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   - SAML 2.0 service provider (SP- and IdP-initiated, signed assertions, metadata import,
     several IdPs routed by email domain, JIT provisioning, attribute to group mapping).
   - LDAP and Active Directory (several directories, nested groups, scheduled incremental sync).
-  - SCIM 2.0 server (users, groups, PATCH), tested against the Entra ID and Okta suites.
+  - SCIM 2.0 server (users, groups, PATCH), tested against the Entra ID and Okta request
+    shapes; ADR-038 records its design (M1-083).
   - Scoped expiring personal tokens, service accounts, token inventory with last use
     (implemented in M1-004; ADR-035 records the format, scopes and rotation).
 - **Candidate libraries** (all MIT or Apache-2.0, pending the licence gate when added):
@@ -135,6 +136,13 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
 - The provider's own multi-factor policy applies to single sign-on; Taskmoor's second factor
   applies to password sign-in. One `sso.signed_in` event records the sign-in, the session, an
   account creation and the group changes.
+
+## SCIM provisioning (M1-083)
+
+ADR-038 holds the design: an identity provider provisions through a service account whose
+token has the `scim` scope alone; people's accounts carry what Taskmoor uses, `scim_user` keeps
+the rest; deprovisioning deactivates and keeps the account; SCIM manages only the groups it
+created; break-glass accounts and the last active site administrator are out of its reach.
 
 ## Options considered
 

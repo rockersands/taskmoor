@@ -67,6 +67,24 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       headers: { ...(options.headers ?? {}), ...(cookie ? { cookie } : {}) },
     });
   const admin = (options: InjectOptions) => call(String(state.admin), options);
+  /** A SCIM call with the provisioning token (ADR-038). */
+  const scim = (
+    method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+    path: string,
+    payload?: object,
+  ): Promise<LightMyRequestResponse> => {
+    const options: InjectOptions = {
+      method,
+      url: `/api/v1/scim/v2${path}`,
+      remoteAddress: `198.18.0.${++address}`,
+      headers: { authorization: `Bearer ${state.scim}` },
+    };
+    if (payload) {
+      options.headers = { ...options.headers, 'content-type': 'application/scim+json' };
+      options.payload = JSON.stringify(payload);
+    }
+    return app.inject(options);
+  };
 
   const idp = new FakeIdp('taskmoor', 'contract client secret');
 
@@ -1032,6 +1050,96 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'audit.settings_updated',
       run: () =>
         admin({ method: 'PUT', url: '/api/v1/audit/settings', payload: { retentionMonths: 84 } }),
+    },
+    {
+      route: 'POST /api/v1/scim/v2/Users',
+      expect: 'scim.user_created',
+      // A provisioning service account with a scim token; its own events are not counted.
+      prepare: async () => {
+        const account = await admin({
+          method: 'POST',
+          url: '/api/v1/service-accounts',
+          payload: { name: 'Contract provisioning', description: 'SCIM' },
+        });
+        const issued = await admin({
+          method: 'POST',
+          url: `/api/v1/service-accounts/${account.json().serviceAccount.id}/tokens`,
+          payload: { name: 'Provisioning', scopes: ['scim'], expiresInDays: 30 },
+        });
+        state.scim = issued.json().token;
+      },
+      run: async () => {
+        const res = await scim('POST', '/Users', {
+          schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+          userName: 'grace@example.com',
+          name: { givenName: 'Grace', familyName: 'Hopper' },
+          emails: [{ value: 'grace@example.com', type: 'work', primary: true }],
+        });
+        state.scimUser = res.json().id;
+        return res;
+      },
+    },
+    {
+      route: 'PUT /api/v1/scim/v2/Users/:id',
+      expect: 'scim.user_updated',
+      run: () =>
+        scim('PUT', `/Users/${state.scimUser}`, {
+          schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+          userName: 'grace@example.com',
+          name: { givenName: 'Grace', familyName: 'Hopper' },
+          title: 'Rear admiral',
+        }),
+    },
+    {
+      route: 'PATCH /api/v1/scim/v2/Users/:id',
+      expect: 'scim.user_updated',
+      run: () =>
+        scim('PATCH', `/Users/${state.scimUser}`, {
+          schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+          Operations: [{ op: 'replace', path: 'active', value: false }],
+        }),
+    },
+    {
+      route: 'POST /api/v1/scim/v2/Groups',
+      expect: 'scim.group_created',
+      run: async () => {
+        const res = await scim('POST', '/Groups', {
+          schemas: ['urn:ietf:params:scim:schemas:core:2.0:Group'],
+          displayName: 'Compilers',
+          members: [{ value: String(state.scimUser) }],
+        });
+        state.scimGroup = res.json().id;
+        return res;
+      },
+    },
+    {
+      route: 'PUT /api/v1/scim/v2/Groups/:id',
+      expect: 'scim.group_updated',
+      run: () =>
+        scim('PUT', `/Groups/${state.scimGroup}`, {
+          schemas: ['urn:ietf:params:scim:schemas:core:2.0:Group'],
+          displayName: 'Compiler team',
+          members: [{ value: String(state.scimUser) }],
+        }),
+    },
+    {
+      route: 'PATCH /api/v1/scim/v2/Groups/:id',
+      expect: 'scim.group_updated',
+      run: () =>
+        scim('PATCH', `/Groups/${state.scimGroup}`, {
+          schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+          Operations: [{ op: 'remove', path: `members[value eq "${state.scimUser}"]` }],
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/scim/v2/Groups/:id',
+      expect: 'scim.group_deleted',
+      run: () => scim('DELETE', `/Groups/${state.scimGroup}`),
+    },
+    {
+      route: 'DELETE /api/v1/scim/v2/Users/:id',
+      expect: 'scim.user_removed',
+      run: () => scim('DELETE', `/Users/${state.scimUser}`),
     },
   ];
 

@@ -249,6 +249,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE key = 'SEED'`.execute(db);
     },
   },
+  '0012_scim': {
+    tables: {
+      api_token: "token_hash = 'seed-scim-token' AND scopes = ARRAY['scim']",
+      scim_user: "user_name = 'seed.person' AND external_id = 'seed-external'",
+      scim_group: "external_id = 'seed-group-external'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO api_token (workspace_id, user_id, name, token_hash, scopes, expires_at)
+        SELECT 1, id, 'Seed provisioning', 'seed-scim-token', ARRAY['scim'], now() + interval '30 days'
+          FROM app_user WHERE email = 'seed-robot@service.invalid'`.execute(db);
+      await sql`INSERT INTO scim_user (workspace_id, user_id, user_name, external_id, attributes)
+        SELECT 1, id, 'seed.person', 'seed-external', '{"title": "Seed"}'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO scim_group (workspace_id, group_id, external_id)
+        SELECT 1, id, 'seed-group-external' FROM user_group WHERE name = 'seed-group'`.execute(db);
+    },
+  },
   '0013_appearance': {
     tables: { app_user: "email = 'seed@example.com' AND appearance = 'dark'" },
     seed: async (db) => {

@@ -18,6 +18,7 @@ import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerGroupRoutes } from './routes/groups';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
+import { registerScimRoutes } from './routes/scim';
 import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
@@ -162,6 +163,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerAuditRoutes(app, db);
     registerTokenRoutes(app, db);
     registerServiceAccountRoutes(app, db);
+    await registerScimRoutes(app, db, { publicUrl: deps.publicUrl ?? 'http://localhost:8080' });
     // Expired sessions, used links, stale counters and long-dead tokens go at start and every
     // six hours.
     const prune = () =>

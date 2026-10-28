@@ -483,7 +483,7 @@ function AccountTokens({
       {account.active && (
         <>
           <h4 className="token-form-title">{t('tokens.newTitle')}</h4>
-          <TokenForm policy={policy} allowAdmin timeZone={timeZone} onCreate={issue} />
+          <TokenForm policy={policy} allowAdmin allowScim timeZone={timeZone} onCreate={issue} />
         </>
       )}
     </section>

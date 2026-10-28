@@ -3,7 +3,7 @@ import { isWellFormedApiToken, newApiToken, tokenHash } from '@taskmoor/iam';
 import type { Kysely, Transaction } from 'kysely';
 import { z } from 'zod';
 import type { CurrentApiToken, SessionUser } from '../auth';
-import { API_TOKEN_SCOPES, type ApiTokenScope, normalizeScopes } from './scopes';
+import { API_TOKEN_SCOPES, type ApiTokenScope, normalizeScopes, scopesConflict } from './scopes';
 
 /**
  * Personal and service-account API tokens (M1-004; IAM-007, ADR-035): issue, resolve, rotate,
@@ -235,7 +235,8 @@ export const scopesField = z
   .array(z.enum(API_TOKEN_SCOPES))
   .min(1)
   .max(API_TOKEN_SCOPES.length)
-  .transform((scopes) => normalizeScopes(scopes));
+  .transform((scopes) => normalizeScopes(scopes))
+  .refine((scopes) => !scopesConflict(scopes), 'the scim scope is held alone');
 
 export const tokenNameField = z.string().trim().min(1).max(100);
 

@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-10-26. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
+Updated 2026-10-28. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
 
 ## Milestones
 
@@ -74,4 +74,5 @@ Updated 2026-10-26. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-084 Two-factor sign-in | Done | Authenticator apps, security keys, recovery codes, policy with enrolment at sign-in; UI and e2e |
 | M1-122 Skins and the soft visual language | Done | Light and dark skins in the soft pastel style, Appearance under Account saved with the account, axe on every story in both skins |
 | M1-080 OpenID Connect sign-in | Done | Providers, JIT, group sync, enforcement with break-glass accounts, Keycloak e2e; email-first sign-in with provider buttons and the Single sign-on admin page, e2e against a fake provider |
+| M1-083 SCIM 2.0 provisioning | Done | Users and groups with filter, PATCH and deprovisioning through a service account's scim-only token; own compliance suite and Entra ID and Okta request fixtures; the providers' own validators wait for a public test instance |
 | M1-100 Air-gap bundle | In progress | Bundle, verify and offline install tested on an internal network; release signing key waits on the user |

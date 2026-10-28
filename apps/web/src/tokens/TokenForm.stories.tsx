@@ -28,6 +28,16 @@ export const Person: Story = {};
 
 export const Administrator: Story = { args: { allowAdmin: true } };
 
+/** A service account's form: SCIM provisioning goes alone. */
+export const ServiceAccount: Story = {
+  args: { allowAdmin: true, allowScim: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'SCIM provisioning' }));
+    await expect(canvas.getByRole('checkbox', { name: 'Read' })).not.toBeChecked();
+  },
+};
+
 export const TwoYearMaximum: Story = {
   args: { policy: { maxLifetimeDays: 730, reminderDays: 30 } },
 };

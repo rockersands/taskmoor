@@ -43,5 +43,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [035](0035-api-tokens-and-service-accounts.md) | API tokens and service accounts: prefixed, hashed, scoped and expiring | Accepted |
 | [036](0036-skins-and-soft-visual-language.md) | Skins and the soft visual language | Accepted |
 | [037](0037-global-rank.md) | Global rank with fractional keys and a sequence for new tickets | Accepted |
+| [038](0038-scim-provisioning.md) | SCIM provisioning through a service account's scim token | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

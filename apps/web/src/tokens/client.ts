@@ -1,8 +1,9 @@
 import { api } from '../api/client';
 
 /** What a token may do (IAM-007): read for GET, write for changes, admin for administration. */
-export type TokenScope = 'read' | 'write' | 'admin';
-export const TOKEN_SCOPES: readonly TokenScope[] = ['read', 'write', 'admin'];
+/** `scim` belongs to service accounts of identity providers and is held alone (ADR-038). */
+export type TokenScope = 'read' | 'write' | 'admin' | 'scim';
+export const TOKEN_SCOPES: readonly TokenScope[] = ['read', 'write', 'admin', 'scim'];
 export type TokenStatus = 'active' | 'expired' | 'revoked';
 
 export interface TokenOwner {

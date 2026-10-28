@@ -134,6 +134,8 @@ describe('API tokens on the Account page', () => {
     await section.findByRole('list');
     expect(section.getByRole('checkbox', { name: 'Administration' })).not.toBeChecked();
     expect(section.getByText(/Use administrator rights/)).toBeVisible();
+    // Provisioning tokens belong to service accounts, never to a person (ADR-038).
+    expect(section.queryByRole('checkbox', { name: 'SCIM provisioning' })).toBeNull();
   });
 
   it('[IAM-007] offers lifetimes up to the policy maximum, also past a year', async () => {

@@ -9,12 +9,14 @@ export const SCOPE_LABELS: Record<TokenScope, MessageId> = {
   read: 'tokens.scope.read',
   write: 'tokens.scope.write',
   admin: 'tokens.scope.admin',
+  scim: 'tokens.scope.scim',
 };
 
 export const SCOPE_HINTS: Record<TokenScope, MessageId> = {
   read: 'tokens.scopeHint.read',
   write: 'tokens.scopeHint.write',
   admin: 'tokens.scopeHint.admin',
+  scim: 'tokens.scopeHint.scim',
 };
 
 /** The lifetimes a new token can be given, within the policy's maximum. */

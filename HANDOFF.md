@@ -8,22 +8,52 @@ Development resumed on a Mac (Apple silicon, macOS). The repository lives in
 `~/Documents/claude` (not a folder named tracksmith). The Windows notes below (drives E: and
 G:, MSYS, CRLF, `pg_ctl` pipes) are history for this machine; see "On the Mac" under Notes.
 
-**One branch still holds unfinished work** from a background session that was stopped (one
-commit, marked "WIP, unverified"; the gate was never run on it). It starts from `f735251`, two
-commits before the skins, so cherry-pick it onto `main` first:
+No branch holds unfinished work any more. `wip/m1-083-scim` was finished as M1-083 (below) and,
+like `wip/m1-007-ticket-types`, can be deleted from GitHub. Migration numbers 0011 to 0014 are
+all on the branch now; a long-lived development database that ran 0013 or 0014 before 0012
+existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
+it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
-| Branch | Task | Contents |
-|---|---|---|
-| `wip/m1-083-scim` | M1-083 SCIM 2.0 | Migration 0012, `apps/server/src/scim/`; about 1,550 lines |
+## Last session: 2026-10-28 (cloud container)
 
-To resume it: cherry-pick its commit onto a new branch from `main`, read the diff, finish it,
-run `pnpm verify` (and `--e2e` for UI), then squash into a real commit. Migration numbers are
-reserved: 0011 ticket types, 0012 SCIM; 0013 is appearance on `main`. If a branch looks wrong,
-redo the task instead: nothing depends on it. `wip/m1-080-sso-ui` and
-`wip/m1-007-ticket-types` were finished (below); the first is deleted from GitHub, the second
-can be.
+### Done
 
-## Last session: 2026-10-26 (cloud container)
+- **M1-083 SCIM 2.0** (ADR-038; ADR-019 points to it), finished from the WIP branch, whose
+  filter, PATCH, schema and resource modules held up under the new tests:
+  - `/api/v1/scim/v2` (`routes/scim.ts`, data in `scim/store.ts`): discovery, Users and Groups
+    with filter, paging, `attributes`, `excludedAttributes`, POST, PUT, PATCH and DELETE; SCIM
+    errors and `application/scim+json` throughout (an encapsulated Fastify plugin with its own
+    error, not-found and content-type handling).
+  - Access: the `scim` token scope, held alone and only by service accounts (`tokens/scopes.ts`
+    classes the SCIM routes as `scim`; personal tokens refuse it). No other token and no
+    session reaches SCIM.
+  - Accounts keep email, name, locale, time zone and active state; `scim_user` the rest.
+    `active` false or DELETE deactivates and ends sessions; the account stays and comes back
+    when its email is provisioned again. Break-glass accounts and the last active site
+    administrator cannot be deactivated through SCIM. SCIM sees only the groups it created.
+  - Six audited events `scim.*`. The service account token form offers "SCIM provisioning",
+    which clears the other scopes (`TokenForm` `allowScim`).
+  - Tests: `routes/scim.test.ts` (compliance over HTTP), `routes/scim.idp.test.ts` with the
+    Entra ID and Okta sequences in `testing/scim-idp.ts`, `scim/filter.test.ts` (with 2,000
+    random inputs) and `scim/patch.test.ts`, contract scenarios, web tests and a story.
+- The e2e API server (`apps/web/e2e/api-server.ts`) uses `TASKMOOR_TEST_DATABASE_URL` when it
+  is set, like the unit tests, so `pnpm verify --e2e` runs in a container that runs as root
+  (24 passed here). CI sets the variable, so its e2e now runs on the Postgres 16 service.
+
+### Next (in order)
+
+1. **M1-009 change history**: every ticket mutation writes per-field change rows; the
+   `ticket.updated` payload already carries the field changes in API names.
+2. `pnpm next-task`: M1-014 (priorities, close reasons, labels, releases, areas), M1-015
+   (links, followers, votes), M1-010 (field types) are ready.
+3. Run the Entra ID and Okta provisioning validators against a test instance with a public
+   URL (IAM-006 (1)); the fixtures here imitate their request shapes.
+4. Later for tickets: the trash retention setting and purge (M1-101; `TRASH_RETENTION_DAYS` is
+   30 for now), ticket-level grantees and visibility levels (M1-020), hierarchy rollback
+   (CORE-007 (2)), a ticket UI (the ticket view is M1-051, boards M1-043 and M1-046), block
+   ranking and a background rank rebalance if keys grow long (M1-047).
+
+## Earlier: 2026-10-26 (cloud container)
 
 ### Done
 
@@ -58,26 +88,12 @@ can be.
 - `apps/web/src/tokens/AdminTokensPage.test.tsx` typed a fixed 2026-10-01 against fixtures dated
   relative to today, so it failed from 2026-10-21 on; it now types a day ten days back.
 
-### Next (in order)
-
-1. **M1-083 SCIM** (`wip/m1-083-scim`), as described at the top. Migration 0012 is still reserved for it; 0014
-   is now taken by tickets, so a long-lived development database that ran 0014 will refuse
-   0012 ("corrupted migrations"): recreate it.
-2. **M1-009 change history**: every ticket mutation writes per-field change rows; the
-   `ticket.updated` payload already carries the field changes in API names.
-3. `pnpm next-task`: M1-014 (priorities, close reasons, labels, releases, areas), M1-015
-   (links, followers, votes), M1-010 (field types) are ready.
-4. Later for tickets: the trash retention setting and purge (M1-101; `TRASH_RETENTION_DAYS` is
-   30 for now), ticket-level grantees and visibility levels (M1-020), hierarchy rollback
-   (CORE-007 (2)), a ticket UI (the ticket view is M1-051, boards M1-043 and M1-046), block
-   ranking and a background rank rebalance if keys grow long (M1-047).
-
 ### Notes for cloud sessions (Linux container, running as root)
 
 - The embedded Postgres refuses to run as root. Start the system one
   (`service postgresql start`), give its `postgres` user a password and point
-  `TASKMOOR_TEST_DATABASE_URL` at it, as the CI job does (`.github/workflows/ci.yml`).
-  `--e2e` still needs the embedded cluster and was not run here (no UI changed).
+  `TASKMOOR_TEST_DATABASE_URL` at it, as the CI job does (`.github/workflows/ci.yml`); the
+  e2e API server uses it too.
 - The container's Chromium (`/opt/pw-browsers`, build 1194) is older than Playwright 1.64's
   (1248). Linking it under the new names in a scratch folder and setting
   `PLAYWRIGHT_BROWSERS_PATH` there runs every story (193 passed).
@@ -426,3 +442,6 @@ status page. Boards, items and queries arrive with M1.
   user's go-ahead.
 - **Counsel review**: deferred by the user to the first public release; it covers the
   clean-room protocol, ADR-002, ADR-003, the terminology and the name screening.
+- **Merging `claude/api-key-upload-prevention-9ucz4x` into `main`**: it holds M1-008 and
+  M1-083, each gated green. Whether to merge directly or through a pull request is the
+  user's call; nothing on it is half-done.

@@ -1,4 +1,4 @@
-// The backend for the end-to-end suite: an embedded Postgres with its own database, migrated,
+// The backend for the end-to-end suite: a Postgres with its own database, migrated,
 // the API on a fixed port with a fixed setup token, and a fake OpenID Connect provider for the
 // single sign-on tests. Playwright starts it as a web server and the Vite preview proxies /api
 // to it. Started with: tsx apps/web/e2e/api-server.ts
@@ -17,7 +17,12 @@ const idp = new FakeIdp('taskmoor-e2e', 'e2e-client-secret-0123456789');
 await idp.start(E2E_IDP_PORT);
 idp.person = { sub: 'e2e-sam', email: 'sam@sso.test', name: 'Sam Rivera' };
 
-const server = await startEmbeddedPostgres({ name: 'e2e' });
+// An embedded cluster of its own, unless TASKMOOR_TEST_DATABASE_URL names a server, as for the
+// unit tests (CI's service container; containers running as root, where initdb refuses).
+const external = process.env.TASKMOOR_TEST_DATABASE_URL;
+const server = external
+  ? { adminUrl: external, stop: async () => {} }
+  : await startEmbeddedPostgres({ name: 'e2e' });
 const database = await createDatabase(server.adminUrl);
 const db = createDb({ connectionString: database.url, maxConnections: 5 });
 await migrateToLatest(db);

@@ -9,6 +9,8 @@ export interface TokenFormProps {
   policy: TokenPolicy;
   /** Offers the administration scope (people who administer something; service accounts). */
   allowAdmin: boolean;
+  /** Offers SCIM provisioning, which goes alone (service accounts only; ADR-038). */
+  allowScim?: boolean;
   /** Creates the token; a rejection with the backend's error is reported in the form. */
   onCreate: (token: NewToken) => Promise<void>;
   /** The reader's time zone for the expiry dates; null follows the device. */
@@ -18,7 +20,13 @@ export interface TokenFormProps {
 type Failure = { message: string; field: 'name' | 'scopes' | 'expiry' | null };
 
 /** Name, scopes and lifetime of a new token, within the policy's maximum (IAM-007). */
-export function TokenForm({ policy, allowAdmin, onCreate, timeZone = null }: TokenFormProps) {
+export function TokenForm({
+  policy,
+  allowAdmin,
+  allowScim = false,
+  onCreate,
+  timeZone = null,
+}: TokenFormProps) {
   const t = useT();
   const text = useTokenText(timeZone);
   const expired = useSessionExpiry();
@@ -28,15 +36,21 @@ export function TokenForm({ policy, allowAdmin, onCreate, timeZone = null }: Tok
   const [days, setDays] = useState(() => defaultExpiry(policy));
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
-  const offered = TOKEN_SCOPES.filter((s) => allowAdmin || s !== 'admin');
+  const offered = TOKEN_SCOPES.filter(
+    (s) => (allowAdmin || s !== 'admin') && (allowScim || s !== 'scim'),
+  );
   const choices = expiryChoices(policy);
   const field = (key: string) => `${id}-${key}`;
   const flagged = (key: Failure['field']) =>
     failure?.field === key ? { 'aria-invalid': true, 'aria-describedby': field('error') } : {};
 
+  // SCIM provisioning goes alone: choosing it clears the others, and the others clear it.
   const toggle = (scope: TokenScope, on: boolean) => {
     setFailure(null);
-    setScopes((current) => (on ? [...current, scope] : current.filter((s) => s !== scope)));
+    setScopes((current) => {
+      if (!on) return current.filter((s) => s !== scope);
+      return scope === 'scim' ? ['scim'] : [...current.filter((s) => s !== 'scim'), scope];
+    });
   };
 
   const submit = async (event: FormEvent) => {

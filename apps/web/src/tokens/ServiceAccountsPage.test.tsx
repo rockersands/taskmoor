@@ -157,6 +157,33 @@ describe('service accounts page', () => {
     });
   });
 
+  it('[IAM-006] gives a service account a SCIM provisioning token, which goes alone', async () => {
+    const user = userEvent.setup();
+    const { calls } = await openPage();
+    await user.click(
+      within(robot()).getByRole('button', { name: 'Show the tokens of Release robot' }),
+    );
+    const tokens = within(await screen.findByRole('region', { name: 'Tokens of Release robot' }));
+    await tokens.findByRole('list', { name: 'Tokens of Release robot' });
+    await user.type(tokens.getByLabelText('Token name'), 'Entra ID provisioning');
+    const scim = tokens.getByRole('checkbox', { name: 'SCIM provisioning' });
+    expect(tokens.getByText(/at \/api\/v1\/scim\/v2 on this site/)).toBeVisible();
+    await user.click(scim);
+    // Choosing SCIM clears the others; choosing another clears SCIM.
+    expect(tokens.getByRole('checkbox', { name: 'Read' })).not.toBeChecked();
+    await user.click(tokens.getByRole('checkbox', { name: 'Write' }));
+    expect(scim).not.toBeChecked();
+    await user.click(scim);
+    expect(tokens.getByRole('checkbox', { name: 'Write' })).not.toBeChecked();
+    await user.click(tokens.getByRole('button', { name: 'Create token' }));
+    expect(await tokens.findByLabelText('New token')).toHaveValue(SECRET);
+    expect(calls.find((c) => c.path === '/service-accounts/7/tokens')?.body).toEqual({
+      name: 'Entra ID provisioning',
+      scopes: ['scim'],
+      expiresInDays: 30,
+    });
+  });
+
   it('[IAM-007] rotates a token with the chosen overlap and shows the new one once', async () => {
     const user = userEvent.setup();
     const { calls } = await openPage();

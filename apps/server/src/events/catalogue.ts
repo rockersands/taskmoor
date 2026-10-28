@@ -315,7 +315,7 @@ export const EVENT_TYPES = {
       ownerId: id,
       ownerKind: z.enum(['person', 'service']),
       name: z.string(),
-      scopes: z.array(z.enum(['read', 'write', 'admin'])),
+      scopes: z.array(z.enum(['read', 'write', 'admin', 'scim'])),
       expiresAt: z.string(),
     }),
   },
@@ -343,6 +343,48 @@ export const EVENT_TYPES = {
     }),
   },
   'token_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  // SCIM provisioning (M1-083, IAM-006, ADR-038); the actor is the provisioning service account.
+  /** A person provisioned; `revived` when it brings back an account SCIM removed before. */
+  'scim.user_created': {
+    subject: 'user',
+    payload: z.object({
+      userName: z.string(),
+      email: z.string(),
+      externalId: z.string().nullable(),
+      active: z.boolean(),
+      revived: z.boolean(),
+    }),
+  },
+  /**
+   * Changes to the account (`userName`, `externalId`, `email`, `name`, `active`, `locale`,
+   * `timeZone`) and the names of the other attributes that changed; deactivating ends sessions.
+   */
+  'scim.user_updated': {
+    subject: 'user',
+    payload: z.object({
+      changes,
+      attributes: z.array(z.string()),
+      endedSessions: z.number().int().min(0),
+    }),
+  },
+  /** Deprovisioned: deactivated and out of SCIM's sight; the account and its work stay. */
+  'scim.user_removed': {
+    subject: 'user',
+    payload: z.object({ userName: z.string(), endedSessions: z.number().int().min(0) }),
+  },
+  'scim.group_created': {
+    subject: 'group',
+    payload: z.object({
+      name: z.string(),
+      externalId: z.string().nullable(),
+      members: z.array(id),
+    }),
+  },
+  'scim.group_updated': {
+    subject: 'group',
+    payload: z.object({ changes, added: z.array(id), removed: z.array(id) }),
+  },
+  'scim.group_deleted': { subject: 'group', payload: z.object({ name: z.string() }) },
   'service_account.created': {
     subject: 'user',
     payload: z.object({ name: z.string(), email: z.string(), description: z.string() }),

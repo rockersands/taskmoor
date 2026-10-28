@@ -126,6 +126,8 @@ export function registerTokenRoutes(app: FastifyInstance, db: Kysely<Database>):
     const parsed = createBody.safeParse(request.body);
     if (!parsed.success) return invalid(reply);
     const { name, scopes } = parsed.data;
+    // Provisioning is a job for a service account, never for a person's own token (ADR-038).
+    if (scopes.includes('scim')) return invalid(reply, 'scope_not_allowed');
     // The admin scope is for people who administer something; anyone else would hold a token
     // that promises more than it can do.
     if (scopes.includes('admin')) {

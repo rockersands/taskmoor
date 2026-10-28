@@ -583,7 +583,8 @@ export interface OidcLoginTable {
   created_at: DefaultTimestamp;
 }
 
-export type ApiTokenScope = 'read' | 'write' | 'admin';
+/** `scim` is held alone: it reaches the SCIM endpoints and nothing else (ADR-038). */
+export type ApiTokenScope = 'read' | 'write' | 'admin' | 'scim';
 
 /**
  * Personal and service-account API tokens (IAM-007, ADR-035): the holder keeps the token, the
@@ -613,6 +614,31 @@ export interface TokenPolicyTable {
   workspace_id: number;
   max_lifetime_days: Generated<number>;
   reminder_days: Generated<number>;
+  updated_at: DefaultTimestamp;
+}
+
+/**
+ * What an identity provider said about an account it provisions over SCIM (IAM-006, ADR-038):
+ * its userName, externalId and the profile attributes `app_user` has no column for. A SCIM
+ * DELETE sets `removed_at`: the account stays, deactivated, and SCIM no longer sees it.
+ */
+export interface ScimUserTable {
+  user_id: number;
+  workspace_id: number;
+  user_name: string;
+  external_id: string | null;
+  attributes: Json;
+  removed_at: Timestamp | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** The provider's externalId for a group it provisions over SCIM. */
+export interface ScimGroupTable {
+  group_id: number;
+  workspace_id: number;
+  external_id: string | null;
+  created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
 }
 
@@ -673,5 +699,7 @@ export interface Database {
   audit_chain: AuditChainTable;
   api_token: ApiTokenTable;
   token_policy: TokenPolicyTable;
+  scim_user: ScimUserTable;
+  scim_group: ScimGroupTable;
   session: SessionTable;
 }

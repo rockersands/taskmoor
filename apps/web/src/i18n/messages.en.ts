@@ -217,6 +217,9 @@ export const messagesEn = {
   'tokens.scopeHint.write': 'Create, change and delete what you may change.',
   'tokens.scopeHint.admin':
     'Use administrator rights: people, groups, permissions, tokens and settings.',
+  'tokens.scope.scim': 'SCIM provisioning',
+  'tokens.scopeHint.scim':
+    'For an identity provider: creates, changes and deactivates people and groups at /api/v1/scim/v2 on this site, and nothing else. It goes alone, without the other scopes.',
   'tokens.scopesRequired': 'Choose at least one scope.',
   'tokens.expiry': 'Expires after',
   'tokens.expiryOption': '{days, plural, one {# day} other {# days}} (on {date})',

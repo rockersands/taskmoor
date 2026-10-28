@@ -78,6 +78,10 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['PATCH /api/v1/type-sets/:id']).toBe('write');
     expect(classes['DELETE /api/v1/type-sets/:id']).toBe('write');
     expect(classes['GET /api/v1/tracks/:id/ticket-types']).toBe('read');
+    // The SCIM service answers only its own scope, whatever the method (ADR-038).
+    expect(classes['GET /api/v1/scim/v2/Users']).toBe('scim');
+    expect(classes['PATCH /api/v1/scim/v2/Groups/:id']).toBe('scim');
+    expect(classes['GET /api/v1/scim/v2/ServiceProviderConfig']).toBe('scim');
     // Every route that only site administrators may use is in the admin class.
     const adminOnly = api.filter((r) =>
       /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|audit)/.test(

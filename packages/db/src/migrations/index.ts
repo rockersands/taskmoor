@@ -10,6 +10,7 @@ import * as m0008 from './0008_tracks';
 import * as m0009 from './0009_two_factor';
 import * as m0010 from './0010_identity_providers';
 import * as m0011 from './0011_ticket_types';
+import * as m0012 from './0012_scim';
 import * as m0013 from './0013_appearance';
 import * as m0014 from './0014_tickets';
 
@@ -30,6 +31,7 @@ export const migrations: Record<string, Migration> = {
   '0009_two_factor': m0009,
   '0010_identity_providers': m0010,
   '0011_ticket_types': m0011,
+  '0012_scim': m0012,
   '0013_appearance': m0013,
   '0014_tickets': m0014,
 };

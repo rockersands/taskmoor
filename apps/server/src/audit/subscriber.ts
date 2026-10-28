@@ -79,6 +79,12 @@ export const AUDITED_EVENTS = [
   'service_account.updated',
   'service_account.deactivated',
   'service_account.reactivated',
+  'scim.user_created',
+  'scim.user_updated',
+  'scim.user_removed',
+  'scim.group_created',
+  'scim.group_updated',
+  'scim.group_deleted',
 ] as const satisfies readonly EventType[];
 
 const TICKET_ACTIVITY = 'ticket activity: the ticket history keeps it (M1-009), not the audit log';

@@ -16,11 +16,15 @@
  *   administrators change the types and type set it owns with a write token; shared ones need
  *   configuration administrators, whose rights only the admin scope keeps (below).
  *
+ * - the SCIM service (`/api/v1/scim/v2`, IAM-006, ADR-038) needs the scim scope, which a
+ *   service account's token holds alone: it reaches SCIM and nothing else, and no other token,
+ *   nor a browser session, reaches SCIM.
+ *
  * The scope only narrows: authorization still runs through `request.authz` as the token's
  * owner, and a token without the admin scope also loses the owner's administrator rights there,
  * so an administration route missing from this list is still refused.
  */
-export const API_TOKEN_SCOPES = ['read', 'write', 'admin'] as const;
+export const API_TOKEN_SCOPES = ['read', 'write', 'admin', 'scim'] as const;
 export type ApiTokenScope = (typeof API_TOKEN_SCOPES)[number];
 
 export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
@@ -75,11 +79,22 @@ export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/audit',
 ];
 
+/** The SCIM service: identity providers provision people and groups here (IAM-006). */
+export const SCIM_ROUTE_PREFIX = '/api/v1/scim/v2';
+
+/** Scopes that go together; `scim` is held alone. */
+export function scopesConflict(scopes: readonly ApiTokenScope[]): boolean {
+  return scopes.includes('scim') && scopes.length > 1;
+}
+
 export type RouteAccess = 'public' | 'session' | ApiTokenScope;
 
 /** What a token needs for a route, given as the method and the route's path pattern. */
 export function routeAccess(method: string, routeUrl: string): RouteAccess {
   const key = `${method.toUpperCase()} ${routeUrl}`;
+  if (routeUrl === SCIM_ROUTE_PREFIX || routeUrl.startsWith(`${SCIM_ROUTE_PREFIX}/`)) {
+    return 'scim';
+  }
   if (PUBLIC_ROUTES.has(key)) return 'public';
   if (SESSION_ONLY_ROUTES.has(key)) return 'session';
   if (ADMIN_ROUTE_PREFIXES.some((p) => routeUrl === p || routeUrl.startsWith(`${p}/`))) {
