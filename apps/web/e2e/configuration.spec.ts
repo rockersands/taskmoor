@@ -7,7 +7,8 @@ import { expect, type Page, test } from '@playwright/test';
  * makes a workflow map, gives a ticket type its own workflow, puts a track on the map and
  * deletes the map once no track uses it; adds a choice list, keeps its options and deletes it;
  * adds a role and an access policy, gives the role a permission and deletes both; gives a person
- * a global permission and takes it back. No serious axe issue. They use the attachments
+ * a global permission and takes it back; adds a type set and a field rule set, changes and
+ * deletes them. No serious axe issue. They use the attachments
  * database (preview 4174), whose site administrator the API server made.
  */
 const BASE = 'http://localhost:4174';
@@ -237,4 +238,51 @@ test('[IAM-011] the administrator gives a person a global permission and takes i
   expect(await seriousAxeViolations(page)).toEqual([]);
   await page.getByRole('button', { name: `Remove Ada Attach from ${permission}` }).click();
   await expect(page.getByText(`Ada Attach no longer has ${permission}.`)).toBeVisible();
+});
+
+test('[CORE-008] the administrator adds a type set and a field rule set, changes and deletes them', async ({
+  page,
+}, testInfo) => {
+  await signIn(page);
+  const suffix = `${testInfo.project.name} ${Date.now()}`;
+  const types = `Support types ${suffix}`;
+  const rules = `Support rules ${suffix}`;
+  await page.goto(`${BASE}/#/admin/configuration-sets`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Configuration sets' })).toBeVisible();
+
+  const addTypes = page.getByRole('form', { name: 'Add a type set' });
+  await addTypes.getByLabel('Type set name').fill(types);
+  const boxes = addTypes.getByRole('checkbox');
+  await boxes.nth(0).check();
+  await boxes.nth(1).check();
+  await addTypes.getByRole('button', { name: 'Add a type set' }).click();
+  await expect(page.getByText(`${types} was added.`)).toBeVisible();
+  const typePanel = page.getByRole('form', { name: `Settings of ${types}` });
+  await typePanel.getByRole('checkbox').nth(1).uncheck();
+  await typePanel.getByRole('button', { name: 'Save the set' }).click();
+  await expect(page.getByText(`${types} was saved.`)).toBeVisible();
+  await typePanel.getByRole('button', { name: `Delete set ${types}` }).click();
+  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await expect(page.getByText(`${types} was deleted.`)).toBeVisible();
+
+  const addRules = page.getByRole('form', { name: 'Add a field rule set' });
+  await addRules.getByLabel('Rule set name').fill(rules);
+  await addRules.getByRole('button', { name: 'Add a field rule set' }).click();
+  await expect(page.getByText(`${rules} was added.`)).toBeVisible();
+  const rulePanel = page.getByRole('form', { name: `Settings of ${rules}` });
+  await rulePanel.getByRole('group', { name: 'Priority' }).getByLabel('Required').check();
+  await rulePanel
+    .getByRole('group', { name: 'Due date' })
+    .getByLabel('Help text')
+    .fill('When it must be done');
+  await rulePanel.getByRole('button', { name: 'Save the set' }).click();
+  await expect(page.getByText(`${rules} was saved.`)).toBeVisible();
+  await expect(
+    rulePanel.getByRole('group', { name: 'Priority' }).getByLabel('Hidden'),
+  ).toBeDisabled();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await rulePanel.getByRole('button', { name: `Delete set ${rules}` }).click();
+  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await expect(page.getByText(`${rules} was deleted.`)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

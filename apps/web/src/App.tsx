@@ -20,6 +20,7 @@ import { RequireSession } from './session/RequireSession';
 import { type Session, SessionProvider, useSession } from './session/SessionProvider';
 import { SignInPage } from './session/SignInPage';
 import { UserMenu } from './session/UserMenu';
+import { ConfigurationSetsPage } from './sets/ConfigurationSetsPage';
 import { SetupPage } from './setup/SetupPage';
 import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
@@ -95,6 +96,7 @@ const ADMIN_TRACKS = '#/admin/tracks';
 const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
 const ADMIN_FIELDS = '#/admin/fields';
 const ADMIN_PERMISSIONS = '#/admin/permissions';
+const ADMIN_SETS = '#/admin/configuration-sets';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -263,6 +265,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-configuration-sets',
+              labelId: 'admin.sets.title' as const,
+              keywords: ['type set', 'field rules', 'required', 'hidden', 'scheme'],
+              run: () => {
+                window.location.hash = ADMIN_SETS;
+              },
+            },
+            {
               id: 'go-groups',
               labelId: 'admin.groups.title' as const,
               keywords: ['group', 'team', 'members', 'nested'],
@@ -312,6 +322,8 @@ function Pages() {
     content = <FieldsAdminPage />;
   } else if (isRoute(hash, ADMIN_PERMISSIONS)) {
     content = <PermissionsPage />;
+  } else if (isRoute(hash, ADMIN_SETS)) {
+    content = <ConfigurationSetsPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
