@@ -36,6 +36,8 @@ export interface CreateClient {
   form: (track: string, ticketTypeId: number) => Promise<TicketForm>;
   priorities: () => Promise<{ id: number; name: string }[]>;
   create: (body: Record<string, unknown>) => Promise<{ key: string }>;
+  /** A ticket to start from (M1-052); the form offers it only when the client has it. */
+  template?: (key: string) => Promise<TicketTemplate>;
   /** People to mention in rich text fields (M1-017); none when left out. */
   mentions?: (track: string) => MentionSource;
 }
@@ -57,7 +59,48 @@ export const createClient: CreateClient = {
   create: async (body) =>
     (await api<{ ticket: { key: string } }>('/tickets', { method: 'POST', body })).ticket,
   mentions: (track) => mentionSource({ track }),
+  template: async (key) =>
+    templateOf(
+      (await api<{ ticket: TemplateSource }>(`/tickets/${encodeURIComponent(key)}`)).ticket,
+    ),
 };
+
+/** What the create form takes from a ticket it starts from. */
+export interface TicketTemplate {
+  track: string;
+  ticketTypeId: number;
+  values: FormValues;
+  docs: Record<string, PmJson | null>;
+}
+
+/** The parts of `GET /api/v1/tickets/:key` a template uses. */
+export interface TemplateSource {
+  track: { key: string };
+  ticketType: { id: number };
+  summary: string;
+  description?: PmJson | null;
+  environment?: PmJson | null;
+  priority: { id: number } | null;
+  labels: string[];
+  startDate: string | null;
+  dueDate: string | null;
+}
+
+/**
+ * A ticket as a template (M1-052): its track and type, words, priority, labels and dates.
+ * People, releases and custom fields are not copied: they are the new ticket's own.
+ */
+export function templateOf(ticket: TemplateSource): TicketTemplate {
+  const values: FormValues = { summary: ticket.summary };
+  if (ticket.priority) values.priority = String(ticket.priority.id);
+  if (ticket.labels.length > 0) values.labels = ticket.labels.join(' ');
+  if (ticket.startDate) values.startDate = ticket.startDate;
+  if (ticket.dueDate) values.dueDate = ticket.dueDate;
+  const docs: Record<string, PmJson | null> = {};
+  if (ticket.description) docs.description = ticket.description;
+  if (ticket.environment) docs.environment = ticket.environment;
+  return { track: ticket.track.key, ticketTypeId: ticket.ticketType.id, values, docs };
+}
 
 /** Fields written in the rich text editor (M1-017). */
 const RICH_TYPES = new Set(['description', 'environment', 'paragraph']);
@@ -66,6 +109,10 @@ type Loaded<T> = { status: 'loading' } | { status: 'failed' } | { status: 'loade
 
 export interface CreateTicketPageProps {
   client?: CreateClient;
+  /** In the create dialog (M1-052): a second-level heading with this id, and a close button. */
+  variant?: 'page' | 'dialog';
+  titleId?: string;
+  onClose?: () => void;
 }
 
 /**
@@ -74,10 +121,16 @@ export interface CreateTicketPageProps {
  * and the backend's refusals shown at each field. Fields this form cannot edit yet (people,
  * releases, areas) say so; they are set on the ticket once it exists.
  */
-export function CreateTicketPage({ client = createClient }: CreateTicketPageProps) {
+export function CreateTicketPage({
+  client = createClient,
+  variant = 'page',
+  titleId: givenTitleId,
+  onClose,
+}: CreateTicketPageProps) {
   const t = useT();
   const lockText = useLockText();
-  const titleId = useId();
+  const ownTitleId = useId();
+  const titleId = givenTitleId ?? ownTitleId;
   const prefix = useId();
   const [tracks, setTracks] = useState<Loaded<TrackChoice[]>>({ status: 'loading' });
   const [track, setTrack] = useState('');
@@ -88,6 +141,9 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
   const [values, setValues] = useState<FormValues>({});
   // Rich text fields' documents, by field key; a new form key gives empty editors.
   const [docs, setDocs] = useState<Record<string, PmJson | null>>({});
+  // What rich text editors start with: a template's documents, until the next clear.
+  const [seed, setSeed] = useState<Record<string, PmJson | null>>({});
+  const [templateKey, setTemplateKey] = useState('');
   const [formKey, setFormKey] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [problem, setProblem] = useState<string | null>(null);
@@ -160,7 +216,32 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
   const clearForm = () => {
     setValues({});
     setDocs({});
+    setSeed({});
     setFormKey((k) => k + 1);
+  };
+
+  // Starting from a ticket: its track and type are chosen, its values filled in.
+  const copyFrom = async (event: FormEvent) => {
+    event.preventDefault();
+    const key = templateKey.trim().toUpperCase();
+    if (!key || !client.template) return;
+    setProblem(null);
+    try {
+      const from = await client.template(key);
+      setTypeId(from.ticketTypeId);
+      if (from.track !== track) {
+        setTypes([]);
+        setTrack(from.track);
+      }
+      setValues(from.values);
+      setDocs(from.docs);
+      setSeed(from.docs);
+      setFormKey((k) => k + 1);
+      setErrors({});
+      setMessage(t('tickets.create.copied', { key }));
+    } catch {
+      setProblem(t('tickets.create.templateMissing', { key }));
+    }
   };
 
   const submit = async (event: FormEvent) => {
@@ -222,6 +303,7 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
           required={field.required}
           invalid={Boolean(errors[field.key])}
           editable={!locked}
+          initial={seed[field.key] ?? null}
           onChange={(doc) => setDocs((d) => ({ ...d, [field.key]: doc }))}
           mentions={mentions}
         />
@@ -413,9 +495,43 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
 
   return (
     <section aria-labelledby={titleId} className="create-page">
-      <h1 id={titleId} className="page-title">
-        {t('tickets.create.title')}
-      </h1>
+      {variant === 'dialog' ? (
+        <div className="create-dialog-head">
+          <h2 id={titleId} className="page-title">
+            {t('tickets.create.title')}
+          </h2>
+          <button type="button" className="button-secondary" onClick={onClose}>
+            {t('tickets.create.close')}
+          </button>
+        </div>
+      ) : (
+        <h1 id={titleId} className="page-title">
+          {t('tickets.create.title')}
+        </h1>
+      )}
+      {client.template && tracks.status === 'loaded' && tracks.value.length > 0 && (
+        <form
+          className="create-template"
+          aria-label={t('tickets.create.template')}
+          onSubmit={(e) => void copyFrom(e)}
+        >
+          <div className="form-field">
+            <label htmlFor={`${prefix}-template`} className="form-label">
+              {t('tickets.create.templateKey')}
+            </label>
+            <input
+              id={`${prefix}-template`}
+              type="text"
+              autoComplete="off"
+              value={templateKey}
+              onChange={(e) => setTemplateKey(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="button-secondary">
+            {t('tickets.create.copy')}
+          </button>
+        </form>
+      )}
       {tracks.status === 'loading' && (
         <p role="status" className="page-note">
           {t('tickets.create.loading')}
@@ -523,7 +639,7 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
           </p>
           {created && (
             <p className="page-note">
-              <a href={`#/tickets/${encodeURIComponent(created)}`}>
+              <a href={`#/tickets/${encodeURIComponent(created)}`} onClick={onClose}>
                 {t('tickets.create.open', { key: created })}
               </a>
             </p>

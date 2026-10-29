@@ -147,7 +147,8 @@ describe('the create form (M1-012)', () => {
   it('[CORE-008] reads every string from the catalogue', async () => {
     openCreate({}, 'en-XA');
     const main = screen.getByRole('main');
-    await within(main).findAllByRole('textbox');
+    // The form itself, not only the template field above it.
+    await within(main).findByRole('region', { name: 'Report' });
     // Names administrators gave (types, tabs, options, help) are data, not interface text.
     const data = new Set([
       'Bug',

@@ -1,4 +1,11 @@
-import { type ReactNode, useCallback, useMemo, useSyncExternalStore } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
 import { SecurityPage } from './admin/SecurityPage';
@@ -38,6 +45,7 @@ import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteC
 import { type Appearance, applyAppearance } from './skins/skins';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
+import { CreateTicketDialog } from './tickets/CreateTicketDialog';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { TicketPage } from './tickets/view/TicketPage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
@@ -132,6 +140,26 @@ function Pages() {
     window.location.hash = SIGN_IN;
   }, []);
   const registered = useRegisteredCommands();
+  // The create dialog (M1-052): the top bar's button, C anywhere outside fields, the palette.
+  const [creating, setCreating] = useState(false);
+  useEffect(() => {
+    if (!signedIn) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.key.toLowerCase() !== 'c') return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      ) {
+        return;
+      }
+      if (document.querySelector('[role="dialog"]')) return;
+      event.preventDefault();
+      setCreating(true);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [signedIn]);
   // Applies at once; saved with the account so it follows the person (as on the account page).
   const appear = useCallback(
     (appearance: Appearance) => {
@@ -156,9 +184,7 @@ function Pages() {
               id: 'create-ticket',
               labelId: 'tickets.create.title' as const,
               keywords: ['new', 'issue', 'add'],
-              run: () => {
-                window.location.hash = CREATE_TICKET;
-              },
+              run: () => setCreating(true),
             },
             {
               id: 'go-account',
@@ -407,12 +433,24 @@ function Pages() {
       activeId={active}
       topbarEnd={
         <>
+          {signedIn && (
+            <button
+              type="button"
+              className="button-primary create-open"
+              title={t('tickets.create.openDialogHint')}
+              aria-haspopup="dialog"
+              onClick={() => setCreating(true)}
+            >
+              {t('tickets.create.openDialog')}
+            </button>
+          )}
           <CommandPalette commands={[...commands, ...registered]} />
           <UserMenu onSignedOut={showSignIn} />
         </>
       }
     >
       {guarded ? <RequireSession>{content}</RequireSession> : content}
+      {creating && signedIn && <CreateTicketDialog onClose={() => setCreating(false)} />}
     </AppShell>
   );
 }
