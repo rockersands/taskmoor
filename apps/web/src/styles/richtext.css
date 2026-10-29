@@ -116,6 +116,12 @@
   min-height: 0;
 }
 
+/* Rich text shown without an editor (RichTextView): comments and other read-only text. */
+.rt-view {
+  min-height: 0;
+  padding: 0;
+}
+
 .rt-content:focus {
   outline: none;
 }

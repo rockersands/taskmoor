@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { Database, EmailDelivery } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
+import { commentText, readsComment } from '../tickets/comments';
 import { type EmailKind, type EmailTicket, fieldLabel, renderEmail } from './render';
 import type { MailTransport } from './transport';
 
@@ -16,7 +17,8 @@ import type { MailTransport } from './transport';
  *   hour in their own time zone (weekly on Mondays), at most once a day or a week.
  * - **Quiet hours** hold email until they end, in the person's time zone.
  * - At send time the ticket is checked again: a notification about a ticket the person can no
- *   longer see is dropped, as are those of deactivated people.
+ *   longer see is dropped, as are those of deactivated people. So is one about a comment that
+ *   was deleted or that the person may no longer read (M1-018); a readable one is quoted.
  * - Each person's unsent notifications are locked while their email goes out (SKIP LOCKED), so
  *   several workers never send the same notification twice. A failed send is recorded and the
  *   notifications stay unsent for the next run. There is no daily cap.
@@ -141,6 +143,52 @@ export async function deliverEmail(
       if (held.has('browse_track')) visible.set(ticket.id, ticket);
     }
     const judged = new Set(tickets.map((t) => t.id));
+    // Comments the notifications quote, judged the same way (NTF-001 (3)): a comment gone,
+    // deleted or no longer readable has its notifications dropped.
+    const asked = new Set(
+      (
+        await sql<{ id: number }>`
+          SELECT DISTINCT coalesce(payload->>'commentId', payload->>'quotedCommentId')::int AS id
+            FROM notification
+           WHERE user_id = ${person.user_id} AND channel = 'email' AND delivered_at IS NULL
+             AND (payload ? 'commentId' OR payload ? 'quotedCommentId')`.execute(db)
+      ).rows.map((r) => r.id),
+    );
+    const comments =
+      asked.size === 0
+        ? []
+        : await db
+            .selectFrom('ticket_comment as c')
+            .innerJoin('ticket as k', 'k.id', 'c.ticket_id')
+            .select([
+              'c.id',
+              'c.author_id',
+              'c.visible_role_id',
+              'c.visible_group_id',
+              'c.deleted_at',
+              'c.body',
+              'k.track_id',
+            ])
+            .where('c.id', 'in', [...asked])
+            .execute();
+    /** The text of each comment the person may read; unreadable ones are absent. */
+    const quotes = new Map<number, string>();
+    for (const comment of comments) {
+      const reads = await readsComment(comment, person.user_id, () =>
+        authorizer.audience(person.workspace_id, person.user_id, comment.track_id),
+      );
+      if (reads) quotes.set(comment.id, commentText(comment.body));
+    }
+    // `commentId`: the notification is the comment, dropped when unreadable; `quotedCommentId`:
+    // a transition's comment, quoted only when readable.
+    const commentOf = (payload: Record<string, unknown>) =>
+      typeof payload.commentId === 'number' ? payload.commentId : null;
+    const quotedOf = (payload: Record<string, unknown>) =>
+      typeof payload.commentId === 'number'
+        ? payload.commentId
+        : typeof payload.quotedCommentId === 'number'
+          ? payload.quotedCommentId
+          : null;
     await db.transaction().execute(async (trx) => {
       const pending = await trx
         .selectFrom('notification')
@@ -153,7 +201,11 @@ export async function deliverEmail(
         .skipLocked()
         .execute();
       // Notifications about tickets judged above; any others wait for the next run.
-      const ready = pending.filter((n) => n.ticket_id === null || judged.has(n.ticket_id));
+      const ready = pending.filter((n) => {
+        const comment = quotedOf(n.payload);
+        if (comment !== null && !asked.has(comment)) return false;
+        return n.ticket_id === null || judged.has(n.ticket_id);
+      });
       run.held += pending.length - ready.length;
       if (ready.length === 0) return;
       const user = await trx
@@ -227,8 +279,12 @@ export async function deliverEmail(
       }
 
       for (const batch of batches) {
-        // Kept only where the person may still see the ticket.
-        const kept = batch.filter((n) => n.ticket_id !== null && visible.has(n.ticket_id));
+        // Kept only where the person may still see the ticket, and read the comment if any.
+        const kept = batch.filter((n) => {
+          const comment = commentOf(n.payload);
+          if (comment !== null && !quotes.has(comment)) return false;
+          return n.ticket_id !== null && visible.has(n.ticket_id);
+        });
         await drop(batch.filter((n) => !kept.includes(n)).map((n) => n.id));
         if (kept.length === 0) continue;
 
@@ -284,6 +340,9 @@ export async function deliverEmail(
               fieldLabel(f, customNames),
             ),
             at: n.created_at,
+            ...(quotedOf(n.payload) !== null
+              ? { quote: quotes.get(quotedOf(n.payload) as number) ?? '' }
+              : {}),
           });
           byTicket.set(ticket.id, entry);
         }

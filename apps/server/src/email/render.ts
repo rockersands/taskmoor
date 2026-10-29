@@ -13,6 +13,8 @@ export interface EmailItem {
   /** Labels of the fields an update changed. */
   fields: string[];
   at: Date;
+  /** A comment's text, for a comment the person may read (M1-018). */
+  quote?: string;
 }
 export interface EmailTicket {
   key: string;
@@ -113,8 +115,14 @@ export function renderEmail(
       const changed =
         item.fields.length > 0 ? t('changed', { fields: item.fields.join(', ') }) : '';
       text.push(`- ${line}${changed ? ` (${changed})` : ''}`);
+      const quote = item.quote ?? '';
+      if (quote) text.push(...quote.split('\n').map((l) => `  > ${l}`));
       html.push(
-        `<li>${escapeHtml(line)}${changed ? `<br><span style="color:#555">${escapeHtml(changed)}</span>` : ''}</li>`,
+        `<li>${escapeHtml(line)}${changed ? `<br><span style="color:#555">${escapeHtml(changed)}</span>` : ''}${
+          quote
+            ? `<blockquote style="margin:4px 0;padding-left:8px;border-left:3px solid #ccc;white-space:pre-wrap">${escapeHtml(quote)}</blockquote>`
+            : ''
+        }</li>`,
       );
     }
     text.push(`${t('open', { key: ticket.key })}: ${ticket.url}`, '');

@@ -1,6 +1,8 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { api } from '../api/client';
+import { CommentsPanel } from '../comments/CommentsPanel';
+import type { CommentClient } from '../comments/client';
 import { useT } from '../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
@@ -23,6 +25,8 @@ export interface TicketAttachmentsPageProps {
   /** Stories and tests pass their own endpoints. */
   load?: (ticket: string) => Promise<TicketSummary>;
   client?: AttachmentClient;
+  /** The comments' endpoints, for stories (M1-018). */
+  comments?: CommentClient;
   /** How the description's shared document opens (M1-017); stories keep it in the page. */
   connect?: Connect;
   /** Where "@" finds people; the backend's list for the ticket by default. */
@@ -34,14 +38,15 @@ const loadTicket = async (ticket: string) =>
 
 /**
  * A ticket's page as far as it exists before the ticket view (M1-051): its key and summary,
- * its description, edited together with everyone else who has it open (M1-017), and its
- * attachments. The ticket view will take these over. With the local copy (M1-032) the page
+ * its description, edited together with everyone else who has it open (M1-017), its
+ * attachments and its comments (M1-018). The ticket view will take these over. With the local copy (M1-032) the page
  * shows the ticket from it at once, then from the server.
  */
 export function TicketAttachmentsPage({
   ticket,
   load = loadTicket,
   client,
+  comments,
   connect,
   mentions = (ticketId) => mentionSource({ ticket: ticketId }),
 }: TicketAttachmentsPageProps) {
@@ -130,6 +135,12 @@ export function TicketAttachmentsPage({
         />
       </section>
       <AttachmentPanel ticket={state.ticket.id} {...(client ? { client } : {})} />
+      <CommentsPanel
+        ticket={state.ticket.id}
+        ticketKey={state.ticket.key}
+        mentions={findPeople}
+        {...(comments ? { client: comments } : {})}
+      />
     </article>
   );
 }

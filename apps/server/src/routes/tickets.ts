@@ -34,6 +34,7 @@ import {
   withoutTrackValues,
 } from '../fields/values';
 import type { Answer, Caller, TicketHandler, TicketRoute } from '../tickets/caller';
+import { type CommentVisibility, onceAudience, readsComment } from '../tickets/comments';
 import { shareHierarchy } from '../tickets/configuration';
 import {
   AREAS_PER_TICKET,
@@ -95,6 +96,7 @@ import {
   ticketState,
 } from '../workflows/state';
 import { holdWorkflow, statusInfo, trackWorkflowId } from '../workflows/store';
+import { insertComment } from './comments';
 
 /**
  * Tickets (M1-008; CORE-001, CORE-008, CORE-023, CORE-025, AGL-009; spec 01a sections 1.2 and
@@ -215,7 +217,12 @@ const transitionBody = z
     transitionId: idValue,
     /** Values for the transition's layout, by field name (`close-reason`, `assignee`, ...). */
     fields: z.record(z.string().max(100), z.unknown()).optional(),
-    comment: z.string().max(32_000).optional(),
+    /** A comment written with the transition (M1-018), in the request's `?format=`. */
+    comment: z.unknown().optional(),
+    commentVisibility: z
+      .union([z.object({ roleId: idValue }).strict(), z.object({ groupId: idValue }).strict()])
+      .nullable()
+      .optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -791,20 +798,59 @@ export function ticketRoutes(
       .limit(q.limit + 1)
       .execute();
     const page = rows.slice(0, q.limit);
+    // A comment's row names it by id only, and only for those who may read it (M1-018).
+    const hidden = await unreadableComments(request, found.row, page);
     return {
-      changes: page.map((c) => ({
-        id: c.id,
-        changeSet: c.change_set,
-        at: c.at.toISOString(),
-        actor: c.actor_id === null ? null : { id: c.actor_id, name: c.actor_name ?? '' },
-        field: c.field,
-        from: { value: c.from_value, display: c.from_display },
-        to: { value: c.to_value, display: c.to_display },
-        transitionId: c.transition_id,
-      })),
+      changes: page
+        .filter((c) => !hidden.has(c.id))
+        .map((c) => ({
+          id: c.id,
+          changeSet: c.change_set,
+          at: c.at.toISOString(),
+          actor: c.actor_id === null ? null : { id: c.actor_id, name: c.actor_name ?? '' },
+          field: c.field,
+          from: { value: c.from_value, display: c.from_display },
+          to: { value: c.to_value, display: c.to_display },
+          transitionId: c.transition_id,
+        })),
       next: rows.length > q.limit ? (page[page.length - 1]?.id ?? null) : null,
     };
   });
+
+  /** History rows naming comments the caller may not read, by row id. */
+  async function unreadableComments(
+    request: Caller,
+    ticket: TicketRow,
+    rows: readonly {
+      id: string;
+      field: string;
+      from_value: string | null;
+      to_value: string | null;
+    }[],
+  ): Promise<Set<string>> {
+    const named = rows.filter((c) => c.field === 'comment');
+    if (named.length === 0) return new Set();
+    const ids = named.map((c) => Number(c.to_value ?? c.from_value));
+    const comments = new Map(
+      (
+        await db
+          .selectFrom('ticket_comment')
+          .select(['id', 'author_id', 'visible_role_id', 'visible_group_id'])
+          .where('id', 'in', ids)
+          .execute()
+      ).map((c) => [c.id, c]),
+    );
+    const audience = onceAudience(() => request.authz.audience(ticket.track_id));
+    const hidden = new Set<string>();
+    for (const row of named) {
+      const comment = comments.get(Number(row.to_value ?? row.from_value));
+      // A deleted comment's row stays for those who could read it; its text is gone anyway.
+      if (!comment || !(await readsComment(comment, request.user?.id ?? null, audience))) {
+        hidden.add(row.id);
+      }
+    }
+    return hidden;
+  }
 
   // The trash: tickets the caller may restore, most recently deleted first (CORE-025 (3)).
   route('GET', '/api/v1/trash', async (request, reply) => {
@@ -1809,6 +1855,7 @@ export function ticketRoutes(
     entered: Record<string, unknown>,
     channel: 'ui' | 'rest' | 'automation',
     version?: number,
+    comment?: { doc: JsonValue; visibility: CommentVisibility },
   ): Promise<Outcome> {
     const ws = request.workspaceId;
     const ticketId = found.id;
@@ -2016,6 +2063,18 @@ export function ticketRoutes(
           })),
         );
       }
+      // A comment written with the transition is part of it: no event of its own.
+      const written =
+        comment && request.user
+          ? await insertComment(
+              trx,
+              ws,
+              { id: ticketId },
+              request.user.id,
+              comment.doc,
+              comment.visibility,
+            )
+          : undefined;
       await emit(trx, by(request), {
         type: 'ticket.transitioned',
         subjectId: ticketId,
@@ -2029,6 +2088,7 @@ export function ticketRoutes(
           event: result.event,
           webhookCount: result.webhooks.length,
           channel,
+          ...(written ? { commentId: written.id } : {}),
         },
       });
       return { ticket: updated };
@@ -2095,11 +2155,41 @@ export function ticketRoutes(
     if ('close-reason' in given && !held.has('set_close_reason')) {
       return forbidden(reply, 'set_close_reason');
     }
-    if (body.comment !== undefined) {
-      // Comments arrive with M1-017; until then a transition takes none.
-      return invalidFields(reply, { comment: 'unsupported' });
-    }
     const fields: FieldErrors = {};
+    // A comment with the transition (M1-018): "Add comments", the status's comment lock, and a
+    // restriction the person may give, as for any comment.
+    let comment: { doc: JsonValue; visibility: CommentVisibility } | undefined;
+    if (body.comment !== undefined && body.comment !== null) {
+      if (!held.has('add_comments')) return forbidden(reply, 'add_comments');
+      const allowed = (await statusGate(db, request, found.row.track_id)).check(
+        found.row.status_id,
+        'comment',
+      );
+      if (allowed) {
+        const lock = await statusLock(db, request.workspaceId, found.row.status_id, allowed);
+        return reply.code(403).send(lockedBody('comment', [lock]));
+      }
+      const format = requestedFormat(request.query);
+      const read = format ? readRichText(body.comment, format) : null;
+      if (!read?.ok) fields.comment = read ? read.problem : 'invalid';
+      else if (read.text.doc === null) fields.comment = 'required';
+      const visibility = body.commentVisibility ?? null;
+      if (visibility && 'groupId' in visibility) {
+        const audience = await request.authz.audience(found.row.track_id);
+        if (!audience.groupIds.has(visibility.groupId)) fields.commentVisibility = 'not_a_member';
+      } else if (visibility) {
+        const role = await db
+          .selectFrom('role')
+          .select('id')
+          .where('id', '=', visibility.roleId)
+          .where('workspace_id', '=', request.workspaceId)
+          .executeTakeFirst();
+        if (!role) fields.commentVisibility = 'not_found';
+      }
+      if (read?.ok && read.text.doc !== null) comment = { doc: read.text.doc, visibility };
+    } else if (body.commentVisibility !== undefined) {
+      fields.commentVisibility = 'without_comment';
+    }
     const entered = layoutValues(given, fields);
     if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
     const outcome = await runTransition(
@@ -2109,6 +2199,7 @@ export function ticketRoutes(
       entered,
       channelOf(request),
       body.version,
+      comment,
     );
     if ('conflict' in outcome && outcome.conflict === 'forbidden_in_status') {
       return reply.code(403).send({ error: 'forbidden', ...(outcome.detail ?? {}) });

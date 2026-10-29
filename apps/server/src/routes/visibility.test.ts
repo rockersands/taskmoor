@@ -254,6 +254,8 @@ describe('visibility levels (M1-020)', () => {
           '/history',
           '/links',
           '/time-entries',
+          '/comments',
+          '/comment-audiences',
           '/attachments',
           '/followers',
           '/votes',

@@ -1248,6 +1248,59 @@
       "CREATE UNIQUE INDEX ticket_change_pkey ON ONLY public.ticket_change USING btree (ticket_id, id)"
     ]
   },
+  "ticket_comment": {
+    "columns": [
+      "id integer not null default nextval('ticket_comment_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "author_id integer",
+      "body jsonb not null",
+      "visible_role_id integer",
+      "visible_group_id integer",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "edited_at timestamp with time zone",
+      "edited_by integer",
+      "deleted_at timestamp with time zone",
+      "deleted_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_comment_author_idx ON public.ticket_comment USING btree (author_id, created_at)",
+      "CREATE UNIQUE INDEX ticket_comment_pkey ON public.ticket_comment USING btree (id)",
+      "CREATE INDEX ticket_comment_ticket_idx ON public.ticket_comment USING btree (ticket_id, id)"
+    ]
+  },
+  "ticket_comment_reaction": {
+    "columns": [
+      "comment_id integer not null",
+      "emoji text not null",
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_comment_reaction_pkey ON public.ticket_comment_reaction USING btree (comment_id, emoji, user_id)",
+      "CREATE INDEX ticket_comment_reaction_user_idx ON public.ticket_comment_reaction USING btree (user_id)"
+    ]
+  },
+  "ticket_comment_version": {
+    "columns": [
+      "comment_id integer not null",
+      "version integer not null",
+      "workspace_id integer not null",
+      "body jsonb not null",
+      "visible_role_id integer",
+      "visible_group_id integer",
+      "written_by integer",
+      "written_at timestamp with time zone not null",
+      "replaced_by integer",
+      "replaced_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_comment_version_pkey ON public.ticket_comment_version USING btree (comment_id, version)"
+    ]
+  },
   "ticket_counter": {
     "columns": [
       "track_id integer not null",

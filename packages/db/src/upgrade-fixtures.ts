@@ -806,6 +806,35 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE o.action = 'edit' AND k.summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0041_comments': {
+    tables: {
+      ticket_comment:
+        "version = 2 AND visible_group_id IS NOT NULL AND body->>'type' = 'doc' AND edited_at IS NOT NULL",
+      ticket_comment_version: "version = 1 AND body->'content'->0->>'type' = 'paragraph'",
+      ticket_comment_reaction: "emoji = '\u{1F44D}'",
+    },
+    seed: async (db) => {
+      // A comment for the seed group, edited once (its first text kept), with one reaction.
+      await sql`INSERT INTO ticket_comment (workspace_id, ticket_id, author_id, body,
+          visible_group_id, version, edited_at, edited_by)
+        SELECT 1, k.id, u.id,
+          '{"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Seed comment, edited"}]}]}',
+          g.id, 2, now(), u.id
+          FROM ticket k, app_user u, user_group g
+         WHERE k.summary = 'Seed ticket' AND u.email = 'seed@example.com'
+           AND g.name = 'seed-group'`.execute(db);
+      await sql`INSERT INTO ticket_comment_version (comment_id, version, workspace_id, body,
+          visible_group_id, written_by, written_at, replaced_by)
+        SELECT c.id, 1, 1,
+          '{"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Seed comment"}]}]}',
+          c.visible_group_id, c.author_id, c.created_at, c.author_id
+          FROM ticket_comment c WHERE c.version = 2`.execute(db);
+      await sql`INSERT INTO ticket_comment_reaction (comment_id, emoji, user_id, workspace_id)
+        SELECT c.id, ${'\u{1F44D}'}, c.author_id, 1 FROM ticket_comment c WHERE c.version = 2`.execute(
+        db,
+      );
+    },
+  },
 };
 
 /**

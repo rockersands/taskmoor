@@ -666,6 +666,8 @@ export const EVENT_TYPES = {
       event: z.string(),
       webhookCount: z.number().int().min(0),
       channel: z.enum(['ui', 'rest', 'automation']),
+      /** The comment written with the transition, if any (M1-018). */
+      commentId: id.optional(),
     }),
   },
   // Time tracking (M1-019). Durations in seconds; the ticket history keeps the detail.
@@ -687,6 +689,34 @@ export const EVENT_TYPES = {
   'time_entry.deleted': {
     subject: 'time_entry',
     payload: z.object({ key: z.string(), ticketId: id, duration: z.number().int().positive() }),
+  },
+  // Comments (M1-018). Never the text: it can be long and restricted to a role or group.
+  'comment.created': {
+    subject: 'comment',
+    payload: z.object({
+      key: z.string(),
+      ticketId: id,
+      /** The role or group the comment is restricted to, or null for an open comment. */
+      visibility: z.union([z.object({ roleId: id }), z.object({ groupId: id })]).nullable(),
+    }),
+  },
+  /** What changed: `body`, `visibility` or both. */
+  'comment.updated': {
+    subject: 'comment',
+    payload: z.object({ key: z.string(), ticketId: id, fields: z.array(z.string()) }),
+  },
+  'comment.deleted': {
+    subject: 'comment',
+    /** `own`: the person deleted their own comment (or someone else's). */
+    payload: z.object({ key: z.string(), ticketId: id, own: z.boolean() }),
+  },
+  'comment.reacted': {
+    subject: 'comment',
+    payload: z.object({ key: z.string(), ticketId: id, emoji: z.string() }),
+  },
+  'comment.unreacted': {
+    subject: 'comment',
+    payload: z.object({ key: z.string(), ticketId: id, emoji: z.string() }),
   },
   // Attachments (M1-016). The file name is display text; the bytes and their key stay out.
   'attachment.created': {

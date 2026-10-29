@@ -28,6 +28,7 @@ import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
 import { registerBulkRoutes } from './routes/bulk';
+import { registerCommentRoutes } from './routes/comments';
 import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
 import { registerFieldRoutes } from './routes/fields';
@@ -238,6 +239,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
     registerTimeRoutes(app, db, fieldCatalogs);
+    registerCommentRoutes(app, db);
     await registerAttachmentRoutes(app, db, deps.attachments ?? NO_STORAGE);
     registerWorkflowRoutes(app, db);
     registerTrashRoutes(app, db);

@@ -203,6 +203,11 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'time_entry.created': TICKET_ACTIVITY,
   'time_entry.updated': TICKET_ACTIVITY,
   'time_entry.deleted': TICKET_ACTIVITY,
+  'comment.created': TICKET_ACTIVITY,
+  'comment.updated': TICKET_ACTIVITY,
+  'comment.deleted': TICKET_ACTIVITY,
+  'comment.reacted': 'ticket activity: a reaction, not a security or configuration event',
+  'comment.unreacted': 'ticket activity: a reaction, not a security or configuration event',
   'attachment.created': TICKET_ACTIVITY,
   'attachment.deleted': TICKET_ACTIVITY,
 };

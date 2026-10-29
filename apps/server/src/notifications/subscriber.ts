@@ -5,6 +5,7 @@ import type { TicketAccessRow } from '../authz/visibility';
 import { fieldIdOf } from '../authz/visibility';
 import type { Subscriber } from '../events/bus';
 import type { DomainEvent, EventType } from '../events/catalogue';
+import { readsComment } from '../tickets/comments';
 import { CHANNELS, CUSTOM_PREFIX, isNotificationEvent } from './model';
 
 /**
@@ -12,7 +13,7 @@ import { CHANNELS, CUSTOM_PREFIX, isNotificationEvent } from './model';
  * into notifications. For each event it finds the notification event it stands for, the rules
  * of the ticket's notification policy for that event and the people they name, then keeps only
  * active people who may see the ticket at its visibility level (and, for a restricted time
- * entry, its role or group), not the person who made the change unless they asked to hear of
+ * entry or comment, its role or group), not the person who made the change unless they asked to hear of
  * their own changes, and writes one notification per channel each of them keeps on. Email
  * (M1-057) and the inbox (M1-058) deliver them.
  *
@@ -29,6 +30,7 @@ const HANDLED: readonly EventType[] = [
   'time_entry.created',
   'time_entry.updated',
   'time_entry.deleted',
+  'comment.created',
 ];
 
 /** What an event means for notifications: its notification event and the ticket it is about. */
@@ -36,6 +38,10 @@ export interface Occurrence {
   event: string;
   ticketId: number;
   timeEntryId: number | null;
+  /** The comment a ticket_commented event is about (M1-018): only its readers hear of it. */
+  commentId?: number;
+  /** A comment written with a transition: quoted to those who may read it, if any. */
+  quotedCommentId?: number;
   /** The fields an update changed, as the API names them. */
   fields: string[];
 }
@@ -68,10 +74,12 @@ export async function occurrenceOf(db: Db, event: DomainEvent): Promise<Occurren
     }
     case 'ticket.transitioned': {
       // A transition's own event wins (NTF-001 (2)); otherwise its stages name it.
+      const quoted =
+        typeof payload.commentId === 'number' ? { quotedCommentId: payload.commentId } : {};
       const own = typeof payload.event === 'string' ? payload.event : 'generic';
       if (own !== 'generic' && own !== '') {
         const custom = `${CUSTOM_PREFIX}${own}`;
-        return { ...base, event: isNotificationEvent(custom) ? custom : 'generic' };
+        return { ...base, ...quoted, event: isNotificationEvent(custom) ? custom : 'generic' };
       }
       const statuses = await db
         .selectFrom('status')
@@ -91,7 +99,7 @@ export async function occurrenceOf(db: Db, event: DomainEvent): Promise<Occurren
               : from === 'active' && to === 'new'
                 ? 'work_stopped'
                 : 'generic';
-      return { ...base, event: kind };
+      return { ...base, ...quoted, event: kind };
     }
     case 'time_entry.created':
     case 'time_entry.updated':
@@ -108,6 +116,14 @@ export async function occurrenceOf(db: Db, event: DomainEvent): Promise<Occurren
         fields: Array.isArray(payload.fields) ? (payload.fields as string[]) : [],
       };
     }
+    case 'comment.created':
+      return {
+        event: 'ticket_commented',
+        ticketId: Number(payload.ticketId),
+        timeEntryId: null,
+        commentId: Number(event.subjectId),
+        fields: [],
+      };
     default:
       return null;
   }
@@ -280,6 +296,16 @@ export async function notify(db: Db, authorizer: Authorizer, event: DomainEvent)
           .select(['visible_role_id', 'visible_group_id'])
           .where('id', '=', occurrence.timeEntryId)
           .executeTakeFirst();
+  const comment =
+    occurrence.commentId === undefined
+      ? undefined
+      : await db
+          .selectFrom('ticket_comment')
+          .select(['author_id', 'visible_role_id', 'visible_group_id', 'deleted_at'])
+          .where('id', '=', occurrence.commentId)
+          .executeTakeFirst();
+  // A comment deleted since has nothing left to tell.
+  if (occurrence.commentId !== undefined && (!comment || comment.deleted_at)) return 0;
   const recipients: number[] = [];
   // People who turned email off get none written (M1-057).
   const noEmail = new Set(people.filter((p) => p.email_delivery === 'off').map((p) => p.id));
@@ -295,6 +321,15 @@ export async function notify(db: Db, authorizer: Authorizer, event: DomainEvent)
       const inGroup =
         entry.visible_group_id !== null && audience.groupIds.has(entry.visible_group_id);
       if (!inRole && !inGroup) continue;
+    }
+    // A restricted comment reaches only its role or group (M1-018; NTF-001 (3)).
+    if (
+      comment &&
+      !(await readsComment(comment, person.id, () =>
+        authorizer.audience(ws, person.id, ticket.track_id),
+      ))
+    ) {
+      continue;
     }
     recipients.push(person.id);
   }
@@ -314,6 +349,10 @@ export async function notify(db: Db, authorizer: Authorizer, event: DomainEvent)
     summary: ticket.summary,
     type: event.type,
     ...(occurrence.fields.length > 0 ? { fields: occurrence.fields } : {}),
+    ...(occurrence.commentId !== undefined ? { commentId: occurrence.commentId } : {}),
+    ...(occurrence.quotedCommentId !== undefined
+      ? { quotedCommentId: occurrence.quotedCommentId }
+      : {}),
   });
   const rows = recipients.flatMap((userId) =>
     CHANNELS.filter((channel) => !muted.has(`${userId}:${channel}`)).map(

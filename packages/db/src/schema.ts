@@ -697,6 +697,53 @@ export interface TimeEntryTable {
   updated_at: DefaultTimestamp;
 }
 
+/**
+ * A comment on a ticket (M1-018, CORE-020): a rich-text document of the shared schema, visible
+ * to everyone who sees the ticket or only to one role in its track or one group. `version`
+ * counts its states; earlier ones are in `ticket_comment_version`. Deleting is soft. The
+ * visibility columns have no foreign key: a comment whose role or group is gone stays
+ * restricted (ADR-044).
+ */
+export interface TicketCommentTable {
+  id: Generated<number>;
+  workspace_id: number;
+  ticket_id: number;
+  author_id: number | null;
+  body: Json;
+  visible_role_id: number | null;
+  visible_group_id: number | null;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  edited_at: Timestamp | null;
+  edited_by: number | null;
+  deleted_at: Timestamp | null;
+  deleted_by: number | null;
+}
+
+/** An earlier state of a comment, kept when it was edited (CORE-020 (3)). */
+export interface TicketCommentVersionTable {
+  comment_id: number;
+  version: number;
+  workspace_id: number;
+  body: Json;
+  visible_role_id: number | null;
+  visible_group_id: number | null;
+  written_by: number | null;
+  written_at: Timestamp;
+  replaced_by: number | null;
+  replaced_at: DefaultTimestamp;
+}
+
+/** One person's emoji reaction to a comment (CORE-020 (2)). */
+export interface TicketCommentReactionTable {
+  comment_id: number;
+  emoji: string;
+  user_id: number;
+  workspace_id: number;
+  created_at: DefaultTimestamp;
+}
+
 /** The workspace's attachment settings (M1-016, CORE-021). */
 export interface AttachmentSettingTable {
   workspace_id: number;
@@ -1617,6 +1664,9 @@ export interface Database {
   user_preference: UserPreferenceTable;
   time_tracking_setting: TimeTrackingSettingTable;
   time_entry: TimeEntryTable;
+  ticket_comment: TicketCommentTable;
+  ticket_comment_version: TicketCommentVersionTable;
+  ticket_comment_reaction: TicketCommentReactionTable;
   attachment_setting: AttachmentSettingTable;
   attachment: AttachmentTable;
   storage_cleanup: StorageCleanupTable;

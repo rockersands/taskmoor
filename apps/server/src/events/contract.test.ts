@@ -1715,6 +1715,57 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/tickets/:id/comments',
+      expect: 'comment.created',
+      // A history row, the ticket's updated time and a follow too: still one event.
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/comments?format=markdown`,
+          payload: { body: 'Reproduced on **staging**' },
+        });
+        state.comment = res.json().comment?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/tickets/:id/comments/:commentId',
+      expect: 'comment.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/tickets/${state.ticket}/comments/${state.comment}?format=markdown`,
+          payload: { body: 'Reproduced on staging and production' },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/tickets/:id/comments/:commentId/reactions/:emoji',
+      expect: 'comment.reacted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/tickets/${state.ticket}/comments/${state.comment}/reactions/${encodeURIComponent('👍')}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/comments/:commentId/reactions/:emoji',
+      expect: 'comment.unreacted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/comments/${state.comment}/reactions/${encodeURIComponent('👍')}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/comments/:commentId',
+      expect: 'comment.deleted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/comments/${state.comment}`,
+        }),
+    },
+    {
       route: 'POST /api/v1/tickets/:id/attachments',
       expect: 'attachment.created',
       // A new ticket version and a history row too: still one event.

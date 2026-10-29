@@ -20,19 +20,7 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 Remaining tasks up to M1-035, in order:
 
-1. **M1-018 comments: start again.** A background agent was building it in
-   `/home/user/wt-comments` (branch `work/m1-018-comments`) and was stopped at the wrap-up with
-   nothing committed but a draft migration (`0039_comments.ts`: `ticket_comment`,
-   `ticket_comment_version`, `ticket_comment_reaction`); that worktree does not survive the
-   container. Number the migration **0041**, not 0039: 0040 is on main, and Kysely refuses a
-   migration that sorts before one a database already ran. What it must do: CORE-020 rich-text comments (reuse `RichTextEditor` and
-   `readRichText`/`inFormat`), role or group visibility enforced on every read path (API,
-   ticket page, search, notifications via the `ticket_commented` event, history, exports),
-   reactions, edit history readable by administrators, own/all edit and delete permissions,
-   the status `comment` lock (`statusGate(...).check(status, 'comment')`, ADR-042), one event,
-   contract scenario and audit decision per mutating route, `refreshFormulas` if a comment
-   touches `ticket.updated_at`, a comments section on the ticket page with stories and an e2e.
-2. **M1-028 workflow maps** (M1-021 is done): workflow per ticket type in shared mode, per track
+1. **M1-028 workflow maps** (M1-021 is done): workflow per ticket type in shared mode, per track
    in local mode; switching a map migrates statuses in the background (a bulk-style job);
    100k tickets in < 5 min with history rows.
 
@@ -42,6 +30,17 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-018 comments** (migration 0041; ADR-044). Server: `routes/comments.ts`,
+  `tickets/comments.ts` (`readsComment`, `commentReadableSql`, `commentText`); transitions take
+  `comment` and `commentVisibility` (`routes/tickets.ts`); history hides rows of unreadable
+  comments; notifications (`notifications/subscriber.ts`) and the mailer (`email/deliver.ts`)
+  check the comment's readers, the mailer quotes the text. Web: `apps/web/src/comments/`
+  (`CommentsPanel` on the ticket page), `richtext/RichTextView.tsx` (read-only rich text from
+  the shared schema, no HTML parsing), `styles/comments.css`; e2e `apps/web/e2e/comments.spec.ts`.
+  **Search and export (M1-037 and later) must filter comments with `commentReadableSql`.**
+  Not yet: mention notifications (NTF-005), reply by email (NTF-009), bulk comment actions
+  (the comment routes are plain Fastify routes, not `Caller` handlers), ADF originals for
+  comments. The draft in `/home/user/wt-comments` was taken over and that worktree removed.
 - **M1-021 bulk operations, finished.** Web: `apps/web/src/bulk/` (`client.ts`,
   `BulkOperationPage.tsx` at `#/bulk/<id>`, stories, fixtures, tests), `styles/bulk.css`, the
   `bulk.*` strings; e2e `apps/web/e2e/bulk.spec.ts` on the attachments database, whose bulk

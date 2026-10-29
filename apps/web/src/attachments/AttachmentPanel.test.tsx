@@ -24,6 +24,14 @@ function openTicket(
         canCreate: list.canCreate ?? true,
         available: true,
       }),
+    // The page's comments (M1-018): none here.
+    'GET /tickets/41/comments?limit=100': () =>
+      jsonResponse(200, {
+        comments: [],
+        next: null,
+        can: { add: false, react: false },
+        lock: null,
+      }),
     ...handlers,
   });
   window.location.hash = '#/tickets/SHOP-41';
