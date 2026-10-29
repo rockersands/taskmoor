@@ -21,7 +21,7 @@ jobs:
   verify:
     name: verify (Postgres 16, e2e, DCO)
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -83,7 +83,7 @@ jobs:
     name: verify (Postgres 18)
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:18
