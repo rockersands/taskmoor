@@ -1,7 +1,15 @@
 import { createHash } from 'node:crypto';
 import type { Database } from '@taskmoor/db';
-import { type Catalogue, parseQuery, resolveQuery } from '@taskmoor/query';
+import {
+  type Catalogue,
+  clauses,
+  parseQuery,
+  type Query,
+  resolveQuery,
+  type Value,
+} from '@taskmoor/query';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
+import type { TrackPermission } from '../authz/permissions';
 import type { Catalog } from '../fields/catalog';
 import { commentReadableSql } from '../tickets/comments';
 import { bindPlan } from './bind';
@@ -32,6 +40,12 @@ export interface PrepareInput {
   q: string;
   currentUserId: number | null;
   now?: Date;
+  /** The person's time zone: dates and date functions are read on its clock (QRY-006). */
+  timeZone?: string | null;
+  /** The session the person searches from, for `currentLogin()` and `lastLogin()`. */
+  sessionId?: number | null;
+  /** The tracks where the person holds a permission (`tracksWhereUserHasPermission()`). */
+  allowedTracks?: (permission: TrackPermission) => Promise<readonly number[] | 'all'>;
   /** False keeps the plain ticket-table form (tests compare both). */
   anchor?: boolean;
   /** False keeps one statement instead of value branches (tests compare both). */
@@ -45,15 +59,26 @@ export interface Prepared {
 
 /** Parses, resolves, binds and compiles; throws QueryError or SearchError for a bad query. */
 export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
-  const plan = resolveQuery(parseQuery(input.q), input.catalogue, {
+  const query = parseQuery(input.q);
+  const names = functionNames(query);
+  const logins =
+    names.has('currentlogin') || names.has('lastlogin')
+      ? await loginTimes(input.db, input.workspaceId, input.currentUserId, input.sessionId ?? null)
+      : undefined;
+  const plan = resolveQuery(query, input.catalogue, {
     currentUserId: input.currentUserId,
     now: input.now ?? new Date(),
+    timeZone: input.timeZone ?? null,
+    ...(logins ? { logins } : {}),
   });
   const bound = await bindPlan(plan, {
     db: input.db,
     workspaceId: input.workspaceId,
     catalog: input.catalog,
     catalogue: input.catalogue,
+    currentUserId: input.currentUserId,
+    filter: input.filter.sql,
+    ...(input.allowedTracks ? { allowedTracks: input.allowedTracks } : {}),
   });
   const compiled = compileSearch(bound, {
     workspaceId: input.workspaceId,
@@ -64,6 +89,63 @@ export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
     ...(input.branches === undefined ? {} : { branches: input.branches }),
   });
   return { bound, compiled };
+}
+
+/** The functions a query calls, by lower-case name, arguments and history predicates included. */
+export function functionNames(query: Query): Set<string> {
+  const names = new Set<string>();
+  const visit = (v: Value) => {
+    if (v.kind !== 'function') return;
+    names.add(v.name.toLowerCase());
+    for (const a of v.args) visit(a);
+  };
+  for (const c of clauses(query.where)) {
+    if (c.kind === 'compare') visit(c.value);
+    if (c.kind === 'in' || c.kind === 'was') for (const v of c.values) visit(v);
+    if (c.kind === 'was' || c.kind === 'changed') {
+      for (const p of c.predicates) for (const v of p.values) visit(v);
+    }
+  }
+  return names;
+}
+
+/**
+ * When the person signed in this time and the time before (`currentLogin()`, `lastLogin()`;
+ * M1-038): this time is the session's start (with an API token, the latest sign-in), the time
+ * before the latest session started earlier. Sessions removed at sign-out take their start
+ * with them; without an earlier one, `lastLogin()` reads as this sign-in.
+ */
+export async function loginTimes(
+  db: Db,
+  workspaceId: number,
+  userId: number | null,
+  sessionId: number | null,
+): Promise<{ current: Date | null; last: Date | null } | undefined> {
+  if (userId === null) return undefined;
+  const sessions = db
+    .selectFrom('user_session')
+    .select('created_at')
+    .where('workspace_id', '=', workspaceId)
+    .where('user_id', '=', userId);
+  const own =
+    sessionId === null ? undefined : await sessions.where('id', '=', sessionId).executeTakeFirst();
+  let current = own?.created_at ?? null;
+  if (!current) {
+    const latest = await sessions.orderBy('created_at', 'desc').limit(1).executeTakeFirst();
+    const user = await db
+      .selectFrom('app_user')
+      .select('last_sign_in_at')
+      .where('id', '=', userId)
+      .executeTakeFirst();
+    current = latest?.created_at ?? user?.last_sign_in_at ?? null;
+  }
+  if (!current) return { current: null, last: null };
+  const before = await sessions
+    .where('created_at', '<', current)
+    .orderBy('created_at', 'desc')
+    .limit(1)
+    .executeTakeFirst();
+  return { current, last: before?.created_at ?? null };
 }
 
 /** A cursor that does not belong to this query. */

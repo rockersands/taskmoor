@@ -283,6 +283,90 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
 --database-url <url>` then `pnpm bench:search --database-url <url>` on a machine with the disk
 (M1-117 owns the 10M nightly).
 
+## Functions (M1-038: batch 1)
+
+- **Signatures in one table** (`packages/query/src/functions.ts`): every function of spec 01b
+  section 1.6 with what it returns (people, a date, tickets, tracks, areas, ticket types,
+  options, releases, sprints, approvals, SLA states, customer groups), its arguments by kind
+  and whether it returns several values. The resolver checks a call against it: an unknown
+  name is refused by name; a field that does not take the result is refused naming both
+  (`membersOf() returns people, which "status" does not take`); a missing or extra argument is
+  refused naming it (`membersOf() needs its group (the first argument)`, QRY-004 (3)); a
+  function returning several values takes only `IN` and `NOT IN`. Names come through the
+  dialect (`nativeFunctionName`), so every Jira-compatible name is the same function.
+- **The resolver evaluates what needs no database:** `currentUser()` (an id, as before) and the
+  date functions. Everything else becomes a call value, `{ type: 'call', fn, args }`, with its
+  arguments typed (people as ids or names, dates as instants, keys upper-cased, tracks as ids),
+  for the server's binder. Functions of modules not built yet (sprints and releases: M1-045;
+  service tracks: M2) resolve too, as fields of those modules do (M1-036), and the binder
+  names the module. The M0 spike compiler refuses call values.
+- **Dates on the person's clock (QRY-006):** absolute dates and the date functions are read in
+  the person's time zone (`app_user.time_zone`; UTC when unset or unknown to the platform), by
+  calendar arithmetic over `Intl` (`packages/query/src/dates.ts`). A date field compares with
+  the person's calendar date. Weeks start on Sunday and end on Saturday (spec 01b 1.4; M1-036
+  started them on Monday); the resolver takes another first day (`weekStart`), but the site
+  setting itself is not built yet. An increment moves the period's edge on the calendar
+  (`startOfMonth(+14d)` is the 15th; `endOfMonth(+1M)` is the next period's start moved a
+  month, less a millisecond, so the end of next month whatever its length). Days stay whole
+  across clock changes (a 23-hour day ends at its own 23:59:59.999); a time the clock skips
+  reads past the gap, a repeated one as its first occurrence. `now()` takes an increment too
+  (`now(-30m)`). `currentLogin()` is the start of the person's session (with an API token, of
+  their latest session or sign-in); `lastLogin()` the start of the latest session before it,
+  or the current one when there is none (sessions removed at sign-out take theirs along).
+- **What the binder makes of each function** (`apps/server/src/search/bind.ts`):
+
+| Function | Becomes |
+|---|---|
+| `membersOf(group)` | The ids of the group's members, nested groups' included; `"id:<team>"` is refused until teams exist |
+| `tracksOwnedByUser(user?)`, `areasOwnedByUser(user?)` | Ids of the tracks or areas the person (by default the one searching) owns |
+| `tracksWhereUserHasPermission(permission)` | The authorizer's `allowedTracks` for the person; a permission by its code or Jira-compatible key (`BROWSE_PROJECTS`, `Browse projects`, `browse_track`; dialect `PERMISSION_NAMES`) |
+| `tracksWhereUserHasRole(role)` | Tracks where the person, or a group they are in (nesting included), acts in the role |
+| `standardTicketTypes()`, `subticketTypes()` | Ticket types by level kind |
+| `choiceOption(options...)`, `cascadeOption(parent, child?)` | Options of the field by id or value; `cascadeOption(parent, none)` is not built |
+| `followedTickets()`, `votedTickets()`, `ticketHistory()` | A ticket set: the person's rows in `ticket_follower`, `ticket_vote`, `ticket_visit` (the home page's visits, the latest 50 kept) |
+| `updatedBy(user, from?, to?)` | A ticket set: a change by the person (`ticket_change`; a ticket's creation is there too, as every first value by its creator) or a comment of theirs that the viewer reads, at or after `from` and at or before `to`, to the minute |
+| `linkedTickets(key, linkType...)` | A ticket set over `ticket_link`. A description reads from the given ticket's side (`"blocks"`: tickets it blocks); a type's name, when no description matches, takes its links either way |
+| `ticketsWithWebLinksByGlobalId(ids...)` | A ticket set over `ticket_web_link.global_id`, any number of ids |
+| Sprint, release and service functions | Refused, naming the module (`shippedReleases() belongs to release functions, which this version does not have yet`) |
+
+- **Ticket sets are joined, never listed** (model `TicketSet`, condition `ticketSet`): `key IN
+  followedTickets()` is an `EXISTS` on the person's rows, which the planner starts from (plan
+  goldens: `ticket_follower_user_idx`, then the ticket's primary key), so there is no cap
+  (Jira caps at 32,000) and a list of keys and functions mixes freely (`key IN (ABC-1,
+  followedTickets())`). Sets read from two places (`linkedTickets()`: both ends of a link;
+  `updatedBy()`: changes and comments) are one `k.id IN (... UNION ALL ...)`, which the
+  planner joins from the actor or link indexes; an `OR` of two `EXISTS` was checked row by row
+  (measured: `linkedTickets(X)` 71 ms with the `OR` at 200,000 tickets). `key` and `parent`
+  take ticket functions; other key fields (`ticketLink`) refuse them for now.
+- **A function never widens what a person sees (QRY-008):** a ticket set is a condition inside
+  the statement, which carries the viewer's filter; `parent IN f()` rebinds `k` in a subquery
+  that carries the filter again, so a parent the person may not see never counts; the ticket
+  given to `linkedTickets()` must be one the person sees (otherwise nothing, with the warning an
+  unknown key gives); `updatedBy()` counts a comment only where `commentReadableSql` lets the
+  viewer read it. A property test (`search/functions.test.ts`: twenty random worlds of eight
+  tickets with levels, parents, follows, votes, visits, links, changes, comments shown to a
+  group, web links; four people; up to seventeen function queries) requires exactly what a
+  model of the world names among the tickets `ticketPermissions` lets the person browse, page
+  and count. Dropping the filter from the parent subquery, or the visibility check of the
+  `linkedTickets()` ticket, makes it fail (checked).
+- **Conformance:** functions from 53% to 96% (298 of 312), fields 99% to 100%, all sections
+  99% (2,392 of 2,408). The functions left are the seven SLA functions, on an SLA field
+  ("Time to resolution") that service tracks bring (M2-013); the sprint tokens are M1-045's.
+- **Measured** (`search/functions.large.test.ts`, `TASKMOOR_LARGE_FUNCTIONS=1`: 200,000 tickets,
+  400,000 changes, 100,000 links, a member in half the tracks who follows 20,000 tickets;
+  binding and the first page as that member, p95 of 20, on this shared 4-core container):
+  `key IN followedTickets()` 13.9 ms, `votedTickets()` 12.4 ms, `ticketHistory()` 6.3 ms,
+  `key NOT IN followedTickets()` 5.2 ms, `parent IN watchedIssues()` 81 ms (each of the 20,000
+  follows judged as a parent; the slowest), `updatedBy(user)` 15.2 ms (159 ms in the `OR` form),
+  with a date range 3.6 ms, `linkedTickets(X)` 6.1 ms (71 ms in the `OR` form), with a
+  description 5.3 ms, `membersOf()` of 667 people 8.1 ms, a web link's global id 3.1 ms,
+  `tracksWhereUserHasRole()` 8.0 ms. `membersOf()` on a group of 50,000 people binds and
+  returns its first page in 91 ms (QRY-004 (2), `search/functions.test.ts`). Not run at 1M:
+  the 1M database of M1-037 belongs to another session and stops at migration 0043.
+- **Not built:** teams in `membersOf()`, `cascadeOption(parent, none)`, ticket functions on
+  `ticketLink`, the site setting for the first day of the week, functions in history
+  predicates (`WAS ... BY membersOf(x)`: M1-039 binds them; the resolver already types them).
+
 ## Options considered
 
 | Option | For | Against |

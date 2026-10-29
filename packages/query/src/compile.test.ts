@@ -94,8 +94,15 @@ describe('resolveQuery errors', () => {
     ['created > 2026-13-45', '"2026-13-45" is not a valid date'],
     ['track = ZZZ', 'Unknown track "ZZZ"'],
     ['votes WAS 3', '"votes" keeps no change history'],
-    ['created > nextLeapYear()', 'Unknown date function nextLeapYear()'],
-    ['assignee = membersOf(devs)', 'membersOf() does not return a user'],
+    ['created > nextLeapYear()', 'Unknown function nextLeapYear()'],
+    ['assignee = membersOf(devs)', 'membersOf() returns several values: use IN or NOT IN, not ='],
+    ['status IN membersOf(devs)', 'membersOf() returns people, which "status" does not take'],
+    ['created > startOfDay("soon")', 'startOfDay(): its increment must be a duration'],
+    ['assignee IN membersOf()', 'membersOf() needs its group (the first argument)'],
+    [
+      'assignee IN membersOf(a, b)',
+      'membersOf() takes at most 1 argument; the second is one too many',
+    ],
   ])('rejects "%s"', (text, message) => {
     let error: unknown;
     try {

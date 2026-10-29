@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely, RawBuilder } from 'kysely';
 import { z } from 'zod';
 import { requireSiteAdmin, requireUser } from '../auth';
+import type { TrackPermission } from '../authz/permissions';
 import type { FieldCatalogs } from '../fields/catalog';
 import { customFieldViews } from '../fields/values';
 import { SearchError } from '../search/bind';
@@ -189,6 +190,20 @@ export async function searchScope(
   return { ws, filter, catalog, catalogue };
 }
 
+/**
+ * Who is searching, as a query's functions and dates need it (M1-038): the person, their time
+ * zone (dates read on their clock, QRY-006), their session (`currentLogin()`) and the tracks
+ * where they hold a permission (`tracksWhereUserHasPermission()`).
+ */
+export function searchPerson(request: FastifyRequest) {
+  return {
+    currentUserId: request.user?.id ?? null,
+    timeZone: request.user?.timeZone ?? null,
+    sessionId: request.authSession?.id ?? null,
+    allowedTracks: (permission: TrackPermission) => request.authz.allowedTracks(permission),
+  };
+}
+
 export function registerSearchRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
@@ -210,6 +225,7 @@ export function registerSearchRoutes(
       const plan = resolveQuery(parseQuery(parsed.data.q), catalogue, {
         currentUserId: user.id,
         now: new Date(),
+        timeZone: user.timeZone,
       });
       const fields = new Map<string, { name: string; custom: number | null }>();
       const visit = (pred: unknown) => {
@@ -293,7 +309,7 @@ export function registerSearchRoutes(
         catalogue,
         filter,
         q: q.q,
-        currentUserId: request.user?.id ?? null,
+        ...searchPerson(request),
       });
       const after = q.cursor === undefined ? undefined : decodeCursor(compiled, q.cursor);
       const count = q.count ?? after === undefined;
@@ -336,7 +352,7 @@ export function registerSearchRoutes(
         catalogue,
         filter,
         q: q.q,
-        currentUserId: admin.id,
+        ...searchPerson(request),
       });
       const explained = await explainSearch(db, compiled, {
         limit: q.limit,

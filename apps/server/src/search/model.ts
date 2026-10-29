@@ -81,6 +81,36 @@ export type Related =
 export type RelationName = Related['relation'] | 'attachment';
 
 /**
+ * Tickets a function names (M1-038; QRY-004), answered in the statement by a semi-join on a
+ * ticket id, so a set of any size costs no list of ids in the query. The statement's own
+ * permission filter decides which of them the person sees.
+ */
+export type TicketSet =
+  /** Tickets the person follows or voted for (`followedTickets()`, `votedTickets()`). */
+  | { kind: 'followed' | 'voted'; userId: number }
+  /** Tickets the person opened lately (`ticketHistory()`; the home page's visits). */
+  | { kind: 'visited'; userId: number }
+  /**
+   * Tickets these people changed (creating a ticket records its first values as changes) or
+   * commented on (comments the viewer reads), at or after `from` and at or before `to`
+   * (`updatedBy()`).
+   */
+  | { kind: 'updatedBy'; userIds: number[]; from?: string; to?: string }
+  /**
+   * Tickets linked to one of `ticketIds` (`linkedTickets()`): as the link's target where the
+   * given ticket is the source with a type in `outward`, as its source where the given ticket
+   * is the target with a type in `inward`; 'all' for any type.
+   */
+  | {
+      kind: 'linked';
+      ticketIds: number[];
+      outward: number[] | 'all';
+      inward: number[] | 'all';
+    }
+  /** Tickets with a web link of one of these global ids. */
+  | { kind: 'webLinks'; globalIds: string[] };
+
+/**
  * A condition on ticket `k`. `some` matches tickets with a matching value; `none` matches
  * tickets that have values and none of them matches, so a negated clause never brings back
  * tickets whose field is empty (spec 01b section 1.1: only IS EMPTY matches those).
@@ -116,7 +146,13 @@ export type Cond =
   | { kind: 'side'; side: SideRef; test: ValueTest; quantifier: Quantifier }
   | { kind: 'sideEmpty'; side: SideRef; negated: boolean }
   | { kind: 'related'; related: Related; quantifier: Quantifier }
-  | { kind: 'relatedEmpty'; relation: RelationName; negated: boolean };
+  | { kind: 'relatedEmpty'; relation: RelationName; negated: boolean }
+  /**
+   * The ticket (`id`) or its parent (`parent_id`) is in a set a function names; negated, it is
+   * not (and a ticket without a parent never matches, spec 01b section 1.1). A parent counts
+   * only when the viewer may see it.
+   */
+  | { kind: 'ticketSet'; on: 'id' | 'parent_id'; set: TicketSet; negated: boolean };
 
 /** A value results are ordered by. */
 export type OrderSource =

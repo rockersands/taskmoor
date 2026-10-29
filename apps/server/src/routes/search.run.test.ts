@@ -781,6 +781,126 @@ describe('search (M1-037)', () => {
     expect(await set('comment !~ incognito')).toEqual(['closed']);
   });
 
+  it('[QRY-004] [QRY-006] answers the functions of batch 1 for the person asking (M1-038)', async () => {
+    const live = ['audit', 'closed', 'dashboard', 'export', 'login'];
+    // The tickets of the fixture only (other tests add their own).
+    const set = async (q: string, who: Person = 'alice') =>
+      (await names(q, who)).filter((n) => !n.startsWith('#')).sort();
+    // Following and votes: bob follows login and dashboard, votes for audit (which he cannot
+    // see: DEF is not his).
+    expect(await set('key IN followedTickets()', 'bob')).toEqual(['dashboard', 'login']);
+    expect(await set('issue IN watchedIssues()', 'alice')).toEqual(['login']);
+    expect(await set('key IN votedTickets()', 'alice')).toEqual([]);
+    expect(await set('key IN votedTickets()', 'bob')).toEqual([]);
+    expect(await set('key NOT IN followedTickets()', 'bob')).toEqual(['closed', 'export']);
+    // Recently viewed: what the person opened (the home page's visits).
+    const opened = await as('alice', {
+      method: 'PUT',
+      url: `/api/v1/me/recent-tickets/${ids.dashboard}`,
+    });
+    expect(opened.statusCode, opened.body).toBe(204);
+    expect(await set('key IN ticketHistory()', 'alice')).toEqual(['dashboard']);
+    expect(await set('parent IN issueHistory()', 'alice')).toEqual(['export']);
+    expect(await set('key IN ticketHistory()', 'bob')).toEqual([]);
+    // Links, read from the given ticket's side: login blocks audit.
+    expect(await set(`key IN linkedTickets(${keys.login})`, 'alice')).toEqual(['audit']);
+    expect(await set(`key IN linkedIssues(${keys.audit}, "is blocked by")`, 'alice')).toEqual([
+      'login',
+    ]);
+    expect(await set(`key IN linkedTickets(${keys.audit}, "blocks")`, 'alice')).toEqual([]);
+    expect(await set(`key IN linkedTickets(${keys.login}, Blocks)`, 'alice')).toEqual(['audit']);
+    // A ticket bob cannot see links to nothing he can learn of.
+    const hidden = await search('bob', `key IN linkedTickets(${keys.audit})`);
+    expect(hidden.body).toMatchObject({ tickets: [], warnings: [`No ticket ${keys.audit}`] });
+    // People and groups: Support holds bob.
+    expect(await set('assignee IN membersOf(Support)', 'alice')).toEqual(['dashboard']);
+    expect(await set('assignee NOT IN membersOf(support)', 'alice')).toEqual(['audit', 'login']);
+    expect(await set('key IN updatedBy(Admin)', 'alice')).toEqual(live);
+    // Comments count where the person reads them: alice's note on closed (in the comment test
+    // above) is shown to administrators and its author only; her comment on audit is deleted.
+    expect(await set('key IN updatedBy(alice, -1d)', 'alice')).toEqual(['closed']);
+    expect(await set('key IN updatedBy(alice, -1d)', 'bob')).toEqual([]);
+    expect(await set('key IN updatedBy(erin)', 'alice')).toEqual([]);
+    // Tracks by permission, role and owner; types; options of a select and a cascade.
+    expect(await set('track IN tracksWhereUserHasPermission("Browse projects")', 'bob')).toEqual([
+      'closed',
+      'dashboard',
+      'export',
+      'login',
+    ]);
+    expect(await set('project IN projectsWhereUserHasRole(Members)', 'alice')).toEqual(live);
+    expect(await set('track IN tracksWhereUserHasRole(Members)', 'bob')).toEqual([
+      'closed',
+      'dashboard',
+      'export',
+      'login',
+    ]);
+    expect(await set('track IN tracksOwnedByUser()', 'alice')).toEqual([]);
+    expect(await set('type IN subticketTypes()', 'alice')).toEqual(['export']);
+    expect(await set('type IN standardIssueTypes()', 'alice')).toEqual(
+      live.filter((n) => n !== 'export'),
+    );
+    expect(await set('Stack IN cascadeOption(Hardware)', 'alice')).toEqual(['login']);
+    expect(await set('Stack IN cascadeOption(Hardware, Disk)', 'alice')).toEqual(['login']);
+    expect(await set('Stack IN cascadeOption(Hardware, Fan)', 'alice')).toEqual([]);
+    expect(await set('Team IN choiceOption(Green, Blue)', 'alice')).toEqual(['dashboard']);
+    await database.db
+      .updateTable('area')
+      .set({ owner_id: users.bob.id })
+      .where('name', '=', 'Frontend')
+      .execute();
+    expect(await set('component IN componentsLeadByUser(bob)', 'alice')).toEqual(['dashboard']);
+    expect(await set('area IN areasOwnedByUser()', 'bob')).toEqual(['dashboard']);
+    // Sign-ins: every ticket was made before this session started.
+    expect(await set('created <= currentLogin()', 'alice')).toEqual(live);
+    expect(await set('created > lastLogin()', 'alice')).toEqual([]);
+    // Dates on the person's clock: login was made at 12:00 UTC on 20 January, which is 02:00
+    // on 21 January at UTC+14.
+    expect(await set('created >= "2026-01-21"', 'alice')).toEqual([]);
+    await database.db
+      .updateTable('app_user')
+      .set({ time_zone: 'Pacific/Kiritimati' })
+      .where('id', '=', users.alice.id)
+      .execute();
+    expect(await set('created >= "2026-01-21"', 'alice')).toEqual(['login']);
+    await database.db
+      .updateTable('app_user')
+      .set({ time_zone: null })
+      .where('id', '=', users.alice.id)
+      .execute();
+  });
+
+  it('[QRY-004] refuses functions it cannot answer, naming the argument or module', async () => {
+    const refused = async (q: string) => {
+      const { status, body } = await search('alice', q);
+      expect(status, q).toBe(400);
+      return body;
+    };
+    expect(await refused('assignee IN membersOf("id:7c1d")')).toMatchObject({
+      error: 'unsupported_query',
+      message: 'membersOf("id:7c1d"): teams are not available in this version yet',
+    });
+    expect(await refused('assignee IN membersOf(Nobody)')).toMatchObject({
+      error: 'invalid_query',
+      message: '"group" has no value "Nobody"',
+    });
+    expect((await refused('targetRelease IN shippedReleases()')).message).toBe(
+      'shippedReleases() belongs to release functions, which this version does not have yet',
+    );
+    expect((await refused('sprint IN openSprints()')).message).toContain('boards and sprints');
+    expect((await refused('track IN tracksWhereUserHasPermission(fly)')).message).toBe(
+      'No track permission "fly"',
+    );
+    expect((await refused('key IN linkedTickets(ABC-1, "unblocks")')).message).toBe(
+      'No link type "unblocks"',
+    );
+    expect(await refused('assignee IN membersOf()')).toMatchObject({
+      error: 'invalid_query',
+      message: 'membersOf() needs its group (the first argument)',
+    });
+    expect((await refused('ticketLink IN linkedTickets(ABC-1)')).error).toBe('unsupported_query');
+  });
+
   it('[QRY-002] refuses what cannot run yet, naming the field or module', async () => {
     const refused = async (q: string) => {
       const { status, body } = await search('alice', q);

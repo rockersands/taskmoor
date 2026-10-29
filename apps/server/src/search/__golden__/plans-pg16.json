@@ -204,6 +204,15 @@
     "    Index Scan using ticket_pkey on ticket k",
     "      [SubPlan] Index Scan using track_role_actor_unique_idx on track_role_actor a"
   ],
+  "key IN followedTickets() ORDER BY created DESC": [
+    "Limit",
+    "  Sort",
+    "    Nested Loop (Inner)",
+    "      Bitmap Heap Scan on ticket_follower r",
+    "        Bitmap Index Scan using ticket_follower_user_idx",
+    "      Index Scan using ticket_pkey on ticket k",
+    "        [SubPlan] Index Scan using track_role_actor_unique_idx on track_role_actor a"
+  ],
   "labels IN (l1, l2) ORDER BY created DESC": [
     "Limit",
     "  Index Scan using ticket_created_idx on ticket k",
@@ -217,6 +226,19 @@
     "  Sort",
     "    Index Scan using ticket_parent_idx on ticket k",
     "      [SubPlan] Index Scan using track_role_actor_unique_idx on track_role_actor a"
+  ],
+  "parent IN watchedIssues() ORDER BY created DESC": [
+    "Limit",
+    "  Sort",
+    "    Nested Loop (Inner)",
+    "      Aggregate",
+    "        Nested Loop (Inner)",
+    "          Bitmap Heap Scan on ticket_follower r",
+    "            Bitmap Index Scan using ticket_follower_user_idx",
+    "          Index Scan using ticket_pkey on ticket k_1",
+    "            [SubPlan] Index Scan using track_role_actor_unique_idx on track_role_actor a_1",
+    "      Index Scan using ticket_parent_idx on ticket k",
+    "        [SubPlan] Index Scan using track_role_actor_unique_idx on track_role_actor a"
   ],
   "priority IN (High, Urgent) AND type = Bug ORDER BY priority DESC, created ASC": [
     "Limit",

@@ -15,7 +15,16 @@ export { type CompiledQuery, type CompileOptions, compilePlan } from './compile'
 export * from './conformance/case';
 export { QUERY_CASES } from './conformance/cases';
 export * from './conformance/run';
-export { FIELD_NAMES, FUNCTION_NAMES, toJira, toNative } from './dialect';
+export { boundary, instantOf, localDate, wallClock } from './dates';
+export {
+  FIELD_NAMES,
+  FUNCTION_NAMES,
+  nativeFunctionName,
+  nativePermissionName,
+  PERMISSION_NAMES,
+  toJira,
+  toNative,
+} from './dialect';
 export {
   type Catalogue,
   type CustomField,
@@ -26,6 +35,13 @@ export {
   SYSTEM_FIELDS,
   type SystemField,
 } from './fields';
+export {
+  arity,
+  FUNCTIONS as QUERY_FUNCTIONS,
+  type FunctionResult,
+  type FunctionSpec,
+  findFunction,
+} from './functions';
 export {
   lineIndex,
   locate,

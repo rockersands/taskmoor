@@ -28,6 +28,35 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-038 query functions, batch 1** (built on `work/m1-038-functions`; no migration; ADR-010
+  "Functions (M1-038)"). `packages/query`: `functions.ts` (the signature of every function of
+  spec 01b 1.6), `dates.ts` (wall-clock arithmetic in a time zone), the resolver checks calls
+  (refusals name the argument), evaluates `currentUser()` and the date functions, and leaves
+  the rest as `{ type: 'call', fn, args }`; dialect `nativeFunctionName`, `PERMISSION_NAMES`.
+  Server: `search/bind.ts` turns calls into ids (people, tracks, areas, types, options) or ticket
+  sets (`TicketSet` in `model.ts`, compiled as semi-joins in `compile.ts`); `search/run.ts`
+  reads sign-in times for `currentLogin()`/`lastLogin()`; routes pass the person's time zone,
+  session and `allowedTracks` (`searchPerson()` in `routes/search.ts`).
+  - **Behaviour changes:** dates in queries are read in the person's time zone
+    (`app_user.time_zone`, UTC when unset); weeks now start on Sunday (spec 1.4; they started
+    on Monday); `startOfMonth(-1M)` and the like move on the calendar (they moved by a fixed
+    number of milliseconds); `now()` takes an increment; a function returning several values
+    with `=` is refused (`use IN or NOT IN`).
+  - **`Typed` has a `call` variant** without `value`: code that reads `Typed.value` must handle
+    it (the binder's `content()` refuses a call where none can stand; the spike compiler
+    refuses them).
+  - **Never widen:** new ticket functions must be ticket sets inside the statement (or check
+    their ticket arguments against `BindContext.filter`, as `linkedTickets()` does); comments
+    only through `commentReadableSql`. `search/functions.test.ts` is the property test to
+    extend.
+  - Conformance: functions 96% (the seven SLA functions need an SLA field, M2-013), all 99%.
+  - Not built: teams in `membersOf("id:...")`, `cascadeOption(parent, none)`, ticket functions
+    on `ticketLink`, a site setting for the first day of the week, sprint and release functions
+    (M1-045), functions in history predicates (M1-039).
+  - Seen, not changed: `parent = KEY` and `ticketLink = KEY` (M1-037) do not check that the
+    named ticket is one the person sees, so they can confirm that visible tickets hang off a
+    hidden one whose key is known; the function forms check it.
+
 - **M1-043 boards** (built by a background agent on `work/m1-043-boards`; migration 0047;
   ADR-049). Server: `apps/server/src/boards/model.ts` (zod schemas of columns, swimlanes, board
   filters and card rules, defaults, `withIds`, `wipState`, `enteredColumn`), `boards/data.ts`

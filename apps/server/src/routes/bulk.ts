@@ -11,7 +11,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { collectIds, DEFAULT_QUERY_TIMEOUT_MS, prepareSearch } from '../search/run';
 import { parseTicketKey, ticketKey } from '../tickets/model';
 import { loadTickets } from '../tickets/store';
-import { searchRefusal, searchScope } from './search';
+import { searchPerson, searchRefusal, searchScope } from './search';
 
 /**
  * Bulk operations (M1-021; CORE-024): a person with "Make bulk changes" asks for an edit, a
@@ -162,7 +162,7 @@ export function registerBulkRoutes(
           catalogue,
           filter,
           q: body.query,
-          currentUserId: user.id,
+          ...searchPerson(request),
         });
         chosen = await collectIds(db, compiled, { max: MAX_BULK_TICKETS, timeoutMs });
       } catch (error) {

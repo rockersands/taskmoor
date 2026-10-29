@@ -4,12 +4,12 @@ import type { FastifyRequest } from 'fastify';
 import { type Kysely, type RawBuilder, sql } from 'kysely';
 import type { Catalog, FieldCatalogs } from '../fields/catalog';
 import { customFieldViews } from '../fields/values';
-import { searchScope } from '../routes/search';
+import { searchPerson, searchScope } from '../routes/search';
 import { bindPlan } from '../search/bind';
 import { queryCatalogue } from '../search/catalogue';
 import { compileCond } from '../search/compile';
 import type { Cond } from '../search/model';
-import { readOnly } from '../search/run';
+import { functionNames, loginTimes, readOnly } from '../search/run';
 import { commentReadableSql } from '../tickets/comments';
 import { ticketKey } from '../tickets/model';
 import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
@@ -55,6 +55,8 @@ export interface Scope {
   catalog: Catalog;
   catalogue: Catalogue;
   userId: number | null;
+  /** The viewer as the query functions and dates read them (M1-038). */
+  person: ReturnType<typeof searchPerson>;
 }
 
 /**
@@ -70,7 +72,14 @@ export async function boardScope(
 ): Promise<Scope> {
   const { ws, filter, catalog } = await searchScope(db, catalogs, request, false);
   const catalogue = await queryCatalogue(db, ws, catalog, 'all');
-  return { ws, filter, catalog, catalogue, userId: request.user?.id ?? null };
+  return {
+    ws,
+    filter,
+    catalog,
+    catalogue,
+    userId: request.user?.id ?? null,
+    person: searchPerson(request),
+  };
 }
 
 /** The editor's own scope, to check the queries they save as they could run them. */
@@ -80,18 +89,42 @@ export async function editorScope(
   request: FastifyRequest,
 ): Promise<Scope> {
   const { ws, filter, catalog, catalogue } = await searchScope(db, catalogs, request, false);
-  return { ws, filter, catalog, catalogue, userId: request.user?.id ?? null };
+  return {
+    ws,
+    filter,
+    catalog,
+    catalogue,
+    userId: request.user?.id ?? null,
+    person: searchPerson(request),
+  };
 }
 
 /** A query's condition on ticket `k`; ORDER BY is ignored. Throws QueryError or SearchError. */
 export async function bindCondition(db: Db, scope: Scope, text: string, now: Date): Promise<Cond> {
-  const plan = resolveQuery(parseQuery(text), scope.catalogue, {
-    currentUserId: scope.userId,
+  const query = parseQuery(text);
+  const names = functionNames(query);
+  const { person } = scope;
+  const logins =
+    names.has('currentlogin') || names.has('lastlogin')
+      ? await loginTimes(db, scope.ws, person.currentUserId, person.sessionId)
+      : undefined;
+  const plan = resolveQuery(query, scope.catalogue, {
+    currentUserId: person.currentUserId,
     now,
+    timeZone: person.timeZone,
+    ...(logins ? { logins } : {}),
   });
   const bound = await bindPlan(
     { ...plan, orderBy: [] },
-    { db, workspaceId: scope.ws, catalog: scope.catalog, catalogue: scope.catalogue },
+    {
+      db,
+      workspaceId: scope.ws,
+      catalog: scope.catalog,
+      catalogue: scope.catalogue,
+      currentUserId: person.currentUserId,
+      filter: scope.filter.sql,
+      allowedTracks: person.allowedTracks,
+    },
   );
   return bound.where;
 }
@@ -128,7 +161,11 @@ export async function compileBoard(
   active: readonly BoardFilter[],
   now: Date,
 ): Promise<Compiled> {
-  const ctx = { comments: commentReadableSql(scope.ws, scope.userId) };
+  const ctx = {
+    comments: commentReadableSql(scope.ws, scope.userId),
+    filter: scope.filter.sql,
+    workspaceId: scope.ws,
+  };
   const cond = async (text: string) => compileCond(await bindCondition(db, scope, text, now), ctx);
   const base: RawBuilder<boolean>[] = [
     sql<boolean>`k.workspace_id = ${scope.ws}::int`,
