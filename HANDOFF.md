@@ -59,6 +59,22 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
 
 ### Done (newest first)
 
+- **M1-044 sprints** (built by a background agent on `work/m1-044-sprints`; migration 0052;
+  ADR-054). Server: `routes/sprints.ts` (registered from `registerBoardRoutes`, which hands it
+  the board lookup and the manage right), `sprints/model.ts` (settings and bodies). Board PATCH
+  takes `sprintSettings`; `GET /boards/:id/data?sprints=active` shows the active sprints only.
+  Web: `sprints/BacklogPage.tsx`, `sprints/SprintReportPage.tsx`, `sprints/client.ts`; routes
+  `#/boards/<id>/backlog` and `#/boards/<id>/sprints/<id>/report`; Scrum boards ask for the
+  active sprints and link the backlog. e2e `sprints.spec.ts`.
+  - Membership is `sprint_ticket` (`open` while future or active, one open sprint per ticket);
+    closed sprints keep their rows, so M1-045 can add `sprint = <id>` and `openSprints()` over it.
+    Every change is a `sprint_change` row with time, author, `after_start` and the estimates
+    then; the report is computed from those rows by the board's current statistic.
+  - Done is the rightmost column. Completing: tickets the board's query no longer shows go to
+    the backlog (the shared-sprint rule); a deleted closed sprint keeps its rows (`deleted_at`).
+  - Left: reopen, wiki link, the subticket completion block (spec says verify), sprint settings
+    and sprint editing in the web UI (API only), velocity per team, no performance run yet.
+
 - **M1-063 saved searches** (built by a background agent on `work/m1-063-saved-searches`;
   migration 0051; ADR-053). Server: `routes/saved-searches.ts` (`/api/v1/saved-searches` CRUD,
   `/:id/star`, `/:id/subscriptions`), `search/saved.ts` (who sees a saved search, as one SQL
