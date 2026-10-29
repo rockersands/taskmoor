@@ -1,0 +1,34 @@
+{
+  "actor": {
+    "id": 5,
+    "name": "Sam <Rivera> & co"
+  },
+  "data": {
+    "commentId": 88,
+    "ticketId": 42
+  },
+  "event": "comment.created",
+  "eventId": "1234",
+  "id": "0b3f6a5e-1d2c-4c7e-9a10-2f4e5d6c7b8a",
+  "occurredAt": "2026-10-29T12:00:00.000Z",
+  "subject": {
+    "id": "88",
+    "type": "comment"
+  },
+  "ticket": {
+    "id": 42,
+    "key": "ABC-12",
+    "status": "In Review",
+    "summary": "Login fails with [brackets] *stars* & <tags>",
+    "track": {
+      "id": 3,
+      "key": "ABC"
+    },
+    "type": "Bug",
+    "url": "https://tasks.example/#/tickets/ABC-12"
+  },
+  "webhook": {
+    "id": 7,
+    "name": "Team channel"
+  }
+}

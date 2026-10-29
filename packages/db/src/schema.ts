@@ -751,6 +751,50 @@ export interface SprintChangeTable {
   to_sprint_id: number | null;
 }
 
+export type WebhookFormat = 'json' | 'slack' | 'teams' | 'mattermost' | 'matrix';
+
+/** An outbound webhook (M1-067; API-009; ADR-055); its query runs as its owner. */
+export interface WebhookTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  url: string;
+  format: ColumnType<WebhookFormat, WebhookFormat | undefined, WebhookFormat>;
+  /** Event types, exact or `prefix.*`. */
+  events: string[];
+  filter_query: string | null;
+  /** The signing secret (`json`) or the Matrix access token, sealed with the pepper ring. */
+  secret_sealed: string | null;
+  enabled: Generated<boolean>;
+  owner_id: number;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export type WebhookDeliveryState = 'pending' | 'delivered' | 'failed';
+
+/** One event sent to one webhook; `id` is the delivery id receivers deduplicate on. */
+export interface WebhookDeliveryTable {
+  id: string;
+  workspace_id: number;
+  webhook_id: number;
+  /** The domain event (bigint, as text). */
+  event_id: ColumnType<string, string | number, string | number>;
+  event_type: string;
+  /** What is sent, so a replay sends the same. */
+  body: ColumnType<JsonValue, string, string>;
+  state: ColumnType<WebhookDeliveryState, WebhookDeliveryState | undefined, WebhookDeliveryState>;
+  attempts: Generated<number>;
+  last_status: number | null;
+  last_error: string | null;
+  last_attempt_at: Timestamp | null;
+  duration_ms: number | null;
+  delivered_at: Timestamp | null;
+  replays: Generated<number>;
+  created_at: DefaultTimestamp;
+}
+
 /** A saved search (M1-063; QRY-011): a named query kept by its owner. */
 export interface SavedSearchTable {
   id: Generated<number>;
@@ -1975,6 +2019,8 @@ export interface Database {
   board_admin: BoardAdminTable;
   sprint: SprintTable;
   sprint_ticket: SprintTicketTable;
+  webhook: WebhookTable;
+  webhook_delivery: WebhookDeliveryTable;
   sprint_change: SprintChangeTable;
   saved_search: SavedSearchTable;
   saved_search_share: SavedSearchShareTable;

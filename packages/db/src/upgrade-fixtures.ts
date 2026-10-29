@@ -1021,6 +1021,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE s.name = 'Seed sprint' AND k.summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0053_webhooks': {
+    tables: {
+      webhook: "name = 'Seed webhook' AND format = 'json'",
+      webhook_delivery: "state = 'failed' AND last_status = 503",
+    },
+    seed: async (db) => {
+      // A webhook of the seed person for created tickets, with one failed delivery.
+      await sql`INSERT INTO webhook (workspace_id, name, url, events, owner_id)
+        SELECT 1, 'Seed webhook', 'https://hooks.example.com/taskmoor', '{ticket.created}', id
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO webhook_delivery (id, workspace_id, webhook_id, event_id, event_type,
+          body, state, attempts, last_status)
+        SELECT '00000000-0000-4000-8000-000000000053', 1, id, 1, 'ticket.created', '{}', 'failed',
+          6, 503
+          FROM webhook WHERE name = 'Seed webhook'`.execute(db);
+    },
+  },
 };
 
 /**

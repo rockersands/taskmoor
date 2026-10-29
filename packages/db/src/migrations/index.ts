@@ -45,6 +45,7 @@ import * as m0047 from './0047_boards';
 import * as m0050 from './0050_guardrails';
 import * as m0051 from './0051_saved_searches';
 import * as m0052 from './0052_sprints';
+import * as m0053 from './0053_webhooks';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -100,4 +101,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0050_guardrails': m0050,
   '0051_saved_searches': m0051,
   '0052_sprints': m0052,
+  '0053_webhooks': m0053,
 };

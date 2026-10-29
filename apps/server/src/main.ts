@@ -28,6 +28,7 @@ import { rollSprintCycles } from './sprints/cycles';
 import { waitForDatabase } from './startup';
 import { registerChangeLogJobs, scheduleChangeLogTrim } from './sync/jobs';
 import { registerTrashJobs, schedulePurge } from './trash/purge';
+import { registerWebhookJobs, trimWebhookDeliveries } from './webhooks/deliver';
 import { registerWorkflowMigrationJobs } from './workflows/migration';
 import { defaultWorkspaceId } from './workspace';
 
@@ -119,7 +120,7 @@ if (config.roles.includes('worker') && db) {
   // The domain event bus and job queue (ADR-015, M1-005): relay new events to subscribers'
   // queues and run their jobs.
   const bus = new EventBus(db);
-  registerSubscribers(bus, { db });
+  registerSubscribers(bus, { db, publicUrl: config.publicUrl });
   const runner = new JobRunner(db, `worker-${process.pid}`);
   bus.attach(runner);
   // Audit retention (M1-003): one run a day across all workers, keyed by the date; it also
@@ -166,6 +167,8 @@ if (config.roles.includes('worker') && db) {
   registerImportJobs(runner, db, new FieldCatalogs(db));
   // Status migrations after a change of workflow map (M1-028), a batch at a time.
   registerWorkflowMigrationJobs(runner, db, new FieldCatalogs(db));
+  // Webhook deliveries (M1-067): one job per sending, retried with backoff.
+  registerWebhookJobs(runner, db, { peppers });
   const formulaCatalogs = new FieldCatalogs(db);
   const scheduleHousekeeping = () =>
     Promise.all([
@@ -174,11 +177,12 @@ if (config.roles.includes('worker') && db) {
       scheduleFieldValueCheck(db),
       scheduleChangeLogTrim(db),
       scheduleFormulaRefresh(db, formulaCatalogs),
+      trimWebhookDeliveries(db),
       defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
     ]).catch((error) =>
       app.log.warn(
         { error },
-        'trash purge, backup, field value check, change log trim, formula refresh or storage sweep not queued',
+        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery trim or storage sweep not queued',
       ),
     );
   void scheduleHousekeeping();

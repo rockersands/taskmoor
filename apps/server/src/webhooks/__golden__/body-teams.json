@@ -1,0 +1,32 @@
+{
+  "attachments": [
+    {
+      "content": {
+        "actions": [
+          {
+            "title": "Open ABC-12",
+            "type": "Action.OpenUrl",
+            "url": "https://tasks.example/#/tickets/ABC-12"
+          }
+        ],
+        "body": [
+          {
+            "text": "Sam <Rivera> & co commented on ABC-12",
+            "type": "TextBlock",
+            "weight": "Bolder",
+            "wrap": true
+          },
+          {
+            "text": "Login fails with [brackets] *stars* & <tags> (In Review)",
+            "type": "TextBlock",
+            "wrap": true
+          }
+        ],
+        "type": "AdaptiveCard",
+        "version": "1.4"
+      },
+      "contentType": "application/vnd.microsoft.card.adaptive"
+    }
+  ],
+  "type": "message"
+}

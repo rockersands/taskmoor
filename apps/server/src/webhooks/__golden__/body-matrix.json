@@ -1,0 +1,6 @@
+{
+  "body": "Sam <Rivera> & co commented on ABC-12 Login fails with [brackets] *stars* & <tags> (In Review) https://tasks.example/#/tickets/ABC-12",
+  "format": "org.matrix.custom.html",
+  "formatted_body": "Sam &lt;Rivera&gt; &amp; co commented on <a href=\"https://tasks.example/#/tickets/ABC-12\">ABC-12</a> Login fails with [brackets] *stars* &amp; &lt;tags&gt; (In Review)",
+  "msgtype": "m.text"
+}

@@ -66,6 +66,7 @@ import { registerTrashRoutes } from './routes/trash';
 import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
 import { registerVisibilityRoutes } from './routes/visibility';
+import { registerWebhookRoutes } from './routes/webhooks';
 import { registerWorkflowMapRoutes } from './routes/workflow-maps';
 import { registerWorkflowRoutes } from './routes/workflows';
 import { registerMutationReceipts } from './sync/mutations';
@@ -291,6 +292,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerServiceAccountRoutes(app, db);
     await registerScimRoutes(app, db, { publicUrl: deps.publicUrl ?? 'http://localhost:8080' });
     registerDirectoryRoutes(app, db, { peppers: deps.peppers });
+    // Webhooks (M1-067): registered by site administrators, delivered by the worker.
+    registerWebhookRoutes(app, db, fieldCatalogs, { peppers: deps.peppers });
     // Expired sessions, used links, stale counters and long-dead tokens go at start and every
     // six hours.
     const prune = () =>

@@ -37,6 +37,11 @@ export const AUDITED_EVENTS = [
   'identity_provider.created',
   'identity_provider.updated',
   'identity_provider.deleted',
+  // Webhooks send data out of the instance: who registered, changed or replayed them counts.
+  'webhook.created',
+  'webhook.updated',
+  'webhook.deleted',
+  'webhook.delivery_replayed',
   'group.created',
   'group.updated',
   'group.deleted',

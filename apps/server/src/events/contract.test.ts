@@ -2681,6 +2681,63 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'DELETE', url: `/api/v1/identity-providers/${state.idp}` }),
     },
     {
+      route: 'POST /api/v1/webhooks',
+      expect: 'webhook.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/webhooks',
+          payload: {
+            name: 'Contract webhook',
+            url: 'https://hooks.example.com/contract',
+            events: ['ticket.*'],
+            secret: 'a contract signing secret',
+          },
+        });
+        state.webhook = res.json().webhook?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/webhooks/:id',
+      expect: 'webhook.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/webhooks/${state.webhook}`,
+          payload: { events: ['ticket.created', 'comment.created'] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/webhooks/:id/deliveries/replay',
+      expect: 'webhook.delivery_replayed',
+      run: async () => {
+        // A delivery that failed, to send again.
+        await database.db
+          .insertInto('webhook_delivery')
+          .values({
+            id: '00000000-0000-4000-8000-00000000c0de',
+            workspace_id: 1,
+            webhook_id: Number(state.webhook),
+            event_id: 1,
+            event_type: 'ticket.created',
+            body: '{}',
+            state: 'failed',
+          })
+          .execute();
+        return admin({
+          method: 'POST',
+          url: `/api/v1/webhooks/${state.webhook}/deliveries/replay`,
+          payload: { failed: true },
+        });
+      },
+    },
+    {
+      route: 'DELETE /api/v1/webhooks/:id',
+      expect: 'webhook.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/webhooks/${state.webhook}` }),
+    },
+    {
       route: 'PUT /api/v1/audit/settings',
       expect: 'audit.settings_updated',
       run: () =>

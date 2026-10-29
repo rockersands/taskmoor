@@ -1171,6 +1171,28 @@ export const EVENT_TYPES = {
       to: z.number().int().min(1),
     }),
   },
+  // Webhooks (M1-067; API-009): registered, changed and deleted by site administrators, and a
+  // delivery sent again. The secret is never in a payload, only whether it changed.
+  'webhook.created': {
+    subject: 'webhook',
+    payload: z.object({
+      name: z.string(),
+      url: z.string(),
+      format: z.string(),
+      events: z.array(z.string()),
+      filtered: z.boolean(),
+      enabled: z.boolean(),
+    }),
+  },
+  'webhook.updated': {
+    subject: 'webhook',
+    payload: z.object({ changes, secretChanged: z.boolean() }),
+  },
+  'webhook.deleted': { subject: 'webhook', payload: z.object({ name: z.string() }) },
+  'webhook.delivery_replayed': {
+    subject: 'webhook',
+    payload: z.object({ deliveryIds: z.array(z.string()) }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

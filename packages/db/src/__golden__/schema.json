@@ -2217,6 +2217,52 @@
       "CREATE INDEX webauthn_credential_user_idx ON public.webauthn_credential USING btree (user_id)"
     ]
   },
+  "webhook": {
+    "columns": [
+      "id integer not null default nextval('webhook_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "url text not null",
+      "format text not null default 'json'::text",
+      "events ARRAY not null",
+      "filter_query text",
+      "secret_sealed text",
+      "enabled boolean not null default true",
+      "owner_id integer not null",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX webhook_name_idx ON public.webhook USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX webhook_pkey ON public.webhook USING btree (id)"
+    ]
+  },
+  "webhook_delivery": {
+    "columns": [
+      "id uuid not null",
+      "workspace_id integer not null",
+      "webhook_id integer not null",
+      "event_id bigint not null",
+      "event_type text not null",
+      "body jsonb not null",
+      "state text not null default 'pending'::text",
+      "attempts integer not null default 0",
+      "last_status integer",
+      "last_error text",
+      "last_attempt_at timestamp with time zone",
+      "duration_ms integer",
+      "delivered_at timestamp with time zone",
+      "replays integer not null default 0",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX webhook_delivery_list_idx ON public.webhook_delivery USING btree (webhook_id, state, created_at DESC)",
+      "CREATE UNIQUE INDEX webhook_delivery_pkey ON public.webhook_delivery USING btree (id)",
+      "CREATE INDEX webhook_delivery_trim_idx ON public.webhook_delivery USING btree (delivered_at) WHERE (state = 'delivered'::text)",
+      "CREATE UNIQUE INDEX webhook_delivery_webhook_id_event_id_key ON public.webhook_delivery USING btree (webhook_id, event_id)"
+    ]
+  },
   "workflow": {
     "columns": [
       "id integer not null default nextval('workflow_id_seq'::regclass)",

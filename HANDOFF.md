@@ -39,16 +39,26 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
     `sprints/cycles.test.ts`: Madrid's change of summer time, catch-up, two workers at once.
 - **M1-082 LDAP closed**: its last criterion, the OpenLDAP container run, passed in CI
   (`ldap.yml` on `main`, 2026-10-28 and 2026-10-29).
+- **M1-067 webhooks** (ADR-055; migration 0053 `webhook`, `webhook_delivery`): a bus subscriber
+  (`webhooks/subscriber.ts`, registered in `events/subscribers.ts`) records one delivery per
+  webhook and event with the body to send and queues `webhook:deliver`
+  (`webhooks/deliver.ts`, registered in `main.ts` with the 30-day trim in housekeeping).
+  Only spec 02a 1.3 events go out (`WEBHOOK_EVENTS` in `webhooks/model.ts`); the query runs as
+  the owner through `bindCondition`. Formats `json` (HMAC-SHA256 `X-Taskmoor-Signature`),
+  `slack`, `teams`, `mattermost`, `matrix` (`webhooks/payload.ts`, goldens in
+  `webhooks/__golden__`). Routes `routes/webhooks.ts` (site admins; admin token scope).
+  `webhooks/webhooks.test.ts` runs a local receiver; its `pump()` makes retries due at once.
 
 ### Next (in order)
 
 1. The overnight list below without M1-045: M1-040 full-text search and M1-039 history
    operators (both measured at 10M tickets: this Mac has 33 GB free, the 137 GB dataset stayed
    on Windows, so their timing criteria need another machine or CI), M1-064 dashboards with
-   M1-062 burndown, M1-046 board drag and drop, M1-067 webhooks, M1-098 CSV, M1-105, M1-115,
-   M1-116.
+   M1-062 burndown (M1-059 report event store first), M1-046 board drag and drop, M1-098 CSV,
+   M1-105, M1-115, M1-116.
 2. Sprint settings in the web UI (estimation, time tracking, parallel sprints and now the
-   cycle): API only since M1-044.
+   cycle): API only since M1-044; a session was working on it (its own worktree branch).
+   Webhooks have no web page yet either (API only).
 3. M1-073 and M1-074 still wait for a live test key in the environment (`TASKMOOR_AI_TEST_KEY`);
    M1-100 for the release signing key.
 
