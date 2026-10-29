@@ -1203,17 +1203,27 @@
     "indexes": [
       "CREATE INDEX ticket_assignee_idx ON public.ticket USING btree (assignee_id) WHERE (assignee_id IS NOT NULL)",
       "CREATE INDEX ticket_close_reason_idx ON public.ticket USING btree (close_reason_id) WHERE (close_reason_id IS NOT NULL)",
+      "CREATE INDEX ticket_closed_idx ON public.ticket USING btree (closed_at DESC, id DESC) WHERE ((closed_at IS NOT NULL) AND (deleted_at IS NULL))",
+      "CREATE INDEX ticket_created_idx ON public.ticket USING btree (created_at DESC, id DESC) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_description_words_idx ON public.ticket USING gin (to_tsvector('simple'::regconfig, jsonb_path_query_array(description, 'strict $.**.\"text\"'::jsonpath, '{}'::jsonb, true))) WHERE (description IS NOT NULL)",
+      "CREATE INDEX ticket_due_idx ON public.ticket USING btree (due_date, id) WHERE ((due_date IS NOT NULL) AND (deleted_at IS NULL))",
+      "CREATE INDEX ticket_environment_words_idx ON public.ticket USING gin (to_tsvector('simple'::regconfig, jsonb_path_query_array(environment, 'strict $.**.\"text\"'::jsonpath, '{}'::jsonb, true))) WHERE (environment IS NOT NULL)",
       "CREATE INDEX ticket_labels_idx ON public.ticket USING gin (labels)",
       "CREATE INDEX ticket_parent_idx ON public.ticket USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
       "CREATE UNIQUE INDEX ticket_pkey ON public.ticket USING btree (id)",
-      "CREATE INDEX ticket_priority_idx ON public.ticket USING btree (priority_id) WHERE (priority_id IS NOT NULL)",
+      "CREATE INDEX ticket_priority_created_idx ON public.ticket USING btree (priority_id, created_at DESC, id DESC) WHERE (priority_id IS NOT NULL)",
       "CREATE UNIQUE INDEX ticket_rank_key ON public.ticket USING btree (workspace_id, rank)",
+      "CREATE INDEX ticket_requester_idx ON public.ticket USING btree (requester_id) WHERE (requester_id IS NOT NULL)",
       "CREATE INDEX ticket_status_idx ON public.ticket USING btree (status_id)",
+      "CREATE INDEX ticket_summary_words_idx ON public.ticket USING gin (to_tsvector('simple'::regconfig, summary))",
+      "CREATE INDEX ticket_track_created_idx ON public.ticket USING btree (track_id, created_at DESC, id DESC) WHERE (deleted_at IS NULL)",
       "CREATE UNIQUE INDEX ticket_track_number_key ON public.ticket USING btree (track_id, number)",
       "CREATE INDEX ticket_track_rank_idx ON public.ticket USING btree (track_id, rank) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_track_updated_idx ON public.ticket USING btree (track_id, updated_at DESC, id DESC) WHERE (deleted_at IS NULL)",
       "CREATE INDEX ticket_trash_idx ON public.ticket USING btree (workspace_id, deleted_at) WHERE (deleted_at IS NOT NULL)",
       "CREATE INDEX ticket_trashed_with_idx ON public.ticket USING btree (trashed_with) WHERE (trashed_with IS NOT NULL)",
       "CREATE INDEX ticket_type_idx ON public.ticket USING btree (ticket_type_id)",
+      "CREATE INDEX ticket_updated_idx ON public.ticket USING btree (updated_at DESC, id DESC) WHERE (deleted_at IS NULL)",
       "CREATE INDEX ticket_visibility_level_idx ON public.ticket USING btree (visibility_level_id) WHERE (visibility_level_id IS NOT NULL)"
     ]
   },
@@ -1268,7 +1278,8 @@
     "indexes": [
       "CREATE INDEX ticket_comment_author_idx ON public.ticket_comment USING btree (author_id, created_at)",
       "CREATE UNIQUE INDEX ticket_comment_pkey ON public.ticket_comment USING btree (id)",
-      "CREATE INDEX ticket_comment_ticket_idx ON public.ticket_comment USING btree (ticket_id, id)"
+      "CREATE INDEX ticket_comment_ticket_idx ON public.ticket_comment USING btree (ticket_id, id)",
+      "CREATE INDEX ticket_comment_words_idx ON public.ticket_comment USING gin (to_tsvector('simple'::regconfig, jsonb_path_query_array(body, 'strict $.**.\"text\"'::jsonpath, '{}'::jsonb, true))) WHERE (deleted_at IS NULL)"
     ]
   },
   "ticket_comment_reaction": {

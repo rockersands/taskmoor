@@ -28,6 +28,33 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-037 SQL compiler** (branch `work/m1-037-sql-compiler-2`; migration 0043; ADR-010
+  "Implementation (M1-037)", ADR-043 "Selection by query"). Built from the uncommitted draft in
+  `/home/user/wt-compiler` (left untouched there), ported onto M1-028 and finished.
+  `apps/server/src/search/`: `bind.ts` (names to ids, NOT pushed down, refusals),
+  `compile.ts` (pure; SQL is the golden `search/__golden__/compile.json`), `run.ts` (read-only
+  transaction under `TASKMOOR_QUERY_TIMEOUT_MS`, keyset cursors, capped counts, explain,
+  `collectIds`), `bench/` (`pnpm bench:search`, the 50-query perf set). Routes:
+  `GET`/`POST /api/v1/search`, `GET /api/v1/admin/search/explain`; `POST
+  /api/v1/bulk-operations` takes `query` instead of `tickets`.
+  - **Every statement carries `ticketFilter()`**, value branches and side-table walks
+    included; `search/authz.test.ts` property-tests the results against `ticketPermissions`.
+    **Comments** are searched only through `commentReadableSql` (`comment ~`, `text ~`).
+  - **Value branches:** an order whose first key is priority, status, type, level, close
+    reason or track key becomes a `UNION ALL` per value, each walking an index. New indexes
+    for that and for search in 0043 (`ticket_priority_created_idx` replaces
+    `ticket_priority_idx`; word GIN indexes on summary, description, environment, comments).
+  - **Measured at 1M only** (the draft's `m1037_bench_1m` database on the system Postgres,
+    11 GB, migrated to 0043 by hand: 0030 applied out of order, the draft's 0035 removed):
+    all 50 queries under 300 ms, slowest statement p95 116 ms. 10M needs about 110 GB; the
+    risky queries at 10M are two-word summary searches, custom text fields and capped counts
+    (ADR-010). `docs/spikes/search-1m.md`.
+  - **Upgrade seeds fixed:** with 0043 the upgrade test starts at 0042 for the first time;
+    the 0024 seed wrote the dropped `track.workflow_id` and the 0042 seed used the renamed
+    `SEEDOLD` track. Both now work from any start.
+  - Not done: approximate counts and full text (M1-040), history operators (M1-039),
+    functions (M1-038), a word index on custom text values (M1-040), a search page or query
+    entry in the bulk UI (M1-041, M1-046).
 - **M1-053 admin UI** (no migration). New pages, each with a client interface, an in-memory
   fake (`fixtures.ts`), stories, unit tests and e2e in `apps/web/e2e/configuration.spec.ts` and
   `people.spec.ts`: `people/` (users, groups), `configuration/` (`TracksAdminPage`,

@@ -63,6 +63,10 @@ const SIDE_TABLE: Record<CustomField['type'], string> = {
 };
 
 /**
+ * The M0-017 spike's compiler, kept for the spike benchmarks (`pnpm spike query`), which run
+ * on the spike's own schema (`fs_side.item`, `gen.history`). The product compiles queries with
+ * `apps/server/src/search/compile.ts` (M1-037) over `ticket` and the side tables.
+ *
  * Turns a resolved plan into one SQL statement over the typed side tables (ADR-008). System
  * fields filter the item table; each custom-field condition is an EXISTS on its side table, so
  * the planner can use the (field, value) indexes and intersect by item ID.

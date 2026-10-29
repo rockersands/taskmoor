@@ -4,11 +4,14 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { bulkJob } from '../bulk/jobs';
-import { bulkBody, paramsOf } from '../bulk/model';
+import { bulkBody, MAX_BULK_TICKETS, paramsOf } from '../bulk/model';
 import { emit } from '../events/bus';
 import { enqueue } from '../events/queue';
+import type { FieldCatalogs } from '../fields/catalog';
+import { collectIds, DEFAULT_QUERY_TIMEOUT_MS, prepareSearch } from '../search/run';
 import { parseTicketKey, ticketKey } from '../tickets/model';
 import { loadTickets } from '../tickets/store';
+import { searchRefusal, searchScope } from './search';
 
 /**
  * Bulk operations (M1-021; CORE-024): a person with "Make bulk changes" asks for an edit, a
@@ -95,7 +98,18 @@ const view = (row: OperationRow) => ({
   finishedAt: row.finished_at?.toISOString() ?? null,
 });
 
-export function registerBulkRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+export interface BulkRouteOptions {
+  /** How long each statement of a selection by query may run (QRY-010 (3)). */
+  queryTimeoutMs?: number;
+}
+
+export function registerBulkRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  catalogs: FieldCatalogs,
+  options: BulkRouteOptions = {},
+): void {
+  const timeoutMs = options.queryTimeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS;
   const forbidden = (reply: FastifyReply) =>
     reply.code(403).send({ error: 'forbidden', permission: 'bulk_change' });
   const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
@@ -130,7 +144,38 @@ export function registerBulkRoutes(app: FastifyInstance, db: Kysely<Database>): 
     }
     const body = parsed.data;
     const ws = request.workspaceId;
-    const items = await resolveRefs(db, ws, body.tickets);
+    if ((body.tickets === undefined) === (body.query === undefined)) {
+      return reply
+        .code(400)
+        .send({ error: 'invalid_fields', fields: { tickets: 'tickets_or_query' } });
+    }
+    let items: { ref: string; ticketId: number | null }[];
+    if (body.query !== undefined) {
+      // The query's results as the person sees them (QRY-008), in its order (M1-037).
+      let chosen: { ids: number[]; more: boolean };
+      try {
+        const { filter, catalog, catalogue } = await searchScope(db, catalogs, request, false);
+        const { compiled } = await prepareSearch({
+          db,
+          workspaceId: ws,
+          catalog,
+          catalogue,
+          filter,
+          q: body.query,
+          currentUserId: user.id,
+        });
+        chosen = await collectIds(db, compiled, { max: MAX_BULK_TICKETS, timeoutMs });
+      } catch (error) {
+        return searchRefusal(reply, error, timeoutMs);
+      }
+      if (chosen.more) {
+        return reply.code(400).send({ error: 'too_many_tickets', max: MAX_BULK_TICKETS });
+      }
+      if (chosen.ids.length === 0) return reply.code(400).send({ error: 'no_tickets' });
+      items = chosen.ids.map((id) => ({ ref: String(id), ticketId: id }));
+    } else {
+      items = await resolveRefs(db, ws, body.tickets ?? []);
+    }
     const row = await db.transaction().execute(async (trx) => {
       const created = await trx
         .insertInto('bulk_operation')

@@ -180,6 +180,15 @@ arrive in one email (site administrators set the window and the digest hour with
 hours and events on their Account page. Every email carries a one-click unsubscribe link
 (RFC 8058). There is no daily sending cap; your SMTP provider may have one.
 
+## Search
+
+Every search runs read-only and stops after `TASKMOOR_QUERY_TIMEOUT_MS` milliseconds (default
+30000, between 100 and 600000); a query that runs longer answers `503 query_timeout` and holds
+nothing. Site administrators see the SQL of a query and the planner's plan for it with
+`GET /api/v1/admin/search/explain?q=...` (add `analyze=true` to run it under the same timeout).
+Postgres plans searches best when it knows the storage: on SSDs set `random_page_cost = 1.1`
+and `effective_cache_size` to about three quarters of the memory Postgres can use.
+
 ## Sign-in security
 
 - **Password pepper.** Every password hash also depends on a secret key kept outside the

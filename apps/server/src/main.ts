@@ -106,6 +106,7 @@ const app = await buildApp({
   startedAt,
   attachments,
   smtpConfigured: config.smtp !== undefined,
+  queryTimeoutMs: config.queryTimeoutMs,
 });
 const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
 

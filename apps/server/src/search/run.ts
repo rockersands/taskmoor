@@ -1,0 +1,216 @@
+import { createHash } from 'node:crypto';
+import type { Database } from '@taskmoor/db';
+import { type Catalogue, parseQuery, resolveQuery } from '@taskmoor/query';
+import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
+import type { Catalog } from '../fields/catalog';
+import { commentReadableSql } from '../tickets/comments';
+import { bindPlan } from './bind';
+import { type CompiledSearch, type Cursor, compileSearch, type PageRow } from './compile';
+import type { Bound, Scalar } from './model';
+
+/**
+ * Running a query (M1-037; QRY-008 to QRY-010): text to a compiled statement, a page of ids
+ * cut by keyset, an optional capped count, and the admin's explain. Every statement runs in a
+ * read-only transaction under the search timeout, so no query holds the database for longer
+ * than the operator allows (QRY-010 (3)).
+ */
+type Db = Kysely<Database> | Transaction<Database>;
+
+/** The default search timeout (QRY-010: 30 s unless the operator sets another). */
+export const DEFAULT_QUERY_TIMEOUT_MS = 30_000;
+
+/** Counts stop here: the total reads "at least 10,000" beyond (approximate counts: M1-040). */
+export const COUNT_CAP = 10_000;
+
+export interface PrepareInput {
+  db: Db;
+  workspaceId: number;
+  catalog: Catalog;
+  catalogue: Catalogue;
+  /** The viewer's predicate on ticket `k` and the tracks it opens (TicketFilter). */
+  filter: { sql: RawBuilder<boolean>; tracks: readonly number[] | 'all' };
+  q: string;
+  currentUserId: number | null;
+  now?: Date;
+  /** False keeps the plain ticket-table form (tests compare both). */
+  anchor?: boolean;
+  /** False keeps one statement instead of value branches (tests compare both). */
+  branches?: boolean;
+}
+
+export interface Prepared {
+  bound: Bound;
+  compiled: CompiledSearch;
+}
+
+/** Parses, resolves, binds and compiles; throws QueryError or SearchError for a bad query. */
+export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
+  const plan = resolveQuery(parseQuery(input.q), input.catalogue, {
+    currentUserId: input.currentUserId,
+    now: input.now ?? new Date(),
+  });
+  const bound = await bindPlan(plan, {
+    db: input.db,
+    workspaceId: input.workspaceId,
+    catalog: input.catalog,
+    catalogue: input.catalogue,
+  });
+  const compiled = compileSearch(bound, {
+    workspaceId: input.workspaceId,
+    filter: input.filter.sql,
+    tracks: input.filter.tracks,
+    comments: commentReadableSql(input.workspaceId, input.currentUserId),
+    ...(input.anchor === undefined ? {} : { anchor: input.anchor }),
+    ...(input.branches === undefined ? {} : { branches: input.branches }),
+  });
+  return { bound, compiled };
+}
+
+/** A cursor that does not belong to this query. */
+export class CursorError extends Error {}
+
+const signatureOf = (compiled: CompiledSearch) =>
+  createHash('sha256').update(compiled.signature).digest('base64url').slice(0, 12);
+
+/** The cursor after a row: its order values and id, tied to the query's order. */
+export function encodeCursor(compiled: CompiledSearch, row: PageRow): string {
+  const values = compiled.keys.map((_, i) => row[`c${i}`] ?? null);
+  const body = JSON.stringify({ s: signatureOf(compiled), v: values, i: row.id });
+  return Buffer.from(body).toString('base64url');
+}
+
+export function decodeCursor(compiled: CompiledSearch, text: string): Cursor {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(text, 'base64url').toString('utf8'));
+  } catch {
+    throw new CursorError('unreadable cursor');
+  }
+  const c = parsed as { s?: unknown; v?: unknown; i?: unknown };
+  if (c.s !== signatureOf(compiled)) throw new CursorError('the cursor belongs to another order');
+  if (!Array.isArray(c.v) || c.v.length !== compiled.keys.length) {
+    throw new CursorError('unreadable cursor');
+  }
+  if (!Number.isSafeInteger(c.i)) throw new CursorError('unreadable cursor');
+  const values = c.v.map((v: unknown) => {
+    if (v === null || typeof v === 'number' || typeof v === 'string') return v as Scalar | null;
+    throw new CursorError('unreadable cursor');
+  });
+  return { values, id: c.i as number };
+}
+
+/** Whether an error is the statement timeout stopping a query (SQLSTATE 57014). */
+export function isQueryTimeout(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === '57014';
+}
+
+/** Runs `work` in a read-only transaction whose statements stop after `timeoutMs`. */
+export async function readOnly<T>(
+  db: Kysely<Database>,
+  timeoutMs: number,
+  work: (trx: Transaction<Database>) => Promise<T>,
+): Promise<T> {
+  return db
+    .transaction()
+    .setAccessMode('read only')
+    .execute(async (trx) => {
+      await sql`SELECT set_config('statement_timeout', ${String(Math.max(1, Math.round(timeoutMs)))}, true)`.execute(
+        trx,
+      );
+      return work(trx);
+    });
+}
+
+export interface PageResult {
+  ids: number[];
+  next: string | null;
+  total?: { count: number; exact: boolean };
+}
+
+/** One page of ids after `after`, and the total when asked. */
+export async function runPage(
+  db: Kysely<Database>,
+  compiled: CompiledSearch,
+  options: {
+    limit: number;
+    after?: Cursor;
+    count?: boolean;
+    countCap?: number;
+    timeoutMs: number;
+  },
+): Promise<PageResult> {
+  return readOnly(db, options.timeoutMs, async (trx) => {
+    const { rows } = await compiled.page(options.limit + 1, options.after).execute(trx);
+    const page = rows.slice(0, options.limit);
+    const last = page[page.length - 1];
+    const result: PageResult = {
+      ids: page.map((r) => r.id),
+      next: rows.length > options.limit && last ? encodeCursor(compiled, last) : null,
+    };
+    if (options.count) {
+      const cap = options.countCap ?? COUNT_CAP;
+      const counted = await compiled.count(cap + 1).execute(trx);
+      const n = counted.rows[0]?.n ?? 0;
+      result.total = { count: Math.min(n, cap), exact: n <= cap };
+    }
+    return result;
+  });
+}
+
+/**
+ * Every matching id in the query's order, a keyset page at a time, up to `max` (bulk changes
+ * by query, M1-037): `more` says that there were more than `max`.
+ */
+export async function collectIds(
+  db: Kysely<Database>,
+  compiled: CompiledSearch,
+  options: { max: number; timeoutMs: number; pageSize?: number },
+): Promise<{ ids: number[]; more: boolean }> {
+  const size = options.pageSize ?? 1000;
+  const ids: number[] = [];
+  let after: Cursor | undefined;
+  for (;;) {
+    const rows = await readOnly(db, options.timeoutMs, async (trx) => {
+      return (await compiled.page(size, after).execute(trx)).rows;
+    });
+    for (const row of rows) {
+      if (ids.length === options.max) return { ids, more: true };
+      ids.push(row.id);
+    }
+    const last = rows[rows.length - 1];
+    if (rows.length < size || !last) return { ids, more: false };
+    after = { values: compiled.keys.map((_, i) => last[`c${i}`] ?? null), id: last.id };
+  }
+}
+
+export interface Explanation {
+  sql: string;
+  parameters: readonly unknown[];
+  anchored: boolean;
+  branched: boolean;
+  plan: unknown;
+}
+
+/** The statement of a page and the planner's plan for it, run when `analyze` (QRY-010 (2)). */
+export async function explainSearch(
+  db: Kysely<Database>,
+  compiled: CompiledSearch,
+  options: { limit: number; analyze: boolean; timeoutMs: number },
+): Promise<Explanation> {
+  const statement = compiled.page(options.limit + 1);
+  const text = statement.compile(db);
+  const mode = options.analyze ? sql`FORMAT JSON, ANALYZE, BUFFERS` : sql`FORMAT JSON`;
+  const plan = await readOnly(db, options.timeoutMs, async (trx) => {
+    const { rows } = await sql<{ 'QUERY PLAN': unknown }>`EXPLAIN (${mode}) ${statement}`.execute(
+      trx,
+    );
+    return rows[0]?.['QUERY PLAN'];
+  });
+  return {
+    sql: text.sql,
+    parameters: text.parameters,
+    anchored: compiled.anchored,
+    branched: compiled.branched,
+    plan,
+  };
+}

@@ -40,6 +40,19 @@ bulk changes would drift from it.
 - **Audit.** `bulk_operation.created` and `bulk_operation.cancelled` are audited; each ticket's
   change is ticket activity in its history (M1-009), as for single changes.
 
+## Selection by query (M1-037)
+
+`POST /api/v1/bulk-operations` takes `query` (the query language, up to 100,000 characters)
+instead of `tickets`; exactly one of the two (400 `tickets_or_query` otherwise). The server
+runs the query as the person asking, with the same permission pre-filter as search (QRY-008),
+and collects the matching ids in the query's order a keyset page of 1,000 at a time
+(`search/run.ts` `collectIds`), each page under the search timeout. More than 100,000 matches
+answer 400 `too_many_tickets`, none 400 `no_tickets`, and a query that cannot run the same
+error search gives (`invalid_query`, `unsupported_query`, 503 `query_timeout`). The items are
+those tickets, referenced by id; the operation's `params` keep the query, so the progress page
+can show what chose them. The selection is a snapshot: tickets that match later are not
+added, and each item is still checked when its turn comes.
+
 ## Options considered
 
 | Option | For | Against |

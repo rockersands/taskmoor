@@ -20,6 +20,7 @@ describe('loadConfig', () => {
       metricsPort: 9464,
       metricsHost: '0.0.0.0',
       shutdownDrainMs: 2000,
+      queryTimeoutMs: 30_000,
       storage: { urlTtl: 300 },
     });
   });

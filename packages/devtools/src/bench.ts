@@ -44,6 +44,20 @@ export const BUDGETS: readonly Budget[] = [
       r.queries.map((q) => ({ name: `${q.id} p95`, value: q.p95 })),
   },
   {
+    // M1-037: the 50-query search perf set, p95 under 300 ms at 10M tickets, for the compiled
+    // statement and the whole request, as a member and as an administrator.
+    spike: 'search',
+    unit: 'ms',
+    max: 300,
+    select: (r: {
+      queries: { id: string; viewer: string; statement: Timed; endpoint?: Timed }[];
+    }) =>
+      r.queries.flatMap((q) => [
+        { name: `${q.viewer} ${q.id} p95`, value: q.statement.p95 },
+        ...(q.endpoint ? [{ name: `${q.viewer} ${q.id} request p95`, value: q.endpoint.p95 }] : []),
+      ]),
+  },
+  {
     // CORE: field edit p95 under 50 ms and item open under 100 ms, on the chosen candidate.
     spike: 'field-storage',
     unit: 'ms',
