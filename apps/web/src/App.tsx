@@ -5,6 +5,7 @@ import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
 import { TicketAttachmentsPage } from './attachments/TicketAttachmentsPage';
+import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
@@ -85,6 +86,7 @@ const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
+const BULK = '#/bulk';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
 const UNSUBSCRIBE = '#/unsubscribe';
@@ -254,6 +256,10 @@ function Pages() {
     active = 'tracks';
     const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
     content = <TicketAttachmentsPage key={ticket} ticket={ticket} />;
+  } else if (hash.startsWith(`${BULK}/`) && hash.length > BULK.length + 1) {
+    active = 'tracks';
+    const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
+    content = <BulkOperationPage key={id} id={id} />;
   } else if (isRoute(hash, SIGN_IN)) {
     active = '';
     guarded = false;

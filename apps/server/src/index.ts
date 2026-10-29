@@ -1,6 +1,10 @@
 export { type AppDeps, buildApp } from './app';
 export { registerAttachmentJobs } from './attachments/jobs';
 export { type AttachmentStores, attachmentStores, storesOf } from './attachments/stores';
+export { Authorizer } from './authz/authorizer';
+export { BULK_TASK, registerBulkJobs } from './bulk/jobs';
 export { loadConfig, type ServerConfig } from './config';
+export { JobRunner } from './events/queue';
+export { FieldCatalogs } from './fields/catalog';
 export { startDirectorySync } from './ldap/scheduler';
 export { issueSetupToken, setupLink, setupState } from './setup';

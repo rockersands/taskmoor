@@ -12,6 +12,7 @@ import '../src/styles/directories.css';
 import '../src/styles/tickets.css';
 import '../src/styles/trash.css';
 import '../src/styles/attachments.css';
+import '../src/styles/bulk.css';
 import '../src/styles/workflows.css';
 import '../src/styles/richtext.css';
 

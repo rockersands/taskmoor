@@ -43,7 +43,13 @@ export async function enqueue(db: Db, jobs: readonly NewJob[]): Promise<number> 
   return Number(result.numAffectedRows ?? 0);
 }
 
-export async function claim(db: Db, worker: string, limit: number): Promise<ClaimedJob[]> {
+/** Claims up to `limit` due jobs; with `tasks`, only jobs of those tasks. */
+export async function claim(
+  db: Db,
+  worker: string,
+  limit: number,
+  tasks?: readonly string[],
+): Promise<ClaimedJob[]> {
   const { rows } = await sql<{
     id: string;
     workspace_id: number;
@@ -55,6 +61,7 @@ export async function claim(db: Db, worker: string, limit: number): Promise<Clai
     WITH picked AS (
       SELECT id FROM job
        WHERE done_at IS NULL AND locked_at IS NULL AND run_at <= now()
+         AND (${tasks === undefined} OR task = ANY(${[...(tasks ?? [])]}::text[]))
        ORDER BY run_at, id LIMIT ${limit}
        FOR UPDATE SKIP LOCKED)
     UPDATE job j
@@ -101,13 +108,17 @@ export async function releaseStale(db: Db, olderThanMs: number): Promise<number>
 
 export type JobHandler = (job: ClaimedJob) => Promise<void>;
 
-/** Runs claimed jobs through their task's handler; unknown tasks fail and retry later. */
+/**
+ * Runs claimed jobs through their task's handler; unknown tasks fail and retry later. A runner
+ * given `tasks` claims only those, and leaves every other job to the workers.
+ */
 export class JobRunner {
   private readonly handlers = new Map<string, JobHandler>();
 
   constructor(
     private readonly db: Kysely<Database>,
     readonly name: string,
+    private readonly options: { tasks?: readonly string[] } = {},
   ) {}
 
   handle(task: string, handler: JobHandler): void {
@@ -116,7 +127,7 @@ export class JobRunner {
 
   /** Claims and runs one batch. Returns how many jobs completed. */
   async runOnce(batch = 25): Promise<number> {
-    const jobs = await claim(this.db, this.name, batch);
+    const jobs = await claim(this.db, this.name, batch, this.options.tasks);
     const done: string[] = [];
     for (const job of jobs) {
       const handler = this.handlers.get(job.task);

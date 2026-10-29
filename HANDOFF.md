@@ -14,37 +14,27 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
-## Last session: 2026-10-28 (cloud container)
+## Last session: 2026-10-29 (cloud container)
 
 ### Resume here (the user asked to wrap up; scope is "up to M1-035")
 
 Remaining tasks up to M1-035, in order:
 
-1. **M1-021 bulk operations: finish it** (server side done and pushed; ADR-043).
-   - Measure a 10,000-ticket bulk edit (the backlog's < 2 min). Seed tickets with SQL as
-     `bulk/bulk.test.ts` does and run the job in a `*.large.test.ts` behind an environment flag,
-     like `routes/attachments.large.test.ts`. 1,200 tickets at concurrency 4 ran in roughly
-     15 s on a loaded machine (not a measurement); raise `concurrency` in `registerBulkJobs` if
-     10,000 misses the budget.
-   - A progress page in the web app: `#/bulk/<id>` reading `GET /api/v1/bulk-operations/:id`
-     and `/items`, with cancel. Strings in `messages.en.ts`, a story, a unit test and an e2e.
-     The e2e API server (`apps/web/e2e/api-server.ts`) runs no job worker: add a `JobRunner`
-     loop with `registerBulkJobs` there.
-   - Then mark M1-021 done in `docs/plan/progress.csv` and STATUS.
-2. **M1-018 comments: start again.** A background agent was building it in
+1. **M1-018 comments: start again.** A background agent was building it in
    `/home/user/wt-comments` (branch `work/m1-018-comments`) and was stopped at the wrap-up with
-   nothing committed; that worktree does not survive the container. Migration 0039 is free for
-   it. What it must do: CORE-020 rich-text comments (reuse `RichTextEditor` and
+   nothing committed but a draft migration (`0039_comments.ts`: `ticket_comment`,
+   `ticket_comment_version`, `ticket_comment_reaction`); that worktree does not survive the
+   container. Number the migration **0041**, not 0039: 0040 is on main, and Kysely refuses a
+   migration that sorts before one a database already ran. What it must do: CORE-020 rich-text comments (reuse `RichTextEditor` and
    `readRichText`/`inFormat`), role or group visibility enforced on every read path (API,
    ticket page, search, notifications via the `ticket_commented` event, history, exports),
    reactions, edit history readable by administrators, own/all edit and delete permissions,
    the status `comment` lock (`statusGate(...).check(status, 'comment')`, ADR-042), one event,
    contract scenario and audit decision per mutating route, `refreshFormulas` if a comment
    touches `ticket.updated_at`, a comments section on the ticket page with stories and an e2e.
-3. **M1-028 workflow maps** (needs M1-021): workflow per ticket type in shared mode, per track
+2. **M1-028 workflow maps** (M1-021 is done): workflow per ticket type in shared mode, per track
    in local mode; switching a map migrates statuses in the background (a bulk-style job);
    100k tickets in < 5 min with history rows.
-4. **M1-016** waits only on the MinIO run in CI.
 
 Not to start: anything after M1-035. `/home/user/wt-compiler` (M1-037, branch
 `work/m1-037-sql-compiler`) is uncommitted work from an earlier agent, left as the user asked;
@@ -52,6 +42,20 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-021 bulk operations, finished.** Web: `apps/web/src/bulk/` (`client.ts`,
+  `BulkOperationPage.tsx` at `#/bulk/<id>`, stories, fixtures, tests), `styles/bulk.css`, the
+  `bulk.*` strings; e2e `apps/web/e2e/bulk.spec.ts` on the attachments database, whose bulk
+  jobs the e2e API server now runs. `JobRunner` takes `{ tasks }` to claim only those tasks.
+  The 10,000-ticket edit took 50.0 s (`bulk/bulk.large.test.ts`, run with
+  `TASKMOOR_LARGE_BULK=1`). Not yet: an entry point from ticket lists (no list page exists;
+  M1-046 and the search page should start bulk changes), selection by query (M1-037).
+- **Main's CI fixed** after the merge: label suggestions sort with `COLLATE "C"` (CI's
+  Postgres sorts by another collation), the email tests no longer depend on the time of day
+  or on quoted-printable line breaks in headers, the all-in-one image removes a stale
+  `postmaster.pid` left by an unclean stop, and Docker Hub dropped `minio/minio`:
+  `tools/storage/minio-test.sh` tries `quay.io/minio/minio`, then the community fork
+  `pgsty/minio`, both pinned (`TASKMOOR_MINIO_IMAGE` overrides). On 2026-10-29 the quay.io tag
+  did not pull and the fork passed the live S3 tests, so **M1-016 is done**.
 - **M1-021 bulk operations, server side** (migration 0040; ADR-043). `apps/server/src/bulk/`
   (`model.ts` request schema, `run.ts` runner, `jobs.ts` the `bulk.run` task, registered in the
   worker in `main.ts`), `routes/bulk.ts`, `tickets/caller.ts`. `routes/tickets.ts` now builds

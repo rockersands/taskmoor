@@ -127,6 +127,27 @@ describe('domain event bus and job queue (M1-005, ADR-015)', () => {
     expect(await claim(db, 'other', 10)).toHaveLength(1);
   });
 
+  it('a runner for some tasks leaves every other job alone', async () => {
+    await enqueue(db, [
+      { workspaceId: 1, task: 'mine', key: 'mine-1' },
+      { workspaceId: 1, task: 'theirs', key: 'theirs-1' },
+    ]);
+    const runner = new JobRunner(db, 'some', { tasks: ['mine'] });
+    const ran: string[] = [];
+    runner.handle('mine', async (job) => {
+      ran.push(job.task);
+    });
+    expect(await runner.runOnce()).toBe(1);
+    expect(ran).toEqual(['mine']);
+    const theirs = await db
+      .selectFrom('job')
+      .selectAll()
+      .where('task', '=', 'theirs')
+      .executeTakeFirstOrThrow();
+    expect(theirs).toMatchObject({ attempts: 0, locked_at: null, done_at: null, last_error: null });
+    expect(await claim(db, 'other', 10)).toHaveLength(1);
+  });
+
   it('[AUT-010] delivers each event once with two relays and two runners at work', async () => {
     const delivered = new Map<string, number>();
     const bus = new EventBus(db);

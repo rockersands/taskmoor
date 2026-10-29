@@ -51,7 +51,12 @@ bulk changes would drift from it.
 ## Consequences
 
 - New ticket write routes are callable from jobs if they keep to the `Caller` fields.
-- Throughput is that of single writes, four at a time; the 10,000-ticket target is to be
-  measured (M1-021 notes) and the concurrency raised if needed.
+- Throughput is that of single writes, four at a time: a 10,000-ticket edit took 50 s
+  (200 tickets a second, `bulk/bulk.large.test.ts`), within the two-minute budget. Raise the
+  concurrency if heavier actions or larger operations need it.
+- The progress page (`#/bulk/<id>`) reads the operation every two seconds until it finishes
+  and words each refusal with the same texts as single changes (locks through `useLockText`).
+- A `JobRunner` may claim only some tasks (`{ tasks }`); the e2e API server runs bulk jobs
+  that way without touching other queued work.
 - Selecting tickets by a query waits for the query compiler (M1-037); archive, comment and
   follow actions wait for their routes to be callable the same way.

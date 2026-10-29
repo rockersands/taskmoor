@@ -6,11 +6,24 @@
 // Attachments (M1-016) get a database of their own, set up here, served twice: on 8791 with
 // files on local disk and on 8792 with files in an S3-compatible bucket (a fake one on 8793,
 // checking every request's signature). Two more previews (4174, 4175) proxy to them.
+//
+// Bulk changes (M1-021) use that database and its administrator too: a job loop here runs
+// their jobs, and only theirs, as a worker would.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb, migrateToLatest } from '@taskmoor/db';
-import { buildApp, issueSetupToken, startDirectorySync, storesOf } from '@taskmoor/server';
+import {
+  Authorizer,
+  BULK_TASK,
+  buildApp,
+  FieldCatalogs,
+  issueSetupToken,
+  JobRunner,
+  registerBulkJobs,
+  startDirectorySync,
+  storesOf,
+} from '@taskmoor/server';
 import { FakeIdp, FakeLdap, FakeSamlIdp } from '@taskmoor/server/testing';
 import { LocalStore, S3Store } from '@taskmoor/storage';
 import { FakeS3 } from '@taskmoor/storage/testing';
@@ -137,6 +150,17 @@ const attachApps = [
 await attachApps[0]?.listen({ port: E2E_ATTACH_LOCAL_PORT, host: '127.0.0.1' });
 await attachApps[1]?.listen({ port: E2E_ATTACH_S3_PORT, host: '127.0.0.1' });
 
+// Bulk changes on the attachments database: the worker's loop, for their task alone.
+const bulkRunner = new JobRunner(attachDb, 'e2e-bulk', { tasks: [BULK_TASK] });
+registerBulkJobs(bulkRunner, attachDb, new Authorizer(attachDb), new FieldCatalogs(attachDb));
+let bulkRunning = true;
+const bulkLoop = (async () => {
+  while (bulkRunning) {
+    const ran = await bulkRunner.runOnce().catch(() => 0);
+    if (ran === 0) await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+})();
+
 const app = await buildApp({
   db,
   version: 'e2e',
@@ -152,6 +176,8 @@ process.stdout.write(`e2e API listening on http://127.0.0.1:${E2E_API_PORT}\n`);
 
 async function stop(): Promise<void> {
   await directories.stop();
+  bulkRunning = false;
+  await bulkLoop;
   await app.close();
   for (const attachApp of attachApps) await attachApp.close();
   s3.destroy();
