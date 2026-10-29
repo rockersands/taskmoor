@@ -55,11 +55,55 @@ it is lost with the container.
     backlog column, estimation and sprints (M1-044), drag and drop, virtualised rendering and
     the 5,000-card render budget (M1-046), the workflow lint for statuses unmapped on boards
     (`apps/web/src/workflow/lint.ts` mentions it).
-  - **Failing on the starting commit 1e0fc7b, not from this task:** after M1-052 the web tests
-    that sign in and land on Home (`session/UserMenu`, `SecondFactorStep`, `EnrollmentStep`,
-    `PasswordLinkPage`, `setup/SetupPage`: `HomeList` reads `tickets.length` of an answer the
-    stub backend does not give) and e2e `setup.spec.ts` (expects the heading "Home", the page
-    says "Hello, <name>"); `create.spec.ts` home test races other specs opening tickets as Ada.
+  - The agent found M1-052's Home failing in tests that sign in with a stub backend
+    (`HomeList` read `tickets.length` of a missing answer; the heading read "Hello, <name>").
+    Both were fixed on the branch before the merge: a list without tickets shows as empty, the
+    heading is "Home" with the greeting under it.
+
+- **M1-055 guardrails** (migration 0050; ADR-051). `apps/server/src/guardrails/model.ts`: the
+  ten guardrails of spec 01a section 1.7 with their defaults, `guardrailLimits` (a workspace's
+  own rows in `guardrail_limit`, the default otherwise), `enforceLimit` (throws
+  `GuardrailExceeded` inside the route's transaction), `fieldsPerTrackWith`, `guardrailUsage`.
+  `app.ts` turns `GuardrailExceeded` into 409 `{error:'guardrail_exceeded', guardrail, limit}`
+  and rethrows anything else. Enforced in releases (create, restore), areas, priorities (set
+  members), ticket types (type sets), workflow maps, workflows (create and drafts), visibility
+  (levels; `LEVELS_PER_POLICY` stays as a request cap of 1,000), access grants (with a lock on
+  the policy row) and fields (scopes and options). `routes/guardrails.ts`: `GET/PUT
+  /api/v1/admin/guardrails` (site administrators, admin token scope, `guardrail.changed`,
+  audited). Web `apps/web/src/guardrails/` (`#/admin/guardrails`: a meter per limit, above-limit
+  marks, a raise shows performance guidance). The old `too_many_options` and `too_many_levels`
+  refusals are gone; a client that matched on them now sees `guardrail_exceeded`.
+  - Migration order on the branch: 0047 (boards) was merged after 0050 had been written, so the
+    files sort 0043 to 0047, then 0050. No database outside this container ran 0050 before
+    0047; one that did refuses 0047 (Kysely): recreate it. 0048 and 0049 are free (0049 was
+    held for M1-038, which needed none).
+
+- **M1-041 query editor** (no migration; ADR-010 "Query editor (M1-041)"). `apps/web/src/search/`:
+  `basic.ts` (`basicToQuery`, `queryToBasic`, the basic subset: tracks, stages, assigned to me or
+  nobody, words; a property test checks the round trip), `suggest.ts` (`suggest(text, caret,
+  {customFields, tracks})`: fields, common ones first, operators, values, connectives, ORDER BY),
+  `SearchPage.tsx` (`#/search?q=`, basic and advanced forms, the editor as a combobox with a
+  listbox of suggestions, the server's check under the editor with its column, results a page
+  at a time), `client.ts`, `fixtures.ts`. The web app depends on `@taskmoor/query` for parsing.
+  e2e `search.spec.ts` (desktop and mobile, axe).
+
+- **M1-052 home, create dialog and palette** (migration 0046; ADR-046).
+  - Palette: `shell/paletteCommands.tsx` is a registry in two contexts (a stable setter, the
+    commands) so a page registers its commands without re-rendering in a loop;
+    `usePaletteCommands(id, commands)`. `Command.values` fills label placeholders. Ranking: label
+    prefix, then label contains, then keyword. The query clears when the palette closes.
+  - Ticket view registers every action (each transition, assign to me, unassign, follow, vote,
+    comment, edit summary, activity tabs, copy link, shortcuts); `followSeq` and `voteSeq` refs
+    keep an older refresh from overwriting a newer follow or vote; a transition form submits only
+    once its options are in.
+  - `tickets/CreateTicketDialog.tsx` (New ticket in the top bar, a plus on phones; C outside
+    fields; the palette) wraps `CreateTicketPage` (`variant`, `template`/`templateOf` to start
+    from a ticket). Layouts per ticket type come from the track's layout set.
+  - Home `#/home` (`home/HomePage.tsx`): assigned (search), opened lately (`GET /me/recent-tickets`,
+    `PUT /me/recent-tickets/:id` from the ticket view, the latest 50 kept in `ticket_visit`), and
+    followed (`GET /me/followed-tickets`), all read through the search filter.
+  - e2e: `ticket.spec.ts` (30+ palette actions from the keyboard alone), `create.spec.ts`
+    (a layout per type; the home lists).
 
 - **M1-086 importer framework** (migration 0045; ADR-048; built on `work/m1-086-importer`).
   `apps/server/src/import/`: `model.ts` (entity kinds in dependency order, `ImportSource`,
