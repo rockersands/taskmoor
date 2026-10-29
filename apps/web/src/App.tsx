@@ -12,6 +12,8 @@ import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
+import { BoardPage } from './boards/BoardPage';
+import { BoardsPage } from './boards/BoardsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
@@ -117,6 +119,8 @@ const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
 const BULK = '#/bulk';
+/** A board by id (#/boards/7), and the list of boards at #/boards (M1-043). */
+const BOARDS = '#/boards';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
 const UNSUBSCRIBE = '#/unsubscribe';
@@ -409,6 +413,11 @@ function Pages() {
     active = 'tracks';
     const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
     content = <TicketPage key={ticket} ticket={ticket} />;
+  } else if (isRoute(hash, BOARDS)) {
+    active = 'boards';
+    guarded = true;
+    const boardId = /^#\/boards\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    content = boardId ? <BoardPage key={boardId} boardId={Number(boardId)} /> : <BoardsPage />;
   } else if (hash.startsWith(`${BULK}/`) && hash.length > BULK.length + 1) {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
