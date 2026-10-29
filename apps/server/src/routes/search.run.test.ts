@@ -972,7 +972,8 @@ describe('search (M1-037)', () => {
     });
     expect(unknown.statusCode).toBe(400);
   });
-  // Last: it adds 5,000 tickets, enough work that a 1 ms timeout always stops the query.
+  // Last: it adds 20,000 tickets, enough work that a 1 ms timeout always stops the query, also
+  // where the server's timers fire late (Windows: about every 15 ms).
   it('[QRY-010] stops a query over the timeout with a clear error', {
     timeout: 60_000,
   }, async () => {
@@ -993,7 +994,7 @@ describe('search (M1-037)', () => {
           'type', 'paragraph', 'content', jsonb_build_array(jsonb_build_object(
             'type', 'text', 'text', 'Some words about item ' || g))))),
         'zz' || lpad(g::text, 8, '0')
-        FROM generate_series(1, 5000) AS g`.execute(database.db);
+        FROM generate_series(1, 20000) AS g`.execute(database.db);
     // Every ticket matches and the order has no index: the whole track is read and sorted.
     const q = 'summary !~ nothingmatches AND description !~ nothingmatches ORDER BY summary ASC';
     const res = await as(
