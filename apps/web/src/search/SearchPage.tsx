@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import {
   type BasicQuery,
@@ -10,12 +11,18 @@ import {
   STAGES,
   type Stage,
 } from './basic';
+import { ColumnPicker } from './ColumnPicker';
 import {
   type CheckResult,
+  exportUrl,
   type SearchPage as Page,
   type SearchClient,
+  type SearchField,
+  type SearchTicket,
   searchClient,
 } from './client';
+import { loadColumns, saveColumns } from './columns';
+import { ResultTable } from './ResultTable';
 import { type Suggestions, suggest } from './suggest';
 
 export interface SearchPageProps {
@@ -28,7 +35,7 @@ export interface SearchPageProps {
 type Results =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; page: Page; more: boolean }
+  | { status: 'loaded'; page: Page; more: boolean; query: string }
   | { status: 'failed'; message: string };
 
 /** The query in the address, `#/search?q=...`, or an empty one. */
@@ -41,6 +48,8 @@ export function queryFromHash(hash: string): string {
  * Searching tickets (M1-041; QRY-001): a basic mode of tracks, stages, assignment and words, and
  * an advanced mode where the query is typed with suggestions at the caret and errors shown where
  * they are. Basic choices become a query; a query within the basic mode shows as its choices.
+ * The results (M1-042; QRY-014, QRY-015) show in the person's columns, edit in place and export
+ * as CSV or JSON.
  */
 export function SearchPage({ client = searchClient, initialQuery }: SearchPageProps) {
   const t = useT();
@@ -54,12 +63,19 @@ export function SearchPage({ client = searchClient, initialQuery }: SearchPagePr
   const [tooMuch, setTooMuch] = useState(false);
   const [results, setResults] = useState<Results>({ status: 'idle' });
   const [tracks, setTracks] = useState<{ key: string; name: string }[]>([]);
-  const [customFields, setCustomFields] = useState<string[]>([]);
+  const [fields, setFields] = useState<SearchField[]>([]);
+  const { session } = useSession();
+  const userId = session.status === 'signed-in' ? session.user.id : 0;
+  const [columns, setColumns] = useState<string[]>(() => loadColumns(userId));
+  const chooseColumns = (next: string[]) => {
+    setColumns(next);
+    saveColumns(userId, next);
+  };
 
   useEffect(() => {
     void Promise.allSettled([client.tracks(), client.fields()]).then(([tr, fi]) => {
       if (tr.status === 'fulfilled') setTracks(tr.value);
-      if (fi.status === 'fulfilled') setCustomFields(fi.value.map((f) => f.name));
+      if (fi.status === 'fulfilled') setFields(fi.value);
     });
   }, [client]);
 
@@ -73,13 +89,14 @@ export function SearchPage({ client = searchClient, initialQuery }: SearchPagePr
             ? {
                 status: 'loaded',
                 more: page.next !== null,
+                query,
                 page: {
                   tickets: [...current.page.tickets, ...page.tickets],
                   next: page.next,
                   ...(current.page.total ? { total: current.page.total } : {}),
                 },
               }
-            : { status: 'loaded', page, more: page.next !== null },
+            : { status: 'loaded', page, more: page.next !== null, query },
         );
       } catch (error) {
         if (expired(error)) return;
@@ -157,7 +174,7 @@ export function SearchPage({ client = searchClient, initialQuery }: SearchPagePr
         <AdvancedForm
           text={text}
           client={client}
-          context={{ customFields, tracks: tracks.map((tr) => tr.key) }}
+          context={{ customFields: fields.map((f) => f.name), tracks: tracks.map((tr) => tr.key) }}
           onChange={(next) => {
             setText(next);
             setTooMuch(false);
@@ -165,7 +182,29 @@ export function SearchPage({ client = searchClient, initialQuery }: SearchPagePr
           onSearch={searchFor}
         />
       )}
-      <ResultList results={results} onMore={(cursor) => void run(currentQuery(), cursor)} />
+      <ResultList
+        results={results}
+        columns={columns}
+        fields={fields}
+        client={client}
+        onColumns={chooseColumns}
+        onSaved={(ticket) =>
+          setResults((current) =>
+            current.status === 'loaded'
+              ? {
+                  ...current,
+                  page: {
+                    ...current.page,
+                    tickets: current.page.tickets.map((tk) =>
+                      tk.id === ticket.id ? { ...tk, ...ticket } : tk,
+                    ),
+                  },
+                }
+              : current,
+          )
+        }
+        onMore={(cursor) => void run(currentQuery(), cursor)}
+      />
     </section>
   );
 
@@ -439,7 +478,23 @@ function AdvancedForm({
   );
 }
 
-function ResultList({ results, onMore }: { results: Results; onMore: (cursor: string) => void }) {
+function ResultList({
+  results,
+  columns,
+  fields,
+  client,
+  onColumns,
+  onSaved,
+  onMore,
+}: {
+  results: Results;
+  columns: string[];
+  fields: SearchField[];
+  client: SearchClient;
+  onColumns: (columns: string[]) => void;
+  onSaved: (ticket: SearchTicket) => void;
+  onMore: (cursor: string) => void;
+}) {
   const t = useT();
   const headingId = useId();
   if (results.status === 'idle') return null;
@@ -460,34 +515,42 @@ function ResultList({ results, onMore }: { results: Results; onMore: (cursor: st
       )}
       {results.status === 'loaded' && (
         <>
-          <p role="status" className="page-note">
-            {results.page.total
-              ? t(results.page.total.exact ? 'search.count' : 'search.countAtLeast', {
-                  count: results.page.total.count,
-                })
-              : t('search.shown', { count: results.page.tickets.length })}
-          </p>
+          <div className="search-results-bar">
+            <p role="status" className="page-note">
+              {results.page.total
+                ? t(results.page.total.exact ? 'search.count' : 'search.countAtLeast', {
+                    count: results.page.total.count,
+                  })
+                : t('search.shown', { count: results.page.tickets.length })}
+            </p>
+            <ColumnPicker columns={columns} fields={fields} onChange={onColumns} />
+            {results.page.tickets.length > 0 && (
+              <nav className="search-export" aria-label={t('search.export')}>
+                <a
+                  className="button-secondary search-export-link"
+                  href={exportUrl(results.query, 'csv', columns)}
+                  download
+                >
+                  {t('search.export.csv')}
+                </a>
+                <a
+                  className="button-secondary search-export-link"
+                  href={exportUrl(results.query, 'json', columns)}
+                  download
+                >
+                  {t('search.export.json')}
+                </a>
+              </nav>
+            )}
+          </div>
           {results.page.tickets.length > 0 && (
-            <ul className="home-tickets search-tickets">
-              {results.page.tickets.map((ticket) => (
-                <li key={ticket.id} className="home-ticket">
-                  <a
-                    href={`#/tickets/${encodeURIComponent(ticket.key)}`}
-                    className="home-ticket-link"
-                  >
-                    <span className="home-ticket-key">{ticket.key}</span>{' '}
-                    <span>{ticket.summary}</span>
-                  </a>
-                  <span className="home-ticket-status">
-                    {t('search.ticketMeta', {
-                      type: ticket.ticketType.name,
-                      status: ticket.status.name,
-                      assignee: ticket.assignee?.name ?? t('search.unassigned'),
-                    })}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <ResultTable
+              tickets={results.page.tickets}
+              columns={columns}
+              fields={fields}
+              client={client}
+              onSaved={onSaved}
+            />
           )}
           {results.more && results.page.next && (
             <button

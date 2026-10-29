@@ -141,14 +141,14 @@ const VIEW_KEYS = new Set<string>(
   } satisfies Partial<Record<keyof TicketView, 0>>),
 );
 
-interface Projection {
+export interface Projection {
   keys: Set<string>;
   /** Custom field ids to keep; all of them when `fields` itself is asked for. */
   custom: Set<string>;
 }
 
 /** The properties `fields` asks for, or the first name it does not know. */
-function projection(fields: string | string[] | undefined): Projection | string | undefined {
+export function projection(fields: string | string[] | undefined): Projection | string | undefined {
   if (fields === undefined) return undefined;
   const names = (Array.isArray(fields) ? fields : fields.split(','))
     .map((f) => f.trim())
@@ -163,7 +163,7 @@ function projection(fields: string | string[] | undefined): Projection | string 
   return out;
 }
 
-function project(view: TicketView, p: Projection | undefined): Record<string, unknown> {
+export function project(view: TicketView, p: Projection | undefined): Record<string, unknown> {
   if (!p) return view;
   const out: Record<string, unknown> = { id: view.id, key: view.key };
   for (const key of p.keys) out[key] = view[key as keyof TicketView];
@@ -171,6 +171,42 @@ function project(view: TicketView, p: Projection | undefined): Record<string, un
     out.fields = Object.fromEntries(Object.entries(view.fields).filter(([id]) => p.custom.has(id)));
   }
   return out;
+}
+
+/**
+ * The tickets of a page as the ticket list shows them, in the page's order (also the export,
+ * M1-042).
+ */
+export async function searchViews(
+  db: Kysely<Database>,
+  catalogs: FieldCatalogs,
+  request: FastifyRequest,
+  ids: readonly number[],
+  filter: RawBuilder<boolean>,
+): Promise<TicketView[]> {
+  if (ids.length === 0) return [];
+  const ws = request.workspaceId;
+  // The filter again: a ticket hidden between the two statements stays hidden.
+  const rows = await ticketQuery(db, ws)
+    .where('k.id', 'in', [...ids])
+    .where('k.deleted_at', 'is', null)
+    .where(filter)
+    .execute();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const ordered = ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [row] : [];
+  });
+  const parents = ordered.flatMap((r) => (r.parent_id === null ? [] : [r.parent_id]));
+  const visible = await request.authz.visibleTickets(parents);
+  const custom = await customFieldViews(db, ws, await catalogs.get(ws), ordered);
+  return ordered.map((r) =>
+    ticketView(
+      r,
+      r.parent_id !== null && visible.has(r.parent_id),
+      (custom.get(r.id) ?? {}) as Record<string, JsonValue>,
+    ),
+  );
 }
 
 /**
@@ -258,36 +294,8 @@ export function registerSearchRoutes(
     }
   });
 
-  /** The tickets of a page as the ticket list shows them, in the page's order. */
-  async function views(
-    request: FastifyRequest,
-    ids: readonly number[],
-    filter: RawBuilder<boolean>,
-  ): Promise<TicketView[]> {
-    if (ids.length === 0) return [];
-    const ws = request.workspaceId;
-    // The filter again: a ticket hidden between the two statements stays hidden.
-    const rows = await ticketQuery(db, ws)
-      .where('k.id', 'in', [...ids])
-      .where('k.deleted_at', 'is', null)
-      .where(filter)
-      .execute();
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    const ordered = ids.flatMap((id) => {
-      const row = byId.get(id);
-      return row ? [row] : [];
-    });
-    const parents = ordered.flatMap((r) => (r.parent_id === null ? [] : [r.parent_id]));
-    const visible = await request.authz.visibleTickets(parents);
-    const custom = await customFieldViews(db, ws, await catalogs.get(ws), ordered);
-    return ordered.map((r) =>
-      ticketView(
-        r,
-        r.parent_id !== null && visible.has(r.parent_id),
-        (custom.get(r.id) ?? {}) as Record<string, JsonValue>,
-      ),
-    );
-  }
+  const views = (request: FastifyRequest, ids: readonly number[], filter: RawBuilder<boolean>) =>
+    searchViews(db, catalogs, request, ids, filter);
 
   async function search(request: FastifyRequest, reply: FastifyReply, input: unknown) {
     const parsed = searchInput.safeParse(input);

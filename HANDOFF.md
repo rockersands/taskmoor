@@ -53,6 +53,28 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
 
 ### Done (newest first)
 
+- **M1-042 search results** (built by a background agent on `work/m1-042-results`; no
+  migration; ADR-052). Server: `GET /api/v1/search/export?q=&format=csv|json&columns=`
+  (`routes/search-export.ts`, registered in `app.ts`) streams every match through
+  `prepareSearch` and `compiled.page` by keyset (500 per page, each page read again under the
+  permission filter by `searchViews`, now exported from `routes/search.ts` with `projection`
+  and `project`; the compiler is untouched). CSV uses the audit export's `csvField` (RFC 4180,
+  formula guard); JSON is an array of tickets as search shows them. 100,000 tickets: CSV
+  5.4 to 8.7 s, JSON 5.0 to 14.8 s over three runs under load, live heap growth about 2 MB
+  (`search-export.large.test.ts`, `TASKMOOR_LARGE_EXPORT=1`). Web: `search/ResultTable.tsx` (table in a focusable scroll
+  region, cells edited in place through `PATCH /api/v1/tickets/:id` with `version`),
+  `search/ColumnPicker.tsx`, `search/columns.ts` (column ids, localStorage per person, cell
+  editors and PATCH bodies), `styles/search.css`, export links; e2e
+  `apps/web/e2e/search-results.spec.ts`; `search.spec.ts` now finds result links by key.
+  - The export prepares the query with `...searchPerson(request)` as the search route does
+    (M1-038: time zone, session, allowed tracks), so functions read the same in both.
+  - Not yet: export as a background job (500,000 rows, QRY-015 (1)), Excel, Word and XML,
+    all-fields export, the CSV importer round trip (QRY-015 (2)), server-side column sets
+    (with saved searches, M1-063), column widths, a people picker for the assignee cell,
+    editing select, user and other reference custom fields in place.
+  - `search/basic.test.ts` (M1-041) can fail on a random seed: `basicToQuery` leaves a track
+    key that is a query keyword (`ON`, `IN`, `TO`, `OR`, ...) unquoted, so `track = ON` does not
+    parse back. A real bug of the basic mode, not changed here.
 - **M1-038 query functions, batch 1** (built on `work/m1-038-functions`; no migration; ADR-010
   "Functions (M1-038)"). `packages/query`: `functions.ts` (the signature of every function of
   spec 01b 1.6), `dates.ts` (wall-clock arithmetic in a time zone), the resolver checks calls
