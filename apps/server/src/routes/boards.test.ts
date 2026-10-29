@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
@@ -5,7 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 
-const PASSWORD = 'lantern copper meadow';
+// Made for this run: no password is written in the repository.
+const PASSWORD = `boards-${randomBytes(18).toString('base64url')}`;
 let address = 0;
 const nextAddress = () => `100.75.${Math.floor(++address / 250)}.${(address % 250) + 1}`;
 
