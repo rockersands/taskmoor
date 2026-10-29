@@ -97,6 +97,8 @@ export type TicketEdit = Partial<{
 /** The endpoints the ticket view uses. Stories and tests pass their own. */
 export interface TicketClient {
   get: (ticket: string) => Promise<TicketDetails>;
+  /** Records that the person opened the ticket, for their Recent list (M1-052). */
+  visit?: (id: number) => Promise<void>;
   edit: (id: number, change: TicketEdit) => Promise<TicketDetails>;
   transitions: (id: number) => Promise<Transition[]>;
   transition: (
@@ -122,6 +124,9 @@ export interface TicketClient {
 export const ticketClient: TicketClient = {
   get: async (ticket) =>
     (await api<{ ticket: TicketDetails }>(`/tickets/${encodeURIComponent(ticket)}`)).ticket,
+  visit: async (id) => {
+    await api<unknown>(`/me/recent-tickets/${id}`, { method: 'PUT' });
+  },
   edit: async (id, change) =>
     (await api<{ ticket: TicketDetails }>(`/tickets/${id}`, { method: 'PATCH', body: change }))
       .ticket,

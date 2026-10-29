@@ -1521,6 +1521,19 @@
       "CREATE UNIQUE INDEX ticket_type_pkey ON public.ticket_type USING btree (id)"
     ]
   },
+  "ticket_visit": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "ticket_id integer not null",
+      "visited_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_visit_pkey ON public.ticket_visit USING btree (user_id, ticket_id)",
+      "CREATE INDEX ticket_visit_recent_idx ON public.ticket_visit USING btree (user_id, visited_at DESC, ticket_id DESC)",
+      "CREATE INDEX ticket_visit_ticket_idx ON public.ticket_visit USING btree (ticket_id)"
+    ]
+  },
   "ticket_vote": {
     "columns": [
       "workspace_id integer not null",

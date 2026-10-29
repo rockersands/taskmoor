@@ -942,6 +942,17 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM import_run r, track t WHERE r.source_system = 'seed' AND t.key = 'SEED'`.execute(db);
     },
   },
+  '0046_ticket_visits': {
+    tables: {
+      ticket_visit:
+        "user_id IN (SELECT id FROM app_user WHERE email = 'seed@example.com') AND ticket_id IN (SELECT id FROM ticket WHERE summary = 'Seed ticket')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO ticket_visit (workspace_id, user_id, ticket_id)
+        SELECT 1, u.id, k.id FROM app_user u, ticket k
+         WHERE u.email = 'seed@example.com' AND k.summary = 'Seed ticket'`.execute(db);
+    },
+  },
 };
 
 /**

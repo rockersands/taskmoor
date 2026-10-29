@@ -170,6 +170,10 @@ export function TicketPage({
   useEffect(() => {
     if (loaded) void refreshAround(loaded.id);
   }, [loaded?.id, refreshAround]);
+  // Opened: the home page's Recent list remembers it (M1-052). A failure costs nothing here.
+  useEffect(() => {
+    if (ticketId !== null) client.visit?.(ticketId).catch(() => {});
+  }, [client, ticketId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: one source per ticket
   const findPeople = useMemo(

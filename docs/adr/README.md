@@ -51,6 +51,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [043](0043-bulk-operations.md) | Bulk operations run through the ticket routes, as the person who asked | Accepted |
 | [044](0044-comments.md) | Comments, their restriction, versions and reactions | Accepted |
 | [045](0045-workflow-maps.md) | Workflow maps, track-local workflows and background status migration | Accepted |
+| [046](0046-home-create-dialog-palette.md) | The home page, the create dialog and a palette that reaches every action | Accepted |
 | [047](0047-inbox-mentions-activity.md) | The in-app inbox, mentions and activity streams | Accepted |
 | [048](0048-importer-framework.md) | The importer framework: extract, map and load in resumable batches | Accepted |
 

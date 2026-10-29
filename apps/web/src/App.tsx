@@ -17,6 +17,7 @@ import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { FieldsAdminPage } from './fields/FieldsAdminPage';
+import { HomePage } from './home/HomePage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { InboxPage } from './inbox/InboxPage';
@@ -425,6 +426,8 @@ function Pages() {
         <SettingsPage />
       ) : active === 'inbox' ? (
         <InboxPage />
+      ) : active === 'home' && signedIn ? (
+        <HomePage />
       ) : (
         <>
           <h1 className="page-title">{page ? t(page.labelId) : ''}</h1>

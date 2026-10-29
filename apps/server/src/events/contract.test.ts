@@ -58,6 +58,8 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/workflow-maps/:id/impact':
     'reads only: what a change of a workflow map would do to tickets, stores nothing',
   'POST /api/v1/search': 'reads only: runs a query too long for a URL (M1-037)',
+  'PUT /api/v1/me/recent-tickets/:id':
+    'personal history: the tickets a person opened, for their own Recent list (M1-052)',
 };
 /**
  * Event types no route emits: a background job's own changes (M1-082 directory syncs). The

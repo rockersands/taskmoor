@@ -651,6 +651,14 @@ export interface TicketPersonTable {
   created_at: DefaultTimestamp;
 }
 
+/** A ticket a person opened, and when they last did (M1-052): the home page's Recent list. */
+export interface TicketVisitTable {
+  workspace_id: number;
+  user_id: number;
+  ticket_id: number;
+  visited_at: DefaultTimestamp;
+}
+
 /** A person's own settings. */
 export interface UserPreferenceTable {
   user_id: number;
@@ -1799,6 +1807,7 @@ export interface Database {
   backup_run: BackupRunTable;
   ticket_web_link: TicketWebLinkTable;
   ticket_follower: TicketPersonTable;
+  ticket_visit: TicketVisitTable;
   ticket_vote: TicketPersonTable;
   user_preference: UserPreferenceTable;
   time_tracking_setting: TimeTrackingSettingTable;

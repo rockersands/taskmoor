@@ -132,3 +132,66 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* Home (M1-052): three lists side by side on wide screens, stacked on phones. */
+.home-page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.home-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.home-list {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-2);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.home-tickets {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-ticket {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+
+.home-ticket-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.home-ticket-key {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.home-ticket-status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+@media (pointer: coarse) {
+  .home-ticket-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
+  }
+}

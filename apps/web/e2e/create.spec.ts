@@ -5,8 +5,8 @@ import { expect, type Page, test } from '@playwright/test';
  * The create dialog honours layouts per ticket type (M1-052; CORE-008, CORE-013): a track of
  * its own gets two create layouts, one per ticket type, and a rule that makes Environment
  * required for the first. The dialog, opened with C, shows each type's fields and no others,
- * refuses the first type without its environment and creates it once given. No serious axe
- * issue. It uses the attachments database (preview 4174), whose site administrator the API
+ * refuses the first type without its environment and creates it once given. The home page then
+ * lists a ticket assigned to the person, opened by them and followed. No serious axe issue. It uses the attachments database (preview 4174), whose site administrator the API
  * server made.
  */
 const BASE = 'http://localhost:4174';
@@ -122,4 +122,39 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('heading', { level: 1 })).toContainText(ticketKey);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('[AGL-019] the home page lists what is assigned to me, what I opened and what I follow', async ({
+  page,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, {
+    data: { email: ADMIN.email, password: ADMIN.password },
+  });
+  expect(signIn.status()).toBe(200);
+  const me = (await (await page.request.get(`${BASE}/api/v1/session`)).json()).user.id as number;
+  const made = await page.request.post(`${BASE}/api/v1/tickets`, {
+    data: { track: 'ATT', summary: `Home check on ${testInfo.project.name} ${Date.now()}` },
+  });
+  expect(made.status()).toBe(201);
+  const ticket = (await made.json()).ticket as { id: number; key: string; summary: string };
+  const assign = await page.request.patch(`${BASE}/api/v1/tickets/${ticket.id}`, {
+    data: { assigneeId: me },
+  });
+  expect(assign.status()).toBe(200);
+
+  // Opening the ticket puts it first among those opened lately.
+  await page.goto(`${BASE}/#/tickets/${ticket.key}`);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(ticket.key);
+  await page.goto(`${BASE}/#/home`);
+  const link = `${ticket.key} ${ticket.summary}`;
+  const assigned = page.getByRole('region', { name: 'Assigned to you' });
+  await expect(assigned.getByRole('link', { name: link })).toBeVisible();
+  const recent = page.getByRole('region', { name: 'Opened lately' });
+  await expect(recent.getByRole('link').first()).toHaveText(link);
+  const followed = page.getByRole('region', { name: 'You follow' });
+  await expect(followed.getByRole('link', { name: link })).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await assigned.getByRole('link', { name: link }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(ticket.key);
 });

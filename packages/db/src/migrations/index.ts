@@ -40,6 +40,7 @@ import * as m0042 from './0042_workflow_maps';
 import * as m0043 from './0043_search_indexes';
 import * as m0044 from './0044_inbox';
 import * as m0045 from './0045_imports';
+import * as m0046 from './0046_ticket_visits';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -90,4 +91,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0043_search_indexes': m0043,
   '0044_inbox': m0044,
   '0045_imports': m0045,
+  '0046_ticket_visits': m0046,
 };
