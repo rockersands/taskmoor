@@ -393,7 +393,10 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
               <ColumnHead key={column.id} column={column} t={t} />
             ))}
           </div>
-          {data.lanes.map((lane) => {
+          {data.lanes.map((given) => {
+            // The unassigned lane is named here, in the reader's language.
+            const lane =
+              given.assignee === null ? { ...given, name: t('boards.card.unassigned') } : given;
             const count = data.cards.filter((c) => c.laneId === lane.id).length;
             if (showLanes && lane.catchAll && count === 0 && data.lanes.length > 1) return null;
             return (

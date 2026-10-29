@@ -28,6 +28,33 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-043 boards** (built by a background agent on `work/m1-043-boards`; migration 0047;
+  ADR-049). Server: `apps/server/src/boards/model.ts` (zod schemas of columns, swimlanes, board
+  filters and card rules, defaults, `withIds`, `wipState`, `enteredColumn`), `boards/data.ts`
+  (the board's conditions compiled with `compileCond` from the viewer's catalogue of the whole
+  workspace and the viewer's ticket filter; counts per status, cards in rank order with lane and
+  colour `CASE`s, card details by a slim statement or the ticket view), `routes/boards.ts`
+  (`/api/v1/boards` CRUD, `/boards/:id/data?filters=`, `/boards/:id/moves`); events
+  `board.created`, `.updated`, `.deleted` (audited); moves emit the ticket routes' own events.
+  Web: `apps/web/src/boards/` (`BoardsPage` at `#/boards`, `BoardPage` at `#/boards/<id>`,
+  client, fake client, stories, tests), `styles/boards.css`; e2e `apps/web/e2e/boards.spec.ts`.
+  - **Saved searches (M1-063)** add `board.saved_search_id` beside `filter_query` with a check
+    that exactly one is set, and `source: {savedSearchId}` in the API (ADR-049).
+  - **A move runs the ticket route handlers** (`ticketRoutes()`, as bulk jobs do): the list of
+    transitions, then the transition, then the rank. Two writes: a refused rank answers with
+    `transitioned: true`. Board queries ignore ORDER BY; cards order by `ticket.rank`.
+  - **Board queries resolve against every track and field of the workspace** (`boardScope`),
+    so viewers see the part of a multi-track board they may; saving checks them against the
+    editor's own catalogue (`editorScope`). The ticket filter alone decides what is shown.
+  - Measured (`routes/boards.large.test.ts`, `TASKMOOR_LARGE_BOARD=1`): 5,000 cards of a
+    50,000-ticket board p95 about 0.3 s, all 50,000 cards about 2 s, on the loaded machine.
+  - Not built: a board settings page (columns, lanes, filters and card rules change through
+    `PATCH /api/v1/boards/:id` only; the list page creates a board kept by its maker from a
+    query), swimlanes by subtickets and by tracks, card covers and development icons, the Kanban
+    backlog column, estimation and sprints (M1-044), drag and drop, virtualised rendering and
+    the 5,000-card render budget (M1-046), the workflow lint for statuses unmapped on boards
+    (`apps/web/src/workflow/lint.ts` mentions it).
+
 - **M1-086 importer framework** (migration 0045; ADR-048; built on `work/m1-086-importer`).
   `apps/server/src/import/`: `model.ts` (entity kinds in dependency order, `ImportSource`,
   `Mapper`, the commands), `load.ts` (a loader per kind: plan with reads only, apply with SQL in
