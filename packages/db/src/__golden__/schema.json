@@ -230,7 +230,8 @@
       "created_by integer",
       "created_at timestamp with time zone not null default now()",
       "updated_at timestamp with time zone not null default now()",
-      "saved_search_id integer"
+      "saved_search_id integer",
+      "sprint_settings jsonb not null default '{\"estimation\": {\"statistic\": \"originalEstimate\"}, \"timeTracking\": \"remainingEstimate\", \"parallelSprints\": false}'::jsonb"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX board_pkey ON public.board USING btree (id)",
@@ -1341,6 +1342,68 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
+    ]
+  },
+  "sprint": {
+    "columns": [
+      "id integer not null default nextval('sprint_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "board_id integer not null",
+      "name text not null",
+      "goal text not null default ''::text",
+      "state text not null default 'future'::text",
+      "sequence integer not null",
+      "start_at timestamp with time zone",
+      "end_at timestamp with time zone",
+      "started_at timestamp with time zone",
+      "completed_at timestamp with time zone",
+      "started_by integer",
+      "completed_by integer",
+      "created_by integer",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "deleted_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX sprint_board_idx ON public.sprint USING btree (board_id, sequence) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX sprint_open_idx ON public.sprint USING btree (workspace_id, state) WHERE (state <> 'closed'::text)",
+      "CREATE UNIQUE INDEX sprint_pkey ON public.sprint USING btree (id)"
+    ]
+  },
+  "sprint_change": {
+    "columns": [
+      "id bigint not null default nextval('sprint_change_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "sprint_id integer not null",
+      "ticket_id integer not null",
+      "kind text not null",
+      "after_start boolean not null default false",
+      "at timestamp with time zone not null default now()",
+      "actor_id integer",
+      "original_estimate integer",
+      "remaining_estimate integer",
+      "points numeric",
+      "to_sprint_id integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sprint_change_pkey ON public.sprint_change USING btree (id)",
+      "CREATE INDEX sprint_change_sprint_idx ON public.sprint_change USING btree (sprint_id, at, id)",
+      "CREATE INDEX sprint_change_ticket_idx ON public.sprint_change USING btree (ticket_id)"
+    ]
+  },
+  "sprint_ticket": {
+    "columns": [
+      "workspace_id integer not null",
+      "sprint_id integer not null",
+      "ticket_id integer not null",
+      "open boolean not null default true",
+      "added_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sprint_ticket_open_idx ON public.sprint_ticket USING btree (ticket_id) WHERE open",
+      "CREATE UNIQUE INDEX sprint_ticket_pkey ON public.sprint_ticket USING btree (sprint_id, ticket_id)",
+      "CREATE INDEX sprint_ticket_ticket_idx ON public.sprint_ticket USING btree (ticket_id)"
     ]
   },
   "status": {

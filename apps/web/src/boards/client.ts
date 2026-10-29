@@ -202,15 +202,18 @@ export interface BoardClient {
   /** The configuration with the statuses its columns may take. */
   settings(id: number): Promise<{ board: Board; statuses: BoardStatus[] }>;
   update(id: number, patch: BoardPatch): Promise<UpdateOutcome>;
-  data(id: number, filters: readonly string[]): Promise<BoardData>;
+  /** `sprints: 'active'` shows a Scrum board's active sprints only (M1-044). */
+  data(id: number, filters: readonly string[], sprints?: 'active'): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
 }
 
 /** The query string of a data request. */
-export function dataPath(id: number, filters: readonly string[]): string {
-  return filters.length === 0
-    ? `/boards/${id}/data`
-    : `/boards/${id}/data?filters=${encodeURIComponent(filters.join(','))}`;
+export function dataPath(id: number, filters: readonly string[], sprints?: 'active'): string {
+  const params = [
+    ...(filters.length > 0 ? [`filters=${encodeURIComponent(filters.join(','))}`] : []),
+    ...(sprints ? [`sprints=${sprints}`] : []),
+  ];
+  return params.length === 0 ? `/boards/${id}/data` : `/boards/${id}/data?${params.join('&')}`;
 }
 
 export const boardClient: BoardClient = {
@@ -239,7 +242,7 @@ export const boardClient: BoardClient = {
       throw error;
     }
   },
-  data: (id, filters) => api<BoardData>(dataPath(id, filters)),
+  data: (id, filters, sprints) => api<BoardData>(dataPath(id, filters, sprints)),
   move: async (id, move) => {
     try {
       await api(`/boards/${id}/moves`, { method: 'POST', body: move });

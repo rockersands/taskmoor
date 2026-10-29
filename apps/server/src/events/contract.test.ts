@@ -2117,6 +2117,115 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { ticket: state.ticket, columnId: 'c2' },
         }),
     },
+    // Sprints (M1-044): on a Scrum board over the ticket's track, two future sprints, one reordered,
+    // the ticket added, removed and added again, started, completed to the backlog and deleted.
+    {
+      route: 'POST /api/v1/boards/:id/sprints',
+      expect: 'sprint.created',
+      prepare: async () => {
+        const ticket = await admin({ method: 'GET', url: `/api/v1/tickets/${state.ticket}` });
+        const track = ticket.json().ticket.track as { id: number; key: string };
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/boards',
+          payload: {
+            name: 'Scrum board',
+            kind: 'scrum',
+            trackId: track.id,
+            source: { query: `track = ${track.key}` },
+          },
+        });
+        state.scrumBoard = res.json().board?.id;
+        const other = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/boards/${state.scrumBoard}/sprints`,
+          payload: { name: 'Other sprint' },
+        });
+        state.otherSprint = other.json().sprint?.id;
+      },
+      run: async () => {
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/boards/${state.scrumBoard}/sprints`,
+          payload: { name: 'Contract sprint' },
+        });
+        state.sprint = res.json().sprint?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/sprints/:id',
+      expect: 'sprint.updated',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/sprints/${state.sprint}`,
+          payload: { goal: 'Prove the contract' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/sprints/:id/rank',
+      expect: 'sprint.reordered',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/sprints/${state.sprint}/rank`,
+          payload: { before: state.otherSprint },
+        }),
+    },
+    {
+      route: 'POST /api/v1/sprints/:id/tickets',
+      expect: 'sprint.tickets_added',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/sprints/${state.sprint}/tickets`,
+          payload: { tickets: [state.ticket] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/sprints/:id/tickets/remove',
+      expect: 'sprint.tickets_removed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/sprints/${state.sprint}/tickets/remove`,
+          payload: { tickets: [state.ticket] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/sprints/:id/start',
+      expect: 'sprint.started',
+      prepare: async () => {
+        await call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/sprints/${state.sprint}/tickets`,
+          payload: { tickets: [state.ticket] },
+        });
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/sprints/${state.sprint}/start`,
+          payload: { endAt: '2030-01-15T09:00:00Z' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/sprints/:id/complete',
+      expect: 'sprint.completed',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/sprints/${state.sprint}/complete`,
+          payload: { moveTo: { type: 'backlog' } },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/sprints/:id',
+      expect: 'sprint.deleted',
+      run: () =>
+        call(String(state.bo1b), { method: 'DELETE', url: `/api/v1/sprints/${state.sprint}` }),
+    },
     {
       route: 'DELETE /api/v1/boards/:id',
       expect: 'board.deleted',

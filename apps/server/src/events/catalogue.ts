@@ -704,6 +704,54 @@ export const EVENT_TYPES = {
   },
   'board.updated': { subject: 'board', payload: z.object({ changes }) },
   'board.deleted': { subject: 'board', payload: z.object({ name: z.string() }) },
+  // Sprints (M1-044): a board's sprint lifecycle and its tickets. `afterStart` marks scope
+  // change; `sprint.completed` counts where the tickets went (AGL-010, AGL-011).
+  'sprint.created': {
+    subject: 'sprint',
+    payload: z.object({ boardId: id, name: z.string() }),
+  },
+  'sprint.updated': { subject: 'sprint', payload: z.object({ changes }) },
+  'sprint.reordered': { subject: 'sprint', payload: z.object({ order: z.array(id) }) },
+  'sprint.started': {
+    subject: 'sprint',
+    payload: z.object({
+      boardId: id,
+      startAt: z.string(),
+      endAt: z.string(),
+      tickets: z.number().int().min(0),
+    }),
+  },
+  'sprint.completed': {
+    subject: 'sprint',
+    payload: z.object({
+      boardId: id,
+      completed: z.number().int().min(0),
+      carriedOver: z.number().int().min(0),
+      toBacklog: z.number().int().min(0),
+      moveTo: z.enum(['backlog', 'sprint', 'new']),
+      toSprintId: id.nullable(),
+    }),
+  },
+  'sprint.deleted': {
+    subject: 'sprint',
+    payload: z.object({
+      boardId: id,
+      name: z.string(),
+      state: z.enum(['future', 'active', 'closed']),
+    }),
+  },
+  'sprint.tickets_added': {
+    subject: 'sprint',
+    payload: z.object({
+      ticketIds: z.array(id),
+      fromSprintIds: z.array(id),
+      afterStart: z.boolean(),
+    }),
+  },
+  'sprint.tickets_removed': {
+    subject: 'sprint',
+    payload: z.object({ ticketIds: z.array(id), afterStart: z.boolean() }),
+  },
   // Saved searches (M1-063): `shares` names the scopes it is shared with (QRY-011); a
   // subscription names its recipient and schedule (QRY-012), never an email address.
   'saved_search.created': {

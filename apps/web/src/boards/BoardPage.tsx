@@ -104,7 +104,9 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     async (active: readonly string[]) => {
       const mine = ++generation.current;
       try {
-        const [b, d] = await Promise.all([client.board(boardId), client.data(boardId, active)]);
+        // A Scrum board shows its active sprints' tickets (M1-044); the rest are in the backlog.
+        const b = await client.board(boardId);
+        const d = await client.data(boardId, active, b.kind === 'scrum' ? 'active' : undefined);
         if (mine !== generation.current) return;
         setBoard(b);
         setData(d);
@@ -340,6 +342,11 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         <h1 id={titleId} className="page-title">
           {board.name}
         </h1>
+        {board.kind === 'scrum' && (
+          <a className="board-settings-link" href={`#/boards/${boardId}/backlog`}>
+            {t('sprints.backlog.link')}
+          </a>
+        )}
         {board.mayConfigure && (
           <a className="board-settings-link" href={`#/boards/${boardId}/settings`}>
             {t('boards.settings.link')}
