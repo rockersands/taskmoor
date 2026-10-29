@@ -70,7 +70,7 @@ test('[QRY-011] [QRY-012] saves, reopens, shares and subscribes to a saved searc
   ).toBeVisible();
 
   // Shared with everyone signed in.
-  await opened.getByRole('button', { name: 'Share' }).click();
+  await opened.getByRole('button', { name: 'Share', exact: true }).click();
   await opened.getByRole('radio', { name: 'Everyone signed in' }).check();
   await opened.getByRole('button', { name: 'Save sharing' }).click();
   await expect(
@@ -78,10 +78,10 @@ test('[QRY-011] [QRY-012] saves, reopens, shares and subscribes to a saved searc
   ).toBeVisible();
 
   // Subscribed: weekly on Monday at 07:00.
-  await opened.getByRole('button', { name: 'Subscribe' }).click();
+  await opened.getByRole('button', { name: 'Subscribe', exact: true }).click();
   await opened.getByRole('combobox', { name: 'How often' }).selectOption('weekly');
-  await opened.getByRole('combobox', { name: 'On' }).selectOption({ label: 'Monday' });
-  await opened.getByRole('combobox', { name: 'At' }).selectOption({ label: '07:00' });
+  await opened.getByRole('combobox', { name: 'On', exact: true }).selectOption({ label: 'Monday' });
+  await opened.getByRole('combobox', { name: 'At', exact: true }).selectOption({ label: '07:00' });
   await opened.getByRole('button', { name: 'Subscribe by email' }).click();
   await expect(
     opened.getByRole('status').filter({ hasText: `You are subscribed to ${name}.` }),

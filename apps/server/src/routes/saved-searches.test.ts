@@ -422,6 +422,20 @@ describe('saved searches (M1-063)', () => {
     const noId = await search('bob', `filter = ${unused}`);
     expect(strip(byId.json(), String(hidden.id))).toBe(strip(noId.json(), unused));
     expect(byId.json().message).toBe(`Saved search "${hidden.id}" does not exist`);
+    // The query editor's check says the same as the query is typed.
+    const check = await get(
+      'bob',
+      `/api/v1/search/check?q=${encodeURIComponent('filter = "Hidden one"')}`,
+    );
+    expect(check.json()).toMatchObject({
+      ok: false,
+      error: { message: 'Saved search "Hidden one" does not exist', position: 9 },
+    });
+    const fine = await get(
+      'alice',
+      `/api/v1/search/check?q=${encodeURIComponent('filter = "Hidden one"')}`,
+    );
+    expect(fine.json()).toMatchObject({ ok: true, fields: [{ name: 'track', custom: null }] });
   });
 
   it('[QRY-011] (2) a saved search that refers back to itself through another is refused on save', async () => {

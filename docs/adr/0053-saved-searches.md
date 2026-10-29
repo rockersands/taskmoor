@@ -85,6 +85,11 @@ run it. The permission filter of every search lives inside the compiled statemen
   1.7), an admin page of all shared saved searches, importing subscriptions from Jira (QRY-012
   (3)), group subscription emails batched per member and HTML rendering through the notification
   templates are left for later.
+- A board's viewers need to see its saved search: for one who cannot, the board's data answers
+  as an invalid query naming a saved search that does not exist, so the board's owner shares
+  the saved search with the board's audience (as with a track share for a track board).
+- A reference costs one indexed lookup per saved search named; a chain 10 deep added about
+  26 ms to a search's p50 in the route tests (15.6 ms direct, 41.9 ms through 10 references).
 - Shares are not revoked when a person leaves a group or track: visibility is read live at every
   use, so it follows membership without bookkeeping.
 - A saved search's columns are stored and applied when it is opened, which is the first
