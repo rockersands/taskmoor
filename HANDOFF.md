@@ -60,8 +60,8 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
   permission filter by `searchViews`, now exported from `routes/search.ts` with `projection`
   and `project`; the compiler is untouched). CSV uses the audit export's `csvField` (RFC 4180,
   formula guard); JSON is an array of tickets as search shows them. 100,000 tickets: CSV
-  5.4 s, JSON 5.0 s, live heap growth about 2 MB (`search-export.large.test.ts`,
-  `TASKMOOR_LARGE_EXPORT=1`). Web: `search/ResultTable.tsx` (table in a focusable scroll
+  5.4 to 8.7 s, JSON 5.0 to 14.8 s over three runs under load, live heap growth about 2 MB
+  (`search-export.large.test.ts`, `TASKMOOR_LARGE_EXPORT=1`). Web: `search/ResultTable.tsx` (table in a focusable scroll
   region, cells edited in place through `PATCH /api/v1/tickets/:id` with `version`),
   `search/ColumnPicker.tsx`, `search/columns.ts` (column ids, localStorage per person, cell
   editors and PATCH bodies), `styles/search.css`, export links; e2e

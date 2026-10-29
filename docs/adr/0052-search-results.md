@@ -67,11 +67,18 @@ ticket's event.
 
 `TASKMOOR_LARGE_EXPORT=1 pnpm verify --only=tests -- apps/server/src/routes/search-export.large.test.ts`:
 100,000 tickets of one track exported by a member (permission filter in every statement),
-seven columns including a custom field, read through a real socket. On 2026-10-29 on the
-4-CPU development container: CSV in 5.4 s (8.6 MB, first byte after 114 ms), JSON in 5.0 s
-(28.5 MB, first byte after 32 ms). With the heap sampled after a forced collection every
-250 ms (which slows the run to 8.7 s and 14.8 s), the live heap grew by 2.2 MB during the CSV
-and 2.0 MB during the JSON export: far less than the files, as streaming requires.
+seven columns including a custom field, read through a real socket, on the 4-CPU development
+container with other sessions' tests running beside it (2026-10-29, three runs):
+
+| Run | CSV (8.6 MB) | JSON (28.5 MB) | First byte | Live heap growth |
+|---|---|---|---|---|
+| Without heap sampling | 5.4 s | 5.0 s | 114 ms / 32 ms | not measured |
+| Heap sampled every 250 ms after a forced collection, load average about 7 | 8.7 s | 14.8 s | 117 ms / 85 ms | 2.2 MB / 2.0 MB |
+| The same, load average about 3.5 (final code) | 5.8 s | 6.4 s | 84 ms / 52 ms | 2.3 MB / 2.1 MB |
+
+The test samples the heap after a forced collection, so it counts live objects only: about
+2 MB, far less than the files, as streaming requires. The 60 s budget holds with a wide
+margin; the forced collections themselves slow the sampled runs.
 
 ## Consequences
 
