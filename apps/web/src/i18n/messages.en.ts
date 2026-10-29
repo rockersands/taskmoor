@@ -25,7 +25,7 @@ export const messagesEn = {
   'palette.noResults': 'No matching commands',
   'palette.close': 'Close the command palette',
   'home.title': 'Home',
-  'home.greeting': 'Hello, {name}',
+  'home.greeting': 'Hello, {name}.',
   'home.assigned': 'Assigned to you',
   'home.assignedEmpty': 'Nothing is assigned to you.',
   'home.recent': 'Opened lately',

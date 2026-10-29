@@ -52,8 +52,9 @@ export function HomePage({ client = homeClient }: HomePageProps) {
   return (
     <section aria-labelledby={titleId} className="home-page">
       <h1 id={titleId} className="page-title">
-        {name ? t('home.greeting', { name }) : t('home.title')}
+        {t('home.title')}
       </h1>
+      {name && <p className="page-note">{t('home.greeting', { name })}</p>}
       <div className="home-lists">
         {SECTIONS.map((section) => (
           <HomeList
@@ -77,11 +78,8 @@ function HomeList({ title, empty, list }: { title: string; empty: string; list: 
         {title}
       </h2>
       {list.status === 'loading' && <p className="page-note">{t('home.loading')}</p>}
-      {list.status === 'failed' && (
-        <p role="alert" className="form-error">
-          {t('home.failed')}
-        </p>
-      )}
+      {/* Not an alert: a list that could not be read is no reason to interrupt. */}
+      {list.status === 'failed' && <p className="form-error">{t('home.failed')}</p>}
       {list.status === 'loaded' && list.tickets.length === 0 && (
         <p className="page-note">{empty}</p>
       )}

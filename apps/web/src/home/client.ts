@@ -20,14 +20,18 @@ export interface HomeClient {
 /** Open tickets assigned to the person, the most recently changed first (AGL-019). */
 export const ASSIGNED_QUERY = 'assignee = currentUser() AND stage != closed ORDER BY updated DESC';
 
+/** A list from an answer; an answer without one reads as empty. */
+const listOf = (answer: { tickets?: HomeTicket[] }) =>
+  Array.isArray(answer.tickets) ? answer.tickets : [];
+
 export const homeClient: HomeClient = {
   assigned: async () =>
-    (
-      await api<{ tickets: HomeTicket[] }>(
+    listOf(
+      await api<{ tickets?: HomeTicket[] }>(
         `/search?q=${encodeURIComponent(ASSIGNED_QUERY)}&limit=20&count=false`,
-      )
-    ).tickets,
-  recent: async () => (await api<{ tickets: HomeTicket[] }>('/me/recent-tickets?limit=20')).tickets,
+      ),
+    ),
+  recent: async () => listOf(await api<{ tickets?: HomeTicket[] }>('/me/recent-tickets?limit=20')),
   followed: async () =>
-    (await api<{ tickets: HomeTicket[] }>('/me/followed-tickets?limit=20')).tickets,
+    listOf(await api<{ tickets?: HomeTicket[] }>('/me/followed-tickets?limit=20')),
 };

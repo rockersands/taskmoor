@@ -41,9 +41,9 @@ describe('the home page (M1-052)', () => {
     renderPage(fakeHomeClient({ empty: ['assigned'], failing: ['followed'] }));
     expect(await screen.findByText('Nothing is assigned to you.')).toBeVisible();
     const followed = screen.getByRole('region', { name: 'You follow' });
-    expect(await within(followed).findByRole('alert')).toHaveTextContent(
-      'This list could not be read. Try again in a moment.',
-    );
+    expect(
+      await within(followed).findByText('This list could not be read. Try again in a moment.'),
+    ).toBeVisible();
     const recent = screen.getByRole('region', { name: 'Opened lately' });
     expect(await within(recent).findAllByRole('link')).toHaveLength(2);
   });
