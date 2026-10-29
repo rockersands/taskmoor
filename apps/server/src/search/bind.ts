@@ -1,14 +1,17 @@
 import type { Database } from '@taskmoor/db';
-import type {
-  Catalogue,
-  CustomField,
-  Field,
-  Plan,
-  Pred,
-  SystemField,
-  Typed,
+import {
+  type Catalogue,
+  type CustomField,
+  type Field,
+  nativePermissionName,
+  type Plan,
+  type Pred,
+  type SystemField,
+  type Typed,
 } from '@taskmoor/query';
-import { type Kysely, sql, type Transaction } from 'kysely';
+import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
+import { isTrackPermission, type TrackPermission } from '../authz/permissions';
+import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
 import type { SideTable } from '../fields/storage';
 import type {
@@ -25,6 +28,7 @@ import type {
   SideRef,
   SqlType,
   TicketColumn,
+  TicketSet,
   ValueTest,
 } from './model';
 
@@ -54,6 +58,44 @@ export interface BindContext {
   catalog: Catalog;
   /** What the viewer's query could name (track keys among them). */
   catalogue: Catalogue;
+  /** The person searching, for the functions about them (`followedTickets()` and so on). */
+  currentUserId: number | null;
+  /**
+   * The viewer's predicate on ticket `k` (TicketFilter.sql): a ticket a function takes as its
+   * argument (`linkedTickets(ABC-12)`) counts only when the viewer may see it.
+   */
+  filter: RawBuilder<boolean>;
+  /** The tracks where the viewer holds a permission (`tracksWhereUserHasPermission()`). */
+  allowedTracks?: (permission: TrackPermission) => Promise<readonly number[] | 'all'>;
+}
+
+/** A function the database answers (M1-038): its native name and typed arguments. */
+type CallValue = Extract<Typed, { type: 'call' }>;
+
+const isCall = (t: Typed): t is CallValue => t.type === 'call';
+
+/** Functions of modules this version does not have yet, and the module, as people know it. */
+const LATER: Record<string, string> = {
+  openSprints: 'boards and sprints',
+  closedSprints: 'boards and sprints',
+  futureSprints: 'boards and sprints',
+  shippedReleases: 'release functions',
+  upcomingReleases: 'release functions',
+  latestShippedRelease: 'release functions',
+  earliestUpcomingRelease: 'release functions',
+  customerDetail: 'service tracks',
+  customerGroupMembers: 'service tracks',
+};
+
+/** A function this version cannot answer yet. */
+function later(call: CallValue): SearchError {
+  const module = LATER[call.fn];
+  return new SearchError(
+    module
+      ? `${call.fn}() belongs to ${module}, which this version does not have yet`
+      : `${call.fn}() is not available here yet`,
+    'unsupported',
+  );
 }
 
 /** The modules some fields belong to, as people know them. */
@@ -104,8 +146,16 @@ export function pushNot(p: Pred, negate = false): Exclude<Pred, { kind: 'not' }>
   }
 }
 
-const ISO = (t: Typed): Scalar =>
-  t.type === 'datetime' ? t.value.toISOString() : (t.value as Scalar);
+/** A value's content; a function has none to give (the binder evaluates those itself). */
+function content(t: Typed): Exclude<Typed, CallValue> {
+  if (t.type === 'call') throw later(t);
+  return t;
+}
+
+const ISO = (t: Typed): Scalar => {
+  const v = content(t);
+  return v.type === 'datetime' ? v.value.toISOString() : (v.value as Scalar);
+};
 
 const lower = (s: string) => s.toLowerCase();
 
@@ -222,6 +272,17 @@ interface Named {
   id: number;
   name: string;
 }
+
+type NamedKind =
+  | 'status'
+  | 'priority'
+  | 'type'
+  | 'closeReason'
+  | 'level'
+  | 'group'
+  | 'area'
+  | 'release'
+  | 'role';
 
 class Binder {
   readonly warnings: string[] = [];
@@ -492,6 +553,10 @@ class Binder {
   private options(field: CustomField, values: Typed[]): number[] {
     const ids: number[] = [];
     for (const v of values) {
+      if (isCall(v)) {
+        ids.push(...this.optionFunction(field, v));
+        continue;
+      }
       const wanted = lower(String(v.value));
       const found = [...this.ctx.catalog.options.values()].filter(
         (o) => o.fieldId === field.id && (lower(o.value) === wanted || String(o.id) === wanted),
@@ -507,6 +572,56 @@ class Binder {
     return idList(ids);
   }
 
+  /**
+   * `choiceOption(ids...)`: options of the field by id or value. `cascadeOption(parent,
+   * child?)`: a cascade's top-level option, or the child of it named.
+   */
+  private optionFunction(field: CustomField, call: CallValue): number[] {
+    const options = [...this.ctx.catalog.options.values()].filter((o) => o.fieldId === field.id);
+    const pick = (value: Typed, among: typeof options) => {
+      const wanted = lower(String(content(value).value));
+      const found = among.filter((o) => lower(o.value) === wanted || String(o.id) === wanted);
+      if (found.length === 0) {
+        throw new SearchError(
+          `${label(field)} has no option "${String(content(value).value)}"`,
+          'unknown_value',
+        );
+      }
+      return found;
+    };
+    switch (call.fn) {
+      case 'choiceOption':
+        return call.args.flatMap((a) => pick(a, options).map((o) => o.id));
+      case 'cascadeOption': {
+        if (field.type !== 'cascade') {
+          throw new SearchError(
+            `cascadeOption() takes a cascading select field; ${label(field)} is not one`,
+            'unknown_value',
+          );
+        }
+        const [parent, child] = call.args as [Typed, Typed | undefined];
+        const parents = pick(
+          parent,
+          options.filter((o) => o.parentId === null),
+        );
+        if (!child) return parents.map((o) => o.id);
+        if (lower(String(content(child).value)) === 'none') {
+          throw new SearchError(
+            'cascadeOption(parent, none) is not available here yet',
+            'unsupported',
+          );
+        }
+        const ids = new Set(parents.map((o) => o.id));
+        return pick(
+          child,
+          options.filter((o) => o.parentId !== null && ids.has(o.parentId)),
+        ).map((o) => o.id);
+      }
+      default:
+        throw later(call);
+    }
+  }
+
   // --- system fields ---------------------------------------------------------------------
 
   private async system(p: Leaf, field: SystemField): Promise<Cond> {
@@ -515,22 +630,18 @@ class Binder {
     if (plain) return this.onScalar(p, plain, p.kind === 'empty' ? [] : this.typed(p).map(ISO));
     switch (field.name) {
       case 'key':
-        return this.onIds(p, column('id', 'int', false), await this.keys(p));
+        return this.tickets(p, 'id');
       case 'parent':
-        return this.onIds(p, column('parent_id', 'int', true), await this.keys(p));
+        return this.tickets(p, 'parent_id');
       case 'track':
-        return this.onIds(
-          p,
-          column('track_id', 'int', false),
-          this.typed(p).map((t) => Number(t.value)),
-        );
+        return this.onIds(p, column('track_id', 'int', false), await this.trackIds(this.typed(p)));
       case 'parentTrack':
         if (p.kind === 'empty') {
           return { kind: 'relatedEmpty', relation: 'parentTrack', negated: p.negated };
         }
         return this.related(p, {
           relation: 'parentTrack',
-          ids: this.typed(p).map((t) => Number(t.value)),
+          ids: await this.trackIds(this.typed(p)),
         });
       case 'trackCategory':
       case 'trackType':
@@ -589,7 +700,7 @@ class Binder {
         return {
           kind: 'words',
           source: field.name,
-          text: String(c.value.value),
+          text: String(content(c.value).value),
           negated: c.op === '!~',
         };
       }
@@ -601,7 +712,7 @@ class Binder {
           .map((f) => f.id);
         return {
           kind: 'text',
-          text: String(c.value.value),
+          text: String(content(c.value).value),
           fieldIds: idList(fieldIds),
           negated: c.op === '!~',
         };
@@ -635,7 +746,7 @@ class Binder {
         );
       case 'labels': {
         if (p.kind === 'empty') return { kind: 'labelsEmpty', negated: p.negated };
-        const values = this.typed(p).map((t) => String(t.value));
+        const values = this.typed(p).map((t) => String(content(t).value));
         const quantifier: Quantifier =
           (p.kind === 'compare' && p.op === '!=') || (p.kind === 'in' && p.negated)
             ? 'none'
@@ -671,7 +782,7 @@ class Binder {
       case 'ticketLink':
         if (p.kind === 'empty')
           return { kind: 'relatedEmpty', relation: 'link', negated: p.negated };
-        return this.related(p, { relation: 'link', ids: await this.keys(p) });
+        return this.related(p, { relation: 'link', ids: await this.keys(this.typed(p)) });
       case 'ticketLinkType':
         if (p.kind === 'empty')
           return { kind: 'relatedEmpty', relation: 'link', negated: p.negated };
@@ -686,7 +797,7 @@ class Binder {
           related: {
             relation: 'timeEntry',
             on: 'comment',
-            test: { kind: 'words', text: String(c.value.value) },
+            test: { kind: 'words', text: String(content(c.value).value) },
           },
           quantifier: c.op === '!~' ? 'none' : 'some',
         };
@@ -758,6 +869,210 @@ class Binder {
     return { kind: 'scalar', on, test: { kind: 'in', values: idList(ids) }, negated };
   }
 
+  /**
+   * `key` or `parent` against keys, ids and functions naming tickets (M1-038): keys become ids,
+   * each function a ticket set the statement joins; `IN` matches any of them, `NOT IN` none.
+   */
+  private async tickets(p: Leaf, on: 'id' | 'parent_id'): Promise<Cond> {
+    const col = on === 'id' ? column('id', 'int', false) : column('parent_id', 'int', true);
+    if (p.kind === 'empty') return { kind: 'empty', on: col, negated: p.negated };
+    const values = this.typed(p);
+    const calls = values.filter(isCall);
+    if (calls.length === 0) return this.onIds(p, col, await this.keys(values));
+    const negated = (p.kind === 'compare' && p.op === '!=') || (p.kind === 'in' && p.negated);
+    const items: Cond[] = [];
+    const rest = values.filter((v) => !isCall(v));
+    if (rest.length > 0) items.push(this.onIds(p, col, await this.keys(rest)));
+    for (const call of calls) {
+      items.push({ kind: 'ticketSet', on, set: await this.ticketSet(call), negated });
+    }
+    return items.length === 1 ? (items[0] as Cond) : { kind: negated ? 'and' : 'or', items };
+  }
+
+  /** The person searching; functions about "me" need one. */
+  private me(call: CallValue): number {
+    const me = this.ctx.currentUserId;
+    if (me === null) {
+      throw new SearchError(`${call.fn}() needs a signed-in person`, 'unsupported');
+    }
+    return me;
+  }
+
+  /** The tickets a function names, as a set the statement joins (never widened: QRY-008). */
+  private async ticketSet(call: CallValue): Promise<TicketSet> {
+    switch (call.fn) {
+      case 'followedTickets':
+        return { kind: 'followed', userId: this.me(call) };
+      case 'votedTickets':
+        return { kind: 'voted', userId: this.me(call) };
+      case 'ticketHistory':
+        return { kind: 'visited', userId: this.me(call) };
+      case 'updatedBy': {
+        const [user, from, to] = call.args as [Typed, Typed | undefined, Typed | undefined];
+        return {
+          kind: 'updatedBy',
+          userIds: await this.people([user]),
+          ...(from ? { from: String(ISO(from)) } : {}),
+          ...(to ? { to: String(ISO(to)) } : {}),
+        };
+      }
+      case 'linkedTickets': {
+        const [ticket, ...types] = call.args as [Typed, ...Typed[]];
+        const known = await this.keys([ticket]);
+        // A ticket the viewer may not see links to nothing they can learn of.
+        const ticketIds = await this.visible(known);
+        if (known.length > 0 && ticketIds.length === 0) {
+          this.warnings.push(`No ticket ${String(content(ticket).value)}`);
+        }
+        if (types.length === 0) return { kind: 'linked', ticketIds, outward: 'all', inward: 'all' };
+        const t = await this.linkTypes(types);
+        return {
+          kind: 'linked',
+          ticketIds,
+          outward: idList([...t.both, ...t.outward]),
+          inward: idList([...t.both, ...t.inward]),
+        };
+      }
+      case 'ticketsWithWebLinksByGlobalId':
+        return {
+          kind: 'webLinks',
+          globalIds: [...new Set(call.args.map((a) => String(content(a).value)))].sort(),
+        };
+      default:
+        throw later(call);
+    }
+  }
+
+  /** The tickets among `ids` the viewer may see (the statement's own filter). */
+  private async visible(ids: readonly number[]): Promise<number[]> {
+    if (ids.length === 0) return [];
+    const { rows } = await sql<{ id: number }>`
+      SELECT k.id FROM ticket k
+       WHERE k.workspace_id = ${this.ws} AND k.deleted_at IS NULL
+         AND k.id = ANY(${[...ids]}::int[]) AND ${this.ctx.filter}`.execute(this.db);
+    return idList(rows.map((r) => r.id));
+  }
+
+  /** Track ids, keys already read as ids by the resolver, and the track functions' tracks. */
+  private async trackIds(values: Typed[]): Promise<number[]> {
+    const ids: number[] = [];
+    for (const v of values) {
+      if (isCall(v)) ids.push(...(await this.trackFunction(v)));
+      else ids.push(Number(v.value));
+    }
+    return idList(ids);
+  }
+
+  private async liveTracks(): Promise<number[]> {
+    const rows = await this.db
+      .selectFrom('track')
+      .select('id')
+      .where('workspace_id', '=', this.ws)
+      .where('deleted_at', 'is', null)
+      .execute();
+    return rows.map((r) => r.id);
+  }
+
+  /** `tracksOwnedByUser()`, `tracksWhereUserHasPermission()`, `tracksWhereUserHasRole()`. */
+  private async trackFunction(call: CallValue): Promise<number[]> {
+    switch (call.fn) {
+      case 'tracksOwnedByUser': {
+        const owners = call.args.length > 0 ? await this.people(call.args) : [this.me(call)];
+        if (owners.length === 0) return [];
+        const rows = await this.db
+          .selectFrom('track')
+          .select('id')
+          .where('workspace_id', '=', this.ws)
+          .where('deleted_at', 'is', null)
+          .where('owner_id', 'in', owners)
+          .execute();
+        return rows.map((r) => r.id);
+      }
+      case 'tracksWhereUserHasPermission': {
+        const name = String(content(call.args[0] as Typed).value);
+        const code = nativePermissionName(name);
+        if (!code || !isTrackPermission(code)) {
+          throw new SearchError(`No track permission "${name}"`, 'unknown_value');
+        }
+        this.me(call);
+        if (!this.ctx.allowedTracks) {
+          throw new SearchError(`${call.fn}() needs the person's permissions`, 'unsupported');
+        }
+        const tracks = await this.ctx.allowedTracks(code);
+        return tracks === 'all' ? this.liveTracks() : [...tracks];
+      }
+      case 'tracksWhereUserHasRole': {
+        const roles = await this.named('role', [call.args[0] as Typed], '"role"');
+        const me = this.me(call);
+        const groups = await effectiveGroupIds(this.db, this.ws, me);
+        const rows = await this.db
+          .selectFrom('track_role_actor as a')
+          .innerJoin('track as t', 't.id', 'a.track_id')
+          .select('a.track_id')
+          .distinct()
+          .where('a.workspace_id', '=', this.ws)
+          .where('t.deleted_at', 'is', null)
+          .where('a.role_id', 'in', roles)
+          .where((eb) =>
+            groups.length > 0
+              ? eb.or([eb('a.user_id', '=', me), eb('a.group_id', 'in', groups)])
+              : eb('a.user_id', '=', me),
+          )
+          .execute();
+        return rows.map((r) => r.track_id);
+      }
+      default:
+        throw later(call);
+    }
+  }
+
+  /** People a function names: `membersOf(group)`, nested groups' members included. */
+  private async userFunction(call: CallValue): Promise<number[]> {
+    if (call.fn !== 'membersOf') throw later(call);
+    const name = String(content(call.args[0] as Typed).value);
+    if (/^id:/i.test(name)) {
+      throw new SearchError(
+        `membersOf("${name}"): teams are not available in this version yet`,
+        'unsupported',
+      );
+    }
+    const groups = await this.named('group', [{ type: 'text', value: name }], '"group"');
+    const ids: number[] = [];
+    for (const g of groups) ids.push(...(await effectiveMemberIds(this.db, this.ws, g)));
+    return ids;
+  }
+
+  /** Ticket types and areas a function names. */
+  private async namedFunction(kind: NamedKind, call: CallValue): Promise<number[]> {
+    switch (call.fn) {
+      case 'standardTicketTypes':
+      case 'subticketTypes': {
+        if (kind !== 'type') break;
+        const rows = await this.db
+          .selectFrom('ticket_type as ty')
+          .innerJoin('hierarchy_level as l', 'l.id', 'ty.level_id')
+          .select('ty.id')
+          .where('ty.workspace_id', '=', this.ws)
+          .where('l.kind', call.fn === 'subticketTypes' ? '=' : '<>', 'subticket')
+          .execute();
+        return rows.map((r) => r.id);
+      }
+      case 'areasOwnedByUser': {
+        if (kind !== 'area') break;
+        const owners = call.args.length > 0 ? await this.people(call.args) : [this.me(call)];
+        if (owners.length === 0) return [];
+        const rows = await this.db
+          .selectFrom('area')
+          .select('id')
+          .where('workspace_id', '=', this.ws)
+          .where('owner_id', 'in', owners)
+          .execute();
+        return rows.map((r) => r.id);
+      }
+    }
+    throw later(call);
+  }
+
   /** A clause on rows of another table. */
   private related(p: Leaf, related: Extract<Cond, { kind: 'related' }>['related']): Cond {
     const negated = (p.kind === 'compare' && p.op === '!=') || (p.kind === 'in' && p.negated);
@@ -775,9 +1090,7 @@ class Binder {
   }
 
   /** Rows of a small named table of the workspace, loaded once per query. */
-  private table(
-    kind: 'status' | 'priority' | 'type' | 'closeReason' | 'level' | 'group' | 'area' | 'release',
-  ) {
+  private table(kind: NamedKind) {
     return this.once(`table:${kind}`, async () => {
       const ws = this.ws;
       switch (kind) {
@@ -829,19 +1142,25 @@ class Binder {
             .select(['id', 'name'])
             .where('workspace_id', '=', ws)
             .execute()) as Named[];
+        case 'role':
+          return (await this.db
+            .selectFrom('role')
+            .select(['id', 'name'])
+            .where('workspace_id', '=', ws)
+            .execute()) as Named[];
       }
     });
   }
 
   /** Ids by name (any case) or by id; a name nobody uses is refused. */
-  private async named(
-    kind: 'status' | 'priority' | 'type' | 'closeReason' | 'level' | 'group' | 'area' | 'release',
-    values: Typed[],
-    field: string,
-  ): Promise<number[]> {
+  private async named(kind: NamedKind, values: Typed[], field: string): Promise<number[]> {
     const rows = await this.table(kind);
     const ids: number[] = [];
     for (const v of values) {
+      if (isCall(v)) {
+        ids.push(...(await this.namedFunction(kind, v)));
+        continue;
+      }
       const wanted = lower(String(v.value));
       let found = rows.filter((r) => lower(r.name) === wanted);
       if (found.length === 0 && /^\d+$/.test(wanted))
@@ -857,7 +1176,7 @@ class Binder {
   /** Statuses in the stages named. */
   private async stages(p: Leaf): Promise<number[]> {
     const stages = new Set<'new' | 'active' | 'closed'>();
-    for (const v of this.typed(p)) {
+    for (const v of this.typed(p).map(content)) {
       const stage = STAGES[lower(String(v.value))];
       if (!stage) {
         throw new SearchError(
@@ -877,7 +1196,8 @@ class Binder {
   }
 
   /** Priorities above or below one (`priority > High`: the more urgent ones). */
-  private async prioritiesBeyond(op: Comparison, value: Typed): Promise<number[]> {
+  private async prioritiesBeyond(op: Comparison, given: Typed): Promise<number[]> {
+    const value = content(given);
     const rows = await this.db
       .selectFrom('priority')
       .select(['id', 'name', 'sort_order'])
@@ -899,7 +1219,8 @@ class Binder {
   }
 
   /** Releases after or before one in its track's order (`fixVersion > "1.0"`). */
-  private async releasesBeyond(op: Comparison, value: Typed, field: string): Promise<number[]> {
+  private async releasesBeyond(op: Comparison, given: Typed, field: string): Promise<number[]> {
+    const value = content(given);
     const rows = await this.db
       .selectFrom('release')
       .select(['id', 'track_id', 'name', 'sort_order'])
@@ -932,7 +1253,7 @@ class Binder {
       .select(['ty.id', 'l.rank'])
       .where('ty.workspace_id', '=', this.ws)
       .execute();
-    const numbers = this.typed(p).map((t) => Number(t.value));
+    const numbers = this.typed(p).map((t) => Number(content(t).value));
     let match: (rank: number) => boolean;
     if (p.kind === 'compare') {
       const n = numbers[0] as number;
@@ -973,12 +1294,12 @@ class Binder {
       pass = (v) => (p.negated ? v !== null : v === null);
     } else {
       const wanted = this.typed(p).map((t) => {
-        const name = lower(String(t.value));
+        const name = lower(String(content(t).value));
         if (field.name !== 'trackType') return name;
         const type = TRACK_TYPES[name];
         if (!type) {
           throw new SearchError(
-            `${label(field)} has no value "${String(t.value)}" (${Object.keys(TRACK_TYPES).join(', ')})`,
+            `${label(field)} has no value "${String(content(t).value)}" (${Object.keys(TRACK_TYPES).join(', ')})`,
             'unknown_value',
           );
         }
@@ -1000,7 +1321,8 @@ class Binder {
     const ids: number[] = [];
     const names: string[] = [];
     for (const v of values) {
-      if (v.type === 'number') ids.push(v.value);
+      if (isCall(v)) ids.push(...(await this.userFunction(v)));
+      else if (v.type === 'number') ids.push(v.value);
       else names.push(lower(String(v.value)));
     }
     if (names.length > 0) {
@@ -1022,10 +1344,10 @@ class Binder {
   }
 
   /** Tickets by id or key (old keys too); keys of tickets the viewer cannot see match nothing. */
-  private async keys(p: Leaf): Promise<number[]> {
+  private async keys(values: Typed[]): Promise<number[]> {
     const ids: number[] = [];
     const pairs: { track: number; number: number; key: string }[] = [];
-    for (const v of this.typed(p)) {
+    for (const v of values.map(content)) {
       if (v.type === 'number') {
         ids.push(v.value);
         continue;
@@ -1066,7 +1388,7 @@ class Binder {
     const both: number[] = [];
     const outward: number[] = [];
     const inward: number[] = [];
-    for (const v of values) {
+    for (const v of values.map(content)) {
       const wanted = lower(String(v.value));
       let found = false;
       for (const r of rows) {

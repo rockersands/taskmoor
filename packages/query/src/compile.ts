@@ -1,6 +1,15 @@
 import type { CustomField, Field, SystemField } from './fields';
 import type { Comparison, HistoryPredicate, Plan, Pred, Typed } from './resolve';
 
+/**
+ * A value this spike compiler can write. Functions the database answers (M1-038) are the
+ * server's to compile (`apps/server/src/search`); here they are refused.
+ */
+function plain(t: Typed): Exclude<Typed, { type: 'call' }> {
+  if (t.type === 'call') throw new Error(`${t.fn}() is not supported by the spike compiler`);
+  return t;
+}
+
 export interface CompileOptions {
   /** Schema holding `item` and the side tables. */
   schema: string;
@@ -124,17 +133,17 @@ class Compiler {
       case 'in': {
         if (p.field.kind === 'system') {
           if (p.field.type === 'labels') {
-            const expr = `i.labels && ${this.param(p.values.map((v) => v.value))}::text[]`;
+            const expr = `i.labels && ${this.param(p.values.map((v) => plain(v).value))}::text[]`;
             return p.negated ? `NOT (${expr})` : expr;
           }
-          return `i.${p.field.column} ${p.negated ? '<> ALL' : '= ANY'}(${this.param(p.values.map((v) => v.value))}::${arrayType(p.values)})`;
+          return `i.${p.field.column} ${p.negated ? '<> ALL' : '= ANY'}(${this.param(p.values.map((v) => plain(v).value))}::${arrayType(p.values)})`;
         }
         const values = p.values;
         const field = p.field;
         const exists = this.customExists(
           field,
           () =>
-            `v.value = ANY(${this.param(values.map((v) => v.value))}::${SIDE_CAST[field.type]}[])`,
+            `v.value = ANY(${this.param(values.map((v) => plain(v).value))}::${SIDE_CAST[field.type]}[])`,
         );
         return p.negated ? `NOT ${exists}` : exists;
       }
@@ -161,12 +170,12 @@ class Compiler {
     const column = `i.${field.column}`;
     if (field.type === 'labels') {
       // Array containment, so a GIN index on labels serves it.
-      const has = `i.labels @> ARRAY[${this.param(value.value)}::text]`;
+      const has = `i.labels @> ARRAY[${this.param(plain(value).value)}::text]`;
       return op === '!=' ? `NOT (${has})` : has;
     }
     if (field.type === 'text' && (op === '~' || op === '!~')) {
       // Word search through the full-text index (ADR-011); custom text fields use ILIKE.
-      const match = `to_tsvector('simple', ${column}) @@ plainto_tsquery('simple', ${this.param(String(value.value))})`;
+      const match = `to_tsvector('simple', ${column}) @@ plainto_tsquery('simple', ${this.param(String(plain(value).value))})`;
       return op === '!~' ? `NOT (${match})` : match;
     }
     return this.valueCondition(column, field.type, op, value);
@@ -175,15 +184,17 @@ class Compiler {
   /** A condition on a side table's value column, cast to that column's type. */
   sideValue(column: string, field: CustomField, op: Comparison, value: Typed): string {
     if (op === '~' || op === '!~') return this.valueCondition(column, field.type, op, value);
-    const v = value.type === 'datetime' ? value.value.toISOString() : value.value;
+    const p = plain(value);
+    const v = p.type === 'datetime' ? p.value.toISOString() : p.value;
     return `${column} ${op} ${this.param(v)}::${SIDE_CAST[field.type]}`;
   }
 
   /** `column op value`: ILIKE for ~, and a cast that matches the column so indexes apply. */
-  private valueCondition(column: string, _kind: string, op: string, value: Typed): string {
+  private valueCondition(column: string, _kind: string, op: string, given: Typed): string {
+    const value = plain(given);
     if (op === '~' || op === '!~') {
       // Backslash, percent and underscore are LIKE metacharacters; escape them with a backslash.
-      const escaped = String(value.value).replace(/[\\%_]/g, (c) => `\\${c}`);
+      const escaped = String(plain(value).value).replace(/[\\%_]/g, (c) => `\\${c}`);
       const pattern = `%${escaped}%`;
       return `${column} ${op === '~' ? 'ILIKE' : 'NOT ILIKE'} ${this.param(pattern)}`;
     }
@@ -222,7 +233,7 @@ class Compiler {
     const name = p.field.kind === 'system' ? (p.field.history ?? p.field.name) : `cf:${p.field.id}`;
     const conditions = [`h.item_id = i.id`, `h.field = ${this.param(name)}`];
     if (p.op === 'was' && (p.values.length > 0 || p.empty)) {
-      const list = `ANY(${this.param(p.values.map((v) => String(v.value)))}::text[])`;
+      const list = `ANY(${this.param(p.values.map((v) => String(plain(v).value)))}::text[])`;
       const empty = p.empty ? ' OR h.to_value IS NULL OR h.from_value IS NULL' : '';
       conditions.push(`(h.to_value = ${list} OR h.from_value = ${list}${empty})`);
     }
@@ -232,7 +243,8 @@ class Compiler {
   }
 
   private historyPredicate(pred: HistoryPredicate): string {
-    const texts = () => `ANY(${this.param(pred.values.map((v) => String(v.value)))}::text[])`;
+    const texts = () =>
+      `ANY(${this.param(pred.values.map((v) => String(plain(v).value)))}::text[])`;
     const at = (i: number) => {
       const v = pred.values[i];
       if (v?.type !== 'datetime') throw new Error(`${pred.kind} needs ${i + 1} date value(s)`);
@@ -244,7 +256,7 @@ class Compiler {
       case 'to':
         return `h.to_value = ${texts()}`;
       case 'by':
-        return `h.actor_id = ANY(${this.param(pred.values.map((v) => v.value))}::int[])`;
+        return `h.actor_id = ANY(${this.param(pred.values.map((v) => plain(v).value))}::int[])`;
       case 'before':
         return `h.at < ${at(0)}`;
       case 'after':
@@ -373,7 +385,7 @@ function compileAnchored(a: Anchor, options: CompileOptions): CompiledQuery {
     conditions.push(
       p.kind === 'compare'
         ? c.sideValue('a.value', a.field, p.op, p.value)
-        : `a.value = ANY(${c.param(p.values.map((v) => v.value))}::${cast}[])`,
+        : `a.value = ANY(${c.param(p.values.map((v) => plain(v).value))}::${cast}[])`,
     );
   }
   const first = a.onValue[0];
@@ -382,7 +394,7 @@ function compileAnchored(a: Anchor, options: CompileOptions): CompiledQuery {
     const same =
       first.kind === 'compare'
         ? c.sideValue('b.value', a.field, first.op, first.value)
-        : `b.value = ANY(${c.param(first.values.map((v) => v.value))}::${cast}[])`;
+        : `b.value = ANY(${c.param(first.values.map((v) => plain(v).value))}::${cast}[])`;
     conditions.push(
       `NOT EXISTS (SELECT 1 FROM ${options.schema}.${SIDE_TABLE[a.field.type]} b` +
         ` WHERE b.item_id = a.item_id AND b.field_id = a.field_id AND ${same} AND b.value < a.value)`,
@@ -391,8 +403,8 @@ function compileAnchored(a: Anchor, options: CompileOptions): CompiledQuery {
   for (const p of a.onTrack) {
     conditions.push(
       p.kind === 'compare'
-        ? `a.space_id = ${c.param(p.value.value)}::int`
-        : `a.space_id = ANY(${c.param(p.values.map((v) => v.value))}::int[])`,
+        ? `a.space_id = ${c.param(plain(p.value).value)}::int`
+        : `a.space_id = ANY(${c.param(p.values.map((v) => plain(v).value))}::int[])`,
     );
   }
   if (options.allowedTrackIds !== null) {

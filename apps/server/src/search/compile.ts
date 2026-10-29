@@ -12,6 +12,7 @@ import type {
   Scalarish,
   SideRef,
   SqlType,
+  TicketSet,
   ValueTest,
 } from './model';
 import { nullableOrder, orderType } from './model';
@@ -257,6 +258,101 @@ function relatedRows(relation: RelationName, related?: Related): RawBuilder<bool
 /** What a condition needs from the viewer beyond the ticket filter. */
 interface CondContext {
   comments: RawBuilder<boolean>;
+  /** The viewer's predicate on ticket `k`, for tickets other than the row (a parent). */
+  filter: RawBuilder<boolean>;
+  workspaceId: number;
+}
+
+/**
+ * Ticket `k` is in the set a function names (M1-038): a semi-join on its id, so the set is
+ * never read into the query as a list.
+ */
+function inTicketSet(set: TicketSet, ctx: CondContext): RawBuilder<boolean> {
+  const exists = (from: string, where: RawBuilder<boolean>[]) =>
+    sql<boolean>`EXISTS (SELECT 1 FROM ${raw(from)} WHERE ${and(where)})`;
+  const ids = (column: string, values: readonly number[]) =>
+    values.length === 1
+      ? sql<boolean>`${raw(column)} = ${param(values[0] as number, 'int')}`
+      : sql<boolean>`${raw(column)} = ANY(${array(values, 'int')})`;
+  switch (set.kind) {
+    case 'followed':
+    case 'voted':
+      return exists(set.kind === 'followed' ? 'ticket_follower r' : 'ticket_vote r', [
+        sql<boolean>`r.ticket_id = k.id`,
+        sql<boolean>`r.user_id = ${param(set.userId, 'int')}`,
+      ]);
+    case 'visited':
+      return exists('ticket_visit r', [
+        sql<boolean>`r.user_id = ${param(set.userId, 'int')}`,
+        sql<boolean>`r.ticket_id = k.id`,
+      ]);
+    case 'updatedBy': {
+      if (set.userIds.length === 0) return FALSE;
+      const within = (column: string) => [
+        ...(set.from ? [sql<boolean>`${raw(column)} >= ${param(set.from, 'timestamptz')}`] : []),
+        ...(set.to ? [sql<boolean>`${raw(column)} <= ${param(set.to, 'timestamptz')}`] : []),
+      ];
+      return or([
+        exists('ticket_change r', [
+          sql<boolean>`r.ticket_id = k.id`,
+          ids('r.actor_id', set.userIds),
+          ...within('r.at'),
+        ]),
+        and([ids('k.creator_id', set.userIds), ...within('k.created_at')]),
+        // Comments count where the viewer reads them: a hidden comment tells nothing.
+        commentRows(ctx, and([ids('c.author_id', set.userIds), ...within('c.created_at')])),
+      ]);
+    }
+    case 'linked': {
+      if (set.ticketIds.length === 0) return FALSE;
+      const typed = (types: number[] | 'all') =>
+        types === 'all' ? TRUE : types.length === 0 ? FALSE : ids('r.link_type_id', types);
+      const out = typed(set.outward);
+      const back = typed(set.inward);
+      return or([
+        out === FALSE
+          ? FALSE
+          : exists('ticket_link r', [
+              sql<boolean>`r.target_id = k.id`,
+              ids('r.source_id', set.ticketIds),
+              out,
+            ]),
+        back === FALSE
+          ? FALSE
+          : exists('ticket_link r', [
+              sql<boolean>`r.source_id = k.id`,
+              ids('r.target_id', set.ticketIds),
+              back,
+            ]),
+      ]);
+    }
+    case 'webLinks':
+      if (set.globalIds.length === 0) return FALSE;
+      return exists('ticket_web_link r', [
+        sql<boolean>`r.ticket_id = k.id`,
+        sql<boolean>`r.global_id = ANY(${array(set.globalIds, 'text')})`,
+      ]);
+  }
+}
+
+/**
+ * A ticket-set condition on the row's own id, or on its parent: the parent must be one the
+ * viewer may see, so its alias `k` is rebound inside the subquery (the filter reads `k`).
+ */
+function ticketSetCond(
+  c: Extract<Cond, { kind: 'ticketSet' }>,
+  ctx: CondContext,
+): RawBuilder<boolean> {
+  const member = inTicketSet(c.set, ctx);
+  if (c.on === 'id') return c.negated ? not(member) : member;
+  if (member === FALSE) return c.negated ? sql<boolean>`k.parent_id IS NOT NULL` : FALSE;
+  const parents = sql<boolean>`k.parent_id IN (SELECT k.id FROM ticket k WHERE ${and([
+    sql<boolean>`k.workspace_id = ${param(ctx.workspaceId, 'int')}`,
+    sql<boolean>`k.deleted_at IS NULL`,
+    ctx.filter,
+    member,
+  ])})`;
+  return c.negated ? and([sql<boolean>`k.parent_id IS NOT NULL`, not(parents)]) : parents;
 }
 
 /** Comments of ticket `k` the viewer reads, optionally only those matching. */
@@ -362,6 +458,8 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
       const any = relatedRows(c.relation);
       return c.negated ? any : not(any);
     }
+    case 'ticketSet':
+      return ticketSetCond(c, ctx);
   }
 }
 
@@ -541,7 +639,11 @@ function baseConditions(options: CompileOptions): RawBuilder<boolean>[] {
 export function compileSearch(bound: Bound, options: CompileOptions): CompiledSearch {
   const keys = bound.orderBy;
   const signature = keys.map((k) => `${JSON.stringify(k.source)}:${k.direction}`).join('|');
-  const ctx: CondContext = { comments: options.comments };
+  const ctx: CondContext = {
+    comments: options.comments,
+    filter: options.filter,
+    workspaceId: options.workspaceId,
+  };
   const where = compileCond(bound.where, ctx);
   const plainWhere = [...baseConditions(options), ...(where === TRUE ? [] : [where])];
   const anchor = options.anchor === false ? undefined : findAnchor(bound);
