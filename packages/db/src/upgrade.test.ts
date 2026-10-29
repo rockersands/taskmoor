@@ -31,8 +31,11 @@ describe('upgrade from earlier releases', () => {
       beforeAll(async () => {
         database = await createDatabase(testPgAdminUrl());
         db = createDb({ connectionString: database.url, maxConnections: 2 });
-        await migrateTo(db, start);
+        // Each seed runs right after its own migration, with the schema it was written for: a
+        // later migration may drop a column an earlier seed writes (0042 dropped
+        // track.workflow_id, which the 0024 seed sets).
         for (const name of all.slice(0, all.indexOf(start) + 1)) {
+          await migrateTo(db, name);
           await UPGRADE_SEEDS[name]?.seed(db as never);
         }
       });

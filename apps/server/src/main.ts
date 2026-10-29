@@ -17,6 +17,7 @@ import { registerSubscribers } from './events/subscribers';
 import { FieldCatalogs } from './fields/catalog';
 import { registerFormulaJobs, scheduleFormulaRefresh } from './fields/formula-jobs';
 import { registerFieldValueJobs, scheduleFieldValueCheck } from './fields/jobs';
+import { registerImportJobs } from './import/jobs';
 import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
 import { loadPeppers } from './secrets';
@@ -158,6 +159,8 @@ if (config.roles.includes('worker') && db) {
   registerFormulaJobs(runner, db);
   // Bulk operations (M1-021): each runs ticket by ticket through the ticket routes' checks.
   registerBulkJobs(runner, db, new Authorizer(db), new FieldCatalogs(db));
+  // Imports (M1-086): a batch per transaction, resumable from the run's checkpoint.
+  registerImportJobs(runner, db, new FieldCatalogs(db));
   // Status migrations after a change of workflow map (M1-028), a batch at a time.
   registerWorkflowMigrationJobs(runner, db, new FieldCatalogs(db));
   const formulaCatalogs = new FieldCatalogs(db);

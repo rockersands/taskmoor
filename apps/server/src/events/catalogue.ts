@@ -1013,6 +1013,39 @@ export const EVENT_TYPES = {
       total: z.number().int().min(1),
     }),
   },
+  // Imports (M1-086, IMP-009, ADR-048): the request, a cancel asked for, and the run's end with
+  // its report's totals (a job event without an actor; `requestedBy` names who asked). The
+  // imported objects themselves emit no events: an import is one audited operation, and its
+  // history keeps the source's own authors and times.
+  'import_run.created': {
+    subject: 'import_run',
+    payload: z.object({
+      importSource: z.string(),
+      sourceSystem: z.string(),
+      name: z.string(),
+      dryRun: z.boolean(),
+    }),
+  },
+  'import_run.cancelled': {
+    subject: 'import_run',
+    payload: z.object({ importSource: z.string(), sourceSystem: z.string(), dryRun: z.boolean() }),
+  },
+  'import_run.finished': {
+    subject: 'import_run',
+    payload: z.object({
+      importSource: z.string(),
+      sourceSystem: z.string(),
+      dryRun: z.boolean(),
+      status: z.enum(['done', 'cancelled', 'failed']),
+      requestedBy: id.nullable(),
+      source: z.number().int().min(0),
+      target: z.number().int().min(0).nullable(),
+      failed: z.number().int().min(0),
+      warnings: z.number().int().min(0),
+      unsupported: z.number().int().min(0),
+      fidelity: z.number().min(0).max(1).nullable(),
+    }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

@@ -33,6 +33,7 @@ import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
+import { registerImportRoutes } from './routes/imports';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerNotificationRoutes } from './routes/notifications';
@@ -246,6 +247,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerWorkflowMapRoutes(app, db, fieldCatalogs);
     registerTrashRoutes(app, db);
     registerBulkRoutes(app, db);
+    registerImportRoutes(app, db);
     registerAuditRoutes(app, db);
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);

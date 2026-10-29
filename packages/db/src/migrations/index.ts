@@ -37,6 +37,7 @@ import * as m0038 from './0038_field_edit_permissions';
 import * as m0040 from './0040_bulk_operations';
 import * as m0041 from './0041_comments';
 import * as m0042 from './0042_workflow_maps';
+import * as m0045 from './0045_imports';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -84,4 +85,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0040_bulk_operations': m0040,
   '0041_comments': m0041,
   '0042_workflow_maps': m0042,
+  '0045_imports': m0045,
 };

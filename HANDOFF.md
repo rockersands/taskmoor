@@ -28,6 +28,31 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-086 importer framework** (migration 0045; ADR-048; built on `work/m1-086-importer`).
+  `apps/server/src/import/`: `model.ts` (entity kinds in dependency order, `ImportSource`,
+  `Mapper`, the commands), `load.ts` (a loader per kind: plan with reads only, apply with SQL in
+  the batch's transaction, read back for samples), `run.ts` (batches: lock the run, extract a
+  page after the checkpoint, map, load each record in a savepoint, write `import_record`,
+  `import_external_id`, tallies and the checkpoint, commit), `report.ts` (zod schema of the
+  fidelity report, JSON Schema golden in `import/__golden__`, HTML), `jobs.ts` (`import.run`,
+  50 s parts, ten attempts, registered in the worker in `main.ts`; `IMPORT_FORMATS`),
+  `synthetic.ts` (our own NDJSON format, its mapper and a seeded fixture generator). Routes in
+  `routes/imports.ts` under `/api/v1/admin/imports` (start from an upload or a generated
+  source, dry run, list, progress, report JSON or HTML, cancel), site administrators only;
+  events `import_run.created`, `.cancelled` and `.finished` (job, no actor), all audited.
+  - **Next importers (M1-087 onwards)** add an `ImportSource` and a `Mapper` and register in
+    `IMPORT_FORMATS`; new kinds (custom fields, attachments, followers, votes, key aliases,
+    releases, areas, boards) add a command, a loader and a place in `ENTITY_KINDS`. Loaders
+    write record by record inside a batch: make the ticket loader set-based before the
+    1M-ticket run of M1-091. Not built: delta runs (`updated >= last run`), pause and resume
+    and downloadable logs (IMP-013), adding imported statuses and types to workflows and type
+    sets (the report warns `status_not_in_workflow`, `type_not_offered`).
+  - **New write rules must reach the loaders too** (history, formulas, counters, side tables),
+    as they reach the routes: imports write SQL, not through the routes (ADR-048 says why).
+  - Fixed on the way: the upgrade harness now runs each seed right after its own migration
+    (with 0045 after it, `from 0042` ran the 0024 seed against a schema without
+    `track.workflow_id`), and the 0042 seed named the renamed track `SEEDOLD` (now `SEEDNEW`).
+
 - **M1-051 ticket view** (no migration). `apps/web/src/tickets/view/` (`TicketPage`,
   `ActivityPanel`, `client.ts`, fixtures, stories, tests) replaces the interim
   `TicketAttachmentsPage` at `#/tickets/<key>`; `styles/ticket-view.css`; e2e

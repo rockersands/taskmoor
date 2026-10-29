@@ -11,6 +11,9 @@ import { processAttachment } from '../attachments/jobs';
 import { type AttachmentStores, storesOf } from '../attachments/stores';
 import { SESSION_COOKIE } from '../auth';
 import { unsubscribeHash } from '../email/deliver';
+import { FieldCatalogs } from '../fields/catalog';
+import { IMPORT_FORMATS } from '../import/jobs';
+import { runImport } from '../import/run';
 import { queueRun, runSync } from '../ldap/sync';
 import { issueSetupToken } from '../setup';
 import { FakeIdp } from '../testing/fake-idp';
@@ -70,6 +73,8 @@ const JOB_EVENTS: readonly EventType[] = [
 ];
 /** The attachment worker's own event (M1-016): checked by its own test below. */
 const SCAN_JOB_EVENTS: readonly EventType[] = ['attachment.quarantined'];
+/** The end of an import (M1-086), emitted by its job: checked by its own test below. */
+const IMPORT_JOB_EVENTS: readonly EventType[] = ['import_run.finished'];
 const PASSWORD = 'ladder violet harbour';
 
 function sessionCookie(res: LightMyRequestResponse): string {
@@ -797,6 +802,28 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           method: 'POST',
           url: `/api/v1/bulk-operations/${state.bulk}/cancel`,
         }),
+    },
+    {
+      route: 'POST /api/v1/admin/imports',
+      expect: 'import_run.created',
+      // The import runs later in a job; its end is `import_run.finished` (tested below).
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/admin/imports',
+          payload: {
+            dryRun: true,
+            source: { format: 'synthetic', generate: { seed: 1, prefix: 'CT', tickets: 2 } },
+          },
+        });
+        state.importRun = res.json().importRun?.id;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/admin/imports/:id/cancel',
+      expect: 'import_run.cancelled',
+      run: () => admin({ method: 'POST', url: `/api/v1/admin/imports/${state.importRun}/cancel` }),
     },
     {
       route: 'POST /api/v1/tickets/:id/purge',
@@ -2576,7 +2603,11 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       produced.add(scenario.expect);
     }
     const missing = (Object.keys(EVENT_TYPES) as EventType[]).filter(
-      (t) => !produced.has(t) && !JOB_EVENTS.includes(t) && !SCAN_JOB_EVENTS.includes(t),
+      (t) =>
+        !produced.has(t) &&
+        !JOB_EVENTS.includes(t) &&
+        !SCAN_JOB_EVENTS.includes(t) &&
+        !IMPORT_JOB_EVENTS.includes(t),
     );
     expect(missing, 'event types no route produces').toEqual([]);
   }, 120_000);
@@ -2678,6 +2709,36 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     expect(events.map((e) => e.type)).toEqual(SCAN_JOB_EVENTS);
     const [event] = events;
     const spec = EVENT_TYPES['attachment.quarantined'];
+    expect(event?.subject_type).toBe(spec.subject);
+    expect(() => spec.payload.parse(event?.payload)).not.toThrow();
+    expect(event?.actor_id).toBeNull();
+  });
+
+  it('[IMP-009] an import emits one valid event when it ends, with no actor', async () => {
+    const res = await admin({
+      method: 'POST',
+      url: '/api/v1/admin/imports',
+      payload: { source: { format: 'synthetic', generate: { seed: 2, prefix: 'CJ', tickets: 3 } } },
+    });
+    expect(res.statusCode, res.body).toBe(202);
+    const runId = String(res.json().importRun.id);
+    const before = await database.db
+      .selectFrom('domain_event')
+      .select((eb) => eb.fn.max('id').as('max'))
+      .executeTakeFirstOrThrow();
+    await runImport(
+      { db: database.db, catalogs: new FieldCatalogs(database.db), formats: IMPORT_FORMATS },
+      runId,
+      { until: Number.POSITIVE_INFINITY },
+    );
+    const events = await database.db
+      .selectFrom('domain_event')
+      .select(['type', 'payload', 'subject_type', 'actor_id'])
+      .where('id', '>', String(before.max ?? 0))
+      .execute();
+    expect(events.map((e) => e.type)).toEqual(IMPORT_JOB_EVENTS);
+    const [event] = events;
+    const spec = EVENT_TYPES['import_run.finished'];
     expect(event?.subject_type).toBe(spec.subject);
     expect(() => spec.payload.parse(event?.payload)).not.toThrow();
     expect(event?.actor_id).toBeNull();
