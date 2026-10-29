@@ -38,6 +38,9 @@ Also fixed tonight:
 - Stray "terminating connection due to administrator command" errors failed some gates. The
   verify summary now names the test file of an unhandled error (`tools/verify/reporter.mjs`),
   which traced them to the Graphile Worker spike test; its teardown now waits for the pool.
+- CI limits: the Postgres 16 job (lint, types, tests, e2e) passed 20 minutes and was cancelled;
+  it now has 30, the Postgres 18 job 20. The 1 ms query-timeout test reads 20,000 tickets so
+  that Windows' coarse timers still stop it.
 
 Numbering: migrations 0043 search indexes, 0044 inbox, 0045 imports, 0046 ticket visits, 0047
 boards, 0050 guardrails (0048, 0049 and 0051 unused). ADRs 046 (home, create dialog, palette),
