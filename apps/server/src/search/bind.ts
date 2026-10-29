@@ -925,13 +925,7 @@ class Binder {
           this.warnings.push(`No ticket ${String(content(ticket).value)}`);
         }
         if (types.length === 0) return { kind: 'linked', ticketIds, outward: 'all', inward: 'all' };
-        const t = await this.linkTypes(types);
-        return {
-          kind: 'linked',
-          ticketIds,
-          outward: idList([...t.both, ...t.outward]),
-          inward: idList([...t.both, ...t.inward]),
-        };
+        return { kind: 'linked', ticketIds, ...(await this.linkDirections(types)) };
       }
       case 'ticketsWithWebLinksByGlobalId':
         return {
@@ -941,6 +935,40 @@ class Binder {
       default:
         throw later(call);
     }
+  }
+
+  /**
+   * Link types as `linkedTickets()` reads them, from the given ticket's side: a description
+   * ("blocks", "is blocked by") picks links where the given ticket reads it; a type's name
+   * (or id), when no description matches, picks its links either way.
+   */
+  private async linkDirections(values: Typed[]): Promise<{ outward: number[]; inward: number[] }> {
+    const rows = await this.db
+      .selectFrom('link_type')
+      .select(['id', 'name', 'outward', 'inward'])
+      .where('workspace_id', '=', this.ws)
+      .execute();
+    const outward: number[] = [];
+    const inward: number[] = [];
+    for (const v of values.map(content)) {
+      const wanted = lower(String(v.value));
+      const out = rows.filter((r) => lower(r.outward) === wanted).map((r) => r.id);
+      const back = rows.filter((r) => lower(r.inward) === wanted).map((r) => r.id);
+      if (out.length + back.length > 0) {
+        outward.push(...out);
+        inward.push(...back);
+        continue;
+      }
+      const named = rows
+        .filter((r) => lower(r.name) === wanted || String(r.id) === wanted)
+        .map((r) => r.id);
+      if (named.length === 0) {
+        throw new SearchError(`No link type "${String(v.value)}"`, 'unknown_value');
+      }
+      outward.push(...named);
+      inward.push(...named);
+    }
+    return { outward: idList(outward), inward: idList(inward) };
   }
 
   /** The tickets among `ids` the viewer may see (the statement's own filter). */
