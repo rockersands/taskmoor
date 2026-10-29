@@ -28,6 +28,15 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-053 admin UI** (no migration). New pages, each with a client interface, an in-memory
+  fake (`fixtures.ts`), stories, unit tests and e2e in `apps/web/e2e/configuration.spec.ts` and
+  `people.spec.ts`: `people/` (users, groups), `configuration/` (`TracksAdminPage`,
+  `WorkflowMapsPage`), `fields/FieldsAdminPage`, `permissions/PermissionsPage`,
+  `sets/ConfigurationSetsPage`; routes `#/admin/{users,groups,tracks,workflow-maps,fields,
+  permissions,configuration-sets}`, Settings links and palette entries. Every permission has a
+  readable name (`permission.*` strings). Still API only: formula fields, context scopes and
+  defaults, per-type rules and field editors, layout sets, visibility and notification policies,
+  field grantees, status mappings when a map switch is refused.
 - **M1-051 ticket view** (no migration). `apps/web/src/tickets/view/` (`TicketPage`,
   `ActivityPanel`, `client.ts`, fixtures, stories, tests) replaces the interim
   `TicketAttachmentsPage` at `#/tickets/<key>`; `styles/ticket-view.css`; e2e
