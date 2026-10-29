@@ -2,8 +2,33 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
+import { I18nProvider } from '../i18n/I18nProvider';
+import { CommandPalette } from './CommandPalette';
 
 describe('command palette', () => {
+  it('[AGL-018] lists label matches before commands found by a keyword only', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale="en">
+        <CommandPalette
+          commands={[
+            {
+              id: 'appearance-system',
+              labelId: 'palette.appearance.system',
+              keywords: ['system'],
+              run: () => {},
+            },
+            { id: 'go-system', labelId: 'admin.system.title', run: () => {} },
+          ]}
+        />
+      </I18nProvider>,
+    );
+    await user.keyboard('{Control>}k{/Control}');
+    await user.keyboard('system');
+    const options = screen.getAllByRole('option').map((o) => o.textContent);
+    expect(options).toEqual(['System status', 'Follow the device for light or dark']);
+  });
+
   it('opens with Ctrl+K, filters, and runs the chosen command', async () => {
     const user = userEvent.setup();
     render(<App />);

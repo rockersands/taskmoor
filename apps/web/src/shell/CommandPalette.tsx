@@ -34,16 +34,24 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
 
+  // Labels that start with what was typed come first, then labels that contain it, then
+  // commands found by a keyword only; each group keeps the commands' order.
   const items = useMemo(() => {
     const needle = query.trim().toLowerCase();
+    const rank = (command: Command, label: string) => {
+      if (needle === '') return 0;
+      const text = label.toLowerCase();
+      if (text.startsWith(needle)) return 0;
+      if (text.includes(needle)) return 1;
+      return command.keywords?.some((k) => k.toLowerCase().includes(needle)) ? 2 : -1;
+    };
     return commands
-      .map((c) => ({ command: c, label: t(c.labelId, c.values) }))
-      .filter(
-        ({ command, label }) =>
-          needle === '' ||
-          label.toLowerCase().includes(needle) ||
-          command.keywords?.some((k) => k.toLowerCase().includes(needle)),
-      );
+      .map((c) => {
+        const label = t(c.labelId, c.values);
+        return { command: c, label, rank: rank(c, label) };
+      })
+      .filter((item) => item.rank >= 0)
+      .sort((a, b) => a.rank - b.rank);
   }, [commands, query, t]);
 
   useEffect(() => {
