@@ -43,6 +43,8 @@ echo "restart with the same volume"
 docker restart "$AIO_NAME" >/dev/null
 wait_for http://127.0.0.1:18090/ready 60 "$AIO_NAME"
 docker logs "$AIO_NAME" 2>&1 | grep -c "initialising PostgreSQL" | grep -qx 1 && echo "data kept: initialised once"
+# Removed without a clean stop, as an out-of-memory kill would: the next start finds
+# PostgreSQL's stale lock file and must still come up.
 docker rm -f "$AIO_NAME" >/dev/null
 # OPS-006: the upgrade by hand, with the container stopped (never beside a running one: both
 # would start PostgreSQL on the same files). Same image, so nothing to apply.

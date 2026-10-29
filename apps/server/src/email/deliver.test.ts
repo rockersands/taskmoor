@@ -72,6 +72,13 @@ describe('email notifications (M1-057)', () => {
   const authorizer = () => new Authorizer(database.db);
   const mail = (now: Date) => deliverEmail(database.db, authorizer(), { ...mailer, now });
   const later = (minutes: number) => new Date(Date.now() + minutes * MINUTE);
+  /** Noon UTC tomorrow: after anything written now, and outside everyone's quiet hours. */
+  const tomorrowNoon = () => {
+    const at = new Date();
+    at.setUTCDate(at.getUTCDate() + 1);
+    at.setUTCHours(12, 0, 0, 0);
+    return at;
+  };
   const to = (who: Person) => inbox.filter((m) => m.to === `${who}@example.com`);
   const create = async (summary: string, extra: Record<string, unknown> = {}) => {
     const res = await as('alice', {
@@ -98,11 +105,16 @@ describe('email notifications (M1-057)', () => {
         const chunks: Buffer[] = [];
         stream.on('data', (c: Buffer) => chunks.push(c));
         stream.on('end', () => {
-          const raw = chunks
-            .join('')
+          const message = chunks.join('');
+          const end = message.search(/\r?\n\r?\n/);
+          const headers = end < 0 ? message : message.slice(0, end);
+          // Only the body is quoted-printable: a header keeps its `=` (an unsubscribe token
+          // may begin with two hex digits, which decoding would turn into one character).
+          const body = (end < 0 ? '' : message.slice(end))
             .replace(/=\r?\n/g, '')
             .replace(/=([0-9A-F]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
-          const head = raw.split(/\r?\n\r?\n/)[0]?.replace(/\r?\n[ \t]+/g, ' ') ?? '';
+          const raw = headers + body;
+          const head = headers.replace(/\r?\n[ \t]+/g, ' ');
           inbox.push({
             to: session.envelope.rcptTo[0]?.address ?? '',
             raw,
@@ -355,7 +367,8 @@ describe('email notifications (M1-057)', () => {
     });
     expect(hidden.statusCode, hidden.body).toBe(200);
     const count = to('dan').length;
-    const run = await mail(later(30));
+    // Dan keeps the quiet hours of an earlier test: send when they cannot hold the email.
+    const run = await mail(tomorrowNoon());
     expect(to('dan')).toHaveLength(count);
     expect(run.dropped).toBeGreaterThan(0);
   });
@@ -381,7 +394,22 @@ describe('email notifications (M1-057)', () => {
     await mail(later(61));
     expect(to('bob').length).toBe(count + 1);
 
-    // No cap: 300 tickets' notifications for one person go out in one run, one email each.
+    // No cap: 300 tickets' notifications for one person go out in one run, one email each. A
+    // person of their own, so what earlier tests left waiting for others is not counted.
+    const reader = await database.db
+      .insertInto('app_user')
+      .values({ workspace_id: 1, email: 'reader@example.com', name: 'Reader' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const member = await database.db
+      .selectFrom('role')
+      .select('id')
+      .where('name', '=', 'Members')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('track_role_actor')
+      .values({ workspace_id: 1, track_id: trackId, role_id: member.id, user_id: reader.id })
+      .execute();
     const track = await database.db
       .selectFrom('ticket')
       .select(['track_id', 'ticket_type_id'])
@@ -399,7 +427,7 @@ describe('email notifications (M1-057)', () => {
       .values(
         rows.map((r, i) => ({
           workspace_id: 1,
-          user_id: users.carol.id,
+          user_id: reader.id,
           channel: 'email' as const,
           event: 'ticket_updated',
           ticket_id: r.id,
@@ -408,23 +436,18 @@ describe('email notifications (M1-057)', () => {
         })),
       )
       .execute();
-    await database.db
-      .updateTable('user_preference')
-      .set({ email_delivery: 'instant' })
-      .where('user_id', '=', users.carol.id)
-      .execute();
     let sent = 0;
     const counting: MailerOptions = {
       ...mailer,
       transport: {
-        send: async () => {
-          sent++;
+        send: async (email) => {
+          if (email.to === 'reader@example.com') sent++;
           return { messageId: null };
         },
       },
     };
     const run = await deliverEmail(database.db, authorizer(), { ...counting, now: later(120) });
-    expect(run.sent).toBe(300);
+    expect(run.sent).toBeGreaterThanOrEqual(300);
     expect(sent).toBe(300);
   });
 });

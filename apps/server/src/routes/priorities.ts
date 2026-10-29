@@ -840,7 +840,13 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
     if (typed !== '') {
       query = query.where(sql<boolean>`lower(name) LIKE ${`${likeEscape(typed.toLowerCase())}%`}`);
     }
-    const rows = await query.orderBy(sql`lower(name)`).orderBy('name').limit(q.limit).execute();
+    // One order on every install: the database's own collation differs between the bundled
+    // Postgres (C) and others (often en_US, which skips hyphens when comparing).
+    const rows = await query
+      .orderBy(sql`lower(name) COLLATE "C"`)
+      .orderBy(sql`name COLLATE "C"`)
+      .limit(q.limit)
+      .execute();
     return { labels: rows.map((r) => r.name) };
   });
 

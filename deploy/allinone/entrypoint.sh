@@ -28,6 +28,19 @@ if [ ! -f "$PGDATA/PG_VERSION" ]; then
   } >> "$PGDATA/postgresql.conf"
 fi
 
+# A container stopped without its shutdown (docker rm -f, out of memory, a host crash) leaves
+# PostgreSQL's lock file behind. In the next container its process id may belong to another
+# process, and PostgreSQL then refuses to start, taking it for a running server. Only this
+# container runs PostgreSQL on the volume (one container per volume), so a lock file whose
+# process is not a postgres here is stale.
+if [ -f "$PGDATA/postmaster.pid" ]; then
+  pid=$(head -n 1 "$PGDATA/postmaster.pid")
+  if [ "$(cat "/proc/$pid/comm" 2>/dev/null)" != "postgres" ]; then
+    echo "allinone: PostgreSQL did not shut down cleanly last time; removing its stale lock file"
+    rm -f "$PGDATA/postmaster.pid"
+  fi
+fi
+
 su-exec postgres pg_ctl -D "$PGDATA" -w -t 60 -l "$LOG" start
 if ! su-exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'taskmoor'" | grep -q 1; then
   su-exec postgres createdb -U postgres taskmoor

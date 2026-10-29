@@ -6,7 +6,11 @@
 # is stored anywhere. Needs Docker and Node.
 #
 #   bash tools/storage/minio-test.sh
-#   TASKMOOR_MINIO_IMAGE=minio/minio:<tag> bash tools/storage/minio-test.sh
+#   TASKMOOR_MINIO_IMAGE=<image:tag> bash tools/storage/minio-test.sh
+#
+# Docker Hub no longer has minio/minio (October 2026). Without TASKMOOR_MINIO_IMAGE the first
+# image that pulls is used, and named in the output: MinIO's own release on quay.io, then the
+# community-maintained fork pgsty/minio. Both are pinned to a release.
 #
 # Against another store (AWS S3, R2, Garage, Ceph), skip Docker and give its details in the
 # environment instead; the test creates the bucket when it is missing and works under a
@@ -17,7 +21,20 @@
 #     pnpm verify --only=tests -- packages/storage/src/s3.live.test.ts
 set -euo pipefail
 
-IMAGE="${TASKMOOR_MINIO_IMAGE:-minio/minio:RELEASE.2025-04-22T22-12-26Z}"
+IMAGES="${TASKMOOR_MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z pgsty/minio:RELEASE.2026-06-18T00-00-00Z}"
+IMAGE=
+for candidate in $IMAGES; do
+  if docker pull --quiet "$candidate" >/dev/null 2>&1; then
+    IMAGE=$candidate
+    break
+  fi
+  echo "minio-test: cannot pull $candidate"
+done
+if [ -z "$IMAGE" ]; then
+  echo "minio-test: no MinIO image could be pulled" >&2
+  exit 1
+fi
+echo "minio-test: using $IMAGE"
 NAME=taskmoor-minio-e2e
 PORT="${MINIO_PORT:-9000}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
