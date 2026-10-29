@@ -24,11 +24,11 @@ green on the branch head (`git push origin <sha>:main`); the CI workflow cancels
 on the same branch when a new one starts, so dispatch once per head. The branch is
 `claude/api-key-upload-prevention-9ucz4x`.
 
-Done tonight, newest first (details under Done): M1-042 search results, M1-038 query
-functions, M1-043 boards, M1-055 guardrails, M1-041 query editor, M1-052 home, create dialog
+Done tonight, newest first (details under Done): M1-063 saved searches, M1-042 search
+results, M1-038 query functions, M1-043 boards, M1-055 guardrails, M1-041 query editor, M1-052 home, create dialog
 and palette, M1-086 importer, M1-058 inbox, M1-037 SQL compiler, M1-053 admin UI, M1-051
-ticket view, Windows CI fixes. M1-037, M1-058, M1-086, M1-043, M1-038 and M1-042 were built by
-background agents in worktrees and merged here; their worktrees are removed, the local
+ticket view, Windows CI fixes. M1-037, M1-058, M1-086, M1-043, M1-038, M1-042 and M1-063 were
+built by background agents in worktrees and merged here; their worktrees are removed, the local
 `work/*` branches stay.
 
 Also fixed tonight:
@@ -43,8 +43,9 @@ Also fixed tonight:
   that Windows' coarse timers still stop it.
 
 Numbering: migrations 0043 search indexes, 0044 inbox, 0045 imports, 0046 ticket visits, 0047
-boards, 0050 guardrails (0048, 0049 and 0051 unused). ADRs 046 (home, create dialog, palette),
-047 (inbox), 048 (importer), 049 (boards), 050 unused, 051 (guardrails), 052 (search results).
+boards, 0050 guardrails, 0051 saved searches (0048 and 0049 unused). ADRs 046 (home, create
+dialog, palette), 047 (inbox), 048 (importer), 049 (boards), 050 unused, 051 (guardrails), 052
+(search results), 053 (saved searches).
 A long-lived database that
 ran a later number before an earlier one refuses the earlier (Kysely): recreate it.
 
@@ -707,8 +708,8 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
 ### Next (in order)
 
 1. `pnpm next-task` lists 17 ready tasks. In the query engine: M1-040 (full-text search, text
-   operators, rank, approximate counts), M1-039 (WAS and CHANGED), M1-063 (saved searches; the
-   board's `saved_search_id` waits for it). In planning: M1-044 (sprints; then the board's
+   operators, rank, approximate counts), M1-039 (WAS and CHANGED). Reports: M1-064 dashboards
+   (needs M1-062 too), whose widgets can run saved searches. In planning: M1-044 (sprints; then the board's
    sprint functions, M1-045). Others: M1-067 webhooks, M1-098 CSV import and export, M1-105
    static build, M1-115 accessibility pass, M1-116 i18n completeness.
 2. M1-073 and M1-074 (AI gateway) are marked in progress from an earlier session; their done
