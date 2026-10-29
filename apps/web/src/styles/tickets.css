@@ -115,6 +115,31 @@
   white-space: nowrap;
 }
 
+.create-open-icon {
+  display: none;
+}
+
+/* Phones show a plus; the label stays the button's accessible name. */
+.shell[data-layout="compact"] .create-open {
+  min-width: var(--hit-target-touch);
+  padding-inline: var(--space-1);
+}
+
+.shell[data-layout="compact"] .create-open-icon {
+  display: inline;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.shell[data-layout="compact"] .create-open-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (max-width: 599px) {
   .create-dialog {
     top: 0;

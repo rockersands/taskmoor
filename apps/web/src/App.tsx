@@ -482,7 +482,10 @@ function Pages() {
               aria-haspopup="dialog"
               onClick={() => setCreating(true)}
             >
-              {t('tickets.create.openDialog')}
+              <span aria-hidden="true" className="create-open-icon">
+                +
+              </span>
+              <span className="create-open-label">{t('tickets.create.openDialog')}</span>
             </button>
           )}
           <CommandPalette commands={[...commands, ...registered]} />
