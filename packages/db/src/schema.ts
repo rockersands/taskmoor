@@ -690,10 +690,65 @@ export interface BoardTable {
   board_filters: ColumnType<JsonValue, string | undefined, string>;
   board_filter_display: ColumnType<'buttons' | 'dropdown', 'buttons' | 'dropdown' | undefined>;
   card_rules: Json;
+  /** Estimation statistic, time tracking and parallel sprints (M1-044, ADR-054). */
+  sprint_settings: ColumnType<JsonValue, string | undefined, string>;
   version: Generated<number>;
   created_by: number | null;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
+}
+
+/** A board's sprint (M1-044; AGL-010, AGL-011; ADR-054). */
+export interface SprintTable {
+  id: Generated<number>;
+  workspace_id: number;
+  board_id: number;
+  name: string;
+  goal: Generated<string>;
+  state: ColumnType<SprintState, SprintState | undefined, SprintState>;
+  sequence: number;
+  start_at: Timestamp | null;
+  end_at: Timestamp | null;
+  started_at: Timestamp | null;
+  completed_at: Timestamp | null;
+  started_by: number | null;
+  completed_by: number | null;
+  created_by: number | null;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  /** Set on a deleted completed sprint: it leaves reports, its rows stay (AGL-010 (3)). */
+  deleted_at: Timestamp | null;
+}
+
+export type SprintState = 'future' | 'active' | 'closed';
+
+/** A ticket in a sprint; `open` while the sprint is future or active (one open per ticket). */
+export interface SprintTicketTable {
+  workspace_id: number;
+  sprint_id: number;
+  ticket_id: number;
+  open: Generated<boolean>;
+  added_at: DefaultTimestamp;
+}
+
+export type SprintChangeKind = 'added' | 'removed' | 'committed' | 'completed' | 'carried_over';
+
+/** A sprint membership change with the ticket's estimate at that time (scope change). */
+export interface SprintChangeTable {
+  id: Generated<string>;
+  workspace_id: number;
+  sprint_id: number;
+  ticket_id: number;
+  kind: SprintChangeKind;
+  after_start: Generated<boolean>;
+  at: DefaultTimestamp;
+  actor_id: number | null;
+  original_estimate: number | null;
+  remaining_estimate: number | null;
+  /** The board's number field (story points) then; numeric comes back as text. */
+  points: ColumnType<string | null, number | string | null | undefined, number | string | null>;
+  to_sprint_id: number | null;
 }
 
 /** A saved search (M1-063; QRY-011): a named query kept by its owner. */
@@ -1918,6 +1973,9 @@ export interface Database {
   guardrail_limit: GuardrailLimitTable;
   board: BoardTable;
   board_admin: BoardAdminTable;
+  sprint: SprintTable;
+  sprint_ticket: SprintTicketTable;
+  sprint_change: SprintChangeTable;
   saved_search: SavedSearchTable;
   saved_search_share: SavedSearchShareTable;
   saved_search_star: SavedSearchStarTable;

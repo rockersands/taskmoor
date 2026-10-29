@@ -999,6 +999,28 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM saved_search s WHERE s.name = 'Seed saved search'`.execute(db);
     },
   },
+  '0052_sprints': {
+    tables: {
+      sprint: "name = 'Seed sprint' AND state = 'active'",
+      sprint_ticket: "open AND ticket_id IN (SELECT id FROM ticket WHERE summary = 'Seed ticket')",
+      sprint_change: "kind = 'committed' AND original_estimate = 3600",
+    },
+    seed: async (db) => {
+      // An active sprint on the seed board holding the seed ticket, committed at its start.
+      await sql`INSERT INTO sprint (workspace_id, board_id, name, state, sequence, start_at,
+          end_at, started_at)
+        SELECT 1, id, 'Seed sprint', 'active', 1, '2026-10-01T09:00:00Z', '2026-10-15T09:00:00Z',
+          '2026-10-01T09:00:00Z'
+          FROM board WHERE name = 'Seed board'`.execute(db);
+      await sql`INSERT INTO sprint_ticket (workspace_id, sprint_id, ticket_id)
+        SELECT 1, s.id, k.id FROM sprint s, ticket k
+         WHERE s.name = 'Seed sprint' AND k.summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO sprint_change (workspace_id, sprint_id, ticket_id, kind,
+          original_estimate, at)
+        SELECT 1, s.id, k.id, 'committed', 3600, '2026-10-01T09:00:00Z' FROM sprint s, ticket k
+         WHERE s.name = 'Seed sprint' AND k.summary = 'Seed ticket'`.execute(db);
+    },
+  },
 };
 
 /**
