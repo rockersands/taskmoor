@@ -94,6 +94,12 @@ const CASES: PlanCase[] = [
   { q: 'due < "2024-02-01" ORDER BY due ASC', uses: ['ticket_due_idx'] },
   { q: 'closed >= "2024-12-01" ORDER BY closed DESC', uses: ['ticket_closed_idx'] },
   { q: 'watcher = currentUser() ORDER BY created DESC', uses: ['ticket_follower_user_idx'] },
+  // Functions (M1-038): a ticket set is a semi-join that starts from the person's rows.
+  { q: 'key IN followedTickets() ORDER BY created DESC', uses: ['ticket_follower_user_idx'] },
+  {
+    q: 'parent IN watchedIssues() ORDER BY created DESC',
+    uses: ['ticket_follower_user_idx', 'ticket_parent_idx'],
+  },
   {
     q: 'NOT (labels IN (l3) OR type = Subticket) AND track IN (T01, T03) ORDER BY created DESC',
     uses: ['ticket_track_created_idx|ticket_track_updated_idx|ticket_track_number_key'],
