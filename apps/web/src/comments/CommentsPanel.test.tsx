@@ -11,11 +11,11 @@ import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { SHOP_41 } from '../tickets/view/fixtures';
 import { CommentsPanel } from './CommentsPanel';
-import type { CommentList } from './client';
+import type { CommentList, MentionWarning } from './client';
 import { COMMENTS, fakeCommentClient, STATUS_LOCK } from './fixtures';
 
 function renderPanel(
-  start: Partial<CommentList> & { failAdd?: ApiError } = {},
+  start: Partial<CommentList> & { failAdd?: ApiError; mentionWarnings?: MentionWarning[] } = {},
   locale: Locale = 'en',
 ) {
   const client = fakeCommentClient(start);
@@ -83,6 +83,29 @@ describe('the comments section (M1-018)', () => {
     expect(client.calls.find((c) => c.action === 'add')?.args[1]).toEqual({ roleId: 7 });
     // The form is empty again.
     expect(within(panel()).getByRole('textbox', { name: 'Add a comment' }).textContent).toBe('');
+  });
+
+  it('[NTF-005] says which mentioned people were not told', async () => {
+    const user = userEvent.setup();
+    renderPanel({
+      comments: [],
+      mentionWarnings: [
+        { kind: 'user', id: 9, name: 'Mi Rivera', reason: 'cannot_read' },
+        { kind: 'group', id: 4, name: 'Reviewers', reason: 'cannot_view', count: 2 },
+      ],
+    });
+    await user.click(await within(panel()).findByRole('textbox', { name: 'Add a comment' }));
+    await user.keyboard('Over to you');
+    await user.click(within(panel()).getByRole('button', { name: 'Comment' }));
+    const status = (await within(panel()).findByText(/Mi Rivera/)).closest('[role=status]');
+    expect(
+      within(status as HTMLElement)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual([
+      'Mi Rivera cannot read this comment and was not notified.',
+      '2 members of Reviewers cannot see this ticket and were not notified.',
+    ]);
   });
 
   it('[CORE-020] asks for text first, and words a refusal', async () => {

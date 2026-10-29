@@ -1116,6 +1116,18 @@ export interface NotificationTable {
   delivered_at: Timestamp | null;
   /** The email that carried it (M1-057). */
   email_delivery_id: string | null;
+  /** An inbox item put aside until then (M1-058); it comes back unread. */
+  snoozed_until: Timestamp | null;
+  /** A direct ask: a mention of the person, or the ticket assigned to them (M1-058). */
+  direct: Generated<boolean>;
+}
+
+/** Per person, a counter bumped with every change to their inbox (M1-058). */
+export interface InboxStateTable {
+  user_id: number;
+  workspace_id: number;
+  version: Generated<string>;
+  changed_at: DefaultTimestamp;
 }
 
 export type EmailDelivery = 'instant' | 'daily' | 'weekly' | 'off';
@@ -1756,6 +1768,7 @@ export interface Database {
   notification_rule: NotificationRuleTable;
   notification_preference: NotificationPreferenceTable;
   notification: NotificationTable;
+  inbox_state: InboxStateTable;
   email_setting: EmailSettingTable;
   email_delivery: EmailDeliveryTable;
   email_unsubscribe: EmailUnsubscribeTable;

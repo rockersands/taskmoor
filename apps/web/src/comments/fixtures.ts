@@ -1,7 +1,14 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { ApiError } from '../api/client';
 import type { Lock } from '../locks/useLockText';
-import type { Audiences, Comment, CommentClient, CommentList, Reaction } from './client';
+import type {
+  Audiences,
+  Comment,
+  CommentClient,
+  CommentList,
+  MentionWarning,
+  Reaction,
+} from './client';
 
 const text = (...paragraphs: string[]): PmJson => ({
   type: 'doc',
@@ -105,7 +112,7 @@ export interface FakeCommentClient extends CommentClient {
 
 /** An in-memory backend for stories and tests: it answers as the API would. */
 export function fakeCommentClient(
-  start: Partial<CommentList> & { failAdd?: ApiError } = {},
+  start: Partial<CommentList> & { failAdd?: ApiError; mentionWarnings?: MentionWarning[] } = {},
 ): FakeCommentClient {
   let comments = structuredClone(start.comments ?? COMMENTS);
   let nextId = 200;
@@ -151,7 +158,9 @@ export function fakeCommentClient(
         can: { edit: true, delete: true },
       };
       comments = [...comments, comment];
-      return structuredClone(comment);
+      return start.mentionWarnings
+        ? { ...structuredClone(comment), mentionWarnings: start.mentionWarnings }
+        : structuredClone(comment);
     },
     edit: async (id, change) => {
       calls.push({ action: 'edit', args: [id, change] });

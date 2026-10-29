@@ -22,6 +22,7 @@ import { DirectoryGateway } from './ldap/gateway';
 import { instrumentApp, type Metrics } from './observability';
 import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
+import { registerActivityRoutes } from './routes/activity';
 import { registerAdminRoutes } from './routes/admin';
 import { registerAttachmentRoutes } from './routes/attachments';
 import { registerAuditRoutes } from './routes/audit';
@@ -33,6 +34,7 @@ import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
+import { registerInboxRoutes } from './routes/inbox';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerNotificationRoutes } from './routes/notifications';
@@ -235,6 +237,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerLayoutRoutes(app, db, fieldCatalogs);
     registerVisibilityRoutes(app, db);
     registerNotificationRoutes(app, db);
+    // The in-app inbox and activity streams (M1-058).
+    registerInboxRoutes(app, db);
+    registerActivityRoutes(app, db);
     await registerEmailRoutes(app, db, { smtpConfigured: deps.smtpConfigured ?? false });
     registerSyncRoutes(app, db, authorizer);
     registerSearchRoutes(app, db, fieldCatalogs, {
@@ -244,7 +249,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
     registerTimeRoutes(app, db, fieldCatalogs);
-    registerCommentRoutes(app, db);
+    registerCommentRoutes(app, db, authorizer);
     await registerAttachmentRoutes(app, db, deps.attachments ?? NO_STORAGE);
     registerWorkflowRoutes(app, db);
     registerWorkflowMapRoutes(app, db, fieldCatalogs);

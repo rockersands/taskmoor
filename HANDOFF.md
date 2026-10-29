@@ -28,6 +28,40 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-058 inbox, mentions and activity streams** (built by a background agent on
+  `work/m1-058-inbox`; migration 0044; ADR-047). Server: `notifications/mentions.ts` (mention
+  ids in documents: `"42"` a person, `"group:7"` a team), `notifications/warnings.ts`
+  (`mentionWarnings` on ticket and comment answers), the subscriber writes `mentioned`
+  notifications (exactly once per change and channel, superseding the policy's for that
+  person, never the writer, only to those who may see the ticket and read the comment) and
+  bumps `inbox_state`; `routes/inbox.ts` (`/api/v1/inbox`, `/inbox/count`, `PATCH /inbox/:id`,
+  `POST /inbox/read`), `routes/activity.ts` (`/tickets/:id/activity`, `/tracks/:id/activity`);
+  the sync socket also pushes `{type: "inbox", version}`. Web: `apps/web/src/inbox/`
+  (`InboxPage` at `#/inbox`, nav entry after Home), `styles/inbox.css`; the comments panel shows
+  mention warnings. e2e `apps/web/e2e/inbox.spec.ts`; the e2e API server now runs the worker's
+  event loop (audit and notifications) on the attachments database.
+  - **Event payloads:** `ticket.created`, `comment.created`, `comment.updated` and
+    `ticket.transitioned` take an optional `mentions {users, groups}`; `ticket.updated` keeps
+    carrying both documents of a rich text change (the subscriber diffs them). **New write
+    paths that create rich text must do one or the other**, or their mentions notify nobody.
+  - **Inbox reads judge every item again** (ticket list predicate, comment rule) in the
+    statement; any new inbox-like reader must too. Reading in the inbox marks the email twin
+    read; the mailer now drops notifications already read.
+  - The worker's idle wait is 200 ms (was 500), and the notification subscriber now runs before
+    the audit subscriber, so an event reaches an open inbox within a second: 239 to 348 ms on a
+    quiet machine, 840 to 850 ms during the full e2e run on this loaded machine. At size
+    (`routes/inbox.large.test.ts`, `TASKMOOR_LARGE_INBOX=1`): 50,000 items read in 15 to 25 ms
+    p95; a track's activity costs one probe per ticket (120 ms at 2,000 tickets).
+  - `mentioned` is a product event (`PRODUCT_EVENTS`): preferences accept it, policies do not;
+    `GET /notification-events` lists it as `productEvents`. The Account page's event table does
+    not offer it yet.
+  - Upgrade fixtures: the 0024 seed no longer writes `track.workflow_id` on a database past 0042
+    and the 0042 seed uses the renamed local track `SEEDNEW` (both broke once 0042 stopped
+    being the newest migration).
+  - Not built: an unread badge in the navigation, mentions in custom rich text (paragraph)
+    fields, approvals on the Priority tab (M2), reading a very large track's activity by track
+    (see ADR-047).
+
 - **M1-037 SQL compiler** (branch `work/m1-037-sql-compiler-2`; migration 0043; ADR-010
   "Implementation (M1-037)", ADR-043 "Selection by query"). Built from the uncommitted draft in
   `/home/user/wt-compiler` (left untouched there), ported onto M1-028 and finished.

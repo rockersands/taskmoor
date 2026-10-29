@@ -185,6 +185,14 @@ export class EventBus {
 }
 
 /**
+ * How long an idle worker waits before it looks for events again. An event reaches its
+ * subscribers within this wait; for the inbox (M1-058, NTF-003) the realtime socket's 250 ms
+ * poll and the page's read come on top, and the sum must stay under a second. Two indexed reads
+ * five times a second cost an idle database next to nothing.
+ */
+const IDLE_MS = 200;
+
+/**
  * The worker loop (worker role): relay new events, run ready jobs, release jobs of dead
  * workers, then wait a little when there was nothing to do.
  */
@@ -213,7 +221,7 @@ export function startWorker(options: {
       }
       await new Promise<void>((resolve) => {
         wake = resolve;
-        setTimeout(resolve, options.idleMs ?? 500).unref();
+        setTimeout(resolve, options.idleMs ?? IDLE_MS).unref();
       });
     }
   })();

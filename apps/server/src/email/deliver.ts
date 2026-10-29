@@ -19,6 +19,8 @@ import type { MailTransport } from './transport';
  * - At send time the ticket is checked again: a notification about a ticket the person can no
  *   longer see is dropped, as are those of deactivated people. So is one about a comment that
  *   was deleted or that the person may no longer read (M1-018); a readable one is quoted.
+ * - A notification the person already read in the inbox (M1-058) is not emailed, digests
+ *   included (NTF-003 (2)).
  * - Each person's unsent notifications are locked while their email goes out (SKIP LOCKED), so
  *   several workers never send the same notification twice. A failed send is recorded and the
  *   notifications stay unsent for the next run. There is no daily cap.
@@ -192,7 +194,7 @@ export async function deliverEmail(
     await db.transaction().execute(async (trx) => {
       const pending = await trx
         .selectFrom('notification')
-        .select(['id', 'event', 'ticket_id', 'actor_id', 'payload', 'created_at'])
+        .select(['id', 'event', 'ticket_id', 'actor_id', 'payload', 'created_at', 'read_at'])
         .where('user_id', '=', person.user_id)
         .where('channel', '=', 'email')
         .where('delivered_at', 'is', null)
@@ -279,8 +281,10 @@ export async function deliverEmail(
       }
 
       for (const batch of batches) {
-        // Kept only where the person may still see the ticket, and read the comment if any.
+        // Kept only where the person may still see the ticket, and read the comment if any;
+        // one already read in the inbox is not sent again (NTF-003 (2), M1-058).
         const kept = batch.filter((n) => {
+          if (n.read_at !== null) return false;
           const comment = commentOf(n.payload);
           if (comment !== null && !quotes.has(comment)) return false;
           return n.ticket_id !== null && visible.has(n.ticket_id);

@@ -33,7 +33,7 @@ describe('notification settings (M1-057)', () => {
       section.getByRole('checkbox', { name: 'Tell me about changes I make myself' }),
     ).not.toBeChecked();
     const table = section.getByRole('table', { name: 'What you hear about, and where' });
-    expect(within(table).getAllByRole('row')).toHaveLength(16);
+    expect(within(table).getAllByRole('row')).toHaveLength(17);
     expect(within(table).getByRole('checkbox', { name: 'Inbox: Ticket closed' })).toBeChecked();
   });
 

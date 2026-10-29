@@ -1,7 +1,11 @@
 import { api } from '../api/client';
 
-/** The built-in notification events (M1-056), in the order settings list them. */
+/**
+ * The built-in notification events (M1-056), in the order settings list them; mentions of the
+ * person first, a product event outside policies (M1-058).
+ */
 export const NOTIFICATION_EVENTS = [
+  'mentioned',
   'ticket_created',
   'ticket_updated',
   'ticket_assigned',

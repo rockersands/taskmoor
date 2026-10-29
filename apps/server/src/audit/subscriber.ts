@@ -211,6 +211,9 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'comment.deleted': TICKET_ACTIVITY,
   'comment.reacted': 'ticket activity: a reaction, not a security or configuration event',
   'comment.unreacted': 'ticket activity: a reaction, not a security or configuration event',
+  'inbox.item_updated':
+    'a person reading or snoozing their own inbox item (M1-058), not a security event',
+  'inbox.marked_read': 'a person marking their own inbox read (M1-058), not a security event',
   'attachment.created': TICKET_ACTIVITY,
   'attachment.deleted': TICKET_ACTIVITY,
 };

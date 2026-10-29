@@ -902,6 +902,24 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0044_inbox': {
+    tables: {
+      notification:
+        "event = 'mentioned' AND direct AND snoozed_until IS NOT NULL AND channel = 'inbox'",
+      inbox_state:
+        "version = 3 AND user_id IN (SELECT id FROM app_user WHERE email = 'seed@example.com')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO notification (workspace_id, user_id, channel, event, ticket_id,
+          domain_event_id, payload, direct, snoozed_until)
+        SELECT 1, u.id, 'inbox', 'mentioned', k.id, 990044, '{"mentionedIn": ["comment"]}', true,
+               now() + interval '1 day'
+          FROM app_user u, ticket k
+         WHERE u.email = 'seed@example.com' AND k.summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO inbox_state (user_id, workspace_id, version)
+        SELECT id, 1, 3 FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

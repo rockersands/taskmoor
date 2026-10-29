@@ -31,6 +31,20 @@ export function isNotificationEvent(value: string): boolean {
   return (NOTIFICATION_EVENTS as readonly string[]).includes(value) || CUSTOM.test(value);
 }
 
+/**
+ * Product events outside policies (spec 01c section 3): they reach the people they are about,
+ * whatever the policy says. People still choose their channels for them (M1-058).
+ */
+export const PRODUCT_EVENTS = ['mentioned'] as const;
+
+/** Events a person may choose channels for: policy events and product events. */
+export function isPreferenceEvent(value: string): boolean {
+  return isNotificationEvent(value) || (PRODUCT_EVENTS as readonly string[]).includes(value);
+}
+
+/** Direct asks for the inbox's Priority tab (NTF-003 (3)): a mention, or an assignment to you. */
+export const DIRECT_EVENTS = ['mentioned', 'ticket_assigned'] as const;
+
 export const RECIPIENTS = [
   'assignee',
   'requester',

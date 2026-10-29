@@ -1769,6 +1769,54 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PATCH /api/v1/inbox/:id',
+      expect: 'inbox.item_updated',
+      // An inbox item of Bo's, as the notification subscriber would write it (M1-058); its
+      // email is marked read with it and the inbox counter moves: still one event.
+      prepare: async () => {
+        const bo = await database.db
+          .selectFrom('app_user')
+          .select('id')
+          .where('email', '=', 'bo@example.com')
+          .executeTakeFirstOrThrow();
+        const rows = await database.db
+          .insertInto('notification')
+          .values(
+            (['inbox', 'email'] as const).map((channel) => ({
+              workspace_id: 1,
+              user_id: bo.id,
+              channel,
+              event: 'ticket_updated',
+              ticket_id: Number(state.ticket),
+              domain_event_id: '990058',
+              payload: JSON.stringify({ key: 'x', summary: 'x', type: 'ticket.updated' }),
+            })),
+          )
+          .returning(['id', 'channel'])
+          .execute();
+        state.inboxItem = String(rows.find((r) => r.channel === 'inbox')?.id);
+      },
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PATCH',
+          url: `/api/v1/inbox/${state.inboxItem}`,
+          payload: { snoozedUntil: new Date(Date.now() + 3_600_000).toISOString() },
+        }),
+    },
+    {
+      route: 'POST /api/v1/inbox/read',
+      expect: 'inbox.marked_read',
+      prepare: async () => {
+        await database.db
+          .updateTable('notification')
+          .set({ snoozed_until: null, read_at: null })
+          .where('id', '=', String(state.inboxItem))
+          .execute();
+      },
+      run: () =>
+        call(String(state.bo1b), { method: 'POST', url: '/api/v1/inbox/read', payload: {} }),
+    },
+    {
       route: 'POST /api/v1/tickets/:id/attachments',
       expect: 'attachment.created',
       // A new ticket version and a history row too: still one event.

@@ -49,6 +49,13 @@ export const BoardsIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const InboxIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 13.5 6.2 6.3A2 2 0 0 1 8.1 5h7.8a2 2 0 0 1 1.9 1.3L20 13.5V18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+    <path d="M4 13.5h4.5l1.5 2.5h4l1.5-2.5H20" />
+  </Icon>
+);
+
 export const SearchIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="10.5" cy="10.5" r="6" />

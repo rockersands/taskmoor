@@ -4,7 +4,9 @@ export { type AttachmentStores, attachmentStores, storesOf } from './attachments
 export { Authorizer } from './authz/authorizer';
 export { BULK_TASK, registerBulkJobs } from './bulk/jobs';
 export { loadConfig, type ServerConfig } from './config';
+export { EventBus, eventTask, startWorker } from './events/bus';
 export { JobRunner } from './events/queue';
+export { registerSubscribers } from './events/subscribers';
 export { FieldCatalogs } from './fields/catalog';
 export { startDirectorySync } from './ldap/scheduler';
 export { issueSetupToken, setupLink, setupState } from './setup';

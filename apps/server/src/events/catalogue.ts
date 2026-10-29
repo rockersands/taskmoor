@@ -16,6 +16,11 @@ const shifted = z.array(z.object({ levelId: id, from: z.number().int(), to: z.nu
 const typeMapping = z.array(
   z.object({ fromTypeId: id, toTypeId: id, ticketCount: z.number().int().min(1) }),
 );
+/**
+ * People and teams (groups) a change mentioned for the first time in a document (M1-058,
+ * NTF-005): the notification subscriber tells them. Ids only, never the text.
+ */
+const mentions = z.object({ users: z.array(id), groups: z.array(id) });
 /** Where a ticket sits: its key, track and type. */
 const placement = z.object({ key: z.string(), trackId: id, ticketTypeId: id });
 /** A link between two tickets, from the ticket the call was made on. */
@@ -317,9 +322,14 @@ export const EVENT_TYPES = {
       parentId: id.nullable(),
       event: z.string(),
       webhookCount: z.number().int().min(0),
+      /** Mentions in the description and environment it starts with (M1-058). */
+      mentions: mentions.optional(),
     }),
   },
-  /** Fields as the API names them; rich text changes carry both documents. */
+  /**
+   * Fields as the API names them; rich text changes carry both documents, from which the
+   * notification subscriber reads the mentions a change added (M1-058).
+   */
   'ticket.updated': { subject: 'ticket', payload: z.object({ key: z.string(), changes }) },
   /** To another track: a new key there; the old key keeps resolving. Subtickets come along. */
   'ticket.moved': {
@@ -700,6 +710,8 @@ export const EVENT_TYPES = {
       channel: z.enum(['ui', 'rest', 'automation']),
       /** The comment written with the transition, if any (M1-018). */
       commentId: id.optional(),
+      /** Mentions in that comment (M1-058). */
+      mentions: mentions.optional(),
     }),
   },
   // Time tracking (M1-019). Durations in seconds; the ticket history keeps the detail.
@@ -730,12 +742,19 @@ export const EVENT_TYPES = {
       ticketId: id,
       /** The role or group the comment is restricted to, or null for an open comment. */
       visibility: z.union([z.object({ roleId: id }), z.object({ groupId: id })]).nullable(),
+      /** People and teams it mentions (M1-058). */
+      mentions: mentions.optional(),
     }),
   },
-  /** What changed: `body`, `visibility` or both. */
+  /** What changed: `body`, `visibility` or both; with the mentions an edit added (M1-058). */
   'comment.updated': {
     subject: 'comment',
-    payload: z.object({ key: z.string(), ticketId: id, fields: z.array(z.string()) }),
+    payload: z.object({
+      key: z.string(),
+      ticketId: id,
+      fields: z.array(z.string()),
+      mentions: mentions.optional(),
+    }),
   },
   'comment.deleted': {
     subject: 'comment',
@@ -997,6 +1016,19 @@ export const EVENT_TYPES = {
   'service_account.updated': { subject: 'user', payload: z.object({ changes }) },
   'service_account.deactivated': { subject: 'user', payload: z.object({}) },
   'service_account.reactivated': { subject: 'user', payload: z.object({}) },
+  // The in-app inbox (M1-058, NTF-003): a person's own items, read, unread or snoozed.
+  /** `read` and `snoozedUntil` as they were and are; the email twin follows `read`. */
+  'inbox.item_updated': { subject: 'notification', payload: z.object({ changes }) },
+  /** Everything (or one tab, type or track of it) marked read at once. */
+  'inbox.marked_read': {
+    subject: 'user',
+    payload: z.object({
+      count: z.number().int().min(0),
+      view: z.enum(['all', 'priority']),
+      event: z.string().nullable(),
+      trackId: id.nullable(),
+    }),
+  },
   // Bulk operations (M1-021): the request and its cancellation; each ticket's change is its own
   // ticket event, emitted by the ticket's route as for a single change.
   'bulk_operation.created': {

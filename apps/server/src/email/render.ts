@@ -44,6 +44,7 @@ const EN = {
   'event.work_started': 'started work',
   'event.work_stopped': 'stopped work',
   'event.generic': 'changed the ticket',
+  'event.mentioned': 'mentioned you',
   'event.custom': 'fired {name}',
   someone: 'Someone',
   changed: 'Changed: {fields}',

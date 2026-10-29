@@ -10,8 +10,10 @@ import type { EventBus } from './bus';
  * arrive.
  */
 export function registerSubscribers(bus: EventBus, deps: { db: Kysely<Database> }): void {
+  // Notifications (M1-056): who hears of a change, written for email and the inbox to deliver.
+  // First, so a worker runs an event's notification job before its audit job: an open inbox
+  // waits for it (M1-058, NTF-003).
+  bus.subscribe(notificationSubscriber(deps.db));
   // The audit log (M1-003, ADR-034).
   bus.subscribe(auditSubscriber(deps.db));
-  // Notifications (M1-056): who hears of a change, written for email and the inbox to deliver.
-  bus.subscribe(notificationSubscriber(deps.db));
 }
