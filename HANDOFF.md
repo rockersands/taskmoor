@@ -48,6 +48,11 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
   `slack`, `teams`, `mattermost`, `matrix` (`webhooks/payload.ts`, goldens in
   `webhooks/__golden__`). Routes `routes/webhooks.ts` (site admins; admin token scope).
   `webhooks/webhooks.test.ts` runs a local receiver; its `pump()` makes retries due at once.
+- **M1-059 report event store** (ADR-056; no migration): `reports/events.ts` reads
+  `ticket_change` and `sprint_change` as typed report events (`readReportEvents`), folds them to
+  a state per ticket (`fold`, `stateAt` for a past moment) and checks the fold against the live
+  tickets and open sprint memberships (`replayCheck`; `node cli.mjs report-verify`). M1-060 to
+  M1-062 compute their reports from these events only.
 - **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
   the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
   settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
@@ -73,8 +78,8 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
 1. The overnight list below without M1-045: M1-040 full-text search and M1-039 history
    operators (both measured at 10M tickets: this Mac has 33 GB free, the 137 GB dataset stayed
    on Windows, so their timing criteria need another machine or CI), M1-064 dashboards with
-   M1-062 burndown (M1-059 report event store first), M1-046 board drag and drop, M1-098 CSV,
-   M1-105, M1-115, M1-116.
+   M1-062 burndown (M1-060 and M1-061 first, on M1-059's events), M1-046 board drag and
+   drop, M1-098 CSV, M1-105, M1-115, M1-116.
 2. Sprint editing in the web UI (name, goal and dates; API only since M1-044) and the rest of
    M1-044's "Left" list below. Sprint settings are in the web UI now (above). Webhooks have no
    web page yet (API only).
@@ -86,6 +91,8 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
 - `apps/server/src/routes/search.run.test.ts` "[QRY-010] stops a query over the timeout" timed
   out at 60 s in a full gate here (load average 16 to 19: its 20,000-row insert waits); it
   passes alone in 5 s. Add it to the watch list below.
+- `apps/server/src/sync/log.test.ts` "[NTF-008] numbers rows in commit order and trims the log"
+  failed once in a full gate at load 15 and passes alone; also for the watch list.
 - e2e outside CI reuses whatever already listens on 4173 to 4175, 8787, 8788, 8791 and 8792
   (`reuseExistingServer`). With two sessions running e2e at once, one gets the other's servers
   and their per-run passwords, and every sign-in answers 401. Check the ports first, or run

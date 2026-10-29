@@ -25,6 +25,10 @@
 //                                       is locked out, or after a lost password keyring)
 //   node cli.mjs audit-verify           checks every workspace's audit hash chain (IAM-013);
 //                                       exit 1 when one is broken
+//   node cli.mjs report-verify          replays every ticket's report events (M1-059, RPT-003)
+//                                       and compares them with the tickets; exit 1 when one
+//                                       differs. Tickets older than the change history
+//                                       (migration 0015) report as without history
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
@@ -38,6 +42,7 @@ import { createPasswordLink, passwordLinkUrl } from './directory';
 import { emit } from './events/bus';
 import { FieldCatalogs } from './fields/catalog';
 import { checkFieldValues } from './fields/jobs';
+import { replayCheck } from './reports/events';
 import { purgeExpired } from './trash/purge';
 import { formatOutcome, upgrade, upgradeExitCode } from './upgrade';
 import { checkUpgrade, formatChecks } from './upgrade-check';
@@ -58,7 +63,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | checksum | password-link <email> | audit-verify>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | checksum | password-link <email> | audit-verify | report-verify>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -283,6 +288,35 @@ try {
         const status = await verifyChain(db, workspace.id);
         say(JSON.stringify({ workspace: workspace.key, ...status }));
         if (!status.ok) process.exitCode = 1;
+      }
+      break;
+    }
+    case 'report-verify': {
+      const workspaces = await db
+        .selectFrom('workspace')
+        .select(['id', 'key'])
+        .orderBy('id')
+        .execute();
+      for (const workspace of workspaces) {
+        // Story points and other number fields are report facts too.
+        const numberFields = (
+          await db
+            .selectFrom('field')
+            .select('id')
+            .where('workspace_id', '=', workspace.id)
+            .where('type', '=', 'number')
+            .execute()
+        ).map((f) => f.id);
+        const mismatches = await replayCheck(db, workspace.id, { numberFields });
+        say(
+          JSON.stringify({
+            workspace: workspace.key,
+            ok: mismatches.length === 0,
+            mismatches: mismatches.length,
+            first: mismatches.slice(0, 20),
+          }),
+        );
+        if (mismatches.length > 0) process.exitCode = 1;
       }
       break;
     }
