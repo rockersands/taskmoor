@@ -1,11 +1,25 @@
 import { ApiError, api } from '../api/client';
 import type { Translate } from '../i18n/I18nProvider';
 
-/** A board's sprint settings (M1-044, AGL-007). */
+/** An auto-rolling cycle (M1-045, AGL-012): sprints of `lengthDays` on `timeZone`'s clock. */
+export interface SprintCycle {
+  lengthDays: number;
+  timeZone: string;
+}
+
+/** A number field a Scrum board may estimate with (AGL-007): story points and the like. */
+export interface NumberField {
+  id: number;
+  name: string;
+}
+
+/** A board's sprint settings (M1-044, AGL-007, AGL-011; the cycle since M1-045). */
 export interface SprintSettings {
   estimation: { statistic: 'ticketCount' | 'originalEstimate' | 'field'; fieldId?: number };
   timeTracking: 'none' | 'remainingEstimate';
   parallelSprints: boolean;
+  /** Null or absent: people plan, start and complete every sprint. */
+  cycle?: SprintCycle | null;
 }
 
 export interface Sprint {

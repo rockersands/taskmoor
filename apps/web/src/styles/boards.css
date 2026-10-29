@@ -402,6 +402,22 @@
   min-height: var(--hit-target);
 }
 
+/* Sprint settings (M1-044, M1-045): a checkbox with its hint; a long time zone shrinks on phones. */
+.sprint-settings-option {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-3) 0;
+}
+
+.sprint-settings-zone {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.sprint-settings-zone select {
+  width: 100%;
+}
+
 @media (max-width: 640px) {
   .board-row {
     grid-template-columns: repeat(var(--board-columns, 3), minmax(0, min(80vw, 18rem)));

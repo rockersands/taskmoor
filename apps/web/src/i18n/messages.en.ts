@@ -2632,6 +2632,36 @@ export const messagesEn = {
   'sprints.report.removed': 'Tickets removed from the sprint',
   'sprints.report.addedAfterStart': 'Added after the start',
   'sprints.report.estimateChanged': '{from} → {to}',
+  // Sprint settings of a Scrum board (AGL-007, AGL-011, AGL-012), in the board settings page.
+  'sprints.settings.title': 'Sprints',
+  'sprints.settings.statistic': 'Estimate with',
+  'sprints.settings.statistic.ticketCount': 'Ticket count',
+  'sprints.settings.statistic.originalEstimate': 'Original time estimate',
+  'sprints.settings.statistic.field': 'A number field, such as story points',
+  'sprints.settings.field': 'Number field',
+  'sprints.settings.fieldPlaceholder': 'Pick a number field',
+  'sprints.settings.fieldUnknown': 'Field {id}',
+  'sprints.settings.noFields':
+    'There are no number fields yet. An administrator adds them on the Fields page.',
+  'sprints.settings.pickField': 'Pick the number field to estimate with.',
+  'sprints.settings.notANumberField':
+    'This field is not a number field, or it no longer exists. Pick another.',
+  'sprints.settings.timeTracking': 'Time tracking',
+  'sprints.settings.timeTracking.none': 'None',
+  'sprints.settings.timeTracking.remainingEstimate': 'Remaining estimate and time spent',
+  'sprints.settings.parallel': 'Allow several active sprints at once',
+  'sprints.settings.cycle': 'Roll sprints over automatically',
+  'sprints.settings.cycleHint':
+    'Start the first sprint yourself. When a sprint ends, its unfinished tickets move into the next one, which starts at once. A cycle runs one sprint at a time.',
+  'sprints.settings.notWithParallel':
+    'A cycle runs one sprint at a time. Turn off several active sprints to use it.',
+  'sprints.settings.lengthDays': 'Days in each sprint',
+  'sprints.settings.lengthHint': 'From {min} to {max} days.',
+  'sprints.settings.badLength': 'Enter a whole number of days from {min} to {max}.',
+  'sprints.settings.timeZone': 'Time zone of the cycle',
+  'sprints.settings.timeZoneHint':
+    'Days count on this clock, so a sprint that ends at 09:00 still does after a change of summer time.',
+  'sprints.settings.unknownTimeZone': 'The server does not know this time zone. Pick another.',
   'page.underConstruction': 'This area is under construction.',
   'page.itemCount': '{count, plural, =0 {No items} one {# item} other {# items}}',
 } as const;

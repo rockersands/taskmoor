@@ -1,6 +1,14 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { useSession } from '../session/SessionProvider';
+import type { NumberField } from '../sprints/client';
+import {
+  type SprintDraft,
+  SprintSettingsSection,
+  sprintDraftOf,
+  sprintSettingsOf,
+} from '../sprints/SprintSettingsSection';
 import {
   type Board,
   type BoardClient,
@@ -64,12 +72,13 @@ interface Draft {
   colours: ColourDraft[];
   fields: string[];
   daysInColumn: boolean;
+  sprint: SprintDraft;
 }
 
 let lastKey = 0;
 const newKey = () => `k${++lastKey}`;
 
-function draftOf(board: Board): Draft {
+function draftOf(board: Board, timeZone: string): Draft {
   return {
     name: board.name,
     kind: board.kind,
@@ -93,6 +102,7 @@ function draftOf(board: Board): Draft {
     colours: board.cardRules.colours.map((c) => ({ key: newKey(), ...c })),
     fields: [...board.cardRules.fields],
     daysInColumn: board.cardRules.daysInColumn,
+    sprint: sprintDraftOf(board.sprintSettings, timeZone),
   };
 }
 
@@ -131,6 +141,8 @@ function patchOf(draft: Draft, version: number): BoardPatch {
       fields: draft.fields,
       daysInColumn: draft.daysInColumn,
     },
+    // Sprint settings belong to Scrum boards; a board turning Kanban keeps its stored ones.
+    ...(draft.kind === 'scrum' ? { sprintSettings: sprintSettingsOf(draft.sprint) } : {}),
   };
 }
 
@@ -165,13 +177,18 @@ const FIELD_LABELS: Record<(typeof CARD_FIELDS)[number], MessageId> = {
  * A board's settings (M1-043; AGL-002 to AGL-006, AGL-014), for its board admins and the
  * administrators of its track: name, kind, query and sub-filter; columns with their minimum
  * and maximum and the status each takes (one column at most, or none: unmapped); swimlanes;
- * board filters and how they show; card colours, fields and days in column. Everything saves
- * at once with the version it was read at; the server checks every query.
+ * board filters and how they show; card colours, fields and days in column; on a Scrum board
+ * its sprint settings (M1-044, M1-045). Everything saves at once with the version it was read
+ * at; the server checks every query and setting, and its refusals show next to their fields.
  */
 export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettingsPageProps) {
   const t = useT();
   const id = useId();
+  const { session } = useSession();
+  // A new cycle runs on the person's time zone, or the server's default.
+  const timeZone = (session.status === 'signed-in' && session.user.timeZone) || 'UTC';
   const [board, setBoard] = useState<Board | null>(null);
+  const [numberFields, setNumberFields] = useState<NumberField[]>([]);
   const [statuses, setStatuses] = useState<BoardStatus[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
@@ -185,12 +202,17 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       (read) => {
         setBoard(read.board);
         setStatuses(read.statuses);
-        setDraft(draftOf(read.board));
+        setDraft(draftOf(read.board, timeZone));
         setState('loaded');
       },
       () => setState('failed'),
     );
-  }, [client, boardId]);
+  }, [client, boardId, timeZone]);
+
+  useEffect(() => {
+    // Without the list the picker still shows the board's field by its id.
+    client.numberFields().then(setNumberFields, () => setNumberFields([]));
+  }, [client]);
 
   useEffect(() => {
     if (notice) noticeRef.current?.focus();
@@ -258,7 +280,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       const outcome = await client.update(boardId, patchOf(draft, board.version));
       if (outcome.ok) {
         setBoard(outcome.board);
-        setDraft(draftOf(outcome.board));
+        setDraft(draftOf(outcome.board, timeZone));
         setNotice({ kind: 'saved' });
       } else if (outcome.conflict) {
         setNotice({ kind: 'conflict' });
@@ -806,6 +828,15 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
             {t('boards.settings.daysInColumn')}
           </label>
         </fieldset>
+
+        {draft.kind === 'scrum' && (
+          <SprintSettingsSection
+            value={draft.sprint}
+            onChange={(change) => set({ sprint: { ...draft.sprint, ...change } })}
+            numberFields={numberFields}
+            problems={problems}
+          />
+        )}
 
         <div className="form-actions">
           <button type="submit" className="button-primary" disabled={busy}>

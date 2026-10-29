@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, within } from 'storybook/test';
 import { BoardSettingsPage } from './BoardSettingsPage';
-import { BOARD, fakeBoardClient } from './fixtures';
+import { BOARD, fakeBoardClient, SCRUM_BOARD } from './fixtures';
 
 const meta = {
   title: 'Boards/BoardSettingsPage',
@@ -44,6 +44,19 @@ export const ColourRules: Story = {
         },
       },
     }),
+  },
+};
+
+/** A Scrum board: story points and sprints rolling every two weeks on Madrid's clock. */
+export const ScrumSprints: Story = {
+  args: { client: fakeBoardClient({ board: SCRUM_BOARD }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const sprints = within(await canvas.findByRole('group', { name: 'Sprints' }));
+    await expect(sprints.getByRole('spinbutton', { name: 'Days in each sprint' })).toHaveValue(14);
+    await expect(await sprints.findByRole('combobox', { name: 'Number field' })).toHaveDisplayValue(
+      'Story points',
+    );
   },
 };
 

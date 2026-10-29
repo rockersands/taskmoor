@@ -48,6 +48,18 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
   `slack`, `teams`, `mattermost`, `matrix` (`webhooks/payload.ts`, goldens in
   `webhooks/__golden__`). Routes `routes/webhooks.ts` (site admins; admin token scope).
   `webhooks/webhooks.test.ts` runs a local receiver; its `pump()` makes retries due at once.
+- **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
+  the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
+  settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
+  editable page (`board.mayConfigure`, the server's rule): estimation statistic with a picker
+  of the number fields `GET /fields` shows the person (`boardClient.numberFields`; a saved field
+  they cannot see stays, named by its id), time tracking, parallel sprints, and the cycle (off,
+  or 1 to 91 days on a time zone from `account/options.ts`, the person's zone or UTC to begin
+  with). It saves with the rest of the board (`PATCH /boards/:id`, `sprintSettings` only while
+  the board is Scrum). `not_a_number_field`, `not_with_parallel_sprints` and
+  `unknown_time_zone` (and a bad length) show next to their field. The board fake refuses the
+  same (`fixtures.ts`, `unknownTimeZones`). e2e `sprint-settings.spec.ts`. Node's ICU lists
+  old zone names (`Europe/Kiev`, `Asia/Calcutta`): tests pick zones every list has.
 
 ### Next (in order)
 
@@ -56,9 +68,9 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
    on Windows, so their timing criteria need another machine or CI), M1-064 dashboards with
    M1-062 burndown (M1-059 report event store first), M1-046 board drag and drop, M1-098 CSV,
    M1-105, M1-115, M1-116.
-2. Sprint settings in the web UI (estimation, time tracking, parallel sprints and now the
-   cycle): API only since M1-044; a session was working on it (its own worktree branch).
-   Webhooks have no web page yet either (API only).
+2. Sprint editing in the web UI (name, goal and dates; API only since M1-044) and the rest of
+   M1-044's "Left" list below. Sprint settings are in the web UI now (above). Webhooks have no
+   web page yet (API only).
 3. M1-073 and M1-074 still wait for a live test key in the environment (`TASKMOOR_AI_TEST_KEY`);
    M1-100 for the release signing key.
 

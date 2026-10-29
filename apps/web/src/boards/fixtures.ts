@@ -1,3 +1,4 @@
+import type { NumberField, SprintSettings } from '../sprints/client';
 import type {
   Board,
   BoardCard,
@@ -60,9 +61,61 @@ export const BOARD: Board = {
     fields: ['assignee', 'priority'],
     daysInColumn: true,
   },
+  sprintSettings: {
+    estimation: { statistic: 'originalEstimate' },
+    timeTracking: 'remainingEstimate',
+    parallelSprints: false,
+    cycle: null,
+  },
   mayConfigure: true,
   version: 3,
 };
+
+/** The number fields the person sees (AGL-007). */
+export const NUMBER_FIELDS: NumberField[] = [
+  { id: 31, name: 'Story points' },
+  { id: 32, name: 'Business value' },
+];
+
+/** The board as a Scrum board estimating in story points, sprints rolling every two weeks. */
+export const SCRUM_BOARD: Board = {
+  ...BOARD,
+  kind: 'scrum',
+  sprintSettings: {
+    estimation: { statistic: 'field', fieldId: 31 },
+    timeTracking: 'none',
+    parallelSprints: false,
+    cycle: { lengthDays: 14, timeZone: 'Europe/Madrid' },
+  },
+};
+
+/** The board PATCH's refusals of sprint settings (`sprintSettingsInput` and the field check). */
+function sprintProblems(
+  settings: SprintSettings,
+  numberFields: readonly NumberField[],
+  unknownTimeZones: readonly string[],
+): Record<string, string> {
+  const fields: Record<string, string> = {};
+  const { estimation, cycle } = settings;
+  if ((estimation.statistic === 'field') !== (estimation.fieldId !== undefined)) {
+    fields['sprintSettings.estimation.fieldId'] = 'fieldId with field, only';
+  } else if (
+    estimation.fieldId !== undefined &&
+    !numberFields.some((f) => f.id === estimation.fieldId)
+  ) {
+    fields['sprintSettings.estimation.fieldId'] = 'not_a_number_field';
+  }
+  if (cycle) {
+    if (!Number.isInteger(cycle.lengthDays) || cycle.lengthDays < 1 || cycle.lengthDays > 91) {
+      fields['sprintSettings.cycle.lengthDays'] = 'invalid';
+    }
+    if (unknownTimeZones.includes(cycle.timeZone)) {
+      fields['sprintSettings.cycle.timeZone'] = 'unknown_time_zone';
+    }
+    if (settings.parallelSprints) fields['sprintSettings.cycle'] = 'not_with_parallel_sprints';
+  }
+  return fields;
+}
 
 /** The statuses of the board's workflow, each with the column that takes it. */
 export const STATUSES: Omit<BoardStatus, 'columnId'>[] = [
@@ -133,9 +186,17 @@ export interface FakeBoardClient extends BoardClient {
 }
 
 export function fakeBoardClient(
-  options: { cards?: FakeCard[]; board?: Partial<Board>; lanes?: BoardLane[] } = {},
+  options: {
+    cards?: FakeCard[];
+    board?: Partial<Board>;
+    lanes?: BoardLane[];
+    numberFields?: NumberField[];
+    /** Time zones the browser offers that this server refuses (older time zone data). */
+    unknownTimeZones?: string[];
+  } = {},
 ): FakeBoardClient {
   let board: Board = { ...BOARD, ...options.board };
+  const numberFields = options.numberFields ?? NUMBER_FIELDS;
   const lanes = options.lanes ?? LANES;
   let cards = (options.cards ?? CARDS).map((c) => ({ ...c }));
   const columnOf = (statusId: number) =>
@@ -180,6 +241,14 @@ export function fakeBoardClient(
       if (patch.source && 'query' in patch.source && /=\s*$/.test(patch.source.query)) {
         return { ok: false, fields: { 'source.query': 'invalid_query' } };
       }
+      if (patch.sprintSettings) {
+        const refused = sprintProblems(
+          patch.sprintSettings,
+          numberFields,
+          options.unknownTimeZones ?? [],
+        );
+        if (Object.keys(refused).length > 0) return { ok: false, fields: refused };
+      }
       let n = 0;
       const {
         version: _version,
@@ -204,6 +273,7 @@ export function fakeBoardClient(
       };
       return { ok: true, board };
     },
+    numberFields: async () => numberFields,
     data: async (_id, filters): Promise<BoardData> => {
       client.dataCalls.push([...filters]);
       const all = [...cards].sort((a, b) => (a.rank < b.rank ? -1 : 1));

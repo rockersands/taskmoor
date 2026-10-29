@@ -81,7 +81,10 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
 - **One lifecycle**: creating, starting and completing a sprint are functions
   (`sprints/lifecycle.ts`) that the routes and the worker share; they take an actor instead of
   the request.
-- **Not yet**: the web UI for sprint settings (API only, as the rest of M1-044's settings).
+- **Web**: the board settings page edits the cycle with the other sprint settings, for those
+  who may configure the board (`apps/web/src/sprints/SprintSettingsSection.tsx`): off, or a
+  length in days and a time zone (the person's, or UTC, to begin with). The refusals above
+  show next to the cycle, its length or its time zone.
 
 ## Options considered
 

@@ -1,4 +1,5 @@
 import { ApiError, api } from '../api/client';
+import type { NumberField, SprintSettings } from '../sprints/client';
 
 /** A board in the list (`GET /api/v1/boards`, M1-043). */
 export interface BoardSummary {
@@ -82,6 +83,8 @@ export interface Board extends BoardSummary {
   boardFilters: BoardFilter[];
   boardFilterDisplay: 'buttons' | 'dropdown';
   cardRules: CardRules;
+  /** Read on every board; the settings page shows them for Scrum boards (M1-044, M1-045). */
+  sprintSettings: SprintSettings;
   mayConfigure: boolean;
   version: number;
 }
@@ -124,6 +127,7 @@ export interface BoardPatch {
   boardFilters?: { id?: string; name: string; query: string; description: string }[];
   boardFilterDisplay?: 'buttons' | 'dropdown';
   cardRules?: CardRules;
+  sprintSettings?: SprintSettings;
 }
 
 /** Saved, or refused with a problem per field (`columns`, `boardFilters.1.query`, ...). */
@@ -202,6 +206,8 @@ export interface BoardClient {
   /** The configuration with the statuses its columns may take. */
   settings(id: number): Promise<{ board: Board; statuses: BoardStatus[] }>;
   update(id: number, patch: BoardPatch): Promise<UpdateOutcome>;
+  /** The number fields the person sees, for the estimation statistic. */
+  numberFields(): Promise<NumberField[]>;
   /** `sprints: 'active'` shows a Scrum board's active sprints only (M1-044). */
   data(id: number, filters: readonly string[], sprints?: 'active'): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
@@ -242,6 +248,10 @@ export const boardClient: BoardClient = {
       throw error;
     }
   },
+  numberFields: async () =>
+    (await api<{ fields: (NumberField & { type: string })[] }>('/fields')).fields
+      .filter((f) => f.type === 'number')
+      .map((f) => ({ id: f.id, name: f.name })),
   data: (id, filters, sprints) => api<BoardData>(dataPath(id, filters, sprints)),
   move: async (id, move) => {
     try {
