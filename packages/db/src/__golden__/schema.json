@@ -1501,11 +1501,11 @@
       "deleted_at timestamp with time zone",
       "deleted_by integer",
       "purge_started_at timestamp with time zone",
-      "workflow_id integer",
       "field_rule_set_id integer",
       "layout_set_id integer",
       "visibility_policy_id integer",
-      "notification_policy_id integer"
+      "notification_policy_id integer",
+      "workflow_map_id integer"
     ],
     "indexes": [
       "CREATE INDEX track_archived_idx ON public.track USING btree (workspace_id) WHERE (archived_at IS NOT NULL)",
@@ -1520,7 +1520,7 @@
       "CREATE INDEX track_trash_idx ON public.track USING btree (workspace_id, deleted_at) WHERE (deleted_at IS NOT NULL)",
       "CREATE INDEX track_type_set_idx ON public.track USING btree (type_set_id)",
       "CREATE INDEX track_visibility_policy_idx ON public.track USING btree (visibility_policy_id)",
-      "CREATE INDEX track_workflow_idx ON public.track USING btree (workflow_id) WHERE (workflow_id IS NOT NULL)",
+      "CREATE INDEX track_workflow_map_idx ON public.track USING btree (workflow_map_id) WHERE (workflow_map_id IS NOT NULL)",
       "CREATE UNIQUE INDEX track_workspace_key_idx ON public.track USING btree (workspace_id, upper(key))"
     ]
   },
@@ -1875,12 +1875,83 @@
       "published_version integer not null default 1",
       "draft_version integer",
       "created_at timestamp with time zone not null default now()",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "owner_track_id integer"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX workflow_default_idx ON public.workflow USING btree (workspace_id) WHERE is_default",
-      "CREATE UNIQUE INDEX workflow_name_idx ON public.workflow USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX workflow_name_idx ON public.workflow USING btree (workspace_id, COALESCE(owner_track_id, 0), lower(name))",
+      "CREATE INDEX workflow_owner_track_idx ON public.workflow USING btree (owner_track_id) WHERE (owner_track_id IS NOT NULL)",
       "CREATE UNIQUE INDEX workflow_pkey ON public.workflow USING btree (id)"
+    ]
+  },
+  "workflow_map": {
+    "columns": [
+      "id integer not null default nextval('workflow_map_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "default_workflow_id integer not null",
+      "owner_track_id integer",
+      "is_default boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_map_default_idx ON public.workflow_map USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX workflow_map_name_idx ON public.workflow_map USING btree (workspace_id, COALESCE(owner_track_id, 0), lower(name))",
+      "CREATE UNIQUE INDEX workflow_map_owner_track_idx ON public.workflow_map USING btree (owner_track_id) WHERE (owner_track_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX workflow_map_pkey ON public.workflow_map USING btree (id)",
+      "CREATE INDEX workflow_map_workflow_idx ON public.workflow_map USING btree (default_workflow_id)"
+    ]
+  },
+  "workflow_map_entry": {
+    "columns": [
+      "workspace_id integer not null",
+      "map_id integer not null",
+      "ticket_type_id integer not null",
+      "workflow_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_map_entry_pkey ON public.workflow_map_entry USING btree (map_id, ticket_type_id)",
+      "CREATE INDEX workflow_map_entry_type_idx ON public.workflow_map_entry USING btree (ticket_type_id)",
+      "CREATE INDEX workflow_map_entry_workflow_idx ON public.workflow_map_entry USING btree (workflow_id)"
+    ]
+  },
+  "workflow_migration": {
+    "columns": [
+      "id bigint not null default nextval('workflow_migration_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer",
+      "reason text not null",
+      "map_id integer",
+      "track_id integer",
+      "status text not null default 'queued'::text",
+      "total integer not null",
+      "migrated integer not null default 0",
+      "change_set bigint not null",
+      "created_at timestamp with time zone not null default now()",
+      "started_at timestamp with time zone",
+      "finished_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX workflow_migration_pending_idx ON public.workflow_migration USING btree (workspace_id) WHERE (status <> 'done'::text)",
+      "CREATE UNIQUE INDEX workflow_migration_pkey ON public.workflow_migration USING btree (id)"
+    ]
+  },
+  "workflow_migration_step": {
+    "columns": [
+      "migration_id bigint not null",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "ticket_type_id integer not null",
+      "from_status_id integer not null",
+      "to_status_id integer not null",
+      "ticket_count integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_migration_step_pkey ON public.workflow_migration_step USING btree (migration_id, track_id, ticket_type_id, from_status_id)",
+      "CREATE INDEX workflow_migration_step_ticket_idx ON public.workflow_migration_step USING btree (track_id, ticket_type_id, from_status_id)"
     ]
   },
   "workflow_version": {

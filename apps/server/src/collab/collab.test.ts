@@ -330,7 +330,13 @@ describe('collaborative rich text (M1-017)', () => {
       },
     });
     expect(workflow.statusCode, workflow.body).toBe(201);
-    const inStatus = await trackFor('COLS', { workflowId: workflow.json().workflow.id });
+    // Every type of the track uses it through a workflow map of its own (M1-028).
+    const map = await admin('POST', '/api/v1/workflow-maps', {
+      name: 'Reserved map',
+      defaultWorkflowId: workflow.json().workflow.id,
+    });
+    expect(map.statusCode, map.body).toBe(201);
+    const inStatus = await trackFor('COLS', { workflowMapId: map.json().workflowMap.id });
     expect((await save(inStatus)).status).toBe('refused');
 
     // The description only Administrators may set.

@@ -212,8 +212,8 @@ export interface TrackTable {
   type_set_id: number | null;
   /** The priorities it offers (M1-014); null for the workspace's default set. */
   priority_set_id: number | null;
-  /** Its workflow; null for the workspace's default (M1-023). */
-  workflow_id: number | null;
+  /** Its workflow map (M1-028); null for the workspace's default map. */
+  workflow_map_id: ColumnType<number | null, number | null | undefined, number | null>;
   /** Its field rule set and layout set; null for the workspace's defaults (M1-012). */
   field_rule_set_id: ColumnType<number | null, number | null | undefined, number | null>;
   layout_set_id: ColumnType<number | null, number | null | undefined, number | null>;
@@ -773,6 +773,71 @@ export interface WorkflowTable {
   draft_version: number | null;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
+  /** The local-mode track that owns it (M1-028); null for a shared workflow. */
+  owner_track_id: ColumnType<number | null, number | null | undefined, number | null>;
+}
+
+/**
+ * Which workflow each ticket type uses (M1-028, WF-001 (3)): the entries name some types, the
+ * default workflow takes the rest. Shared maps serve shared-mode tracks; a local-mode track
+ * owns one.
+ */
+export interface WorkflowMapTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  default_workflow_id: number;
+  owner_track_id: ColumnType<number | null, number | null | undefined, number | null>;
+  is_default: Generated<boolean>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface WorkflowMapEntryTable {
+  workspace_id: number;
+  map_id: number;
+  ticket_type_id: number;
+  workflow_id: number;
+}
+
+export type WorkflowMigrationStatus = 'queued' | 'running' | 'done';
+
+/**
+ * Tickets moving to statuses their new workflow has after a change of workflow map (M1-028),
+ * run in the background with progress.
+ */
+export interface WorkflowMigrationTable {
+  id: Generated<string>;
+  workspace_id: number;
+  user_id: number | null;
+  reason: 'track_map' | 'map_change';
+  map_id: number | null;
+  track_id: number | null;
+  status: ColumnType<
+    WorkflowMigrationStatus,
+    WorkflowMigrationStatus | undefined,
+    WorkflowMigrationStatus
+  >;
+  total: number;
+  migrated: Generated<number>;
+  /** The change set of every history row the migration writes. */
+  change_set: string;
+  created_at: DefaultTimestamp;
+  started_at: Timestamp | null;
+  finished_at: Timestamp | null;
+}
+
+/** Where a migration takes the tickets of one type and status in one track. */
+export interface WorkflowMigrationStepTable {
+  migration_id: string;
+  workspace_id: number;
+  track_id: number;
+  ticket_type_id: number;
+  from_status_id: number;
+  to_status_id: number;
+  /** Tickets there when the migration was asked for. */
+  ticket_count: number;
 }
 
 export interface WorkflowVersionTable {
@@ -1659,6 +1724,10 @@ export interface Database {
   job: JobTable;
   bulk_operation: BulkOperationTable;
   bulk_item: BulkItemTable;
+  workflow_map: WorkflowMapTable;
+  workflow_map_entry: WorkflowMapEntryTable;
+  workflow_migration: WorkflowMigrationTable;
+  workflow_migration_step: WorkflowMigrationStepTable;
   totp_credential: TotpCredentialTable;
   webauthn_credential: WebauthnCredentialTable;
   recovery_code: RecoveryCodeTable;

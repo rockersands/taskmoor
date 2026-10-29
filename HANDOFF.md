@@ -32,9 +32,9 @@ Remaining tasks up to M1-035, in order:
    the status `comment` lock (`statusGate(...).check(status, 'comment')`, ADR-042), one event,
    contract scenario and audit decision per mutating route, `refreshFormulas` if a comment
    touches `ticket.updated_at`, a comments section on the ticket page with stories and an e2e.
-2. **M1-028 workflow maps** (M1-021 is done): workflow per ticket type in shared mode, per track
-   in local mode; switching a map migrates statuses in the background (a bulk-style job);
-   100k tickets in < 5 min with history rows.
+2. M1-028 workflow maps: done (below). Migration **0042** is taken by it; the comments
+   migration is 0041, so merge comments first or renumber, as Kysely refuses a migration that
+   sorts before one a database already ran.
 
 Not to start: anything after M1-035. `/home/user/wt-compiler` (M1-037, branch
 `work/m1-037-sql-compiler`) is uncommitted work from an earlier agent, left as the user asked;
@@ -42,6 +42,32 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-028 workflow maps** (migration 0042; ADR-045; ADR-039 amended). A ticket's workflow is
+  the one its track's map gives its ticket type: `workflow_map` (default workflow and entries per
+  type; the default map for tracks without one; a local-mode track owns its own),
+  `workflow.owner_track_id` for track-local workflows, `track.workflow_map_id` instead of the
+  dropped `track.workflow_id` (each track's workflow became its map's default).
+  `workflows/maps.ts` resolves it (`ticketWorkflowId`, `holdTicketWorkflow`, `holdMapWorkflows`,
+  the SQL function `ticket_workflow_id()`); `workflows/migration.ts` plans and runs status
+  migrations; routes in `routes/workflow-maps.ts`.
+  - **API change:** track PATCH and view take `workflowMapId` (null: the default map) instead of
+    `workflowId`, with `statusMapping` and per type `typeStatusMapping`; 409
+    `status_mapping_required` lists `{ticketTypeId, statusId, ticketCount, workflowId}`. Tests
+    and the e2e that set a track's workflow now make a map (`POST /api/v1/workflow-maps
+    {name, defaultWorkflowId}`) and assign it. `GET /api/v1/tracks/:id/workflow` takes
+    `?ticketTypeId=`; ticket PATCH takes `statusId` with a new `ticketTypeId`.
+  - Status migrations: up to 500 tickets in the request, more as the `workflow.migrate` job
+    (registered in the worker in `main.ts`), progress at `GET /api/v1/workflow-migrations/:id`.
+    A transition on a ticket not yet moved moves it first. While one runs, its tracks refuse a
+    map switch, their maps a change of entries, their workflows a publish (409
+    `status_migration_running`). 100,000 tickets in 16.4 to 20.9 s (`workflows/migration.large.test.ts`,
+    `TASKMOOR_LARGE_MIGRATION=1`).
+  - **New workflow readers must take the ticket's type**, never the track alone; statusGate and
+    statusGateFor now take the ticket type too. Comments (M1-018) checking the status `comment`
+    lock call `statusGate(db, request, trackId, ticketTypeId)`.
+  - Not built: an admin page for maps (M1-053 brings the configuration pages); local-mode
+    tracks start on the shared default workflow and make their own with `trackId` on create
+    (no automatic copy); statuses stay workspace-wide (only administrators add them).
 - **M1-021 bulk operations, finished.** Web: `apps/web/src/bulk/` (`client.ts`,
   `BulkOperationPage.tsx` at `#/bulk/<id>`, stories, fixtures, tests), `styles/bulk.css`, the
   `bulk.*` strings; e2e `apps/web/e2e/bulk.spec.ts` on the attachments database, whose bulk

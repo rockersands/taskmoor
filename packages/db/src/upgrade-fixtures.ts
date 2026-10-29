@@ -489,7 +489,9 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         "workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow') AND version = 2",
       workflow_version_status:
         "status_id IN (SELECT id FROM status WHERE name = 'Seed status') AND version = 2",
-      track: "key = 'SEED' AND workflow_id IS NOT NULL",
+      // Its workflow lives on as the default of the track's workflow map since 0042.
+      track:
+        "key = 'SEED' AND workflow_map_id IN (SELECT id FROM workflow_map WHERE default_workflow_id IN (SELECT id FROM workflow WHERE name = 'Seed workflow'))",
       ticket:
         "summary = 'Seed ticket' AND status_id IN (SELECT id FROM status WHERE name = 'Seed status')",
     },
@@ -804,6 +806,49 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT o.id, 1, 0, 'SEED-1', k.id, 'done', 200, now()
           FROM bulk_operation o, ticket k
          WHERE o.action = 'edit' AND k.summary = 'Seed ticket'`.execute(db);
+    },
+  },
+  '0042_workflow_maps': {
+    tables: {
+      workflow: "name = 'Seed local workflow' AND owner_track_id IS NOT NULL",
+      workflow_map: "name = 'Seed map' AND owner_track_id IS NULL AND NOT is_default",
+      workflow_map_entry: "map_id IN (SELECT id FROM workflow_map WHERE name = 'Seed map')",
+      track:
+        "key = 'SEED' AND workflow_map_id IN (SELECT id FROM workflow_map WHERE name = 'Seed map')",
+      workflow_migration: "reason = 'track_map' AND status = 'done' AND total = 1 AND migrated = 1",
+      workflow_migration_step:
+        "ticket_count = 1 AND migration_id IN (SELECT id FROM workflow_migration WHERE reason = 'track_map')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO workflow (workspace_id, name, owner_track_id)
+        SELECT 1, 'Seed local workflow', id FROM track WHERE key = 'SEEDOLD'`.execute(db);
+      await sql`INSERT INTO workflow_version (workspace_id, workflow_id, version, definition)
+        SELECT 1, w.id, 1, jsonb_build_object('initialStatusId', s.id,
+          'statuses', jsonb_build_array(jsonb_build_object('statusId', s.id)),
+          'transitions', '[]'::jsonb)
+          FROM workflow w, status s
+         WHERE w.name = 'Seed local workflow' AND s.name = 'Seed status'`.execute(db);
+      // The seed track's workflow stays its map's default; the seed type uses the default.
+      await sql`INSERT INTO workflow_map (workspace_id, name, default_workflow_id)
+        SELECT 1, 'Seed map', id FROM workflow WHERE name = 'Seed workflow'`.execute(db);
+      await sql`INSERT INTO workflow_map_entry (workspace_id, map_id, ticket_type_id, workflow_id)
+        SELECT 1, m.id, ty.id, w.id FROM workflow_map m, ticket_type ty, workflow w
+         WHERE m.name = 'Seed map' AND ty.name = 'Seed type' AND w.workspace_id = 1
+           AND w.is_default`.execute(db);
+      await sql`UPDATE track SET workflow_map_id = (SELECT id FROM workflow_map WHERE name = 'Seed map')
+         WHERE key = 'SEED'`.execute(db);
+      await sql`INSERT INTO workflow_migration (workspace_id, user_id, reason, map_id, track_id,
+          status, total, migrated, change_set, started_at, finished_at)
+        SELECT 1, u.id, 'track_map', m.id, t.id, 'done', 1, 1, 990042, now(), now()
+          FROM app_user u, workflow_map m, track t
+         WHERE u.email = 'seed@example.com' AND m.name = 'Seed map' AND t.key = 'SEED'`.execute(db);
+      await sql`INSERT INTO workflow_migration_step (migration_id, workspace_id, track_id,
+          ticket_type_id, from_status_id, to_status_id, ticket_count)
+        SELECT o.id, 1, o.track_id, ty.id, s.id, s.id, 1
+          FROM workflow_migration o, ticket_type ty, status s
+         WHERE o.reason = 'track_map' AND ty.name = 'Seed type' AND s.name = 'Seed status'`.execute(
+        db,
+      );
     },
   },
 };

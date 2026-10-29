@@ -25,6 +25,7 @@ import { gracefulShutdown } from './shutdown';
 import { waitForDatabase } from './startup';
 import { registerChangeLogJobs, scheduleChangeLogTrim } from './sync/jobs';
 import { registerTrashJobs, schedulePurge } from './trash/purge';
+import { registerWorkflowMigrationJobs } from './workflows/migration';
 import { defaultWorkspaceId } from './workspace';
 
 const config = loadConfig();
@@ -157,6 +158,8 @@ if (config.roles.includes('worker') && db) {
   registerFormulaJobs(runner, db);
   // Bulk operations (M1-021): each runs ticket by ticket through the ticket routes' checks.
   registerBulkJobs(runner, db, new Authorizer(db), new FieldCatalogs(db));
+  // Status migrations after a change of workflow map (M1-028), a batch at a time.
+  registerWorkflowMigrationJobs(runner, db, new FieldCatalogs(db));
   const formulaCatalogs = new FieldCatalogs(db);
   const scheduleHousekeeping = () =>
     Promise.all([

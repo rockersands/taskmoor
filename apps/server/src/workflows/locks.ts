@@ -1,7 +1,8 @@
 import type { Database } from '@taskmoor/db';
 import type { StatusPermissions } from '@taskmoor/workflow';
 import type { Kysely, Transaction } from 'kysely';
-import { loadDefinition, trackWorkflowId } from './store';
+import { ticketWorkflowId } from './maps';
+import { loadDefinition } from './store';
 
 /**
  * Per-status locks (WF-007) and per-field edit permissions (M1-029).
@@ -57,7 +58,7 @@ export function lockedOut(audience: Audience, allowed: readonly Holder[] | null 
   return allowed.some((h) => holds(audience, h)) ? null : [...allowed];
 }
 
-/** A track's per-status lists, keyed by status id (published versions never change). */
+/** A workflow's per-status lists, keyed by status id (published versions never change). */
 type StatusTable = ReadonlyMap<number, Partial<Record<LockAction, Holder[]>>>;
 const tables = new Map<string, StatusTable>();
 
@@ -80,8 +81,14 @@ function tableOf(definition: Awaited<ReturnType<typeof loadDefinition>>): Status
   return out;
 }
 
-async function statusTable(db: Db, workspaceId: number, trackId: number): Promise<StatusTable> {
-  const workflowId = await trackWorkflowId(db, workspaceId, trackId);
+/** The lists of the workflow a ticket type uses in a track (M1-028: its track's map says). */
+async function statusTable(
+  db: Db,
+  workspaceId: number,
+  trackId: number,
+  ticketTypeId: number,
+): Promise<StatusTable> {
+  const workflowId = await ticketWorkflowId(db, workspaceId, trackId, ticketTypeId);
   const row = await db
     .selectFrom('workflow')
     .select('published_version')
@@ -98,9 +105,9 @@ async function statusTable(db: Db, workspaceId: number, trackId: number): Promis
 }
 
 /**
- * The status locks of a track for one person, read before a write's transaction (which never
- * waits for a second pooled connection): `check` then answers inside it, for the status the
- * locked ticket row has then.
+ * The status locks of a ticket's workflow (its track and type) for one person, read before a
+ * write's transaction (which never waits for a second pooled connection): `check` then answers
+ * inside it, for the status the locked ticket row has then.
  */
 export interface StatusGate {
   audience: Audience;
@@ -112,9 +119,10 @@ export async function statusGate(
   db: Db,
   request: { workspaceId: number; authz: { audience(trackId: number): Promise<Audience> } },
   trackId: number,
+  ticketTypeId: number,
 ): Promise<StatusGate> {
   const [table, audience] = await Promise.all([
-    statusTable(db, request.workspaceId, trackId),
+    statusTable(db, request.workspaceId, trackId, ticketTypeId),
     request.authz.audience(trackId),
   ]);
   return gateOf(table, audience);
@@ -125,9 +133,10 @@ export async function statusGateFor(
   db: Db,
   workspaceId: number,
   trackId: number,
+  ticketTypeId: number,
   audience: Audience,
 ): Promise<StatusGate> {
-  return gateOf(await statusTable(db, workspaceId, trackId), audience);
+  return gateOf(await statusTable(db, workspaceId, trackId, ticketTypeId), audience);
 }
 
 const gateOf = (table: StatusTable, audience: Audience): StatusGate => ({

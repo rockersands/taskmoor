@@ -98,6 +98,15 @@ describe('statuses and workflows (M1-023)', () => {
     expect(res.statusCode, res.body).toBe(201);
     return res.json().workflow.id as number;
   }
+  /** A shared workflow map that gives every ticket type the workflow (M1-028). */
+  async function mapOf(workflowId: number) {
+    const res = await post('admin', '/api/v1/workflow-maps', {
+      name: `Map of ${workflowId}`,
+      defaultWorkflowId: workflowId,
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    return res.json().workflowMap.id as number;
+  }
   async function newTrack(key: string, workflowId?: number) {
     const res = await post('admin', '/api/v1/tracks', { key, name: key, mode: 'shared' });
     expect(res.statusCode, res.body).toBe(201);
@@ -117,7 +126,9 @@ describe('statuses and workflows (M1-023)', () => {
         .execute();
     }
     if (workflowId !== undefined) {
-      const set = await patch('admin', `/api/v1/tracks/${tracks[key]}`, { workflowId });
+      const set = await patch('admin', `/api/v1/tracks/${tracks[key]}`, {
+        workflowMapId: await mapOf(workflowId),
+      });
       expect(set.statusCode, set.body).toBe(200);
     }
   }
@@ -502,7 +513,7 @@ describe('statuses and workflows (M1-023)', () => {
       ).toBe(403);
     });
 
-    it('[WF-001] maps statuses when a track switches workflow or a ticket moves tracks', async () => {
+    it('[WF-001] maps statuses when a track switches workflow map or a ticket moves tracks', async () => {
       const New = statusId('New');
       const Active = statusId('Active');
       const Closed = statusId('Closed');
@@ -527,17 +538,33 @@ describe('statuses and workflows (M1-023)', () => {
       ).find((r) => r.name === 'Completed')?.id;
       await move(done, 4, { fields: { 'close-reason': completed } });
       // New and Active? Kanban has Active, so only New needs a home.
-      const asked = await patch('admin', `/api/v1/tracks/${tracks.SWT}`, { workflowId: kanban });
+      const kanbanMap = await mapOf(kanban);
+      const type = (
+        await database.db
+          .selectFrom('ticket')
+          .select('ticket_type_id')
+          .where('id', '=', fresh.id)
+          .executeTakeFirstOrThrow()
+      ).ticket_type_id;
+      const asked = await patch('admin', `/api/v1/tracks/${tracks.SWT}`, {
+        workflowMapId: kanbanMap,
+      });
       expect(asked.json()).toEqual({
         error: 'status_mapping_required',
-        statuses: [{ statusId: New, ticketCount: 1 }],
+        statuses: [{ ticketTypeId: type, statusId: New, ticketCount: 1, workflowId: kanban }],
       });
       const switched = await patch('admin', `/api/v1/tracks/${tracks.SWT}`, {
-        workflowId: kanban,
+        workflowMapId: kanbanMap,
         statusMapping: { [New]: Backlog },
       });
       expect(switched.statusCode, switched.body).toBe(200);
-      expect(switched.json().track.workflowId).toBe(kanban);
+      expect(switched.json().track.workflowMapId).toBe(kanbanMap);
+      // One ticket moves, in the request: the migration is done when the answer comes.
+      expect(switched.json().statusMigration).toMatchObject({
+        status: 'done',
+        total: 1,
+        migrated: 1,
+      });
       expect((await view(fresh)).status.name).toBe('Backlog');
       expect((await view(started)).status.name).toBe('Active');
       expect((await view(done)).closeReason?.name).toBe('Completed');

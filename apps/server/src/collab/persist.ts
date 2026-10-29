@@ -82,7 +82,7 @@ export async function mayEditText(
   const form = formFields(resolveLayout(catalog, at, 'edit'));
   if (layoutProblems(catalog, at, form.shown, [field])) return 'refused';
   const audience = await context.audience(row.track_id);
-  const gate = await statusGateFor(db, workspaceId, row.track_id, audience);
+  const gate = await statusGateFor(db, workspaceId, row.track_id, row.ticket_type_id, audience);
   if (gate.check(row.status_id, 'edit')) return 'refused';
   return fieldLocks(catalog, at, [field], audience).size > 0 ? 'refused' : 'yes';
 }

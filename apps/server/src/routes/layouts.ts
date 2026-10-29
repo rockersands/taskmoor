@@ -683,7 +683,12 @@ export function registerLayoutRoutes(
       .filter((f) => f !== undefined);
     const locks: Lock[] = [];
     if (operation !== 'view') {
-      const gate = await statusGate(db, request, at.trackId);
+      const gate = await statusGate(
+        db,
+        request,
+        at.trackId,
+        ticket?.ticket_type_id ?? at.ticketTypeId,
+      );
       const edit = ticket ? gate.check(ticket.status_id, 'edit') : null;
       if (ticket && edit) locks.push(await statusLock(db, ws, ticket.status_id, edit));
       locks.push(...(await fieldLockList(db, fieldLocks(catalog, at, keys, gate.audience))));
@@ -758,7 +763,7 @@ export function registerLayoutRoutes(
     if (!row || row.deleted_at || !(await request.authz.seesTicket(row))) {
       return notFound(reply);
     }
-    const gate = await statusGate(db, request, row.track_id);
+    const gate = await statusGate(db, request, row.track_id, row.ticket_type_id);
     const locks: Partial<Record<LockAction, Lock>> = {};
     for (const action of LOCK_ACTIONS) {
       const allowed = gate.check(row.status_id, action);
