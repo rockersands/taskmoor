@@ -142,9 +142,14 @@ test('[AGL-019] the home page lists what is assigned to me, what I opened and wh
   });
   expect(assign.status()).toBe(200);
 
-  // Opening the ticket puts it first among those opened lately.
+  // Opening the ticket puts it among those opened lately; the visit is recorded in the
+  // background, so wait for it before going home.
+  const visited = page.waitForResponse(
+    (r) => r.request().method() === 'PUT' && r.url().includes(`/me/recent-tickets/${ticket.id}`),
+  );
   await page.goto(`${BASE}/#/tickets/${ticket.key}`);
   await expect(page.getByRole('heading', { level: 1 })).toContainText(ticket.key);
+  expect((await visited).ok()).toBe(true);
   await page.goto(`${BASE}/#/home`);
   const link = `${ticket.key} ${ticket.summary}`;
   const assigned = page.getByRole('region', { name: 'Assigned to you' });
