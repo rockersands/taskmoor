@@ -16,15 +16,40 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ## Last session: 2026-10-29 (cloud container)
 
-### Resume here (the user asked to wrap up; scope is "up to M1-035")
+### Resume here (overnight run, 2026-10-29, 01:13 to 08:00 the user's time)
 
-Every M1 task up to M1-035 is done (M1-018 and M1-028 were the last, merged on 2026-10-29).
-The user set that limit; ask before starting M1-036 or later. Open items for the user: merging
-this branch to main (needs their approval) and the open decisions in `docs/plan/decisions.csv`.
+The user asked for as much as possible until 8 am (14:00 UTC) and approved merging to main at
+will ("i allow you to merge into main all you want"). Main moves by fast-forward once CI is
+green on the branch head (`git push origin <sha>:main`); the CI workflow cancels an older run
+on the same branch when a new one starts, so dispatch once per head. The branch is
+`claude/api-key-upload-prevention-9ucz4x`.
 
-Not to start: anything after M1-035. `/home/user/wt-compiler` (M1-037, branch
-`work/m1-037-sql-compiler`) is uncommitted work from an earlier agent, left as the user asked;
-it is lost with the container.
+Done tonight, newest first (details under Done): M1-038 query functions, M1-043 boards, M1-055
+guardrails, M1-041 query editor, M1-052 home, create dialog and palette, M1-086 importer,
+M1-058 inbox, M1-037 SQL compiler, M1-053 admin UI, M1-051 ticket view, Windows CI fixes.
+M1-037, M1-058, M1-086, M1-043 and M1-038 were built by background agents in worktrees and
+merged here; their worktrees are removed, the local `work/*` branches stay.
+
+Also fixed tonight:
+- A query leak (M1-037): a hidden ticket named by key or id in `key`, `parent` or `ticketLink`
+  confirmed it existed and showed what hangs off it; it now reads like an unknown key.
+- The top bar overflowed a 360px phone with CI's fonts: New ticket is a plus on phones.
+- Stray "terminating connection due to administrator command" errors failed some gates. The
+  verify summary now names the test file of an unhandled error (`tools/verify/reporter.mjs`),
+  which traced them to the Graphile Worker spike test; its teardown now waits for the pool.
+
+Numbering: migrations 0043 search indexes, 0044 inbox, 0045 imports, 0046 ticket visits, 0047
+boards, 0050 guardrails (0048 and 0049 unused). ADRs 046 (home, create dialog, palette), 047
+(inbox), 048 (importer), 049 (boards), 050 unused, 051 (guardrails). A long-lived database that
+ran a later number before an earlier one refuses the earlier (Kysely): recreate it.
+
+Watch, under load only (they pass alone and in CI): the 1,500-field edit p95
+(`fields/storage.test.ts`, 50 ms), the authorizer p95 (`authz/authorizer.test.ts`, 10 ms),
+`routes/identity.test.ts` "limits one address to 50 failures" (20 s timeout) and the NTF-008
+ticket-open timing e2e. With two agents and a gate running, the load average here was 10 to 25.
+
+Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 draft) and the
+11 GB `m1037_bench_1m` database on the system Postgres (migrated only to 0043).
 
 ### Done (newest first)
 
@@ -630,17 +655,19 @@ it is lost with the container.
 
 ### Next (in order)
 
-1. `pnpm next-task`: M1-024 (transitions), M1-010 (field types), M1-016 (attachments), M1-017
-   (rich text and comments), M1-020 (visibility levels) are ready. Background agents are on
-   M1-082 (LDAP, migration 0021) and M1-101 (backups and trash, migration 0022) in worktrees
-   `/home/user/wt-ldap` and `/home/user/wt-backup`. Releases, areas, priorities and labels have no admin UI yet (M1-050
-   releases hub; settings pages with the admin UI tasks).
-2. Run the Entra ID and Okta provisioning validators against a test instance with a public
-   URL (IAM-006 (1)); the fixtures here imitate their request shapes.
-3. Later for tickets: the trash retention setting and purge (M1-101; `TRASH_RETENTION_DAYS` is
-   30 for now), ticket-level grantees and visibility levels (M1-020), hierarchy rollback
-   (CORE-007 (2)), a ticket UI (the ticket view is M1-051, boards M1-043 and M1-046), block
-   ranking and a background rank rebalance if keys grow long (M1-047).
+1. `pnpm next-task` lists 17 ready tasks. In the query engine: M1-040 (full-text search, text
+   operators, rank, approximate counts), M1-039 (WAS and CHANGED), M1-063 (saved searches; the
+   board's `saved_search_id` waits for it). In planning: M1-044 (sprints; then the board's
+   sprint functions, M1-045). Others: M1-067 webhooks, M1-098 CSV import and export, M1-105
+   static build, M1-115 accessibility pass, M1-116 i18n completeness.
+2. M1-073 and M1-074 (AI gateway) are marked in progress from an earlier session; their done
+   criteria need a live smoke test with a test key, which must come from the environment at
+   run time and never be written to the repository.
+3. Follow-ups named in the Done entries: board admins and location in the settings page, drag
+   and drop and the 5,000-card render budget (M1-046); teams in `membersOf()`; Recent in the
+   sidebar and starred lists (M1-052); point-and-click for more fields in basic search (M1-041).
+4. Run the Entra ID and Okta provisioning validators against a test instance with a public URL
+   (IAM-006 (1)); the fixtures here imitate their request shapes.
 
 ## Earlier: 2026-10-26 (cloud container)
 
