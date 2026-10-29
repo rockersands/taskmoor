@@ -22,13 +22,14 @@ The user asked for as much as possible until 8 am (14:00 UTC) and approved mergi
 will ("i allow you to merge into main all you want"). Main moves by fast-forward once CI is
 green on the branch head (`git push origin <sha>:main`); the CI workflow cancels an older run
 on the same branch when a new one starts, so dispatch once per head. The branch is
-`claude/api-key-upload-prevention-9ucz4x`.
+`claude/api-key-upload-prevention-9ucz4x`. If `origin/main` is behind the branch when you
+start, the last CI run on the branch head failed or did not finish: look at Actions first.
 
-Done tonight, newest first (details under Done): M1-063 saved searches, M1-042 search
-results, M1-038 query functions, M1-043 boards, M1-055 guardrails, M1-041 query editor, M1-052 home, create dialog
+Done tonight, newest first (details under Done): M1-044 sprints, M1-063 saved searches,
+M1-042 search results, M1-038 query functions, M1-043 boards, M1-055 guardrails, M1-041 query editor, M1-052 home, create dialog
 and palette, M1-086 importer, M1-058 inbox, M1-037 SQL compiler, M1-053 admin UI, M1-051
-ticket view, Windows CI fixes. M1-037, M1-058, M1-086, M1-043, M1-038, M1-042 and M1-063 were
-built by background agents in worktrees and merged here; their worktrees are removed, the local
+ticket view, Windows CI fixes. M1-037, M1-058, M1-086, M1-043, M1-038, M1-042, M1-063 and
+M1-044 were built by background agents in worktrees and merged here; their worktrees are removed, the local
 `work/*` branches stay.
 
 Also fixed tonight:
@@ -43,9 +44,9 @@ Also fixed tonight:
   that Windows' coarse timers still stop it.
 
 Numbering: migrations 0043 search indexes, 0044 inbox, 0045 imports, 0046 ticket visits, 0047
-boards, 0050 guardrails, 0051 saved searches (0048 and 0049 unused). ADRs 046 (home, create
-dialog, palette), 047 (inbox), 048 (importer), 049 (boards), 050 unused, 051 (guardrails), 052
-(search results), 053 (saved searches).
+boards, 0050 guardrails, 0051 saved searches, 0052 sprints (0048 and 0049 unused). ADRs 046
+(home, create dialog, palette), 047 (inbox), 048 (importer), 049 (boards), 050 unused, 051
+(guardrails), 052 (search results), 053 (saved searches), 054 (sprints).
 A long-lived database that
 ran a later number before an earlier one refuses the earlier (Kysely): recreate it.
 
@@ -54,8 +55,9 @@ Watch, under load only (they pass alone and in CI): the 1,500-field edit p95
 `routes/identity.test.ts` "limits one address to 50 failures" (20 s timeout) and the NTF-008
 ticket-open timing e2e. With two agents and a gate running, the load average here was 10 to 25.
 
-Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 draft) and the
-11 GB `m1037_bench_1m` database on the system Postgres (migrated only to 0043).
+Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 draft), the
+11 GB `m1037_bench_1m` database on the system Postgres (migrated only to 0043), and the M1-044
+agent's worktree under `.claude/worktrees/` (locked by the agent tool; its branch is merged).
 
 ### Done (newest first)
 
@@ -727,8 +729,10 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
 
 1. `pnpm next-task` lists 17 ready tasks. In the query engine: M1-040 (full-text search, text
    operators, rank, approximate counts), M1-039 (WAS and CHANGED). Reports: M1-064 dashboards
-   (needs M1-062 too), whose widgets can run saved searches. In planning: M1-044 (sprints; then the board's
-   sprint functions, M1-045). Others: M1-067 webhooks, M1-098 CSV import and export, M1-105
+   (needs M1-062 too), whose widgets can run saved searches. In planning: M1-045 (sprint and
+   release functions over `sprint_ticket`, no schema change needed), M1-046 (drag and drop,
+   WIP indicators, the 5,000-card render budget), M1-062 (burndown and reports from
+   `sprint_change`). Others: M1-067 webhooks, M1-098 CSV import and export, M1-105
    static build, M1-115 accessibility pass, M1-116 i18n completeness.
 2. M1-073 and M1-074 (AI gateway) are marked in progress from an earlier session; their done
    criteria need a live smoke test with a test key, which must come from the environment at
