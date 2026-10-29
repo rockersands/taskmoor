@@ -10,6 +10,11 @@ let pool: pg.Pool;
 
 beforeAll(() => {
   pool = new pg.Pool({ connectionString: database.url, max: 12 });
+  // The database is dropped with FORCE after the file: a connection Graphile Worker still
+  // holds then fails with "terminating connection", which must not count as an unhandled
+  // error of the run. Query errors still reject their own promises.
+  pool.on('error', () => {});
+  pool.on('connect', (client) => client.on('error', () => {}));
 });
 afterAll(async () => {
   await pool.end();
@@ -140,6 +145,8 @@ describe('Graphile Worker', () => {
       await new Promise((r) => setTimeout(r, 200));
     } finally {
       await workers.stop();
+      // Graphile releases its listening connection after stop() resolves; wait for it.
+      await waitUntil(() => pool.idleCount === pool.totalCount, 10_000);
     }
     expect([...seen.values()].every((count) => count === 1)).toBe(true);
     const left = await pool.query('SELECT count(*)::int AS n FROM graphile_worker.jobs');
