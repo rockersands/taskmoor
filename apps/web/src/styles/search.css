@@ -206,3 +206,52 @@
     min-width: var(--hit-target-touch);
   }
 }
+
+/* Saved searches (M1-063): open, save, share, subscribe; wraps on phones. */
+.saved-searches {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: var(--space-3) 0;
+}
+
+.saved-title {
+  margin: 0;
+  font-size: var(--font-size-400);
+  overflow-wrap: anywhere;
+}
+
+.saved-open,
+.saved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.saved-open select {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 12rem;
+}
+
+.saved-panel {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.saved-choices {
+  min-width: 0;
+}
+
+@media (pointer: coarse) {
+  .saved-open select,
+  .saved-open button,
+  .saved-actions button,
+  .saved-panel select,
+  .saved-panel button {
+    min-height: var(--hit-target-touch);
+  }
+}

@@ -704,6 +704,29 @@ export const EVENT_TYPES = {
   },
   'board.updated': { subject: 'board', payload: z.object({ changes }) },
   'board.deleted': { subject: 'board', payload: z.object({ name: z.string() }) },
+  // Saved searches (M1-063): `shares` names the scopes it is shared with (QRY-011); a
+  // subscription names its recipient and schedule (QRY-012), never an email address.
+  'saved_search.created': {
+    subject: 'saved_search',
+    payload: z.object({ name: z.string(), query: z.string(), shares: z.array(z.string()) }),
+  },
+  'saved_search.updated': { subject: 'saved_search', payload: z.object({ changes }) },
+  'saved_search.deleted': { subject: 'saved_search', payload: z.object({ name: z.string() }) },
+  'saved_search.starred': { subject: 'saved_search', payload: z.object({}) },
+  'saved_search.unstarred': { subject: 'saved_search', payload: z.object({}) },
+  'saved_search.subscribed': {
+    subject: 'saved_search',
+    payload: z.object({
+      subscriptionId: id,
+      recipientUserId: id.nullable(),
+      recipientGroupId: id.nullable(),
+      schedule: z.enum(['daily', 'weekly', 'monthly', 'cron']),
+    }),
+  },
+  'saved_search.unsubscribed': {
+    subject: 'saved_search',
+    payload: z.object({ subscriptionId: id }),
+  },
   /**
    * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
    * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay

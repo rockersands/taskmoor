@@ -74,7 +74,8 @@ export const MAX_CARD_FIELDS = 10;
 
 /** A board's configuration (`GET /api/v1/boards/:id`). */
 export interface Board extends BoardSummary {
-  source: { query: string };
+  /** The board's own query, or the saved search it uses (M1-063). */
+  source: BoardSource;
   subFilter: { query: string } | null;
   columns: BoardColumn[];
   swimlanes: Swimlanes;
@@ -94,11 +95,23 @@ export interface BoardStatus {
 }
 
 /** A change of configuration (`PATCH /api/v1/boards/:id`). */
+export type BoardSource = { query: string } | { savedSearchId: number };
+
+/** The query text a source shows as: a saved search reads as a reference to it. */
+export const sourceText = (source: BoardSource): string =>
+  'query' in source ? source.query : `savedSearch = ${source.savedSearchId}`;
+
+/** A query that only names one saved search by id keeps the board on that saved search. */
+export function sourceOf(text: string): BoardSource {
+  const ref = /^savedSearch\s*=\s*(\d{1,10})$/.exec(text.trim());
+  return ref ? { savedSearchId: Number(ref[1]) } : { query: text.trim() };
+}
+
 export interface BoardPatch {
   version: number;
   name?: string;
   kind?: 'scrum' | 'kanban';
-  source?: { query: string };
+  source?: BoardSource;
   subFilter?: { query: string } | null;
   columns?: {
     id?: string;

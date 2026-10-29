@@ -18,6 +18,7 @@ import {
   prepareSearch,
   runPage,
 } from '../search/run';
+import { expandSavedSearches } from '../search/saved';
 import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
 
 /**
@@ -258,7 +259,15 @@ export function registerSearchRoutes(
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
     const { catalogue } = await scope(request, false);
     try {
-      const plan = resolveQuery(parseQuery(parsed.data.q), catalogue, {
+      // Saved-search references read as the person sees them, so a missing one or a cycle
+      // shows in the editor as typed (M1-063).
+      const query = await expandSavedSearches(
+        db,
+        request.workspaceId,
+        user.id,
+        parseQuery(parsed.data.q),
+      );
+      const plan = resolveQuery(query, catalogue, {
         currentUserId: user.id,
         now: new Date(),
         timeZone: user.timeZone,

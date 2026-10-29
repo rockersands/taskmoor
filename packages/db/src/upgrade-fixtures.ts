@@ -980,6 +980,25 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 'releases_per_track', 20000)`.execute(db);
     },
   },
+  '0051_saved_searches': {
+    tables: {
+      saved_search: "name = 'Seed saved search' AND query = 'summary ~ seed'",
+      saved_search_share: "scope = 'any_user'",
+      saved_search_subscription: "schedule = 'weekly' AND weekday = 1",
+    },
+    seed: async (db) => {
+      // A saved search of the seed person, shared with everyone signed in, sent weekly.
+      await sql`INSERT INTO saved_search (workspace_id, owner_id, name, query)
+        SELECT 1, id, 'Seed saved search', 'summary ~ seed'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO saved_search_share (workspace_id, saved_search_id, scope)
+        SELECT 1, id, 'any_user' FROM saved_search WHERE name = 'Seed saved search'`.execute(db);
+      await sql`INSERT INTO saved_search_subscription (workspace_id, saved_search_id, created_by,
+          recipient_user_id, schedule, weekday, next_run_at)
+        SELECT 1, s.id, s.owner_id, s.owner_id, 'weekly', 1, now()
+          FROM saved_search s WHERE s.name = 'Seed saved search'`.execute(db);
+    },
+  },
 };
 
 /**

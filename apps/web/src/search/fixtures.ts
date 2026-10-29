@@ -1,5 +1,6 @@
 import { ApiError } from '../api/client';
 import type { SearchClient, SearchTicket } from './client';
+import type { SavedSearch, SavedSearchClient, SubscriptionInput } from './savedClient';
 
 const PRIORITIES = [
   { id: 1, name: 'High' },
@@ -124,6 +125,83 @@ export function fakeSearchClient(): FakeSearchClient {
       if (c.fields) found.fields = { ...found.fields, ...(c.fields as Record<string, unknown>) };
       found.version = (found.version ?? 0) + 1;
       return { ...found };
+    },
+  };
+}
+
+/** Saved searches in memory for stories and tests (M1-063). */
+export function fakeSavedSearchClient(
+  start: SavedSearch[] = [
+    {
+      id: 1,
+      name: 'My open work',
+      description: '',
+      query: 'assignee = currentUser() AND stage != closed',
+      columns: null,
+      owner: { id: 2, name: 'Mira Member' },
+      shares: [],
+      starred: true,
+      editable: true,
+      version: 1,
+    },
+    {
+      id: 2,
+      name: 'Shop releases',
+      description: '',
+      query: 'track = SHOP',
+      columns: ['summary', 'status', 'priority'],
+      owner: { id: 9, name: 'Ada Admin' },
+      shares: [{ scope: 'any_user' }],
+      starred: false,
+      editable: false,
+      version: 3,
+    },
+  ],
+): SavedSearchClient & { saved: SavedSearch[]; subscriptions: SubscriptionInput[] } {
+  const saved = start.map((s) => ({ ...s }));
+  const subscriptions: SubscriptionInput[] = [];
+  const find = (id: number) => {
+    const found = saved.find((s) => s.id === id);
+    if (!found) throw new ApiError(404, { error: 'not_found' });
+    return found;
+  };
+  return {
+    saved,
+    subscriptions,
+    list: async () => saved.map((s) => ({ ...s })),
+    get: async (id) => ({ ...find(id) }),
+    create: async (input) => {
+      if (saved.some((s) => s.editable && s.name.toLowerCase() === input.name.toLowerCase())) {
+        throw new ApiError(400, { error: 'invalid_fields', fields: { name: 'taken' } });
+      }
+      const next: SavedSearch = {
+        id: Math.max(0, ...saved.map((s) => s.id)) + 1,
+        name: input.name,
+        description: '',
+        query: input.query,
+        columns: input.columns,
+        owner: { id: 2, name: 'Mira Member' },
+        shares: input.shares ?? [],
+        starred: false,
+        editable: true,
+        version: 1,
+      };
+      saved.push(next);
+      return { ...next };
+    },
+    update: async (id, change) => {
+      const found = find(id);
+      if (!found.editable) throw new ApiError(403, { error: 'forbidden' });
+      Object.assign(found, change, { version: found.version + 1 });
+      return { ...found };
+    },
+    star: async (id, on) => {
+      find(id).starred = on;
+    },
+    subscribe: async (id, input) => {
+      find(id);
+      subscriptions.push(input);
+      return { nextRunAt: '2026-10-30T08:00:00.000Z' };
     },
   };
 }

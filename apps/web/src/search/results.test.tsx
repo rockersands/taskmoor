@@ -7,7 +7,7 @@ import { SessionProvider } from '../session/SessionProvider';
 import { setViewportWidth } from '../test/viewport';
 import { exportUrl } from './client';
 import { cellChange, DEFAULT_COLUMNS, loadColumns, valueText } from './columns';
-import { fakeSearchClient } from './fixtures';
+import { fakeSavedSearchClient, fakeSearchClient } from './fixtures';
 import { SearchPage } from './SearchPage';
 
 function renderPage(initialQuery = 'track = SHOP') {
@@ -16,7 +16,11 @@ function renderPage(initialQuery = 'track = SHOP') {
     <I18nProvider locale="en">
       <SessionProvider session={MEMBER}>
         <main>
-          <SearchPage client={client} initialQuery={initialQuery} />
+          <SearchPage
+            client={client}
+            savedClient={fakeSavedSearchClient()}
+            initialQuery={initialQuery}
+          />
         </main>
       </SessionProvider>
     </I18nProvider>,

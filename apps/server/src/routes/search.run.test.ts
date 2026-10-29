@@ -912,7 +912,8 @@ describe('search (M1-037)', () => {
       message: '"sprint" belongs to boards and sprints, which this version does not have yet',
     });
     expect((await refused('requestType = x')).message).toContain('service tracks');
-    expect((await refused('filter = 10')).message).toContain('saved searches');
+    // Saved searches run since M1-063: an unknown one reads as missing.
+    expect((await refused('filter = 10')).message).toBe('Saved search "10" does not exist');
     expect((await refused('status WAS Closed')).message).toBe(
       '"status" WAS: searching the change history is not available yet',
     );

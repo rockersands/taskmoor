@@ -23,6 +23,8 @@ import {
 } from './client';
 import { loadColumns, saveColumns } from './columns';
 import { ResultTable } from './ResultTable';
+import { SavedSearchBar } from './SavedSearchBar';
+import { type SavedSearch, type SavedSearchClient, savedSearchClient } from './savedClient';
 import { type Suggestions, suggest } from './suggest';
 
 export interface SearchPageProps {
@@ -30,6 +32,10 @@ export interface SearchPageProps {
   client?: SearchClient;
   /** The query to start with (from the address, `#/search?q=`). */
   initialQuery?: string;
+  /** Saved searches (M1-063); the API's by default. */
+  savedClient?: SavedSearchClient;
+  /** A saved search to open at once (from the address, `#/search?savedSearch=12`). */
+  initialSavedSearch?: number | null;
 }
 
 type Results =
@@ -51,7 +57,12 @@ export function queryFromHash(hash: string): string {
  * The results (M1-042; QRY-014, QRY-015) show in the person's columns, edit in place and export
  * as CSV or JSON.
  */
-export function SearchPage({ client = searchClient, initialQuery }: SearchPageProps) {
+export function SearchPage({
+  client = searchClient,
+  initialQuery,
+  savedClient = savedSearchClient,
+  initialSavedSearch = null,
+}: SearchPageProps) {
   const t = useT();
   const expired = useSessionExpiry();
   const titleId = useId();
@@ -71,6 +82,7 @@ export function SearchPage({ client = searchClient, initialQuery }: SearchPagePr
     setColumns(next);
     saveColumns(userId, next);
   };
+  const [opened, setOpened] = useState<SavedSearch | null>(null);
 
   useEffect(() => {
     void Promise.allSettled([client.tracks(), client.fields()]).then(([tr, fi]) => {
@@ -107,10 +119,28 @@ export function SearchPage({ client = searchClient, initialQuery }: SearchPagePr
     [client, expired, t],
   );
 
-  // A query from the address runs at once.
+  /** Shows a saved search: its query in the mode that can show it, its columns, its results. */
+  const openSaved = (saved: SavedSearch) => {
+    setOpened(saved);
+    const read = saved.query === '' ? EMPTY_BASIC : queryToBasic(saved.query);
+    if (read) setBasic(read);
+    setText(saved.query);
+    setTooMuch(false);
+    setMode(read ? 'basic' : 'advanced');
+    if (saved.columns && saved.columns.length > 0) chooseColumns(saved.columns);
+    window.history.replaceState(null, '', `#/search?savedSearch=${saved.id}`);
+    void run(saved.query);
+  };
+
+  // A query from the address runs at once; so does a saved search named there.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, for the address's query
   useEffect(() => {
-    if (start) void run(start);
+    if (initialSavedSearch !== null) {
+      savedClient.get(initialSavedSearch).then(openSaved, (error: unknown) => {
+        if (expired(error)) return;
+        setResults({ status: 'failed', message: t('saved.notFound') });
+      });
+    } else if (start) void run(start);
   }, []);
 
   const searchFor = (query: string) => {
@@ -182,6 +212,17 @@ export function SearchPage({ client = searchClient, initialQuery }: SearchPagePr
           onSearch={searchFor}
         />
       )}
+      <SavedSearchBar
+        client={savedClient}
+        query={currentQuery()}
+        columns={columns}
+        opened={opened}
+        onOpen={openSaved}
+        onSaved={(saved) => {
+          setOpened(saved);
+          window.history.replaceState(null, '', `#/search?savedSearch=${saved.id}`);
+        }}
+      />
       <ResultList
         results={results}
         columns={columns}

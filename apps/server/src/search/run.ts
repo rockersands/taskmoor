@@ -15,6 +15,7 @@ import { commentReadableSql } from '../tickets/comments';
 import { bindPlan } from './bind';
 import { type CompiledSearch, type Cursor, compileSearch, type PageRow } from './compile';
 import type { Bound, Scalar } from './model';
+import { type ExpandOptions, expandSavedSearches } from './saved';
 
 /**
  * Running a query (M1-037; QRY-008 to QRY-010): text to a compiled statement, a page of ids
@@ -50,6 +51,8 @@ export interface PrepareInput {
   anchor?: boolean;
   /** False keeps one statement instead of value branches (tests compare both). */
   branches?: boolean;
+  /** Saving a saved search: a reference back to it is a cycle (M1-063). */
+  savedSearch?: ExpandOptions['self'];
 }
 
 export interface Prepared {
@@ -59,7 +62,14 @@ export interface Prepared {
 
 /** Parses, resolves, binds and compiles; throws QueryError or SearchError for a bad query. */
 export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
-  const query = parseQuery(input.q);
+  // Saved-search references read as the person sees saved searches (M1-063).
+  const query = await expandSavedSearches(
+    input.db,
+    input.workspaceId,
+    input.currentUserId,
+    parseQuery(input.q),
+    input.savedSearch ? { self: input.savedSearch } : {},
+  );
   const names = functionNames(query);
   const logins =
     names.has('currentlogin') || names.has('lastlogin')

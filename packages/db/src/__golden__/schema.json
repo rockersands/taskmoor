@@ -219,7 +219,7 @@
       "kind text not null",
       "location_track_id integer",
       "location_user_id integer",
-      "filter_query text not null",
+      "filter_query text",
       "sub_filter_query text",
       "columns jsonb not null",
       "swimlanes jsonb not null",
@@ -229,10 +229,12 @@
       "version integer not null default 1",
       "created_by integer",
       "created_at timestamp with time zone not null default now()",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "saved_search_id integer"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX board_pkey ON public.board USING btree (id)",
+      "CREATE INDEX board_saved_search_idx ON public.board USING btree (saved_search_id) WHERE (saved_search_id IS NOT NULL)",
       "CREATE INDEX board_track_idx ON public.board USING btree (location_track_id) WHERE (location_track_id IS NOT NULL)",
       "CREATE INDEX board_user_idx ON public.board USING btree (location_user_id) WHERE (location_user_id IS NOT NULL)",
       "CREATE INDEX board_workspace_name_idx ON public.board USING btree (workspace_id, lower(name), id)"
@@ -1168,6 +1170,84 @@
       "CREATE UNIQUE INDEX saml_login_handle_hash_key ON public.saml_login USING btree (handle_hash)",
       "CREATE UNIQUE INDEX saml_login_pkey ON public.saml_login USING btree (id)",
       "CREATE UNIQUE INDEX saml_login_request_id_key ON public.saml_login USING btree (request_id)"
+    ]
+  },
+  "saved_search": {
+    "columns": [
+      "id integer not null default nextval('saved_search_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "owner_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "query text not null",
+      "columns jsonb",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX saved_search_name_idx ON public.saved_search USING btree (workspace_id, lower(name), id)",
+      "CREATE UNIQUE INDEX saved_search_owner_name_idx ON public.saved_search USING btree (workspace_id, owner_id, lower(name))",
+      "CREATE UNIQUE INDEX saved_search_pkey ON public.saved_search USING btree (id)"
+    ]
+  },
+  "saved_search_share": {
+    "columns": [
+      "id integer not null default nextval('saved_search_share_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "saved_search_id integer not null",
+      "scope text not null",
+      "user_id integer",
+      "group_id integer",
+      "track_id integer",
+      "role_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX saved_search_share_group_idx ON public.saved_search_share USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX saved_search_share_pkey ON public.saved_search_share USING btree (id)",
+      "CREATE INDEX saved_search_share_search_idx ON public.saved_search_share USING btree (saved_search_id)",
+      "CREATE INDEX saved_search_share_track_idx ON public.saved_search_share USING btree (track_id) WHERE (track_id IS NOT NULL)",
+      "CREATE INDEX saved_search_share_user_idx ON public.saved_search_share USING btree (user_id) WHERE (user_id IS NOT NULL)"
+    ]
+  },
+  "saved_search_star": {
+    "columns": [
+      "workspace_id integer not null",
+      "saved_search_id integer not null",
+      "user_id integer not null",
+      "starred_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX saved_search_star_pkey ON public.saved_search_star USING btree (user_id, saved_search_id)",
+      "CREATE INDEX saved_search_star_search_idx ON public.saved_search_star USING btree (saved_search_id)"
+    ]
+  },
+  "saved_search_subscription": {
+    "columns": [
+      "id integer not null default nextval('saved_search_subscription_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "saved_search_id integer not null",
+      "created_by integer not null",
+      "recipient_user_id integer",
+      "recipient_group_id integer",
+      "schedule text not null",
+      "hour integer not null default 8",
+      "minute integer not null default 0",
+      "weekday integer",
+      "day_of_month integer",
+      "cron text",
+      "time_zone text not null default 'UTC'::text",
+      "only_if_results boolean not null default false",
+      "next_run_at timestamp with time zone not null",
+      "last_run_at timestamp with time zone",
+      "last_sent integer",
+      "last_error text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX saved_search_subscription_due_idx ON public.saved_search_subscription USING btree (next_run_at)",
+      "CREATE UNIQUE INDEX saved_search_subscription_pkey ON public.saved_search_subscription USING btree (id)",
+      "CREATE INDEX saved_search_subscription_search_idx ON public.saved_search_subscription USING btree (saved_search_id)"
     ]
   },
   "schema_migration": {

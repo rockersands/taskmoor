@@ -58,6 +58,28 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
 
 ### Done (newest first)
 
+- **M1-063 saved searches** (built by a background agent on `work/m1-063-saved-searches`;
+  migration 0051; ADR-053). Server: `routes/saved-searches.ts` (`/api/v1/saved-searches` CRUD,
+  `/:id/star`, `/:id/subscriptions`), `search/saved.ts` (who sees a saved search, as one SQL
+  predicate; `expandSavedSearches`), `search/schedule.ts` (cron and daily/weekly/monthly on a
+  time zone's wall clock), `search/subscriptions.ts` (the mailer, every minute in `main.ts` when
+  SMTP is set). Boards take `source: {savedSearchId}` (ADR-049's reserved column is wired).
+  Web: `search/SavedSearchBar.tsx` and `search/savedClient.ts` on the search page;
+  `#/search?savedSearch=<id>` opens one with its columns; e2e `saved-searches.spec.ts`.
+  - References (`savedSearch`/`filter` `=`, `!=`, `IN`, `NOT IN`) are expanded AST to AST before
+    `resolveQuery` in `prepareSearch` and in the boards' `bindCondition`, as the runner sees
+    saved searches; the resolver, binder and compiler are unchanged. A hidden saved search reads
+    exactly like a missing one (same message, same shape). Cycle and depth (10) refusals are
+    QueryErrors at the reference.
+  - A shared query that names a track the runner cannot browse fails for them as "Unknown
+    track" (as typing it would). Tests that share across tracks use `summary ~ ...`.
+  - Reply objects are thenables: never `return reply...send()` out of an async helper whose
+    result is awaited (the awaited value is undefined). `refuseQuery` returns a boolean.
+  - Not yet: share with people, groups or tracks from the web (API only), system saved
+    searches, an admin list of every shared saved search, subscription import (QRY-012 (3)),
+    HTML through the notification templates, the board settings page showing
+    `source.savedSearchId` errors on the query field.
+
 - **M1-042 search results** (built by a background agent on `work/m1-042-results`; no
   migration; ADR-052). Server: `GET /api/v1/search/export?q=&format=csv|json&columns=`
   (`routes/search-export.ts`, registered in `app.ts`) streams every match through

@@ -177,7 +177,7 @@ export function fakeBoardClient(
     update: async (_id, patch): Promise<UpdateOutcome> => {
       client.patches.push(patch);
       if (patch.version !== board.version) return { ok: false, fields: {}, conflict: true };
-      if (patch.source && /=\s*$/.test(patch.source.query)) {
+      if (patch.source && 'query' in patch.source && /=\s*$/.test(patch.source.query)) {
         return { ok: false, fields: { 'source.query': 'invalid_query' } };
       }
       let n = 0;

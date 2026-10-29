@@ -11,6 +11,8 @@ import {
   type CardRules,
   MAX_CARD_FIELDS,
   type Swimlanes,
+  sourceOf,
+  sourceText,
 } from './client';
 
 export interface BoardSettingsPageProps {
@@ -71,7 +73,7 @@ function draftOf(board: Board): Draft {
   return {
     name: board.name,
     kind: board.kind,
-    query: board.source.query,
+    query: sourceText(board.source),
     subFilter: board.subFilter?.query ?? '',
     columns: board.columns.map((c) => ({
       key: newKey(),
@@ -106,7 +108,7 @@ function patchOf(draft: Draft, version: number): BoardPatch {
     version,
     name: draft.name.trim(),
     kind: draft.kind,
-    source: { query: draft.query.trim() },
+    source: sourceOf(draft.query),
     subFilter: draft.subFilter.trim() === '' ? null : { query: draft.subFilter.trim() },
     columns: draft.columns.map((c) => ({
       ...(c.id === undefined ? {} : { id: c.id }),
@@ -226,6 +228,8 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       </p>
     ) : null;
 
+  // A board on a saved search reports a saved search it cannot use on its query (M1-063).
+  const sourcePath = problem('source.savedSearchId') ? 'source.savedSearchId' : 'source.query';
   const columnOfStatus = (statusId: number) =>
     draft.columns.find((c) => c.statusIds.includes(statusId))?.key ?? '';
   const mapStatus = (statusId: number, columnKey: string) =>
@@ -358,9 +362,9 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               required
               value={draft.query}
               onChange={(e) => set({ query: e.target.value })}
-              {...invalid('source.query', `${id}-query`)}
+              {...invalid(sourcePath, `${id}-query`)}
             />
-            {problemText('source.query', `${id}-query`)}
+            {problemText(sourcePath, `${id}-query`)}
           </div>
           <div className="form-field">
             <label htmlFor={`${id}-sub`} className="form-label">
