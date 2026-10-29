@@ -4,6 +4,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
+import { enforceLimit } from '../guardrails/model';
 import { checkLabels, LABEL_MAX, lockList, rewriteTickets, writeOrder } from '../tickets/fields';
 
 /**
@@ -454,6 +455,7 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
       return invalid(reply, 'defaultPriorityId must be one of priorityIds');
     }
     if (!(await knownPriorities(db, ws, body.priorityIds))) return invalid(reply, 'priorityIds');
+    await enforceLimit(db, ws, 'priorities_per_track', body.priorityIds.length);
     try {
       const setId = await db.transaction().execute(async (trx) => {
         const row = await trx
@@ -503,6 +505,9 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
     const setId = params.data.id;
     if (body.priorityIds && !(await knownPriorities(db, ws, body.priorityIds))) {
       return invalid(reply, 'priorityIds');
+    }
+    if (body.priorityIds) {
+      await enforceLimit(db, ws, 'priorities_per_track', body.priorityIds.length);
     }
     try {
       const result = await db.transaction().execute(async (trx) => {

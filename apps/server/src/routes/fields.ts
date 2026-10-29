@@ -35,6 +35,7 @@ import {
   type Stored,
 } from '../fields/types';
 import { allowedPeople, describeFields, loadResolver } from '../fields/values';
+import { enforceLimit, fieldsPerTrackWith } from '../guardrails/model';
 import { canonicalJson } from '../tickets/model';
 import { resolveTrack } from '../tickets/store';
 
@@ -497,6 +498,25 @@ export function registerFieldRoutes(
     trackIds: readonly number[] | null,
     typeIds: readonly number[] | null,
   ): Promise<Problem | null> {
+    // A field reaching tracks it did not reach counts there (fields_per_track, M1-055).
+    const before = await trx
+      .selectFrom('field_context_scope')
+      .select('track_id')
+      .distinct()
+      .where('field_id', '=', field.id)
+      .execute();
+    if (!before.some((r) => r.track_id === null)) {
+      const had = new Set(before.map((r) => r.track_id));
+      const gained = trackIds === null ? null : trackIds.filter((t) => !had.has(t));
+      if (gained === null || gained.length > 0) {
+        await enforceLimit(
+          trx,
+          workspaceId,
+          'fields_per_track',
+          await fieldsPerTrackWith(trx, workspaceId, field.id, gained),
+        );
+      }
+    }
     await trx.deleteFrom('field_context_scope').where('context_id', '=', contextId).execute();
     const rows = (trackIds ?? [null]).flatMap((trackId) =>
       (typeIds ?? [null]).map((typeId) => ({
@@ -658,7 +678,14 @@ export function registerFieldRoutes(
       return problem(400, 'invalid_request', { detail: 'only cascading selects have children' });
     }
     const total = options.reduce((n, o) => n + 1 + (o.children?.length ?? 0), 0);
-    if (total > OPTIONS_MAX) return problem(400, 'too_many_options', { max: OPTIONS_MAX });
+    if (total > 0) {
+      const held = await trx
+        .selectFrom('field_option')
+        .select(sql<number>`count(*)::int`.as('n'))
+        .where('field_id', '=', field.id)
+        .executeTakeFirstOrThrow();
+      await enforceLimit(trx, workspaceId, 'options_per_field', held.n + total);
+    }
     const lower = (v: string) => v.toLowerCase();
     if (!unique(options.map((o) => lower(o.value)))) {
       return problem(400, 'invalid_request', { detail: 'option values repeat' });
@@ -1219,7 +1246,7 @@ export function registerFieldRoutes(
         ])
         .where('field_id', '=', field.id)
         .executeTakeFirstOrThrow();
-      if (counted.n >= OPTIONS_MAX) return problem(409, 'too_many_options', { max: OPTIONS_MAX });
+      await enforceLimit(trx, ws, 'options_per_field', counted.n + 1);
       const row = await trx
         .insertInto('field_option')
         .values({

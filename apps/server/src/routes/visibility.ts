@@ -4,6 +4,7 @@ import type { Kysely, Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
+import { enforceLimit } from '../guardrails/model';
 import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
 import { setLevels, trackVisibility } from '../tickets/visibility';
 
@@ -25,7 +26,8 @@ import { setLevels, trackVisibility } from '../tickets/visibility';
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
 const MAX_INT = 2_147_483_647;
-const LEVELS_PER_POLICY = 50;
+/** A hard cap on one request; the limit itself is the guardrail (M1-055). */
+const LEVELS_PER_POLICY = 1000;
 const MEMBERS_PER_LEVEL = 500;
 const id = z.coerce.number().int().positive().max(MAX_INT);
 const idValue = z.number().int().positive().max(MAX_INT);
@@ -403,6 +405,7 @@ export function registerVisibilityRoutes(app: FastifyInstance, db: Kysely<Databa
     const trackId = body.trackId ?? null;
     if (!(await mayConfigure(request, reply, trackId))) return reply;
     const levels = body.levels ?? [];
+    await enforceLimit(db, ws, 'visibility_levels_per_track', levels.length);
     const names = levels.map((l) => l.name.toLowerCase());
     if (new Set(names).size !== names.length) return invalid(reply, 'levels: repeated name');
     if (body.defaultLevel !== undefined && !names.includes(body.defaultLevel.toLowerCase())) {
@@ -573,9 +576,7 @@ export function registerVisibilityRoutes(app: FastifyInstance, db: Kysely<Databa
           .select((eb) => eb.fn.countAll<string>().as('n'))
           .where('policy_id', '=', policy.id)
           .executeTakeFirstOrThrow();
-        if (Number(count.n) >= LEVELS_PER_POLICY) {
-          return problem(409, 'too_many_levels', { limit: LEVELS_PER_POLICY });
-        }
+        await enforceLimit(trx, ws, 'visibility_levels_per_track', Number(count.n) + 1);
         const level = await trx
           .insertInto('visibility_level')
           .values({

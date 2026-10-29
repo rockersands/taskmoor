@@ -18,6 +18,7 @@ import { Authorizer } from './authz/authorizer';
 import { Collaboration } from './collab/server';
 import type { Role, ServerConfig } from './config';
 import { FieldCatalogs } from './fields/catalog';
+import { GuardrailExceeded } from './guardrails/model';
 import { DirectoryGateway } from './ldap/gateway';
 import { instrumentApp, type Metrics } from './observability';
 import { registerRequestScope } from './request-scope';
@@ -34,6 +35,7 @@ import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
+import { registerGuardrailRoutes } from './routes/guardrails';
 import { registerHomeRoutes } from './routes/home';
 import { registerImportRoutes } from './routes/imports';
 import { registerInboxRoutes } from './routes/inbox';
@@ -140,6 +142,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     ...(deps.tracer ? { tracer: deps.tracer } : {}),
   });
   await app.register(fastifyCookie);
+  // A guardrail refusal thrown inside a route's transaction (M1-055): the transaction has rolled
+  // back; the answer names the guardrail and its limit. Everything else goes on as before.
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof GuardrailExceeded) return reply.code(409).send(error.body);
+    throw error;
+  });
 
   // Liveness: the process is up. Never touches dependencies, so restarts are not triggered by
   // a slow database. Every role answers it, which is what the image's health check calls.
@@ -261,6 +269,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerImportRoutes(app, db);
     registerHomeRoutes(app, db, fieldCatalogs);
+    registerGuardrailRoutes(app, db);
     registerAuditRoutes(app, db);
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);

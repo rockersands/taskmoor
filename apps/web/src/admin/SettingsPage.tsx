@@ -86,6 +86,10 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.setsHint')}</p>
             </li>
             <li>
+              <a href="#/admin/guardrails">{t('settings.guardrails')}</a>
+              <p className="page-note">{t('settings.guardrailsHint')}</p>
+            </li>
+            <li>
               <a href="#/admin/permissions">{t('settings.permissions')}</a>
               <p className="page-note">{t('settings.permissionsHint')}</p>
             </li>

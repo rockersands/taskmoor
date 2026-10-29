@@ -519,6 +519,18 @@
       "CREATE UNIQUE INDEX group_nesting_pkey ON public.group_nesting USING btree (parent_id, child_id)"
     ]
   },
+  "guardrail_limit": {
+    "columns": [
+      "workspace_id integer not null",
+      "name text not null",
+      "value integer not null",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX guardrail_limit_pkey ON public.guardrail_limit USING btree (workspace_id, name)"
+    ]
+  },
   "hierarchy_level": {
     "columns": [
       "id integer not null default nextval('hierarchy_level_id_seq'::regclass)",

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { requireUser, type SessionUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { enforceLimit } from '../guardrails/model';
 import {
   defaultMapId,
   loadMap,
@@ -354,6 +355,12 @@ export function registerWorkflowMapRoutes(
     const body = parsed.data;
     const ws = request.workspaceId;
     const entryMap = new Map((body.entries ?? []).map((e) => [e.ticketTypeId, e.workflowId]));
+    await enforceLimit(
+      db,
+      ws,
+      'workflows_per_map',
+      new Set([body.defaultWorkflowId, ...entryMap.values()]).size,
+    );
     try {
       const created = await db.transaction().execute(async (trx) => {
         const problem = await contentProblem(trx, ws, null, body.defaultWorkflowId, entryMap);
@@ -461,6 +468,13 @@ export function registerWorkflowMapRoutes(
     const body = parsed.data;
     const ws = request.workspaceId;
     const mapId = access.map.id;
+    if (body.entries !== undefined || body.defaultWorkflowId !== undefined) {
+      const workflows = new Set([
+        body.defaultWorkflowId ?? access.map.defaultWorkflowId,
+        ...(body.entries ? body.entries.map((e) => e.workflowId) : access.map.entries.values()),
+      ]);
+      await enforceLimit(db, ws, 'workflows_per_map', workflows.size);
+    }
     // Read through the pool before the transaction: formulas recompute for moved tickets.
     const catalog = await catalogs.get(ws);
     try {

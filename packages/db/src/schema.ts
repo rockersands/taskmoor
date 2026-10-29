@@ -659,6 +659,15 @@ export interface TicketVisitTable {
   visited_at: DefaultTimestamp;
 }
 
+/** A workspace's own limit for a configuration guardrail (M1-055, CORE-026). */
+export interface GuardrailLimitTable {
+  workspace_id: number;
+  name: string;
+  value: number;
+  updated_at: DefaultTimestamp;
+  updated_by: number | null;
+}
+
 /** A person's own settings. */
 export interface UserPreferenceTable {
   user_id: number;
@@ -1808,6 +1817,7 @@ export interface Database {
   ticket_web_link: TicketWebLinkTable;
   ticket_follower: TicketPersonTable;
   ticket_visit: TicketVisitTable;
+  guardrail_limit: GuardrailLimitTable;
   ticket_vote: TicketPersonTable;
   user_preference: UserPreferenceTable;
   time_tracking_setting: TimeTrackingSettingTable;

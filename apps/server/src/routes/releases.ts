@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
+import { enforceLimit } from '../guardrails/model';
 import { rewriteTickets, writeOrder } from '../tickets/fields';
 import { isCalendarDay } from '../tickets/model';
 
@@ -332,6 +333,16 @@ export function registerReleaseRoutes(
       .where('id', '=', releaseId)
       .forUpdate()
       .executeTakeFirst();
+  /** The track's releases that are not archived: what `releases_per_track` counts (M1-055). */
+  const openReleases = async (trx: Transaction<Database>, trackId: number) =>
+    (
+      await trx
+        .selectFrom('release')
+        .select(sql<number>`count(*)::int`.as('n'))
+        .where('track_id', '=', trackId)
+        .where('archived_at', 'is', null)
+        .executeTakeFirstOrThrow()
+    ).n;
 
   // Releases (CORE-016)
 
@@ -373,6 +384,7 @@ export function registerReleaseRoutes(
           .where('id', '=', trackId)
           .forNoKeyUpdate()
           .execute();
+        await enforceLimit(trx, ws, 'releases_per_track', (await openReleases(trx, trackId)) + 1);
         const last = await trx
           .selectFrom('release')
           .select(sql<number>`coalesce(max(sort_order), 0)`.as('n'))
@@ -672,6 +684,15 @@ export function registerReleaseRoutes(
           if ((release.archived_at !== null) === archiving) {
             return { conflict: archiving ? 'already_archived' : 'not_archived' };
           }
+          // Archived releases do not count; one coming back does (CORE-026).
+          if (!archiving) {
+            await enforceLimit(
+              trx,
+              ws,
+              'releases_per_track',
+              (await openReleases(trx, release.track_id)) + 1,
+            );
+          }
           await trx
             .updateTable('release')
             .set({ archived_at: archiving ? now : null, updated_at: now })
@@ -914,6 +935,19 @@ export function registerReleaseRoutes(
     }
     try {
       const row = await db.transaction().execute(async (trx) => {
+        await trx
+          .selectFrom('track')
+          .select('id')
+          .where('id', '=', trackId)
+          .forNoKeyUpdate()
+          .execute();
+        const areas = await trx
+          .selectFrom('area')
+          .select(sql<number>`count(*)::int`.as('n'))
+          .where('track_id', '=', trackId)
+          .where('archived_at', 'is', null)
+          .executeTakeFirstOrThrow();
+        await enforceLimit(trx, ws, 'areas_per_track', areas.n + 1);
         const created = await trx
           .insertInto('area')
           .values({

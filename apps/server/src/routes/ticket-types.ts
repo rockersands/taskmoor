@@ -4,6 +4,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
+import { enforceLimit } from '../guardrails/model';
 import {
   hierarchyTickets,
   loadHierarchy,
@@ -885,6 +886,7 @@ export function registerTicketTypeRoutes(app: FastifyInstance, db: Kysely<Databa
       return invalid(reply, 'defaultTypeId');
     }
     const defaultFor = inTrackTypeOrder(body.defaultFor ?? []);
+    await enforceLimit(db, ws, 'ticket_types_per_track', body.ticketTypeIds.length);
     try {
       const created = await db.transaction().execute(async (trx) => {
         if (!(await usableTypes(trx, ws, body.ticketTypeIds, null))) return null;
@@ -940,6 +942,9 @@ export function registerTicketTypeRoutes(app: FastifyInstance, db: Kysely<Databa
     const existing = await typeSetQuery(db, ws).where('id', '=', setId).executeTakeFirst();
     if (!existing) return notFound(reply);
     if (!(await mayConfigure(request, reply, existing.owner_track_id))) return reply;
+    if (body.ticketTypeIds) {
+      await enforceLimit(db, ws, 'ticket_types_per_track', body.ticketTypeIds.length);
+    }
     if (existing.owner_track_id !== null && body.defaultFor !== undefined) {
       return invalid(reply, "a local-mode track's type set is never a default");
     }

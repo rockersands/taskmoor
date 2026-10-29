@@ -953,6 +953,13 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE u.email = 'seed@example.com' AND k.summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0050_guardrails': {
+    tables: { guardrail_limit: "name = 'releases_per_track' AND value = 20000" },
+    seed: async (db) => {
+      await sql`INSERT INTO guardrail_limit (workspace_id, name, value)
+        VALUES (1, 'releases_per_track', 20000)`.execute(db);
+    },
+  },
 };
 
 /**

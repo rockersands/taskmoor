@@ -13,6 +13,7 @@ import {
   TRACK_PERMISSION_GROUPS,
 } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
+import { enforceLimit } from '../guardrails/model';
 import { ticketKey } from '../tickets/model';
 import { loadTicket, resolveTicket } from '../tickets/store';
 import { trackInTrash } from '../trash/policy';
@@ -514,6 +515,20 @@ export function registerAuthzRoutes(
     if (exist.includes(false)) return reply.code(404).send({ error: 'not_found' });
     try {
       const grant = await db.transaction().execute(async (trx) => {
+        // One grant list changes at a time, so two additions cannot both slip under the limit.
+        await trx
+          .selectFrom('access_policy')
+          .select('id')
+          .where('id', '=', params.data.id)
+          .forUpdate()
+          .execute();
+        const held = await trx
+          .selectFrom('access_grant')
+          .select(sql<number>`count(*)::int`.as('n'))
+          .where('policy_id', '=', params.data.id)
+          .where('permission', '=', g.permission)
+          .executeTakeFirstOrThrow();
+        await enforceLimit(trx, ws, 'grants_per_permission', held.n + 1);
         const row = await trx
           .insertInto('access_grant')
           .values({

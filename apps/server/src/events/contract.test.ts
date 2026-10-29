@@ -876,6 +876,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.goneTrack}/purge` }),
     },
     {
+      route: 'PUT /api/v1/admin/guardrails/:name',
+      expect: 'guardrail.changed',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/guardrails/areas_per_track',
+          payload: { limit: 9000 },
+        }),
+    },
+    {
       route: 'PUT /api/v1/admin/trash-policy',
       expect: 'trash_policy.updated',
       run: () =>

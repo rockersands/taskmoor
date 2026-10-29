@@ -4,6 +4,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireUser, type SessionUser } from '../auth';
 import { diff, emit } from '../events/bus';
+import { enforceLimit } from '../guardrails/model';
 import { lockList, writeOrder } from '../tickets/fields';
 import {
   defaultMapId,
@@ -593,6 +594,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     const body = parsed.data;
     const ws = request.workspaceId;
     const trackId = body.trackId ?? null;
+    await enforceLimit(db, ws, 'statuses_per_workflow', body.definition.statuses.length);
     if (trackId === null) {
       if (!(await configAdmin(request, reply))) return reply;
     } else {
@@ -727,6 +729,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     const ws = request.workspaceId;
     const problem = definitionProblem(parsed.data.definition, await knownStatuses(db, ws));
     if (problem) return invalid(reply, problem);
+    await enforceLimit(db, ws, 'statuses_per_workflow', parsed.data.definition.statuses.length);
     const version = await saveDraft(request, params.data.id, parsed.data.definition, null);
     if (version === null) return notFound(reply);
     return { workflow: await workflowView(ws, params.data.id) };

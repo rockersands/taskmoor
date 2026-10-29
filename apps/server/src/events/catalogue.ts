@@ -1078,6 +1078,15 @@ export const EVENT_TYPES = {
       fidelity: z.number().min(0).max(1).nullable(),
     }),
   },
+  // Configuration guardrails (M1-055): an administrator changed a limit.
+  'guardrail.changed': {
+    subject: 'workspace',
+    payload: z.object({
+      name: z.string(),
+      from: z.number().int().min(1),
+      to: z.number().int().min(1),
+    }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

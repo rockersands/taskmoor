@@ -17,6 +17,7 @@ import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { FieldsAdminPage } from './fields/FieldsAdminPage';
+import { GuardrailsPage } from './guardrails/GuardrailsPage';
 import { HomePage } from './home/HomePage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
@@ -114,6 +115,7 @@ const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
 const ADMIN_FIELDS = '#/admin/fields';
 const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ADMIN_SETS = '#/admin/configuration-sets';
+const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -343,6 +345,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-guardrails',
+              labelId: 'guardrails.title' as const,
+              keywords: ['limits', 'guardrail', 'usage', 'quota'],
+              run: () => {
+                window.location.hash = ADMIN_GUARDRAILS;
+              },
+            },
+            {
               id: 'go-groups',
               labelId: 'admin.groups.title' as const,
               keywords: ['group', 'team', 'members', 'nested'],
@@ -394,6 +404,8 @@ function Pages() {
     content = <PermissionsPage />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
+  } else if (isRoute(hash, ADMIN_GUARDRAILS)) {
+    content = <GuardrailsPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;

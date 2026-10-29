@@ -18,6 +18,7 @@ export const AUDITED_EVENTS = [
   'import_run.created',
   'import_run.cancelled',
   'import_run.finished',
+  'guardrail.changed',
   'session.started',
   'session.ended',
   'session.revoked',

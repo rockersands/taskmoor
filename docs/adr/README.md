@@ -54,5 +54,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [046](0046-home-create-dialog-palette.md) | The home page, the create dialog and a palette that reaches every action | Accepted |
 | [047](0047-inbox-mentions-activity.md) | The in-app inbox, mentions and activity streams | Accepted |
 | [048](0048-importer-framework.md) | The importer framework: extract, map and load in resumable batches | Accepted |
+| [051](0051-configuration-guardrails.md) | Configuration guardrails | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
