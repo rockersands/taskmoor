@@ -48,6 +48,7 @@ import { registerPriorityRoutes } from './routes/priorities';
 import { registerReleaseRoutes } from './routes/releases';
 import { registerRichTextRoutes } from './routes/rich-text';
 import { registerSamlRoutes } from './routes/saml';
+import { registerSavedSearchRoutes } from './routes/saved-searches';
 import { registerScimRoutes } from './routes/scim';
 import { registerSearchRoutes } from './routes/search';
 import { registerSearchExportRoutes } from './routes/search-export';
@@ -278,6 +279,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerGuardrailRoutes(app, db);
     // Boards (M1-043): reads go through the search compiler, moves through the ticket routes.
     registerBoardRoutes(app, db, authorizer, fieldCatalogs, {
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // Saved searches (M1-063): sharing, stars and subscriptions; queries checked on save.
+    registerSavedSearchRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerAuditRoutes(app, db);

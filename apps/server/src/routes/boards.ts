@@ -27,6 +27,7 @@ import {
   itemId,
   type Swimlanes,
   sharedStatus,
+  sourceQuery,
   updateBoardBody,
   withIds,
 } from '../boards/model';
@@ -110,6 +111,7 @@ function boardQuery(db: Db, workspaceId: number) {
       'b.location_user_id',
       'u.name as user_name',
       'b.filter_query',
+      'b.saved_search_id',
       'b.sub_filter_query',
       'b.columns',
       'b.swimlanes',
@@ -126,7 +128,7 @@ function boardQuery(db: Db, workspaceId: number) {
 const record = (row: BoardRow): BoardRecord => ({
   id: row.id,
   name: row.name,
-  filterQuery: row.filter_query,
+  filterQuery: row.filter_query ?? `savedSearch = ${row.saved_search_id}`,
   subFilterQuery: row.sub_filter_query,
   columns: row.columns as unknown as Column[],
   swimlanes: row.swimlanes as unknown as Swimlanes,
@@ -135,12 +137,18 @@ const record = (row: BoardRow): BoardRecord => ({
   locationTrackId: row.location_track_id,
 });
 
+/** A board's source as the API shows it: its query, or the saved search it uses. */
+const sourceOf = (row: BoardRow) =>
+  row.saved_search_id !== null
+    ? { savedSearchId: row.saved_search_id }
+    : { query: row.filter_query ?? '' };
+
 /** What the routes compare and report as a board's configuration. */
 const settings = (row: BoardRow, admins: number[]) => ({
   name: row.name,
   description: row.description,
   kind: row.kind,
-  source: { query: row.filter_query },
+  source: sourceOf(row),
   subFilter: row.sub_filter_query === null ? null : { query: row.sub_filter_query },
   columns: row.columns,
   swimlanes: row.swimlanes,
@@ -256,7 +264,7 @@ export function registerBoardRoutes(
               type: 'user' as const,
               user: { id: row.location_user_id, name: row.user_name },
             },
-      source: { query: row.filter_query },
+      source: sourceOf(row),
       subFilter: row.sub_filter_query === null ? null : { query: row.sub_filter_query },
       columns: row.columns,
       swimlanes: row.swimlanes,
@@ -319,7 +327,13 @@ export function registerBoardRoutes(
         else throw error;
       }
     };
-    if (body.source) await checkQuery('source.query', body.source.query);
+    if (body.source && 'query' in body.source) {
+      await checkQuery('source.query', body.source.query);
+    } else if (body.source) {
+      // Checked as the editor could run it: one they cannot see reads as missing.
+      await checkQuery('source.savedSearchId', sourceQuery(body.source));
+      if (fields['source.savedSearchId']) fields['source.savedSearchId'] = 'not_found';
+    }
     if (body.subFilter) await checkQuery('subFilter.query', body.subFilter.query);
     const out: Awaited<ReturnType<typeof checkConfiguration>> = { fields };
     if (body.columns) {
@@ -499,7 +513,8 @@ export function registerBoardRoutes(
     const checked = await checkConfiguration(request, body);
     if (Object.keys(checked.fields).length > 0) return invalidFields(reply, checked.fields);
     const scope = await boardScope(db, catalogs, request);
-    const columns = checked.columns ?? (await defaultColumns(scope, body.source.query, trackId));
+    const columns =
+      checked.columns ?? (await defaultColumns(scope, sourceQuery(body.source), trackId));
     const swimlanes = checked.swimlanes ?? DEFAULT_SWIMLANES;
     const boardFilters = checked.boardFilters ?? DEFAULT_BOARD_FILTERS;
     const cardRules = checked.cardRules ?? DEFAULT_CARD_RULES;
@@ -514,7 +529,8 @@ export function registerBoardRoutes(
           kind: body.kind,
           location_track_id: trackId,
           location_user_id: trackId === null ? user.id : null,
-          filter_query: body.source.query,
+          filter_query: 'query' in body.source ? body.source.query : null,
+          saved_search_id: 'savedSearchId' in body.source ? body.source.savedSearchId : null,
           sub_filter_query: body.subFilter?.query ?? null,
           columns: JSON.stringify(columns),
           swimlanes: JSON.stringify(swimlanes),
@@ -532,7 +548,12 @@ export function registerBoardRoutes(
       await emit(trx, by(request), {
         type: 'board.created',
         subjectId: row.id,
-        payload: { name: body.name, kind: body.kind, trackId, query: body.source.query },
+        payload: {
+          name: body.name,
+          kind: body.kind,
+          trackId,
+          query: sourceQuery(body.source),
+        },
       });
       return row.id;
     });
@@ -641,7 +662,12 @@ export function registerBoardRoutes(
           ...(body.name !== undefined ? { name: body.name } : {}),
           ...(body.description !== undefined ? { description: body.description } : {}),
           ...(body.kind !== undefined ? { kind: body.kind } : {}),
-          ...(body.source !== undefined ? { filter_query: body.source.query } : {}),
+          ...(body.source !== undefined
+            ? {
+                filter_query: 'query' in body.source ? body.source.query : null,
+                saved_search_id: 'savedSearchId' in body.source ? body.source.savedSearchId : null,
+              }
+            : {}),
           ...(body.subFilter !== undefined
             ? { sub_filter_query: body.subFilter?.query ?? null }
             : {}),

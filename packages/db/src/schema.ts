@@ -681,7 +681,9 @@ export interface BoardTable {
   /** Exactly one of the two: a track, or the person who owns the board. */
   location_track_id: number | null;
   location_user_id: number | null;
-  filter_query: string;
+  /** Exactly one of the two: the board's own query, or a saved search (M1-063). */
+  filter_query: string | null;
+  saved_search_id: ColumnType<number | null, number | null | undefined, number | null>;
   sub_filter_query: string | null;
   columns: Json;
   swimlanes: Json;
@@ -692,6 +694,69 @@ export interface BoardTable {
   created_by: number | null;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
+}
+
+/** A saved search (M1-063; QRY-011): a named query kept by its owner. */
+export interface SavedSearchTable {
+  id: Generated<number>;
+  workspace_id: number;
+  owner_id: number;
+  name: string;
+  description: Generated<string>;
+  query: string;
+  /** The result columns chosen for it; null for the default set. */
+  columns: ColumnType<JsonValue | null, string | null | undefined, string | null>;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export type SavedSearchShareScope = 'user' | 'group' | 'track' | 'any_user' | 'public';
+
+/** Who besides its owner sees a saved search; no row means private (QRY-011). */
+export interface SavedSearchShareTable {
+  id: Generated<number>;
+  workspace_id: number;
+  saved_search_id: number;
+  scope: SavedSearchShareScope;
+  user_id: number | null;
+  group_id: number | null;
+  track_id: number | null;
+  /** With a track: only the actors of this role; null for every member. */
+  role_id: number | null;
+}
+
+export interface SavedSearchStarTable {
+  workspace_id: number;
+  saved_search_id: number;
+  user_id: number;
+  starred_at: DefaultTimestamp;
+}
+
+export type SubscriptionSchedule = 'daily' | 'weekly' | 'monthly' | 'cron';
+
+/** A saved search's results emailed on a schedule to a person or a group (QRY-012). */
+export interface SavedSearchSubscriptionTable {
+  id: Generated<number>;
+  workspace_id: number;
+  saved_search_id: number;
+  created_by: number;
+  recipient_user_id: number | null;
+  recipient_group_id: number | null;
+  schedule: SubscriptionSchedule;
+  hour: Generated<number>;
+  minute: Generated<number>;
+  /** 0 is Sunday. */
+  weekday: number | null;
+  day_of_month: number | null;
+  cron: string | null;
+  time_zone: Generated<string>;
+  only_if_results: Generated<boolean>;
+  next_run_at: Timestamp;
+  last_run_at: Timestamp | null;
+  last_sent: number | null;
+  last_error: string | null;
+  created_at: DefaultTimestamp;
 }
 
 /** Someone who may change a board besides its track's administrators (AGL-001 (2)). */
@@ -1853,6 +1918,10 @@ export interface Database {
   guardrail_limit: GuardrailLimitTable;
   board: BoardTable;
   board_admin: BoardAdminTable;
+  saved_search: SavedSearchTable;
+  saved_search_share: SavedSearchShareTable;
+  saved_search_star: SavedSearchStarTable;
+  saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;
   user_preference: UserPreferenceTable;
   time_tracking_setting: TimeTrackingSettingTable;

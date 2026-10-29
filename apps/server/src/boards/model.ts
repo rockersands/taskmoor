@@ -155,8 +155,18 @@ export interface CardRules {
   daysInColumn: boolean;
 }
 
-/** The board's source: a query now, a saved search reference with M1-063 (ADR-049). */
-export const sourceInput = z.object({ query }).strict();
+/** The board's source: its own query, or a saved search (M1-063; ADR-049, ADR-053). */
+export const sourceInput = z.union([
+  z.object({ query }).strict(),
+  z.object({ savedSearchId: id }).strict(),
+]);
+export type BoardSource = z.infer<typeof sourceInput>;
+/** A sub-filter is always a query of its own. */
+export const subFilterInput = z.object({ query }).strict();
+
+/** The query a source stands for: a saved search reads as a reference to it. */
+export const sourceQuery = (source: BoardSource): string =>
+  'query' in source ? source.query : `savedSearch = ${source.savedSearchId}`;
 
 export const createBoardBody = z
   .object({
@@ -166,7 +176,7 @@ export const createBoardBody = z
     /** A track, or nothing: the board then belongs to the person who creates it. */
     trackId: id.nullable().optional(),
     source: sourceInput,
-    subFilter: sourceInput.nullable().optional(),
+    subFilter: subFilterInput.nullable().optional(),
     columns: z.array(columnInput).min(1).max(MAX_COLUMNS).optional(),
     swimlanes: swimlanesInput.optional(),
     boardFilters: z.array(boardFilterInput).max(MAX_BOARD_FILTERS).optional(),
@@ -183,7 +193,7 @@ export const updateBoardBody = z
     description: z.string().max(10_000).optional(),
     kind: z.enum(BOARD_KINDS).optional(),
     source: sourceInput.optional(),
-    subFilter: sourceInput.nullable().optional(),
+    subFilter: subFilterInput.nullable().optional(),
     columns: z.array(columnInput).min(1).max(MAX_COLUMNS).optional(),
     swimlanes: swimlanesInput.optional(),
     boardFilters: z.array(boardFilterInput).max(MAX_BOARD_FILTERS).optional(),

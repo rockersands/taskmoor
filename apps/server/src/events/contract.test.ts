@@ -2122,6 +2122,68 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'board.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/boards/${state.board}` }),
     },
+    // Saved searches (M1-063): saved, shared, starred, subscribed to and removed.
+    {
+      route: 'POST /api/v1/saved-searches',
+      expect: 'saved_search.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/saved-searches',
+          payload: { name: 'Contract search', query: 'summary ~ contract' },
+        });
+        state.savedSearch = res.json().savedSearch?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/saved-searches/:id',
+      expect: 'saved_search.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/saved-searches/${state.savedSearch}`,
+          payload: { shares: [{ scope: 'any_user' }] },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/saved-searches/:id/star',
+      expect: 'saved_search.starred',
+      run: () => admin({ method: 'PUT', url: `/api/v1/saved-searches/${state.savedSearch}/star` }),
+    },
+    {
+      route: 'DELETE /api/v1/saved-searches/:id/star',
+      expect: 'saved_search.unstarred',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/saved-searches/${state.savedSearch}/star` }),
+    },
+    {
+      route: 'POST /api/v1/saved-searches/:id/subscriptions',
+      expect: 'saved_search.subscribed',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/saved-searches/${state.savedSearch}/subscriptions`,
+          payload: { schedule: 'daily', hour: 9 },
+        });
+        state.subscription = res.json().subscription?.id;
+        return res;
+      },
+    },
+    {
+      route: 'DELETE /api/v1/saved-searches/:id/subscriptions/:subscriptionId',
+      expect: 'saved_search.unsubscribed',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/saved-searches/${state.savedSearch}/subscriptions/${state.subscription}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/saved-searches/:id',
+      expect: 'saved_search.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/saved-searches/${state.savedSearch}` }),
+    },
     {
       route: 'DELETE /api/v1/workflows/:id',
       expect: 'workflow.deleted',

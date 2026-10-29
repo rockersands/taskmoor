@@ -10,6 +10,7 @@ import { queryCatalogue } from '../search/catalogue';
 import { compileCond } from '../search/compile';
 import type { Cond } from '../search/model';
 import { functionNames, loginTimes, readOnly } from '../search/run';
+import { expandSavedSearches } from '../search/saved';
 import { commentReadableSql } from '../tickets/comments';
 import { ticketKey } from '../tickets/model';
 import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
@@ -101,9 +102,9 @@ export async function editorScope(
 
 /** A query's condition on ticket `k`; ORDER BY is ignored. Throws QueryError or SearchError. */
 export async function bindCondition(db: Db, scope: Scope, text: string, now: Date): Promise<Cond> {
-  const query = parseQuery(text);
-  const names = functionNames(query);
   const { person } = scope;
+  const query = await expandSavedSearches(db, scope.ws, person.currentUserId, parseQuery(text));
+  const names = functionNames(query);
   const logins =
     names.has('currentlogin') || names.has('lastlogin')
       ? await loginTimes(db, scope.ws, person.currentUserId, person.sessionId)
