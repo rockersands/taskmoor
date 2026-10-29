@@ -65,7 +65,9 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
   // A: assign it to me. W: follow it (creating it may already have: W toggles either way).
   const details = page.getByRole('region', { name: 'Details' });
   await page.keyboard.press('a');
-  await expect(details.getByText('Ada Attach', { exact: true }).first()).toBeVisible();
+  // Ada is the requester already: the assignment shows by the Unassign button. Assigning
+  // makes the assignee a follower, so W comes after it.
+  await expect(details.getByRole('button', { name: 'Unassign' })).toBeVisible();
   const follow = page.getByRole('button', { name: /^Follow \(/ });
   const followed = await follow.getAttribute('aria-pressed');
   await page.keyboard.press('w');
@@ -115,4 +117,74 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
   // Nothing scrolls sideways, on a phone either; no serious axe issue at the end either.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect(await seriousAxeViolations(page)).toEqual([]);
+});
+
+test('[AGL-018] the command palette reaches 30 actions and runs them from the keyboard alone', async ({
+  page,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, {
+    data: { email: ADMIN.email, password: ADMIN.password },
+  });
+  expect(signIn.status()).toBe(200);
+  await page.goto(`${BASE}/#/create`);
+  await page.getByLabel('Summary (required)').fill(`Palette check on ${testInfo.project.name}`);
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  const made = page.getByText(/^ATT-\d+ was created\.$/);
+  await expect(made).toBeVisible();
+  const key = ((await made.textContent()) ?? '').split(' ')[0] as string;
+  await page.goto(`${BASE}/#/tickets/${key}`);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(key);
+  await expect(page.getByRole('button', { name: /^Follow \(/ })).toBeVisible();
+
+  const palette = page.getByRole('combobox', { name: 'Command palette' });
+  const run = async (text: string) => {
+    await page.keyboard.press('Control+k');
+    await expect(palette).toBeFocused();
+    await page.keyboard.type(text);
+    await expect(page.getByRole('option', { name: text, exact: true })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await page.keyboard.press('Enter');
+    await expect(palette).toBeHidden();
+  };
+
+  // Everything the administrator may do from here: pages, settings, the ticket's actions.
+  await page.keyboard.press('Control+k');
+  await expect(palette).toBeFocused();
+  expect(await page.getByRole('option').count()).toBeGreaterThanOrEqual(30);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await page.keyboard.press('Escape');
+
+  // The creator follows the ticket already: the palette offers the opposite.
+  await run(`Stop following ${key}`);
+  await expect(page.getByRole('button', { name: /^Follow \(/ })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await run(`Follow ${key}`);
+  await expect(page.getByRole('button', { name: /^Follow \(/ })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await run(`Assign ${key} to me`);
+  await expect(page.getByRole('button', { name: 'Unassign' })).toBeVisible();
+  await run(`Vote for ${key}`);
+  await expect(page.getByRole('button', { name: 'Vote (1)' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await run(`Show the history of ${key}`);
+  await expect(page.getByRole('tab', { name: 'History' })).toHaveAttribute('aria-selected', 'true');
+  await run('Use the dark skin');
+  await expect(page.locator('html')).toHaveAttribute('data-skin', 'dark');
+  await run('Use the light skin');
+  await expect(page.locator('html')).toHaveAttribute('data-skin', 'light');
+  await run('Follow the device for light or dark');
+  await run('Fields');
+  await expect(page.getByRole('heading', { level: 1, name: 'Fields' })).toBeVisible();
+  // The ticket's own commands leave with the ticket view.
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type(key);
+  await expect(page.getByRole('option', { name: 'No matching commands' })).toBeVisible();
 });

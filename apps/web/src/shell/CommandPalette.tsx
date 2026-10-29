@@ -5,6 +5,8 @@ import type { MessageId } from '../i18n/messages.en';
 export interface Command {
   id: string;
   labelId: MessageId;
+  /** Values for the label's placeholders, such as a ticket key. */
+  values?: Record<string, string | number>;
   /** Extra words the filter matches, for example a page's old name. */
   keywords?: string[];
   run: () => void;
@@ -35,7 +37,7 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
   const items = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return commands
-      .map((c) => ({ command: c, label: t(c.labelId) }))
+      .map((c) => ({ command: c, label: t(c.labelId, c.values) }))
       .filter(
         ({ command, label }) =>
           needle === '' ||
@@ -57,14 +59,19 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
 
   useEffect(() => {
     if (open) {
+      input.current?.focus();
+    } else {
       setQuery('');
       setActive(0);
-      input.current?.focus();
     }
   }, [open]);
 
+  // Cleared on the way out, so a reopened palette never shows the last query, however fast
+  // the next keys come.
   const close = () => {
     setOpen(false);
+    setQuery('');
+    setActive(0);
     trigger.current?.focus();
   };
 

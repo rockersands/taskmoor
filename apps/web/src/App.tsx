@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { AccountPage } from './account/AccountPage';
+import { accountClient } from './account/client';
 import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
@@ -33,6 +34,8 @@ import {
   TracksIcon,
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
+import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteCommands';
+import { type Appearance, applyAppearance } from './skins/skins';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
@@ -122,12 +125,21 @@ const goHome = () => {
 function Pages() {
   const t = useT();
   const hash = useHash();
-  const { session } = useSession();
+  const { session, signOut, setUser } = useSession();
   const signedIn = session.status === 'signed-in';
   const admin = signedIn && session.user.isSiteAdmin;
   const showSignIn = useCallback(() => {
     window.location.hash = SIGN_IN;
   }, []);
+  const registered = useRegisteredCommands();
+  // Applies at once; saved with the account so it follows the person (as on the account page).
+  const appear = useCallback(
+    (appearance: Appearance) => {
+      applyAppearance(appearance);
+      accountClient.updateProfile({ appearance }).then(setUser, () => {});
+    },
+    [setUser],
+  );
   const commands = useMemo<Command[]>(
     () => [
       ...NAV_ITEMS.map((item) => ({
@@ -154,6 +166,32 @@ function Pages() {
               keywords: ['profile', 'password', 'sessions', 'tokens'],
               run: () => {
                 window.location.hash = ACCOUNT;
+              },
+            },
+            {
+              id: 'appearance-light',
+              labelId: 'palette.appearance.light' as const,
+              keywords: ['skin', 'theme', 'light', 'appearance'],
+              run: () => appear('light'),
+            },
+            {
+              id: 'appearance-dark',
+              labelId: 'palette.appearance.dark' as const,
+              keywords: ['skin', 'theme', 'dark', 'appearance'],
+              run: () => appear('dark'),
+            },
+            {
+              id: 'appearance-system',
+              labelId: 'palette.appearance.system' as const,
+              keywords: ['skin', 'theme', 'system', 'appearance'],
+              run: () => appear('system'),
+            },
+            {
+              id: 'sign-out',
+              labelId: 'palette.signOut' as const,
+              keywords: ['log out', 'logout', 'leave'],
+              run: () => {
+                void signOut().then(showSignIn, () => {});
               },
             },
           ]
@@ -233,7 +271,7 @@ function Pages() {
               },
             },
             {
-              id: 'go-tracks',
+              id: 'go-admin-tracks',
               labelId: 'admin.tracks.title' as const,
               keywords: ['track', 'project', 'roles', 'members', 'archive'],
               run: () => {
@@ -283,7 +321,7 @@ function Pages() {
           ]
         : []),
     ],
-    [signedIn, admin],
+    [signedIn, admin, appear, showSignIn, signOut],
   );
 
   // First-run setup and password links stand alone: no shell before someone can sign in.
@@ -369,7 +407,7 @@ function Pages() {
       activeId={active}
       topbarEnd={
         <>
-          <CommandPalette commands={commands} />
+          <CommandPalette commands={[...commands, ...registered]} />
           <UserMenu onSignedOut={showSignIn} />
         </>
       }
@@ -395,7 +433,9 @@ export function App({ locale, session, onI18nError }: AppProps) {
     >
       <SessionProvider {...(session ? { session } : {})}>
         <SyncProvider>
-          <Pages />
+          <PaletteCommandsProvider>
+            <Pages />
+          </PaletteCommandsProvider>
         </SyncProvider>
       </SessionProvider>
     </I18nProvider>

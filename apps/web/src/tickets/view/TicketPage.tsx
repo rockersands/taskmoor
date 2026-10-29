@@ -8,6 +8,8 @@ import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
 import { useSession } from '../../session/SessionProvider';
+import type { Command } from '../../shell/CommandPalette';
+import { usePaletteCommands } from '../../shell/paletteCommands';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
@@ -143,16 +145,24 @@ export function TicketPage({
   const ticketId = state.status === 'loaded' ? state.ticket.id : null;
 
   // What the ticket offers this person: transitions, following and votes. Each fails quietly.
+  // A follow or vote made while a refresh is on its way wins over that refresh's older answer.
+  const followSeq = useRef(0);
+  const voteSeq = useRef(0);
   const refreshAround = useCallback(
     async (id: number) => {
+      const seen = { follow: followSeq.current, vote: voteSeq.current };
       const [offered, follows, voted] = await Promise.allSettled([
         client.transitions(id),
         client.following(id),
         client.votes(id),
       ]);
       setTransitions(offered.status === 'fulfilled' ? offered.value : []);
-      setFollowing(follows.status === 'fulfilled' ? follows.value : null);
-      setVotes(voted.status === 'fulfilled' ? voted.value : null);
+      if (seen.follow === followSeq.current) {
+        setFollowing(follows.status === 'fulfilled' ? follows.value : null);
+      }
+      if (seen.vote === voteSeq.current) {
+        setVotes(voted.status === 'fulfilled' ? voted.value : null);
+      }
     },
     [client],
   );
@@ -231,6 +241,7 @@ export function TicketPage({
 
   const toggleFollow = async () => {
     if (!loaded || !following) return;
+    followSeq.current += 1;
     try {
       await client.follow(loaded.id, !following.mine);
       setFollowing(await client.following(loaded.id));
@@ -241,6 +252,7 @@ export function TicketPage({
   };
   const toggleVote = async () => {
     if (!loaded || !votes) return;
+    voteSeq.current += 1;
     try {
       await client.vote(loaded.id, !votes.mine);
       setVotes(await client.votes(loaded.id));
@@ -291,6 +303,99 @@ export function TicketPage({
     document.addEventListener('keydown', listener);
     return () => document.removeEventListener('keydown', listener);
   }, []);
+
+  // Every action of the view is in the command palette too (AGL-018 (1)). The commands call
+  // the latest handlers through a ref, so they change only when what they offer changes.
+  const actions = useRef({ transition, toggleFollow, toggleVote, assignToMe, edit });
+  actions.current = { transition, toggleFollow, toggleVote, assignToMe, edit };
+  const key = loaded?.key ?? null;
+  const assigneeId = loaded?.assignee?.id ?? null;
+  const commands = useMemo<Command[]>(() => {
+    if (key === null) return [];
+    const values = { key };
+    const list: Command[] = transitions.map((to) => ({
+      id: `ticket-transition-${to.id}`,
+      labelId: 'palette.ticket.transition',
+      values: { key, transition: to.name },
+      keywords: ['transition', 'move', 'status'],
+      run: () => void actions.current.transition(to),
+    }));
+    if (me.id && assigneeId !== me.id) {
+      list.push({
+        id: 'ticket-assign-to-me',
+        labelId: 'palette.ticket.assignToMe',
+        values,
+        keywords: ['assign', 'take'],
+        run: () => actions.current.assignToMe(),
+      });
+    }
+    if (assigneeId !== null) {
+      list.push({
+        id: 'ticket-unassign',
+        labelId: 'palette.ticket.unassign',
+        values,
+        keywords: ['assign'],
+        run: () => void actions.current.edit({ assigneeId: null }),
+      });
+    }
+    if (following) {
+      list.push({
+        id: 'ticket-follow',
+        labelId: following.mine ? 'palette.ticket.unfollow' : 'palette.ticket.follow',
+        values,
+        keywords: ['watch', 'follow'],
+        run: () => void actions.current.toggleFollow(),
+      });
+    }
+    if (votes) {
+      list.push({
+        id: 'ticket-vote',
+        labelId: votes.mine ? 'palette.ticket.unvote' : 'palette.ticket.vote',
+        values,
+        keywords: ['vote'],
+        run: () => void actions.current.toggleVote(),
+      });
+    }
+    const showTab = (id: string, tab: ActivityTab, labelId: Command['labelId']) =>
+      list.push({ id, labelId, values, keywords: ['activity'], run: () => setTab(tab) });
+    list.push({
+      id: 'ticket-comment',
+      labelId: 'palette.ticket.comment',
+      values,
+      keywords: ['comment', 'reply'],
+      run: () => {
+        setTab('comments');
+        window.setTimeout(() => {
+          document.querySelector<HTMLElement>('.comment-composer [contenteditable]')?.focus();
+        }, 0);
+      },
+    });
+    list.push({
+      id: 'ticket-edit-summary',
+      labelId: 'palette.ticket.editSummary',
+      values,
+      keywords: ['edit', 'rename', 'title'],
+      run: () => setEditingSummary(true),
+    });
+    showTab('ticket-history', 'history', 'palette.ticket.history');
+    showTab('ticket-time', 'time', 'palette.ticket.time');
+    showTab('ticket-all-activity', 'all', 'palette.ticket.all');
+    list.push({
+      id: 'ticket-copy-link',
+      labelId: 'palette.ticket.copyLink',
+      values,
+      keywords: ['link', 'url', 'share'],
+      run: () => void navigator.clipboard?.writeText(window.location.href).catch(() => {}),
+    });
+    list.push({
+      id: 'ticket-shortcuts',
+      labelId: 'palette.ticket.shortcuts',
+      keywords: ['keyboard', 'help', 'keys'],
+      run: () => setHelping(true),
+    });
+    return list;
+  }, [key, assigneeId, me.id, transitions, following, votes]);
+  usePaletteCommands('ticket-view', commands);
 
   if (state.status === 'loading') {
     return (
@@ -617,7 +722,12 @@ function TransitionForm({
         </div>
       ))}
       <div className="form-actions">
-        <button type="submit" className="button-primary">
+        {/* Ready once every list is in, so the values sent are the ones shown. */}
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={!transition.layout.every((field) => field in options)}
+        >
           {transition.name}
         </button>
         <button type="button" className="button-secondary" onClick={onCancel}>
