@@ -359,11 +359,12 @@ describe('query functions and the per-ticket judgement (M1-038)', () => {
             c.group === null ||
             (userIndex !== null &&
               (c.author === userIndex || userIndex === 1 || (userIndex === 2 && c.group === 0)));
+          // Changes (a ticket's creation is among them: its history holds every first value,
+          // by its creator; these tickets are inserted without one) and comments it reads.
           const updatedBy = (i: number, actor: number, from?: number, to?: number) =>
             world.changes.some(
               (c) => c.ticket === i && c.actor === actor && inDays(c.day, from, to),
             ) ||
-            (world.tickets[i]?.creator === actor && inDays(i + 1, from, to)) ||
             world.comments.some(
               (c) => c.ticket === i && c.author === actor && inDays(c.day, from, to) && reads(c),
             );

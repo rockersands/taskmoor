@@ -287,44 +287,35 @@ function inTicketSet(set: TicketSet, ctx: CondContext): RawBuilder<boolean> {
         sql<boolean>`r.ticket_id = k.id`,
       ]);
     case 'updatedBy': {
+      // Its creation counts too: a new ticket's history holds every first value, by its creator.
       if (set.userIds.length === 0) return FALSE;
       const within = (column: string) => [
         ...(set.from ? [sql<boolean>`${raw(column)} >= ${param(set.from, 'timestamptz')}`] : []),
         ...(set.to ? [sql<boolean>`${raw(column)} <= ${param(set.to, 'timestamptz')}`] : []),
       ];
-      return or([
-        exists('ticket_change r', [
-          sql<boolean>`r.ticket_id = k.id`,
-          ids('r.actor_id', set.userIds),
-          ...within('r.at'),
-        ]),
-        and([ids('k.creator_id', set.userIds), ...within('k.created_at')]),
-        // Comments count where the viewer reads them: a hidden comment tells nothing.
-        commentRows(ctx, and([ids('c.author_id', set.userIds), ...within('c.created_at')])),
+      const changes = and([ids('r.actor_id', set.userIds), ...within('r.at')]);
+      // Comments count where the viewer reads them (the rule reads the ticket as `k`).
+      const comments = and([
+        ids('c.author_id', set.userIds),
+        ...within('c.created_at'),
+        ctx.comments,
       ]);
+      return sql<boolean>`k.id IN (SELECT r.ticket_id FROM ticket_change r WHERE ${changes} UNION ALL SELECT c.ticket_id FROM ticket_comment c JOIN ticket k ON k.id = c.ticket_id WHERE ${comments})`;
     }
     case 'linked': {
       if (set.ticketIds.length === 0) return FALSE;
       const typed = (types: number[] | 'all') =>
         types === 'all' ? TRUE : types.length === 0 ? FALSE : ids('r.link_type_id', types);
-      const out = typed(set.outward);
-      const back = typed(set.inward);
-      return or([
-        out === FALSE
-          ? FALSE
-          : exists('ticket_link r', [
-              sql<boolean>`r.target_id = k.id`,
-              ids('r.source_id', set.ticketIds),
-              out,
-            ]),
-        back === FALSE
-          ? FALSE
-          : exists('ticket_link r', [
-              sql<boolean>`r.source_id = k.id`,
-              ids('r.target_id', set.ticketIds),
-              back,
-            ]),
-      ]);
+      const out = and([ids('r.source_id', set.ticketIds), typed(set.outward)]);
+      const back = and([ids('r.target_id', set.ticketIds), typed(set.inward)]);
+      const sides = [
+        ...(out === FALSE ? [] : [sql`SELECT r.target_id FROM ticket_link r WHERE ${out}`]),
+        ...(back === FALSE ? [] : [sql`SELECT r.source_id FROM ticket_link r WHERE ${back}`]),
+      ];
+      if (sides.length === 0) return FALSE;
+      // One list of ids from both ends, so the planner can join it (an OR of two EXISTS
+      // would be checked row by row).
+      return sql<boolean>`k.id IN (${sql.join(sides, raw(' UNION ALL '))})`;
     }
     case 'webLinks':
       if (set.globalIds.length === 0) return FALSE;
