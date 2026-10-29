@@ -505,6 +505,8 @@ export async function loadBoardData(input: {
   limit: number;
   timeoutMs: number;
   now?: Date;
+  /** On a Scrum board, only the tickets of these sprints (the active ones, M1-044). */
+  sprintIds?: readonly number[];
 }): Promise<BoardData> {
   const { db, request, scope, board, limit, timeoutMs } = input;
   const now = input.now ?? new Date();
@@ -514,6 +516,13 @@ export async function loadBoardData(input: {
   const mapped = [...columnOf.keys()];
   const nothing = scope.filter.tracks !== 'all' && scope.filter.tracks.length === 0;
   const compiled = await compileBoard(db, scope, board, input.active, now);
+  if (input.sprintIds !== undefined) {
+    compiled.scope = and([
+      compiled.scope,
+      sql<boolean>`k.id IN (SELECT st.ticket_id FROM sprint_ticket st
+        WHERE st.sprint_id = ANY(${[...input.sprintIds]}::int[]))`,
+    ]);
+  }
 
   interface CardRow {
     id: number;

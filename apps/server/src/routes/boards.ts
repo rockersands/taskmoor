@@ -35,9 +35,11 @@ import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
+import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
 import { searchRefusal } from './search';
+import { registerSprintRoutes } from './sprints';
 import { ticketRoutes } from './tickets';
 
 /**
@@ -70,6 +72,11 @@ const dataQuery = z
     /** Active board filters, by id, comma separated. */
     filters: z.string().max(2000).optional(),
     limit: z.coerce.number().int().min(1).max(50_000).default(5000),
+    /** Scrum boards: `active` shows the active sprints' tickets, or sprint ids (M1-044). */
+    sprints: z
+      .string()
+      .regex(/^(active|\d{1,10}(,\d{1,10}){0,49})$/)
+      .optional(),
   })
   .strict();
 const ticketRef = z.union([z.number().int().positive().max(MAX_INT), z.string().min(1).max(100)]);
@@ -118,6 +125,7 @@ function boardQuery(db: Db, workspaceId: number) {
       'b.board_filters',
       'b.board_filter_display',
       'b.card_rules',
+      'b.sprint_settings',
       'b.version',
       'b.created_at',
       'b.updated_at',
@@ -155,6 +163,7 @@ const settings = (row: BoardRow, admins: number[]) => ({
   boardFilters: row.board_filters,
   boardFilterDisplay: row.board_filter_display,
   cardRules: row.card_rules,
+  sprintSettings: readSprintSettings(row.sprint_settings),
   adminIds: admins,
 });
 
@@ -271,6 +280,7 @@ export function registerBoardRoutes(
       boardFilters: row.board_filters,
       boardFilterDisplay: row.board_filter_display,
       cardRules: row.card_rules,
+      sprintSettings: readSprintSettings(row.sprint_settings),
       admins,
       version: row.version,
       createdAt: row.created_at.toISOString(),
@@ -389,6 +399,18 @@ export function registerBoardRoutes(
         }
         out.cardRules = { ...body.cardRules, colours };
       }
+    }
+    const estimation = body.sprintSettings?.estimation;
+    if (estimation?.fieldId !== undefined) {
+      // Story points and the like: a number field of the workspace (AGL-007).
+      const field = await db
+        .selectFrom('field')
+        .select('id')
+        .where('workspace_id', '=', request.workspaceId)
+        .where('id', '=', estimation.fieldId)
+        .where('type', '=', 'number')
+        .executeTakeFirst();
+      if (!field) fields['sprintSettings.estimation.fieldId'] = 'not_a_number_field';
     }
     if (body.adminIds && body.adminIds.length > 0) {
       const people = await db
@@ -537,6 +559,7 @@ export function registerBoardRoutes(
           board_filters: JSON.stringify(boardFilters),
           ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
           card_rules: JSON.stringify(cardRules),
+          sprint_settings: JSON.stringify(body.sprintSettings ?? DEFAULT_SPRINT_SETTINGS),
           created_by: user.id,
         })
         .returning('id')
@@ -643,6 +666,7 @@ export function registerBoardRoutes(
           ? { boardFilterDisplay: body.boardFilterDisplay }
           : {}),
         ...(checked.cardRules ? { cardRules: checked.cardRules as unknown as JsonValue } : {}),
+        ...(body.sprintSettings !== undefined ? { sprintSettings: body.sprintSettings } : {}),
         ...(body.adminIds !== undefined
           ? { adminIds: [...new Set(body.adminIds)].sort((a, b) => a - b) }
           : {}),
@@ -678,6 +702,9 @@ export function registerBoardRoutes(
             ? { board_filter_display: body.boardFilterDisplay }
             : {}),
           ...(checked.cardRules ? { card_rules: JSON.stringify(checked.cardRules) } : {}),
+          ...(body.sprintSettings !== undefined
+            ? { sprint_settings: JSON.stringify(body.sprintSettings) }
+            : {}),
           version: current.version + 1,
           updated_at: new Date(),
         })
@@ -773,8 +800,22 @@ export function registerBoardRoutes(
       active.push(filter);
     }
     const scope = await boardScope(db, catalogs, request);
+    let sprintIds: number[] | undefined;
+    if (parsed.data.sprints !== undefined) {
+      let sprints = db
+        .selectFrom('sprint')
+        .select('id')
+        .where('board_id', '=', board.id)
+        .where('deleted_at', 'is', null);
+      sprints =
+        parsed.data.sprints === 'active'
+          ? sprints.where('state', '=', 'active')
+          : sprints.where('id', 'in', parsed.data.sprints.split(',').map(Number));
+      sprintIds = (await sprints.execute()).map((s) => s.id);
+    }
     try {
       const data = await loadBoardData({
+        ...(sprintIds !== undefined ? { sprintIds } : {}),
         db,
         request,
         catalogs,
@@ -907,5 +948,27 @@ export function registerBoardRoutes(
       transitioned,
       ranked,
     };
+  });
+
+  // Sprints (M1-044): on Scrum boards, managed by "Manage sprints" or the board's configurers.
+  registerSprintRoutes(app, db, {
+    catalogs,
+    timeoutMs,
+    board: async (request, reply, id) => {
+      const found = await visibleBoard(request, reply, id);
+      if (!found) return null;
+      const adminIds = found.admins.map((a) => a.id);
+      let manage = await mayConfigure(request, found.row, adminIds);
+      if (!manage && found.row.location_track_id !== null) {
+        manage = (await request.authz.track(found.row.location_track_id)).has('manage_sprints');
+      }
+      return {
+        record: record(found.row),
+        kind: found.row.kind,
+        name: found.row.name,
+        settings: readSprintSettings(found.row.sprint_settings),
+        manage,
+      };
+    },
   });
 }

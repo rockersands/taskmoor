@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sprintSettingsInput } from '../sprints/model';
 
 /**
  * A board's configuration (M1-043; spec 01b section 3.1; ADR-049). The routes validate it with
@@ -182,6 +183,8 @@ export const createBoardBody = z
     boardFilters: z.array(boardFilterInput).max(MAX_BOARD_FILTERS).optional(),
     boardFilterDisplay: z.enum(['buttons', 'dropdown']).optional(),
     cardRules: cardRulesInput.optional(),
+    /** Estimation statistic, time tracking and parallel sprints (M1-044, AGL-007). */
+    sprintSettings: sprintSettingsInput.optional(),
     adminIds: z.array(id).max(50).optional(),
   })
   .strict();
@@ -199,6 +202,8 @@ export const updateBoardBody = z
     boardFilters: z.array(boardFilterInput).max(MAX_BOARD_FILTERS).optional(),
     boardFilterDisplay: z.enum(['buttons', 'dropdown']).optional(),
     cardRules: cardRulesInput.optional(),
+    /** Estimation statistic, time tracking and parallel sprints (M1-044, AGL-007). */
+    sprintSettings: sprintSettingsInput.optional(),
     adminIds: z.array(id).max(50).optional(),
   })
   .strict();

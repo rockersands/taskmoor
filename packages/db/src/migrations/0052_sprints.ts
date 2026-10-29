@@ -85,8 +85,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       points numeric,
       to_sprint_id integer REFERENCES sprint (id) ON DELETE SET NULL
     )`.execute(db);
-  await sql`CREATE INDEX sprint_change_sprint_idx ON sprint_change (sprint_id, at, id)`.execute(
-    db,
-  );
+  await sql`CREATE INDEX sprint_change_sprint_idx ON sprint_change (sprint_id, at, id)`.execute(db);
   await sql`CREATE INDEX sprint_change_ticket_idx ON sprint_change (ticket_id)`.execute(db);
 }

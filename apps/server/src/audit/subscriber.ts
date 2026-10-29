@@ -161,6 +161,12 @@ export const AUDITED_EVENTS = [
   'board.created',
   'board.updated',
   'board.deleted',
+  'sprint.created',
+  'sprint.updated',
+  'sprint.reordered',
+  'sprint.started',
+  'sprint.completed',
+  'sprint.deleted',
   'saved_search.created',
   'saved_search.updated',
   'saved_search.deleted',
@@ -216,6 +222,10 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'user.preferences_updated': 'a personal setting (auto-follow), not a security event',
   'saved_search.starred': 'a personal favourite, not a security or configuration event',
   'saved_search.unstarred': 'a personal favourite, not a security or configuration event',
+  'sprint.tickets_added':
+    'planning activity: tickets in or out of a sprint; the sprint scope-change rows hold it',
+  'sprint.tickets_removed':
+    'planning activity: tickets in or out of a sprint; the sprint scope-change rows hold it',
   'ticket.transitioned': TICKET_ACTIVITY,
   'time_entry.created': TICKET_ACTIVITY,
   'time_entry.updated': TICKET_ACTIVITY,
