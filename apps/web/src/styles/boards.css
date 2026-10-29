@@ -423,3 +423,119 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/*
+ * Sprints (M1-044): the backlog's sprint sections and the sprint report. Rows wrap on narrow
+ * screens; the move menus and lifecycle buttons keep 44px targets on touch.
+ */
+.backlog-page {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sprint-section {
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-surface-raised);
+  min-width: 0;
+}
+
+.sprint-section h2 {
+  margin: 0;
+  font-size: var(--font-size-400);
+  overflow-wrap: anywhere;
+}
+
+.sprint-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+.sprint-state {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  font-size: var(--font-size-200);
+}
+
+.sprint-tickets {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.sprint-ticket {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+  min-width: 0;
+}
+
+.sprint-ticket[data-done] .sprint-ticket-summary {
+  text-decoration: line-through;
+}
+
+.sprint-ticket-key {
+  font-weight: 600;
+}
+
+.sprint-ticket-summary {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sprint-ticket-status,
+.sprint-ticket-estimate,
+.sprint-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.sprint-scope-change {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-warning-soft);
+  font-size: var(--font-size-200);
+}
+
+.sprint-complete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.sprint-ticket-move select,
+.sprint-complete select {
+  max-width: 100%;
+}
+
+.sprint-report-totals {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+}
+
+.sprint-report-totals dd {
+  margin: 0;
+}
+
+@media (pointer: coarse) {
+  .sprint-ticket-move select,
+  .sprint-ticket-key,
+  .sprint-complete select,
+  .sprint-complete button,
+  .sprint-section .form-actions button {
+    min-height: var(--hit-target-touch);
+  }
+}

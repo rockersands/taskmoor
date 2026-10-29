@@ -52,6 +52,8 @@ import {
 import type { NavItem } from './shell/NavList';
 import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteCommands';
 import { type Appearance, applyAppearance } from './skins/skins';
+import { BacklogPage } from './sprints/BacklogPage';
+import { SprintReportPage } from './sprints/SprintReportPage';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketDialog } from './tickets/CreateTicketDialog';
@@ -433,8 +435,19 @@ function Pages() {
     guarded = true;
     const boardId = /^#\/boards\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
     const settings = /^#\/boards\/\d{1,10}\/settings(?:[/?]|$)/.test(hash);
+    // Sprints (M1-044): a Scrum board's backlog and a sprint's report.
+    const backlog = /^#\/boards\/\d{1,10}\/backlog(?:[/?]|$)/.test(hash);
+    const report = /^#\/boards\/\d{1,10}\/sprints\/(\d{1,10})\/report(?:[/?]|$)/.exec(hash)?.[1];
     content = !boardId ? (
       <BoardsPage />
+    ) : backlog ? (
+      <BacklogPage key={`${boardId}-backlog`} boardId={Number(boardId)} />
+    ) : report ? (
+      <SprintReportPage
+        key={`${boardId}-report-${report}`}
+        boardId={Number(boardId)}
+        sprintId={Number(report)}
+      />
     ) : settings ? (
       <BoardSettingsPage key={`${boardId}-settings`} boardId={Number(boardId)} />
     ) : (
