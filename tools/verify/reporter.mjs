@@ -58,6 +58,11 @@ function describe(error) {
         .replace(/file:\/\/\/?/, '')
         .replaceAll(ROOT.replaceAll('\\', '/'), ''),
     );
+  // An unhandled error carries the test file (and test) that was running when it was thrown.
+  if (error?.VITEST_TEST_PATH) {
+    const test = error.VITEST_TEST_NAME ? ` > ${error.VITEST_TEST_NAME}` : '';
+    frames.push(`while running ${rel(error.VITEST_TEST_PATH)}${test}`);
+  }
   return {
     message: `${error?.name && error.name !== 'Error' ? `${error.name}: ` : ''}${error?.message ?? String(error)}`,
     diff: error?.diff ?? undefined,
