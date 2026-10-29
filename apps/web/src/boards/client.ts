@@ -26,16 +26,97 @@ export interface BoardFilter {
   description: string;
 }
 
+export interface BoardLaneQuery {
+  id?: string;
+  name: string;
+  query: string;
+}
+
+export interface Swimlanes {
+  mode: 'none' | 'queries' | 'assignees' | 'parents';
+  lanes: BoardLaneQuery[];
+  unassigned: 'first' | 'last';
+  otherName: string;
+}
+
+export interface ColourRule {
+  id?: string;
+  query: string;
+  colour: string;
+}
+
+export interface CardRules {
+  colourBy: 'none' | 'type' | 'priority' | 'assignee' | 'queries';
+  colours: ColourRule[];
+  fields: string[];
+  daysInColumn: boolean;
+}
+
+/** Ticket properties a card may show (the server's `CARD_FIELDS`), up to 10. */
+export const CARD_FIELDS = [
+  'assignee',
+  'priority',
+  'dueDate',
+  'startDate',
+  'labels',
+  'targetReleases',
+  'areas',
+  'requester',
+  'parent',
+  'track',
+  'voteCount',
+  'followerCount',
+  'timeTracking',
+  'createdAt',
+  'updatedAt',
+] as const;
+export const MAX_CARD_FIELDS = 10;
+
 /** A board's configuration (`GET /api/v1/boards/:id`). */
 export interface Board extends BoardSummary {
   source: { query: string };
   subFilter: { query: string } | null;
   columns: BoardColumn[];
+  swimlanes: Swimlanes;
   boardFilters: BoardFilter[];
   boardFilterDisplay: 'buttons' | 'dropdown';
+  cardRules: CardRules;
   mayConfigure: boolean;
   version: number;
 }
+
+/** A status a column may take: one of the board's workflows' (`GET /api/v1/boards/:id`). */
+export interface BoardStatus {
+  id: number;
+  name: string;
+  stage: string;
+  columnId: string | null;
+}
+
+/** A change of configuration (`PATCH /api/v1/boards/:id`). */
+export interface BoardPatch {
+  version: number;
+  name?: string;
+  kind?: 'scrum' | 'kanban';
+  source?: { query: string };
+  subFilter?: { query: string } | null;
+  columns?: {
+    id?: string;
+    name: string;
+    statusIds: number[];
+    min: number | null;
+    max: number | null;
+  }[];
+  swimlanes?: Swimlanes;
+  boardFilters?: { id?: string; name: string; query: string; description: string }[];
+  boardFilterDisplay?: 'buttons' | 'dropdown';
+  cardRules?: CardRules;
+}
+
+/** Saved, or refused with a problem per field (`columns`, `boardFilters.1.query`, ...). */
+export type UpdateOutcome =
+  | { ok: true; board: Board }
+  | { ok: false; fields: Record<string, string>; conflict?: boolean };
 
 export interface BoardCard {
   id: number;
@@ -105,6 +186,9 @@ export interface BoardClient {
   list(): Promise<BoardSummary[]>;
   create(board: NewBoard): Promise<BoardSummary>;
   board(id: number): Promise<Board>;
+  /** The configuration with the statuses its columns may take. */
+  settings(id: number): Promise<{ board: Board; statuses: BoardStatus[] }>;
+  update(id: number, patch: BoardPatch): Promise<UpdateOutcome>;
   data(id: number, filters: readonly string[]): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
 }
@@ -126,6 +210,22 @@ export const boardClient: BoardClient = {
       })
     ).board,
   board: async (id) => (await api<{ board: Board }>(`/boards/${id}`)).board,
+  settings: (id) => api<{ board: Board; statuses: BoardStatus[] }>(`/boards/${id}`),
+  update: async (id, patch) => {
+    try {
+      const { board } = await api<{ board: Board }>(`/boards/${id}`, {
+        method: 'PATCH',
+        body: patch,
+      });
+      return { ok: true, board };
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      const body = error.body as { fields?: Record<string, string> } | null;
+      if (error.code === 'version_conflict') return { ok: false, fields: {}, conflict: true };
+      if (error.code === 'invalid_fields') return { ok: false, fields: body?.fields ?? {} };
+      throw error;
+    }
+  },
   data: (id, filters) => api<BoardData>(dataPath(id, filters)),
   move: async (id, move) => {
     try {

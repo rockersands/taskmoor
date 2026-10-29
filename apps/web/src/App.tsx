@@ -13,6 +13,7 @@ import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
 import { BoardPage } from './boards/BoardPage';
+import { BoardSettingsPage } from './boards/BoardSettingsPage';
 import { BoardsPage } from './boards/BoardsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
@@ -417,7 +418,14 @@ function Pages() {
     active = 'boards';
     guarded = true;
     const boardId = /^#\/boards\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
-    content = boardId ? <BoardPage key={boardId} boardId={Number(boardId)} /> : <BoardsPage />;
+    const settings = /^#\/boards\/\d{1,10}\/settings(?:[/?]|$)/.test(hash);
+    content = !boardId ? (
+      <BoardsPage />
+    ) : settings ? (
+      <BoardSettingsPage key={`${boardId}-settings`} boardId={Number(boardId)} />
+    ) : (
+      <BoardPage key={boardId} boardId={Number(boardId)} />
+    );
   } else if (hash.startsWith(`${BULK}/`) && hash.length > BULK.length + 1) {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');

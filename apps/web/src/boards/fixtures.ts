@@ -4,10 +4,13 @@ import type {
   BoardClient,
   BoardData,
   BoardLane,
+  BoardPatch,
+  BoardStatus,
   BoardSummary,
   MoveOutcome,
   MoveRequest,
   Transition,
+  UpdateOutcome,
 } from './client';
 
 /**
@@ -45,9 +48,29 @@ export const BOARD: Board = {
     { id: 'recent', name: 'Recently updated', query: 'updated >= -1d', description: '' },
   ],
   boardFilterDisplay: 'buttons',
+  swimlanes: {
+    mode: 'queries',
+    lanes: [{ id: 'expedite', name: 'Expedite', query: 'priority = Urgent' }],
+    unassigned: 'last',
+    otherName: 'Everything else',
+  },
+  cardRules: {
+    colourBy: 'type',
+    colours: [],
+    fields: ['assignee', 'priority'],
+    daysInColumn: true,
+  },
   mayConfigure: true,
   version: 3,
 };
+
+/** The statuses of the board's workflow, each with the column that takes it. */
+export const STATUSES: Omit<BoardStatus, 'columnId'>[] = [
+  { id: STATUS.New, name: 'New', stage: 'new' },
+  { id: STATUS.Active, name: 'Active', stage: 'active' },
+  { id: STATUS['In Review'], name: 'In Review', stage: 'active' },
+  { id: STATUS.Closed, name: 'Closed', stage: 'closed' },
+];
 
 export const LANES: BoardLane[] = [
   { id: 'expedite', name: 'Expedite', catchAll: false },
@@ -106,12 +129,13 @@ const TRANSITIONS: { id: number; name: string; from: StatusName[] | 'any'; to: S
 export interface FakeBoardClient extends BoardClient {
   moves: MoveRequest[];
   dataCalls: string[][];
+  patches: BoardPatch[];
 }
 
 export function fakeBoardClient(
   options: { cards?: FakeCard[]; board?: Partial<Board>; lanes?: BoardLane[] } = {},
 ): FakeBoardClient {
-  const board: Board = { ...BOARD, ...options.board };
+  let board: Board = { ...BOARD, ...options.board };
   const lanes = options.lanes ?? LANES;
   let cards = (options.cards ?? CARDS).map((c) => ({ ...c }));
   const columnOf = (statusId: number) =>
@@ -129,6 +153,7 @@ export function fakeBoardClient(
   const client: FakeBoardClient = {
     moves: [],
     dataCalls: [],
+    patches: [],
     list: async () => boards,
     create: async (input) => {
       const created: BoardSummary = {
@@ -142,6 +167,43 @@ export function fakeBoardClient(
       return created;
     },
     board: async () => board,
+    settings: async () => ({
+      board,
+      statuses: STATUSES.map((s) => ({
+        ...s,
+        columnId: board.columns.find((c) => c.statusIds.includes(s.id))?.id ?? null,
+      })),
+    }),
+    update: async (_id, patch): Promise<UpdateOutcome> => {
+      client.patches.push(patch);
+      if (patch.version !== board.version) return { ok: false, fields: {}, conflict: true };
+      if (patch.source && /=\s*$/.test(patch.source.query)) {
+        return { ok: false, fields: { 'source.query': 'invalid_query' } };
+      }
+      let n = 0;
+      const {
+        version: _version,
+        source,
+        subFilter,
+        columns,
+        swimlanes,
+        boardFilters,
+        ...rest
+      } = patch;
+      board = {
+        ...board,
+        ...rest,
+        ...(source ? { source } : {}),
+        ...(subFilter !== undefined ? { subFilter } : {}),
+        ...(columns ? { columns: columns.map((c) => ({ ...c, id: c.id ?? `n${++n}` })) } : {}),
+        ...(swimlanes ? { swimlanes } : {}),
+        ...(boardFilters
+          ? { boardFilters: boardFilters.map((b) => ({ ...b, id: b.id ?? `f${++n}` })) }
+          : {}),
+        version: board.version + 1,
+      };
+      return { ok: true, board };
+    },
     data: async (_id, filters): Promise<BoardData> => {
       client.dataCalls.push([...filters]);
       const all = [...cards].sort((a, b) => (a.rank < b.rank ? -1 : 1));

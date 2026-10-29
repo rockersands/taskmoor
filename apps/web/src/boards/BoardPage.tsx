@@ -340,6 +340,11 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         <h1 id={titleId} className="page-title">
           {board.name}
         </h1>
+        {board.mayConfigure && (
+          <a className="board-settings-link" href={`#/boards/${boardId}/settings`}>
+            {t('boards.settings.link')}
+          </a>
+        )}
         <p className="board-meta">
           {t('boards.meta', {
             kind: t(board.kind === 'scrum' ? 'boards.kind.scrum' : 'boards.kind.kanban'),
