@@ -410,6 +410,24 @@
     ],
     "sql": "SELECT id, c0, c1 FROM ((SELECT k.id AS id, $1::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $2::int AND k.deleted_at IS NULL AND k.track_id = ANY($3::int[]) AND (k.assignee_id = $4::int AND k.status_id <> ALL($5::int[])) AND k.priority_id = $6::int ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int) UNION ALL (SELECT k.id AS id, $8::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $9::int AND k.deleted_at IS NULL AND k.track_id = ANY($10::int[]) AND (k.assignee_id = $11::int AND k.status_id <> ALL($12::int[])) AND k.priority_id = $13::int ORDER BY k.created_at DESC, k.id DESC LIMIT $14::int) UNION ALL (SELECT k.id AS id, $15::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $16::int AND k.deleted_at IS NULL AND k.track_id = ANY($17::int[]) AND (k.assignee_id = $18::int AND k.status_id <> ALL($19::int[])) AND k.priority_id = $20::int ORDER BY k.created_at DESC, k.id DESC LIMIT $21::int) UNION ALL (SELECT k.id AS id, $22::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $23::int AND k.deleted_at IS NULL AND k.track_id = ANY($24::int[]) AND (k.assignee_id = $25::int AND k.status_id <> ALL($26::int[])) AND k.priority_id = $27::int ORDER BY k.created_at DESC, k.id DESC LIMIT $28::int) UNION ALL (SELECT k.id AS id, NULL::int AS c0, (k.created_at)::text AS c1, k.created_at AS o1 FROM ticket k WHERE k.workspace_id = $29::int AND k.deleted_at IS NULL AND k.track_id = ANY($30::int[]) AND (k.assignee_id = $31::int AND k.status_id <> ALL($32::int[])) AND k.priority_id IS NULL ORDER BY k.created_at DESC, k.id DESC LIMIT $33::int)) s ORDER BY c0 DESC NULLS LAST, o1 DESC, id DESC LIMIT $34::int"
   },
+  "assignee IN membersOf(Support) AND track IN tracksOwnedByUser()": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      [
+        1,
+        2
+      ],
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.assignee_id = $3::int AND k.track_id = ANY($4::int[])) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
+  },
   "closed IS EMPTY AND updated < -90d ORDER BY updated ASC": {
     "anchored": false,
     "parameters": [
@@ -546,6 +564,119 @@
       51
     ],
     "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.ticket_type_id = $3::int AND k.track_id = ANY($4::int[])) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
+  },
+  "issue IN issueHistory() AND parent NOT IN watchedIssues()": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_visit r WHERE (r.user_id = $3::int AND r.ticket_id = k.id)) AND (k.parent_id IS NOT NULL AND NOT (k.parent_id IN (SELECT k.id FROM ticket k WHERE (k.workspace_id = $4::int AND k.deleted_at IS NULL AND k.track_id = ANY($5::int[]) AND EXISTS (SELECT 1 FROM ticket_follower r WHERE (r.ticket_id = k.id AND r.user_id = $6::int))))))) ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int"
+  },
+  "key IN (ABC-1, ticketsWithWebLinksByGlobalId(\"ci-1\", \"ci-2\"))": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      [
+        "ci-1",
+        "ci-2"
+      ],
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.id = $3::int OR EXISTS (SELECT 1 FROM ticket_web_link r WHERE (r.ticket_id = k.id AND r.global_id = ANY($4::text[])))) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
+  },
+  "key IN followedTickets() OR key IN votedTickets() ORDER BY updated DESC": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      1,
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.updated_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_follower r WHERE (r.ticket_id = k.id AND r.user_id = $3::int)) OR EXISTS (SELECT 1 FROM ticket_vote r WHERE (r.ticket_id = k.id AND r.user_id = $4::int))) ORDER BY k.updated_at DESC, k.id DESC LIMIT $5::int"
+  },
+  "key IN linkedTickets(ABC-1, \"is blocked by\") ORDER BY key ASC": {
+    "anchored": false,
+    "parameters": [
+      "ABC",
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      3,
+      1,
+      51,
+      "DEF",
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      3,
+      2,
+      51,
+      51
+    ],
+    "sql": "SELECT id, c0, c1 FROM ((SELECT k.id AS id, $1::text AS c0, k.number AS c1 FROM ticket k WHERE k.workspace_id = $2::int AND k.deleted_at IS NULL AND k.track_id = ANY($3::int[]) AND EXISTS (SELECT 1 FROM ticket_link r WHERE (r.source_id = k.id AND r.target_id = $4::int AND r.link_type_id = $5::int)) AND k.track_id = $6::int ORDER BY c1 ASC, k.id ASC LIMIT $7::int) UNION ALL (SELECT k.id AS id, $8::text AS c0, k.number AS c1 FROM ticket k WHERE k.workspace_id = $9::int AND k.deleted_at IS NULL AND k.track_id = ANY($10::int[]) AND EXISTS (SELECT 1 FROM ticket_link r WHERE (r.source_id = k.id AND r.target_id = $11::int AND r.link_type_id = $12::int)) AND k.track_id = $13::int ORDER BY c1 ASC, k.id ASC LIMIT $14::int)) s ORDER BY c0 ASC, c1 ASC, id ASC LIMIT $15::int"
+  },
+  "key IN updatedBy(currentUser(), -1w, now())": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      "2026-10-21T12:00:00.000Z",
+      "2026-10-28T12:00:00.000Z",
+      1,
+      "2026-10-21T12:00:00.000Z",
+      "2026-10-28T12:00:00.000Z",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      "2026-10-21T12:00:00.000Z",
+      "2026-10-28T12:00:00.000Z",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_change r WHERE (r.ticket_id = k.id AND r.actor_id = $3::int AND r.at >= $4::timestamptz AND r.at <= $5::timestamptz)) OR (k.creator_id = $6::int AND k.created_at >= $7::timestamptz AND k.created_at <= $8::timestamptz) OR EXISTS (SELECT 1 FROM ticket_comment c WHERE (c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $9\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $10 AND user_id = $11\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $12)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $13 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $14 AND user_id = $15\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $16)\n    SELECT id FROM g))))) AND (c.author_id = $17::int AND c.created_at >= $18::timestamptz AND c.created_at <= $19::timestamptz)))) ORDER BY k.created_at DESC, k.id DESC LIMIT $20::int"
   },
   "labels IN (security, regression)": {
     "anchored": false,
@@ -743,6 +874,21 @@
       51
     ],
     "sql": "SELECT id, c0, c1 FROM ((SELECT k.id AS id, $1::text AS c0, k.number AS c1 FROM ticket k WHERE k.workspace_id = $2::int AND k.deleted_at IS NULL AND k.track_id = ANY($3::int[]) AND k.track_id = $4::int ORDER BY c1 ASC, k.id ASC LIMIT $5::int)) s ORDER BY c0 ASC, c1 ASC, id ASC LIMIT $6::int"
+  },
+  "type IN subticketTypes() AND created >= startOfWeek(-1w)": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      7,
+      "2026-10-18T00:00:00.000Z",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.ticket_type_id = $3::int AND k.created_at >= $4::timestamptz) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
   },
   "watcher = currentUser() AND votes > 2": {
     "anchored": false,

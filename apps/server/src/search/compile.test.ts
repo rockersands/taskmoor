@@ -57,6 +57,14 @@ export const GOLDEN_QUERIES = [
   'priority > Normal AND track = ABC ORDER BY priority DESC, updated DESC',
   'track = ABC ORDER BY key ASC',
   'ORDER BY type ASC, summary DESC',
+  // Functions (M1-038): ticket sets as semi-joins, the rest as ids.
+  'key IN followedTickets() OR key IN votedTickets() ORDER BY updated DESC',
+  'issue IN issueHistory() AND parent NOT IN watchedIssues()',
+  'key IN linkedTickets(ABC-1, "is blocked by") ORDER BY key ASC',
+  'key IN updatedBy(currentUser(), -1w, now())',
+  'key IN (ABC-1, ticketsWithWebLinksByGlobalId("ci-1", "ci-2"))',
+  'assignee IN membersOf(Support) AND track IN tracksOwnedByUser()',
+  'type IN subticketTypes() AND created >= startOfWeek(-1w)',
 ] as const;
 
 describe('query compiler (M1-037)', () => {
@@ -153,7 +161,16 @@ describe('query compiler (M1-037)', () => {
       .executeTakeFirstOrThrow();
     await post(`/api/v1/tracks/${abc.id}/releases`, { name: '1.0' });
     await post(`/api/v1/tracks/${abc.id}/areas`, { name: 'Backend' });
-    await db.insertInto('user_group').values({ workspace_id: 1, name: 'Support' }).execute();
+    const support = await db
+      .insertInto('user_group')
+      .values({ workspace_id: 1, name: 'Support' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await db
+      .insertInto('group_member')
+      .values({ workspace_id: 1, group_id: support.id, user_id: adminId })
+      .execute();
+    await post('/api/v1/tickets', { track: 'ABC', summary: 'The first ticket' });
   });
   afterAll(async () => {
     await app.close();

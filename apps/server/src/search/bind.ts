@@ -93,7 +93,7 @@ function later(call: CallValue): SearchError {
   return new SearchError(
     module
       ? `${call.fn}() belongs to ${module}, which this version does not have yet`
-      : `${call.fn}() is not available here yet`,
+      : `${call.fn}() cannot be used with this field yet`,
     'unsupported',
   );
 }

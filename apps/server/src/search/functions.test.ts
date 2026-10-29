@@ -450,6 +450,66 @@ describe('query functions and the per-ticket judgement (M1-038)', () => {
     // Twenty worlds of eight tickets, four people and up to seventeen queries.
   }, 180_000);
 
+  it('[QRY-004] runs membersOf() on a group of 50,000 people', async () => {
+    const db = database.db;
+    const big = await db
+      .insertInto('user_group')
+      .values({ workspace_id: ws, name: 'Everyone else' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await sql`
+      INSERT INTO app_user (workspace_id, email, name)
+      SELECT ${ws}, 'member' || n || '@example.com', 'Member ' || n FROM generate_series(1, 50000) n`.execute(
+      db,
+    );
+    await sql`
+      INSERT INTO group_member (workspace_id, group_id, user_id)
+      SELECT ${ws}, ${big.id}, id FROM app_user WHERE email LIKE 'member%@example.com'`.execute(db);
+    // A ticket assigned to one of them and one assigned to someone outside the group.
+    await db.deleteFrom('ticket').execute();
+    const member = await db
+      .selectFrom('app_user')
+      .select('id')
+      .where('email', '=', 'member49999@example.com')
+      .executeTakeFirstOrThrow();
+    for (const [n, assignee] of [
+      [1, member.id],
+      [2, users[0] as number],
+    ] as const) {
+      await sql`
+        INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary, rank, assignee_id)
+        VALUES (${ws}, ${tracks[0]}, ${100_000 + n}, ${typeId}, 'Ticket', ${`z${n}`}, ${assignee})`.execute(
+        db,
+      );
+    }
+    const catalog = await new FieldCatalogs(db).get(ws);
+    const catalogue = await queryCatalogue(db, ws, catalog, 'all');
+    const started = performance.now();
+    const { compiled } = await prepareSearch({
+      db,
+      workspaceId: ws,
+      catalog,
+      catalogue,
+      filter: { sql: sql<boolean>`true`, tracks: 'all' },
+      q: '"assignee" IN membersOf("Everyone else") ORDER BY created DESC',
+      currentUserId: users[0] as number,
+    });
+    const rows = (await compiled.page(50).execute(db)).rows;
+    const ms = performance.now() - started;
+    expect(rows).toHaveLength(1);
+    const negated = await prepareSearch({
+      db,
+      workspaceId: ws,
+      catalog,
+      catalogue,
+      filter: { sql: sql<boolean>`true`, tracks: 'all' },
+      q: 'assignee NOT IN membersOf("Everyone else")',
+      currentUserId: users[0] as number,
+    });
+    expect((await negated.compiled.page(50).execute(db)).rows).toHaveLength(1);
+    if (process.env.TASKMOOR_SEARCH_MEASURE) console.info(`membersOf 50,000: ${ms.toFixed(0)} ms`);
+  });
+
   it('[QRY-004] needs a signed-in person for the functions about them', async () => {
     const db = database.db;
     const catalog = await new FieldCatalogs(db).get(ws);
