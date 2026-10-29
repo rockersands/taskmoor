@@ -24,11 +24,12 @@ green on the branch head (`git push origin <sha>:main`); the CI workflow cancels
 on the same branch when a new one starts, so dispatch once per head. The branch is
 `claude/api-key-upload-prevention-9ucz4x`.
 
-Done tonight, newest first (details under Done): M1-038 query functions, M1-043 boards, M1-055
-guardrails, M1-041 query editor, M1-052 home, create dialog and palette, M1-086 importer,
-M1-058 inbox, M1-037 SQL compiler, M1-053 admin UI, M1-051 ticket view, Windows CI fixes.
-M1-037, M1-058, M1-086, M1-043 and M1-038 were built by background agents in worktrees and
-merged here; their worktrees are removed, the local `work/*` branches stay.
+Done tonight, newest first (details under Done): M1-042 search results, M1-038 query
+functions, M1-043 boards, M1-055 guardrails, M1-041 query editor, M1-052 home, create dialog
+and palette, M1-086 importer, M1-058 inbox, M1-037 SQL compiler, M1-053 admin UI, M1-051
+ticket view, Windows CI fixes. M1-037, M1-058, M1-086, M1-043, M1-038 and M1-042 were built by
+background agents in worktrees and merged here; their worktrees are removed, the local
+`work/*` branches stay.
 
 Also fixed tonight:
 - A query leak (M1-037): a hidden ticket named by key or id in `key`, `parent` or `ticketLink`
@@ -39,8 +40,9 @@ Also fixed tonight:
   which traced them to the Graphile Worker spike test; its teardown now waits for the pool.
 
 Numbering: migrations 0043 search indexes, 0044 inbox, 0045 imports, 0046 ticket visits, 0047
-boards, 0050 guardrails (0048 and 0049 unused). ADRs 046 (home, create dialog, palette), 047
-(inbox), 048 (importer), 049 (boards), 050 unused, 051 (guardrails). A long-lived database that
+boards, 0050 guardrails (0048, 0049 and 0051 unused). ADRs 046 (home, create dialog, palette),
+047 (inbox), 048 (importer), 049 (boards), 050 unused, 051 (guardrails), 052 (search results).
+A long-lived database that
 ran a later number before an earlier one refuses the earlier (Kysely): recreate it.
 
 Watch, under load only (they pass alone and in CI): the 1,500-field edit p95
@@ -72,9 +74,11 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
     all-fields export, the CSV importer round trip (QRY-015 (2)), server-side column sets
     (with saved searches, M1-063), column widths, a people picker for the assignee cell,
     editing select, user and other reference custom fields in place.
-  - `search/basic.test.ts` (M1-041) can fail on a random seed: `basicToQuery` leaves a track
-    key that is a query keyword (`ON`, `IN`, `TO`, `OR`, ...) unquoted, so `track = ON` does not
-    parse back. A real bug of the basic mode, not changed here.
+  - The agent found that basic mode wrote a track key that is a word of the grammar (`ON`,
+    `IN`, `OR`, `EMPTY`, ...) bare, so `track = ON` did not parse back; fixed after the merge
+    (`valueWord` in `search/basic.ts`, also used by suggestions for track keys and custom field
+    names such as `Order`).
+
 - **M1-038 query functions, batch 1** (built on `work/m1-038-functions`; no migration; ADR-010
   "Functions (M1-038)"). `packages/query`: `functions.ts` (the signature of every function of
   spec 01b 1.6), `dates.ts` (wall-clock arithmetic in a time zone), the resolver checks calls
