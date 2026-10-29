@@ -139,6 +139,10 @@ describe('query functions (M1-038)', () => {
       'tracksWhereUserHasPermission() needs its permission (the first argument)',
     ],
     ['targetRelease = latestShippedRelease(ZZZ)', 'Unknown track "ZZZ"'],
+    [
+      `Team IN choiceOption(${Array.from({ length: 51 }, (_, i) => i + 1).join(', ')})`,
+      'choiceOption() takes at most 50 arguments; the 51st is one too many',
+    ],
   ])('[QRY-004] refuses %s, naming the argument', (text, message) => {
     expect(refusal(text)).toContain(message);
   });

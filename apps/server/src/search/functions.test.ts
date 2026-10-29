@@ -1,3 +1,4 @@
+import { appendFileSync } from 'node:fs';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { fc } from '@taskmoor/testkit/property';
 import { sql } from 'kysely';
@@ -508,7 +509,9 @@ describe('query functions and the per-ticket judgement (M1-038)', () => {
       currentUserId: users[0] as number,
     });
     expect((await negated.compiled.page(50).execute(db)).rows).toHaveLength(1);
-    if (process.env.TASKMOOR_SEARCH_MEASURE) console.info(`membersOf 50,000: ${ms.toFixed(0)} ms`);
+    // TASKMOOR_SEARCH_REPORT=<file> keeps the measurement.
+    const report = process.env.TASKMOOR_SEARCH_REPORT;
+    if (report) appendFileSync(report, `membersOf 50,000: ${ms.toFixed(0)} ms\n`);
   });
 
   it('[QRY-004] needs a signed-in person for the functions about them', async () => {

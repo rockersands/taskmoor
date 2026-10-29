@@ -91,8 +91,9 @@ export type TicketSet =
   /** Tickets the person opened lately (`ticketHistory()`; the home page's visits). */
   | { kind: 'visited'; userId: number }
   /**
-   * Tickets these people changed, created or commented on (comments the viewer reads), at or
-   * after `from` and at or before `to` (`updatedBy()`).
+   * Tickets these people changed (creating a ticket records its first values as changes) or
+   * commented on (comments the viewer reads), at or after `from` and at or before `to`
+   * (`updatedBy()`).
    */
   | { kind: 'updatedBy'; userIds: number[]; from?: string; to?: string }
   /**

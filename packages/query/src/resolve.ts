@@ -14,7 +14,6 @@ import { type Catalogue, type Field, findField, type OperatorFamily, takes } fro
 import {
   argumentAt,
   arity,
-  type FunctionResult,
   type FunctionSpec,
   fieldTakes,
   findFunction,
@@ -124,7 +123,14 @@ const PERIODS: Record<string, { edge: 'start' | 'end'; period: Period }> = {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-const ordinal = (n: number) => ['first', 'second', 'third', 'fourth', 'fifth'][n - 1] ?? `${n}th`;
+/** `first` to `fifth`, then `6th`, `21st`, `51st`, `112th`. */
+function ordinal(n: number): string {
+  const word = ['first', 'second', 'third', 'fourth', 'fifth'][n - 1];
+  if (word) return word;
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  const suffix = teen ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}
 
 class Resolver {
   private readonly timeZone: string;

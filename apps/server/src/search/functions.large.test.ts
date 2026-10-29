@@ -1,3 +1,4 @@
+import { appendFileSync } from 'node:fs';
 import type { Database } from '@taskmoor/db';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { type Kysely, sql } from 'kysely';
@@ -14,7 +15,7 @@ import { prepareSearch } from './run';
  * changes, 100,000 links, 20,000 web links and a group of 667 people. Each function query's
  * first page (with the member's permission filter) is timed, binding included; a ticket set is
  * a semi-join, so a person's 20,000 follows cost no list of ids. Measured on 2026-10-29, p95 of
- * 20: see the progress row of M1-038. Run with
+ * 20: see the progress row of M1-038. Run with (the report goes to TASKMOOR_SEARCH_REPORT)
  *   TASKMOOR_LARGE_FUNCTIONS=1 pnpm verify --only=tests -- apps/server/src/search/functions.large.test.ts
  */
 const TICKETS = 200_000;
@@ -159,6 +160,7 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_FUNCTIONS)('query functions at size 
       report.push(`${p95(samples).toFixed(1).padStart(8)} ms  ${String(found).padStart(3)}  ${q}`);
       expect(p95(samples), q).toBeLessThan(BUDGET_MS);
     }
-    if (process.env.TASKMOOR_SEARCH_MEASURE) console.info(`p95 of ${RUNS}\n${report.join('\n')}`);
+    const file = process.env.TASKMOOR_SEARCH_REPORT;
+    if (file) appendFileSync(file, `p95 of ${RUNS}\n${report.join('\n')}\n`);
   }, 600_000);
 });
