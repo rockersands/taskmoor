@@ -15,6 +15,7 @@ import '../src/styles/attachments.css';
 import '../src/styles/bulk.css';
 import '../src/styles/comments.css';
 import '../src/styles/ticket-view.css';
+import '../src/styles/people.css';
 import '../src/styles/workflows.css';
 import '../src/styles/richtext.css';
 

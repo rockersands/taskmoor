@@ -9,6 +9,8 @@ import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
+import { GroupsPage } from './people/GroupsPage';
+import { UsersPage } from './people/UsersPage';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
 import { RequireSession } from './session/RequireSession';
 import { type Session, SessionProvider, useSession } from './session/SessionProvider';
@@ -83,6 +85,8 @@ const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
+const ADMIN_USERS = '#/admin/users';
+const ADMIN_GROUPS = '#/admin/groups';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -210,6 +214,22 @@ function Pages() {
                 window.location.hash = ADMIN_WORKFLOWS;
               },
             },
+            {
+              id: 'go-users',
+              labelId: 'admin.users.title' as const,
+              keywords: ['people', 'user', 'account', 'deactivate', 'invite', 'password'],
+              run: () => {
+                window.location.hash = ADMIN_USERS;
+              },
+            },
+            {
+              id: 'go-groups',
+              labelId: 'admin.groups.title' as const,
+              keywords: ['group', 'team', 'members', 'nested'],
+              run: () => {
+                window.location.hash = ADMIN_GROUPS;
+              },
+            },
           ]
         : []),
     ],
@@ -240,6 +260,10 @@ function Pages() {
     content = <TrashPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
+  } else if (isRoute(hash, ADMIN_USERS)) {
+    content = <UsersPage />;
+  } else if (isRoute(hash, ADMIN_GROUPS)) {
+    content = <GroupsPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;

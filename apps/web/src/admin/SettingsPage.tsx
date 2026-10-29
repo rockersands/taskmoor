@@ -30,6 +30,14 @@ export function SettingsPage() {
           </h2>
           <ul className="link-list">
             <li>
+              <a href="#/admin/users">{t('settings.users')}</a>
+              <p className="page-note">{t('settings.usersHint')}</p>
+            </li>
+            <li>
+              <a href="#/admin/groups">{t('settings.groups')}</a>
+              <p className="page-note">{t('settings.groupsHint')}</p>
+            </li>
+            <li>
               <a href="#/admin/system">{t('settings.systemStatus')}</a>
               <p className="page-note">{t('settings.systemStatusHint')}</p>
             </li>

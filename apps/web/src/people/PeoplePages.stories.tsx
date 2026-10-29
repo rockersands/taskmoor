@@ -1,0 +1,66 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, userEvent, within } from 'storybook/test';
+import { ADMIN, MEMBER } from '../admin/fixtures';
+import { SessionProvider } from '../session/SessionProvider';
+import { fakePeopleClient } from './fixtures';
+import { GroupsPage } from './GroupsPage';
+import { UsersPage } from './UsersPage';
+
+const meta = {
+  title: 'Admin/People',
+  component: UsersPage,
+  args: { client: fakePeopleClient() },
+  decorators: [
+    (Story) => (
+      <SessionProvider session={ADMIN}>
+        <main style={{ padding: 24 }}>
+          <Story />
+        </main>
+      </SessionProvider>
+    ),
+  ],
+} satisfies Meta<typeof UsersPage>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/** People: site administrators, deactivated people, and the actions on each. */
+export const People: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Grace Hopper')).toBeVisible();
+  },
+};
+
+/** Adding someone: the form, then the one-time link to send them. */
+export const AddingSomeone: Story = {
+  args: { client: fakePeopleClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Add a person' }));
+    await userEvent.type(canvas.getByLabelText('Name'), 'Mo Chen');
+    await userEvent.type(canvas.getByLabelText('Email'), 'mo@example.com');
+    await userEvent.click(canvas.getByRole('button', { name: 'Add' }));
+    await expect(await canvas.findByRole('textbox', { name: 'Link for Mo Chen' })).toBeVisible();
+  },
+};
+
+export const NotAnAdministrator: Story = {
+  decorators: [
+    (Story) => (
+      <SessionProvider session={MEMBER}>
+        <Story />
+      </SessionProvider>
+    ),
+  ],
+};
+
+/** Groups, one open with its members and the groups it could hold. */
+export const Groups: Story = {
+  render: () => <GroupsPage client={fakePeopleClient()} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage Approvers' }));
+    await expect(await canvas.findByText('Members of Approvers')).toBeVisible();
+  },
+};

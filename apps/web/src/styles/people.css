@@ -1,0 +1,125 @@
+/* People and groups (M1-053): cards, so phones never scroll sideways; 44px on touch. */
+.people-page {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 60rem;
+}
+
+.people-form,
+.people-inline {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 30rem;
+}
+
+.people-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.people-link {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-2);
+  background: var(--color-accent-soft);
+}
+
+.people-link input {
+  max-width: 100%;
+  font-family: var(--font-mono);
+}
+
+.people-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-2);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.people-main {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.people-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.people-meta {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+}
+
+.people-badge {
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--color-surface-sunken);
+  font-size: var(--font-size-100);
+  font-weight: 500;
+}
+
+.people-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.people-panel {
+  display: grid;
+  flex: 1 1 100%;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-field-border);
+}
+
+.people-sublist {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people-sublist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.people-confirm {
+  font-weight: 600;
+}
+
+@media (pointer: coarse) {
+  .people-action {
+    min-height: var(--hit-target-touch);
+  }
+}

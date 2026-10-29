@@ -183,7 +183,7 @@ describe('the comments section (M1-018)', () => {
     expect(second).toHaveFocus();
     expect(second).toHaveClass('comment-target');
     await user.click(
-      within(second as HTMLElement).getByRole('button', { name: /^Copy a link to the comment/ }),
+      within(second as HTMLElement).getByRole('button', { name: /^Copy link to the comment/ }),
     );
     expect(writeText).toHaveBeenCalledWith(
       `${window.location.origin}${window.location.pathname}#/tickets/SHOP-41?comment=102`,
