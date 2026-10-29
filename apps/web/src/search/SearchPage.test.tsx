@@ -7,7 +7,7 @@ import type { Locale } from '../i18n/locale';
 import { SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { fakeSearchClient } from './fixtures';
+import { fakeSavedSearchClient, fakeSearchClient } from './fixtures';
 import { queryFromHash, SearchPage } from './SearchPage';
 
 function renderPage(initialQuery?: string, locale: Locale = 'en') {
@@ -16,7 +16,11 @@ function renderPage(initialQuery?: string, locale: Locale = 'en') {
     <I18nProvider locale={locale}>
       <SessionProvider session={MEMBER}>
         <main>
-          <SearchPage client={client} {...(initialQuery ? { initialQuery } : {})} />
+          <SearchPage
+            client={client}
+            savedClient={fakeSavedSearchClient()}
+            {...(initialQuery ? { initialQuery } : {})}
+          />
         </main>
       </SessionProvider>
     </I18nProvider>,
@@ -121,7 +125,16 @@ describe('the search page (M1-041)', () => {
     await within(main).findByRole('table');
     // Cell values are tickets' data, not the page's words.
     for (const cell of main.querySelectorAll('.search-cell-value')) cell.textContent = '';
-    const data = new Set(['SHOP-41', 'SHOP-44', 'track = SHOP', 'Customer', 'Points', 'Team']);
+    // So are saved searches' names (M1-063).
+    const data = new Set([
+      'SHOP-41',
+      'SHOP-44',
+      'track = SHOP',
+      'Customer',
+      'Points',
+      'Team',
+      'My open work',
+    ]);
     const texts = visibleTexts(main).filter((t) => !data.has(t));
     expect(untranslated(texts)).toEqual([]);
   });

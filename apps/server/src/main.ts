@@ -20,6 +20,7 @@ import { registerFieldValueJobs, scheduleFieldValueCheck } from './fields/jobs';
 import { registerImportJobs } from './import/jobs';
 import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
+import { deliverSubscriptions } from './search/subscriptions';
 import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
 import { gracefulShutdown } from './shutdown';
@@ -195,6 +196,15 @@ if (config.roles.includes('worker') && db) {
         .catch((error) => app.log.warn({ error }, 'notification emails not sent'));
     void sendEmail();
     timers.push(setInterval(sendEmail, 30 * 1000));
+    // Search subscriptions (M1-063): each due one runs as each recipient; claimed per run.
+    const subscriptionCatalogs = new FieldCatalogs(db);
+    const sendSubscriptions = () =>
+      deliverSubscriptions(db, authorizer, subscriptionCatalogs, mailer)
+        .then((run) => {
+          if (run.due > 0) app.log.info({ run }, 'search subscription emails');
+        })
+        .catch((error) => app.log.warn({ error }, 'search subscription emails not sent'));
+    timers.push(setInterval(sendSubscriptions, 60 * 1000));
   } else {
     app.log.info('email notifications wait unsent: set TASKMOOR_SMTP_URL');
   }

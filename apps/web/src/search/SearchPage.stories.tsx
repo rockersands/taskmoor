@@ -2,13 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { fakeSearchClient } from './fixtures';
+import { fakeSavedSearchClient, fakeSearchClient } from './fixtures';
 import { SearchPage } from './SearchPage';
 
 const meta = {
   title: 'Search/SearchPage',
   component: SearchPage,
-  args: { client: fakeSearchClient() },
+  args: { client: fakeSearchClient(), savedClient: fakeSavedSearchClient() },
   decorators: [
     (Story) => (
       <SessionProvider session={MEMBER}>
@@ -50,5 +50,17 @@ export const Results: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('table')).toBeVisible();
     await expect(canvas.getByRole('link', { name: 'Export CSV' })).toBeVisible();
+  },
+};
+
+/** A saved search opened from the address: its query, its columns and its results (M1-063). */
+export const SavedSearchOpened: Story = {
+  args: { initialSavedSearch: 2 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('heading', { name: 'Saved search: Shop releases' }),
+    ).toBeVisible();
+    await expect(await canvas.findByRole('table')).toBeVisible();
   },
 };
