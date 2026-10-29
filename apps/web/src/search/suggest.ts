@@ -1,5 +1,11 @@
-import { SYSTEM_FIELDS, scan, type Token } from '@taskmoor/query';
-import { STAGES } from './basic';
+import {
+  type Clause,
+  parseWithDiagnostics,
+  SYSTEM_FIELDS,
+  scan,
+  type Token,
+} from '@taskmoor/query';
+import { STAGES, valueWord } from './basic';
 
 /** What the editor may offer at the caret (M1-041; QRY-001 (1)). */
 export interface Suggestions {
@@ -25,7 +31,15 @@ const FIRST = ['track', 'stage', 'status', 'assignee', 'text', 'summary', 'type'
 const USER_FIELDS = new Set(['assignee', 'requester', 'creator']);
 
 const upper = (t: Token | undefined) => (t?.type === 'word' ? t.text.toUpperCase() : '');
-const quoteName = (name: string) => (/^[A-Za-z][A-Za-z0-9_]*$/.test(name) ? name : `"${name}"`);
+/** A custom field's name bare where the parser reads it back as that field, quoted otherwise. */
+function quoteName(name: string): string {
+  if (/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) {
+    const { query, errors } = parseWithDiagnostics(`${name} = x`);
+    const back = query.where as Clause | null;
+    if (errors.length === 0 && back?.kind === 'compare' && back.field.name === name) return name;
+  }
+  return `"${name.replace(/[\\"]/g, (c) => `\\${c}`)}"`;
+}
 
 /** The names offered for fields: the common ones, the other system fields, then custom ones. */
 function fieldNames(context: SuggestContext): string[] {
@@ -107,7 +121,7 @@ export function suggest(text: string, caret: number, context: SuggestContext): S
     kind = 'value';
     items =
       field === 'track'
-        ? context.tracks
+        ? context.tracks.map(valueWord)
         : field === 'stage'
           ? [...STAGES]
           : USER_FIELDS.has(field)

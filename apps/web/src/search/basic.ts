@@ -25,18 +25,35 @@ export const EMPTY_BASIC: BasicQuery = { tracks: [], stages: [], assignee: 'any'
 
 const ORDER = 'ORDER BY updated DESC';
 
-const word = (value: string) =>
-  /^[A-Za-z][A-Za-z0-9_-]*$/.test(value)
-    ? value
-    : printValue({ kind: 'string', value, span: { start: 0, end: 0 } });
 const quoted = (value: string) => printValue({ kind: 'string', value, span: { start: 0, end: 0 } });
+
+/**
+ * A track key bare where the parser reads it back as that word, quoted otherwise: a key that is
+ * a word of the grammar (ON, IN, OR, EMPTY, ...) would not parse or would mean something else.
+ */
+export function valueWord(value: string): string {
+  if (/^[A-Za-z][A-Za-z0-9_-]*$/.test(value)) {
+    const { query, errors } = parseWithDiagnostics(`track = ${value}`);
+    const back = query.where as Clause | null;
+    if (
+      errors.length === 0 &&
+      back?.kind === 'compare' &&
+      back.value.kind === 'word' &&
+      back.value.value === value
+    ) {
+      return value;
+    }
+  }
+  return quoted(value);
+}
 
 /** The query a basic search makes, newest change first. */
 export function basicToQuery(basic: BasicQuery): string {
   const parts: string[] = [];
   const [onlyTrack] = basic.tracks;
-  if (basic.tracks.length === 1 && onlyTrack) parts.push(`track = ${word(onlyTrack)}`);
-  else if (basic.tracks.length > 1) parts.push(`track IN (${basic.tracks.map(word).join(', ')})`);
+  if (basic.tracks.length === 1 && onlyTrack) parts.push(`track = ${valueWord(onlyTrack)}`);
+  else if (basic.tracks.length > 1)
+    parts.push(`track IN (${basic.tracks.map(valueWord).join(', ')})`);
   const stages = STAGES.filter((s) => basic.stages.includes(s));
   if (stages.length === 1) parts.push(`stage = ${stages[0]}`);
   else if (stages.length === 2) parts.push(`stage IN (${stages.join(', ')})`);

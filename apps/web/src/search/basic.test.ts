@@ -46,9 +46,27 @@ describe('the basic search mode (M1-041)', () => {
     }
   });
 
+  it('[QRY-001] quotes a track key that is a word of the grammar', () => {
+    for (const key of ['ON', 'IN', 'OR', 'EMPTY', 'ORDER']) {
+      const text = basicToQuery({ tracks: [key], stages: [], assignee: 'any', text: '' });
+      expect(text).toBe(`track = "${key}" ORDER BY updated DESC`);
+      expect(queryToBasic(text)?.tracks).toEqual([key]);
+    }
+    expect(basicToQuery({ tracks: ['SHOP'], stages: [], assignee: 'any', text: '' })).toBe(
+      'track = SHOP ORDER BY updated DESC',
+    );
+  });
+
   it('[QRY-001] goes from basic to a query and back unchanged', () => {
     const basic = fc.record({
-      tracks: fc.uniqueArray(fc.stringMatching(/^[A-Z][A-Z0-9]{1,9}$/), { maxLength: 3 }),
+      tracks: fc.uniqueArray(
+        fc.oneof(
+          fc.stringMatching(/^[A-Z][A-Z0-9]{1,9}$/),
+          // Keys that are words of the grammar must be quoted to read back.
+          fc.constantFrom('ON', 'IN', 'OR', 'IS', 'TO', 'BY', 'AND', 'NOT', 'EMPTY', 'NULL'),
+        ),
+        { maxLength: 3 },
+      ),
       stages: fc.subarray([...STAGES]).filter((s) => s.length < 3),
       assignee: fc.constantFrom('any', 'me', 'none'),
       text: fc.string({ maxLength: 20 }).map((s) => s.trim()),
