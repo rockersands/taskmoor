@@ -14,12 +14,33 @@ import { logPosition } from './log';
  * (an index-only read), well inside the one-second budget of NTF-008, instead of LISTEN/NOTIFY,
  * which would need a connection outside the pool. A handshake from another site is refused:
  * the session cookie is SameSite=Lax, and the Origin is checked against the host as well.
+ *
+ * The same poll tells each person's open inboxes when their inbox changed (M1-058, NTF-003):
+ * `{"type":"inbox","version":"7"}` at once and whenever their `inbox_state` counter moves (a
+ * new item, or one read or snoozed elsewhere); the client then reads `/api/v1/inbox`, which
+ * judges every item by its permissions. One primary-key read per workspace and poll.
  */
 const POLL_MS = 250;
 
 interface Client {
   socket: WebSocket;
   position: string;
+  userId: number;
+  inbox: string;
+}
+
+/** The inbox counters of these people; absent for one whose inbox never changed. */
+async function inboxVersions(
+  db: Kysely<Database>,
+  userIds: readonly number[],
+): Promise<Map<number, string>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await db
+    .selectFrom('inbox_state')
+    .select(['user_id', 'version'])
+    .where('user_id', 'in', [...userIds])
+    .execute();
+  return new Map(rows.map((r) => [r.user_id, String(r.version)]));
 }
 
 export function registerSyncSocket(app: FastifyInstance, db: Kysely<Database>): void {
@@ -32,6 +53,11 @@ export function registerSyncSocket(app: FastifyInstance, db: Kysely<Database>): 
     client.position = position;
     client.socket.send(JSON.stringify({ type: 'position', position }));
   };
+  const sendInbox = (client: Client, version: string) => {
+    if (client.socket.readyState !== client.socket.OPEN) return;
+    client.inbox = version;
+    client.socket.send(JSON.stringify({ type: 'inbox', version }));
+  };
 
   async function poll() {
     if (polling) return;
@@ -41,6 +67,11 @@ export function registerSyncSocket(app: FastifyInstance, db: Kysely<Database>): 
         const position = await logPosition(db, workspaceId);
         for (const client of set) {
           if (client.position !== position) send(client, position);
+        }
+        const versions = await inboxVersions(db, [...new Set([...set].map((c) => c.userId))]);
+        for (const client of set) {
+          const version = versions.get(client.userId) ?? '0';
+          if (client.inbox !== version) sendInbox(client, version);
         }
       }
     } catch (error) {
@@ -66,7 +97,7 @@ export function registerSyncSocket(app: FastifyInstance, db: Kysely<Database>): 
       return;
     }
     const workspaceId = request.workspaceId;
-    const client: Client = { socket, position: '' };
+    const client: Client = { socket, position: '', userId: request.user.id, inbox: '' };
     const set = clients.get(workspaceId) ?? new Set();
     set.add(client);
     clients.set(workspaceId, set);
@@ -83,6 +114,7 @@ export function registerSyncSocket(app: FastifyInstance, db: Kysely<Database>): 
       }
     });
     send(client, await logPosition(db, workspaceId));
+    sendInbox(client, (await inboxVersions(db, [client.userId])).get(client.userId) ?? '0');
   });
 
   app.addHook('onClose', async () => {

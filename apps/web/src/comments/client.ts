@@ -44,10 +44,27 @@ export interface Audiences {
   groups: { id: number; name: string }[];
 }
 
+/**
+ * A mentioned person or team who was not told (M1-058; NTF-005 (1)): they may not see the
+ * ticket, may not read this restricted comment, or are no active person here. For a team,
+ * `count` members.
+ */
+export interface MentionWarning {
+  kind: 'user' | 'group';
+  id: number;
+  name: string;
+  reason: 'cannot_view' | 'cannot_read' | 'unknown';
+  count?: number;
+}
+
 /** The endpoints the comments section uses for one ticket. Stories and tests pass their own. */
 export interface CommentClient {
   list: (after?: number) => Promise<CommentList>;
-  add: (body: PmJson, visibility: VisibilityChoice) => Promise<Comment>;
+  /** The new comment, with the mentioned people the server could not tell, if any. */
+  add: (
+    body: PmJson,
+    visibility: VisibilityChoice,
+  ) => Promise<Comment & { mentionWarnings?: MentionWarning[] }>;
   edit: (id: number, change: { body?: PmJson; visibility?: VisibilityChoice }) => Promise<Comment>;
   remove: (id: number) => Promise<void>;
   react: (id: number, emoji: string, on: boolean) => Promise<Reaction[]>;
@@ -61,13 +78,15 @@ export function commentClient(ticket: number | string): CommentClient {
       api<CommentList>(
         `${base}/comments?limit=100${after === undefined ? '' : `&cursor=${after}`}`,
       ),
-    add: async (body, visibility) =>
-      (
-        await api<{ comment: Comment }>(`${base}/comments`, {
-          method: 'POST',
-          body: { body, visibility },
-        })
-      ).comment,
+    add: async (body, visibility) => {
+      const answer = await api<{ comment: Comment; mentionWarnings?: MentionWarning[] }>(
+        `${base}/comments`,
+        { method: 'POST', body: { body, visibility } },
+      );
+      return answer.mentionWarnings
+        ? { ...answer.comment, mentionWarnings: answer.mentionWarnings }
+        : answer.comment;
+    },
     edit: async (id, change) =>
       (await api<{ comment: Comment }>(`${base}/comments/${id}`, { method: 'PATCH', body: change }))
         .comment,

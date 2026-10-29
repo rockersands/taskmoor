@@ -9,6 +9,7 @@ import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
+import { InboxPage } from './inbox/InboxPage';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
 import { RequireSession } from './session/RequireSession';
@@ -22,6 +23,7 @@ import {
   BoardsIcon,
   DashboardsIcon,
   HomeIcon,
+  InboxIcon,
   SearchIcon,
   SettingsIcon,
   TracksIcon,
@@ -37,6 +39,8 @@ import { WorkflowsPage } from './workflow/WorkflowsPage';
 
 export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
   { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon },
+  // Mentions and changes to followed tickets (M1-058).
+  { id: 'inbox', labelId: 'nav.inbox', href: '#/inbox', icon: InboxIcon, requiresSession: true },
   { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon },
   { id: 'boards', labelId: 'nav.boards', href: '#/boards', icon: BoardsIcon },
   { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon },
@@ -271,6 +275,8 @@ function Pages() {
     content =
       active === 'settings' ? (
         <SettingsPage />
+      ) : active === 'inbox' ? (
+        <InboxPage />
       ) : (
         <>
           <h1 className="page-title">{page ? t(page.labelId) : ''}</h1>

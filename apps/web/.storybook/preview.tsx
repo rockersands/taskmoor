@@ -14,6 +14,7 @@ import '../src/styles/trash.css';
 import '../src/styles/attachments.css';
 import '../src/styles/bulk.css';
 import '../src/styles/comments.css';
+import '../src/styles/inbox.css';
 import '../src/styles/workflows.css';
 import '../src/styles/richtext.css';
 

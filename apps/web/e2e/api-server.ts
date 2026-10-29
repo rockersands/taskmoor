@@ -8,7 +8,8 @@
 // checking every request's signature). Two more previews (4174, 4175) proxy to them.
 //
 // Bulk changes (M1-021) use that database and its administrator too: a job loop here runs
-// their jobs, and only theirs, as a worker would.
+// their jobs, and only theirs, as a worker would. So do notifications (M1-058): the worker's
+// event loop runs there, and the inbox test reads what it writes.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,11 +18,15 @@ import {
   Authorizer,
   BULK_TASK,
   buildApp,
+  EventBus,
+  eventTask,
   FieldCatalogs,
   issueSetupToken,
   JobRunner,
   registerBulkJobs,
+  registerSubscribers,
   startDirectorySync,
+  startWorker,
   storesOf,
 } from '@taskmoor/server';
 import { FakeIdp, FakeLdap, FakeSamlIdp } from '@taskmoor/server/testing';
@@ -161,6 +166,16 @@ const bulkLoop = (async () => {
   }
 })();
 
+// Notifications on the attachments database (M1-058): the worker's event loop, with its
+// production idle wait, so mentions reach the inbox as they would in an install.
+const eventBus = new EventBus(attachDb);
+registerSubscribers(eventBus, { db: attachDb });
+const eventRunner = new JobRunner(attachDb, 'e2e-events', {
+  tasks: [eventTask('audit'), eventTask('notifications')],
+});
+eventBus.attach(eventRunner);
+const eventWorker = startWorker({ bus: eventBus, runner: eventRunner, db: attachDb });
+
 const app = await buildApp({
   db,
   version: 'e2e',
@@ -178,6 +193,7 @@ async function stop(): Promise<void> {
   await directories.stop();
   bulkRunning = false;
   await bulkLoop;
+  await eventWorker.stop();
   await app.close();
   for (const attachApp of attachApps) await attachApp.close();
   s3.destroy();

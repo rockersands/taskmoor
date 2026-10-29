@@ -576,6 +576,17 @@
       "CREATE UNIQUE INDEX identity_provider_group_pkey ON public.identity_provider_group USING btree (provider_id, claim_value, group_id)"
     ]
   },
+  "inbox_state": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "version bigint not null default 0",
+      "changed_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX inbox_state_pkey ON public.inbox_state USING btree (user_id)"
+    ]
+  },
   "instance_setting": {
     "columns": [
       "key text not null",
@@ -807,10 +818,14 @@
       "created_at timestamp with time zone not null default now()",
       "read_at timestamp with time zone",
       "delivered_at timestamp with time zone",
-      "email_delivery_id bigint"
+      "email_delivery_id bigint",
+      "snoozed_until timestamp with time zone",
+      "direct boolean not null default false"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX notification_event_recipient_idx ON public.notification USING btree (domain_event_id, user_id, channel)",
+      "CREATE INDEX notification_inbox_idx ON public.notification USING btree (user_id, COALESCE(snoozed_until, created_at) DESC, id DESC) WHERE (channel = 'inbox'::text)",
+      "CREATE INDEX notification_inbox_unread_idx ON public.notification USING btree (user_id) WHERE ((channel = 'inbox'::text) AND (read_at IS NULL))",
       "CREATE UNIQUE INDEX notification_pkey ON public.notification USING btree (id)",
       "CREATE INDEX notification_ticket_idx ON public.notification USING btree (ticket_id)",
       "CREATE INDEX notification_undelivered_idx ON public.notification USING btree (created_at) WHERE ((channel = 'email'::text) AND (delivered_at IS NULL))",

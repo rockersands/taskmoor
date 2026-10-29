@@ -33,6 +33,15 @@ import {
   rememberFieldLabels,
   withoutTrackValues,
 } from '../fields/values';
+import {
+  addedMentions,
+  type Mentions,
+  mentionPayload,
+  mentionsIn,
+  mergeMentions,
+  noMentions,
+} from '../notifications/mentions';
+import { mentionWarnings, warningsField } from '../notifications/warnings';
 import type { Answer, Caller, TicketHandler, TicketRoute } from '../tickets/caller';
 import { type CommentVisibility, onceAudience, readsComment } from '../tickets/comments';
 import { shareHierarchy } from '../tickets/configuration';
@@ -508,7 +517,8 @@ function uniqueViolation(error: unknown): string | null {
 }
 
 type Outcome =
-  | { ticket: TicketRow | undefined }
+  /** With the mentions the write added, for the answer's warnings (M1-058). */
+  | { ticket: TicketRow | undefined; mentions?: Mentions }
   | { missing: true }
   | { fields: FieldErrors }
   | { conflict: string; detail?: Record<string, unknown> }
@@ -723,11 +733,21 @@ export function ticketRoutes(
   async function answer(request: Caller, reply: Answer, outcome: Outcome, code = 200) {
     const refused = refusal(reply, outcome);
     if (refused) return refused;
-    const row = (outcome as { ticket: TicketRow }).ticket;
+    const { ticket: row, mentions } = outcome as { ticket: TicketRow; mentions?: Mentions };
     const view = await viewOf(request, row);
-    return reply
-      .code(code)
-      .send({ ticket: inFormat(view, requestedFormat(request.query) ?? 'doc') });
+    // Mentioned people who will not be told, so the writer knows (NTF-005 (1)).
+    const warnings = await mentionWarnings(
+      db,
+      authorizer,
+      request.workspaceId,
+      row,
+      mentions,
+      request.authz,
+    );
+    return reply.code(code).send({
+      ticket: inFormat(view, requestedFormat(request.query) ?? 'doc'),
+      ...warningsField(warnings),
+    });
   }
 
   route('GET', '/api/v1/tickets', async (request, reply) => {
@@ -1161,6 +1181,11 @@ export function ticketRoutes(
         if (set.areas) await setTicketAreas(trx, ws, row.id, set.areas);
         fired = { event: made.event, webhookCount: made.webhooks.length };
       }
+      // Everyone the starting text mentions hears of it (NTF-005).
+      const mentioned = mergeMentions(
+        mentionsIn(values.texts?.description?.doc ?? null),
+        mentionsIn(values.texts?.environment?.doc ?? null),
+      );
       await emit(trx, by(request), {
         type: 'ticket.created',
         subjectId: row.id,
@@ -1170,6 +1195,7 @@ export function ticketRoutes(
           ticketTypeId: typeId,
           parentId,
           ...fired,
+          ...mentionPayload(mentioned),
         },
       });
       await autoFollow(trx, ws, row.id, user.id);
@@ -1189,7 +1215,7 @@ export function ticketRoutes(
           ...computed,
         ]);
       }
-      return { ticket: created };
+      return { ticket: created, mentions: mentioned };
     });
     return answer(request, reply, outcome, 201);
   });
@@ -1594,7 +1620,14 @@ export function ticketRoutes(
           ...computed,
         ]);
       }
-      return { ticket: updated };
+      // The mentions this edit added; the subscriber finds the same in the event (M1-058).
+      const mentions = mergeMentions(
+        ...(['description', 'environment'] as const).map((field) => {
+          const change = changes[field];
+          return change ? addedMentions(change.from, change.to) : noMentions();
+        }),
+      );
+      return { ticket: updated, mentions };
     });
     return answer(request, reply, outcome);
   });
@@ -2144,7 +2177,10 @@ export function ticketRoutes(
           event: result.event,
           webhookCount: result.webhooks.length,
           channel,
-          ...(written ? { commentId: written.id } : {}),
+          // The comment's mentions tell those who may read it (M1-058).
+          ...(written && comment
+            ? { commentId: written.id, ...mentionPayload(mentionsIn(comment.doc)) }
+            : {}),
         },
       });
       return { ticket: updated };

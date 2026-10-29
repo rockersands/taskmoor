@@ -3,8 +3,16 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireUser } from '../auth';
+import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 import { emit } from '../events/bus';
+import {
+  addedMentions,
+  type Mentions,
+  mentionPayload,
+  mentionsIn,
+} from '../notifications/mentions';
+import { mentionWarnings, warningsField } from '../notifications/warnings';
 import {
   type CommentVisibility,
   onceAudience,
@@ -161,7 +169,11 @@ const commentChange = (ticketId: number, commentId: number, added: boolean): Fie
   toDisplay: null,
 });
 
-export function registerCommentRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+export function registerCommentRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  authorizer: Authorizer,
+): void {
   const by = (request: FastifyRequest) => ({
     workspaceId: request.workspaceId,
     actorId: request.user?.id ?? null,
@@ -516,13 +528,24 @@ export function registerCommentRoutes(app: FastifyInstance, db: Kysely<Database>
           key: ticketKey(ticket.track_key, ticket.number),
           ticketId: ticket.id,
           visibility: given,
+          // The people and teams it mentions hear of it, if they may read it (M1-058).
+          ...mentionPayload(mentionsIn(doc)),
         },
       });
       return commentQuery(trx).where('c.id', '=', row.id).executeTakeFirstOrThrow();
     });
     if (!created) return notFound(reply);
     const [view] = await views(request, ticket, [created], format);
-    return reply.code(201).send({ comment: view });
+    const warnings = await mentionWarnings(
+      db,
+      authorizer,
+      ws,
+      ticket,
+      mentionsIn(doc),
+      request.authz,
+      created,
+    );
+    return reply.code(201).send({ comment: view, ...warningsField(warnings) });
   });
 
   app.patch('/api/v1/tickets/:id/comments/:commentId', async (request, reply) => {
@@ -570,7 +593,11 @@ export function registerCommentRoutes(app: FastifyInstance, db: Kysely<Database>
       if (next !== undefined && JSON.stringify(next) !== JSON.stringify(visibilityOf(current))) {
         changed.push('visibility');
       }
-      if (changed.length === 0) return current;
+      if (changed.length === 0) return { row: current, mentions: undefined };
+      // Only the mentions the edit added notify anyone (M1-058).
+      const mentions: Mentions | undefined = changed.includes('body')
+        ? addedMentions(current.body, doc)
+        : undefined;
       await trx
         .insertInto('ticket_comment_version')
         .values({
@@ -610,13 +637,26 @@ export function registerCommentRoutes(app: FastifyInstance, db: Kysely<Database>
           key: ticketKey(ticket.track_key, ticket.number),
           ticketId: ticket.id,
           fields: changed,
+          ...(mentions ? mentionPayload(mentions) : {}),
         },
       });
-      return commentQuery(trx).where('c.id', '=', current.id).executeTakeFirstOrThrow();
+      return {
+        row: await commentQuery(trx).where('c.id', '=', current.id).executeTakeFirstOrThrow(),
+        mentions,
+      };
     });
     if (!result) return notFound(reply);
-    const [view] = await views(request, ticket, [result], format);
-    return { comment: view };
+    const [view] = await views(request, ticket, [result.row], format);
+    const warnings = await mentionWarnings(
+      db,
+      authorizer,
+      ws,
+      ticket,
+      result.mentions,
+      request.authz,
+      result.row,
+    );
+    return { comment: view, ...warningsField(warnings) };
   });
 
   app.delete('/api/v1/tickets/:id/comments/:commentId', async (request, reply) => {

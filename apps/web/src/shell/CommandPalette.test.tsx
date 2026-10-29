@@ -13,7 +13,7 @@ describe('command palette', () => {
     const dialog = screen.getByRole('dialog', { name: 'Command palette' });
     const input = within(dialog).getByRole('combobox');
     expect(input).toHaveFocus();
-    expect(within(dialog).getAllByRole('option')).toHaveLength(6);
+    expect(within(dialog).getAllByRole('option')).toHaveLength(7);
 
     await user.keyboard('trac');
     const options = within(dialog).getAllByRole('option');
@@ -34,7 +34,7 @@ describe('command palette', () => {
     await user.click(trigger);
     const dialog = screen.getByRole('dialog', { name: 'Command palette' });
 
-    await user.keyboard('{ArrowDown}{ArrowDown}');
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}');
     const selected = within(dialog)
       .getAllByRole('option')
       .find((o) => o.getAttribute('aria-selected') === 'true');

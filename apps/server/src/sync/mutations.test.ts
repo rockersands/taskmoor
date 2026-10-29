@@ -21,14 +21,24 @@ function sessionCookie(header: string | string[] | undefined): string {
   );
 }
 
-/** The next message of a socket, parsed. */
+/**
+ * The next message of a socket, parsed; inbox messages (M1-058), which the same socket carries,
+ * are passed over.
+ */
 function nextMessage(socket: WebSocket, timeoutMs = 3000): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('no message')), timeoutMs);
-    socket.once('message', (data) => {
+    const timer = setTimeout(() => {
+      socket.off('message', onMessage);
+      reject(new Error('no message'));
+    }, timeoutMs);
+    function onMessage(data: unknown) {
+      const message = JSON.parse(String(data)) as Record<string, unknown>;
+      if (message.type === 'inbox') return;
       clearTimeout(timer);
-      resolve(JSON.parse(String(data)));
-    });
+      socket.off('message', onMessage);
+      resolve(message);
+    }
+    socket.on('message', onMessage);
   });
 }
 

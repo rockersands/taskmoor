@@ -14,6 +14,7 @@ import {
   type CommentList,
   type CommentVisibility,
   commentClient,
+  type MentionWarning,
   type VisibilityChoice,
 } from './client';
 
@@ -289,6 +290,28 @@ function VisibilityPicker({ id, audiences, value, current, onChange }: Visibilit
   );
 }
 
+/** A mentioned person or team who was not told, in the writer's words. */
+function useMentionWarningText(): (warning: MentionWarning) => string {
+  const t = useT();
+  return (w) => {
+    if (w.kind === 'group') {
+      return t(
+        w.reason === 'cannot_read'
+          ? 'comments.mentionWarning.teamRead'
+          : 'comments.mentionWarning.teamView',
+        { name: w.name, count: w.count ?? 0 },
+      );
+    }
+    if (w.reason === 'unknown') return t('comments.mentionWarning.unknown');
+    return t(
+      w.reason === 'cannot_read'
+        ? 'comments.mentionWarning.cannotRead'
+        : 'comments.mentionWarning.cannotView',
+      { name: w.name },
+    );
+  };
+}
+
 interface ComposerProps {
   id: string;
   client: CommentClient;
@@ -305,7 +328,9 @@ function Composer({ id, client, audiences, mentions, problemText, onAdded }: Com
   const [round, setRound] = useState(0);
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const problemId = `${id}-problem`;
+  const warningText = useMentionWarningText();
 
   const submit = async () => {
     if (!doc) {
@@ -314,8 +339,12 @@ function Composer({ id, client, audiences, mentions, problemText, onAdded }: Com
     }
     setSending(true);
     setProblem(null);
+    setWarnings([]);
     try {
-      onAdded(await client.add(doc, visibility));
+      const { mentionWarnings, ...added } = await client.add(doc, visibility);
+      onAdded(added);
+      // Mentioned people the server could not tell (NTF-005 (1)).
+      setWarnings((mentionWarnings ?? []).map(warningText));
       setDoc(null);
       setVisibility(null);
       setRound((r) => r + 1);
@@ -357,6 +386,15 @@ function Composer({ id, client, audiences, mentions, problemText, onAdded }: Com
           {problem}
         </p>
       )}
+      <div role="status" className="comment-mention-warnings">
+        {warnings.length > 0 && (
+          <ul>
+            {warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div className="form-actions">
         <button type="submit" className="button-primary" disabled={sending}>
           {sending ? t('comments.sending') : t('comments.submit')}

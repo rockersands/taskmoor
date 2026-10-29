@@ -7,7 +7,9 @@ import { diff, emit } from '../events/bus';
 import {
   CHANNELS,
   isNotificationEvent,
+  isPreferenceEvent,
   NOTIFICATION_EVENTS,
+  PRODUCT_EVENTS,
   RECIPIENTS,
 } from '../notifications/model';
 
@@ -33,6 +35,8 @@ const description = z.string().max(2000);
 const RULES_PER_POLICY = 2000;
 
 const eventName = z.string().refine(isNotificationEvent, 'a notification event');
+/** Preferences also cover product events outside policies, such as mentions (M1-058). */
+const preferenceEvent = z.string().refine(isPreferenceEvent, 'a notification event');
 const ruleBody = z
   .object({
     event: eventName,
@@ -73,7 +77,7 @@ const hour = z.number().int().min(0).max(23);
 const preferencesBody = z
   .object({
     ownChanges: z.boolean(),
-    events: z.record(eventName, channelChoice),
+    events: z.record(preferenceEvent, channelChoice),
     /** Email at once, as a daily or weekly digest, or none (M1-057). */
     emailDelivery: z.enum(['instant', 'daily', 'weekly', 'off']),
     /** Local hours email waits through; null for none. */
@@ -272,7 +276,12 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
 
   app.get('/api/v1/notification-events', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
-    return { events: NOTIFICATION_EVENTS, recipients: RECIPIENTS, channels: CHANNELS };
+    return {
+      events: NOTIFICATION_EVENTS,
+      productEvents: PRODUCT_EVENTS,
+      recipients: RECIPIENTS,
+      channels: CHANNELS,
+    };
   });
 
   app.get('/api/v1/notification-policies', async (request, reply) => {
@@ -437,7 +446,7 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
         .executeTakeFirst(),
     ]);
     const events: Record<string, Record<string, boolean>> = {};
-    for (const event of [...NOTIFICATION_EVENTS, ...rows.map((r) => r.event)]) {
+    for (const event of [...NOTIFICATION_EVENTS, ...PRODUCT_EVENTS, ...rows.map((r) => r.event)]) {
       events[event] ??= Object.fromEntries(CHANNELS.map((c) => [c, true]));
     }
     for (const r of rows) (events[r.event] as Record<string, boolean>)[r.channel] = r.enabled;

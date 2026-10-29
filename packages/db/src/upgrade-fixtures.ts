@@ -510,7 +510,14 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         await sql`INSERT INTO workflow_version_status (workspace_id, workflow_id, version, status_id)
           SELECT 1, ${workflow}, ${version}, ${status}`.execute(db);
       }
-      await sql`UPDATE track SET workflow_id = ${workflow} WHERE key = 'SEED'`.execute(db);
+      // A database already past 0042 has no track.workflow_id: its seed gives the track a map
+      // whose default is this workflow instead.
+      const { rows: column } = await sql`
+        SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'track' AND column_name = 'workflow_id'`.execute(db);
+      if (column.length > 0) {
+        await sql`UPDATE track SET workflow_id = ${workflow} WHERE key = 'SEED'`.execute(db);
+      }
       await sql`UPDATE ticket SET status_id = ${status} WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
@@ -850,7 +857,7 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async (db) => {
       await sql`INSERT INTO workflow (workspace_id, name, owner_track_id)
-        SELECT 1, 'Seed local workflow', id FROM track WHERE key = 'SEEDOLD'`.execute(db);
+        SELECT 1, 'Seed local workflow', id FROM track WHERE key = 'SEEDNEW'`.execute(db);
       await sql`INSERT INTO workflow_version (workspace_id, workflow_id, version, definition)
         SELECT 1, w.id, 1, jsonb_build_object('initialStatusId', s.id,
           'statuses', jsonb_build_array(jsonb_build_object('statusId', s.id)),
@@ -878,6 +885,24 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE o.reason = 'track_map' AND ty.name = 'Seed type' AND s.name = 'Seed status'`.execute(
         db,
       );
+    },
+  },
+  '0044_inbox': {
+    tables: {
+      notification:
+        "event = 'mentioned' AND direct AND snoozed_until IS NOT NULL AND channel = 'inbox'",
+      inbox_state:
+        "version = 3 AND user_id IN (SELECT id FROM app_user WHERE email = 'seed@example.com')",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO notification (workspace_id, user_id, channel, event, ticket_id,
+          domain_event_id, payload, direct, snoozed_until)
+        SELECT 1, u.id, 'inbox', 'mentioned', k.id, 990044, '{"mentionedIn": ["comment"]}', true,
+               now() + interval '1 day'
+          FROM app_user u, ticket k
+         WHERE u.email = 'seed@example.com' AND k.summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO inbox_state (user_id, workspace_id, version)
+        SELECT id, 1, 3 FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
 };
