@@ -920,6 +920,28 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT id, 1, 3 FROM app_user WHERE email = 'seed@example.com'`.execute(db);
     },
   },
+  '0045_imports': {
+    tables: {
+      import_run: "import_source = 'synthetic' AND source_system = 'seed' AND status = 'done'",
+      import_record: "entity_kind = 'track' AND source_id = 'seed-track' AND outcome = 'linked'",
+      import_external_id: "entity_kind = 'track' AND source_id = 'seed-track'",
+    },
+    seed: async (db) => {
+      // A finished import that linked the seed track.
+      await sql`INSERT INTO import_run (workspace_id, user_id, import_source, source_system, source,
+          status, started_at, finished_at)
+        SELECT 1, id, 'synthetic', 'seed', '{"format": "synthetic"}'::jsonb, 'done', now(), now()
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO import_record (run_id, workspace_id, entity_kind, source_id, outcome,
+          target_id, checksum)
+        SELECT r.id, 1, 'track', 'seed-track', 'linked', t.id, 'seed'
+          FROM import_run r, track t WHERE r.source_system = 'seed' AND t.key = 'SEED'`.execute(db);
+      await sql`INSERT INTO import_external_id (workspace_id, import_source, source_system,
+          entity_kind, source_id, target_id, checksum, first_run_id, last_run_id)
+        SELECT 1, 'synthetic', 'seed', 'track', 'seed-track', t.id, 'seed', r.id, r.id
+          FROM import_run r, track t WHERE r.source_system = 'seed' AND t.key = 'SEED'`.execute(db);
+    },
+  },
 };
 
 /**

@@ -103,6 +103,12 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/tracks/:id/workflow-map']).toBe('read');
     expect(classes['GET /api/v1/tracks/:id/workflow-map/impact']).toBe('read');
     expect(classes['GET /api/v1/workflow-migrations/:id']).toBe('read');
+    // Imports (M1-086): administration, reads of progress and reports included.
+    expect(classes['POST /api/v1/admin/imports']).toBe('admin');
+    expect(classes['GET /api/v1/admin/imports']).toBe('admin');
+    expect(classes['GET /api/v1/admin/imports/:id']).toBe('admin');
+    expect(classes['GET /api/v1/admin/imports/:id/report']).toBe('admin');
+    expect(classes['POST /api/v1/admin/imports/:id/cancel']).toBe('admin');
     // The SCIM service answers only its own scope, whatever the method (ADR-038).
     expect(classes['GET /api/v1/scim/v2/Users']).toBe('scim');
     expect(classes['PATCH /api/v1/scim/v2/Groups/:id']).toBe('scim');

@@ -34,6 +34,7 @@ import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
+import { registerImportRoutes } from './routes/imports';
 import { registerInboxRoutes } from './routes/inbox';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
@@ -257,6 +258,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerBulkRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { queryTimeoutMs: deps.queryTimeoutMs } : {}),
     });
+    registerImportRoutes(app, db);
     registerAuditRoutes(app, db);
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);

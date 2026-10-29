@@ -1375,6 +1375,68 @@ export interface BulkItemTable {
   finished_at: Timestamp | null;
 }
 
+export type ImportRunStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+export type ImportOutcome = 'created' | 'updated' | 'unchanged' | 'linked' | 'failed' | 'skipped';
+
+/**
+ * One import (M1-086; IMP-009, IMP-010): its source, state, the checkpoint it resumes from,
+ * tallies, warnings and unsupported kinds found so far, and the fidelity report once finished.
+ */
+export interface ImportRunTable {
+  id: Generated<string>;
+  workspace_id: number;
+  user_id: number | null;
+  /** The importer: the source format, such as `synthetic`. */
+  import_source: string;
+  /** Which instance the data came from, as the source names it. */
+  source_system: string;
+  name: Generated<string>;
+  /** The uploaded data or the settings of a configured source. */
+  source: Json;
+  dry_run: Generated<boolean>;
+  status: ColumnType<ImportRunStatus, ImportRunStatus | undefined, ImportRunStatus>;
+  cancel_requested: Generated<boolean>;
+  checkpoint: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  tallies: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  warnings: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  unsupported: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  batches: Generated<number>;
+  report: NullableJson;
+  last_error: string | null;
+  created_at: DefaultTimestamp;
+  started_at: Timestamp | null;
+  updated_at: DefaultTimestamp;
+  finished_at: Timestamp | null;
+}
+
+/** What one run did with one source record. */
+export interface ImportRecordTable {
+  run_id: string;
+  workspace_id: number;
+  entity_kind: string;
+  source_id: string;
+  outcome: ImportOutcome;
+  target_id: string | null;
+  checksum: string | null;
+  sampled: Generated<boolean>;
+  error: NullableJson;
+}
+
+/** An imported object by (import source, source system, entity kind, source id) (IMP-009). */
+export interface ImportExternalIdTable {
+  workspace_id: number;
+  import_source: string;
+  source_system: string;
+  entity_kind: string;
+  source_id: string;
+  target_id: string;
+  checksum: string;
+  first_run_id: string | null;
+  last_run_id: string | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
 /** An authenticator-app secret, sealed under the password pepper (M1-084). */
 export interface TotpCredentialTable {
   user_id: number;
@@ -1787,6 +1849,9 @@ export interface Database {
   job: JobTable;
   bulk_operation: BulkOperationTable;
   bulk_item: BulkItemTable;
+  import_run: ImportRunTable;
+  import_record: ImportRecordTable;
+  import_external_id: ImportExternalIdTable;
   workflow_map: WorkflowMapTable;
   workflow_map_entry: WorkflowMapEntryTable;
   workflow_migration: WorkflowMigrationTable;
