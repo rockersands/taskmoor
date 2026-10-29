@@ -28,6 +28,13 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-051 ticket view** (no migration). `apps/web/src/tickets/view/` (`TicketPage`,
+  `ActivityPanel`, `client.ts`, fixtures, stories, tests) replaces the interim
+  `TicketAttachmentsPage` at `#/tickets/<key>`; `styles/ticket-view.css`; e2e
+  `apps/web/e2e/ticket.spec.ts`. The create form now links the ticket it made. Shortcuts live in
+  the page (a document `keydown` listener that ignores fields and dialogs). Not yet: a people
+  picker (only assign to me and unassign), custom fields in the view, adding links, move and
+  clone from the view, ticket actions in the command palette (AGL-018 (1)).
 - **M1-028 workflow maps** (migration 0042; ADR-045; ADR-039 amended). A ticket's workflow is
   the one its track's map gives its ticket type: `workflow_map` (default workflow and entries per
   type; the default map for tracks without one; a local-mode track owns its own),

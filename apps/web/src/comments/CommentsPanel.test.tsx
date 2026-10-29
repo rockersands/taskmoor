@@ -9,6 +9,7 @@ import type { Locale } from '../i18n/locale';
 import { stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
+import { SHOP_41 } from '../tickets/view/fixtures';
 import { CommentsPanel } from './CommentsPanel';
 import type { CommentList } from './client';
 import { COMMENTS, fakeCommentClient, STATUS_LOCK } from './fixtures';
@@ -191,7 +192,7 @@ describe('the comments section (M1-018)', () => {
   });
 
   it('[CORE-020] sits on the ticket page and reads the comments from the backend', async () => {
-    const ticket = { id: 41, key: 'SHOP-41', summary: 'Checkout fails for expired cards' };
+    const ticket = SHOP_41;
     const calls = stubBackend({
       'GET /tickets/SHOP-41': () => jsonResponse(200, { ticket }),
       'GET /tickets/41/attachments': () =>

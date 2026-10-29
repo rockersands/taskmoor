@@ -1,0 +1,162 @@
+import type { PmJson } from '@taskmoor/richtext';
+import { api } from '../../api/client';
+
+export interface Person {
+  id: number;
+  name: string;
+}
+
+/** A ticket as `GET /api/v1/tickets/:id` shows it, as far as the ticket view uses it. */
+export interface TicketDetails {
+  id: number;
+  key: string;
+  track: { id: number; key: string; name: string };
+  ticketType: { id: number; name: string };
+  parent: { id: number; key: string | null; summary: string | null } | null;
+  status: { id: number; name: string; stage: 'new' | 'active' | 'closed' };
+  summary: string;
+  description?: PmJson | null;
+  assignee: Person | null;
+  requester: Person | null;
+  creator?: Person | null;
+  startDate: string | null;
+  dueDate: string | null;
+  priority: { id: number; name: string } | null;
+  closeReason: { id: number; name: string } | null;
+  visibilityLevel: { id: number; name: string } | null;
+  labels: string[];
+  targetReleases: { id: number; name: string }[];
+  foundInReleases: { id: number; name: string }[];
+  areas: { id: number; name: string }[];
+  followerCount: number;
+  voteCount: number;
+  timeTracking: {
+    originalEstimate: number | null;
+    remainingEstimate: number | null;
+    timeSpent: number;
+  };
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Transition {
+  id: number;
+  name: string;
+  to: { id: number; name: string; stage: string };
+  /** Fields the transition asks for; the view runs those without any. */
+  layout: string[];
+}
+
+export interface HistoryEntry {
+  id: string;
+  at: string;
+  actor: Person | null;
+  field: string;
+  from: { value: string | null; display: string | null };
+  to: { value: string | null; display: string | null };
+  transitionId: number | null;
+}
+
+export interface TimeEntry {
+  id: number;
+  author: Person;
+  startedAt: string;
+  duration: number;
+  description: string;
+  visibility: unknown;
+}
+
+export interface TicketLink {
+  id: number;
+  type: { id: number; name: string };
+  phrase: string;
+  ticket: { id: number; key: string; summary: string; closed: boolean };
+}
+
+export interface WebLink {
+  id: number;
+  url: string;
+  title: string;
+}
+
+export interface Priority {
+  id: number;
+  name: string;
+}
+
+export type TicketEdit = Partial<{
+  summary: string;
+  assigneeId: number | null;
+  priorityId: number | null;
+  labels: string[];
+  startDate: string | null;
+  dueDate: string | null;
+}>;
+
+/** The endpoints the ticket view uses. Stories and tests pass their own. */
+export interface TicketClient {
+  get: (ticket: string) => Promise<TicketDetails>;
+  edit: (id: number, change: TicketEdit) => Promise<TicketDetails>;
+  transitions: (id: number) => Promise<Transition[]>;
+  transition: (
+    id: number,
+    transitionId: number,
+    fields?: Record<string, unknown>,
+  ) => Promise<TicketDetails>;
+  following: (id: number) => Promise<{ count: number; mine: boolean }>;
+  follow: (id: number, on: boolean) => Promise<void>;
+  votes: (id: number) => Promise<{ count: number; mine: boolean }>;
+  vote: (id: number, on: boolean) => Promise<void>;
+  history: (
+    id: number,
+    before?: string,
+  ) => Promise<{ changes: HistoryEntry[]; next: string | null }>;
+  timeEntries: (id: number) => Promise<TimeEntry[]>;
+  logTime: (id: number, entry: { duration: string; description: string }) => Promise<TimeEntry>;
+  links: (id: number) => Promise<{ links: TicketLink[]; webLinks: WebLink[] }>;
+  priorities: () => Promise<Priority[]>;
+  closeReasons: () => Promise<Priority[]>;
+}
+
+export const ticketClient: TicketClient = {
+  get: async (ticket) =>
+    (await api<{ ticket: TicketDetails }>(`/tickets/${encodeURIComponent(ticket)}`)).ticket,
+  edit: async (id, change) =>
+    (await api<{ ticket: TicketDetails }>(`/tickets/${id}`, { method: 'PATCH', body: change }))
+      .ticket,
+  transitions: async (id) =>
+    (await api<{ transitions: Transition[] }>(`/tickets/${id}/transitions`)).transitions,
+  transition: async (id, transitionId, fields) =>
+    (
+      await api<{ ticket: TicketDetails }>(`/tickets/${id}/transitions`, {
+        method: 'POST',
+        body: { transitionId, ...(fields && Object.keys(fields).length > 0 ? { fields } : {}) },
+      })
+    ).ticket,
+  following: (id) => api<{ count: number; mine: boolean }>(`/tickets/${id}/followers`),
+  follow: async (id, on) => {
+    await api<unknown>(`/tickets/${id}/followers/me`, { method: on ? 'PUT' : 'DELETE' });
+  },
+  votes: (id) => api<{ count: number; mine: boolean }>(`/tickets/${id}/votes`),
+  vote: async (id, on) => {
+    await api<unknown>(`/tickets/${id}/votes`, { method: on ? 'PUT' : 'DELETE' });
+  },
+  history: (id, before) =>
+    api<{ changes: HistoryEntry[]; next: string | null }>(
+      `/tickets/${id}/history?limit=50${before === undefined ? '' : `&cursor=${before}`}`,
+    ),
+  timeEntries: async (id) =>
+    (await api<{ timeEntries: TimeEntry[] }>(`/tickets/${id}/time-entries`)).timeEntries,
+  logTime: async (id, entry) =>
+    (
+      await api<{ timeEntry: TimeEntry }>(`/tickets/${id}/time-entries`, {
+        method: 'POST',
+        body: entry,
+      })
+    ).timeEntry,
+  links: (id) => api<{ links: TicketLink[]; webLinks: WebLink[] }>(`/tickets/${id}/links`),
+  priorities: async () => (await api<{ priorities: Priority[] }>('/priorities')).priorities,
+  closeReasons: async () =>
+    (await api<{ closeReasons: Priority[] }>('/close-reasons')).closeReasons,
+};

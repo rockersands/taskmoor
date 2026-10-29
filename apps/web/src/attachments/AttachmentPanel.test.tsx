@@ -6,10 +6,12 @@ import { MEMBER } from '../admin/fixtures';
 import { type Handler, noContent, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
+import { SHOP_41 } from '../tickets/view/fixtures';
 import type { Attachment } from './client';
 import { ATTACHMENTS, SERVER_LOG, ZIP_LISTING } from './fixtures';
 
-const TICKET = { id: 41, key: 'SHOP-41', summary: 'Checkout fails for expired cards' };
+// The whole ticket the page shows (M1-051).
+const TICKET = SHOP_41;
 
 function openTicket(
   handlers: Record<string, Handler> = {},
@@ -241,13 +243,14 @@ describe('the attachment panel (M1-016)', () => {
     window.location.hash = '#/tickets/SHOP-41';
     const errors: Error[] = [];
     render(<App session={MEMBER} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
-    const main = screen.getByRole('main');
-    await within(main).findAllByRole('listitem');
+    await within(screen.getByRole('main')).findAllByRole('listitem');
+    // The panel's own text: the rest of the ticket page has its own test (M1-051).
+    const main = document.querySelector('.attachment-panel') as HTMLElement;
     const texts = visibleTexts(main).filter(
       // File names are data, not interface text.
       (text) => !ATTACHMENTS.some((a) => a.name === text),
     );
-    expect(texts.length).toBeGreaterThan(20);
+    expect(texts.length).toBeGreaterThan(15);
     expect(untranslated(texts)).toEqual([]);
     expect(errors).toEqual([]);
   });

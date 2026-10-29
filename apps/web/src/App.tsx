@@ -4,7 +4,6 @@ import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
-import { TicketAttachmentsPage } from './attachments/TicketAttachmentsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
@@ -30,6 +29,7 @@ import type { NavItem } from './shell/NavList';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
+import { TicketPage } from './tickets/view/TicketPage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
@@ -255,7 +255,7 @@ function Pages() {
   } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {
     active = 'tracks';
     const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
-    content = <TicketAttachmentsPage key={ticket} ticket={ticket} />;
+    content = <TicketPage key={ticket} ticket={ticket} />;
   } else if (hash.startsWith(`${BULK}/`) && hash.length > BULK.length + 1) {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');

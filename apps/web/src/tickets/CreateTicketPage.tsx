@@ -92,6 +92,8 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [problem, setProblem] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  /** The ticket just created, to open it (M1-051). */
+  const [created, setCreated] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -167,11 +169,13 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
     setBusy(true);
     setProblem(null);
     setMessage('');
+    setCreated(null);
     setErrors({});
     try {
       const made = await client.create(createBody(track, typeId, form.value, values, docs));
       clearForm();
       setMessage(t('tickets.create.created', { key: made.key }));
+      setCreated(made.key);
     } catch (e) {
       const body = e instanceof ApiError ? (e.body as { fields?: Record<string, string> }) : null;
       if (body?.fields) {
@@ -517,6 +521,13 @@ export function CreateTicketPage({ client = createClient }: CreateTicketPageProp
           <p role="status" className="form-status">
             {message}
           </p>
+          {created && (
+            <p className="page-note">
+              <a href={`#/tickets/${encodeURIComponent(created)}`}>
+                {t('tickets.create.open', { key: created })}
+              </a>
+            </p>
+          )}
           <div className="form-actions">
             <button
               type="submit"
