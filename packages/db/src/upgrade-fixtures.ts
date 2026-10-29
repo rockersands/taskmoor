@@ -953,6 +953,26 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE u.email = 'seed@example.com' AND k.summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0047_boards': {
+    tables: {
+      board: "name = 'Seed board' AND filter_query = 'summary ~ seed'",
+      board_admin:
+        "board_id IN (SELECT id FROM board WHERE name = 'Seed board') AND user_id IN (SELECT id FROM app_user WHERE email = 'seed@example.com')",
+    },
+    seed: async (db) => {
+      // A board kept by the seed person, with one column and its admin.
+      await sql`INSERT INTO board (workspace_id, name, kind, location_user_id, filter_query, columns,
+          swimlanes, card_rules)
+        SELECT 1, 'Seed board', 'kanban', id, 'summary ~ seed',
+               '[{"id": "c1", "name": "New", "statusIds": [], "min": null, "max": null}]'::jsonb,
+               '{"mode": "none", "lanes": [], "unassigned": "last", "otherName": "Everything else"}'::jsonb,
+               '{"colourBy": "type", "colours": [], "fields": [], "daysInColumn": true}'::jsonb
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO board_admin (workspace_id, board_id, user_id)
+        SELECT 1, b.id, u.id FROM board b, app_user u
+         WHERE b.name = 'Seed board' AND u.email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

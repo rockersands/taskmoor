@@ -691,6 +691,19 @@ export const EVENT_TYPES = {
     }),
   },
   'workflow_map.deleted': { subject: 'workflow_map', payload: z.object({ name: z.string() }) },
+  // Boards (M1-043): `query` is the board's filter query; `changes` says what an update
+  // changed (columns, swimlanes, board filters and card rules as whole lists).
+  'board.created': {
+    subject: 'board',
+    payload: z.object({
+      name: z.string(),
+      kind: z.enum(['scrum', 'kanban']),
+      trackId: id.nullable(),
+      query: z.string(),
+    }),
+  },
+  'board.updated': { subject: 'board', payload: z.object({ changes }) },
+  'board.deleted': { subject: 'board', payload: z.object({ name: z.string() }) },
   /**
    * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
    * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay

@@ -659,6 +659,39 @@ export interface TicketVisitTable {
   visited_at: DefaultTimestamp;
 }
 
+/**
+ * A board (M1-043; AGL-001): its tickets are those its filter query matches, less those its
+ * sub-filter hides; the configuration is JSON the routes validate (`boards/model.ts`).
+ */
+export interface BoardTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  kind: 'scrum' | 'kanban';
+  /** Exactly one of the two: a track, or the person who owns the board. */
+  location_track_id: number | null;
+  location_user_id: number | null;
+  filter_query: string;
+  sub_filter_query: string | null;
+  columns: Json;
+  swimlanes: Json;
+  board_filters: ColumnType<JsonValue, string | undefined, string>;
+  board_filter_display: ColumnType<'buttons' | 'dropdown', 'buttons' | 'dropdown' | undefined>;
+  card_rules: Json;
+  version: Generated<number>;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** Someone who may change a board besides its track's administrators (AGL-001 (2)). */
+export interface BoardAdminTable {
+  workspace_id: number;
+  board_id: number;
+  user_id: number;
+}
+
 /** A person's own settings. */
 export interface UserPreferenceTable {
   user_id: number;
@@ -1808,6 +1841,8 @@ export interface Database {
   ticket_web_link: TicketWebLinkTable;
   ticket_follower: TicketPersonTable;
   ticket_visit: TicketVisitTable;
+  board: BoardTable;
+  board_admin: BoardAdminTable;
   ticket_vote: TicketPersonTable;
   user_preference: UserPreferenceTable;
   time_tracking_setting: TimeTrackingSettingTable;

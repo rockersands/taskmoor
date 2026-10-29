@@ -1,0 +1,636 @@
+import { useMigratedDatabase } from '@taskmoor/db/testing';
+import { hashPassword } from '@taskmoor/iam';
+import type { FastifyInstance, InjectOptions } from 'fastify';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { buildApp } from '../app';
+import { SESSION_COOKIE } from '../auth';
+
+const PASSWORD = 'lantern copper meadow';
+let address = 0;
+const nextAddress = () => `100.75.${Math.floor(++address / 250)}.${(address % 250) + 1}`;
+
+function sessionCookie(header: string | string[] | undefined): string {
+  const list = Array.isArray(header) ? header : header ? [header] : [];
+  return (
+    (
+      list.find(
+        (c) => c.startsWith(`${SESSION_COOKIE}=`) && !c.startsWith(`${SESSION_COOKIE}=;`),
+      ) ?? ''
+    ).split(';')[0] ?? ''
+  );
+}
+
+interface Card {
+  id: number;
+  key: string;
+  columnId: string;
+  laneId: string;
+  colour: string | null;
+  status: { id: number; name: string };
+  fields: Record<string, unknown>;
+  daysInColumn: number | null;
+}
+interface Data {
+  columns: { id: string; name: string; count: number; shown: number; wip: string | null }[];
+  lanes: { id: string; name: string; catchAll: boolean }[];
+  cards: Card[];
+  unmapped: { count: number; statuses: { id: number; name: string; count: number }[] };
+  truncated: boolean;
+  warnings: string[];
+}
+
+/**
+ * Boards (M1-043): configuration, the board data through the search compiler (permission
+ * filter, query lanes, board filters, WIP counts, card rules) and card moves through the ticket
+ * routes.
+ */
+describe('boards (M1-043)', () => {
+  const database = useMigratedDatabase();
+  let app: FastifyInstance;
+  const users: Record<string, { id: number; cookie: string }> = {};
+  const tracks: Record<string, number> = {};
+  const status: Record<string, number> = {};
+  const priority: Record<string, number> = {};
+  const tickets: Record<string, { id: number; key: string }> = {};
+
+  const as = (who: string, options: InjectOptions) =>
+    app.inject({
+      ...options,
+      remoteAddress: nextAddress(),
+      headers: { ...(options.headers ?? {}), cookie: users[who]?.cookie ?? '' },
+    });
+  const get = (who: string, url: string) => as(who, { method: 'GET', url });
+  const post = (who: string, url: string, payload: unknown) =>
+    as(who, { method: 'POST', url, payload: payload as Record<string, unknown> });
+  const patch = (who: string, url: string, payload: unknown) =>
+    as(who, { method: 'PATCH', url, payload: payload as Record<string, unknown> });
+  const S = (name: string) => status[name] as number;
+  const T = (name: string) => tickets[name] as { id: number; key: string };
+
+  async function createBoard(who: string, body: Record<string, unknown>) {
+    const res = await post(who, '/api/v1/boards', body);
+    expect(res.statusCode, res.body).toBe(201);
+    return res.json().board as { id: number; columns: { id: string }[]; version: number };
+  }
+  async function data(who: string, boardId: number, filters?: string[]) {
+    const res = await get(
+      who,
+      `/api/v1/boards/${boardId}/data${filters ? `?filters=${filters.join(',')}` : ''}`,
+    );
+    expect(res.statusCode, res.body).toBe(200);
+    return res.json() as Data;
+  }
+  const keysIn = (d: Data, columnId: string) =>
+    d.cards.filter((c) => c.columnId === columnId).map((c) => c.key);
+  async function ticket(name: string, track: string, extra: Record<string, unknown> = {}) {
+    const res = await post('alice', '/api/v1/tickets', { track, summary: name, ...extra });
+    expect(res.statusCode, res.body).toBe(201);
+    const t = res.json().ticket as { id: number; key: string };
+    tickets[name] = t;
+    return t;
+  }
+  /** Puts a ticket in a status directly, as a workflow migration would. */
+  async function setStatus(name: string, statusName: string) {
+    await database.db
+      .updateTable('ticket')
+      .set({ status_id: S(statusName) })
+      .where('id', '=', T(name).id)
+      .execute();
+  }
+
+  const COLUMNS = () => [
+    { id: 'todo', name: 'To do', statusIds: [S('New')] },
+    { id: 'doing', name: 'Doing', statusIds: [S('Active'), S('In Review')], max: 3 },
+    { id: 'done', name: 'Done', statusIds: [S('Closed')], min: 2 },
+  ];
+
+  beforeAll(async () => {
+    app = await buildApp({ db: database.db, version: 'test', roles: ['api'] });
+    const hash = await hashPassword(PASSWORD);
+    for (const [name, admin] of [
+      ['admin', true],
+      ['alice', false],
+      ['bob', false],
+      ['carol', false],
+    ] as const) {
+      const row = await database.db
+        .insertInto('app_user')
+        .values({
+          workspace_id: 1,
+          email: `${name}@example.com`,
+          name,
+          password_hash: hash,
+          is_site_admin: admin,
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/session',
+        payload: { email: `${name}@example.com`, password: PASSWORD },
+        remoteAddress: nextAddress(),
+      });
+      users[name] = { id: row.id, cookie: sessionCookie(res.headers['set-cookie']) };
+    }
+    const roles = await database.db.selectFrom('role').select(['id', 'name']).execute();
+    const role = (name: string) => roles.find((r) => r.name === name)?.id as number;
+    for (const [key, members] of [
+      [
+        'BA',
+        [
+          ['alice', 'Members'],
+          ['bob', 'Members'],
+          ['carol', 'Administrators'],
+        ],
+      ],
+      [
+        'BB',
+        [
+          ['alice', 'Members'],
+          ['bob', 'Members'],
+        ],
+      ],
+      ['BC', [['alice', 'Members']]],
+    ] as const) {
+      const res = await as('admin', {
+        method: 'POST',
+        url: '/api/v1/tracks',
+        payload: { key, name: `Track ${key}`, mode: 'shared' },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+      tracks[key] = res.json().track.id;
+      for (const [who, roleName] of members) {
+        await database.db
+          .insertInto('track_role_actor')
+          .values({
+            workspace_id: 1,
+            track_id: tracks[key] as number,
+            role_id: role(roleName),
+            user_id: users[who]?.id as number,
+          })
+          .execute();
+      }
+    }
+    for (const s of await database.db.selectFrom('status').select(['id', 'name']).execute()) {
+      status[s.name] = s.id;
+    }
+    for (const p of await database.db.selectFrom('priority').select(['id', 'name']).execute()) {
+      priority[p.name] = p.id;
+    }
+    await ticket('a1', 'BA', { priorityId: priority.Urgent, assigneeId: users.alice?.id });
+    await ticket('a2', 'BA', { assigneeId: users.bob?.id });
+    await ticket('b1', 'BB', { labels: ['blue'] });
+    await ticket('b2', 'BB', { labels: ['blue'], assigneeId: users.alice?.id });
+    await ticket('c1', 'BC', { priorityId: priority.Urgent });
+    await ticket('c2', 'BC');
+  });
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('[AGL-001] shows the tickets of every track its query covers, in rank order', async () => {
+    const board = await createBoard('alice', {
+      name: 'Three tracks',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track IN (BA, BB, BC)' },
+    });
+    // Default columns: one per status stage of the board's workflows.
+    expect(board.columns.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
+    const d = await data('alice', board.id);
+    expect(d.cards.map((c) => c.key)).toEqual(
+      ['a1', 'a2', 'b1', 'b2', 'c1', 'c2'].map((n) => T(n).key),
+    );
+    expect(d.columns.map((c) => [c.name, c.count])).toEqual([
+      ['New', 6],
+      ['Active', 0],
+      ['Closed', 0],
+    ]);
+    // The board's statuses: those of the default workflow, each in a column.
+    const read = (await get('alice', `/api/v1/boards/${board.id}`)).json();
+    expect(read.board.mayConfigure).toBe(true);
+    expect(read.statuses.map((s: { name: string }) => s.name)).toEqual([
+      'New',
+      'Active',
+      'In Review',
+      'Closed',
+    ]);
+    expect(read.statuses.every((s: { columnId: string | null }) => s.columnId !== null)).toBe(true);
+    const created = await database.db
+      .selectFrom('domain_event')
+      .select('payload')
+      .where('type', '=', 'board.created')
+      .where('subject_id', '=', String(board.id))
+      .executeTakeFirstOrThrow();
+    expect(created.payload).toMatchObject({ name: 'Three tracks', kind: 'kanban' });
+  });
+
+  it('[QRY-008] never shows or counts a ticket the viewer may not see', async () => {
+    const board = await createBoard('alice', {
+      name: 'Shared view',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track IN (BA, BB, BC)' },
+    });
+    const d = await data('bob', board.id);
+    expect(d.cards.map((c) => c.key)).toEqual(['a1', 'a2', 'b1', 'b2'].map((n) => T(n).key));
+    expect(d.columns[0]?.count).toBe(4);
+    // Bob does not browse BC: the board still names it, and shows him the rest.
+    expect((await data('alice', board.id)).columns[0]?.count).toBe(6);
+  });
+
+  it('[AGL-001] only board admins, track admins of the location and administrators configure', async () => {
+    const board = await createBoard('alice', {
+      name: 'Configured',
+      kind: 'scrum',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+    });
+    const refused = await patch('bob', `/api/v1/boards/${board.id}`, { name: 'Taken over' });
+    expect(refused.statusCode).toBe(403);
+    expect((await get('bob', `/api/v1/boards/${board.id}`)).json().board.mayConfigure).toBe(false);
+    const byTrackAdmin = await patch('carol', `/api/v1/boards/${board.id}`, { name: 'By carol' });
+    expect(byTrackAdmin.statusCode, byTrackAdmin.body).toBe(200);
+    const byBoardAdmin = await patch('alice', `/api/v1/boards/${board.id}`, {
+      name: 'By alice',
+      adminIds: [users.alice?.id, users.bob?.id],
+      version: byTrackAdmin.json().board.version,
+    });
+    expect(byBoardAdmin.statusCode, byBoardAdmin.body).toBe(200);
+    expect(byBoardAdmin.json().board.admins.map((a: { name: string }) => a.name)).toEqual([
+      'alice',
+      'bob',
+    ]);
+    expect((await patch('bob', `/api/v1/boards/${board.id}`, { name: 'Now bob' })).statusCode).toBe(
+      200,
+    );
+    // A stale version is refused.
+    const stale = await patch('alice', `/api/v1/boards/${board.id}`, { name: 'Old', version: 1 });
+    expect(stale.statusCode).toBe(409);
+    // A board kept by a person is theirs and their board admins' alone.
+    const own = await createBoard('bob', {
+      name: 'Bob only',
+      kind: 'kanban',
+      source: { query: 'track = BA' },
+    });
+    expect((await get('alice', `/api/v1/boards/${own.id}`)).statusCode).toBe(404);
+    expect((await get('admin', `/api/v1/boards/${own.id}`)).statusCode).toBe(200);
+    const listed = (await get('alice', '/api/v1/boards')).json().boards as { id: number }[];
+    expect(listed.some((b) => b.id === own.id)).toBe(false);
+    const removed = await as('carol', { method: 'DELETE', url: `/api/v1/boards/${board.id}` });
+    expect(removed.statusCode).toBe(204);
+  });
+
+  it('[AGL-002] shows statuses mapped to one column together and counts unmapped ones', async () => {
+    const board = await createBoard('alice', {
+      name: 'Mapping',
+      kind: 'kanban',
+      trackId: tracks.BB,
+      source: { query: 'track = BB' },
+      columns: [
+        { id: 'todo', name: 'To do', statusIds: [] },
+        { id: 'doing', name: 'Doing', statusIds: [S('Active'), S('In Review')] },
+      ],
+    });
+    await setStatus('b1', 'Active');
+    await setStatus('b2', 'In Review');
+    let d = await data('alice', board.id);
+    expect(keysIn(d, 'doing')).toEqual([T('b1').key, T('b2').key]);
+    // New is in no column: its tickets are counted in the unmapped panel and not shown.
+    await setStatus('b2', 'New');
+    d = await data('alice', board.id);
+    expect(keysIn(d, 'doing')).toEqual([T('b1').key]);
+    expect(d.unmapped).toEqual({
+      count: 1,
+      statuses: [{ id: S('New'), name: 'New', count: 1 }],
+    });
+    await setStatus('b1', 'New');
+    // A status in two columns, an unknown status and a bad query are refused.
+    const twice = await patch('alice', `/api/v1/boards/${board.id}`, {
+      columns: [
+        { name: 'One', statusIds: [S('New')] },
+        { name: 'Two', statusIds: [S('New')] },
+      ],
+    });
+    expect(twice.json()).toEqual({
+      error: 'invalid_fields',
+      fields: { columns: 'status_in_two_columns' },
+    });
+    const unknown = await patch('alice', `/api/v1/boards/${board.id}`, {
+      columns: [{ name: 'One', statusIds: [999_999] }],
+    });
+    expect(unknown.json().fields).toEqual({ columns: 'unknown_status' });
+    const bad = await patch('alice', `/api/v1/boards/${board.id}`, {
+      source: { query: 'status = ' },
+    });
+    expect(bad.json().fields).toEqual({ 'source.query': 'invalid_query' });
+  });
+
+  it('[AGL-003] signals WIP breaches with cards hidden by a board filter still counted', async () => {
+    const board = await createBoard('alice', {
+      name: 'WIP',
+      kind: 'kanban',
+      trackId: tracks.BC,
+      source: { query: 'track IN (BA, BB, BC)' },
+      columns: COLUMNS(),
+    });
+    for (const name of ['a1', 'a2', 'b1', 'b2']) await setStatus(name, 'Active');
+    await setStatus('c1', 'Closed');
+    let d = await data('alice', board.id);
+    const doing = d.columns.find((c) => c.id === 'doing');
+    const done = d.columns.find((c) => c.id === 'done');
+    expect([doing?.count, doing?.wip]).toEqual([4, 'over']);
+    expect([done?.count, done?.wip]).toEqual([1, 'under']);
+    // "Only my tickets" hides cards, never counts.
+    d = await data('alice', board.id, ['mine']);
+    const mine = d.columns.find((c) => c.id === 'doing');
+    expect([mine?.count, mine?.shown, mine?.wip]).toEqual([4, 2, 'over']);
+    for (const name of ['a1', 'a2', 'b1', 'b2', 'c1']) await setStatus(name, 'New');
+  });
+
+  it('[AGL-005] combines active board filters with AND', async () => {
+    const board = await createBoard('alice', {
+      name: 'Filters',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track IN (BA, BB, BC)' },
+      boardFilters: [
+        { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()' },
+        { id: 'blue', name: 'Blue', query: 'labels = blue' },
+      ],
+    });
+    expect((await data('alice', board.id, ['mine'])).cards.map((c) => c.key)).toEqual([
+      T('a1').key,
+      T('b2').key,
+    ]);
+    expect((await data('alice', board.id, ['blue'])).cards.map((c) => c.key)).toEqual([
+      T('b1').key,
+      T('b2').key,
+    ]);
+    expect((await data('alice', board.id, ['mine', 'blue'])).cards.map((c) => c.key)).toEqual([
+      T('b2').key,
+    ]);
+    const unknown = await get('alice', `/api/v1/boards/${board.id}/data?filters=nope`);
+    expect(unknown.json()).toEqual({ error: 'invalid_fields', fields: { filters: 'not_found' } });
+    // A new board comes with the two default board filters.
+    const plain = await createBoard('alice', {
+      name: 'Defaults',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+    });
+    const read = (await get('alice', `/api/v1/boards/${plain.id}`)).json();
+    expect(read.board.boardFilters.map((f: { name: string }) => f.name)).toEqual([
+      'Only my tickets',
+      'Recently updated',
+    ]);
+    expect((await data('alice', plain.id, ['mine', 'recent'])).cards.map((c) => c.key)).toEqual([
+      T('a1').key,
+    ]);
+  });
+
+  it('[AGL-004] puts a ticket in the first query lane it matches, before the catch-all', async () => {
+    const board = await createBoard('alice', {
+      name: 'Lanes',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track IN (BA, BB, BC)' },
+      swimlanes: {
+        mode: 'queries',
+        lanes: [
+          { id: 'expedite', name: 'Expedite', query: 'priority = Urgent ORDER BY created DESC' },
+          { id: 'blue', name: 'Blue', query: 'labels = blue OR priority = Urgent' },
+        ],
+      },
+    });
+    const d = await data('alice', board.id);
+    expect(d.lanes.map((l) => [l.id, l.catchAll])).toEqual([
+      ['expedite', false],
+      ['blue', false],
+      ['other', true],
+    ]);
+    const lane = (name: string) => d.cards.find((c) => c.id === T(name).id)?.laneId;
+    expect(['a1', 'c1', 'b1', 'b2', 'a2', 'c2'].map(lane)).toEqual([
+      'expedite',
+      'expedite',
+      'blue',
+      'blue',
+      'other',
+      'other',
+    ]);
+    // The catch-all lane cannot be removed: it is not a configured lane, and its id is taken.
+    const clash = await patch('alice', `/api/v1/boards/${board.id}`, {
+      swimlanes: { mode: 'queries', lanes: [{ id: 'other', name: 'Mine', query: 'type = Task' }] },
+    });
+    expect(clash.json().fields).toEqual({ 'swimlanes.lanes': 'duplicate_id' });
+    // A lane query someone cannot read matches nothing for them, with a warning.
+    const broken = await patch('alice', `/api/v1/boards/${board.id}`, {
+      swimlanes: { mode: 'queries', lanes: [{ name: 'Broken', query: 'labels = ' }] },
+    });
+    expect(broken.json().fields).toEqual({ 'swimlanes.lanes.0.query': 'invalid_query' });
+  });
+
+  it('[AGL-004] groups by assignee, unassigned first or last, and by parent', async () => {
+    const board = await createBoard('alice', {
+      name: 'People',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track IN (BA, BB)' },
+      swimlanes: { mode: 'assignees', unassigned: 'first' },
+    });
+    let d = await data('alice', board.id);
+    expect(d.lanes.map((l) => l.name)).toEqual(['Unassigned', 'alice', 'bob']);
+    expect(d.cards.find((c) => c.id === T('b1').id)?.laneId).toBe('unassigned');
+    expect(d.cards.find((c) => c.id === T('a2').id)?.laneId).toBe(`user-${users.bob?.id}`);
+    // By parent: b1 and b2 under a1, which bob sees; c2 under c1, which he does not.
+    await database.db
+      .updateTable('ticket')
+      .set({ parent_id: T('a1').id })
+      .where('id', 'in', [T('b1').id, T('b2').id])
+      .execute();
+    await patch('alice', `/api/v1/boards/${board.id}`, {
+      source: { query: 'track IN (BA, BB, BC)' },
+      swimlanes: { mode: 'parents' },
+    });
+    await database.db
+      .updateTable('ticket')
+      .set({ parent_id: T('c1').id })
+      .where('id', '=', T('a2').id)
+      .execute();
+    d = await data('bob', board.id);
+    expect(d.lanes.map((l) => [l.id, l.catchAll])).toEqual([
+      [`parent-${T('a1').id}`, false],
+      ['other', true],
+    ]);
+    const lane = (name: string) => d.cards.find((c) => c.id === T(name).id)?.laneId;
+    expect(['a1', 'a2', 'b1', 'b2'].map(lane)).toEqual([
+      'other',
+      'other',
+      `parent-${T('a1').id}`,
+      `parent-${T('a1').id}`,
+    ]);
+    await database.db.updateTable('ticket').set({ parent_id: null }).execute();
+  });
+
+  it('[AGL-006] colours a card by the first matching rule and shows the chosen fields', async () => {
+    const board = await createBoard('alice', {
+      name: 'Cards',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track IN (BA, BB)' },
+      cardRules: {
+        colourBy: 'queries',
+        colours: [
+          { query: 'priority = Urgent', colour: '#c4314b' },
+          { query: 'track = BA', colour: '#2f6fdb' },
+        ],
+        fields: ['assignee', 'labels'],
+      },
+    });
+    const d = await data('alice', board.id);
+    const card = (name: string) => d.cards.find((c) => c.id === T(name).id) as Card;
+    expect([card('a1').colour, card('a2').colour, card('b1').colour]).toEqual([
+      '#c4314b',
+      '#2f6fdb',
+      null,
+    ]);
+    expect(card('b2').fields).toEqual({
+      assignee: { id: users.alice?.id, name: 'alice' },
+      labels: ['blue'],
+    });
+    const many = await patch('alice', `/api/v1/boards/${board.id}`, {
+      cardRules: {
+        colourBy: 'none',
+        fields: Array.from({ length: 11 }, (_, i) => `cf[${i + 1}]`),
+      },
+    });
+    expect(many.statusCode).toBe(400);
+  });
+
+  it('[AGL-006] resets days in column only when the card changes column', async () => {
+    const board = await createBoard('alice', {
+      name: 'Days',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+    });
+    const day = 86_400_000;
+    const now = Date.now();
+    await database.db
+      .updateTable('ticket')
+      .set({ created_at: new Date(now - 10 * day) })
+      .where('id', '=', T('a2').id)
+      .execute();
+    await database.db
+      .updateTable('ticket_change')
+      .set({ at: new Date(now - 10 * day) })
+      .where('ticket_id', '=', T('a2').id)
+      .execute();
+    expect(
+      (await data('alice', board.id)).cards.find((c) => c.id === T('a2').id)?.daysInColumn,
+    ).toBe(10);
+    // Into Doing four days ago, then within Doing two days ago: four days in the column.
+    const changes = [
+      ['New', 'Active', 4],
+      ['Active', 'In Review', 2],
+    ] as const;
+    for (const [from, to, ago] of changes) {
+      await database.db
+        .insertInto('ticket_change')
+        .values({
+          workspace_id: 1,
+          ticket_id: T('a2').id,
+          change_set: '1',
+          at: new Date(now - ago * day),
+          field: 'status',
+          from_value: String(S(from)),
+          to_value: String(S(to)),
+        })
+        .execute();
+    }
+    await setStatus('a2', 'In Review');
+    const d = await data('alice', board.id);
+    const a2 = d.cards.find((c) => c.id === T('a2').id);
+    expect([a2?.columnId, a2?.daysInColumn]).toEqual(['doing', 4]);
+    await setStatus('a2', 'New');
+  });
+
+  it('[AGL-014] hides what the sub-filter leaves out', async () => {
+    const board = await createBoard('alice', {
+      name: 'Sub-filter',
+      kind: 'kanban',
+      trackId: tracks.BB,
+      source: { query: 'track = BB' },
+      subFilter: { query: 'labels IS EMPTY OR assignee IS NOT EMPTY' },
+    });
+    const d = await data('alice', board.id);
+    expect(d.cards.map((c) => c.key)).toEqual([T('b2').key]);
+    expect(d.columns[0]?.count).toBe(1);
+  });
+
+  it('[AGL-002] moves a card along the matching transition, asking which when several', async () => {
+    const board = await createBoard('alice', {
+      name: 'Moves',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track IN (BA, BB)' },
+      columns: [
+        { id: 'todo', name: 'To do', statusIds: [S('New')] },
+        { id: 'doing', name: 'Doing', statusIds: [S('Active')] },
+        { id: 'review', name: 'Review or done', statusIds: [S('In Review'), S('Closed')] },
+      ],
+    });
+    const move = (who: string, body: Record<string, unknown>) =>
+      post(who, `/api/v1/boards/${board.id}/moves`, body);
+    // One transition leads into Doing: it runs, with its event and history.
+    const started = await move('alice', { ticket: T('a2').id, columnId: 'doing' });
+    expect(started.statusCode, started.body).toBe(200);
+    expect(started.json()).toMatchObject({
+      transitioned: true,
+      ranked: false,
+      ticket: { status: { name: 'Active' } },
+    });
+    const history = (await get('alice', `/api/v1/tickets/${T('a2').id}/history`)).json();
+    expect(JSON.stringify(history)).toContain('Active');
+    // From Active, "Send to review" and "Close" both lead into the last column.
+    const ask = await move('alice', { ticket: T('a2').id, columnId: 'review' });
+    expect(ask.statusCode).toBe(409);
+    expect(ask.json().error).toBe('transition_choice');
+    expect(
+      ask
+        .json()
+        .transitions.map((t: { name: string }) => t.name)
+        .sort(),
+    ).toEqual(['Close', 'Send to review']);
+    const chosen = ask
+      .json()
+      .transitions.find((t: { name: string }) => t.name === 'Send to review');
+    const reviewed = await move('alice', {
+      ticket: T('a2').id,
+      columnId: 'review',
+      transitionId: chosen.id,
+      before: T('a1').id,
+    });
+    expect(reviewed.statusCode, reviewed.body).toBe(200);
+    expect(reviewed.json()).toMatchObject({ transitioned: true, ranked: true });
+    // Ranked before a1: it now leads the board.
+    expect((await data('alice', board.id)).cards[0]?.key).toBe(T('a2').key);
+    // No transition leads back to To do from In Review.
+    const none = await move('alice', { ticket: T('a2').id, columnId: 'todo' });
+    expect(none.json()).toEqual({ error: 'no_transition', columnId: 'todo' });
+    // Within a column, only the rank changes.
+    const rankOnly = await move('alice', {
+      ticket: T('a2').id,
+      columnId: 'review',
+      after: T('b2').id,
+    });
+    expect(rankOnly.json()).toMatchObject({ transitioned: false, ranked: true });
+    // A ticket off the board, or one the mover may not see, is refused.
+    const off = await move('alice', { ticket: T('c1').id, columnId: 'doing' });
+    expect(off.json()).toEqual({ error: 'invalid_fields', fields: { ticket: 'not_on_board' } });
+    const unseen = await move('bob', { ticket: T('c1').id, columnId: 'doing' });
+    expect(unseen.json().fields).toEqual({ ticket: 'not_on_board' });
+    await setStatus('a2', 'New');
+  });
+});

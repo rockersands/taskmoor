@@ -2065,6 +2065,53 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { event: 'dev.reopened' },
         }),
     },
+    // Boards (M1-043): a board in the ticket's track over its tickets, changed, a card moved along the
+    // one transition into the Active column (the ticket route's own event), and removed.
+    {
+      route: 'POST /api/v1/boards',
+      expect: 'board.created',
+      run: async () => {
+        const ticket = await admin({ method: 'GET', url: `/api/v1/tickets/${state.ticket}` });
+        const track = ticket.json().ticket.track as { id: number; key: string };
+        const res = await call(String(state.bo1b), {
+          method: 'POST',
+          url: '/api/v1/boards',
+          payload: {
+            name: 'Team board',
+            kind: 'kanban',
+            trackId: track.id,
+            source: { query: `track = ${track.key}` },
+          },
+        });
+        state.board = res.json().board?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/boards/:id',
+      expect: 'board.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/boards/${state.board}`,
+          payload: { name: 'Team board (kanban)' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/boards/:id/moves',
+      expect: 'ticket.transitioned',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'POST',
+          url: `/api/v1/boards/${state.board}/moves`,
+          payload: { ticket: state.ticket, columnId: 'c2' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/boards/:id',
+      expect: 'board.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/boards/${state.board}` }),
+    },
     {
       route: 'DELETE /api/v1/workflows/:id',
       expect: 'workflow.deleted',

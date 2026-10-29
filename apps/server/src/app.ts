@@ -28,6 +28,7 @@ import { registerAttachmentRoutes } from './routes/attachments';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
+import { registerBoardRoutes } from './routes/boards';
 import { registerBulkRoutes } from './routes/bulk';
 import { registerCommentRoutes } from './routes/comments';
 import { registerDirectoryRoutes } from './routes/directories';
@@ -261,6 +262,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerImportRoutes(app, db);
     registerHomeRoutes(app, db, fieldCatalogs);
+    // Boards (M1-043): reads go through the search compiler, moves through the ticket routes.
+    registerBoardRoutes(app, db, authorizer, fieldCatalogs, {
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
     registerAuditRoutes(app, db);
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);
