@@ -5,7 +5,8 @@ import { expect, type Page, test } from '@playwright/test';
  * Administration journeys for tracks and workflow maps (M1-053): a site administrator adds a
  * track, renames it, gives a role to a person and takes it back, archives and restores it;
  * makes a workflow map, gives a ticket type its own workflow, puts a track on the map and
- * deletes the map once no track uses it. No serious axe issue. They use the attachments
+ * deletes the map once no track uses it; adds a choice list, keeps its options and deletes it.
+ * No serious axe issue. They use the attachments
  * database (preview 4174), whose site administrator the API server made.
  */
 const BASE = 'http://localhost:4174';
@@ -133,4 +134,41 @@ test('[WF-001] the administrator makes a workflow map, puts a track on it and de
   await page.getByRole('button', { name: `Delete map ${map}` }).click();
   await page.getByRole('button', { name: 'Yes, delete' }).click();
   await expect(page.getByText(`${map} was deleted.`)).toBeVisible();
+});
+
+test('[CORE-009] the administrator adds a choice list, keeps its options and deletes it', async ({
+  page,
+}, testInfo) => {
+  await signIn(page);
+  const field = `Region ${testInfo.project.name} ${Date.now()}`;
+  await page.goto(`${BASE}/#/admin/fields`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Fields' })).toBeVisible();
+  const add = page.getByRole('form', { name: 'Add a field' });
+  await add.getByLabel('Field name').fill(field);
+  await add.getByLabel('Type').selectOption('select');
+  await add.getByLabel('Holds several values').check();
+  await add.getByRole('button', { name: 'Add a field' }).click();
+  await expect(page.getByText(`${field} was added.`)).toBeVisible();
+
+  // The new field is open: two options, one renamed, the other no longer offered.
+  const options = page.getByRole('form', { name: /^Add an option to / });
+  for (const value of ['North', 'South']) {
+    await options.getByLabel('New option').fill(value);
+    await options.getByRole('button', { name: 'Add the option' }).click();
+    await expect(page.getByText(`${value} was added.`)).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Rename North' }).click();
+  await page.getByLabel('New name for North').fill('North east');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('The option is called North east now.')).toBeVisible();
+  await page.getByRole('button', { name: 'Stop offering South' }).click();
+  await expect(page.getByText('South is no longer offered.')).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await page.getByRole('button', { name: 'Delete North east' }).click();
+  await expect(page.getByText('North east was deleted.')).toBeVisible();
+
+  await page.getByRole('button', { name: `Delete field ${field}` }).click();
+  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await expect(page.getByText(`${field} was deleted.`)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

@@ -8,6 +8,7 @@ import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
+import { FieldsAdminPage } from './fields/FieldsAdminPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
@@ -91,6 +92,7 @@ const ADMIN_USERS = '#/admin/users';
 const ADMIN_GROUPS = '#/admin/groups';
 const ADMIN_TRACKS = '#/admin/tracks';
 const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
+const ADMIN_FIELDS = '#/admin/fields';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -243,6 +245,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-fields',
+              labelId: 'admin.fields.title' as const,
+              keywords: ['field', 'custom field', 'options', 'choice'],
+              run: () => {
+                window.location.hash = ADMIN_FIELDS;
+              },
+            },
+            {
               id: 'go-groups',
               labelId: 'admin.groups.title' as const,
               keywords: ['group', 'team', 'members', 'nested'],
@@ -288,6 +298,8 @@ function Pages() {
     content = <TracksAdminPage />;
   } else if (isRoute(hash, ADMIN_WORKFLOW_MAPS)) {
     content = <WorkflowMapsPage />;
+  } else if (isRoute(hash, ADMIN_FIELDS)) {
+    content = <FieldsAdminPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;

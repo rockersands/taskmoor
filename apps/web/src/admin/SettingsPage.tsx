@@ -77,6 +77,10 @@ export function SettingsPage() {
               <a href="#/admin/tracks">{t('settings.tracks')}</a>
               <p className="page-note">{t('settings.tracksHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/fields">{t('settings.fields')}</a>
+              <p className="page-note">{t('settings.fieldsHint')}</p>
+            </li>
           </ul>
         </section>
       )}
