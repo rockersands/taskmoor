@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { mkdtempSync, readdirSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { text } from 'node:stream/consumers';
 import { CreateMultipartUploadCommand, S3Client } from '@aws-sdk/client-s3';
@@ -249,7 +249,7 @@ describe('the local disk store', () => {
     const key = newObjectKey(3);
     await local.put(key, Readable.from(['hello']), { maxBytes: 10 });
     const path = local.pathOf(key);
-    expect(path.startsWith(`${localRoot}/w3/`)).toBe(true);
+    expect(relative(localRoot, path).split(sep)[0]).toBe('w3');
     if (process.platform !== 'win32') {
       expect(statSync(path).mode & 0o777).toBe(0o600);
       expect(statSync(join(localRoot, 'w3')).mode & 0o777).toBe(0o700);

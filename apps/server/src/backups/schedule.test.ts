@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
@@ -80,8 +80,11 @@ describe('the backup schedule (M1-101, OPS-008)', () => {
   });
 
   it('[OPS-008] goes to TASKMOOR_BACKUP_DIR, else the data directory, and nowhere when off', () => {
-    expect(backupDirectory({ dataDir: '/data' })).toBe('/data/backups');
-    expect(backupDirectory({ dataDir: '/data', backupDir: '/mnt/backups' })).toBe('/mnt/backups');
+    // Absolute paths of the platform (D:\data\backups on Windows).
+    expect(backupDirectory({ dataDir: '/data' })).toBe(resolve('/data', 'backups'));
+    expect(backupDirectory({ dataDir: '/data', backupDir: '/mnt/backups' })).toBe(
+      resolve('/mnt/backups'),
+    );
     expect(backupDirectory({ dataDir: '/data', backupDir: 'off' })).toBeNull();
     expect(backupDirectory({})).toBeNull();
   });
@@ -154,8 +157,8 @@ describe('scheduled backups (M1-101, OPS-008)', () => {
       });
       expect(outcome.state).toBe('succeeded');
       if (day === 1) {
-        // Created owner-only: backups hold the password keyring.
-        expect(statSync(root).mode & 0o777).toBe(0o700);
+        // Created owner-only: backups hold the password keyring (POSIX modes; Windows has ACLs).
+        if (process.platform !== 'win32') expect(statSync(root).mode & 0o777).toBe(0o700);
         // A backup taken by hand sits next to them and is never removed by the retention.
         mkdirSync(join(root, 'by-hand'));
         writeFileSync(join(root, 'by-hand', 'manifest.json'), '{}');

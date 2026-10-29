@@ -384,34 +384,42 @@ describe('attachments (M1-016)', () => {
           sent += n;
         }),
       );
-      const answer = await new Promise<{ status: number; body: string }>((resolve, reject) => {
-        const req = httpRequest({
-          host: '127.0.0.1',
-          port,
-          method: 'POST',
-          path: `/api/v1/tickets/${ticket.id}/attachments`,
-          headers: { ...body.headers, cookie: users.alice?.cookie ?? '' },
-        });
-        let answered = false;
-        req.on('response', (res) => {
-          answered = true;
-          let text = '';
-          res.on('data', (d: Buffer) => {
-            text += d.toString();
+      // Windows resets a connection the server closes while the client still writes, and the
+      // reset can arrive before the answer is read: there only the server's side is checked.
+      const answer = await new Promise<{ status: number; body: string } | 'reset'>(
+        (resolve, reject) => {
+          const req = httpRequest({
+            host: '127.0.0.1',
+            port,
+            method: 'POST',
+            path: `/api/v1/tickets/${ticket.id}/attachments`,
+            headers: { ...body.headers, cookie: users.alice?.cookie ?? '' },
           });
-          res.on('end', () => resolve({ status: res.statusCode ?? 0, body: text }));
+          let answered = false;
+          req.on('response', (res) => {
+            answered = true;
+            let text = '';
+            res.on('data', (d: Buffer) => {
+              text += d.toString();
+            });
+            res.on('end', () => resolve({ status: res.statusCode ?? 0, body: text }));
+          });
+          // The server closes the connection once it has answered; writing on is refused.
+          req.on('error', (error: NodeJS.ErrnoException) => {
+            if (answered) return;
+            if (process.platform === 'win32' && error.code === 'ECONNRESET') resolve('reset');
+            else reject(error);
+          });
+          (body.payload as Readable).pipe(req);
+        },
+      );
+      if (answer !== 'reset') {
+        expect(answer.status).toBe(413);
+        expect(JSON.parse(answer.body)).toEqual({
+          error: 'file_too_large',
+          maxFileSize: 1024 * 1024,
         });
-        // The server closes the connection once it has answered; writing on is refused.
-        req.on('error', (error) => {
-          if (!answered) reject(error);
-        });
-        (body.payload as Readable).pipe(req);
-      });
-      expect(answer.status).toBe(413);
-      expect(JSON.parse(answer.body)).toEqual({
-        error: 'file_too_large',
-        maxFileSize: 1024 * 1024,
-      });
+      }
       // A quarter gigabyte offered, a few megabytes taken (socket buffers), nothing kept.
       expect(sent).toBeLessThan(64 * 1024 * 1024);
       expect((await list('alice', ticket)).attachments).toEqual([]);
