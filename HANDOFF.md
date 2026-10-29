@@ -53,9 +53,12 @@ it is lost with the container.
   - Not built: teams in `membersOf("id:...")`, `cascadeOption(parent, none)`, ticket functions
     on `ticketLink`, a site setting for the first day of the week, sprint and release functions
     (M1-045), functions in history predicates (M1-039).
-  - Seen, not changed: `parent = KEY` and `ticketLink = KEY` (M1-037) do not check that the
-    named ticket is one the person sees, so they can confirm that visible tickets hang off a
-    hidden one whose key is known; the function forms check it.
+  - Fixed at the merge: `parent = KEY`, `ticketLink = KEY` and `key = KEY` (M1-037) did not
+    check that the named ticket is one the person sees, so a known key could confirm that a
+    hidden ticket exists (no "No ticket" warning) and show the visible tickets hanging off or
+    linking to it. `keys()` in `search/bind.ts` now keeps only tickets the viewer sees, keys and
+    ids alike, and warns for a hidden key exactly as for an unknown one
+    (`routes/search.visibility.test.ts`).
 
 - **M1-043 boards** (built by a background agent on `work/m1-043-boards`; migration 0047;
   ADR-049). Server: `apps/server/src/boards/model.ts` (zod schemas of columns, swimlanes, board

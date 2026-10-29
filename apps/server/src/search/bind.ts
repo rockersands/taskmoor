@@ -918,12 +918,8 @@ class Binder {
       }
       case 'linkedTickets': {
         const [ticket, ...types] = call.args as [Typed, ...Typed[]];
-        const known = await this.keys([ticket]);
-        // A ticket the viewer may not see links to nothing they can learn of.
-        const ticketIds = await this.visible(known);
-        if (known.length > 0 && ticketIds.length === 0) {
-          this.warnings.push(`No ticket ${String(content(ticket).value)}`);
-        }
+        // A ticket the viewer may not see links to nothing they can learn of (`keys` drops it).
+        const ticketIds = await this.keys([ticket]);
         if (types.length === 0) return { kind: 'linked', ticketIds, outward: 'all', inward: 'all' };
         return { kind: 'linked', ticketIds, ...(await this.linkDirections(types)) };
       }
@@ -1373,11 +1369,11 @@ class Binder {
 
   /** Tickets by id or key (old keys too); keys of tickets the viewer cannot see match nothing. */
   private async keys(values: Typed[]): Promise<number[]> {
-    const ids: number[] = [];
+    const numbers: number[] = [];
     const pairs: { track: number; number: number; key: string }[] = [];
     for (const v of values.map(content)) {
       if (v.type === 'number') {
-        ids.push(v.value);
+        numbers.push(v.value);
         continue;
       }
       const key = String(v.value).toUpperCase();
@@ -1389,6 +1385,8 @@ class Binder {
       }
       pairs.push({ track, number: Number(m[2]), key });
     }
+    // Ids name tickets too: only those the viewer sees match.
+    const ids = await this.visible(numbers);
     if (pairs.length > 0) {
       const rows = await sql<{ ticket_id: number; track_id: number; number: number }>`
         SELECT h.ticket_id, h.track_id, h.number FROM ticket_key_history h
@@ -1397,9 +1395,13 @@ class Binder {
              SELECT * FROM unnest(${pairs.map((x) => x.track)}::int[], ${pairs.map((x) => x.number)}::int[]))`.execute(
         this.db,
       );
+      // A ticket the viewer may not see reads exactly like one that does not exist: no match
+      // and the same warning, so `parent`, `ticketLink` or the warning itself cannot confirm
+      // that a hidden ticket exists or show what hangs off it.
+      const seen = new Set(await this.visible(rows.rows.map((r) => r.ticket_id)));
       for (const pair of pairs) {
         const row = rows.rows.find((r) => r.track_id === pair.track && r.number === pair.number);
-        if (row) ids.push(row.ticket_id);
+        if (row && seen.has(row.ticket_id)) ids.push(row.ticket_id);
         else this.warnings.push(`No ticket ${pair.key}`);
       }
     }

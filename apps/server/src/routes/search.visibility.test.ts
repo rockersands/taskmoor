@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -272,6 +273,76 @@ describe('search and visibility levels (M1-037, QRY-008)', () => {
     expect((await found('alice', `requester = ${users.erin.id}`)).names).toEqual([]);
     // Visitors who are not signed in see nothing here.
     expect((await found(null, '')).names).toEqual([]);
+  });
+
+  it('[QRY-008] a hidden ticket named by key or id reads like one that does not exist', async () => {
+    // A visible child of the ticket only Alice sees, and a visible ticket linked to it.
+    const hidden = tickets['Alice only'] as number;
+    const { key } = await database.db
+      .selectFrom('ticket')
+      .innerJoin('track', 'track.id', 'ticket.track_id')
+      .select(sql<string>`track.key || '-' || ticket.number`.as('key'))
+      .where('ticket.id', '=', hidden)
+      .executeTakeFirstOrThrow();
+    for (const name of ['child', 'linked']) {
+      const res = await as('dave', {
+        method: 'POST',
+        url: '/api/v1/tickets',
+        payload: { track: 'VIS', summary: `Hidden-key ${name}` },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+      tickets[name] = res.json().ticket.id;
+    }
+    await database.db
+      .updateTable('ticket')
+      .set({ parent_id: hidden })
+      .where('id', '=', tickets.child as number)
+      .execute();
+    const relates = await database.db
+      .selectFrom('link_type')
+      .select('id')
+      .where('workspace_id', '=', 1)
+      .orderBy('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('ticket_link')
+      .values({
+        workspace_id: 1,
+        link_type_id: relates.id,
+        source_id: tickets.linked as number,
+        target_id: hidden,
+      })
+      .execute();
+
+    const search = async (who: Person, q: string) => {
+      const res = await as(who, {
+        method: 'GET',
+        url: `/api/v1/search?q=${encodeURIComponent(q)}&limit=50`,
+      });
+      expect(res.statusCode, `${who} ${q}: ${res.body}`).toBe(200);
+      const body = res.json() as { tickets: { id: number }[]; warnings?: string[] };
+      const byId = new Map(Object.entries(tickets).map(([name, id]) => [id, name]));
+      return {
+        names: body.tickets.map((t) => byId.get(t.id) ?? `#${t.id}`).sort(),
+        warnings: (body.warnings ?? []).map((w) =>
+          w.replace(key, '<key>').replace('VIS-99999', '<key>'),
+        ),
+      };
+    };
+    // Alice sees the ticket, so she sees what hangs off it.
+    expect((await search('alice', `parent = ${key}`)).names).toEqual(['child']);
+    expect((await search('alice', `ticketLink = ${key}`)).names).toEqual(['linked']);
+    expect((await search('alice', `parent = ${hidden}`)).names).toEqual(['child']);
+    // To Bob it is as absent as a key that was never used: no match and the same warning.
+    for (const field of ['key', 'parent', 'ticketLink']) {
+      const named = await search('bob', `${field} = ${key}`);
+      const unknown = await search('bob', `${field} = VIS-99999`);
+      expect(named.names, `bob ${field}`).toEqual([]);
+      expect(named.warnings, `bob ${field} warnings`).toEqual(unknown.warnings);
+      expect(named.warnings.length, `bob ${field} warns`).toBe(1);
+    }
+    expect((await search('bob', `parent = ${hidden}`)).names).toEqual([]);
+    expect((await search('bob', `parent in (${key}, VIS-99999)`)).names).toEqual([]);
   });
 
   it('[QRY-008] shows the permission and level predicate in the statement', async () => {
