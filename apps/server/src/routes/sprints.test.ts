@@ -289,12 +289,19 @@ describe('sprints (M1-044)', () => {
       ['s2', 4],
       ['s3', 1],
       ['s4', 3],
+      ['s5', 8],
     ] as const) {
       await ticket(n, 'SP', h);
     }
     const board = await scrumBoard('Scope board', 'track = SP AND summary ~ grps');
     const one = await sprint(board.id);
-    expect((await add(one.id, ['s1', 's2', 's3'])).afterStart).toBe(false);
+    expect((await add(one.id, ['s1', 's2', 's3', 's5'])).afterStart).toBe(false);
+    // Before the start: s5 taken out again (no scope change), s2 re-estimated (counts as committed).
+    const early = await post('alice', `/api/v1/sprints/${one.id}/tickets/remove`, {
+      tickets: [T('s5').key],
+    });
+    expect(early.json()).toEqual({ removed: 1, afterStart: false });
+    await estimate('s2', 5);
     expect((await start(one.id)).statusCode).toBe(200);
     // After the start: one added, one removed, one re-estimated.
     expect(await add(one.id, ['s4'])).toEqual({ added: 1, afterStart: true });
@@ -313,17 +320,17 @@ describe('sprints (M1-044)', () => {
     expect(s4?.addedAfterStart).toBe(true);
     const s2 = r.notCompleted.find((t) => t.key === T('s2').key);
     expect(s2).toMatchObject({
-      estimateAtEntry: 4 * HOUR,
+      estimateAtEntry: 5 * HOUR,
       estimate: 6 * HOUR,
       estimateChanged: true,
     });
     expect(r.totals).toMatchObject({
-      committed: 7 * HOUR,
+      committed: 8 * HOUR,
       added: 3 * HOUR,
       removed: 1 * HOUR,
       completed: 2 * HOUR,
       notCompleted: 9 * HOUR,
-      estimateChange: 2 * HOUR,
+      estimateChange: 1 * HOUR,
     });
     // The rows behind it: one per change, with its time and author.
     const rows = await database.db
@@ -336,6 +343,8 @@ describe('sprints (M1-044)', () => {
       'added:false',
       'added:false',
       'added:false',
+      'added:false',
+      'removed:false',
       'committed:false',
       'committed:false',
       'committed:false',

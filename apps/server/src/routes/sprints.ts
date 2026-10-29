@@ -1051,10 +1051,14 @@ export function registerSprintRoutes(
       const t = visible.get(id);
       if (!t) continue;
       const mine = changes.filter((c) => c.ticket_id === id);
-      const entry = mine.find((c) => c.kind === 'committed' || c.kind === 'added');
-      const addedAfterStart = mine.some((c) => c.kind === 'added' && c.after_start);
       const last = mine[mine.length - 1];
       const removedRow = last?.kind === 'removed' ? last : undefined;
+      // Taken out before the start: never part of the sprint, so not scope change either.
+      if (removedRow && !removedRow.after_start) continue;
+      // The estimate at the start for committed tickets, else when the ticket was added.
+      const committed = mine.find((c) => c.kind === 'committed');
+      const entry = committed ?? mine.find((c) => c.kind === 'added' && c.after_start) ?? mine[0];
+      const addedAfterStart = mine.some((c) => c.kind === 'added' && c.after_start);
       const ending = mine.find((c) => c.kind === 'completed' || c.kind === 'carried_over');
       const atEntry = valueAt(entry);
       const atEnd = removedRow
@@ -1076,7 +1080,7 @@ export function registerSprintRoutes(
         estimateChanged: entry !== undefined && atEntry !== atEnd,
         ...(ending?.kind === 'carried_over' ? { carriedTo: ending.to_sprint_id } : {}),
       };
-      if (mine.some((c) => c.kind === 'committed')) totals.committed += atEntry ?? 0;
+      if (committed) totals.committed += atEntry ?? 0;
       if (addedAfterStart) totals.added += atEntry ?? 0;
       if (item.estimateChanged) totals.estimateChange += (atEnd ?? 0) - (atEntry ?? 0);
       if (removedRow) {
