@@ -71,6 +71,10 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
 
 ## Consequences
 
+- Measured on this loaded 4-CPU machine (`routes/sprints.large.test.ts`,
+  `TASKMOOR_LARGE_SPRINTS=1`, a member on a 20,000-ticket Scrum board): adding 500 tickets
+  73 to 82 ms, the backlog (2,000 rows) p95 55 to 59 ms, the report of a 1,000-ticket sprint
+  p95 57 to 60 ms, completing it into the next sprint 162 to 230 ms.
 - M1-045 adds `sprint` to the query catalogue over `sprint_ticket` and `openSprints()`,
   `closedSprints()`, `futureSprints()` over `sprint.state`, without a schema change.
 - M1-062 (burndown) needs estimate changes during the sprint over time: the ticket change log

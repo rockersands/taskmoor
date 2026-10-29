@@ -73,7 +73,9 @@ Left in the container (lost with it): `/home/user/wt-compiler` (an older M1-037 
   - Done is the rightmost column. Completing: tickets the board's query no longer shows go to
     the backlog (the shared-sprint rule); a deleted closed sprint keeps its rows (`deleted_at`).
   - Left: reopen, wiki link, the subticket completion block (spec says verify), sprint settings
-    and sprint editing in the web UI (API only), velocity per team, no performance run yet.
+    and sprint editing in the web UI (API only), velocity per team.
+  - Measured (`sprints.large.test.ts`, `TASKMOOR_LARGE_SPRINTS=1`, 20,000 tickets): backlog
+    p95 55-59 ms, report of 1,000 tickets p95 57-60 ms, completing 1,000 162-230 ms.
 
 - **M1-063 saved searches** (built by a background agent on `work/m1-063-saved-searches`;
   migration 0051; ADR-053). Server: `routes/saved-searches.ts` (`/api/v1/saved-searches` CRUD,
