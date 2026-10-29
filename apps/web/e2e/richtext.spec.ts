@@ -28,6 +28,15 @@ const textOf = (editor: Locator) =>
     return copy.textContent;
   });
 
+/**
+ * The keys that put the caret at the start and the end of a document. Chromium on macOS only
+ * scrolls on Home and End, with or without a modifier; there it is Command with an arrow.
+ */
+const [DOC_START, DOC_END] =
+  process.platform === 'darwin'
+    ? ['Meta+ArrowUp', 'Meta+ArrowDown']
+    : ['Control+Home', 'Control+End'];
+
 /** The description editor of the ticket page, once the shared document is live. */
 async function openDescription(page: Page, key: string) {
   await page.goto(`${BASE}/#/tickets/${key}`);
@@ -61,8 +70,8 @@ test('[NTF-008] two people typing in one description at once both keep their tex
     // Both type at once: one at the start, one at the end.
     await editorA.click();
     await editorB.click();
-    await a.keyboard.press('ControlOrMeta+Home');
-    await b.keyboard.press('ControlOrMeta+End');
+    await a.keyboard.press(DOC_START);
+    await b.keyboard.press(DOC_END);
     await Promise.all([
       a.keyboard.type('Since Monday: ', { delay: 15 }),
       b.keyboard.type(' Only on Safari.', { delay: 15 }),

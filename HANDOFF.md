@@ -60,6 +60,13 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
   `unknown_time_zone` (and a bad length) show next to their field. The board fake refuses the
   same (`fixtures.ts`, `unknownTimeZones`). e2e `sprint-settings.spec.ts`. Node's ICU lists
   old zone names (`Europe/Kiev`, `Asia/Calcutta`): tests pick zones every list has.
+- **NTF-008 co-editing e2e fixed on macOS** (`apps/web/e2e/richtext.spec.ts`, test only): it
+  failed on every Mac run since it was written ("The login fails.Since Monday:  Only on
+  Safari."). The test pressed `ControlOrMeta+Home` and `+End`; Chromium on macOS only scrolls on
+  Home and End (Playwright's macOS key map gives `Meta+Home` no editing command), so the first
+  person's caret stayed at the end. `DOC_START` and `DOC_END` are now `Meta+ArrowUp` and
+  `Meta+ArrowDown` on darwin, `Control+Home` and `Control+End` elsewhere (CI unchanged). The
+  editor was right. The spec passed 20 of 20 on both projects (`--repeat-each=5`).
 
 ### Next (in order)
 
@@ -79,6 +86,19 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
 - `apps/server/src/routes/search.run.test.ts` "[QRY-010] stops a query over the timeout" timed
   out at 60 s in a full gate here (load average 16 to 19: its 20,000-row insert waits); it
   passes alone in 5 s. Add it to the watch list below.
+- e2e outside CI reuses whatever already listens on 4173 to 4175, 8787, 8788, 8791 and 8792
+  (`reuseExistingServer`). With two sessions running e2e at once, one gets the other's servers
+  and their per-run passwords, and every sign-in answers 401. Check the ports first, or run
+  with `CI=1 ... --retries=0` so Playwright refuses busy ports instead.
+- Once, in `richtext.spec.ts --repeat-each=3` (about a dozen ATT creates at once, load ~10),
+  `POST /api/v1/tickets` answered 500 twice; it did not come back in the 36 tests run after it. The e2e API
+  server has no logger, so the cause was not recorded. Likely the same as the next note; if it
+  returns at low load, give `e2e/api-server.ts` a logger and look at concurrent creates in one
+  track.
+- At load averages of 100 to 185 (macOS system daemons, not the tests), the embedded Postgres
+  fails file opens with `could not open file "base/...": Interrupted system call` (500 with
+  code `XX000` through the API) and vitest cannot start workers: a full gate had 31 failures,
+  all of them these or timeouts. Wait for `uptime` to come down before believing a red gate.
 
 ## Earlier: 2026-10-29 (cloud container, overnight)
 
