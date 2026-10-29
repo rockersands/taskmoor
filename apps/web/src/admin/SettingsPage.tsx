@@ -81,6 +81,10 @@ export function SettingsPage() {
               <a href="#/admin/fields">{t('settings.fields')}</a>
               <p className="page-note">{t('settings.fieldsHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/permissions">{t('settings.permissions')}</a>
+              <p className="page-note">{t('settings.permissionsHint')}</p>
+            </li>
           </ul>
         </section>
       )}

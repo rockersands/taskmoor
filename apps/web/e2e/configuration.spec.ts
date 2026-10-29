@@ -5,8 +5,9 @@ import { expect, type Page, test } from '@playwright/test';
  * Administration journeys for tracks and workflow maps (M1-053): a site administrator adds a
  * track, renames it, gives a role to a person and takes it back, archives and restores it;
  * makes a workflow map, gives a ticket type its own workflow, puts a track on the map and
- * deletes the map once no track uses it; adds a choice list, keeps its options and deletes it.
- * No serious axe issue. They use the attachments
+ * deletes the map once no track uses it; adds a choice list, keeps its options and deletes it;
+ * adds a role and an access policy, gives the role a permission and deletes both; gives a person
+ * a global permission and takes it back. No serious axe issue. They use the attachments
  * database (preview 4174), whose site administrator the API server made.
  */
 const BASE = 'http://localhost:4174';
@@ -171,4 +172,69 @@ test('[CORE-009] the administrator adds a choice list, keeps its options and del
   await page.getByRole('button', { name: 'Yes, delete' }).click();
   await expect(page.getByText(`${field} was deleted.`)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('[IAM-010] the administrator adds a role and a policy, grants, and deletes them', async ({
+  page,
+}, testInfo) => {
+  await signIn(page);
+  const suffix = `${testInfo.project.name} ${Date.now()}`;
+  const role = `Reviewers ${suffix}`;
+  const policy = `Partners ${suffix}`;
+  await page.goto(`${BASE}/#/admin/permissions`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Permissions' })).toBeVisible();
+  const addRole = page.getByRole('form', { name: 'Add a role' });
+  await addRole.getByLabel('Role name').fill(role);
+  await addRole.getByRole('button', { name: 'Add a role' }).click();
+  await expect(page.getByText(`Role ${role} was added.`)).toBeVisible();
+
+  const addPolicy = page.getByRole('form', { name: 'Add an access policy' });
+  await addPolicy.getByLabel('Policy name').fill(policy);
+  await addPolicy.getByLabel('Start from').selectOption({ label: 'Default access policy' });
+  await addPolicy.getByRole('button', { name: 'Add an access policy' }).click();
+  await expect(page.getByText(`${policy} was added.`)).toBeVisible();
+
+  // The new policy is open, with the default's grants: the role may edit tickets too.
+  const give = page.getByRole('form', { name: `Give a permission in ${policy}` });
+  await give.getByLabel('Permission').selectOption({ label: 'Edit tickets' });
+  await give.getByLabel('Role', { exact: true }).selectOption({ label: role });
+  await give.getByRole('button', { name: 'Give' }).click();
+  await expect(page.getByText(`Edit tickets was given to Role ${role}.`)).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+
+  // A role a policy uses stays; once the grant goes, both go.
+  await page.getByRole('button', { name: `Delete role ${role}` }).click();
+  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await expect(page.getByRole('alert')).toHaveText(
+    'Access policies or tracks still use this role: take it out of them first.',
+  );
+  await page.getByRole('button', { name: `Remove Role ${role} from Edit tickets` }).click();
+  await expect(page.getByText(`Role ${role} no longer has Edit tickets.`)).toBeVisible();
+  await page.getByRole('button', { name: `Delete policy ${policy}` }).click();
+  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await expect(page.getByText(`${policy} was deleted.`)).toBeVisible();
+  await page.getByRole('button', { name: `Delete role ${role}` }).click();
+  await page.getByRole('button', { name: 'Yes, delete' }).click();
+  await expect(page.getByText(`Role ${role} was deleted.`)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('[IAM-011] the administrator gives a person a global permission and takes it back', async ({
+  page,
+}, testInfo) => {
+  await signIn(page);
+  // One permission per project, so the two runs never give the same grant at once.
+  const permission =
+    testInfo.project.name === 'mobile' ? 'Subscribe groups to searches' : 'Share saved searches';
+  await page.goto(`${BASE}/#/admin/permissions`);
+  const give = page.getByRole('form', { name: 'Give a global permission' });
+  await give.getByLabel('Permission').selectOption({ label: permission });
+  await give.getByLabel('To').selectOption({ label: 'A person' });
+  await give.getByRole('searchbox', { name: 'Find a person' }).fill('ada');
+  await expect(give.getByLabel('Person', { exact: true })).toHaveValue(/\d+/);
+  await give.getByRole('button', { name: 'Give' }).click();
+  await expect(page.getByText(`${permission} was given to Ada Attach.`)).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await page.getByRole('button', { name: `Remove Ada Attach from ${permission}` }).click();
+  await expect(page.getByText(`Ada Attach no longer has ${permission}.`)).toBeVisible();
 });

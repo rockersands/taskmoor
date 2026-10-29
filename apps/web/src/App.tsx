@@ -14,6 +14,7 @@ import { type Locale, resolveLocale } from './i18n/locale';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { GroupsPage } from './people/GroupsPage';
 import { UsersPage } from './people/UsersPage';
+import { PermissionsPage } from './permissions/PermissionsPage';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
 import { RequireSession } from './session/RequireSession';
 import { type Session, SessionProvider, useSession } from './session/SessionProvider';
@@ -93,6 +94,7 @@ const ADMIN_GROUPS = '#/admin/groups';
 const ADMIN_TRACKS = '#/admin/tracks';
 const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
 const ADMIN_FIELDS = '#/admin/fields';
+const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -253,6 +255,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-permissions',
+              labelId: 'admin.permissions.title' as const,
+              keywords: ['permission', 'role', 'access policy', 'grant', 'scheme'],
+              run: () => {
+                window.location.hash = ADMIN_PERMISSIONS;
+              },
+            },
+            {
               id: 'go-groups',
               labelId: 'admin.groups.title' as const,
               keywords: ['group', 'team', 'members', 'nested'],
@@ -300,6 +310,8 @@ function Pages() {
     content = <WorkflowMapsPage />;
   } else if (isRoute(hash, ADMIN_FIELDS)) {
     content = <FieldsAdminPage />;
+  } else if (isRoute(hash, ADMIN_PERMISSIONS)) {
+    content = <PermissionsPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
