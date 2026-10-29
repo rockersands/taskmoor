@@ -24,6 +24,7 @@ import { deliverSubscriptions } from './search/subscriptions';
 import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
 import { gracefulShutdown } from './shutdown';
+import { rollSprintCycles } from './sprints/cycles';
 import { waitForDatabase } from './startup';
 import { registerChangeLogJobs, scheduleChangeLogTrim } from './sync/jobs';
 import { registerTrashJobs, schedulePurge } from './trash/purge';
@@ -182,6 +183,18 @@ if (config.roles.includes('worker') && db) {
     );
   void scheduleHousekeeping();
   timers.push(setInterval(scheduleHousekeeping, 5 * 60 * 1000));
+  // Auto-rolling cycles (M1-045): every minute, boards with a cycle get their next sprint ready
+  // and roll over a sprint that ended. Each board is locked while it rolls, so several workers
+  // can run this.
+  const cycleCatalogs = new FieldCatalogs(db);
+  const rollCycles = () =>
+    rollSprintCycles(db, cycleCatalogs)
+      .then((run) => {
+        if (run.rolled > 0 || run.failed.length > 0) app.log.info({ run }, 'sprint cycles');
+      })
+      .catch((error) => app.log.warn({ error }, 'sprint cycles not rolled'));
+  void rollCycles();
+  timers.push(setInterval(rollCycles, 60 * 1000));
   // Email notifications (M1-057): every 30 seconds, what is due goes out. Workers lock each
   // person's notifications while sending, so several can run.
   if (config.smtp) {

@@ -60,6 +60,29 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
   tickets; the web Scrum board asks for it. `GET /boards/:id/backlog` gives the sprint sections
   and the backlog (unfinished tickets in no open sprint) in rank order with totals.
 
+## Auto-rolling cycles (M1-045; AGL-012)
+
+- **Setting**: `sprintSettings.cycle` on a Scrum board, `{ lengthDays (1 to 91), timeZone
+  (default UTC) }` or null. Refused with parallel sprints (`not_with_parallel_sprints`): a cycle
+  rolls over the board's one active sprint.
+- **The worker** runs `rollSprintCycles` every minute (`apps/server/src/sprints/cycles.ts`).
+  For each board with a cycle and an active sprint: the next sprint is ready (the first future
+  one in the board's order, or one made from the active sprint's end for the cycle's length);
+  once the end has passed, the active sprint is completed into it and it starts, both at the
+  scheduled boundary, so the history reads as planned even after downtime; the worker then
+  catches up one cycle at a time. A next sprint the team dated keeps its dates.
+- **Days on the wall clock** of the cycle's time zone (`addWall`, as QRY-006 counts days): a
+  sprint that ends at 09:00 still ends at 09:00 after a change of summer time.
+- **Nobody** rolls a cycle: the events and `sprint_change` rows have no actor. The first sprint
+  of a cycle is started by a person; without an active sprint nothing happens.
+- **Concurrency**: each roll is a transaction that takes the board's lock without waiting (`FOR
+  UPDATE SKIP LOCKED`); a board someone is changing is left for the next pass, and two workers
+  never roll a board twice.
+- **One lifecycle**: creating, starting and completing a sprint are functions
+  (`sprints/lifecycle.ts`) that the routes and the worker share; they take an actor instead of
+  the request.
+- **Not yet**: the web UI for sprint settings (API only, as the rest of M1-044's settings).
+
 ## Options considered
 
 | Option | For | Against |
@@ -75,8 +98,9 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
   `TASKMOOR_LARGE_SPRINTS=1`, a member on a 20,000-ticket Scrum board): adding 500 tickets
   73 to 82 ms, the backlog (2,000 rows) p95 55 to 59 ms, the report of a 1,000-ticket sprint
   p95 57 to 60 ms, completing it into the next sprint 162 to 230 ms.
-- M1-045 adds `sprint` to the query catalogue over `sprint_ticket` and `openSprints()`,
-  `closedSprints()`, `futureSprints()` over `sprint.state`, without a schema change.
+- M1-045 added `sprint` to the query catalogue over `sprint_ticket` and `openSprints()`,
+  `closedSprints()`, `futureSprints()` over `sprint.state`, without a schema change (ADR-010,
+  "Functions (M1-045)").
 - M1-062 (burndown) needs estimate changes during the sprint over time: the ticket change log
   (M1-031) has them with their times; `sprint_change` gives the scope at each moment.
 - The estimate snapshot keeps the original and remaining estimate and the board's number field

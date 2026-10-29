@@ -8,6 +8,16 @@ import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { readOnly } from '../search/run';
 import {
+  completeSprint,
+  createSprint,
+  doneStatuses,
+  estimateSql,
+  lockBoard,
+  recordChanges,
+  type SprintActor,
+  startSprint,
+} from '../sprints/lifecycle';
+import {
   completeSprintBody,
   createSprintBody,
   datesInOrder,
@@ -80,20 +90,6 @@ function shapeErrors(error: z.ZodError): Record<string, string> {
   return out;
 }
 
-/** The ticket's estimate by the board's statistic, over `ticket k`. */
-export function estimateSql(settings: SprintSettings): RawBuilder<number | string | null> {
-  const e = settings.estimation;
-  if (e.statistic === 'ticketCount') return sql`1`;
-  if (e.statistic === 'originalEstimate') return sql`k.original_estimate`;
-  const key = String(e.fieldId);
-  return sql`CASE WHEN jsonb_typeof(k.fields -> ${key}::text) = 'number'
-    THEN (k.fields ->> ${key}::text)::numeric END`;
-}
-
-/** The statuses of the board's rightmost column: done (spec 01b section 3.2). */
-const doneStatuses = (board: BoardRecord): number[] =>
-  board.columns[board.columns.length - 1]?.statusIds ?? [];
-
 const num = (v: number | string | null | undefined): number | null =>
   v === null || v === undefined ? null : Number(v);
 
@@ -127,7 +123,7 @@ export function registerSprintRoutes(
   deps: SprintRouteDeps,
 ): void {
   const { catalogs, timeoutMs } = deps;
-  const by = (request: FastifyRequest) => ({
+  const by = (request: FastifyRequest): SprintActor => ({
     workspaceId: request.workspaceId,
     actorId: request.user?.id ?? null,
   });
@@ -160,69 +156,6 @@ export function registerSprintRoutes(
     const board = await deps.board(request, reply, sprint.board_id);
     if (!board) return null;
     return { sprint, board };
-  }
-
-  /** The tickets' estimates now, as the scope-change rows record them. */
-  async function snapshot(trx: Db, settings: SprintSettings, ticketIds: readonly number[]) {
-    if (ticketIds.length === 0) return new Map<number, Snap>();
-    const points =
-      settings.estimation.statistic === 'field' ? estimateSql(settings) : sql<null>`NULL`;
-    const rows = await sql<{
-      id: number;
-      original_estimate: number | null;
-      remaining_estimate: number | null;
-      points: string | null;
-    }>`SELECT k.id, k.original_estimate, k.remaining_estimate, ${points} AS points
-         FROM ticket k WHERE k.id = ANY(${[...ticketIds]}::int[])`.execute(trx);
-    return new Map(
-      rows.rows.map((r) => [
-        r.id,
-        {
-          original_estimate: r.original_estimate,
-          remaining_estimate: r.remaining_estimate,
-          points: r.points,
-        },
-      ]),
-    );
-  }
-  interface Snap {
-    original_estimate: number | null;
-    remaining_estimate: number | null;
-    points: string | null;
-  }
-
-  async function recordChanges(
-    trx: Db,
-    request: FastifyRequest,
-    settings: SprintSettings,
-    sprintId: number,
-    kind: 'added' | 'removed' | 'committed' | 'completed' | 'carried_over',
-    ticketIds: readonly number[],
-    extra: { afterStart?: boolean; toSprintId?: number | null; at?: Date } = {},
-  ) {
-    if (ticketIds.length === 0) return;
-    const snaps = await snapshot(trx, settings, ticketIds);
-    await trx
-      .insertInto('sprint_change')
-      .values(
-        ticketIds.map((ticketId) => {
-          const s = snaps.get(ticketId);
-          return {
-            workspace_id: request.workspaceId,
-            sprint_id: sprintId,
-            ticket_id: ticketId,
-            kind,
-            after_start: extra.afterStart ?? false,
-            actor_id: request.user?.id ?? null,
-            original_estimate: s?.original_estimate ?? null,
-            remaining_estimate: s?.remaining_estimate ?? null,
-            points: s?.points ?? null,
-            to_sprint_id: extra.toSprintId ?? null,
-            ...(extra.at ? { at: extra.at } : {}),
-          };
-        }),
-      )
-      .execute();
   }
 
   /** The board's conditions for the caller (`scope` over `ticket k`). */
@@ -358,33 +291,14 @@ export function registerSprintRoutes(
     if (!datesInOrder(startAt, endAt)) return invalidFields(reply, { endAt: 'before_start' });
     const id = await db.transaction().execute(async (trx) => {
       // One writer at a time per board: the sequence and the default name count sprints.
-      await trx.selectFrom('board').select('id').where('id', '=', p.data.id).forUpdate().execute();
-      const counted = await trx
-        .selectFrom('sprint')
-        .select(({ fn }) => [fn.countAll<string>().as('n'), fn.max('sequence').as('top')])
-        .where('board_id', '=', p.data.id)
-        .executeTakeFirstOrThrow();
-      const name = body.name ?? `${board.name} Sprint ${Number(counted.n) + 1}`;
-      const row = await trx
-        .insertInto('sprint')
-        .values({
-          workspace_id: request.workspaceId,
-          board_id: p.data.id,
-          name,
-          goal: body.goal ?? '',
-          sequence: (counted.top ?? 0) + 1,
-          start_at: startAt,
-          end_at: endAt,
-          created_by: user.id,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      await emit(trx, by(request), {
-        type: 'sprint.created',
-        subjectId: row.id,
-        payload: { boardId: p.data.id, name },
-      });
-      return row.id;
+      await lockBoard(trx, p.data.id);
+      const created = await createSprint(
+        trx,
+        by(request),
+        { id: p.data.id, name: board.name },
+        { name: body.name, goal: body.goal ?? '', startAt, endAt },
+      );
+      return created.id;
     });
     const row = await sprintQuery(db, request.workspaceId)
       .where('id', '=', id)
@@ -540,64 +454,14 @@ export function registerSprintRoutes(
     const endAt = body.endAt ? new Date(body.endAt) : sprint.end_at;
     if (endAt === null) return invalidFields(reply, { endAt: 'required' });
     if (!datesInOrder(startAt, endAt)) return invalidFields(reply, { endAt: 'before_start' });
-    const outcome = await db.transaction().execute(async (trx) => {
-      await trx
-        .selectFrom('board')
-        .select('id')
-        .where('id', '=', sprint.board_id)
-        .forUpdate()
-        .execute();
-      const current = await trx
-        .selectFrom('sprint')
-        .select('state')
-        .where('id', '=', sprint.id)
-        .forUpdate()
-        .executeTakeFirstOrThrow();
-      if (current.state !== 'future') return { error: 'sprint_not_future' };
-      if (!board.settings.parallelSprints) {
-        const active = await trx
-          .selectFrom('sprint')
-          .select('id')
-          .where('board_id', '=', sprint.board_id)
-          .where('state', '=', 'active')
-          .executeTakeFirst();
-        if (active) return { error: 'sprint_active', sprintId: active.id };
-      }
-      const now = new Date();
-      await trx
-        .updateTable('sprint')
-        .set({
-          state: 'active',
-          name: body.name ?? sprint.name,
-          goal: body.goal ?? sprint.goal,
-          start_at: startAt,
-          end_at: endAt,
-          started_at: now,
-          started_by: request.user?.id ?? null,
-          version: sprint.version + 1,
-          updated_at: now,
-        })
-        .where('id', '=', sprint.id)
-        .execute();
-      const members = await trx
-        .selectFrom('sprint_ticket')
-        .select('ticket_id')
-        .where('sprint_id', '=', sprint.id)
-        .execute();
-      const ids = members.map((m) => m.ticket_id);
-      await recordChanges(trx, request, board.settings, sprint.id, 'committed', ids, { at: now });
-      await emit(trx, by(request), {
-        type: 'sprint.started',
-        subjectId: sprint.id,
-        payload: {
-          boardId: sprint.board_id,
-          startAt: startAt.toISOString(),
-          endAt: endAt.toISOString(),
-          tickets: ids.length,
-        },
-      });
-      return { started: true as const };
-    });
+    const outcome = await db.transaction().execute((trx) =>
+      startSprint(trx, by(request), { id: sprint.board_id, settings: board.settings }, sprint, {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.goal !== undefined ? { goal: body.goal } : {}),
+        startAt,
+        endAt,
+      }),
+    );
     if ('error' in outcome) return reply.code(409).send(outcome);
     const row = await sprintQuery(db, request.workspaceId)
       .where('id', '=', sprint.id)
@@ -623,133 +487,18 @@ export function registerSprintRoutes(
     } catch (error) {
       return searchRefusal(reply, error, timeoutMs);
     }
-    const done = doneStatuses(board.record);
-    const outcome = await db.transaction().execute(async (trx) => {
-      await trx
-        .selectFrom('board')
-        .select('id')
-        .where('id', '=', sprint.board_id)
-        .forUpdate()
-        .execute();
-      const current = await trx
-        .selectFrom('sprint')
-        .select('state')
-        .where('id', '=', sprint.id)
-        .forUpdate()
-        .executeTakeFirstOrThrow();
-      if (current.state !== 'active') return { error: 'sprint_not_active' as const };
-      let target: { id: number; state: string } | null = null;
-      if (moveTo.type === 'sprint') {
-        const row = await trx
-          .selectFrom('sprint')
-          .select(['id', 'state'])
-          .where('id', '=', moveTo.sprintId)
-          .where('board_id', '=', sprint.board_id)
-          .where('deleted_at', 'is', null)
-          .executeTakeFirst();
-        if (!row || row.id === sprint.id || row.state === 'closed') {
-          return { error: 'invalid_target' as const };
-        }
-        target = row;
-      } else if (moveTo.type === 'new') {
-        const counted = await trx
-          .selectFrom('sprint')
-          .select(({ fn }) => [fn.countAll<string>().as('n'), fn.max('sequence').as('top')])
-          .where('board_id', '=', sprint.board_id)
-          .executeTakeFirstOrThrow();
-        const row = await trx
-          .insertInto('sprint')
-          .values({
-            workspace_id: request.workspaceId,
-            board_id: sprint.board_id,
-            name: moveTo.name ?? `${board.name} Sprint ${Number(counted.n) + 1}`,
-            sequence: (counted.top ?? 0) + 1,
-            created_by: user.id,
-          })
-          .returning(['id', 'state'])
-          .executeTakeFirstOrThrow();
-        target = row;
-      }
-      const members = await sql<{ id: number; done: boolean; on_board: boolean }>`
-        SELECT k.id, k.status_id = ANY(${done}::int[]) AS done, (${boardScopeSql}) AS on_board
-          FROM sprint_ticket st JOIN ticket k ON k.id = st.ticket_id
-         WHERE st.sprint_id = ${sprint.id}::int AND st.open`.execute(trx);
-      const finished = members.rows.filter((m) => m.done).map((m) => m.id);
-      const carried = members.rows.filter((m) => !m.done && m.on_board).map((m) => m.id);
-      const others = members.rows.filter((m) => !m.done && !m.on_board).map((m) => m.id);
-      const now = new Date();
-      await recordChanges(trx, request, board.settings, sprint.id, 'completed', finished, {
-        at: now,
-      });
-      await recordChanges(
-        trx,
-        request,
-        board.settings,
-        sprint.id,
-        'carried_over',
-        [...carried, ...others],
-        { at: now },
+    const outcome = await db
+      .transaction()
+      .execute((trx) =>
+        completeSprint(
+          trx,
+          by(request),
+          { id: sprint.board_id, name: board.name, record: board.record, settings: board.settings },
+          sprint,
+          boardScopeSql,
+          moveTo,
+        ),
       );
-      if (target && carried.length > 0) {
-        await trx
-          .updateTable('sprint_change')
-          .set({ to_sprint_id: target.id })
-          .where('sprint_id', '=', sprint.id)
-          .where('kind', '=', 'carried_over')
-          .where('ticket_id', 'in', carried)
-          .execute();
-      }
-      await trx
-        .updateTable('sprint_ticket')
-        .set({ open: false })
-        .where('sprint_id', '=', sprint.id)
-        .execute();
-      if (target && carried.length > 0) {
-        await trx
-          .insertInto('sprint_ticket')
-          .values(
-            carried.map((ticketId) => ({
-              workspace_id: request.workspaceId,
-              sprint_id: (target as { id: number }).id,
-              ticket_id: ticketId,
-            })),
-          )
-          .execute();
-        await recordChanges(trx, request, board.settings, target.id, 'added', carried, {
-          afterStart: target.state === 'active',
-          at: now,
-        });
-      }
-      await trx
-        .updateTable('sprint')
-        .set({
-          state: 'closed',
-          completed_at: now,
-          completed_by: user.id,
-          version: sprint.version + 1,
-          updated_at: now,
-        })
-        .where('id', '=', sprint.id)
-        .execute();
-      await emit(trx, by(request), {
-        type: 'sprint.completed',
-        subjectId: sprint.id,
-        payload: {
-          boardId: sprint.board_id,
-          completed: finished.length,
-          carriedOver: carried.length,
-          toBacklog: others.length + (target ? 0 : carried.length),
-          moveTo: moveTo.type,
-          toSprintId: target?.id ?? null,
-        },
-      });
-      return {
-        completed: finished.length,
-        carriedOver: target ? carried.length : 0,
-        toBacklog: others.length + (target ? 0 : carried.length),
-        toSprintId: target?.id ?? null,
-      };
-    });
     if ('error' in outcome) {
       if (outcome.error === 'invalid_target') {
         return invalidFields(reply, { 'moveTo.sprintId': 'not_found' });
@@ -883,7 +632,7 @@ export function registerSprintRoutes(
         bySource.set(o.sprint_id, entry);
       }
       for (const [sourceId, entry] of bySource) {
-        await recordChanges(trx, request, board.settings, sourceId, 'removed', entry.tickets, {
+        await recordChanges(trx, by(request), board.settings, sourceId, 'removed', entry.tickets, {
           afterStart: entry.state === 'active',
           toSprintId: sprint.id,
           at: now,
@@ -907,7 +656,7 @@ export function registerSprintRoutes(
             })),
           )
           .execute();
-        await recordChanges(trx, request, board.settings, sprint.id, 'added', adding, {
+        await recordChanges(trx, by(request), board.settings, sprint.id, 'added', adding, {
           afterStart: current.state === 'active',
           at: now,
         });
@@ -954,7 +703,7 @@ export function registerSprintRoutes(
         .execute();
       const removing = members.map((m) => m.ticket_id);
       if (removing.length !== ids.length) return { error: 'not_in_sprint' as const };
-      await recordChanges(trx, request, board.settings, sprint.id, 'removed', removing, {
+      await recordChanges(trx, by(request), board.settings, sprint.id, 'removed', removing, {
         afterStart: current.state === 'active',
       });
       await trx

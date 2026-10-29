@@ -1,3 +1,4 @@
+import { knownTimeZone } from '@taskmoor/query';
 import { z } from 'zod';
 
 /**
@@ -14,6 +15,9 @@ import { z } from 'zod';
  * - **Completing** moves the board's unfinished tickets to the backlog, a future sprint or a
  *   new sprint; tickets of the sprint that the completing board does not show go to the
  *   backlog (a shared sprint, AGL-011 (2)). Done means a status of the rightmost column.
+ * - **Cycles** (M1-045; AGL-012), optional: sprints of a fixed length that follow each other.
+ *   The worker keeps the next sprint ready, starting when the active one ends, and at the end
+ *   completes the active sprint into it and starts it (`sprints/cycles.ts`).
  */
 const MAX_INT = 2_147_483_647;
 const id = z.number().int().positive().max(MAX_INT);
@@ -23,6 +27,20 @@ const when = z.string().datetime({ offset: true });
 
 export const ESTIMATION_STATISTICS = ['ticketCount', 'originalEstimate', 'field'] as const;
 export const TIME_TRACKING_MODES = ['none', 'remainingEstimate'] as const;
+
+/** Auto-rolling cycles (AGL-012): each sprint lasts `lengthDays` on `timeZone`'s wall clock. */
+export const sprintCycleInput = z
+  .object({
+    lengthDays: z.number().int().min(1).max(91),
+    timeZone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine((zone) => knownTimeZone(zone), 'unknown_time_zone')
+      .default('UTC'),
+  })
+  .strict();
+export type SprintCycle = z.infer<typeof sprintCycleInput>;
 
 export const sprintSettingsInput = z
   .object({
@@ -39,8 +57,15 @@ export const sprintSettingsInput = z
       }),
     timeTracking: z.enum(TIME_TRACKING_MODES),
     parallelSprints: z.boolean(),
+    /** Null or absent: sprints are planned, started and completed by people only. */
+    cycle: sprintCycleInput.nullable().optional(),
   })
-  .strict();
+  .strict()
+  // A cycle is one sprint after another: it rolls over the board's one active sprint.
+  .refine((s) => !(s.cycle && s.parallelSprints), {
+    message: 'not_with_parallel_sprints',
+    path: ['cycle'],
+  });
 export type SprintSettings = z.infer<typeof sprintSettingsInput>;
 
 export const DEFAULT_SPRINT_SETTINGS: SprintSettings = {

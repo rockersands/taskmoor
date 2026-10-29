@@ -8,6 +8,7 @@ import type { Authorizer } from '../authz/authorizer';
 import {
   type BoardRecord,
   bindCondition,
+  boardRecord,
   boardScope,
   boardTracks,
   compileBoard,
@@ -133,17 +134,7 @@ function boardQuery(db: Db, workspaceId: number) {
     .where('b.workspace_id', '=', workspaceId);
 }
 
-const record = (row: BoardRow): BoardRecord => ({
-  id: row.id,
-  name: row.name,
-  filterQuery: row.filter_query ?? `savedSearch = ${row.saved_search_id}`,
-  subFilterQuery: row.sub_filter_query,
-  columns: row.columns as unknown as Column[],
-  swimlanes: row.swimlanes as unknown as Swimlanes,
-  boardFilters: row.board_filters as unknown as BoardFilter[],
-  cardRules: row.card_rules as unknown as CardRules,
-  locationTrackId: row.location_track_id,
-});
+const record = (row: BoardRow): BoardRecord => boardRecord(row);
 
 /** A board's source as the API shows it: its query, or the saved search it uses. */
 const sourceOf = (row: BoardRow) =>

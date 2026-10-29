@@ -14,7 +14,51 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
-## Last session: 2026-10-29 (cloud container)
+## Last session: 2026-10-29 (Mac, afternoon)
+
+Back on the Mac after the overnight cloud run: `main` fast-forwarded 106 commits, the gate
+green here (one load-only failure, below). The user asked to continue with what is on `main`
+and to commit on `main` itself (no branch); pushing waits for their go-ahead each time.
+
+### Done
+
+- **M1-045 sprint and release functions, cycles** (ADR-010 "Functions (M1-045)", ADR-054
+  "Auto-rolling cycles"; no migration). Two commits:
+  - Query: the `sprint` field over `sprint_ticket` joined to `sprint` (the module refusal is
+    gone; deleted sprints never match), `openSprints()` (active), `futureSprints()`,
+    `closedSprints()` as a condition on the sprint state (never a list of ids; 60,000 sprints
+    tested), `@current`, `@next`, `@previous` (QRY-013: a `{ type: 'token' }` value from the
+    resolver; `bindCondition` passes the board, so on a board they are its sprints, in a search
+    every board's), `ORDER BY sprint`, and the four release functions in the manual release
+    order. `search/sprints.run.test.ts`. Conformance: sprints 7 of 7; the function section's
+    14 failures are the SLA functions of M2-013.
+  - Cycles (AGL-012): `sprintSettings.cycle` `{ lengthDays, timeZone }`; `rollSprintCycles`
+    (`sprints/cycles.ts`) every minute in the worker role (`main.ts`). The create, start and
+    complete transactions moved into `sprints/lifecycle.ts` (an actor instead of the request)
+    for the routes and the worker; `boardRecord` and `workspaceScope` in `boards/data.ts`.
+    `sprints/cycles.test.ts`: Madrid's change of summer time, catch-up, two workers at once.
+- **M1-082 LDAP closed**: its last criterion, the OpenLDAP container run, passed in CI
+  (`ldap.yml` on `main`, 2026-10-28 and 2026-10-29).
+
+### Next (in order)
+
+1. The overnight list below without M1-045: M1-040 full-text search and M1-039 history
+   operators (both measured at 10M tickets: this Mac has 33 GB free, the 137 GB dataset stayed
+   on Windows, so their timing criteria need another machine or CI), M1-064 dashboards with
+   M1-062 burndown, M1-046 board drag and drop, M1-067 webhooks, M1-098 CSV, M1-105, M1-115,
+   M1-116.
+2. Sprint settings in the web UI (estimation, time tracking, parallel sprints and now the
+   cycle): API only since M1-044.
+3. M1-073 and M1-074 still wait for a live test key in the environment (`TASKMOOR_AI_TEST_KEY`);
+   M1-100 for the release signing key.
+
+### Notes from the Mac
+
+- `apps/server/src/routes/search.run.test.ts` "[QRY-010] stops a query over the timeout" timed
+  out at 60 s in a full gate here (load average 16 to 19: its 20,000-row insert waits); it
+  passes alone in 5 s. Add it to the watch list below.
+
+## Earlier: 2026-10-29 (cloud container, overnight)
 
 ### Resume here (overnight run, 2026-10-29, 01:13 to 08:00 the user's time)
 

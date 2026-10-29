@@ -15,7 +15,7 @@ export { type CompiledQuery, type CompileOptions, compilePlan } from './compile'
 export * from './conformance/case';
 export { QUERY_CASES } from './conformance/cases';
 export * from './conformance/run';
-export { boundary, instantOf, localDate, wallClock } from './dates';
+export { addWall, boundary, instantOf, knownTimeZone, localDate, wallClock } from './dates';
 export {
   FIELD_NAMES,
   FUNCTION_NAMES,

@@ -367,6 +367,33 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
   `ticketLink`, the site setting for the first day of the week, functions in history
   predicates (`WAS ... BY membersOf(x)`: M1-039 binds them; the resolver already types them).
 
+## Functions (M1-045: sprints and releases)
+
+- **The sprint field** runs over `sprint_ticket` joined to `sprint` (ADR-054): a ticket's
+  sprints are every sprint it is or was in, so `sprint = <a closed sprint>` finds the tickets
+  that passed through it; deleted sprints never match and do not count for `IS EMPTY`. Values
+  are names (any case) or ids, looked up by one query (no table scan into memory, whatever the
+  number of sprints); a value no sprint has is refused. `ORDER BY sprint` uses the ticket's
+  latest sprint in its board's order (`max(sequence)`), tickets in none last.
+- **Sprint functions** compile to a condition on the sprint's state inside the same `EXISTS`,
+  never to a list of ids, so 60,000 sprints and more cost nothing extra (spec 01b section 1.6;
+  `search/sprints.run.test.ts` explains the statement). `openSprints()` is started and not
+  completed (active), `futureSprints()` not started, `closedSprints()` completed.
+- **Relative tokens** (QRY-013): `@current`, `@next` and `@previous` are typed by the resolver
+  (`{ type: 'token' }`); it refuses an unknown token and a token on any field but sprint, and a
+  quoted `"@current"` is a plain name. The binder makes them sprint matches answered in the
+  statement: the active sprint, the first future one in its board's order, the last completed
+  one. On a board's queries (`compileBoard` passes the board) they are that board's sprints; in
+  a search, each board's on its own. Teams do not exist yet; when they do, a team's board is
+  the reference.
+- **Release functions** resolve to release ids in the binder (a workspace has few releases):
+  `shippedReleases(track?)` the shipped ones (archived or not), `upcomingReleases(track?)` the
+  unshipped, unarchived ones, `latestShippedRelease(track)` and `earliestUpcomingRelease(track)`
+  the last shipped and first upcoming one in each named track's manual order (`sort_order`,
+  never dates). Their Jira-compatible names are the same functions.
+- **Still waiting**: the SLA functions (`breached()` and the rest) come with SLAs in M2-013;
+  they are the 14 cases the conformance suite's function section still fails.
+
 ## Options considered
 
 | Option | For | Against |

@@ -50,6 +50,32 @@ export interface BoardRecord {
   locationTrackId: number | null;
 }
 
+/** A board's row as the queries and the sprint lifecycle read it. */
+export function boardRecord(row: {
+  id: number;
+  name: string;
+  filter_query: string | null;
+  saved_search_id: number | null;
+  sub_filter_query: string | null;
+  columns: unknown;
+  swimlanes: unknown;
+  board_filters: unknown;
+  card_rules: unknown;
+  location_track_id: number | null;
+}): BoardRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    filterQuery: row.filter_query ?? `savedSearch = ${row.saved_search_id}`,
+    subFilterQuery: row.sub_filter_query,
+    columns: row.columns as Column[],
+    swimlanes: row.swimlanes as Swimlanes,
+    boardFilters: row.board_filters as BoardFilter[],
+    cardRules: row.card_rules as CardRules,
+    locationTrackId: row.location_track_id,
+  };
+}
+
 export interface Scope {
   ws: number;
   filter: { sql: RawBuilder<boolean>; tracks: readonly number[] | 'all' };
@@ -80,6 +106,32 @@ export async function boardScope(
     catalogue,
     userId: request.user?.id ?? null,
     person: searchPerson(request),
+  };
+}
+
+/**
+ * A board's queries as the board shows them to anyone, with no viewer: what the worker's cycle
+ * roll-over (M1-045) carries over. Functions about the viewer find nobody.
+ */
+export async function workspaceScope(
+  db: Db,
+  catalogs: FieldCatalogs,
+  workspaceId: number,
+): Promise<Scope> {
+  const catalog = await catalogs.get(workspaceId);
+  const catalogue = await queryCatalogue(db, workspaceId, catalog, 'all');
+  return {
+    ws: workspaceId,
+    filter: { sql: sql<boolean>`true`, tracks: 'all' },
+    catalog,
+    catalogue,
+    userId: null,
+    person: {
+      currentUserId: null,
+      timeZone: null,
+      sessionId: null,
+      allowedTracks: async () => 'all' as const,
+    },
   };
 }
 
