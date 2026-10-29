@@ -648,15 +648,17 @@ export class Authorizer {
 
   /**
    * The predicate lists put in their statement (QRY-008): the tickets the principal may see,
-   * by track browsing, ticket-level grants and visibility levels.
+   * by track browsing, ticket-level grants and visibility levels. Archived tracks are left out
+   * unless a site administrator asks for them (`includeArchived`, search of the archive).
    */
   async ticketFilter(
     workspaceId: number,
     principal: Principal,
     epoch?: string,
+    options: AllowedTracksOptions = {},
   ): Promise<TicketFilter> {
     const at = epoch ?? (await this.epoch(workspaceId));
-    const browse = await this.allowedTracks(workspaceId, principal, 'browse_track', at);
+    const browse = await this.allowedTracks(workspaceId, principal, 'browse_track', at, options);
     const viewer = await this.viewer(workspaceId, principal, at);
     const ticketBrowse =
       browse !== 'all' && viewer.active
@@ -911,13 +913,21 @@ export class AuthzContext {
     );
   }
 
-  private filterValue: Promise<TicketFilter> | undefined;
+  private readonly filters = new Map<string, Promise<TicketFilter>>();
 
-  /** The predicate on ticket `k` that lists of tickets use, read once per request. */
-  async ticketFilter(): Promise<TicketFilter> {
-    this.filterValue ??= this.epoch().then((at) =>
-      this.authorizer.ticketFilter(this.workspaceId, this.principal, at),
-    );
-    return this.filterValue;
+  /**
+   * The predicate on ticket `k` that lists of tickets use, read once per request. A site
+   * administrator's search of the archive passes `includeArchived` (ignored for everyone else).
+   */
+  async ticketFilter(options: AllowedTracksOptions = {}): Promise<TicketFilter> {
+    const key = options.includeArchived === true ? 'archive' : 'live';
+    let filter = this.filters.get(key);
+    if (!filter) {
+      filter = this.epoch().then((at) =>
+        this.authorizer.ticketFilter(this.workspaceId, this.principal, at, options),
+      );
+      this.filters.set(key, filter);
+    }
+    return filter;
   }
 }

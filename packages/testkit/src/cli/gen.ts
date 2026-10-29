@@ -1,4 +1,5 @@
-// pnpm gen --items <n> [--seed <n>] [--fields <n>] [--database <name>] [--database-url <url>] [--force]
+// pnpm gen --items <n> [--seed <n>] [--fields <n>] [--fields-per-item <n>] [--database <name>]
+//          [--database-url <url>] [--force]
 //
 // Generates a synthetic dataset and loads it into the `gen` schema. Without --database-url it
 // uses the embedded "bench" cluster in .cache/pg-test/bench and a database per size
@@ -20,6 +21,7 @@ const { values } = parseArgs({
     items: { type: 'string' },
     seed: { type: 'string' },
     fields: { type: 'string' },
+    'fields-per-item': { type: 'string' },
     database: { type: 'string' },
     'database-url': { type: 'string' },
     force: { type: 'boolean', default: false },
@@ -29,13 +31,16 @@ const { values } = parseArgs({
 const items = Number(values.items?.replaceAll('_', ''));
 if (!Number.isInteger(items) || items < 1) {
   console.error(
-    'Usage: pnpm gen --items <n> [--seed <n>] [--fields <n>] [--database <name>] [--database-url <url>] [--force]',
+    'Usage: pnpm gen --items <n> [--seed <n>] [--fields <n>] [--fields-per-item <n>] [--database <name>] [--database-url <url>] [--force]',
   );
   process.exit(2);
 }
 const config = scaleConfig(items, {
   ...(values.seed ? { seed: Number(values.seed) } : {}),
   ...(values.fields ? { fields: Number(values.fields) } : {}),
+  // Fewer values per ticket with proportionally fewer fields keeps each field as dense as at
+  // full size while the side tables shrink: a larger ticket count fits on a smaller disk.
+  ...(values['fields-per-item'] ? { fieldsPerItem: Number(values['fields-per-item']) } : {}),
 });
 
 const bench = values['database-url']

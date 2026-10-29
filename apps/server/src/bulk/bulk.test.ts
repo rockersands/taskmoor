@@ -334,6 +334,51 @@ describe('bulk operations (M1-021)', () => {
     await drain();
   });
 
+  it('[CORE-024] [QRY-008] selects tickets by a query, only those the person sees, in its order', async () => {
+    await track('BH', []);
+    const visible = await tickets('BA', ['Sweep one', 'Sweep two', 'Sweep three']);
+    const hidden = await tickets('BH', ['Sweep hidden']);
+    const op = await bulk('alice', {
+      action: 'edit',
+      query: 'summary ~ sweep ORDER BY key DESC',
+      edit: { labels: ['swept'] },
+    });
+    expect(op).toMatchObject({
+      total: 3,
+      failed: 0,
+      params: { query: 'summary ~ sweep ORDER BY key DESC' },
+    });
+    await drain();
+    expect(await operation(op.id)).toMatchObject({ status: 'done', succeeded: 3 });
+    expect((await items(op.id)).map((i) => i.key)).toEqual([...visible].reverse());
+    const labels = await database.db
+      .selectFrom('ticket')
+      .select(['summary', 'labels'])
+      .where('summary', 'like', 'Sweep%')
+      .orderBy('summary')
+      .execute();
+    expect(labels).toEqual([
+      { summary: 'Sweep hidden', labels: [] },
+      { summary: 'Sweep one', labels: ['swept'] },
+      { summary: 'Sweep three', labels: ['swept'] },
+      { summary: 'Sweep two', labels: ['swept'] },
+    ]);
+    expect(hidden).toHaveLength(1);
+    // One selection or the other; a query that cannot run or finds nothing is refused.
+    const refusal = async (payload: Record<string, unknown>) => {
+      const res = await post('alice', '/api/v1/bulk-operations', { action: 'delete', ...payload });
+      expect(res.statusCode, res.body).toBe(400);
+      return res.json();
+    };
+    expect(await refusal({ tickets: visible, query: 'summary ~ sweep' })).toEqual({
+      error: 'invalid_fields',
+      fields: { tickets: 'tickets_or_query' },
+    });
+    expect(await refusal({})).toMatchObject({ error: 'invalid_fields' });
+    expect(await refusal({ query: 'status = ' })).toMatchObject({ error: 'invalid_query' });
+    expect(await refusal({ query: 'summary ~ hidden' })).toEqual({ error: 'no_tickets' });
+  });
+
   it('[CORE-024] a cancel skips what is left; there is no cap at 1,000 tickets', async () => {
     const trackId = tracks.BA as number;
     const type = await database.db

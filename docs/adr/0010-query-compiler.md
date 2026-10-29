@@ -134,6 +134,155 @@ added (absolute since 2026-10-12, `docs/plan/decisions.csv`).
   in full, fields at 99%; 94% overall (from 76%). Functions (M1-038, M1-045) and sprint tokens
   (M1-045) are the rest.
 
+## Implementation (M1-037: the compiler)
+
+- **Where:** `apps/server/src/search/`. A resolved plan is **bound** (`bind.ts`: names become
+  ids, `NOT` is pushed down, each clause is matched with the table that answers it, and what
+  the product cannot answer yet is refused) and **compiled** (`compile.ts`: pure, Kysely `sql`
+  fragments, no database at hand, so its SQL is a reviewed golden file,
+  `search/__golden__/compile.json`); `run.ts` runs it. The M0 spike compiler stays in
+  `packages/query/src/compile.ts` for the spike benchmarks only. Started from an earlier
+  agent's uncommitted draft (`work/m1-037-sql-compiler`), ported onto M1-028 and finished.
+- **Values are parameters**, cast to the column's type; the compiler writes only its own text.
+  A fuzz test (10,000 generated queries per run, `SEARCH_FUZZ_RUNS` to change it; comments
+  and value branches included) checks that a statement's text never depends on the values in
+  it and that every value is a parameter (QRY-010 (1)).
+- **The permission pre-filter is in every statement** (QRY-008): workspace, "not in the trash"
+  and `request.authz.ticketFilter()` (track browsing, ticket-level grants, visibility levels;
+  ADR-012) on `ticket k`, in the side-table walks and in every value branch too; side-table
+  walks also limit the side rows to the viewer's tracks so the index does it. Counts use the
+  same conditions. Archived tracks are left out unless a site administrator asks
+  (`archived=true`; `ticketFilter({ includeArchived })`). The ticket views of a page are read
+  with the filter again, so a ticket hidden between the two statements stays hidden.
+  - A **property test** (`search/authz.test.ts`, the random worlds of the M1-020 test: level
+    members of every grantee kind, ticket-level browse grants, eight tickets, thirty worlds)
+    runs a plain query, a side-table walk, value branches, a subquery order and a level query
+    for five people and requires exactly the tickets an unrestricted run returns that
+    `ticketPermissions` lets the person browse, in the same order, and the same count. Dropping
+    the filter from the branches makes it fail (checked).
+  - A **matrix test** (`routes/search.visibility.test.ts`, QRY-008 (2)): five levels (a user, a
+    nested group, a track role, the requester, a user field) and four people plus the
+    administrator, through every form of statement, counts and cursor pages; the explain view
+    shows the level predicate (QRY-008 (3)).
+- **Comments (M1-018):** `comment ~`, `comment !~`, `comment IS [NOT] EMPTY` and `text ~` see a
+  comment only where `commentReadableSql` (`tickets/comments.ts`) lets the viewer read it:
+  open comments, their own, and those for a group they are in or a role they hold in the
+  track; never a deleted one, for site administrators neither. `!~` on comments means "has
+  comments the viewer reads and none matches".
+- **Empty values (spec 01b 1.1):** a clause never matches an empty field unless it says so.
+  `NOT` is pushed down by De Morgan and turns each clause around by its operator (`NOT a = x`
+  reads `a != x`), so it never brings empties back either. On fields with several values
+  (multiple selects, people, labels, areas, releases, followers) `=` and `IN` mean "one of its
+  values", `!=` and `NOT IN` "it has values and none of them".
+- **Names to ids:** statuses, priorities, types, close reasons, levels, groups, areas,
+  releases, link types (by name or either description) and options (any level of a cascade)
+  by name in any case or by id; a name that matches nothing is refused naming the field. People
+  by id, `currentUser()`, email or name. Ticket keys (old ones too) of tickets the person cannot
+  see, or that do not exist, match nothing and come back as a warning, so a key reveals
+  nothing. `stage` takes `new`, `active`, `closed` and the Jira-compatible `To Do`,
+  `In Progress`, `Done`. Ordering comparisons on priorities mean "more urgent" (`priority >
+  High`), on releases the track's release order; `hierarchyLevel` compares level numbers.
+  Formula fields (M1-013) search as their output, through the side table it is kept in.
+- **Text (`~`, `!~`) until M1-040:** every word of the value must occur, in any order, case
+  folded, without stemming (`simple` configuration): the summary, the text of description and
+  environment documents and comment bodies through word indexes (GIN on the compiler's own
+  expressions, so the planner matches them), custom text fields through their side rows;
+  `text ~` covers all of those. Phrases, wildcards, stemming, ranking and an index on custom
+  text values are M1-040.
+- **Refused for now, with a message that says why:** `WAS` and `CHANGED` (M1-039),
+  `lastViewed` (not recorded yet), fields of modules not built (boards and sprints, service
+  tracks, journeys, saved searches), functions other than `currentUser()` and the date
+  functions (the resolver already refuses those; M1-038), and ordering by a field the catalogue
+  does not mark sortable. Time entry comments and dates search only entries shown to everyone.
+  `parentTrack` reads as the track of the ticket's parent (the spec leaves it open).
+- **Order (QRY-009):** the keys asked for (default: created, newest first), empties last
+  (`NULLS LAST` only where a value can be empty), then the ticket id in the direction of the
+  last key, so the order is total. Spec 01b 1.7 breaks ties by key; the id gives the same order
+  within a track except for moved tickets and keeps pages on an index. Option fields sort by
+  option order, people by name, releases by release order, text by its folded sort key,
+  priorities by rank, statuses by the workspace's status order, keys by track key and number.
+  The page orders by its output columns, so a subquery key is computed once.
+- **Keyset pages:** a cursor is the last row's order values and id plus a signature of the
+  order (base64url JSON), refused for any other order. One direction and no empty values: a
+  row comparison `(k.created_at, k.id) < ($1, $2)` the index serves; otherwise the expanded
+  form. Instants travel as Postgres text, so microseconds survive. The first page also counts
+  matches up to 10,000 (`total: { count, exact }`); approximate counts are M1-040.
+- **Driving from a side table** works as the spike found (created order, or the value order of
+  a number, date or date-time field the query also filters), with two production details: one
+  value is an equality, not `= ANY(array)`, so `(field_id, value, created_at)` still yields
+  rows in order; and option, person and release fields never drive by value, because their
+  ids do not sort as they display.
+- **Value branches** (not in the spike): when the first order
+  key reads one ticket column with few values (priority, status, type, hierarchy level, close
+  reason, track key), the binder reads that column's values with the query and the compiler
+  writes a `UNION ALL` of one branch per value (at most 40, the empty one last), each with the
+  query's conditions, ordered by the remaining keys and cut at the page size, merged by the
+  outer `ORDER BY`. Each branch walks an index in the remaining order instead of sorting all
+  matches: `track = X ORDER BY key` walks `(track_id, number)`, `priority > Normal AND track =
+  X ORDER BY priority DESC, updated DESC` walks `(track_id, updated_at)` once per priority, and
+  `ORDER BY priority DESC, created ASC` walks the new `(priority_id, created_at)`. Top-level
+  conditions on the column leave values out and are not repeated inside the branches (so the
+  planner does not count them twice); for track keys, so do the viewer's tracks. A cursor's
+  first value decides each branch in SQL (`$v < $cursor OR ($v = $cursor AND rest after)`),
+  so text values compare in the database's collation exactly as the plain form sorts them. A
+  test pages through eight orders in both forms from cursors anywhere (an empty-priority row
+  included) and requires identical pages; `branches: false` keeps the single statement.
+- **Timeout and explain (QRY-010):** statements run in a read-only transaction with
+  `statement_timeout` from `TASKMOOR_QUERY_TIMEOUT_MS` (default 30 s, 100 ms to 10 min); a query
+  over it answers 503 `query_timeout`. `GET /api/v1/admin/search/explain?q=` shows a site
+  administrator the SQL, its parameters, whether it walks a side table or merges branches, and
+  the plan with its estimated costs (`analyze=true` runs it).
+- **API:** `GET` and `POST /api/v1/search` (`q`, `limit` up to 200, `cursor`, `fields`,
+  `count`, `archived`) answer ticket views as `GET /api/v1/tickets` does; POST only reads, so
+  read tokens reach it and it emits no event. Bulk changes take `query` instead of `tickets`
+  (ADR-043 "Selection by query").
+- **Indexes (migration 0043):** newest first site-wide and by track, recently updated
+  site-wide and by track (`... DESC, id DESC`, partial on live tickets), closed, due,
+  requester, `(priority_id, created_at DESC, id DESC)` in place of the plain priority index,
+  and word indexes (GIN) on the summary, description and environment documents and comment
+  bodies.
+- **Plan regression (`search/plans.test.ts`):** 28 representative queries over 20,000
+  synthetic tickets (with descriptions and comments), planned as an ordinary member with a
+  visibility level in play; each plan's shape (node types, indexes, scan direction, no costs)
+  is a golden file per Postgres major version (`plans-pg16.json`), and every version checks
+  the indexes each query must use (one of several where the planner may pick any index on the
+  track) and that no plan reads the ticket table whole. The data is arithmetic, under
+  ANALYZE's sample size and vacuumed, and the planner settings are fixed, so plans are the same
+  everywhere. The same file checks that side-table walks and value branches return the same
+  pages as the plain statement.
+
+**Measurements (M1-037, 2026-10-29).** The 50-query perf set (`search/bench/perf.ts`; `pnpm
+bench:search --database-url <url>` on a database where `pnpm gen` loaded its dataset; the bench
+sets `random_page_cost = 1.1` and `effective_cache_size` on the database as deploy/README.md
+recommends) at 1M tickets (1,500 fields, about 25 values per ticket, 29M side rows; cloud container,
+4 cores, 16 GB, Postgres 16, other sessions' tests running alongside), as an ordinary member
+(100 of 200 tracks, one ticket in a hundred at a level they are not in) and as a site
+administrator; [report](../spikes/search-1m.md):
+
+| | Statement p95, member | Statement p95, administrator | Request p95 (`count=false`) |
+|---|---:|---:|---:|
+| Median of the 50 queries | 2.3 ms | 1.5 ms | 34.5 ms |
+| Slowest | 116 ms (`summary ~ "audit safari"`) | 38 ms | 179 ms |
+
+All 50 are under 300 ms at 1M. Before value branches, the new indexes and ANALYZE of the word
+indexes, the draft compiler on the same data had five over 300 ms: `track = X ORDER BY key`
+(p50 442 ms, now 1.1 ms), `priority > Normal AND track = X ORDER BY priority DESC, updated
+DESC` (438 ms, now 2.6 ms), `type = Bug AND priority IN (Urgent, High) AND stage != closed
+ORDER BY priority DESC, created ASC` (432 ms, now 4.4 ms), `description ~ audit AND track = Y`
+(874 ms, now 1.0 ms) and `summary ~ audit` (463 ms, now 3.4 ms). Capped counts take up to 396
+ms (`bugs-urgent`, 10,001 matches); the first page asks for one by default.
+
+**10M is not measured here.** The 1M database takes 11 GB (25 values per ticket); 10M at the
+same shape needs about 110 GB of disk and about two hours to generate and load (`pnpm gen`
+loads 3,500 tickets/s; `--fields-per-item 5 --fields 300` keeps each field as dense in about a
+third of the space). The container had 17 GB free and shared it. What to watch at 10M: plans
+that walk an index stay flat; those that read every match grow with the data: two-word
+summary searches (the planner's estimate for two words assumes they are independent, so it
+reads 3,473 matches and sorts them instead of walking `created`), custom text fields (no word
+index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000000
+--database-url <url>` then `pnpm bench:search --database-url <url>` on a machine with the disk
+(M1-117 owns the 10M nightly).
+
 ## Options considered
 
 | Option | For | Against |

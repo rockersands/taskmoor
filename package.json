@@ -25,6 +25,7 @@
     "gen": "tsx packages/testkit/src/cli/gen.ts",
     "spike": "tsx packages/spikes/src/cli/spike.ts",
     "bench:check": "tsx packages/devtools/src/cli/bench-check.ts",
+    "bench:search": "tsx apps/server/src/search/bench/cli.ts",
     "status-report": "tsx packages/devtools/src/cli/status-report.ts",
     "gate": "tsx packages/devtools/src/cli/gate.ts",
     "conformance": "tsx packages/devtools/src/cli/conformance.ts",

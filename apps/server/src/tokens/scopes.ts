@@ -10,7 +10,8 @@
  * - administration routes (people, groups, roles, policies, grants, service accounts, tokens of
  *   others, sign-in security, identity providers, LDAP and Active Directory directories, the
  *   audit log, instance status) need the admin scope, whatever the method;
- * - everything else needs read for GET and HEAD and write for other methods. That includes
+ * - everything else needs read for GET and HEAD and write for other methods, except the
+ *   POST routes that only read (a search too long for a URL, M1-037). That includes
  *   track configuration (track categories, hierarchy levels, ticket types, type sets):
  *   everyone reads the levels and a track's ticket types, and a local-mode track's
  *   administrators change the types and type set it owns with a write token; shared ones need
@@ -71,6 +72,9 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/account/two-factor/webauthn/options',
 ]);
 
+/** POST routes that change nothing: a read token reaches them. */
+export const READ_ONLY_POST_ROUTES: ReadonlySet<string> = new Set(['POST /api/v1/search']);
+
 /** Paths under these (the path itself or below it) are administration. */
 export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/admin',
@@ -109,6 +113,7 @@ export function routeAccess(method: string, routeUrl: string): RouteAccess {
   if (ADMIN_ROUTE_PREFIXES.some((p) => routeUrl === p || routeUrl.startsWith(`${p}/`))) {
     return 'admin';
   }
+  if (READ_ONLY_POST_ROUTES.has(key)) return 'read';
   return ['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase()) ? 'read' : 'write';
 }
 

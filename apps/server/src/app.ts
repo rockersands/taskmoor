@@ -113,6 +113,8 @@ export interface AppDeps {
   smtpConfigured?: boolean;
   /** Quiet time before collaborative edits are saved (M1-017); tests shorten it. */
   collabDebounceMs?: number;
+  /** How long a search statement may run, in milliseconds (QRY-010; default 30 s). */
+  queryTimeoutMs?: number;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -235,7 +237,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerNotificationRoutes(app, db);
     await registerEmailRoutes(app, db, { smtpConfigured: deps.smtpConfigured ?? false });
     registerSyncRoutes(app, db, authorizer);
-    registerSearchRoutes(app, db, fieldCatalogs);
+    registerSearchRoutes(app, db, fieldCatalogs, {
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
@@ -245,7 +249,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerWorkflowRoutes(app, db);
     registerWorkflowMapRoutes(app, db, fieldCatalogs);
     registerTrashRoutes(app, db);
-    registerBulkRoutes(app, db);
+    registerBulkRoutes(app, db, fieldCatalogs, {
+      ...(deps.queryTimeoutMs !== undefined ? { queryTimeoutMs: deps.queryTimeoutMs } : {}),
+    });
     registerAuditRoutes(app, db);
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);

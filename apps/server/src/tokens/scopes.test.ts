@@ -6,6 +6,7 @@ import { bearerToken } from './api-tokens';
 import {
   ADMIN_ROUTE_PREFIXES,
   PUBLIC_ROUTES,
+  READ_ONLY_POST_ROUTES,
   routeAccess,
   SESSION_ONLY_ROUTES,
   scopeDenial,
@@ -25,7 +26,9 @@ describe('token scopes per route (IAM-007)', () => {
   });
 
   it('[IAM-007] names only routes that exist, so a renamed route cannot slip out of its class', () => {
-    const missing = [...PUBLIC_ROUTES, ...SESSION_ONLY_ROUTES].filter((r) => !api.includes(r));
+    const missing = [...PUBLIC_ROUTES, ...SESSION_ONLY_ROUTES, ...READ_ONLY_POST_ROUTES].filter(
+      (r) => !api.includes(r),
+    );
     expect(missing).toEqual([]);
     for (const prefix of ADMIN_ROUTE_PREFIXES) {
       expect(
@@ -68,6 +71,10 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/directories/:id/sync']).toBe('admin');
     expect(classes['POST /api/v1/directories/test']).toBe('admin');
     expect(classes['POST /api/v1/tracks']).toBe('write');
+    // Searching (M1-037): POST carries long queries and changes nothing; explain is admin.
+    expect(classes['GET /api/v1/search']).toBe('read');
+    expect(classes['POST /api/v1/search']).toBe('read');
+    expect(classes['GET /api/v1/admin/search/explain']).toBe('admin');
     // Track configuration: read and write, so local-mode track administrators keep theirs.
     expect(classes['GET /api/v1/hierarchy-levels']).toBe('read');
     expect(classes['GET /api/v1/hierarchy-levels/impact']).toBe('read');

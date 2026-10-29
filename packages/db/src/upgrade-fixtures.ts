@@ -510,7 +510,19 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         await sql`INSERT INTO workflow_version_status (workspace_id, workflow_id, version, status_id)
           SELECT 1, ${workflow}, ${version}, ${status}`.execute(db);
       }
-      await sql`UPDATE track SET workflow_id = ${workflow} WHERE key = 'SEED'`.execute(db);
+      const legacy = await sql<{ n: number }>`SELECT count(*)::int AS n
+        FROM information_schema.columns
+       WHERE table_schema = current_schema() AND table_name = 'track'
+         AND column_name = 'workflow_id'`.execute(db);
+      if ((legacy.rows[0]?.n ?? 0) > 0) {
+        await sql`UPDATE track SET workflow_id = ${workflow} WHERE key = 'SEED'`.execute(db);
+      } else {
+        // Seeded on 0042 or later (an upgrade that starts there): the map 0042 would have made.
+        await sql`INSERT INTO workflow_map (workspace_id, name, default_workflow_id)
+          SELECT 1, 'Seed workflow map', ${workflow}`.execute(db);
+        await sql`UPDATE track SET workflow_map_id = (SELECT id FROM workflow_map WHERE name = 'Seed workflow map')
+          WHERE key = 'SEED'`.execute(db);
+      }
       await sql`UPDATE ticket SET status_id = ${status} WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
@@ -850,7 +862,7 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async (db) => {
       await sql`INSERT INTO workflow (workspace_id, name, owner_track_id)
-        SELECT 1, 'Seed local workflow', id FROM track WHERE key = 'SEEDOLD'`.execute(db);
+        SELECT 1, 'Seed local workflow', id FROM track WHERE key = 'SEEDNEW'`.execute(db);
       await sql`INSERT INTO workflow_version (workspace_id, workflow_id, version, definition)
         SELECT 1, w.id, 1, jsonb_build_object('initialStatusId', s.id,
           'statuses', jsonb_build_array(jsonb_build_object('statusId', s.id)),
@@ -878,6 +890,16 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE o.reason = 'track_map' AND ty.name = 'Seed type' AND s.name = 'Seed status'`.execute(
         db,
       );
+    },
+  },
+  // Indexes only: the seeded ticket must come through with its search fields as they were.
+  '0043_search_indexes': {
+    tables: {
+      ticket: "summary = 'Seed ticket' AND deleted_at IS NULL AND requester_id IS NOT NULL",
+    },
+    seed: async (db) => {
+      await sql`UPDATE ticket SET requester_id = (SELECT id FROM app_user WHERE email = 'seed@example.com')
+        WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
 };
