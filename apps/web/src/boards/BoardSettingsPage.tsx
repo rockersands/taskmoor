@@ -228,6 +228,8 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
       </p>
     ) : null;
 
+  // A board on a saved search reports a saved search it cannot use on its query (M1-063).
+  const sourcePath = problem('source.savedSearchId') ? 'source.savedSearchId' : 'source.query';
   const columnOfStatus = (statusId: number) =>
     draft.columns.find((c) => c.statusIds.includes(statusId))?.key ?? '';
   const mapStatus = (statusId: number, columnKey: string) =>
@@ -360,9 +362,9 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               required
               value={draft.query}
               onChange={(e) => set({ query: e.target.value })}
-              {...invalid('source.query', `${id}-query`)}
+              {...invalid(sourcePath, `${id}-query`)}
             />
-            {problemText('source.query', `${id}-query`)}
+            {problemText(sourcePath, `${id}-query`)}
           </div>
           <div className="form-field">
             <label htmlFor={`${id}-sub`} className="form-label">
