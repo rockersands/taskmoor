@@ -2,11 +2,13 @@ import type { CustomField, Field, SystemField } from './fields';
 import type { Comparison, HistoryPredicate, Plan, Pred, Typed } from './resolve';
 
 /**
- * A value this spike compiler can write. Functions the database answers (M1-038) are the
- * server's to compile (`apps/server/src/search`); here they are refused.
+ * A value this spike compiler can write. Functions the database answers (M1-038) and relative
+ * sprint tokens (M1-045) are the server's to compile (`apps/server/src/search`); here they are
+ * refused.
  */
-function plain(t: Typed): Exclude<Typed, { type: 'call' }> {
+function plain(t: Typed): Exclude<Typed, { type: 'call' | 'token' }> {
   if (t.type === 'call') throw new Error(`${t.fn}() is not supported by the spike compiler`);
+  if (t.type === 'token') throw new Error(`@${t.value} is not supported by the spike compiler`);
   return t;
 }
 

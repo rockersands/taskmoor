@@ -26,6 +26,7 @@ import type {
   Scalarish,
   SideOrder,
   SideRef,
+  SprintMatch,
   SqlType,
   TicketColumn,
   TicketSet,
@@ -67,6 +68,11 @@ export interface BindContext {
   filter: RawBuilder<boolean>;
   /** The tracks where the viewer holds a permission (`tracksWhereUserHasPermission()`). */
   allowedTracks?: (permission: TrackPermission) => Promise<readonly number[] | 'all'>;
+  /**
+   * The board whose query this is: `@current`, `@next` and `@previous` are its sprints. Without
+   * a board (a search) every board counts on its own (QRY-013).
+   */
+  boardId?: number | null;
 }
 
 /** A function the database answers (M1-038): its native name and typed arguments. */
@@ -76,15 +82,15 @@ const isCall = (t: Typed): t is CallValue => t.type === 'call';
 
 /** Functions of modules this version does not have yet, and the module, as people know it. */
 const LATER: Record<string, string> = {
-  openSprints: 'boards and sprints',
-  closedSprints: 'boards and sprints',
-  futureSprints: 'boards and sprints',
-  shippedReleases: 'release functions',
-  upcomingReleases: 'release functions',
-  latestShippedRelease: 'release functions',
-  earliestUpcomingRelease: 'release functions',
   customerDetail: 'service tracks',
   customerGroupMembers: 'service tracks',
+};
+
+/** The sprint state each sprint function names (M1-045): open means started, not completed. */
+const SPRINT_STATES: Record<string, 'future' | 'active' | 'closed'> = {
+  openSprints: 'active',
+  futureSprints: 'future',
+  closedSprints: 'closed',
 };
 
 /** A function this version cannot answer yet. */
@@ -374,6 +380,8 @@ class Binder {
         return [key({ kind: 'releaseOrder', role: 'found' })];
       case 'effortRatio':
         return [key({ kind: 'effortRatio' })];
+      case 'sprint':
+        return [key({ kind: 'sprintOrder' })];
       default:
         throw new SearchError(`Results cannot be ordered by ${label(field)} yet`, 'unsupported');
     }
@@ -654,6 +662,13 @@ class Binder {
         );
       case 'hierarchyLevel':
         return this.hierarchy(p);
+      case 'sprint':
+        if (p.kind === 'empty')
+          return { kind: 'relatedEmpty', relation: 'sprint', negated: p.negated };
+        return this.related(p, {
+          relation: 'sprint',
+          matches: await this.sprints(this.typed(p), label(field)),
+        });
       case 'status':
         return this.onIds(
           p,
@@ -1081,6 +1096,34 @@ class Binder {
           .execute();
         return rows.map((r) => r.id);
       }
+      case 'shippedReleases':
+      case 'upcomingReleases': {
+        if (kind !== 'release') break;
+        const tracks = call.args.length > 0 ? await this.trackIds(call.args) : null;
+        if (tracks?.length === 0) return [];
+        let query = this.db.selectFrom('release').select('id').where('workspace_id', '=', this.ws);
+        // Shipped ones stay shipped when archived; an archived release is upcoming no more.
+        query =
+          call.fn === 'shippedReleases'
+            ? query.where('shipped_at', 'is not', null)
+            : query.where('shipped_at', 'is', null).where('archived_at', 'is', null);
+        if (tracks) query = query.where('track_id', 'in', tracks);
+        return (await query.execute()).map((r) => r.id);
+      }
+      case 'latestShippedRelease':
+      case 'earliestUpcomingRelease': {
+        if (kind !== 'release') break;
+        // The track's own release order, as people arranged it, never the dates (spec 01b 1.6).
+        const tracks = await this.trackIds(call.args);
+        if (tracks.length === 0) return [];
+        const latest = call.fn === 'latestShippedRelease';
+        const rows = await sql<{ id: number }>`
+          SELECT DISTINCT ON (track_id) id FROM release
+           WHERE workspace_id = ${this.ws}::int AND track_id = ANY(${tracks}::int[])
+             AND ${latest ? sql`shipped_at IS NOT NULL` : sql`shipped_at IS NULL AND archived_at IS NULL`}
+           ORDER BY track_id, sort_order ${latest ? sql`DESC` : sql`ASC`}`.execute(this.db);
+        return rows.rows.map((r) => r.id);
+      }
       case 'areasOwnedByUser': {
         if (kind !== 'area') break;
         const owners = call.args.length > 0 ? await this.people(call.args) : [this.me(call)];
@@ -1095,6 +1138,51 @@ class Binder {
       }
     }
     throw later(call);
+  }
+
+  /**
+   * The sprints a clause names (M1-045): functions by state, tokens relative to the board, and
+   * names (any case) or ids looked up. A name or id no sprint has is refused.
+   */
+  private async sprints(values: Typed[], field: string): Promise<SprintMatch[]> {
+    const matches: SprintMatch[] = [];
+    const wanted: string[] = [];
+    for (const v of values) {
+      if (isCall(v)) {
+        const state = SPRINT_STATES[v.fn];
+        if (!state) throw later(v);
+        matches.push({ kind: 'state', state });
+      } else if (v.type === 'token') {
+        matches.push({ kind: 'relative', token: v.value, boardId: this.ctx.boardId ?? null });
+      } else {
+        wanted.push(String(v.value).trim());
+      }
+    }
+    if (wanted.length === 0) return matches;
+    const names = [...new Set(wanted.map(lower))];
+    const numbers = [...new Set(wanted.filter((w) => /^\d{1,9}$/.test(w)).map(Number))];
+    const rows = await this.db
+      .selectFrom('sprint')
+      .select(['id', 'name'])
+      .where('workspace_id', '=', this.ws)
+      .where('deleted_at', 'is', null)
+      .where((eb) =>
+        eb.or([
+          eb(sql<string>`lower(name)`, 'in', names),
+          ...(numbers.length > 0 ? [eb('id', 'in', numbers)] : []),
+        ]),
+      )
+      .execute();
+    const ids: number[] = [];
+    for (const w of wanted) {
+      const found = rows.filter((r) => lower(r.name) === lower(w) || String(r.id) === w);
+      if (found.length === 0) {
+        throw new SearchError(`${field} has no value "${w}"`, 'unknown_value');
+      }
+      ids.push(...found.map((r) => r.id));
+    }
+    matches.push({ kind: 'ids', ids: idList(ids) });
+    return matches;
   }
 
   /** A clause on rows of another table. */

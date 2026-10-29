@@ -60,4 +60,12 @@ export {
   parseWithDiagnostics,
 } from './parser';
 export { printField, printQuery, printValue } from './print';
-export { type Plan, type Pred, type ResolveContext, resolveQuery, type Typed } from './resolve';
+export {
+  type Plan,
+  type Pred,
+  type ResolveContext,
+  resolveQuery,
+  SPRINT_TOKENS,
+  type SprintToken,
+  type Typed,
+} from './resolve';

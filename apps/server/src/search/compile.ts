@@ -11,6 +11,7 @@ import type {
   Scalar,
   Scalarish,
   SideRef,
+  SprintMatch,
   SqlType,
   TicketSet,
   ValueTest,
@@ -252,6 +253,48 @@ function relatedRows(relation: RelationName, related?: Related): RawBuilder<bool
     }
     case 'attachment':
       return exists('attachment r', sql<boolean>`r.ticket_id = k.id`);
+    case 'sprint': {
+      const base = [sql<boolean>`r.ticket_id = k.id`, sql<boolean>`s.deleted_at IS NULL`];
+      if (related && related.relation === 'sprint') {
+        const match = or(related.matches.map(sprintMatch));
+        if (match === FALSE) return FALSE;
+        base.push(match);
+      }
+      return exists('sprint_ticket r JOIN sprint s ON s.id = r.sprint_id', and(base));
+    }
+  }
+}
+
+/** The sprint `s` is one a clause names (M1-045). */
+function sprintMatch(m: SprintMatch): RawBuilder<boolean> {
+  switch (m.kind) {
+    case 'ids':
+      return m.ids.length === 0 ? FALSE : sql<boolean>`s.id = ANY(${array(m.ids, 'int')})`;
+    case 'state':
+      return sql<boolean>`s.state = ${param(m.state, 'text')}`;
+    case 'relative': {
+      const board =
+        m.boardId === null ? TRUE : sql<boolean>`s.board_id = ${param(m.boardId, 'int')}`;
+      switch (m.token) {
+        case 'current':
+          return and([sql<boolean>`s.state = 'active'`, board]);
+        case 'next':
+          // The first future sprint of the sprint's own board, in the board's order.
+          return and([
+            sql<boolean>`s.state = 'future'`,
+            board,
+            sql<boolean>`s.sequence = (SELECT min(f.sequence) FROM sprint f
+              WHERE f.board_id = s.board_id AND f.state = 'future' AND f.deleted_at IS NULL)`,
+          ]);
+        case 'previous':
+          return and([
+            sql<boolean>`s.state = 'closed'`,
+            board,
+            sql<boolean>`s.completed_at = (SELECT max(c.completed_at) FROM sprint c
+              WHERE c.board_id = s.board_id AND c.state = 'closed' AND c.deleted_at IS NULL)`,
+          ]);
+      }
+    }
   }
 }
 
@@ -489,6 +532,10 @@ export function orderExpr(source: OrderSource): RawBuilder<unknown> {
     case 'releaseOrder':
       return one(
         `SELECT min(r.sort_order) FROM ticket_release o JOIN release r ON r.id = o.release_id WHERE o.ticket_id = k.id AND o.role = '${source.role}'`,
+      );
+    case 'sprintOrder':
+      return one(
+        'SELECT max(s.sequence) FROM sprint_ticket o JOIN sprint s ON s.id = o.sprint_id WHERE o.ticket_id = k.id AND s.deleted_at IS NULL',
       );
     case 'effortRatio':
       return scalarExpr({ kind: 'effortRatio' });

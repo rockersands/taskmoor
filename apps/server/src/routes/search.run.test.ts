@@ -884,10 +884,7 @@ describe('search (M1-037)', () => {
       error: 'invalid_query',
       message: '"group" has no value "Nobody"',
     });
-    expect((await refused('targetRelease IN shippedReleases()')).message).toBe(
-      'shippedReleases() belongs to release functions, which this version does not have yet',
-    );
-    expect((await refused('sprint IN openSprints()')).message).toContain('boards and sprints');
+    // Sprint and release functions run since M1-045 (sprint.run.test.ts).
     expect((await refused('track IN tracksWhereUserHasPermission(fly)')).message).toBe(
       'No track permission "fly"',
     );
@@ -907,9 +904,9 @@ describe('search (M1-037)', () => {
       expect(status, q).toBe(400);
       return body;
     };
-    expect(await refused('sprint = 3')).toMatchObject({
+    expect(await refused('journey = 3')).toMatchObject({
       error: 'unsupported_query',
-      message: '"sprint" belongs to boards and sprints, which this version does not have yet',
+      message: '"journey" belongs to journeys, which this version does not have yet',
     });
     expect((await refused('requestType = x')).message).toContain('service tracks');
     // Saved searches run since M1-063: an unknown one reads as missing.

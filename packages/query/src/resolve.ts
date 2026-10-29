@@ -43,12 +43,21 @@ export type Typed =
   | { type: 'datetime'; value: Date }
   | { type: 'date'; value: string }
   /**
+   * A sprint relative to the board or team (QRY-013): `@current` the active sprint, `@next` the
+   * first future one, `@previous` the last completed one. Only the sprint field takes these.
+   */
+  | { type: 'token'; value: SprintToken }
+  /**
    * A function only the database can answer (M1-038): its native name and typed arguments.
    * People are numbers or text (as `user` values), dates `datetime`, the rest text or numbers.
    */
   | { type: 'call'; fn: string; args: Typed[] };
 
 export type Comparison = '=' | '!=' | '<' | '<=' | '>' | '>=' | '~' | '!~';
+
+/** The relative sprint tokens (QRY-013), without the `@`. */
+export const SPRINT_TOKENS = ['current', 'next', 'previous'] as const;
+export type SprintToken = (typeof SPRINT_TOKENS)[number];
 
 export type Pred =
   | { kind: 'and'; items: Pred[] }
@@ -271,6 +280,8 @@ class Resolver {
       }
       return this.call(v, spec);
     }
+    // A bare word with an @ is a relative sprint token (QRY-013); quoted, it is a plain name.
+    if (v.kind === 'word' && v.value.startsWith('@')) return this.token(field, v);
     switch (field.type) {
       case 'number':
         return { type: 'number', value: this.number(v) };
@@ -294,6 +305,21 @@ class Resolver {
       default:
         return { type: 'text', value: this.text(v) };
     }
+  }
+
+  /** `@current`, `@next` or `@previous` for the sprint field; anything else is refused. */
+  private token(field: Field, v: Extract<Value, { kind: 'word' }>): Typed {
+    const name = v.value.slice(1).toLowerCase();
+    const token = SPRINT_TOKENS.find((t) => t === name);
+    if (!token) {
+      throw fail(`Unknown sprint token "${v.value}": use @current, @next or @previous`, v.span);
+    }
+    if (field.type !== 'sprint') {
+      const label =
+        field.kind === 'custom' ? `"${field.name}" (cf[${field.id}])` : `"${field.name}"`;
+      throw fail(`@${token} is a sprint, which ${label} does not take`, v.span);
+    }
+    return { type: 'token', value: token };
   }
 
   private text(v: Value): string {

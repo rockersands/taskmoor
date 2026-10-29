@@ -280,7 +280,7 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     type: 'savedSearch',
     module: 'saved-searches',
   }),
-  system({ name: 'sprint', type: 'sprint', sortable: true, module: 'agile' }),
+  system({ name: 'sprint', type: 'sprint', sortable: true }),
   system({
     name: 'visibilityLevel',
     aliases: ['level', 'Visibility level'],

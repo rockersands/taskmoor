@@ -100,8 +100,18 @@ export async function editorScope(
   };
 }
 
-/** A query's condition on ticket `k`; ORDER BY is ignored. Throws QueryError or SearchError. */
-export async function bindCondition(db: Db, scope: Scope, text: string, now: Date): Promise<Cond> {
+/**
+ * A query's condition on ticket `k`; ORDER BY is ignored. Throws QueryError or SearchError.
+ * `boardId` is the board the query belongs to: its sprints are `@current`, `@next` and
+ * `@previous` (QRY-013).
+ */
+export async function bindCondition(
+  db: Db,
+  scope: Scope,
+  text: string,
+  now: Date,
+  boardId: number | null = null,
+): Promise<Cond> {
   const { person } = scope;
   const query = await expandSavedSearches(db, scope.ws, person.currentUserId, parseQuery(text));
   const names = functionNames(query);
@@ -125,6 +135,7 @@ export async function bindCondition(db: Db, scope: Scope, text: string, now: Dat
       currentUserId: person.currentUserId,
       filter: scope.filter.sql,
       allowedTracks: person.allowedTracks,
+      boardId,
     },
   );
   return bound.where;
@@ -167,7 +178,8 @@ export async function compileBoard(
     filter: scope.filter.sql,
     workspaceId: scope.ws,
   };
-  const cond = async (text: string) => compileCond(await bindCondition(db, scope, text, now), ctx);
+  const cond = async (text: string) =>
+    compileCond(await bindCondition(db, scope, text, now, board.id), ctx);
   const base: RawBuilder<boolean>[] = [
     sql<boolean>`k.workspace_id = ${scope.ws}::int`,
     sql<boolean>`k.deleted_at IS NULL`,

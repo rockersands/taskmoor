@@ -76,7 +76,25 @@ export type Related =
   /** Links of a type: by its name (either end), its outward or its inward description. */
   | { relation: 'linkType'; both: number[]; outward: number[]; inward: number[] }
   /** Time entries whose comment or date passes the test. */
-  | { relation: 'timeEntry'; on: 'comment' | 'date'; test: ValueTest };
+  | { relation: 'timeEntry'; on: 'comment' | 'date'; test: ValueTest }
+  /** Sprints the ticket is or was in that match one of `matches` (M1-045). */
+  | { relation: 'sprint'; matches: SprintMatch[] };
+
+/**
+ * Which sprints a sprint clause names (M1-045; QRY-004, QRY-013). Deleted sprints never match.
+ * States and tokens are answered in the statement, so they cost no list of sprint ids however
+ * many sprints there are (spec 01b section 1.6: 60,000 and more).
+ */
+export type SprintMatch =
+  /** By id or by name. */
+  | { kind: 'ids'; ids: number[] }
+  /** `openSprints()` active, `futureSprints()` future, `closedSprints()` closed. */
+  | { kind: 'state'; state: 'future' | 'active' | 'closed' }
+  /**
+   * `@current` the active sprint, `@next` the first future one in the board's order,
+   * `@previous` the last one completed: of this board, or of every board on its own.
+   */
+  | { kind: 'relative'; token: 'current' | 'next' | 'previous'; boardId: number | null };
 
 export type RelationName = Related['relation'] | 'attachment';
 
@@ -169,6 +187,8 @@ export type OrderSource =
   | { kind: 'count'; relation: 'follower' | 'voter' }
   | { kind: 'areaName' }
   | { kind: 'releaseOrder'; role: 'target' | 'found' }
+  /** The ticket's latest sprint in its board's order (M1-045); without one, last. */
+  | { kind: 'sprintOrder' }
   | { kind: 'effortRatio' }
   /** A custom field: its value, sort key, option order, person, group, release or area. */
   | { kind: 'side'; side: SideRef; by: SideOrder };
