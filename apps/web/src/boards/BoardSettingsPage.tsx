@@ -11,6 +11,8 @@ import {
   type CardRules,
   MAX_CARD_FIELDS,
   type Swimlanes,
+  sourceOf,
+  sourceText,
 } from './client';
 
 export interface BoardSettingsPageProps {
@@ -71,7 +73,7 @@ function draftOf(board: Board): Draft {
   return {
     name: board.name,
     kind: board.kind,
-    query: board.source.query,
+    query: sourceText(board.source),
     subFilter: board.subFilter?.query ?? '',
     columns: board.columns.map((c) => ({
       key: newKey(),
@@ -106,7 +108,7 @@ function patchOf(draft: Draft, version: number): BoardPatch {
     version,
     name: draft.name.trim(),
     kind: draft.kind,
-    source: { query: draft.query.trim() },
+    source: sourceOf(draft.query),
     subFilter: draft.subFilter.trim() === '' ? null : { query: draft.subFilter.trim() },
     columns: draft.columns.map((c) => ({
       ...(c.id === undefined ? {} : { id: c.id }),
