@@ -41,6 +41,7 @@ import * as m0043 from './0043_search_indexes';
 import * as m0044 from './0044_inbox';
 import * as m0045 from './0045_imports';
 import * as m0046 from './0046_ticket_visits';
+import * as m0047 from './0047_boards';
 import * as m0050 from './0050_guardrails';
 
 /**
@@ -93,5 +94,6 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0044_inbox': m0044,
   '0045_imports': m0045,
   '0046_ticket_visits': m0046,
+  '0047_boards': m0047,
   '0050_guardrails': m0050,
 };

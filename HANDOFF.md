@@ -28,6 +28,39 @@ it is lost with the container.
 
 ### Done (newest first)
 
+- **M1-043 boards** (built by a background agent on `work/m1-043-boards`; migration 0047;
+  ADR-049). Server: `apps/server/src/boards/model.ts` (zod schemas of columns, swimlanes, board
+  filters and card rules, defaults, `withIds`, `wipState`, `enteredColumn`), `boards/data.ts`
+  (the board's conditions compiled with `compileCond` from the viewer's catalogue of the whole
+  workspace and the viewer's ticket filter; counts per status, cards in rank order with lane and
+  colour `CASE`s, card details by a slim statement or the ticket view), `routes/boards.ts`
+  (`/api/v1/boards` CRUD, `/boards/:id/data?filters=`, `/boards/:id/moves`); events
+  `board.created`, `.updated`, `.deleted` (audited); moves emit the ticket routes' own events.
+  Web: `apps/web/src/boards/` (`BoardsPage` at `#/boards`, `BoardPage` at `#/boards/<id>`,
+  `BoardSettingsPage` at `#/boards/<id>/settings`, client, fake client, stories, tests),
+  `styles/boards.css`; e2e `apps/web/e2e/boards.spec.ts`. Shell tests and the mobile drawer
+  e2e now use Dashboards as their page without a session (Boards needs one).
+  - **Saved searches (M1-063)** add `board.saved_search_id` beside `filter_query` with a check
+    that exactly one is set, and `source: {savedSearchId}` in the API (ADR-049).
+  - **A move runs the ticket route handlers** (`ticketRoutes()`, as bulk jobs do): the list of
+    transitions, then the transition, then the rank. Two writes: a refused rank answers with
+    `transitioned: true`. Board queries ignore ORDER BY; cards order by `ticket.rank`.
+  - **Board queries resolve against every track and field of the workspace** (`boardScope`),
+    so viewers see the part of a multi-track board they may; saving checks them against the
+    editor's own catalogue (`editorScope`). The ticket filter alone decides what is shown.
+  - Measured (`routes/boards.large.test.ts`, `TASKMOOR_LARGE_BOARD=1`): 5,000 cards of a
+    50,000-ticket board p95 about 0.3 s, all 50,000 cards about 2 s, on the loaded machine.
+  - Not built: board admins and location in the settings page (API only; the list page creates
+    a board kept by its maker), swimlanes by subtickets and by tracks, card covers and development icons, the Kanban
+    backlog column, estimation and sprints (M1-044), drag and drop, virtualised rendering and
+    the 5,000-card render budget (M1-046), the workflow lint for statuses unmapped on boards
+    (`apps/web/src/workflow/lint.ts` mentions it).
+  - **Failing on the starting commit 1e0fc7b, not from this task:** after M1-052 the web tests
+    that sign in and land on Home (`session/UserMenu`, `SecondFactorStep`, `EnrollmentStep`,
+    `PasswordLinkPage`, `setup/SetupPage`: `HomeList` reads `tickets.length` of an answer the
+    stub backend does not give) and e2e `setup.spec.ts` (expects the heading "Home", the page
+    says "Hello, <name>"); `create.spec.ts` home test races other specs opening tickets as Ada.
+
 - **M1-086 importer framework** (migration 0045; ADR-048; built on `work/m1-086-importer`).
   `apps/server/src/import/`: `model.ts` (entity kinds in dependency order, `ImportSource`,
   `Mapper`, the commands), `load.ts` (a loader per kind: plan with reads only, apply with SQL in

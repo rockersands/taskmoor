@@ -150,7 +150,8 @@ test('[AGL-019] the home page lists what is assigned to me, what I opened and wh
   const assigned = page.getByRole('region', { name: 'Assigned to you' });
   await expect(assigned.getByRole('link', { name: link })).toBeVisible();
   const recent = page.getByRole('region', { name: 'Opened lately' });
-  await expect(recent.getByRole('link').first()).toHaveText(link);
+  // Other journeys open tickets as Ada at the same time, so it is in the list, not always first.
+  await expect(recent.getByRole('link', { name: link })).toBeVisible();
   const followed = page.getByRole('region', { name: 'You follow' });
   await expect(followed.getByRole('link', { name: link })).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);

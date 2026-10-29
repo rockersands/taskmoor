@@ -42,9 +42,9 @@ test.describe('mobile', () => {
     const drawer = page.getByRole('dialog', { name: 'Navigation' });
     await expect(drawer).toBeVisible();
 
-    await drawer.getByRole('link', { name: 'Boards', exact: true }).tap();
+    await drawer.getByRole('link', { name: 'Dashboards', exact: true }).tap();
     await expect(drawer).toBeHidden();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Boards');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dashboards');
   });
 
   test('touch targets are at least 44px tall', async ({ page }) => {
