@@ -11,6 +11,7 @@ import { compileCond } from '../search/compile';
 import type { Cond } from '../search/model';
 import { readOnly } from '../search/run';
 import { commentReadableSql } from '../tickets/comments';
+import { ticketKey } from '../tickets/model';
 import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
 import { loadMap, publishedStatuses, trackMapId, workflowsOf } from '../workflows/maps';
 import {
@@ -300,6 +301,158 @@ function cardField(view: TicketView, name: string): unknown {
   }
 }
 
+/** What a card shows of its ticket, from either way of reading it. */
+interface CardSource {
+  id: number;
+  key: string;
+  summary: string;
+  status: { id: number; name: string };
+  ticketType: { id: number; name: string; icon: string | null; color: string | null };
+  assignee: { id: number; name: string } | null;
+  priority: { id: number; name: string; color: string | null } | null;
+  rank: string;
+  version: number;
+  createdAt: Date;
+  fields: Record<string, unknown>;
+}
+
+/** Card fields the slim statement reads; any other one needs the full ticket view. */
+const SLIM_FIELDS = new Set([
+  'assignee',
+  'priority',
+  'dueDate',
+  'startDate',
+  'createdAt',
+  'updatedAt',
+]);
+
+/**
+ * The cards' tickets, read again with the viewer's filter (a ticket hidden between the two
+ * statements stays hidden). With only slim card fields, one statement of plain joins; else the
+ * ticket list's view, custom fields included (`fields: cf[N]`).
+ */
+async function cardSources(
+  db: Db,
+  scope: Scope,
+  ids: readonly number[],
+  fields: readonly string[],
+  visibleParents: ReadonlySet<number>,
+  catalogs: FieldCatalogs,
+): Promise<Map<number, CardSource>> {
+  const out = new Map<number, CardSource>();
+  if (ids.length === 0) return out;
+  const idList = sql<boolean>`k.id = ANY(${[...ids]}::int[])`;
+  if (fields.every((f) => SLIM_FIELDS.has(f))) {
+    const rows = await db
+      .selectFrom('ticket as k')
+      .innerJoin('track as t', 't.id', 'k.track_id')
+      .innerJoin('ticket_type as ty', 'ty.id', 'k.ticket_type_id')
+      .innerJoin('status as st', 'st.id', 'k.status_id')
+      .leftJoin('app_user as a', 'a.id', 'k.assignee_id')
+      .leftJoin('priority as p', 'p.id', 'k.priority_id')
+      .select([
+        'k.id',
+        'k.number',
+        't.key as track_key',
+        'k.summary',
+        'k.status_id',
+        'st.name as status_name',
+        'k.ticket_type_id',
+        'ty.name as type_name',
+        'ty.icon as type_icon',
+        'ty.color as type_color',
+        'k.assignee_id',
+        'a.name as assignee_name',
+        'k.priority_id',
+        'p.name as priority_name',
+        'p.color as priority_color',
+        'k.due_date',
+        'k.start_date',
+        'k.rank',
+        'k.version',
+        'k.created_at',
+        'k.updated_at',
+      ])
+      .where(idList)
+      .where('k.deleted_at', 'is', null)
+      .where(scope.filter.sql)
+      .execute();
+    for (const r of rows) {
+      const assignee =
+        r.assignee_id === null ? null : { id: r.assignee_id, name: r.assignee_name ?? '' };
+      const priority =
+        r.priority_id === null
+          ? null
+          : { id: r.priority_id, name: r.priority_name ?? '', color: r.priority_color ?? null };
+      const values: Record<string, unknown> = {
+        assignee,
+        priority: priority && { id: priority.id, name: priority.name },
+        dueDate: r.due_date,
+        startDate: r.start_date,
+        createdAt: r.created_at.toISOString(),
+        updatedAt: r.updated_at.toISOString(),
+      };
+      out.set(r.id, {
+        id: r.id,
+        key: ticketKey(r.track_key, r.number),
+        summary: r.summary,
+        status: { id: r.status_id, name: r.status_name },
+        ticketType: {
+          id: r.ticket_type_id,
+          name: r.type_name,
+          icon: r.type_icon,
+          color: r.type_color,
+        },
+        assignee,
+        priority,
+        rank: r.rank,
+        version: r.version,
+        createdAt: r.created_at,
+        fields: Object.fromEntries(fields.map((f) => [f, values[f] ?? null])),
+      });
+    }
+    return out;
+  }
+  const details = await ticketQuery(db, scope.ws)
+    .where(idList)
+    .where('k.deleted_at', 'is', null)
+    .where(scope.filter.sql)
+    .execute();
+  const custom = fields.some((f) => f.startsWith('cf['))
+    ? await customFieldViews(db, scope.ws, await catalogs.get(scope.ws), details)
+    : new Map<number, Record<string, JsonValue>>();
+  for (const d of details) {
+    const view = ticketView(
+      d,
+      d.parent_id !== null && visibleParents.has(d.parent_id),
+      (custom.get(d.id) ?? {}) as Record<string, JsonValue>,
+    );
+    out.set(d.id, {
+      id: view.id,
+      key: view.key,
+      summary: view.summary,
+      status: { id: view.status.id, name: view.status.name },
+      ticketType: {
+        id: view.ticketType.id,
+        name: view.ticketType.name,
+        icon: view.ticketType.icon,
+        color: view.ticketType.color,
+      },
+      assignee: view.assignee && { id: view.assignee.id, name: view.assignee.name },
+      priority: view.priority && {
+        id: view.priority.id,
+        name: view.priority.name,
+        color: view.priority.color,
+      },
+      rank: view.rank,
+      version: view.version,
+      createdAt: d.created_at,
+      fields: Object.fromEntries(fields.map((f) => [f, cardField(view, f)])),
+    });
+  }
+  return out;
+}
+
 /** A stable colour for an id (type, priority or person), from a fixed palette of tokens. */
 const PALETTE = ['#2f6fdb', '#1f8a5b', '#b25e09', '#8a3ffc', '#c4314b', '#00828a', '#5c6b7a'];
 const paletteColour = (n: number) => PALETTE[n % PALETTE.length] as string;
@@ -347,7 +500,7 @@ export async function loadBoardData(input: {
             FROM ticket k
            WHERE ${compiled.scope} AND ${compiled.filters}
              AND k.status_id = ANY(${mapped}::int[])
-           ORDER BY k.rank, k.id
+           ORDER BY k.rank
            LIMIT ${limit + 1}`.execute(trx);
         return { counts: counted.rows, rows: cards.rows };
       });
@@ -368,25 +521,21 @@ export async function loadBoardData(input: {
     unmappedCounts.map((u) => u.id),
   );
 
-  // The cards' details, read again with the viewer's filter.
+  // The cards' details, read again with the viewer's filter: a slim statement when the card
+  // rules ask only for what it reads, the ticket list's full view otherwise.
   const ids = shownRows.map((r) => r.id);
-  const details =
-    ids.length === 0
-      ? []
-      : await ticketQuery(db, scope.ws)
-          .where('k.id', 'in', ids)
-          .where('k.deleted_at', 'is', null)
-          .where(scope.filter.sql)
-          .execute();
-  const byId = new Map(details.map((d) => [d.id, d]));
   const parentIds = [
     ...new Set(shownRows.flatMap((r) => (r.parent_id === null ? [] : [r.parent_id]))),
   ];
   const visibleParents = await request.authz.visibleTickets(parentIds);
-  const wantsCustom = board.cardRules.fields.some((f) => f.startsWith('cf['));
-  const custom = wantsCustom
-    ? await customFieldViews(db, scope.ws, await input.catalogs.get(scope.ws), details)
-    : new Map<number, Record<string, JsonValue>>();
+  const sources = await cardSources(
+    db,
+    scope,
+    ids,
+    board.cardRules.fields,
+    visibleParents,
+    input.catalogs,
+  );
 
   // Days in column: from the status changes of the cards shown.
   const entered = new Map<number, Date>();
@@ -394,7 +543,7 @@ export async function loadBoardData(input: {
     const changes = await db
       .selectFrom('ticket_change')
       .select(['ticket_id', 'from_value', 'to_value', 'at'])
-      .where('ticket_id', 'in', ids)
+      .where(sql<boolean>`ticket_id = ANY(${ids}::int[])`)
       .where('field', '=', 'status')
       .orderBy('ticket_id')
       .orderBy('at')
@@ -411,14 +560,14 @@ export async function loadBoardData(input: {
       grouped.set(c.ticket_id, list);
     }
     for (const r of shownRows) {
-      const d = byId.get(r.id);
+      const d = sources.get(r.id);
       if (!d) continue;
       entered.set(
         r.id,
         enteredColumn(
           (s) => columnOf.get(s) ?? null,
           r.status_id,
-          d.created_at,
+          d.createdAt,
           grouped.get(r.id) ?? [],
         ),
       );
@@ -443,8 +592,8 @@ export async function loadBoardData(input: {
   } else if (mode === 'assignees') {
     const people = new Map<number, string>();
     for (const r of shownRows) {
-      const d = byId.get(r.id);
-      if (d && r.assignee_id !== null) people.set(r.assignee_id, d.assignee_name ?? '');
+      const d = sources.get(r.id);
+      if (d && r.assignee_id !== null) people.set(r.assignee_id, d.assignee?.name ?? '');
     }
     const named = [...people.entries()]
       .sort(([a, an], [b, bn]) => an.localeCompare(bn) || a - b)
@@ -476,7 +625,7 @@ export async function loadBoardData(input: {
             .selectFrom('ticket as p')
             .innerJoin('track as t', 't.id', 'p.track_id')
             .select(['p.id', 'p.number', 'p.summary', 't.key'])
-            .where('p.id', 'in', seen)
+            .where(sql<boolean>`p.id = ANY(${seen}::int[])`)
             .orderBy('p.rank')
             .orderBy('p.id')
             .execute();
@@ -500,13 +649,8 @@ export async function loadBoardData(input: {
   const cards: CardView[] = [];
   const shownPerColumn = new Map<string, number>();
   for (const r of shownRows) {
-    const d = byId.get(r.id);
-    if (!d) continue;
-    const view = ticketView(
-      d,
-      d.parent_id !== null && visibleParents.has(d.parent_id),
-      (custom.get(d.id) ?? {}) as Record<string, JsonValue>,
-    );
+    const view = sources.get(r.id);
+    if (!view) continue;
     const columnId = columnOf.get(r.status_id) as string;
     shownPerColumn.set(columnId, (shownPerColumn.get(columnId) ?? 0) + 1);
     let colour: string | null = null;
@@ -531,19 +675,14 @@ export async function loadBoardData(input: {
       id: view.id,
       key: view.key,
       summary: view.summary,
-      status: { id: view.status.id, name: view.status.name },
-      ticketType: {
-        id: view.ticketType.id,
-        name: view.ticketType.name,
-        icon: view.ticketType.icon,
-        color: view.ticketType.color,
-      },
+      status: view.status,
+      ticketType: view.ticketType,
       columnId,
       laneId: laneOf.get(r.id) ?? 'other',
       rank: view.rank,
       version: view.version,
       colour,
-      fields: Object.fromEntries(board.cardRules.fields.map((f) => [f, cardField(view, f)])),
+      fields: view.fields,
       daysInColumn: since
         ? Math.max(0, Math.floor((now.getTime() - since.getTime()) / 86_400_000))
         : null,
