@@ -1,0 +1,208 @@
+/*
+ * Search results (M1-042): the table scrolls sideways inside its own region, never the page
+ * (ADR-033); the column picker and cell editors are buttons and fields with 44px targets on
+ * touch.
+ */
+.search-page,
+.search-results {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.search-results-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+.search-results-bar > .page-note {
+  margin: 0;
+  align-self: center;
+}
+
+.search-export {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.search-export-link,
+.search-columns-toggle {
+  min-height: var(--hit-target);
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.search-columns {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.search-columns-panel {
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-surface-raised);
+  max-width: 28rem;
+}
+
+.search-columns-panel[hidden] {
+  display: none;
+}
+
+.search-columns-list {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.search-columns-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.search-columns-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.search-columns-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.search-columns-button {
+  min-height: var(--hit-target);
+  min-width: var(--hit-target);
+}
+
+.search-columns-add {
+  margin-bottom: var(--space-3);
+}
+
+.search-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-surface-raised);
+}
+
+.search-table-scroll:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.search-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-200);
+}
+
+.search-table th,
+.search-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.search-table thead th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--color-surface-sunken);
+}
+
+.search-key {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.search-cell {
+  min-width: 8rem;
+  max-width: 24rem;
+}
+
+.search-cell.has-problem {
+  background: var(--color-danger-soft);
+}
+
+.search-cell-view {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.search-cell-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.search-cell-edit {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.search-cell-edit:hover,
+.search-cell-edit:focus-visible {
+  border-color: var(--color-field-border);
+  color: var(--color-text);
+}
+
+.search-cell-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.search-cell-form input,
+.search-cell-form select {
+  min-width: 10rem;
+  max-width: 100%;
+}
+
+.search-cell-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.search-cell-button {
+  min-height: var(--hit-target);
+}
+
+.search-cell-problem {
+  margin: var(--space-1) 0 0;
+}
+
+@media (pointer: coarse) {
+  .search-export-link,
+  .search-columns-toggle,
+  .search-columns-button,
+  .search-cell-button,
+  .search-cell-edit {
+    min-height: var(--hit-target-touch);
+    min-width: var(--hit-target-touch);
+  }
+}

@@ -50,6 +50,7 @@ import { registerRichTextRoutes } from './routes/rich-text';
 import { registerSamlRoutes } from './routes/saml';
 import { registerScimRoutes } from './routes/scim';
 import { registerSearchRoutes } from './routes/search';
+import { registerSearchExportRoutes } from './routes/search-export';
 import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
@@ -254,6 +255,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     await registerEmailRoutes(app, db, { smtpConfigured: deps.smtpConfigured ?? false });
     registerSyncRoutes(app, db, authorizer);
     registerSearchRoutes(app, db, fieldCatalogs, {
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // Streaming export of search results (M1-042).
+    registerSearchExportRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerPriorityRoutes(app, db);

@@ -52,7 +52,7 @@ test('[QRY-001] basic to advanced and back, with suggestions, errors and results
   await basic.getByLabel('Words').fill(word);
   await basic.getByRole('button', { name: 'Search' }).click();
   const results = page.getByRole('region', { name: 'Results' });
-  await expect(results.getByRole('link', { name: new RegExp(`^${ticket.key} `) })).toBeVisible();
+  await expect(results.getByRole('link', { name: ticket.key, exact: true })).toBeVisible();
   await expect(results.getByText('1 ticket', { exact: true })).toBeVisible();
 
   // To the advanced mode: the same search as a query, and back to the same choices.
@@ -83,12 +83,12 @@ test('[QRY-001] basic to advanced and back, with suggestions, errors and results
   // The address carries the query: a reload runs it again.
   await query.fill(`text ~ "${word}"`);
   await query.press('Enter');
-  await expect(results.getByRole('link', { name: new RegExp(`^${ticket.key} `) })).toBeVisible();
+  await expect(results.getByRole('link', { name: ticket.key, exact: true })).toBeVisible();
   await page.reload();
   await expect(
     page
       .getByRole('region', { name: 'Results' })
-      .getByRole('link', { name: new RegExp(`^${ticket.key} `) }),
+      .getByRole('link', { name: ticket.key, exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

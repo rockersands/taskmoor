@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MEMBER } from '../admin/fixtures';
@@ -100,9 +100,12 @@ describe('the search page (M1-041)', () => {
     const user = userEvent.setup();
     renderPage('track = SHOP');
     const results = await screen.findByRole('region', { name: 'Results' });
-    expect(await within(results).findAllByRole('link')).toHaveLength(2);
+    const table = await within(results).findByRole('table');
+    // A heading row and a row per ticket.
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
     await user.click(within(results).getByRole('button', { name: 'More results' }));
-    expect(await within(results).findAllByRole('link')).toHaveLength(3);
+    await waitFor(() => expect(within(table).getAllByRole('row')).toHaveLength(4));
+    expect(within(table).getByRole('link', { name: 'OPS-12' })).toBeVisible();
     expect(queryFromHash('#/search?q=track%20%3D%20SHOP')).toBe('track = SHOP');
   });
 
@@ -115,14 +118,10 @@ describe('the search page (M1-041)', () => {
   it('passes every string through the pseudo-locale', async () => {
     renderPage('track = SHOP', 'en-XA');
     const main = screen.getByRole('main');
-    await within(main).findAllByRole('link');
-    const data = new Set([
-      'SHOP-41',
-      'SHOP-44',
-      'Refunds fail for expired cards',
-      'Receipts show the wrong currency',
-      'track = SHOP',
-    ]);
+    await within(main).findByRole('table');
+    // Cell values are tickets' data, not the page's words.
+    for (const cell of main.querySelectorAll('.search-cell-value')) cell.textContent = '';
+    const data = new Set(['SHOP-41', 'SHOP-44', 'track = SHOP', 'Customer', 'Points', 'Team']);
     const texts = visibleTexts(main).filter((t) => !data.has(t));
     expect(untranslated(texts)).toEqual([]);
   });

@@ -21,6 +21,7 @@ import './styles/inbox.css';
 import './styles/boards.css';
 import './styles/workflows.css';
 import './styles/richtext.css';
+import './styles/search.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element in index.html');

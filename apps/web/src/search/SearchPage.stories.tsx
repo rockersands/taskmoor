@@ -42,3 +42,13 @@ export const Advanced: Story = {
 export const WrongQuery: Story = {
   args: { initialQuery: 'nope = 1' },
 };
+
+/** Results in the person's columns, with export links. */
+export const Results: Story = {
+  args: { initialQuery: 'track = SHOP' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('table')).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Export CSV' })).toBeVisible();
+  },
+};

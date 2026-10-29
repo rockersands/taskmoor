@@ -1,42 +1,73 @@
+import { ApiError } from '../api/client';
 import type { SearchClient, SearchTicket } from './client';
 
-const ticket = (id: number, key: string, summary: string, stage: 'new' | 'active' | 'closed') =>
+const PRIORITIES = [
+  { id: 1, name: 'High' },
+  { id: 2, name: 'Medium' },
+  { id: 3, name: 'Low' },
+];
+
+const ticket = (
+  id: number,
+  key: string,
+  summary: string,
+  stage: 'new' | 'active' | 'closed',
+  extra: Partial<SearchTicket> = {},
+) =>
   ({
     id,
     key,
     summary,
     status: { name: stage === 'new' ? 'New' : stage === 'active' ? 'Active' : 'Closed', stage },
     ticketType: { name: 'Bug' },
-    assignee: stage === 'new' ? null : { name: 'Kalo Moana' },
+    assignee: stage === 'new' ? null : { id: 7, name: 'Kalo Moana' },
+    priority: PRIORITIES[1] ?? null,
+    labels: [],
+    fields: {},
+    version: 1,
     updatedAt: '2026-10-29T08:00:00Z',
+    ...extra,
   }) satisfies SearchTicket;
 
-export const TICKETS: SearchTicket[] = [
-  ticket(41, 'SHOP-41', 'Refunds fail for expired cards', 'active'),
-  ticket(44, 'SHOP-44', 'Receipts show the wrong currency', 'new'),
+/** A fresh copy each time, so one test's edits never reach another's. */
+const tickets = (): SearchTicket[] => [
+  ticket(41, 'SHOP-41', 'Refunds fail for expired cards', 'active', {
+    labels: ['payments'],
+    fields: { '40': 'Acme', '41': 3 },
+  }),
+  ticket(44, 'SHOP-44', 'Receipts show the wrong currency', 'new', {
+    priority: PRIORITIES[0] ?? null,
+  }),
   ticket(12, 'OPS-12', 'Rotate the payment keys', 'closed'),
 ];
 
+export const TICKETS: SearchTicket[] = tickets();
+
 export interface FakeSearchClient extends SearchClient {
   queries: string[];
+  edits: { id: number; change: object }[];
 }
 
 /**
  * An in-memory backend: a query naming `nope` is refused at that word, as the backend's check
- * would; results come two at a time.
+ * would; results come two at a time. Edits apply to the tickets, except that a closed ticket
+ * is locked (as a status lock refuses it), an empty summary is invalid, and a ticket edited
+ * with an old version is stale.
  */
 export function fakeSearchClient(): FakeSearchClient {
   const queries: string[] = [];
+  const edits: { id: number; change: object }[] = [];
+  const all = tickets();
   return {
     queries,
+    edits,
     search: async (q, cursor) => {
       queries.push(q);
       const from = cursor ? Number(cursor) : 0;
-      const tickets = TICKETS.slice(from, from + 2);
       return {
-        tickets,
-        next: from + 2 < TICKETS.length ? String(from + 2) : null,
-        ...(cursor ? {} : { total: { count: TICKETS.length, exact: true } }),
+        tickets: all.slice(from, from + 2).map((t) => ({ ...t })),
+        next: from + 2 < all.length ? String(from + 2) : null,
+        ...(cursor ? {} : { total: { count: all.length, exact: true } }),
       };
     },
     check: async (q) => {
@@ -49,6 +80,50 @@ export function fakeSearchClient(): FakeSearchClient {
       { key: 'SHOP', name: 'Shop' },
       { key: 'OPS', name: 'Operations' },
     ],
-    fields: async () => [{ id: 40, name: 'Customer' }],
+    fields: async () => [
+      { id: 40, name: 'Customer', type: 'text' },
+      { id: 41, name: 'Points', type: 'number' },
+      { id: 42, name: 'Team', type: 'select' },
+    ],
+    priorities: async () => PRIORITIES,
+    edit: async (id, change) => {
+      edits.push({ id, change });
+      const found = all.find((t) => t.id === id);
+      if (!found) throw new ApiError(404, { error: 'not_found' });
+      if (found.status.stage === 'closed') {
+        throw new ApiError(403, {
+          error: 'forbidden',
+          permission: 'edit',
+          locks: [
+            {
+              by: 'status',
+              statusId: 3,
+              statusName: 'Closed',
+              allowed: [{ type: 'role', id: 1, name: 'Administrators' }],
+            },
+          ],
+        });
+      }
+      const c = change as Record<string, unknown>;
+      if (c.version !== undefined && c.version !== found.version) {
+        throw new ApiError(409, { error: 'version_conflict' });
+      }
+      if (c.summary !== undefined && String(c.summary).trim() === '') {
+        throw new ApiError(400, { error: 'invalid_fields', fields: { summary: 'required' } });
+      }
+      if (typeof c.summary === 'string') found.summary = c.summary;
+      if ('priorityId' in c) found.priority = PRIORITIES.find((p) => p.id === c.priorityId) ?? null;
+      if ('assigneeId' in c) {
+        const people: Record<number, string> = { 2: 'Bo', 7: 'Kalo Moana' };
+        found.assignee =
+          c.assigneeId === null
+            ? null
+            : { id: c.assigneeId as number, name: people[c.assigneeId as number] ?? '?' };
+      }
+      if (Array.isArray(c.labels)) found.labels = c.labels as string[];
+      if (c.fields) found.fields = { ...found.fields, ...(c.fields as Record<string, unknown>) };
+      found.version = (found.version ?? 0) + 1;
+      return { ...found };
+    },
   };
 }

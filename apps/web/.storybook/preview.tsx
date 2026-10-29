@@ -19,6 +19,7 @@ import '../src/styles/people.css';
 import '../src/styles/inbox.css';
 import '../src/styles/workflows.css';
 import '../src/styles/richtext.css';
+import '../src/styles/search.css';
 
 const preview: Preview = {
   parameters: {
