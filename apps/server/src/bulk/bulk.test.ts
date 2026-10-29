@@ -94,10 +94,16 @@ describe('bulk operations (M1-021)', () => {
         definition: workflow,
       });
       expect(made.statusCode, made.body).toBe(201);
+      // Every type uses it, through a workflow map (M1-028).
+      const map = await post('admin', '/api/v1/workflow-maps', {
+        name: `Map ${key}`,
+        defaultWorkflowId: made.json().workflow.id,
+      });
+      expect(map.statusCode, map.body).toBe(201);
       const set = await as('admin', {
         method: 'PATCH',
         url: `/api/v1/tracks/${id}`,
-        payload: { workflowId: made.json().workflow.id },
+        payload: { workflowMapId: map.json().workflowMap.id },
       });
       expect(set.statusCode, set.body).toBe(200);
     }

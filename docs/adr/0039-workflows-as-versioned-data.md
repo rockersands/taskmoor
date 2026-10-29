@@ -40,7 +40,10 @@ progress (CORE-016) and reports read.
 - **One workflow per track for now** (`track.workflow_id`, null for the default). Switching
   workflow, or moving a ticket to a track with another workflow, maps statuses the new one
   lacks. Workflow maps per ticket type, local-mode workflows and a background migration for
-  very large tracks are M1-028.
+  very large tracks are M1-028. *Superseded in part by ADR-045:* a ticket's workflow is the one
+  its track's workflow map gives its ticket type, `track.workflow_id` is gone, and a change of
+  map moves tickets in the background; publishing still moves the tickets of dropped statuses
+  in its own transaction.
 
 ## Options considered
 

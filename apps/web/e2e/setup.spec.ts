@@ -1470,9 +1470,17 @@ test('[WF-007] [CORE-013] a locked field and a locked status show read-only, wit
   });
   expect(track.status()).toBe(201);
   const trackId = ((await track.json()) as { track: { id: number } }).track.id;
+  // Every ticket type of the track uses the workflow, through a workflow map (M1-028).
+  const map = await page.request.post('/api/v1/workflow-maps', {
+    data: {
+      name: 'Approvers attach',
+      defaultWorkflowId: ((await workflow.json()) as { workflow: { id: number } }).workflow.id,
+    },
+  });
+  expect(map.status()).toBe(201);
   const set = await page.request.patch(`/api/v1/tracks/${trackId}`, {
     data: {
-      workflowId: ((await workflow.json()) as { workflow: { id: number } }).workflow.id,
+      workflowMapId: ((await map.json()) as { workflowMap: { id: number } }).workflowMap.id,
       fieldRuleSetId: ((await rules.json()) as { fieldRuleSet: { id: number } }).fieldRuleSet.id,
     },
   });

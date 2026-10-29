@@ -91,10 +91,16 @@ describe('per-status locks and per-field edit permissions (M1-029)', () => {
         })
         .execute();
     }
+    // Every type of the track uses it, through a workflow map (M1-028).
+    const map = await post('admin', '/api/v1/workflow-maps', {
+      name: `Map ${key}`,
+      defaultWorkflowId: workflow.json().workflow.id,
+    });
+    expect(map.statusCode, map.body).toBe(201);
     const set = await as('admin', {
       method: 'PATCH',
       url: `/api/v1/tracks/${trackId}`,
-      payload: { workflowId: workflow.json().workflow.id, ...extra },
+      payload: { workflowMapId: map.json().workflowMap.id, ...extra },
     });
     expect(set.statusCode, set.body).toBe(200);
     return { key, id: trackId };

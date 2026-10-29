@@ -2,9 +2,18 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
-import { requireGlobal, requireUser } from '../auth';
+import { requireGlobal, requireUser, type SessionUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import { lockList, writeOrder } from '../tickets/fields';
+import {
+  defaultMapId,
+  loadMap,
+  mapsNaming,
+  trackMapId,
+  tracksUsingWorkflow,
+  workflowForType,
+} from '../workflows/maps';
+import { runningMigration } from '../workflows/migration';
 import {
   definitionProblem,
   definitionSchema,
@@ -12,13 +21,7 @@ import {
   statusIdsOf,
   type WorkflowDefinition,
 } from '../workflows/model';
-import {
-  defaultWorkflowId,
-  holdWorkflow,
-  loadDefinition,
-  remapStatuses,
-  ticketsInStatuses,
-} from '../workflows/store';
+import { holdWorkflow, loadDefinition, remapStatuses, ticketsInStatuses } from '../workflows/store';
 
 /**
  * Statuses and workflows (M1-023; CORE-014, WF-001, WF-002; spec 01a sections 1.6 and 3).
@@ -32,8 +35,15 @@ import {
  *   their tickets to the statuses `statusMapping` names, with history, and the next
  *   transition uses the new version (WF-002 (1), (2)). Any earlier version can be restored
  *   as the draft (WF-002 (3)). A new workflow is published as version 1.
- * - A track's members holding "View read-only workflow" (or administering it) read its
- *   workflow at `GET /api/v1/tracks/:id/workflow`.
+ * - A track's members holding "View read-only workflow" (or administering it) read the
+ *   workflow its map gives a ticket type at `GET /api/v1/tracks/:id/workflow?ticketTypeId=`
+ *   (the map's default workflow without one).
+ * - A local-mode track may own workflows (M1-028, `trackId` on create): its administrators
+ *   change them as configuration administrators change shared ones, and only its own map may
+ *   name them. Lists show shared workflows, and a track's own with `?trackId=`.
+ * - Which tracks use a workflow ("used by", the impact of a publish) comes from the workflow
+ *   maps that name it; a publish waits while a status migration runs over one of those tracks
+ *   (409 `status_migration_running`).
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -47,7 +57,13 @@ const unique = <T>(list: readonly T[]) => new Set(list).size === list.length;
 const createStatusBody = z.object({ name, description: description.optional(), stage }).strict();
 const updateStatusBody = z.object({ name, description, stage }).partial().strict();
 const createWorkflowBody = z
-  .object({ name, description: description.optional(), definition: definitionSchema })
+  .object({
+    name,
+    description: description.optional(),
+    definition: definitionSchema,
+    /** A local-mode track that owns it (M1-028); shared when left out. */
+    trackId: id.optional(),
+  })
   .strict();
 const updateWorkflowBody = z.object({ name, description }).partial().strict();
 /** For each status a draft drops that tickets are in: the status they go to. */
@@ -81,21 +97,6 @@ const statusView = (s: StatusRow) => ({
   stage: s.stage,
   order: s.sort_order,
 });
-
-/** Tracks that use a workflow, the default's included. */
-async function tracksUsing(db: Db, workspaceId: number, workflowId: number, isDefault: boolean) {
-  return db
-    .selectFrom('track')
-    .select(['id', 'key', 'name'])
-    .where('workspace_id', '=', workspaceId)
-    .where((eb) =>
-      isDefault
-        ? eb.or([eb('workflow_id', '=', workflowId), eb('workflow_id', 'is', null)])
-        : eb('workflow_id', '=', workflowId),
-    )
-    .orderBy('key')
-    .execute();
-}
 
 async function knownStatuses(db: Db, workspaceId: number): Promise<Set<number>> {
   const rows = await db
@@ -153,6 +154,76 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   const configAdmin = (request: FastifyRequest, reply: FastifyReply) =>
     requireGlobal(request, reply, 'site_admin', 'configuration_admin');
 
+  async function isAdmin(request: FastifyRequest): Promise<boolean> {
+    const global = await request.authz.global();
+    return global.has('site_admin') || global.has('configuration_admin');
+  }
+
+  /**
+   * Whether the caller may administer a local-mode track's own configuration: its
+   * administrators and site and configuration administrators, while it is not archived (for
+   * changes). Answers the refusal itself; a track the caller cannot see is not found.
+   */
+  async function mayConfigureTrack(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    trackId: number,
+    write: boolean,
+  ): Promise<boolean> {
+    const track = await db
+      .selectFrom('track')
+      .select(['mode', 'archived_at', 'deleted_at'])
+      .where('id', '=', trackId)
+      .where('workspace_id', '=', request.workspaceId)
+      .executeTakeFirst();
+    const held = track && !track.deleted_at ? await request.authz.track(trackId) : null;
+    const admin = await isAdmin(request);
+    if (!track || !held || !(held.has('browse_track') || held.has('administer_track') || admin)) {
+      await notFound(reply);
+      return false;
+    }
+    if (write && track.archived_at) {
+      await reply.code(409).send({ error: 'track_archived' });
+      return false;
+    }
+    if (held.has('administer_track') || admin) return true;
+    await reply.code(403).send({ error: 'forbidden' });
+    return false;
+  }
+
+  /**
+   * The workflow a route names and who may use it: site and configuration administrators any
+   * workflow; a local-mode track's administrators the workflows it owns (M1-028). Answers the
+   * refusal itself (403 before 404 for a shared or unknown workflow, as before).
+   */
+  async function workflowAccess(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    write: boolean,
+  ): Promise<{ user: SessionUser; ownerTrackId: number | null } | null> {
+    const user = requireUser(request, reply);
+    if (!user) return null;
+    const params = z.object({ id }).safeParse({ id: (request.params as { id?: unknown }).id });
+    if (!params.success) {
+      await invalid(reply);
+      return null;
+    }
+    const row = await workflowRow(request.workspaceId, params.data.id);
+    if (!row || row.owner_track_id === null) {
+      if (!(await isAdmin(request))) {
+        await reply.code(403).send({ error: 'forbidden' });
+        return null;
+      }
+      if (!row) {
+        await notFound(reply);
+        return null;
+      }
+      return { user, ownerTrackId: null };
+    }
+    if (!(await mayConfigureTrack(request, reply, row.owner_track_id, write))) return null;
+    return { user, ownerTrackId: row.owner_track_id };
+  }
+
   async function workflowRow(workspaceId: number, workflowId: number) {
     return db
       .selectFrom('workflow')
@@ -190,7 +261,11 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       isDefault: row.is_default,
       published: version(row.published_version),
       draft: version(row.draft_version),
-      tracks: await tracksUsing(db, workspaceId, row.id, row.is_default),
+      /** The local-mode track that owns it; null for a shared workflow. */
+      trackId: row.owner_track_id,
+      tracks: await tracksUsingWorkflow(db, workspaceId, row.id),
+      /** The workflow maps that name it (M1-028). */
+      maps: await mapsNaming(db, workspaceId, row.id),
     };
   }
 
@@ -407,9 +482,18 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   // Workflows (WF-001, WF-002)
 
   app.get('/api/v1/workflows', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!requireUser(request, reply)) return reply;
+    const query = z.object({ trackId: id.optional() }).strict().safeParse(request.query);
+    if (!query.success) return invalid(reply);
+    const trackId = query.data.trackId;
+    // Shared workflows for administrators; with a track, its own too, for its administrators.
+    if (trackId === undefined) {
+      if (!(await configAdmin(request, reply))) return reply;
+    } else if (!(await mayConfigureTrack(request, reply, trackId, false))) {
+      return reply;
+    }
     const ws = request.workspaceId;
-    const defaultId = await defaultWorkflowId(db, ws);
+    const defaultMap = await defaultMapId(db, ws);
     const rows = await db
       .selectFrom('workflow as w')
       .select([
@@ -419,20 +503,22 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         'w.is_default',
         'w.published_version',
         'w.draft_version',
-        (eb) =>
-          eb
-            .selectFrom('track as t')
-            .select(sql<string>`count(*)`.as('n'))
-            .where('t.workspace_id', '=', ws)
-            .where((t) =>
-              t.or([
-                t('t.workflow_id', '=', t.ref('w.id')),
-                t.and([t('t.workflow_id', 'is', null), t(t.ref('w.id'), '=', defaultId)]),
-              ]),
-            )
-            .as('track_count'),
+        'w.owner_track_id',
+        // Tracks whose workflow map names it (M1-028).
+        sql<string>`(
+          SELECT count(*) FROM track t
+            JOIN workflow_map m ON m.id = coalesce(t.workflow_map_id, ${defaultMap})
+           WHERE t.workspace_id = ${ws}
+             AND (m.default_workflow_id = w.id
+                  OR EXISTS (SELECT 1 FROM workflow_map_entry e
+                              WHERE e.map_id = m.id AND e.workflow_id = w.id)))`.as('track_count'),
       ])
       .where('w.workspace_id', '=', ws)
+      .where((eb) =>
+        trackId === undefined
+          ? eb('w.owner_track_id', 'is', null)
+          : eb.or([eb('w.owner_track_id', 'is', null), eb('w.owner_track_id', '=', trackId)]),
+      )
       .orderBy('w.is_default', 'desc')
       .orderBy(sql`lower(w.name)`)
       .execute();
@@ -444,13 +530,14 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         isDefault: w.is_default,
         publishedVersion: w.published_version,
         draftVersion: w.draft_version,
+        trackId: w.owner_track_id,
         trackCount: Number(w.track_count ?? 0),
       })),
     };
   });
 
   app.get('/api/v1/workflows/:id', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, false))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     const view = await workflowView(request.workspaceId, params.data.id);
@@ -472,14 +559,15 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         ? reply.code(403).send({ error: 'forbidden', permission: 'view_readonly_workflow' })
         : notFound(reply);
     }
-    const track = await db
-      .selectFrom('track')
-      .select('workflow_id')
-      .where('id', '=', params.data.id)
-      .where('workspace_id', '=', ws)
-      .executeTakeFirst();
-    if (!track) return notFound(reply);
-    const workflowId = track.workflow_id ?? (await defaultWorkflowId(db, ws));
+    const query = z.object({ ticketTypeId: id.optional() }).strict().safeParse(request.query);
+    if (!query.success) return invalid(reply);
+    // The workflow the track's map gives the type, or the map's default (M1-028).
+    const mapId = await trackMapId(db, ws, params.data.id);
+    const map = mapId === undefined ? null : await loadMap(db, ws, mapId);
+    if (!map) return notFound(reply);
+    const ticketTypeId = query.data.ticketTypeId ?? null;
+    const workflowId =
+      ticketTypeId === null ? map.defaultWorkflowId : workflowForType(map, ticketTypeId);
     const row = await workflowRow(ws, workflowId);
     if (!row) return notFound(reply);
     return {
@@ -489,24 +577,46 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         description: row.description,
         version: row.published_version,
         definition: await loadDefinition(db, row.id, row.published_version),
+        workflowMapId: map.id,
+        ticketTypeId,
       },
     };
   });
 
   app.post('/api/v1/workflows', async (request, reply) => {
-    const user = await configAdmin(request, reply);
+    const user = requireUser(request, reply);
     if (!user) return reply;
     const parsed = createWorkflowBody.safeParse(request.body);
-    if (!parsed.success) return invalid(reply);
+    if (!parsed.success) {
+      return (await configAdmin(request, reply)) ? invalid(reply) : reply;
+    }
     const body = parsed.data;
     const ws = request.workspaceId;
+    const trackId = body.trackId ?? null;
+    if (trackId === null) {
+      if (!(await configAdmin(request, reply))) return reply;
+    } else {
+      if (!(await mayConfigureTrack(request, reply, trackId, true))) return reply;
+      const track = await db
+        .selectFrom('track')
+        .select('mode')
+        .where('id', '=', trackId)
+        .executeTakeFirstOrThrow();
+      if (track.mode !== 'local')
+        return invalid(reply, 'a shared-mode track uses shared workflows');
+    }
     const problem = definitionProblem(body.definition, await knownStatuses(db, ws));
     if (problem) return invalid(reply, problem);
     try {
       const workflowId = await db.transaction().execute(async (trx) => {
         const row = await trx
           .insertInto('workflow')
-          .values({ workspace_id: ws, name: body.name, description: body.description ?? '' })
+          .values({
+            workspace_id: ws,
+            name: body.name,
+            description: body.description ?? '',
+            owner_track_id: trackId,
+          })
           .returning('id')
           .executeTakeFirstOrThrow();
         await writeVersion(trx, ws, row.id, 1, body.definition, user.id, true);
@@ -517,6 +627,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
             name: body.name,
             statusIds: [...statusIdsOf(body.definition)],
             transitionCount: body.definition.transitions.length,
+            ...(trackId !== null ? { trackId } : {}),
           },
         });
         return row.id;
@@ -531,7 +642,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   });
 
   app.patch('/api/v1/workflows/:id', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, true))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     const parsed = updateWorkflowBody.safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
@@ -609,7 +720,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   }
 
   app.put('/api/v1/workflows/:id/draft', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, true))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     const parsed = z.object({ definition: definitionSchema }).strict().safeParse(request.body);
     if (!params.success || !parsed.success) return invalid(reply);
@@ -622,7 +733,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   });
 
   app.delete('/api/v1/workflows/:id/draft', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, true))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     const ws = request.workspaceId;
@@ -659,7 +770,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   });
 
   app.get('/api/v1/workflows/:id/impact', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, false))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     const ws = request.workspaceId;
@@ -669,13 +780,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     if (!impact) return reply.code(409).send({ error: 'no_draft' });
     return {
       removedStatuses: impact.removedStatuses,
-      tracks: await tracksUsing(db, ws, row.id, row.is_default),
+      tracks: await tracksUsingWorkflow(db, ws, row.id),
     };
   });
 
   // The draft becomes current; dropped statuses take their tickets where the mapping says.
   app.post('/api/v1/workflows/:id/publish', async (request, reply) => {
-    const user = await configAdmin(request, reply);
+    const user = (await workflowAccess(request, reply, true))?.user;
     if (!user) return reply;
     const params = z.object({ id }).safeParse(request.params);
     const parsed = publishBody.safeParse(request.body ?? {});
@@ -690,6 +801,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       if (!held) return { missing: true as const };
       const impact = await impactOf(trx, ws, held.id);
       if (!impact) return { conflict: 'no_draft' };
+      // A status migration still moving tickets into this workflow keeps it as it is (M1-028).
+      const running = await runningMigration(
+        trx,
+        ws,
+        (await tracksUsingWorkflow(trx, ws, held.id)).map((t) => t.id),
+      );
+      if (running !== null) return { migrationRunning: running };
       const statuses = statusIdsOf(impact.draft);
       const needed = impact.removedStatuses.filter((r) => r.ticketCount > 0);
       const unmapped = needed.filter((r) => !mapping.has(r.statusId));
@@ -729,6 +847,11 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     });
     if ('missing' in result) return notFound(reply);
     if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
+    if ('migrationRunning' in result) {
+      return reply
+        .code(409)
+        .send({ error: 'status_migration_running', migrationId: result.migrationRunning });
+    }
     if ('mappingRequired' in result) {
       return reply
         .code(409)
@@ -741,7 +864,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   });
 
   app.get('/api/v1/workflows/:id/versions', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, false))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     const row = await workflowRow(request.workspaceId, params.data.id);
@@ -781,7 +904,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   });
 
   app.get('/api/v1/workflows/:id/versions/:version', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, false))) return reply;
     const params = z.object({ id, version: id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     const row = await workflowRow(request.workspaceId, params.data.id);
@@ -798,7 +921,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
 
   // An earlier version comes back as the draft, to publish like any other (WF-002 (3)).
   app.post('/api/v1/workflows/:id/versions/:version/restore', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, true))) return reply;
     const params = z.object({ id, version: id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     const ws = request.workspaceId;
@@ -821,7 +944,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   });
 
   app.delete('/api/v1/workflows/:id', async (request, reply) => {
-    if (!(await configAdmin(request, reply))) return reply;
+    if (!(await workflowAccess(request, reply, true))) return reply;
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     const ws = request.workspaceId;
@@ -829,8 +952,11 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       const held = await holdWorkflow(trx, params.data.id, 'update');
       if (!held) return { missing: true as const };
       if (held.is_default) return { conflict: 'default_workflow' };
-      const tracks = await tracksUsing(trx, ws, held.id, false);
-      if (tracks.length > 0) return { inUse: tracks };
+      // A workflow a map names stays (M1-028): the map changes first.
+      const maps = await mapsNaming(trx, ws, held.id);
+      if (maps.length > 0) {
+        return { inUse: { tracks: await tracksUsingWorkflow(trx, ws, held.id), maps } };
+      }
       await trx.deleteFrom('workflow').where('id', '=', held.id).execute();
       await emit(trx, by(request), {
         type: 'workflow.deleted',
@@ -842,7 +968,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     if ('missing' in result) return notFound(reply);
     if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
     if ('inUse' in result) {
-      return reply.code(409).send({ error: 'workflow_in_use', tracks: result.inUse });
+      return reply.code(409).send({ error: 'workflow_in_use', ...result.inUse });
     }
     return reply.code(204).send();
   });

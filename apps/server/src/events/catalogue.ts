@@ -205,6 +205,8 @@ export const EVENT_TYPES = {
       administratorRoleId: id.nullable(),
       /** The type set it offers; a local-mode track owns a copy of its type's default. */
       typeSetId: id,
+      /** A local-mode track's own workflow map, made with it (M1-028). */
+      workflowMapId: id.optional(),
     }),
   },
   /**
@@ -216,8 +218,12 @@ export const EVENT_TYPES = {
     payload: z.object({
       changes,
       mapped: typeMapping.optional(),
-      /** Tickets moved to another status by a switch of workflow (M1-023). */
+      /**
+       * Tickets a switch of workflow map moves to another status (M1-023, M1-028); they move in
+       * the status migration `statusMigrationId`, in the background when there are many.
+       */
       statusMapped: z.number().int().min(1).optional(),
+      statusMigrationId: id.optional(),
       /** Tickets given the new visibility policy's default level (M1-020). */
       levelsMapped: z.number().int().min(1).optional(),
     }),
@@ -626,6 +632,8 @@ export const EVENT_TYPES = {
       name: z.string(),
       statusIds: z.array(id),
       transitionCount: z.number().int().min(0),
+      /** The local-mode track that owns it (M1-028); absent for a shared workflow. */
+      trackId: id.optional(),
     }),
   },
   'workflow.updated': { subject: 'workflow', payload: z.object({ changes }) },
@@ -649,6 +657,30 @@ export const EVENT_TYPES = {
     }),
   },
   'workflow.deleted': { subject: 'workflow', payload: z.object({ name: z.string() }) },
+  // Workflow maps (M1-028): which workflow each ticket type uses. Entries are ticket type id to
+  // workflow id.
+  'workflow_map.created': {
+    subject: 'workflow_map',
+    payload: z.object({
+      name: z.string(),
+      defaultWorkflowId: id,
+      entries: z.record(z.string(), id),
+      trackId: id.nullable(),
+    }),
+  },
+  /**
+   * Name, description, default workflow or entries changed; tickets left in statuses their new
+   * workflow lacks move in the status migration `statusMigrationId`.
+   */
+  'workflow_map.updated': {
+    subject: 'workflow_map',
+    payload: z.object({
+      changes,
+      statusMapped: z.number().int().min(1).optional(),
+      statusMigrationId: id.optional(),
+    }),
+  },
+  'workflow_map.deleted': { subject: 'workflow_map', payload: z.object({ name: z.string() }) },
   /**
    * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
    * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay

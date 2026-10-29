@@ -87,6 +87,8 @@ import {
   statusGate,
   statusLock,
 } from '../workflows/locks';
+import { holdMapWorkflows, holdTicketWorkflow, ticketWorkflowId } from '../workflows/maps';
+import { pendingTarget, settleStatus } from '../workflows/migration';
 import { statusIdsOf } from '../workflows/model';
 import {
   channelOf,
@@ -95,7 +97,7 @@ import {
   storedChanges,
   ticketState,
 } from '../workflows/state';
-import { holdWorkflow, statusInfo, trackWorkflowId } from '../workflows/store';
+import { statusInfo } from '../workflows/store';
 import { insertComment } from './comments';
 
 /**
@@ -196,6 +198,11 @@ const updateBody = z
     remainingEstimate: estimate.optional(),
     fields: customValues.optional(),
     visibilityLevelId: idValue.nullable().optional(),
+    /**
+     * With a new ticket type whose workflow lacks the ticket's status: the status it takes;
+     * that workflow's initial status if left out (M1-028).
+     */
+    statusId: idValue.optional(),
     version: idValue.optional(),
   })
   .strict();
@@ -563,6 +570,18 @@ export function ticketRoutes(
       if (error instanceof Rollback) return error.outcome;
       throw error;
     }
+  }
+
+  /**
+   * The same, where a refusal undoes everything written before it: a transition that first
+   * moved its ticket for a status migration (M1-028) changes nothing when it is refused.
+   */
+  function transactAll(work: (trx: Transaction<Database>) => Promise<Outcome>) {
+    return transact(async (trx) => {
+      const outcome = await work(trx);
+      if (!('ticket' in outcome)) throw new Rollback(outcome);
+      return outcome;
+    });
   }
 
   /**
@@ -981,8 +1000,9 @@ export function ticketRoutes(
       const typeId = body.ticketTypeId ?? offered.defaultTypeId;
       if (typeId === null) return { fields: { ticketTypeId: 'required' } };
       if (!offered.typeIds.has(typeId)) return { fields: { ticketTypeId: 'not_in_track' } };
-      // The track's workflow, held so a publish waits; new tickets take its initial status.
-      const workflow = await holdWorkflow(trx, await trackWorkflowId(trx, ws, trackId), 'share');
+      // The workflow the track's map gives the type, held so a publish or a change of map
+      // waits; new tickets take its initial status (M1-028).
+      const workflow = await holdTicketWorkflow(trx, ws, trackId, typeId);
       if (!workflow) return { missing: true };
       // The track's default priority unless one is given (CORE-014 (2)). Values are held
       // before any ticket, as their deletions lock them before their tickets.
@@ -1193,6 +1213,10 @@ export function ticketRoutes(
     const values = contentValues(body, fields, false, format);
     const estimates = await estimateValues(body, ws, fields);
     if (estimates === 'disabled') return reply.code(409).send({ error: 'time_tracking_disabled' });
+    // A status comes with a new ticket type only, for a workflow that lacks the one it has.
+    if (body.statusId !== undefined && body.ticketTypeId === undefined) {
+      fields.statusId = 'without_type_change';
+    }
     let parentId: number | null | undefined;
     if (body.parent === null) parentId = null;
     else if (body.parent !== undefined) {
@@ -1208,15 +1232,20 @@ export function ticketRoutes(
     const assigneeOk =
       body.assigneeId == null || (await assignable(ws, found.row.track_id, body.assigneeId));
     const catalog = await catalogs.get(ws);
-    const gate = await statusGate(db, request, found.row.track_id);
+    const gate = await statusGate(db, request, found.row.track_id, found.row.ticket_type_id);
 
     const outcome = await transact(async (trx): Promise<Outcome> => {
       // Locks in the order every writer takes them: the hierarchy, the track and its type set,
-      // then tickets. A type set change holds its set and then rewrites tickets.
+      // its workflow map and the workflow a new type would use, then tickets. A type set change
+      // holds its set and then rewrites tickets.
       const structural = body.ticketTypeId !== undefined || body.parent !== undefined;
       if (structural) await shareHierarchy(trx, ws);
       const offered =
         body.ticketTypeId !== undefined ? await offeredTypes(trx, ws, found.row.track_id) : null;
+      const typeWorkflow =
+        body.ticketTypeId !== undefined
+          ? await holdTicketWorkflow(trx, ws, found.row.track_id, body.ticketTypeId)
+          : null;
       const pointed = await holdValues(trx, ws, {
         priorityId: body.priorityId,
         closeReasonId: body.closeReasonId,
@@ -1427,6 +1456,19 @@ export function ticketRoutes(
 
       const typeId = body.ticketTypeId ?? current.ticket_type_id;
       const newParentId = parentId === undefined ? current.parent_id : parentId;
+      // A type whose workflow lacks the ticket's status takes the status asked for, or that
+      // workflow's initial one (M1-028, WF-001 (3)).
+      let statusId: number | null = null;
+      if (changes.ticketTypeId && typeWorkflow) {
+        const statuses = statusIdsOf(typeWorkflow.definition);
+        if (body.statusId !== undefined && !statuses.has(body.statusId)) {
+          return { fields: { statusId: 'not_in_workflow' } };
+        }
+        if (!statuses.has(current.status_id)) {
+          statusId = body.statusId ?? typeWorkflow.definition.initialStatusId;
+          changes.statusId = { from: current.status_id, to: statusId };
+        }
+      }
       if (changes.ticketTypeId || changes.parentId) {
         if (changes.ticketTypeId && !offered?.typeIds.has(typeId)) {
           return { fields: { ticketTypeId: 'not_in_track' } };
@@ -1482,6 +1524,7 @@ export function ticketRoutes(
         set.environment = values.environment == null ? null : JSON.stringify(values.environment);
       }
       if (changes.ticketTypeId) set.ticket_type_id = typeId;
+      if (statusId !== null) set.status_id = statusId;
       if (changes.parentId) set.parent_id = newParentId;
       if (changes.assigneeId) set.assignee_id = body.assigneeId ?? null;
       if (changes.requesterId && body.requesterId !== undefined)
@@ -1598,23 +1641,16 @@ export function ticketRoutes(
     }
 
     const catalog = await catalogs.get(ws);
-    const gate = await statusGate(db, request, sourceId);
+    const gate = await statusGate(db, request, sourceId, found.row.ticket_type_id);
     const outcome = await transact(async (trx): Promise<Outcome> => {
-      // The hierarchy, then the target track, its type set and its workflow, then tickets.
+      // The hierarchy, then the target track, its type set, its workflow map and the workflows
+      // it names (the types are known once the tickets are locked), then tickets.
       await shareHierarchy(trx, ws);
       const offered = await offeredTypes(trx, ws, targetId);
       if (!offered) return { missing: true };
       if (offered.archived) return { conflict: 'track_archived' };
-      const targetWorkflow = await holdWorkflow(
-        trx,
-        await trackWorkflowId(trx, ws, targetId),
-        'share',
-      );
-      if (!targetWorkflow) return { missing: true };
-      const targetStatuses = statusIdsOf(targetWorkflow.definition);
-      if (body.statusId !== undefined && !targetStatuses.has(body.statusId)) {
-        return { fields: { statusId: 'not_in_workflow' } };
-      }
+      const targetFlows = await holdMapWorkflows(trx, ws, targetId);
+      if (!targetFlows) return { missing: true };
       const locked = await trx
         .selectFrom('ticket')
         .select('id')
@@ -1646,6 +1682,13 @@ export function ticketRoutes(
         (offered.typeIds.has(current.ticket_type_id) ? current.ticket_type_id : null);
       if (typeId === null) fields.ticketTypeId = 'required';
       else if (!offered.typeIds.has(typeId)) fields.ticketTypeId = 'not_in_track';
+      else if (
+        body.statusId !== undefined &&
+        !statusIdsOf(targetFlows.forType(typeId).definition).has(body.statusId)
+      ) {
+        // The status asked for belongs to the workflow the ticket's type has there (M1-028).
+        fields.statusId = 'not_in_workflow';
+      }
 
       // Subtickets come along, those in the trash too, so they never end up in another track
       // than their parent.
@@ -1760,17 +1803,24 @@ export function ticketRoutes(
         .set({ visibility_level_id: levelId })
         .where('id', 'in', touched)
         .execute();
-      const lost = [...before.values()].filter((t) => !targetStatuses.has(t.status_id));
-      if (lost.length > 0) {
-        await trx
-          .updateTable('ticket')
-          .set({ status_id: body.statusId ?? targetWorkflow.definition.initialStatusId })
-          .where(
-            'id',
-            'in',
-            lost.map((t) => t.id),
-          )
-          .execute();
+      // Each ticket's workflow there is the one the target's map gives its type (M1-028): a
+      // status it lacks becomes the one asked for when that workflow has it, else its initial
+      // status.
+      const statusMoves = new Map<number, number[]>();
+      for (const t of before.values()) {
+        const newType =
+          t.id === ticketId ? (typeId as number) : (subticketTypes.get(t.id) as number);
+        const flow = targetFlows.forType(newType).definition;
+        const statuses = statusIdsOf(flow);
+        if (statuses.has(t.status_id)) continue;
+        const to =
+          body.statusId !== undefined && statuses.has(body.statusId)
+            ? body.statusId
+            : flow.initialStatusId;
+        statusMoves.set(to, [...(statusMoves.get(to) ?? []), t.id]);
+      }
+      for (const [to, ids] of statusMoves) {
+        await trx.updateTable('ticket').set({ status_id: to }).where('id', 'in', ids).execute();
       }
       await emit(trx, by(request), {
         type: 'ticket.moved',
@@ -1817,9 +1867,9 @@ export function ticketRoutes(
     return answer(request, reply, outcome);
   });
 
-  /** A ticket's workflow: the published version, as stored and as the engine reads it. */
-  async function workflowOf(d: Db, ws: number, trackId: number) {
-    const workflowId = await trackWorkflowId(d, ws, trackId);
+  /** A ticket's workflow (its track's map, for its type): the published version. */
+  async function workflowOf(d: Db, ws: number, trackId: number, ticketTypeId: number) {
+    const workflowId = await ticketWorkflowId(d, ws, trackId, ticketTypeId);
     const row = await d
       .selectFrom('workflow')
       .select('published_version')
@@ -1870,16 +1920,17 @@ export function ticketRoutes(
       entered.assignee == null ? undefined : Number(entered.assignee),
     ]);
     const catalog = await catalogs.get(ws);
-    return transact(async (trx): Promise<Outcome> => {
-      // The track, its workflow and the values given, then the ticket (lock order in
-      // workflows/store): a publish or a switch of workflow waits, or this waits for it.
+    return transactAll(async (trx): Promise<Outcome> => {
+      // The track, its map and the workflow it gives the ticket's type, the values given, then
+      // the ticket (lock order in workflows/store): a publish or a change of map waits, or this
+      // waits for it.
       await trx
         .selectFrom('track')
         .select('id')
         .where('id', '=', found.track_id)
         .forKeyShare()
         .execute();
-      const held = await holdWorkflow(trx, await trackWorkflowId(trx, ws, found.track_id), 'share');
+      const held = await holdTicketWorkflow(trx, ws, found.track_id, found.ticket_type_id);
       if (!held) return { missing: true };
       const { workflow } = await engineWorkflow(trx, ws, held.id, held.published_version);
       const reference = (name: string) =>
@@ -1891,10 +1942,15 @@ export function ticketRoutes(
         releaseIds: [...list('target-release'), ...list('found-in-release')],
         areaIds: list('area'),
       });
-      const current = await lockTicketRow(trx, ws, ticketId);
-      if (!current) return { missing: true };
-      if (current.track_id !== found.track_id) return { conflict: 'moved_meanwhile' };
-      if (version !== undefined && version !== current.version) return { versionConflict: true };
+      const locked = await lockTicketRow(trx, ws, ticketId);
+      if (!locked) return { missing: true };
+      // Another track or type means another workflow than the one held.
+      if (locked.track_id !== found.track_id || locked.ticket_type_id !== found.ticket_type_id) {
+        return { conflict: 'moved_meanwhile' };
+      }
+      if (version !== undefined && version !== locked.version) return { versionConflict: true };
+      // A ticket a status migration has not reached yet moves first, as it would (M1-028).
+      const current = await settleStatus(trx, catalog, ws, locked, statusIdsOf(held.definition));
       const state = await ticketState(trx, ws, current);
       let transitionId: string | undefined;
       if ('transitionId' in pick) {
@@ -2108,12 +2164,17 @@ export function ticketRoutes(
     if (row.track_archived_at || !(await request.authz.canTicket('transition_tickets', row))) {
       return { transitions: [] };
     }
-    const { workflowId, version } = await workflowOf(db, ws, row.track_id);
+    const { workflowId, version } = await workflowOf(db, ws, row.track_id, row.ticket_type_id);
     const { definition, workflow } = await engineWorkflow(db, ws, workflowId, version);
+    // A ticket a status migration has not reached yet offers what its mapped status offers
+    // (M1-028): a transition moves it there first.
+    const pending = statusIdsOf(definition).has(row.status_id)
+      ? null
+      : await pendingTarget(db, row);
     const offered = new Set(
       engine.availableTransitions(
         workflow,
-        await ticketState(db, ws, row),
+        await ticketState(db, ws, pending ? { ...row, status_id: pending.to_status_id } : row),
         await engineActor(request, row.track_id),
         channelOf(request),
       ),
@@ -2161,10 +2222,9 @@ export function ticketRoutes(
     let comment: { doc: JsonValue; visibility: CommentVisibility } | undefined;
     if (body.comment !== undefined && body.comment !== null) {
       if (!held.has('add_comments')) return forbidden(reply, 'add_comments');
-      const allowed = (await statusGate(db, request, found.row.track_id)).check(
-        found.row.status_id,
-        'comment',
-      );
+      const allowed = (
+        await statusGate(db, request, found.row.track_id, found.row.ticket_type_id)
+      ).check(found.row.status_id, 'comment');
       if (allowed) {
         const lock = await statusLock(db, request.workspaceId, found.row.status_id, allowed);
         return reply.code(403).send(lockedBody('comment', [lock]));

@@ -57,6 +57,7 @@ import { registerTrashRoutes } from './routes/trash';
 import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
 import { registerVisibilityRoutes } from './routes/visibility';
+import { registerWorkflowMapRoutes } from './routes/workflow-maps';
 import { registerWorkflowRoutes } from './routes/workflows';
 import { registerMutationReceipts } from './sync/mutations';
 import { registerSyncSocket } from './sync/socket';
@@ -224,7 +225,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       secureCookies: cookieOptions.secureCookies,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     });
-    registerTrackRoutes(app, db);
+    registerTrackRoutes(app, db, fieldCatalogs);
     registerTicketTypeRoutes(app, db);
     registerTicketRoutes(app, db, authorizer, fieldCatalogs);
     registerRichTextRoutes(app, db, authorizer);
@@ -242,6 +243,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerCommentRoutes(app, db);
     await registerAttachmentRoutes(app, db, deps.attachments ?? NO_STORAGE);
     registerWorkflowRoutes(app, db);
+    registerWorkflowMapRoutes(app, db, fieldCatalogs);
     registerTrashRoutes(app, db);
     registerBulkRoutes(app, db);
     registerAuditRoutes(app, db);

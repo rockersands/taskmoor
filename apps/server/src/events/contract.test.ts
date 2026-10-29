@@ -52,6 +52,8 @@ const EXEMPT: Record<string, string> = {
     'transient sign-in state: a verified SAML response waiting for its browser, and its assertion ID; the sign-in itself is GET /api/v1/auth/saml/continue',
   'POST /api/v1/directories/test':
     'reads only: tries directory settings (connect, bind, read a first page), stores nothing',
+  'POST /api/v1/workflow-maps/:id/impact':
+    'reads only: what a change of a workflow map would do to tickets, stores nothing',
 };
 /**
  * Event types no route emits: a background job's own changes (M1-082 directory syncs). The
@@ -1911,6 +1913,34 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'workflow.published',
       run: () =>
         admin({ method: 'POST', url: `/api/v1/workflows/${state.workflow}/publish`, payload: {} }),
+    },
+    {
+      route: 'POST /api/v1/workflow-maps',
+      expect: 'workflow_map.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/workflow-maps',
+          payload: { name: 'Testing map', defaultWorkflowId: state.workflow },
+        });
+        state.workflowMap = res.json().workflowMap?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/workflow-maps/:id',
+      expect: 'workflow_map.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/workflow-maps/${state.workflowMap}`,
+          payload: { description: 'For QA' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/workflow-maps/:id',
+      expect: 'workflow_map.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/workflow-maps/${state.workflowMap}` }),
     },
     {
       route: 'POST /api/v1/tickets/:id/transitions',

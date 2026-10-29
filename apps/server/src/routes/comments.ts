@@ -194,7 +194,7 @@ export function registerCommentRoutes(app: FastifyInstance, db: Kysely<Database>
 
   /** The lock of a status that reserves commenting to some (WF-007). */
   async function commentLock(request: FastifyRequest, ticket: TicketRow): Promise<Lock | null> {
-    const allowed = (await statusGate(db, request, ticket.track_id)).check(
+    const allowed = (await statusGate(db, request, ticket.track_id, ticket.ticket_type_id)).check(
       ticket.status_id,
       'comment',
     );

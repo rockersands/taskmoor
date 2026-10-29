@@ -2,6 +2,7 @@ import type { Database, TrackType } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { queueRefreshIfFormulas } from '../fields/formulas';
+import { fitStatuses } from '../workflows/maps';
 import type { Hierarchy, Level, TicketNode } from './hierarchy';
 
 /**
@@ -231,6 +232,18 @@ export async function mapTicketTypes(
       .where('ticket_type_id', '=', from)
       .execute();
     mapped.push({ fromTypeId: from, toTypeId: to, ticketCount: Number(n) });
+  }
+  // A type whose workflow there lacks a ticket's status gives it that workflow's initial
+  // status (M1-028), as a move does without a status asked for.
+  if (mapped.length > 0 && changeSet !== null) {
+    await fitStatuses(
+      trx,
+      workspaceId,
+      actorId,
+      trackIds,
+      mapped.map((m) => m.toTypeId),
+      changeSet,
+    );
   }
   // Formulas apply per ticket type: the tracks' tickets are recomputed (M1-013).
   if (mapped.length > 0) {

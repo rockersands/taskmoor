@@ -85,6 +85,17 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['PATCH /api/v1/type-sets/:id']).toBe('write');
     expect(classes['DELETE /api/v1/type-sets/:id']).toBe('write');
     expect(classes['GET /api/v1/tracks/:id/ticket-types']).toBe('read');
+    // Workflow maps (M1-028): track configuration too, so a local-mode track's administrators
+    // change its own map with a write token.
+    expect(classes['GET /api/v1/workflow-maps']).toBe('read');
+    expect(classes['GET /api/v1/workflow-maps/:id']).toBe('read');
+    expect(classes['POST /api/v1/workflow-maps']).toBe('write');
+    expect(classes['PATCH /api/v1/workflow-maps/:id']).toBe('write');
+    expect(classes['DELETE /api/v1/workflow-maps/:id']).toBe('write');
+    expect(classes['POST /api/v1/workflow-maps/:id/impact']).toBe('write');
+    expect(classes['GET /api/v1/tracks/:id/workflow-map']).toBe('read');
+    expect(classes['GET /api/v1/tracks/:id/workflow-map/impact']).toBe('read');
+    expect(classes['GET /api/v1/workflow-migrations/:id']).toBe('read');
     // The SCIM service answers only its own scope, whatever the method (ADR-038).
     expect(classes['GET /api/v1/scim/v2/Users']).toBe('scim');
     expect(classes['PATCH /api/v1/scim/v2/Groups/:id']).toBe('scim');

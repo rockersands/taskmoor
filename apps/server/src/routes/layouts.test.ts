@@ -432,10 +432,16 @@ describe('field rules and layouts (M1-012)', () => {
     expect(workflow.statusCode, workflow.body).toBe(201);
     const key = await track();
     await use(key, {});
+    // Every type of the track uses it, through a workflow map (M1-028).
+    const map = await post('admin', '/api/v1/workflow-maps', {
+      name: `Map ${key}`,
+      defaultWorkflowId: workflow.json().workflow.id,
+    });
+    expect(map.statusCode, map.body).toBe(201);
     expect(
       (
         await patch('admin', `/api/v1/tracks/${tracks[key]}`, {
-          workflowId: workflow.json().workflow.id,
+          workflowMapId: map.json().workflowMap.id,
         })
       ).statusCode,
     ).toBe(200);

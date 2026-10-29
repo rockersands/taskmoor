@@ -5,10 +5,11 @@ import { definitionSchema, type WorkflowDefinition } from './model';
 
 /**
  * Reading workflows and moving tickets between statuses (M1-023). Lock order, as for the
- * other configuration values: a ticket write holds its track (key share), then its workflow
- * (key share), then the ticket; publishing a workflow holds the workflow (update) and then
- * rewrites tickets; a track's switch of workflow holds the track (update), then both
- * workflows, then tickets.
+ * other configuration values: a ticket write holds its track (key share), then its track's
+ * workflow map (key share, M1-028), then its workflow (key share), then the ticket; publishing
+ * a workflow holds the workflow (update) and then rewrites tickets; a track's switch of map
+ * holds the track (update), then both maps and their workflows, then tickets. A ticket's
+ * workflow comes from its track's map and its ticket type (`workflows/maps.ts`).
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -20,17 +21,6 @@ export async function defaultWorkflowId(db: Db, workspaceId: number): Promise<nu
     .where('is_default', '=', true)
     .executeTakeFirstOrThrow();
   return row.id;
-}
-
-/** The workflow a track's tickets move through. */
-export async function trackWorkflowId(db: Db, workspaceId: number, trackId: number) {
-  const track = await db
-    .selectFrom('track')
-    .select('workflow_id')
-    .where('id', '=', trackId)
-    .where('workspace_id', '=', workspaceId)
-    .executeTakeFirst();
-  return track?.workflow_id ?? defaultWorkflowId(db, workspaceId);
 }
 
 export async function loadDefinition(
@@ -83,34 +73,29 @@ export async function statusInfo(
 }
 
 /**
- * Tickets, the trash included, whose track uses a workflow and whose status is one of
- * `statusIds`, by status.
+ * Tickets, the trash included, whose workflow (their track's map for their ticket type) is
+ * `workflowId` and whose status is one of `statusIds`, by status.
  */
 export async function ticketsInStatuses(
   db: Db,
   workspaceId: number,
   workflowId: number,
   statusIds: readonly number[],
-  trackId?: number,
 ): Promise<Map<number, number[]>> {
   if (statusIds.length === 0) return new Map();
-  const isDefault = (await defaultWorkflowId(db, workspaceId)) === workflowId;
-  let query = db
-    .selectFrom('ticket as k')
-    .innerJoin('track as t', 't.id', 'k.track_id')
-    .select(['k.id', 'k.status_id'])
-    .where('k.workspace_id', '=', workspaceId)
-    .where('k.status_id', 'in', [...statusIds]);
-  query =
-    trackId !== undefined
-      ? query.where('k.track_id', '=', trackId)
-      : query.where((eb) =>
-          isDefault
-            ? eb.or([eb('t.workflow_id', '=', workflowId), eb('t.workflow_id', 'is', null)])
-            : eb('t.workflow_id', '=', workflowId),
-        );
+  const { rows } = await sql<{ id: number; status_id: number }>`
+    SELECT k.id, k.status_id
+      FROM ticket k
+      JOIN track t ON t.id = k.track_id
+      JOIN workflow_map m ON m.id = coalesce(t.workflow_map_id,
+             (SELECT d.id FROM workflow_map d WHERE d.workspace_id = ${workspaceId} AND d.is_default))
+      LEFT JOIN workflow_map_entry e ON e.map_id = m.id AND e.ticket_type_id = k.ticket_type_id
+     WHERE k.workspace_id = ${workspaceId}
+       AND k.status_id = ANY(${[...statusIds]}::int[])
+       AND coalesce(e.workflow_id, m.default_workflow_id) = ${workflowId}
+     ORDER BY k.id`.execute(db);
   const out = new Map<number, number[]>();
-  for (const row of await query.orderBy('k.id').execute()) {
+  for (const row of rows) {
     out.set(row.status_id, [...(out.get(row.status_id) ?? []), row.id]);
   }
   return out;

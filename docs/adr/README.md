@@ -50,5 +50,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [042](0042-edit-locks.md) | Per-status locks and per-field edit permissions, explained to the person | Accepted |
 | [043](0043-bulk-operations.md) | Bulk operations run through the ticket routes, as the person who asked | Accepted |
 | [044](0044-comments.md) | Comments, their restriction, versions and reactions | Accepted |
+| [045](0045-workflow-maps.md) | Workflow maps, track-local workflows and background status migration | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

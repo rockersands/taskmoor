@@ -4,6 +4,7 @@ import { type Kysely, sql, type Transaction, type Updateable } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
+import type { FieldCatalogs } from '../fields/catalog';
 import {
   copyTypeSet,
   defaultTypeSetId,
@@ -27,13 +28,17 @@ import {
   type TrackFeatures,
 } from '../tracks/model';
 import { purgeTrack } from '../trash/purge';
-import { statusIdsOf } from '../workflows/model';
+import { defaultMapId, loadMap, workflowForType, workflowsOf } from '../workflows/maps';
 import {
-  defaultWorkflowId,
-  holdWorkflow,
-  remapStatuses,
-  ticketsInStatuses,
-} from '../workflows/store';
+  impactOf,
+  planMigration,
+  runningMigration,
+  startMigration,
+  statusMappingOf,
+  statusMappingSchema,
+  typeStatusMappingSchema,
+} from '../workflows/migration';
+import { defaultWorkflowId, holdWorkflow } from '../workflows/store';
 
 /**
  * Tracks and track categories (M1-006; CORE-001, CORE-002, CORE-003, CORE-025).
@@ -53,6 +58,11 @@ import {
  * - A shared-mode track uses a shared type set (the default of its track type unless one is
  *   named); a local-mode track gets its own copy of that default (M1-007). Everyone who sees a
  *   track reads the ticket types it offers, in set order with the default preselected.
+ * - A shared-mode track uses a shared workflow map (the workspace's default map unless one is
+ *   named, M1-028); a local-mode track owns its map, made with it, whose default is the
+ *   workspace's default workflow. Switching map moves tickets whose status their type's new
+ *   workflow lacks to the statuses `statusMapping` (and per type `typeStatusMapping`) name, in
+ *   the background when there are many (`workflows/migration.ts`).
  * - Archive and restore belong to site and configuration administrators. An archived track is
  *   read-only for everyone (the authorizer keeps only read permissions there) and hidden from
  *   the search pre-filter.
@@ -123,8 +133,8 @@ const updateBody = z
     typeSetId: trackFields.typeSetId.optional(),
     /** The priorities it offers (CORE-014 (2)); null for the workspace's default set. */
     prioritySetId: id.nullable().optional(),
-    /** Its workflow (M1-023); null for the workspace's default workflow. */
-    workflowId: id.nullable().optional(),
+    /** Its workflow map (M1-028); null for the workspace's default map. Shared mode only. */
+    workflowMapId: id.nullable().optional(),
     /** Its field rule set and layout set (M1-012); null for the workspace's defaults. */
     fieldRuleSetId: id.nullable().optional(),
     layoutSetId: id.nullable().optional(),
@@ -132,8 +142,10 @@ const updateBody = z
     visibilityPolicyId: id.nullable().optional(),
     /** Null for the workspace's default notification policy (M1-056). */
     notificationPolicyId: id.nullable().optional(),
-    /** For each status the new workflow lacks that tickets are in: where they go. */
-    statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
+    /** For each status a new map's workflows lack that tickets are in: where they go. */
+    statusMapping: statusMappingSchema.optional(),
+    /** The same for one ticket type, where its tickets go elsewhere than the rest. */
+    typeStatusMapping: typeStatusMappingSchema.optional(),
     features: trackFields.features.optional(),
   })
   .strict();
@@ -192,7 +204,7 @@ function trackQuery(db: Db, workspaceId: number) {
       't.access_policy_id',
       't.type_set_id',
       't.priority_set_id',
-      't.workflow_id',
+      't.workflow_map_id',
       't.field_rule_set_id',
       't.layout_set_id',
       't.visibility_policy_id',
@@ -241,7 +253,7 @@ function trackView(row: TrackRow) {
     accessPolicyId: row.access_policy_id,
     typeSetId: row.type_set_id,
     prioritySetId: row.priority_set_id,
-    workflowId: row.workflow_id,
+    workflowMapId: row.workflow_map_id,
     fieldRuleSetId: row.field_rule_set_id,
     layoutSetId: row.layout_set_id,
     visibilityPolicyId: row.visibility_policy_id,
@@ -286,7 +298,11 @@ function loadTrack(
 /** Escapes LIKE wildcards so a search for "50%" means those characters. */
 const likeEscape = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
 
-export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+export function registerTrackRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  catalogs: FieldCatalogs,
+): void {
   const by = (request: FastifyRequest) => ({
     workspaceId: request.workspaceId,
     actorId: request.user?.id ?? null,
@@ -536,12 +552,30 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           .executeTakeFirstOrThrow();
         let policyId = base;
         let typeSetId = baseTypes;
+        let workflowMapId: number | null = null;
         if (body.mode === 'local') {
           policyId = await copyPolicy(trx, ws, base, row.id, key.key);
           typeSetId = await copyTypeSet(trx, ws, baseTypes, row.id, key.key);
+          // Its own workflow map (M1-028): every type starts on the default workflow, and its
+          // administrators give types the track's own workflows.
+          const map = await trx
+            .insertInto('workflow_map')
+            .values({
+              workspace_id: ws,
+              name: `${key.key} workflows`,
+              default_workflow_id: await defaultWorkflowId(trx, ws),
+              owner_track_id: row.id,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          workflowMapId = map.id;
           await trx
             .updateTable('track')
-            .set({ access_policy_id: policyId, type_set_id: typeSetId })
+            .set({
+              access_policy_id: policyId,
+              type_set_id: typeSetId,
+              workflow_map_id: workflowMapId,
+            })
             .where('id', '=', row.id)
             .execute();
         }
@@ -576,6 +610,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
             accessPolicyId: policyId,
             administratorRoleId: roleId,
             typeSetId,
+            ...(workflowMapId !== null ? { workflowMapId } : {}),
           },
         });
         return { track: await loadTrack(trx, ws, row.id) };
@@ -632,18 +667,26 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
       }
       if (!(await isSharedTypeSet(db, ws, body.typeSetId))) return invalid(reply, 'typeSetId');
     }
-    if (body.workflowId !== undefined && body.workflowId !== current.workflow_id) {
+    const switchesMap =
+      body.workflowMapId !== undefined && body.workflowMapId !== current.workflow_map_id;
+    if (switchesMap) {
       if (!(await isAdmin(request))) return reply.code(403).send({ error: 'forbidden' });
-      if (body.workflowId !== null) {
-        const workflow = await db
-          .selectFrom('workflow')
+      if (current.mode === 'local') {
+        return invalid(reply, 'a local-mode track keeps its own workflow map');
+      }
+      if (body.workflowMapId != null) {
+        const map = await db
+          .selectFrom('workflow_map')
           .select('id')
-          .where('id', '=', body.workflowId)
+          .where('id', '=', body.workflowMapId)
           .where('workspace_id', '=', ws)
+          .where('owner_track_id', 'is', null)
           .executeTakeFirst();
-        if (!workflow) return invalid(reply, 'workflowId');
+        if (!map) return invalid(reply, 'workflowMapId');
       }
     }
+    // Read through the pool before the transaction: formulas recompute for moved tickets.
+    const catalog = switchesMap ? await catalogs.get(ws) : null;
     // A shared set needs administrators; a local-mode track's own set, its administrators.
     for (const [kind, value, had] of [
       ['field_rule_set', body.fieldRuleSetId, current.field_rule_set_id],
@@ -717,7 +760,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           accessPolicyId: locked.access_policy_id,
           typeSetId: locked.type_set_id,
           prioritySetId: locked.priority_set_id,
-          workflowId: locked.workflow_id,
+          workflowMapId: locked.workflow_map_id,
           fieldRuleSetId: locked.field_rule_set_id,
           layoutSetId: locked.layout_set_id,
           visibilityPolicyId: locked.visibility_policy_id,
@@ -738,7 +781,7 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           accessPolicyId: body.accessPolicyId,
           typeSetId: body.typeSetId,
           prioritySetId: body.prioritySetId,
-          workflowId: body.workflowId,
+          workflowMapId: body.workflowMapId,
           fieldRuleSetId: body.fieldRuleSetId,
           layoutSetId: body.layoutSetId,
           visibilityPolicyId: body.visibilityPolicyId,
@@ -772,50 +815,60 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           return { badMapping: true as const };
         }
         let statusMapped = 0;
-        if (changes.workflowId && body.workflowId !== undefined) {
-          // Tickets in statuses the new workflow lacks go where the mapping says, first.
-          const fallback = await defaultWorkflowId(trx, ws);
-          const wanted = body.workflowId ?? fallback;
-          const was = locked.workflow_id ?? fallback;
-          // Both workflows, in id order, so neither is published under the switch.
-          const held = new Map<number, Awaited<ReturnType<typeof holdWorkflow>>>();
-          for (const workflowId of [...new Set([was, wanted])].sort((a, b) => a - b)) {
-            held.set(workflowId, await holdWorkflow(trx, workflowId, 'share'));
+        let statusMigration: Awaited<ReturnType<typeof startMigration>> | null = null;
+        if (changes.workflowMapId && body.workflowMapId !== undefined && catalog) {
+          // Tickets in statuses their type's new workflow lacks go where the mapping says,
+          // after a migration already moving this track's tickets has finished (M1-028).
+          const running = await runningMigration(trx, ws, [trackId]);
+          if (running !== null) return { migrationRunning: running };
+          const fallback = await defaultMapId(trx, ws);
+          const wasId = locked.workflow_map_id ?? fallback;
+          const nextId = body.workflowMapId ?? fallback;
+          // Both maps, then every workflow they name, in id order, so none changes under the
+          // switch.
+          const maps = new Map<number, Awaited<ReturnType<typeof loadMap>>>();
+          for (const mapId of [...new Set([wasId, nextId])].sort((a, b) => a - b)) {
+            maps.set(mapId, await loadMap(trx, ws, mapId, 'share'));
           }
-          const next = held.get(wanted);
-          if (!next) return { badWorkflow: true as const };
-          const keeps = statusIdsOf(next.definition);
-          const inTrack = await trx
-            .selectFrom('ticket')
-            .select('status_id')
-            .distinct()
-            .where('track_id', '=', trackId)
-            .execute();
-          const lost = inTrack.map((t) => t.status_id).filter((s) => !keeps.has(s));
-          const mapping = new Map(
-            Object.entries(body.statusMapping ?? {}).map(([from, to]) => [Number(from), to]),
-          );
-          const tickets = await ticketsInStatuses(trx, ws, was, lost, trackId);
-          const needed = [...tickets.keys()].sort((a, b) => a - b);
-          if (needed.some((s) => !mapping.has(s))) {
-            return {
-              statusMappingRequired: needed.map((statusId) => ({
-                statusId,
-                ticketCount: tickets.get(statusId)?.length ?? 0,
-              })),
-            };
+          const was = maps.get(wasId);
+          const next = maps.get(nextId);
+          if (!was || !next) return { badMap: true as const };
+          const named = new Set([...workflowsOf(was), ...workflowsOf(next)]);
+          for (const workflowId of [...named].sort((a, b) => a - b)) {
+            await holdWorkflow(trx, workflowId, 'share');
           }
-          if (needed.some((s) => !keeps.has(mapping.get(s) as number))) {
-            return { badStatusMapping: true as const };
-          }
-          statusMapped = await remapStatuses(
+          const impact = await impactOf(
             trx,
             ws,
-            request.user?.id ?? null,
-            tickets,
-            new Map(needed.map((s) => [s, mapping.get(s) as number])),
+            [trackId],
+            (_, type) => workflowForType(was, type),
+            (_, type) => workflowForType(next, type),
           );
-        } else if (body.statusMapping !== undefined) {
+          const plan = planMigration(
+            impact,
+            statusMappingOf(body.statusMapping, body.typeStatusMapping),
+          );
+          if (!plan.ok) {
+            return 'required' in plan
+              ? { statusMappingRequired: plan.required }
+              : { badStatusMapping: true as const };
+          }
+          if (plan.steps.length > 0) {
+            statusMigration = await startMigration(
+              trx,
+              catalog,
+              {
+                workspaceId: ws,
+                userId: request.user?.id ?? null,
+                reason: 'track_map',
+                mapId: next.id,
+                trackId,
+              },
+              plan.steps,
+            );
+            statusMapped = plan.ticketCount;
+          }
+        } else if (body.statusMapping !== undefined || body.typeStatusMapping !== undefined) {
           return { badStatusMapping: true as const };
         }
         let levelsMapped = 0;
@@ -872,8 +925,8 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           if (changes.prioritySetId && body.prioritySetId !== undefined) {
             set.priority_set_id = body.prioritySetId;
           }
-          if (changes.workflowId && body.workflowId !== undefined) {
-            set.workflow_id = body.workflowId;
+          if (changes.workflowMapId && body.workflowMapId !== undefined) {
+            set.workflow_map_id = body.workflowMapId;
           }
           if (changes.fieldRuleSetId && body.fieldRuleSetId !== undefined) {
             set.field_rule_set_id = body.fieldRuleSetId;
@@ -900,11 +953,12 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
               changes,
               ...(mapped.length > 0 ? { mapped } : {}),
               ...(statusMapped > 0 ? { statusMapped } : {}),
+              ...(statusMigration ? { statusMigrationId: statusMigration.id } : {}),
               ...(levelsMapped > 0 ? { levelsMapped } : {}),
             },
           });
         }
-        return { track: await loadTrack(trx, ws, trackId) };
+        return { track: await loadTrack(trx, ws, trackId), statusMigration };
       });
       if ('missing' in updated) return notFound(reply);
       if ('archived' in updated) return reply.code(409).send({ error: 'track_archived' });
@@ -918,9 +972,17 @@ export function registerTrackRoutes(app: FastifyInstance, db: Kysely<Database>):
           .send({ error: 'status_mapping_required', statuses: updated.statusMappingRequired });
       }
       if ('badStatusMapping' in updated) return invalid(reply, 'statusMapping');
-      if ('badWorkflow' in updated) return invalid(reply, 'workflowId');
+      if ('badMap' in updated) return invalid(reply, 'workflowMapId');
+      if ('migrationRunning' in updated) {
+        return reply
+          .code(409)
+          .send({ error: 'status_migration_running', migrationId: updated.migrationRunning });
+      }
       if (!updated.track) return notFound(reply);
-      return { track: trackView(updated.track) };
+      return {
+        track: trackView(updated.track),
+        ...(updated.statusMigration ? { statusMigration: updated.statusMigration } : {}),
+      };
     } catch (error) {
       const constraint = uniqueViolation(error);
       if (constraint !== null && KEY_CONSTRAINTS.includes(constraint)) {

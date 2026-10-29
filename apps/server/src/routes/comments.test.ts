@@ -581,10 +581,15 @@ describe('comments (M1-018)', () => {
     const lockedTrack = track.json().track.id as number;
     await member('alice', 'Members', lockedTrack);
     await member('carol', 'Administrators', lockedTrack);
+    const map = await post('admin', '/api/v1/workflow-maps', {
+      name: 'Reserved map',
+      defaultWorkflowId: workflow.json().workflow.id,
+    });
+    expect(map.statusCode, map.body).toBe(201);
     const set = await as('admin', {
       method: 'PATCH',
       url: `/api/v1/tracks/${lockedTrack}`,
-      payload: { workflowId: workflow.json().workflow.id },
+      payload: { workflowMapId: map.json().workflowMap.id },
     });
     expect(set.statusCode, set.body).toBe(200);
     const ticket = await create('alice', key);

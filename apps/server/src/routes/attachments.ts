@@ -171,7 +171,7 @@ export async function registerAttachmentRoutes(
 
   /** The lock of a status that reserves attaching (and removing files) to some (WF-007). */
   async function attachLock(request: FastifyRequest, ticket: TicketRow): Promise<Lock | null> {
-    const allowed = (await statusGate(db, request, ticket.track_id)).check(
+    const allowed = (await statusGate(db, request, ticket.track_id, ticket.ticket_type_id)).check(
       ticket.status_id,
       'attach',
     );
