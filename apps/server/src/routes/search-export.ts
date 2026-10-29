@@ -24,8 +24,9 @@ import {
  * streams every ticket a query finds, as CSV or as a JSON array, in the query's order.
  *
  * - The statement is the search route's (`prepareSearch`, with the person's time zone and
- *   session as `searchPerson` gives them): the person's permission filter is part of it, and each page of tickets is read again under the same filter, so an export
- *   never holds a ticket the search would not show (QRY-008).
+ *   session as `searchPerson` gives them): the person's permission filter is part of it,
+ *   and each page of tickets is read again under the same filter, so an export never holds
+ *   a ticket the search would not show (QRY-008).
  * - Rows go out a keyset page at a time (`EXPORT_PAGE` ids, each page its own read-only
  *   statement under the search timeout); the response is a stream that asks for the next page
  *   only when the client has taken the last one, so the whole result is never in memory.

@@ -56,5 +56,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [048](0048-importer-framework.md) | The importer framework: extract, map and load in resumable batches | Accepted |
 | [049](0049-boards.md) | Boards on a query, read through the search compiler, moved through the ticket routes | Accepted |
 | [051](0051-configuration-guardrails.md) | Configuration guardrails | Accepted |
+| [052](0052-search-results.md) | Search results: columns, inline edit and streaming export | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

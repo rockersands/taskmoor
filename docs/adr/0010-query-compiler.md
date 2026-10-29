@@ -398,3 +398,5 @@ contract, reviewed on every change.
   with a note. A property test checks basic to query and back is the identity.
 - The page keeps the query in the address (`#/search?q=`), so a search can be shared and a reload
   runs it again. Results come from `POST /api/v1/search`, a page at a time.
+- Results show as a table in the person's columns, edit in place and export as CSV or JSON
+  (M1-042, ADR-052).
