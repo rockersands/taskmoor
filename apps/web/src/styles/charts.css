@@ -1,0 +1,213 @@
+/* Charts (M1-060; ADR-057): series hues from the skin's chart tokens, ink from text tokens,
+   recessive hairline grids. A chart draws at its box's width, so it never scrolls sideways. */
+.chart {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.chart-title {
+  font-weight: 600;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* A short line for line series, a square for columns: the identity beside the text. */
+.chart-key,
+.chart-swatch {
+  display: inline-block;
+  flex: none;
+  background: currentColor;
+}
+
+.chart-key {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.chart-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.chart-key-one {
+  color: var(--color-chart-1);
+}
+
+.chart-key-two {
+  color: var(--color-chart-2);
+}
+
+.chart-key-guide {
+  color: var(--color-chart-guide);
+}
+
+.chart-plot {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chart-plot svg {
+  display: block;
+}
+
+.chart-grid {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.chart-tick {
+  fill: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.chart-value {
+  fill: var(--color-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-line-one {
+  stroke: var(--color-chart-1);
+}
+
+.chart-line-two {
+  stroke: var(--color-chart-2);
+}
+
+.chart-line-guide {
+  stroke: var(--color-chart-guide);
+}
+
+/* End dots ringed in the surface, so they stay readable where lines cross. */
+.chart-dot {
+  stroke: var(--color-surface);
+  stroke-width: 2;
+}
+
+.chart-dot-one {
+  fill: var(--color-chart-1);
+}
+
+.chart-dot-two {
+  fill: var(--color-chart-2);
+}
+
+.chart-column-one {
+  fill: var(--color-chart-1);
+}
+
+.chart-column-two {
+  fill: var(--color-chart-2);
+}
+
+.chart-crosshair {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+}
+
+.chart-band {
+  fill: var(--color-surface-sunken);
+}
+
+.chart-hit {
+  fill: transparent;
+}
+
+.chart-tooltip {
+  position: absolute;
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-2);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-2);
+  color: var(--color-text);
+  font-size: var(--font-size-200);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.chart-tooltip span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chart-table summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.chart-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-200);
+}
+
+.chart-table th,
+.chart-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+}
+
+.chart-table th:first-child {
+  text-align: left;
+}
+
+.chart-group {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.sprint-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+  margin: var(--space-4) 0;
+}
+
+.sprint-charts > .chart,
+.sprint-charts > .chart-group {
+  padding: var(--space-4);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+@media (pointer: coarse) {
+  .chart-table summary {
+    min-height: var(--hit-target-touch);
+  }
+}

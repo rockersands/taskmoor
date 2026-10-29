@@ -18,7 +18,9 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 Back on the Mac after the overnight cloud run: `main` fast-forwarded 106 commits, the gate
 green here (one load-only failure, below). The user asked to continue with what is on `main`
-and to commit on `main` itself (no branch); pushing waits for their go-ahead each time.
+and to commit on `main` itself (no branch). Since the afternoon of 2026-10-29 the user allows
+merging finished work and pushing to `main` without asking, ticket after ticket, until they say
+stop (CI is the gate).
 
 ### Done
 
@@ -53,6 +55,14 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
   a state per ticket (`fold`, `stateAt` for a past moment) and checks the fold against the live
   tickets and open sprint memberships (`replayCheck`; `node cli.mjs report-verify`). M1-060 to
   M1-062 compute their reports from these events only.
+- **M1-060 sprint charts** (ADR-057; no migration): `reports/sprint-charts.ts` computes the
+  burndown and burnup from the report events (start, steps with their cause, local days on the
+  viewer's zone, guideline, end); `GET /sprints/:id/burndown` and `GET /boards/:id/velocity`
+  (`routes/sprints.ts`) count only tickets the viewer sees. The web's first charts live in
+  `apps/web/src/reports` (`LineChart`, `ColumnChart`, `chart.ts`) with `styles/charts.css` and
+  the chart tokens (`--color-chart-1`, `-2`, `-guide`, validated per skin); M1-061, M1-062 and
+  the M1-064 widgets reuse them. The sprint report page shows burndown, burnup and velocity. Not
+  done: scope-change markers on the line, velocity per team, a sprint selector.
 - **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
   the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
   settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
@@ -77,8 +87,9 @@ and to commit on `main` itself (no branch); pushing waits for their go-ahead eac
 
 1. The overnight list below without M1-045: M1-040 full-text search and M1-039 history
    operators (both measured at 10M tickets: this Mac has 33 GB free, the 137 GB dataset stayed
-   on Windows, so their timing criteria need another machine or CI), M1-064 dashboards with
-   M1-062 burndown (M1-060 and M1-061 first, on M1-059's events), M1-046 board drag and
+   on Windows, so their timing criteria need another machine or CI), M1-061 control chart,
+   cumulative flow, cycle time and time in status (next: on M1-059's events, drawn with
+   M1-060's chart components), then M1-062 and M1-064 dashboards, M1-046 board drag and
    drop, M1-098 CSV, M1-105, M1-115, M1-116.
 2. Sprint editing in the web UI (name, goal and dates; API only since M1-044) and the rest of
    M1-044's "Left" list below. Sprint settings are in the web UI now (above). Webhooks have no

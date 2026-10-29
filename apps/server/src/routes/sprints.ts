@@ -1,4 +1,5 @@
 import type { Database } from '@taskmoor/db';
+import { knownTimeZone } from '@taskmoor/query';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
@@ -6,6 +7,8 @@ import { requireUser } from '../auth';
 import { type BoardRecord, boardScope, compileBoard, type Scope } from '../boards/data';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { readReportEvents } from '../reports/events';
+import { sprintChart } from '../reports/sprint-charts';
 import { readOnly } from '../search/run';
 import {
   completeSprint,
@@ -22,7 +25,6 @@ import {
   createSprintBody,
   datesInOrder,
   rankSprintBody,
-  readSprintSettings,
   type SprintSettings,
   sprintTicketsBody,
   startSprintBody,
@@ -53,6 +55,19 @@ import { searchRefusal } from './search';
 const MAX_INT = 2_147_483_647;
 const idParam = z.object({ id: z.coerce.number().int().positive().max(MAX_INT) }).strict();
 const listQuery = z.object({ state: z.enum(['future', 'active', 'closed']).optional() }).strict();
+const chartQuery = z
+  .object({
+    timeZone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine((zone) => knownTimeZone(zone))
+      .optional(),
+  })
+  .strict();
+const velocityQuery = z
+  .object({ sprints: z.coerce.number().int().min(1).max(50).default(7) })
+  .strict();
 const backlogQuery = z
   .object({ limit: z.coerce.number().int().min(1).max(10_000).default(2000) })
   .strict();
@@ -853,5 +868,131 @@ export function registerSprintRoutes(
         ...(board.settings.timeTracking === 'remainingEstimate' && !closed ? { remaining } : {}),
       },
     };
+  });
+
+  // Burndown and burnup (M1-060; RPT-001; ADR-057): from the report events of the tickets the
+  // viewer sees, by day on the viewer's time zone (or `?timeZone=`).
+  app.get('/api/v1/sprints/:id/burndown', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const q = chartQuery.safeParse(request.query);
+    const found = await sprintAndBoard(request, reply);
+    if (!found) return reply;
+    if (!q.success) return invalidFields(reply, shapeErrors(q.error));
+    const { sprint, board } = found;
+    if (sprint.state === 'future' || !sprint.started_at || !sprint.end_at) {
+      return reply.code(409).send({ error: 'sprint_not_started' });
+    }
+    const ws = request.workspaceId;
+    const scope = await boardScope(db, catalogs, request);
+    // Every ticket that was ever in the sprint, as far as the viewer may see it now.
+    const ever = await db
+      .selectFrom('sprint_change')
+      .select('ticket_id')
+      .distinct()
+      .where('sprint_id', '=', sprint.id)
+      .execute();
+    const candidates = ever.map((r) => r.ticket_id);
+    const visible =
+      candidates.length === 0
+        ? []
+        : (
+            await sql<{ id: number; key: string; summary: string }>`
+              SELECT k.id, t.key || '-' || k.number AS key, k.summary
+                FROM ticket k JOIN track t ON t.id = k.track_id
+               WHERE k.id = ANY(${candidates}::int[]) AND k.workspace_id = ${ws}::int
+                 AND ${scope.filter.sql}`.execute(db)
+          ).rows;
+    const estimation = board.settings.estimation;
+    const events = await readReportEvents(
+      db,
+      ws,
+      visible.map((t) => t.id),
+      estimation.statistic === 'field' && estimation.fieldId !== undefined
+        ? { numberFields: [estimation.fieldId] }
+        : {},
+    );
+    const burnRemaining =
+      board.settings.timeTracking === 'remainingEstimate' &&
+      estimation.statistic === 'originalEstimate';
+    const timeZone =
+      q.data.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
+    const chart = sprintChart({
+      sprintId: sprint.id,
+      startedAt: sprint.started_at,
+      endAt: sprint.end_at,
+      completedAt: sprint.state === 'closed' ? sprint.completed_at : null,
+      estimation:
+        estimation.statistic === 'field'
+          ? { statistic: 'field', fieldId: estimation.fieldId as number }
+          : { statistic: estimation.statistic },
+      burnRemaining,
+      done: new Set(doneStatuses(board.record)),
+      events,
+      now: new Date(),
+      timeZone,
+    });
+    const stepped = new Set(chart.steps.map((s) => s.ticketId));
+    return {
+      sprint: sprintView(sprint),
+      statistic: estimation,
+      burnRemaining,
+      timeZone,
+      ...chart,
+      tickets: visible
+        .filter((t) => stepped.has(t.id))
+        .map((t) => ({ id: t.id, key: t.key, summary: t.summary })),
+    };
+  });
+
+  // Velocity (M1-060; RPT-001 (2)): committed and completed per closed sprint, newest last, from
+  // the estimates recorded at the start and at the completion, over the tickets the viewer sees.
+  app.get('/api/v1/boards/:id/velocity', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = idParam.safeParse(request.params);
+    if (!p.success) return notFound(reply);
+    const q = velocityQuery.safeParse(request.query);
+    if (!q.success) return invalidFields(reply, shapeErrors(q.error));
+    const board = await scrumBoard(request, reply, p.data.id);
+    if (!board) return reply;
+    const ws = request.workspaceId;
+    const scope = await boardScope(db, catalogs, request);
+    const closed = (
+      await sprintQuery(db, ws)
+        .where('board_id', '=', p.data.id)
+        .where('state', '=', 'closed')
+        .orderBy('completed_at', 'desc')
+        .orderBy('id', 'desc')
+        .limit(q.data.sprints)
+        .execute()
+    ).reverse();
+    const statistic = board.settings.estimation.statistic;
+    const value =
+      statistic === 'ticketCount'
+        ? sql<number>`1`
+        : statistic === 'originalEstimate'
+          ? sql<number>`coalesce(c.original_estimate, 0)`
+          : sql<number>`coalesce(c.points, 0)`;
+    const sums =
+      closed.length === 0
+        ? []
+        : (
+            await sql<{ sprint_id: number; kind: string; total: string }>`
+              SELECT c.sprint_id, c.kind, sum(${value}) AS total
+                FROM sprint_change c JOIN ticket k ON k.id = c.ticket_id
+               WHERE c.sprint_id = ANY(${closed.map((s) => s.id)}::int[])
+                 AND c.kind IN ('committed', 'completed') AND ${scope.filter.sql}
+               GROUP BY c.sprint_id, c.kind`.execute(db)
+          ).rows;
+    const total = (sprintId: number, kind: string) =>
+      Number(sums.find((r) => r.sprint_id === sprintId && r.kind === kind)?.total ?? 0);
+    const sprints = closed.map((s) => ({
+      ...sprintView(s),
+      committed: total(s.id, 'committed'),
+      completed: total(s.id, 'completed'),
+    }));
+    const average =
+      sprints.length === 0 ? 0 : sprints.reduce((n, s) => n + s.completed, 0) / sprints.length;
+    return { statistic: board.settings.estimation, sprints, average };
   });
 }

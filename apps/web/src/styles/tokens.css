@@ -91,6 +91,11 @@
   /* QR codes stay dark on light in every skin: scanners expect it. */
   --color-qr-dark: #000000;
   --color-qr-light: #ffffff;
+  /* Chart series (M1-060): two categorical hues validated for this surface (CVD and contrast),
+     and a neutral for reference lines such as a burndown's guideline. */
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #eb6834;
+  --color-chart-guide: #8e8599;
 
   /* M0 names, kept so older styles follow the skin. */
   --color-bg: var(--color-canvas);
@@ -144,6 +149,11 @@
 
   --color-qr-dark: #000000;
   --color-qr-light: #ffffff;
+  /* Chart series (M1-060): two categorical hues validated for this surface (CVD and contrast),
+     and a neutral for reference lines such as a burndown's guideline. */
+  --color-chart-1: #3987e5;
+  --color-chart-2: #d95926;
+  --color-chart-guide: #8a8096;
 
   --color-bg: var(--color-canvas);
 

@@ -2,9 +2,11 @@ import type {
   Backlog,
   BacklogTicket,
   CompleteTarget,
+  SprintBurndown,
   SprintClient,
   SprintReport,
   SprintSection,
+  Velocity,
 } from './client';
 
 /**
@@ -138,6 +140,8 @@ export function fakeSprintClient(): SprintClient & { state: () => Backlog } {
       }
       update();
     },
+    burndown: async (sprintId): Promise<SprintBurndown> => burndownFixture(sprintId),
+    velocity: async (): Promise<Velocity> => velocityFixture(),
     report: async (sprintId): Promise<SprintReport> => ({
       sprint: { ...(data.sprints[0] ?? section(sprintId, 'Checkout Sprint 1', 'active', [])) },
       statistic: { statistic: 'originalEstimate' },
@@ -186,5 +190,61 @@ export function fakeSprintClient(): SprintClient & { state: () => Backlog } {
         remaining: 6 * HOUR,
       },
     }),
+  };
+}
+
+/** A two-week sprint, eight days in: done on days 2, 4 and 7, an hour added on day 5. */
+export function burndownFixture(sprintId = 11): SprintBurndown {
+  const dates = [
+    '2026-10-26',
+    '2026-10-27',
+    '2026-10-28',
+    '2026-10-29',
+    '2026-10-30',
+    '2026-10-31',
+    '2026-11-01',
+    '2026-11-02',
+    '2026-11-03',
+    '2026-11-04',
+  ];
+  const remaining = [8, 6, 6, 4, 5, 5, 3, 3];
+  const completed = [0, 2, 2, 4, 4, 4, 6, 6];
+  return {
+    sprint: section(sprintId, 'Checkout Sprint 1', 'active', []),
+    statistic: { statistic: 'originalEstimate' },
+    burnRemaining: false,
+    timeZone: 'UTC',
+    dates,
+    start: { at: '2026-10-26T09:00:00Z', remaining: 8 * HOUR, scope: 8 * HOUR },
+    guideline: {
+      from: { at: '2026-10-26T09:00:00Z', date: dates[0] as string, value: 8 * HOUR },
+      to: { at: '2026-11-04T09:00:00Z', date: dates[9] as string, value: 0 },
+    },
+    days: remaining.map((r, i) => ({
+      date: dates[i] as string,
+      remaining: r * HOUR,
+      completed: (completed[i] ?? 0) * HOUR,
+      scope: (r + (completed[i] ?? 0)) * HOUR,
+    })),
+    end: { at: '2026-11-02T12:00:00Z', remaining: 3 * HOUR, scope: 9 * HOUR, completed: 6 * HOUR },
+  };
+}
+
+/** Three closed sprints of the board. */
+export function velocityFixture(): Velocity {
+  const sprint = (id: number, name: string, committed: number, completed: number) => ({
+    ...section(id, name, 'future', []),
+    state: 'closed' as const,
+    committed: committed * HOUR,
+    completed: completed * HOUR,
+  });
+  return {
+    statistic: { statistic: 'originalEstimate' },
+    sprints: [
+      sprint(8, 'Checkout Sprint 8', 12, 10),
+      sprint(9, 'Checkout Sprint 9', 10, 10),
+      sprint(10, 'Checkout Sprint 10', 14, 9),
+    ],
+    average: (29 / 3) * HOUR,
   };
 }

@@ -97,6 +97,38 @@ export interface SprintReport {
   };
 }
 
+/** A day of a sprint chart (`GET /api/v1/sprints/:id/burndown`, M1-060). */
+export interface ChartDay {
+  date: string;
+  remaining: number;
+  scope: number;
+  completed: number;
+}
+
+/** `GET /api/v1/sprints/:id/burndown`: burndown and burnup by day on `timeZone`. */
+export interface SprintBurndown {
+  sprint: Sprint;
+  statistic: SprintSettings['estimation'];
+  /** The remaining estimate burns down (time tracking on). */
+  burnRemaining: boolean;
+  timeZone: string;
+  dates: string[];
+  start: { at: string; remaining: number; scope: number };
+  guideline: {
+    from: { at: string; date: string; value: number };
+    to: { at: string; date: string; value: number };
+  };
+  days: ChartDay[];
+  end: { at: string; remaining: number; scope: number; completed: number };
+}
+
+/** `GET /api/v1/boards/:id/velocity`: committed and completed per closed sprint, oldest first. */
+export interface Velocity {
+  statistic: SprintSettings['estimation'];
+  sprints: (Sprint & { committed: number; completed: number })[];
+  average: number;
+}
+
 export type CompleteTarget =
   | { type: 'backlog' }
   | { type: 'sprint'; sprintId: number }
@@ -112,6 +144,8 @@ export interface SprintClient {
   /** Sends tickets from a sprint back to the backlog. */
   removeTickets(sprintId: number, ticketIds: number[]): Promise<void>;
   report(sprintId: number): Promise<SprintReport>;
+  burndown(sprintId: number): Promise<SprintBurndown>;
+  velocity(boardId: number): Promise<Velocity>;
 }
 
 export const sprintClient: SprintClient = {
@@ -141,6 +175,8 @@ export const sprintClient: SprintClient = {
     });
   },
   report: (sprintId) => api<SprintReport>(`/sprints/${sprintId}/report`),
+  burndown: (sprintId) => api<SprintBurndown>(`/sprints/${sprintId}/burndown`),
+  velocity: (boardId) => api<Velocity>(`/boards/${boardId}/velocity`),
 };
 
 /** An estimate as the board's statistic reads: hours for time, the number otherwise. */

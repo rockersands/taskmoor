@@ -20,6 +20,7 @@ import '../src/styles/inbox.css';
 import '../src/styles/workflows.css';
 import '../src/styles/richtext.css';
 import '../src/styles/search.css';
+import '../src/styles/charts.css';
 
 const preview: Preview = {
   parameters: {
