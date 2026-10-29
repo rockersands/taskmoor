@@ -69,6 +69,14 @@ export function SettingsPage() {
               <a href="#/admin/workflows">{t('settings.workflows')}</a>
               <p className="page-note">{t('settings.workflowsHint')}</p>
             </li>
+            <li>
+              <a href="#/admin/workflow-maps">{t('settings.workflowMaps')}</a>
+              <p className="page-note">{t('settings.workflowMapsHint')}</p>
+            </li>
+            <li>
+              <a href="#/admin/tracks">{t('settings.tracks')}</a>
+              <p className="page-note">{t('settings.tracksHint')}</p>
+            </li>
           </ul>
         </section>
       )}

@@ -5,6 +5,8 @@ import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
+import { TracksAdminPage } from './configuration/TracksAdminPage';
+import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
@@ -87,6 +89,8 @@ const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ADMIN_USERS = '#/admin/users';
 const ADMIN_GROUPS = '#/admin/groups';
+const ADMIN_TRACKS = '#/admin/tracks';
+const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -223,6 +227,22 @@ function Pages() {
               },
             },
             {
+              id: 'go-tracks',
+              labelId: 'admin.tracks.title' as const,
+              keywords: ['track', 'project', 'roles', 'members', 'archive'],
+              run: () => {
+                window.location.hash = ADMIN_TRACKS;
+              },
+            },
+            {
+              id: 'go-workflow-maps',
+              labelId: 'admin.maps.title' as const,
+              keywords: ['workflow', 'map', 'ticket type', 'scheme'],
+              run: () => {
+                window.location.hash = ADMIN_WORKFLOW_MAPS;
+              },
+            },
+            {
               id: 'go-groups',
               labelId: 'admin.groups.title' as const,
               keywords: ['group', 'team', 'members', 'nested'],
@@ -264,6 +284,10 @@ function Pages() {
     content = <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {
     content = <GroupsPage />;
+  } else if (isRoute(hash, ADMIN_TRACKS)) {
+    content = <TracksAdminPage />;
+  } else if (isRoute(hash, ADMIN_WORKFLOW_MAPS)) {
+    content = <WorkflowMapsPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
