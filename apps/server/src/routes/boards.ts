@@ -163,6 +163,17 @@ function shapeErrors(error: z.ZodError): Record<string, string> {
   return out;
 }
 
+/** A copy of a JSON value with every object's keys in order, so equal values print alike. */
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value === null || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((k) => [k, sortKeys((value as Record<string, unknown>)[k])]),
+  );
+}
+
 const STAGE_NAMES: Record<string, string> = { new: 'New', active: 'Active', closed: 'Closed' };
 
 export function registerBoardRoutes(
@@ -615,12 +626,13 @@ export function registerBoardRoutes(
           ? { adminIds: [...new Set(body.adminIds)].sort((a, b) => a - b) }
           : {}),
       };
+      // Stored JSON comes back with its keys in another order: compare both sides sorted.
       const changes = diff(
-        { ...before, adminIds: [...adminIdsBefore].sort((a, b) => a - b) } as Record<
+        sortKeys({ ...before, adminIds: [...adminIdsBefore].sort((a, b) => a - b) }) as Record<
           string,
           unknown
         >,
-        after,
+        sortKeys(after) as Record<string, unknown>,
       );
       if (Object.keys(changes).length === 0) return { unchanged: true as const };
       await trx

@@ -123,7 +123,7 @@ describe('the board page (M1-043)', () => {
     expect(keysIn('Doing in Everything else')).toContain('SHOP-23');
   });
 
-  it('[ADR-033] keeps its columns in a scrolling region on a phone', async () => {
+  it('[AGL-013] keeps its columns in a scrolling region on a phone', async () => {
     setViewportWidth(375);
     renderBoard(fakeBoardClient({ cards: CARDS.slice(0, 2) }));
     await page();

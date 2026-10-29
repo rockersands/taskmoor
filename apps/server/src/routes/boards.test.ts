@@ -264,6 +264,15 @@ describe('boards (M1-043)', () => {
     expect((await patch('bob', `/api/v1/boards/${board.id}`, { name: 'Now bob' })).statusCode).toBe(
       200,
     );
+    // The same configuration again is no change: no new version, no event.
+    const current = (await get('alice', `/api/v1/boards/${board.id}`)).json().board;
+    const same = await patch('alice', `/api/v1/boards/${board.id}`, {
+      columns: current.columns,
+      swimlanes: current.swimlanes,
+      boardFilters: current.boardFilters,
+      cardRules: current.cardRules,
+    });
+    expect(same.json().board.version).toBe(current.version);
     // A stale version is refused.
     const stale = await patch('alice', `/api/v1/boards/${board.id}`, { name: 'Old', version: 1 });
     expect(stale.statusCode).toBe(409);
