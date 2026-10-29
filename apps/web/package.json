@@ -17,6 +17,7 @@
     "@formatjs/icu-messageformat-parser": "^3.5.21",
     "@hocuspocus/provider": "4.7.0",
     "@simplewebauthn/browser": "^14.0.0",
+    "@taskmoor/query": "workspace:*",
     "@taskmoor/richtext": "workspace:*",
     "@tiptap/core": "3.31.4",
     "@tiptap/extension-collaboration": "3.31.4",

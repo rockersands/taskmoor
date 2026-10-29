@@ -195,6 +195,9 @@ importers:
       '@simplewebauthn/browser':
         specifier: ^14.0.0
         version: 14.0.0
+      '@taskmoor/query':
+        specifier: workspace:*
+        version: link:../../packages/query
       '@taskmoor/richtext':
         specifier: workspace:*
         version: link:../../packages/richtext

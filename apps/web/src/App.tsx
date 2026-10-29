@@ -25,6 +25,7 @@ import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { GroupsPage } from './people/GroupsPage';
 import { UsersPage } from './people/UsersPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
+import { queryFromHash, SearchPage } from './search/SearchPage';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
 import { RequireSession } from './session/RequireSession';
 import { type Session, SessionProvider, useSession } from './session/SessionProvider';
@@ -428,6 +429,8 @@ function Pages() {
         <InboxPage />
       ) : active === 'home' && signedIn ? (
         <HomePage />
+      ) : active === 'search' && signedIn ? (
+        <SearchPage key={queryFromHash(hash)} initialQuery={queryFromHash(hash)} />
       ) : (
         <>
           <h1 className="page-title">{page ? t(page.labelId) : ''}</h1>

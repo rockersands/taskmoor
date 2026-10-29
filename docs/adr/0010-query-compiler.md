@@ -298,3 +298,19 @@ Every new field type or function is a resolver entry plus a compiler case plus g
 Sorting by priority uses a rank column in the product (the spike sorted the name). The
 conformance suite (M1-033) is the behaviour contract; the compiler goldens are the SQL
 contract, reviewed on every change.
+
+## Query editor (M1-041)
+
+- The web app parses queries itself with `@taskmoor/query` (the same parser, no dependencies),
+  for suggestions at the caret (`apps/web/src/search/suggest.ts`: fields where a clause starts,
+  common ones first, then operators, values for tracks, stages and people, connectives, the
+  order) and for the basic mode. The backend's `GET /api/v1/search/check` stays the judge of a
+  query (field names the person may see, operators, values): its error, with its column, shows
+  under the editor as it is typed.
+- The basic mode is a subset of the language, not a second one: tracks, stages, assignment (me
+  or nobody) and words, joined with AND and ordered by the latest change. Basic choices become a
+  query (`basicToQuery`); a query within the subset reads back as its choices (`queryToBasic`),
+  in any spelling the parser accepts (aliases, case); anything else stays in the advanced mode
+  with a note. A property test checks basic to query and back is the identity.
+- The page keeps the query in the address (`#/search?q=`), so a search can be shared and a reload
+  runs it again. Results come from `POST /api/v1/search`, a page at a time.
