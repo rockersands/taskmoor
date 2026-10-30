@@ -48,7 +48,10 @@ migration **0057** `0057_full_text_search.ts`.
   quarter of the tickets) (Postgres estimates a UNION ALL's distinct ids at 200, so the set form
   always reads every match first). The count and sample statements are compiled with
   `purpose: 'count'`.
-  The comment branch reads each comment's track by key (`commentReadableSql` takes a `track`
+  Searches of several words or a phrase are counted in the word index when bound
+  (`countInIndex`, table scans off for that statement, up to the page threshold); few matches
+  start from the index (`fromIndex` on `words` conditions, the set form of `text ~`), because the
+  planner takes words for independent. The comment branch reads each comment's track by key (`commentReadableSql` takes a `track`
   expression now; `CompileOptions.commentsOf`, passed by search, boards and webhooks). A
   condition tested on a few known tickets passes `rows: true` (webhooks do), which keeps every
   text search a test of the row instead of a set of all matches in the workspace.
@@ -78,9 +81,19 @@ migration **0057** `0057_full_text_search.ts`.
   migrating straight to the third-newest migration; with 0057 that start passed 0055 (no
   default workspace) and the 0002 seed failed. It now seeds each migration's rows right after
   it, as `packages/db` does.
-- **Measured:** MEASURED_PLACEHOLDER
+- **Measured** (`text.large.test.ts`, 2026-10-30, load average 5 to 21 from other sessions;
+  ADR-069 "Measurements"): at 200,000 tickets every first page under 300 ms (slowest:
+  relevance over a word in 42% of tickets, 205 ms) and every estimate within 3.8%; at
+  **1,000,000 tickets** every first page under 300 ms (fuzzy word 179 ms, comment search 78 ms,
+  the rest under 27 ms) except `ORDER BY relevance` on common words (821 ms over 424,000
+  matches, 1,541 ms over 48,000), every estimate within 5.4%, counts 1 to 902 ms (a text search
+  with another condition walks to 10,001 matches before sampling).
+- **Decision for the user:** `ORDER BY relevance` ranks every match, so a common word costs in
+  proportion (about 10 s at 10M for a word in 40% of tickets). Proposed: rank only the 10,000
+  most recently updated matches when there are more, and say so in the answer. Not built.
 - **Pending (not blocking):** the done-when "p95 < 300 ms at 10M tickets" (no 10M dataset on
-  this Mac; M1-117 should load text as `text.large.test.ts` does and run its queries). Backup
+  this Mac, which held 1M; M1-117 should load text as `text.large.test.ts` does and run its
+  queries; relevance over common words is already over budget at 1M, see above). Backup
   and restore of the new function, configuration and generated columns are untested here (no
   `pg_dump` on this Mac; the backup tests skip). Not built: changing the site language (alter
   `taskmoor_search`, rewrite the word columns), relevance from comments and text fields under

@@ -109,7 +109,15 @@ from 5,000 matches and 0.3% of the tickets (at 10M a word in 0.3% fills a page w
 of 10,000) from twice the cap and `sqrt(cap · n / 4)` matches (22,000 at 200,000 tickets,
 158,000 at 10M; below the cap a walk reads the whole table); relevance, which ranks every
 match, from 5,000 and a quarter of the tickets. The page and the count (with its sample) are
-compiled separately for that reason. Measured at 200,000 tickets before this split: a prefix
+compiled separately for that reason.
+
+**Several words.** The planner takes words for independent, so two that seldom meet look common
+(at 1M tickets two words no summary holds together were expected in 2% of rows, and the page
+walked every ticket: 929 ms). A search of several words or a phrase is therefore counted in the
+word index when the query is bound, up to the page's threshold, with table scans turned off for
+that one statement; fewer matches than the threshold start from the index (`fromIndex` on a
+field's search, the set form for `text ~`). A single word needs no count: the column statistics
+know it. Measured at 200,000 tickets before the page and count split: a prefix
 with 28,000 matches counted in 917 ms from the set and 101 ms walking; a word in 84,000 tickets
 ordered by relevance took 1,007 ms from the set and 185 ms walking. Searches with a `?` or fuzzy
 word always take the set (above).
@@ -215,7 +223,34 @@ a materialised table scan: now a fenced probe per word) and a middling word's ex
 here (15,130 matches in the last 15% of blocks, so a fifth of the sample's blocks hold them);
 at `count.test.ts`'s smaller sample it reports "more than".
 
-**1,000,000 tickets:** see below.
+**1,000,000 tickets** (ticket 1,891 MB, comments 291 MB, text values 194 MB; the largest this
+Mac holds beside other sessions' work; p95 of 5, load average 6 to 21):
+
+| Query | Page | Count | Total given (exact) |
+|---|---:|---:|---|
+| `text ~` a word in 42% of tickets, by updated | 26.1 | 136.1 | about 426,760 (424,279; 0.6%) |
+| `text ~` a word in 5% | 9.8 | 226.8 | about 47,341 (48,301; 2.0%) |
+| `text ~` a rare word; an absent word | 7.9; 1.5 | 3.4; 0.8 | exact |
+| `summary ~` two common words no summary holds together | 6.5 | 2.5 | 0 (929 ms before counting several words in the index) |
+| `summary ~` two middling words; a phrase | 2.0; 3.9 | 0.7; 1.4 | exact |
+| `description ~` a word `AND track = T01` | 8.8 | 19.6 | 5,612 exact |
+| `comment ~` a word in 5% of comments | 77.9 | 313.3 | 6,990 exact |
+| `text ~ "kate*"` | 12.5 | 172.2 | about 138,077 (140,134; 1.5%) |
+| `summary ~` a `?` word; a fuzzy word; a pattern | 4.4; 179.3; 20.9 | 1.2; 161.2; 12.0 | exact |
+| `Notes ~` a word | 15.7 | 6.4 | 1,396 exact |
+| `text ~` a word in 42%, `ORDER BY relevance` | **820.6** | 84.7 | about 426,760 |
+| `text ~` a word in 5%, `ORDER BY relevance` | **1,540.6** | 264.7 | about 47,341 |
+| `text ~` a word in 42% `AND status = New` | 15.5 | 902.1 | about 62,352 (62,098; 0.4%) |
+| everything; two tracks; one status | 0.6 to 1.4 | 19 to 82 | about, within 0.0% to 3.9% |
+| the newest 15% | 0.8 | 387.8 | about 71,241 (75,290; 5.4%) |
+
+Every first page is under 300 ms except ordering a common word by relevance, which ranks every
+match (424,000 and 48,000 here; the second reads them from the set, the first walks). Every
+estimate is within 5.4%. Counts beyond the cap take 19 to 902 ms: QRY-009 (3)'s 100 ms for an
+approximate count holds for plain queries, not for a text search combined with another
+condition, whose count walks to 10,001 matches before the sample. Ranking all matches is the
+open question: capping it (rank only the most recently updated N matches when there are more,
+and say so) is a product decision, recorded in HANDOFF.
 
 **10M is not measured** (done-when: p95 under 300 ms at 10M). What grows with the data: ranking
 every match of a very common word (`ORDER BY relevance` reads all of them), exact counts of
