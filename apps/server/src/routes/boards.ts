@@ -39,6 +39,7 @@ import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
+import { registerBoardReportRoutes } from './board-reports';
 import { searchRefusal } from './search';
 import { registerSprintRoutes } from './sprints';
 import { ticketRoutes } from './tickets';
@@ -939,6 +940,16 @@ export function registerBoardRoutes(
       transitioned,
       ranked,
     };
+  });
+
+  // Flow reports (M1-061): any board its viewers see.
+  registerBoardReportRoutes(app, db, {
+    catalogs,
+    timeoutMs,
+    board: async (request, reply, id) => {
+      const found = await visibleBoard(request, reply, id);
+      return found ? record(found.row) : null;
+    },
   });
 
   // Sprints (M1-044): on Scrum boards, managed by "Manage sprints" or the board's configurers.

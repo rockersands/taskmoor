@@ -251,6 +251,36 @@ export async function readReportEvents(
   return events.sort(byTime);
 }
 
+/**
+ * Each ticket's status changes in time order, creation first (M1-061): what the flow reports
+ * read. Only the status rows, grouped by ticket, so 100,000 tickets stay a few hundred
+ * thousand small rows.
+ */
+export async function readStatusChanges(
+  db: Db,
+  workspaceId: number,
+  ticketIds: readonly number[],
+  until: Date,
+): Promise<{ id: number; changes: { at: number; statusId: number | null }[] }[]> {
+  if (ticketIds.length === 0) return [];
+  const ids = [...new Set(ticketIds)];
+  const { rows } = await sql<{ ticket_id: number; at: Date; to_value: string | null }>`
+    SELECT ticket_id, at, to_value FROM ticket_change
+     WHERE workspace_id = ${workspaceId}::int AND ticket_id = ANY(${ids}::int[])
+       AND field = 'status' AND at <= ${until}::timestamptz
+     ORDER BY ticket_id, at, id`.execute(db);
+  const out: { id: number; changes: { at: number; statusId: number | null }[] }[] = [];
+  let current: (typeof out)[number] | undefined;
+  for (const r of rows) {
+    if (current?.id !== r.ticket_id) {
+      current = { id: r.ticket_id, changes: [] };
+      out.push(current);
+    }
+    current.changes.push({ at: r.at.getTime(), statusId: int(r.to_value) });
+  }
+  return out;
+}
+
 /** These tickets as reports saw them at `at`; a ticket created later is absent. */
 export async function stateAt(
   db: Db,

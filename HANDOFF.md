@@ -63,6 +63,16 @@ stop (CI is the gate).
   the chart tokens (`--color-chart-1`, `-2`, `-guide`, validated per skin); M1-061, M1-062 and
   the M1-064 widgets reuse them. The sprint report page shows burndown, burnup and velocity. Not
   done: scope-change markers on the line, velocity per team, a sprint selector.
+- **M1-061 flow reports** (ADR-058; no migration): `reports/flow.ts` (cumulative flow, cycle
+  points over the chosen columns, two centred rolling averages, statistics, bins, time in
+  status) on `readStatusChanges` (`reports/events.ts`); routes in `routes/board-reports.ts`
+  (`/boards/:id/reports/cumulative-flow`, `/cycle-time`, `/time-in-status`; `from`/`to` or
+  `days`, `filters`, and for cycle time `columns`, `average`, `window`, `limit`), registered
+  from `routes/boards.ts` for any board the viewer sees. Web: `#/boards/<id>/reports/<report>`
+  (`reports/BoardReportsPage.tsx`, linked from every board), `StackedAreaChart` and
+  `ScatterChart`, tokens `--color-flow-first` and `--color-flow-last` (an ordinal ramp, mixed
+  with `color-mix` in oklab). e2e `board-reports.spec.ts`. 100,000 tickets:
+  `board-reports.large.test.ts` with `TASKMOOR_LARGE_REPORTS=1`.
 - **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
   the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
   settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
@@ -87,10 +97,10 @@ stop (CI is the gate).
 
 1. The overnight list below without M1-045: M1-040 full-text search and M1-039 history
    operators (both measured at 10M tickets: this Mac has 33 GB free, the 137 GB dataset stayed
-   on Windows, so their timing criteria need another machine or CI), M1-061 control chart,
-   cumulative flow, cycle time and time in status (next: on M1-059's events, drawn with
-   M1-060's chart components), then M1-062 and M1-064 dashboards, M1-046 board drag and
-   drop, M1-098 CSV, M1-105, M1-115, M1-116.
+   on Windows, so their timing criteria need another machine or CI), M1-062 outcome and
+   release burndowns, release report, created vs closed and two-dimensional statistics (next:
+   on M1-059's events, drawn with the chart components of M1-060 and M1-061), then M1-064
+   dashboards, M1-046 board drag and drop, M1-098 CSV, M1-105, M1-115, M1-116.
 2. Sprint editing in the web UI (name, goal and dates; API only since M1-044) and the rest of
    M1-044's "Left" list below. Sprint settings are in the web UI now (above). Webhooks have no
    web page yet (API only).
@@ -98,6 +108,16 @@ stop (CI is the gate).
    M1-100 for the release signing key.
 
 ### Notes from the Mac
+
+- **GitHub Actions did not run** for the pushes of M1-059 and M1-060 (2026-10-29 evening): every
+  job ended in seconds with "The job was not started because recent account payments have
+  failed or your spending limit needs to be increased". Only the account owner can fix that
+  (Billing & plans). Until then the local `pnpm verify --e2e` is the only gate: run it whole
+  before every push. The Postgres 18, Windows, image and Helm jobs have no local equivalent.
+- The query editor placed the caret after an accepted suggestion in a `setTimeout`; keys typed
+  straight after the Tab could land first and the caret jumped back, so `search.spec.ts` failed
+  about one run in eight ("ATT" not offered after `track = `). It is placed in a layout effect
+  now (`SearchPage.tsx`, `caretAfter`).
 
 - `apps/server/src/routes/search.run.test.ts` "[QRY-010] stops a query over the timeout" timed
   out at 60 s in a full gate here (load average 16 to 19: its 20,000-row insert waits); it

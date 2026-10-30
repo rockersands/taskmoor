@@ -347,6 +347,9 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             {t('sprints.backlog.link')}
           </a>
         )}
+        <a className="board-settings-link" href={`#/boards/${boardId}/reports`}>
+          {t('reports.link')}
+        </a>
         {board.mayConfigure && (
           <a className="board-settings-link" href={`#/boards/${boardId}/settings`}>
             {t('boards.settings.link')}

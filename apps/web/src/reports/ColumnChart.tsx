@@ -53,8 +53,8 @@ function column(x: number, base: number, w: number, h: number): string {
 /**
  * Grouped columns (M1-060; ADR-057), velocity's form: one group per category, at most 24px
  * per column with a 2px gap between neighbours, rounded at the data end and square at the
- * baseline, the value at each tip where it fits, a legend, the group's values on hover, and the
- * numbers as a table.
+ * baseline, the value at each tip where it fits, a legend from two series on, the group's
+ * values on hover, and the numbers as a table.
  */
 export function ColumnChart({
   title,
@@ -96,14 +96,16 @@ export function ColumnChart({
       <figcaption id={`${id}-title`} className="chart-title">
         {title}
       </figcaption>
-      <ul className="chart-legend">
-        {series.map((s) => (
-          <li key={s.id}>
-            <span className={`chart-swatch chart-key-${s.tone}`} aria-hidden="true" />
-            {s.label}
-          </li>
-        ))}
-      </ul>
+      {series.length >= 2 && (
+        <ul className="chart-legend">
+          {series.map((s) => (
+            <li key={s.id}>
+              <span className={`chart-swatch chart-key-${s.tone}`} aria-hidden="true" />
+              {s.label}
+            </li>
+          ))}
+        </ul>
+      )}
       <div ref={box} className="chart-plot" onPointerLeave={() => setHover(null)}>
         <svg width={width} height={HEIGHT} role="img" aria-label={summary}>
           {ticks.map((v) => (

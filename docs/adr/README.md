@@ -62,5 +62,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [055](0055-webhooks.md) | Webhooks as event-bus subscribers with recorded, replayable deliveries | Accepted |
 | [056](0056-report-event-store.md) | The report event store reads the change history and sprint changes | Accepted |
 | [057](0057-sprint-charts.md) | Sprint charts computed from report events, drawn as plain SVG on chart tokens | Accepted |
+| [058](0058-flow-reports.md) | Flow reports from status changes, cycle time over chosen columns | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

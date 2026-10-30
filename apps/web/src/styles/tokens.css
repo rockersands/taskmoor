@@ -96,6 +96,10 @@
   --color-chart-1: #2a78d6;
   --color-chart-2: #eb6834;
   --color-chart-guide: #8e8599;
+  /* Ordered stages (M1-061): one blue from the first board column to the last, the steps between
+     mixed in oklab; validated as an ordinal ramp against this surface. */
+  --color-flow-first: #86b6ef;
+  --color-flow-last: #104281;
 
   /* M0 names, kept so older styles follow the skin. */
   --color-bg: var(--color-canvas);
@@ -154,6 +158,10 @@
   --color-chart-1: #3987e5;
   --color-chart-2: #d95926;
   --color-chart-guide: #8a8096;
+  /* Ordered stages (M1-061): one blue from the first board column to the last, the steps between
+     mixed in oklab; validated as an ordinal ramp against this surface. */
+  --color-flow-first: #1c5cab;
+  --color-flow-last: #b7d3f6;
 
   --color-bg: var(--color-canvas);
 

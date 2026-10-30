@@ -29,6 +29,7 @@ import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { GroupsPage } from './people/GroupsPage';
 import { UsersPage } from './people/UsersPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
+import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
 import { queryFromHash, SearchPage } from './search/SearchPage';
 import { savedSearchFromHash } from './search/savedClient';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
@@ -438,6 +439,9 @@ function Pages() {
     // Sprints (M1-044): a Scrum board's backlog and a sprint's report.
     const backlog = /^#\/boards\/\d{1,10}\/backlog(?:[/?]|$)/.test(hash);
     const report = /^#\/boards\/\d{1,10}\/sprints\/(\d{1,10})\/report(?:[/?]|$)/.exec(hash)?.[1];
+    // Flow reports (M1-061): #/boards/7/reports and #/boards/7/reports/<report>.
+    const reports = /^#\/boards\/\d{1,10}\/reports(?:\/([a-z-]{1,40}))?(?:[/?]|$)/.exec(hash);
+    const flowReport = BOARD_REPORTS.find((r) => r === reports?.[1]) ?? 'cumulative-flow';
     content = !boardId ? (
       <BoardsPage />
     ) : backlog ? (
@@ -448,6 +452,8 @@ function Pages() {
         boardId={Number(boardId)}
         sprintId={Number(report)}
       />
+    ) : reports ? (
+      <BoardReportsPage key={`${boardId}-reports`} boardId={Number(boardId)} report={flowReport} />
     ) : settings ? (
       <BoardSettingsPage key={`${boardId}-settings`} boardId={Number(boardId)} />
     ) : (
