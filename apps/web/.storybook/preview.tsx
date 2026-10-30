@@ -24,6 +24,7 @@ import '../src/styles/charts.css';
 import '../src/styles/dashboards.css';
 import '../src/styles/releases.css';
 import '../src/styles/timeline.css';
+import '../src/styles/views.css';
 
 const preview: Preview = {
   parameters: {

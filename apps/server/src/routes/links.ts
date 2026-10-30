@@ -52,7 +52,7 @@ const webUrl = z
 const linkTypeBody = z.object({ name: phrase, outward: phrase, inward: phrase }).strict();
 const updateLinkTypeBody = linkTypeBody.partial().strict();
 const deleteQuery = z.object({ replacementId: id.optional() }).strict();
-const createLinkBody = z
+export const createLinkBody = z
   .object({
     linkTypeId: idValue,
     ticket: ref,

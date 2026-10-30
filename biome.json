@@ -7,7 +7,14 @@
     "defaultBranch": "main"
   },
   "files": {
-    "includes": ["**", "!**/__golden__", "!**/pnpm-lock.yaml", "!docs/**/*.csv"]
+    "includes": [
+      "**",
+      "!**/__golden__",
+      "!**/pnpm-lock.yaml",
+      "!docs/**/*.csv",
+      "!docs/api/**/*.json",
+      "!packages/sdk/src/generated"
+    ]
   },
   "formatter": {
     "enabled": true,

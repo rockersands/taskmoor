@@ -35,7 +35,7 @@ const name = z.string().trim().min(1).max(255);
 const description = z.string().max(10_000);
 const day = z.string().refine(isCalendarDay, 'a calendar day as YYYY-MM-DD');
 const unique = <T>(list: readonly T[]) => new Set(list).size === list.length;
-const archivedQuery = z
+export const archivedQuery = z
   .object({ archived: z.enum(['exclude', 'include', 'only']).default('exclude') })
   .strict();
 
@@ -46,7 +46,7 @@ const releaseFields = {
   releaseDate: day.nullable(),
   requireApprovals: z.boolean(),
 };
-const createReleaseBody = z
+export const createReleaseBody = z
   .object({
     name,
     description: description.optional(),

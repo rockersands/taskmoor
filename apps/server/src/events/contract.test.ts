@@ -58,6 +58,8 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/workflow-maps/:id/impact':
     'reads only: what a change of a workflow map would do to tickets, stores nothing',
   'POST /api/v1/search': 'reads only: runs a query too long for a URL (M1-037)',
+  'POST /api/v1/search/format-rules':
+    'reads only: which shown tickets each format rule matches, as the viewer (M1-049)',
   'PUT /api/v1/me/recent-tickets/:id':
     'personal history: the tickets a person opened, for their own Recent list (M1-052)',
 };

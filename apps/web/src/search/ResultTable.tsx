@@ -16,6 +16,16 @@ import {
 } from './columns';
 import { useColumnName } from './useColumnName';
 
+/** A format rule's colour (M1-049): one of four tones, each with the rule's name beside it. */
+export type Tone = 'red' | 'amber' | 'green' | 'blue';
+
+/** What format rules make of a row: its tone, tones for some cells, and the rules' names. */
+export interface RowFormat {
+  row: Tone | null;
+  cells: Record<string, Tone>;
+  names: string[];
+}
+
 export interface ResultTableProps {
   tickets: readonly SearchTicket[];
   columns: readonly string[];
@@ -23,6 +33,8 @@ export interface ResultTableProps {
   client: SearchClient;
   /** A ticket as the ticket route returned it after an edit in place. */
   onSaved: (ticket: SearchTicket) => void;
+  /** Format rules' marks for a ticket (list views, M1-049); none by default. */
+  format?: (ticket: SearchTicket) => RowFormat | null;
 }
 
 const DATE_TIMES = new Set(['createdAt', 'updatedAt', 'closedAt']);
@@ -33,7 +45,14 @@ const DATE_TIMES = new Set(['createdAt', 'updatedAt', 'closedAt']);
  * in place through the ticket route, which checks permissions, locks and values as it does
  * everywhere; a refusal is shown on the cell. Wide tables scroll inside their own region.
  */
-export function ResultTable({ tickets, columns, fields, client, onSaved }: ResultTableProps) {
+export function ResultTable({
+  tickets,
+  columns,
+  fields,
+  client,
+  onSaved,
+  format,
+}: ResultTableProps) {
   const t = useT();
   const nameOf = useColumnName(fields);
   const [priorities, setPriorities] = useState<{ id: number; name: string }[] | null>(null);
@@ -65,25 +84,38 @@ export function ResultTable({ tickets, columns, fields, client, onSaved }: Resul
           </tr>
         </thead>
         <tbody>
-          {tickets.map((ticket) => (
-            <tr key={ticket.id}>
-              <th scope="row" className="search-key">
-                <a href={`#/tickets/${encodeURIComponent(ticket.key)}`}>{ticket.key}</a>
-              </th>
-              {columns.map((column) => (
-                <Cell
-                  key={column}
-                  ticket={ticket}
-                  column={column}
-                  columnName={nameOf(column)}
-                  editor={cellEditor(column, fields)}
-                  priorities={priorities}
-                  client={client}
-                  onSaved={onSaved}
-                />
-              ))}
-            </tr>
-          ))}
+          {tickets.map((ticket) => {
+            const marks = format?.(ticket) ?? null;
+            return (
+              <tr key={ticket.id} data-tone={marks?.row ?? undefined}>
+                <th scope="row" className="search-key">
+                  <a href={`#/tickets/${encodeURIComponent(ticket.key)}`}>{ticket.key}</a>
+                  {marks && marks.names.length > 0 && (
+                    <span className="format-marks">
+                      {marks.names.map((name) => (
+                        <span key={name} className="format-mark">
+                          {name}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </th>
+                {columns.map((column) => (
+                  <Cell
+                    key={column}
+                    ticket={ticket}
+                    column={column}
+                    columnName={nameOf(column)}
+                    editor={cellEditor(column, fields)}
+                    priorities={priorities}
+                    client={client}
+                    onSaved={onSaved}
+                    tone={marks?.cells[column] ?? null}
+                  />
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </section>
@@ -98,6 +130,7 @@ function Cell({
   priorities,
   client,
   onSaved,
+  tone,
 }: {
   ticket: SearchTicket;
   column: string;
@@ -106,6 +139,7 @@ function Cell({
   priorities: { id: number; name: string }[] | null;
   client: SearchClient;
   onSaved: (ticket: SearchTicket) => void;
+  tone: Tone | null;
 }) {
   const t = useT();
   const intl = useIntl();
@@ -171,7 +205,10 @@ function Cell({
   const problemId = `${id}-problem`;
   const label = t('search.edit', { column: columnName, key: ticket.key });
   return (
-    <td className={problem ? 'search-cell has-problem' : 'search-cell'}>
+    <td
+      className={problem ? 'search-cell has-problem' : 'search-cell'}
+      data-tone={tone ?? undefined}
+    >
       {editing && editor ? (
         <form
           className="search-cell-form"

@@ -44,6 +44,7 @@ import { registerImportRoutes } from './routes/imports';
 import { registerInboxRoutes } from './routes/inbox';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
+import { registerListViewRoutes } from './routes/list-views';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -314,6 +315,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // A track's timeline (M1-048): dated tickets, roll-ups, dependencies and markers.
     registerTimelineRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // A track's list and calendar views (M1-049): format rules and dated tickets.
+    registerListViewRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });

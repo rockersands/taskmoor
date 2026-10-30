@@ -1,0 +1,17 @@
+{
+  "name": "@taskmoor/sdk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A typed TypeScript client for the stable operations of Taskmoor's REST API v1, generated from docs/api/openapi.json.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "node --experimental-strip-types src/generate.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
+  }
+}

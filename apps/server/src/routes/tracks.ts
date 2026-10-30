@@ -103,7 +103,7 @@ const trackFields = {
   typeSetId: id,
   features,
 };
-const createBody = z
+export const createBody = z
   .object({
     key: z.string(),
     mode: z.enum(TRACK_MODES),
@@ -155,7 +155,7 @@ const updateBody = z
     features: trackFields.features.optional(),
   })
   .strict();
-const listQuery = z
+export const listQuery = z
   .object({
     archived: z.enum(['exclude', 'include', 'only']).default('exclude'),
     categoryId: id.optional(),

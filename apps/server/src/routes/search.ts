@@ -40,13 +40,13 @@ import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
  * Every statement runs read-only under the search timeout (`TASKMOOR_QUERY_TIMEOUT_MS`,
  * default 30 s); a query that runs out of time answers 503 `query_timeout` (QRY-010 (3)).
  */
-const checkQuery = z.object({ q: z.string().max(20_000) }).strict();
+export const checkQuery = z.object({ q: z.string().max(20_000) }).strict();
 
 const flag = z
   .union([z.boolean(), z.enum(['true', 'false'])])
   .transform((v) => v === true || v === 'true');
 
-const searchInput = z
+export const searchInput = z
   .object({
     q: z.string().max(100_000).default(''),
     limit: z.coerce.number().int().min(1).max(200).default(50),

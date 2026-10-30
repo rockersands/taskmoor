@@ -35,6 +35,9 @@
       "path": "packages/storage"
     },
     {
+      "path": "packages/sdk"
+    },
+    {
       "path": "apps/server"
     },
     {
