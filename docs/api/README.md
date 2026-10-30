@@ -14,6 +14,7 @@ behind them is [ADR-067](../adr/0067-rest-api-v1.md).
 - [Errors](#errors)
 - [Rich text](#rich-text)
 - [The TypeScript SDK](#the-typescript-sdk)
+- [AI agents (MCP)](#ai-agents-mcp)
 - [Changing the API](#changing-the-api)
 
 ## Stable and internal
@@ -112,6 +113,14 @@ for await (const page of taskmoor.pages('listComments', { path: { id: ticket.key
 ```
 
 A refusal throws a `TaskmoorError` with `status` and `code`.
+
+## AI agents (MCP)
+
+Agents and assistants that speak the Model Context Protocol connect to `/api/v1/mcp` with an
+API token, or through `node cli.mjs mcp` over stdio. Their tools call the stable operations above
+as the token's owner, so they never do more than the token may; administrators choose the tool
+profile and the allowed clients on the MCP settings page, and every call is in the audit log.
+See [ADR-068](../adr/0068-mcp-server.md).
 
 ## Changing the API
 

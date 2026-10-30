@@ -201,6 +201,11 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-072 MCP server** (ADR-068; no migration): `apps/server/src/mcp` (protocol, tools over the
+  REST API as the caller, settings in `instance_setting` `mcp`, the stdio bridge behind
+  `node cli.mjs mcp`), `routes/mcp.ts` (`/api/v1/mcp`, `/api/v1/admin/mcp`), web
+  `admin/McpPage.tsx` at `#/admin/mcp`. Tests use the official MCP client (dev dependency).
+  Left in progress only for OAuth 2.1, which needs M1-107.
 - **M1-065 REST API v1** (ADR-067; no migration): the contract is `apps/server/src/api/operations.ts`
   (stable operations over the routes' exported zod schemas) and `schemas.ts` (responses);
   `openapi.ts` builds `docs/api/openapi.json` (committed; `pnpm verify --update` rewrites it, the

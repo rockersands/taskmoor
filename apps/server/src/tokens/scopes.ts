@@ -73,7 +73,14 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
 ]);
 
 /** POST routes that change nothing: a read token reaches them. */
-export const READ_ONLY_POST_ROUTES: ReadonlySet<string> = new Set(['POST /api/v1/search']);
+export const READ_ONLY_POST_ROUTES: ReadonlySet<string> = new Set([
+  'POST /api/v1/search',
+  // Which shown tickets format rules match (M1-049): a read.
+  'POST /api/v1/search/format-rules',
+  // The MCP server (M1-072): its read tools need only read; its other tools call the REST API
+  // with the same token, where write routes still need write.
+  'POST /api/v1/mcp',
+]);
 
 /** Paths under these (the path itself or below it) are administration. */
 export const ADMIN_ROUTE_PREFIXES: readonly string[] = [

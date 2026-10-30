@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { McpPage } from './admin/McpPage';
 import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
@@ -126,6 +127,7 @@ const ADMIN_SERVICE_ACCOUNTS = '#/admin/service-accounts';
 const ADMIN_SECURITY = '#/admin/security';
 const ADMIN_IDENTITY_PROVIDERS = '#/admin/identity-providers';
 const ADMIN_TRASH = '#/admin/trash';
+const ADMIN_MCP = '#/admin/mcp';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
@@ -425,6 +427,8 @@ function Pages() {
     content = <IdentityProvidersPage />;
   } else if (isRoute(hash, ADMIN_TRASH)) {
     content = <TrashPage />;
+  } else if (isRoute(hash, ADMIN_MCP)) {
+    content = <McpPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
   } else if (isRoute(hash, ADMIN_USERS)) {

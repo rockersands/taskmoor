@@ -58,6 +58,7 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/workflow-maps/:id/impact':
     'reads only: what a change of a workflow map would do to tickets, stores nothing',
   'POST /api/v1/search': 'reads only: runs a query too long for a URL (M1-037)',
+  'DELETE /api/v1/mcp': 'ends an MCP session kept in memory; nothing stored changes (M1-072)',
   'POST /api/v1/search/format-rules':
     'reads only: which shown tickets each format rule matches, as the viewer (M1-049)',
   'PUT /api/v1/me/recent-tickets/:id':
@@ -881,6 +882,50 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         await admin({ method: 'DELETE', url: `/api/v1/tracks/${state.goneTrack}` });
       },
       run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.goneTrack}/purge` }),
+    },
+    {
+      route: 'PUT /api/v1/admin/mcp',
+      expect: 'mcp.settings_updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/mcp',
+          payload: { enabled: true, allowedClients: [], profile: 'planner' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/mcp',
+      expect: 'mcp.tool_called',
+      // A session first (initialize emits nothing), then a read tool: only the call's event.
+      prepare: async () => {
+        const init = await admin({
+          method: 'POST',
+          url: '/api/v1/mcp',
+          payload: {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+              protocolVersion: '2025-06-18',
+              capabilities: {},
+              clientInfo: { name: 'contract', version: '1' },
+            },
+          },
+        });
+        state.mcpSession = String(init.headers['mcp-session-id']);
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: '/api/v1/mcp',
+          headers: { 'mcp-session-id': String(state.mcpSession) },
+          payload: {
+            jsonrpc: '2.0',
+            id: 2,
+            method: 'tools/call',
+            params: { name: 'list_tracks', arguments: {} },
+          },
+        }),
     },
     {
       route: 'PUT /api/v1/admin/guardrails/:name',

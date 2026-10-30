@@ -325,6 +325,32 @@ export const messagesEn = {
   'settings.security': 'Security',
   'settings.securityHint': 'Who must sign in with two-factor authentication.',
   'settings.trash': 'Trash',
+  'settings.mcp': 'MCP server',
+  'settings.mcpHint': 'Let AI agents and assistants work with tickets, with the tools you allow.',
+  // The MCP server's settings (M1-072).
+  'mcp.title': 'MCP server',
+  'mcp.intro':
+    'AI agents and assistants connect to Taskmoor through the Model Context Protocol with a person’s API token. They can only do what that person and token may, and every tool call is in the audit log.',
+  'mcp.failed': 'The MCP settings could not be loaded.',
+  'mcp.formLabel': 'MCP settings',
+  'mcp.enabled': 'Let agents connect',
+  'mcp.profile': 'Tools agents get',
+  'mcp.profile.readOnly': 'Read-only:',
+  'mcp.profile.readOnlyHint': 'search and read tickets; list tracks, boards and sprints.',
+  'mcp.profile.planner': 'Planner:',
+  'mcp.profile.plannerHint': 'also create and change tickets, comment and link them.',
+  'mcp.profile.full': 'Full:',
+  'mcp.profile.fullHint': 'also move tickets through their workflows.',
+  'mcp.clients': 'Allowed clients',
+  'mcp.clientsHint':
+    'One client name per line, as the client gives it when it connects. Leave empty to allow any.',
+  'mcp.save': 'Save MCP settings',
+  'mcp.saved': 'The MCP settings were saved.',
+  'mcp.saveFailed': 'The MCP settings could not be saved.',
+  'mcp.connect': 'Connecting an agent',
+  'mcp.connectHttp': 'Over HTTP: point the client at this address with an API token.',
+  'mcp.connectStdio':
+    'Over stdio, for clients that start a command: run the server’s command line with the address and token.',
   'settings.trashHint': 'Deleted tickets and tracks, restorable until the retention ends.',
   'settings.singleSignOn': 'Single sign-on',
   'settings.singleSignOnHint':

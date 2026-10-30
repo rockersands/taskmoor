@@ -38,6 +38,10 @@ export const AUDITED_EVENTS = [
   'identity_provider.created',
   'identity_provider.updated',
   'identity_provider.deleted',
+  // Agents through MCP (M1-072, API-012 (3)): every tool call, with client and tool, and who
+  // changed what agents may do.
+  'mcp.tool_called',
+  'mcp.settings_updated',
   // Webhooks send data out of the instance: who registered, changed or replayed them counts.
   'webhook.created',
   'webhook.updated',

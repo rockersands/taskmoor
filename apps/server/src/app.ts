@@ -45,6 +45,7 @@ import { registerInboxRoutes } from './routes/inbox';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerListViewRoutes } from './routes/list-views';
+import { registerMcpRoutes } from './routes/mcp';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -318,6 +319,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
+    // The built-in MCP server (M1-072): tools over the REST API, as the caller.
+    registerMcpRoutes(app, db, { version: deps.version });
     // A track's list and calendar views (M1-049): format rules and dated tickets.
     registerListViewRoutes(app, db, {
       catalogs: fieldCatalogs,
