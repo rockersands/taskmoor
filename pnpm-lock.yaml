@@ -98,6 +98,9 @@ importers:
       '@taskmoor/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@taskmoor/webconfig':
+        specifier: workspace:*
+        version: link:../../packages/webconfig
       '@taskmoor/workflow':
         specifier: workspace:*
         version: link:../../packages/workflow
@@ -201,6 +204,9 @@ importers:
       '@taskmoor/richtext':
         specifier: workspace:*
         version: link:../../packages/richtext
+      '@taskmoor/webconfig':
+        specifier: workspace:*
+        version: link:../../packages/webconfig
       '@tiptap/core':
         specifier: 3.31.4
         version: 3.31.4(@tiptap/pm@3.31.4)
@@ -548,6 +554,12 @@ importers:
       '@types/pg-copy-streams':
         specifier: ^1.2.5
         version: 1.2.5
+
+  packages/webconfig:
+    devDependencies:
+      '@taskmoor/testkit':
+        specifier: workspace:*
+        version: link:../testkit
 
   packages/workflow:
     devDependencies:

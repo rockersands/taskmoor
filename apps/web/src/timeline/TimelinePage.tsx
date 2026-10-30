@@ -11,6 +11,7 @@ import {
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import {
   dayNumber,
   isoDay,
@@ -322,7 +323,9 @@ export function TimelinePage({
         <h1 id={`${id}-title`} className="page-title">
           {t('timeline.title', { name: data.track.name })}
         </h1>
-        <a href={`#/tracks/${encodeURIComponent(data.track.key)}`}>{t('releases.toSummary')}</a>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(data.track.key)}`)}>
+          {t('releases.toSummary')}
+        </a>
       </div>
       <div className="timeline-tools">
         <fieldset className="timeline-zoom">
@@ -497,7 +500,7 @@ export function TimelinePage({
                         <span className="timeline-toggle-space" />
                       )}
                       <a
-                        href={`#/tickets/${encodeURIComponent(item.key)}`}
+                        href={routeHref(`#/tickets/${encodeURIComponent(item.key)}`)}
                         className="timeline-key"
                       >
                         {item.key}

@@ -51,6 +51,14 @@ export default defineConfig({
       timeout: 120_000,
       env: { VITE_API_PROXY: `http://127.0.0.1:${API_PORT}` },
     },
+    // The backend serving that build itself (M1-105), once with hash routing (4176) and once
+    // with clean URLs (4177), for routing.spec.ts.
+    {
+      command: `${tsx} e2e/web-server.ts`,
+      url: 'http://127.0.0.1:4177/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
     // Attachments (M1-016) on local disk and on S3: the same build, proxied to the two APIs
     // the API server starts on 8791 and 8792. Servers start in order, so the build is there.
     ...[

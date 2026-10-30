@@ -1,7 +1,9 @@
+import { runtimeConfig } from '../runtime/config';
+
 /**
  * The frontend's one way to call the backend. Same origin by default (the backend serves the
- * app, or a proxy sits in front); the Builder (M1) inlines another base URL for split
- * deployments. Cookies travel with every request (ADR-032, same-site layout).
+ * app, or a proxy sits in front); a split deployment names the backend in the runtime
+ * configuration's `apiUrl` (M1-105). Cookies travel with every request (ADR-032, same-site layout).
  */
 export class ApiError extends Error {
   constructor(
@@ -19,7 +21,17 @@ export class ApiError extends Error {
   }
 }
 
-export const API_BASE = '/api/v1';
+export const API_BASE = `${runtimeConfig.apiUrl}/api/v1`;
+
+/** A WebSocket address on the backend (`/sync/socket`): the API's host, else the page's own. */
+export function socketUrl(
+  path: string,
+  location: Pick<Location, 'protocol' | 'host'> = window.location,
+): string {
+  const url = new URL(`${API_BASE}${path}`, `${location.protocol}//${location.host}`);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return url.href;
+}
 
 export async function api<T>(
   path: string,

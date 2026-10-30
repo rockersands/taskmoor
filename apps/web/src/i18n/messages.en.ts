@@ -4,6 +4,7 @@
  */
 export const messagesEn = {
   'app.name': 'Taskmoor',
+  'app.instanceTitle': '{instance} · Taskmoor',
   'shell.skipToContent': 'Skip to content',
   'shell.openNavigation': 'Open navigation',
   'shell.closeNavigation': 'Close navigation',

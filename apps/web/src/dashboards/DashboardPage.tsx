@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import {
   COLUMNS,
@@ -92,7 +93,9 @@ export function DashboardPage({
     const turning =
       next !== null && next !== id
         ? window.setTimeout(() => {
-            window.location.hash = `#/dashboards/${next}/wallboard?rotate=${wallboard.rotation.join(',')}&seconds=${wallboard.seconds}`;
+            navigate(
+              `#/dashboards/${next}/wallboard?rotate=${wallboard.rotation.join(',')}&seconds=${wallboard.seconds}`,
+            );
           }, wallboard.seconds * 1000)
         : undefined;
     return () => {
@@ -193,7 +196,7 @@ export function DashboardPage({
   };
   const copy = async () => {
     const made = await client.copy(dashboard.id);
-    window.location.hash = `#/dashboards/${made.id}`;
+    navigate(`#/dashboards/${made.id}`);
   };
   const makeDefault = async () => {
     await client.setDefault(dashboard.id);
@@ -203,7 +206,7 @@ export function DashboardPage({
   const remove = async () => {
     if (!window.confirm(t('dashboards.confirmDelete', { name: dashboard.name }))) return;
     await client.remove(dashboard.id);
-    window.location.hash = '#/dashboards';
+    navigate('#/dashboards');
   };
 
   const grid = { '--dashboard-columns': columns } as CSSProperties;
@@ -227,7 +230,7 @@ export function DashboardPage({
             >
               {t('dashboards.fullScreen')}
             </button>
-            <a className="board-settings-link" href={`#/dashboards/${dashboard.id}`}>
+            <a className="board-settings-link" href={routeHref(`#/dashboards/${dashboard.id}`)}>
               {t('dashboards.leaveWallboard')}
             </a>
           </div>
@@ -253,7 +256,9 @@ export function DashboardPage({
               </button>
               <a
                 className="board-settings-link"
-                href={`#/dashboards/${dashboard.id}/wallboard?rotate=${dashboard.id}&seconds=60`}
+                href={routeHref(
+                  `#/dashboards/${dashboard.id}/wallboard?rotate=${dashboard.id}&seconds=60`,
+                )}
               >
                 {t('dashboards.wallboard')}
               </a>

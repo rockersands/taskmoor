@@ -1,11 +1,4 @@
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
 import { SecurityPage } from './admin/SecurityPage';
@@ -34,6 +27,8 @@ import { PermissionsPage } from './permissions/PermissionsPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
+import { navigate, useRoute } from './routing/router';
+import { runtimeConfig } from './runtime/config';
 import { queryFromHash, SearchPage } from './search/SearchPage';
 import { savedSearchFromHash } from './search/savedClient';
 import { PasswordLinkPage } from './session/PasswordLinkPage';
@@ -94,18 +89,6 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
   },
 ];
 
-/** The URL hash, re-rendered on change; hash routes need no server rules. */
-function useHash(): string {
-  return useSyncExternalStore(
-    (onChange) => {
-      window.addEventListener('hashchange', onChange);
-      return () => window.removeEventListener('hashchange', onChange);
-    },
-    () => window.location.hash,
-    () => '',
-  );
-}
-
 /** Current page id from the hash (#/tracks -> "tracks"). */
 function routeFromHash(hash: string, fallback: string): string {
   const id = hash.replace(/^#\/?/, '').split(/[/?]/)[0];
@@ -165,19 +148,24 @@ function decodedSegment(segment: string): string {
 }
 
 const goHome = () => {
-  window.location.hash = HOME;
+  navigate(HOME);
 };
 
 function Pages() {
   const t = useT();
-  const hash = useHash();
+  const hash = useRoute();
   const { session, signOut, setUser } = useSession();
   const signedIn = session.status === 'signed-in';
   const admin = signedIn && session.user.isSiteAdmin;
   const showSignIn = useCallback(() => {
-    window.location.hash = SIGN_IN;
+    navigate(SIGN_IN);
   }, []);
   const registered = useRegisteredCommands();
+  // The instance's name from the runtime configuration (M1-105) leads the page title.
+  useEffect(() => {
+    const instance = runtimeConfig.instanceName;
+    if (instance) document.title = t('app.instanceTitle', { instance });
+  }, [t]);
   // The create dialog (M1-052): the top bar's button, C anywhere outside fields, the palette.
   const [creating, setCreating] = useState(false);
   useEffect(() => {
@@ -212,7 +200,7 @@ function Pages() {
         id: `go-${item.id}`,
         labelId: item.labelId,
         run: () => {
-          window.location.hash = item.href;
+          navigate(item.href);
         },
       })),
       // The person's own account, once there is one to show.
@@ -229,7 +217,7 @@ function Pages() {
               labelId: 'account.title' as const,
               keywords: ['profile', 'password', 'sessions', 'tokens'],
               run: () => {
-                window.location.hash = ACCOUNT;
+                navigate(ACCOUNT);
               },
             },
             {
@@ -267,7 +255,7 @@ function Pages() {
               id: 'go-system',
               labelId: 'admin.system.title' as const,
               run: () => {
-                window.location.hash = ADMIN_SYSTEM;
+                navigate(ADMIN_SYSTEM);
               },
             },
             {
@@ -275,7 +263,7 @@ function Pages() {
               labelId: 'admin.tokens.title' as const,
               keywords: ['api', 'revoke', 'rotate'],
               run: () => {
-                window.location.hash = ADMIN_TOKENS;
+                navigate(ADMIN_TOKENS);
               },
             },
             {
@@ -283,7 +271,7 @@ function Pages() {
               labelId: 'admin.serviceAccounts.title' as const,
               keywords: ['robot', 'bot', 'token'],
               run: () => {
-                window.location.hash = ADMIN_SERVICE_ACCOUNTS;
+                navigate(ADMIN_SERVICE_ACCOUNTS);
               },
             },
             {
@@ -291,7 +279,7 @@ function Pages() {
               labelId: 'admin.security.title' as const,
               keywords: ['two-factor', '2fa', 'policy'],
               run: () => {
-                window.location.hash = ADMIN_SECURITY;
+                navigate(ADMIN_SECURITY);
               },
             },
             {
@@ -299,7 +287,7 @@ function Pages() {
               labelId: 'admin.trash.title' as const,
               keywords: ['restore', 'undelete', 'deleted', 'retention'],
               run: () => {
-                window.location.hash = ADMIN_TRASH;
+                navigate(ADMIN_TRASH);
               },
             },
             {
@@ -307,7 +295,7 @@ function Pages() {
               labelId: 'admin.sso.title' as const,
               keywords: ['sso', 'oidc', 'openid', 'identity provider', 'domains'],
               run: () => {
-                window.location.hash = ADMIN_IDENTITY_PROVIDERS;
+                navigate(ADMIN_IDENTITY_PROVIDERS);
               },
             },
             {
@@ -315,7 +303,7 @@ function Pages() {
               labelId: 'admin.directories.title' as const,
               keywords: ['ldap', 'active directory', 'directory', 'sync', 'groups'],
               run: () => {
-                window.location.hash = ADMIN_DIRECTORIES;
+                navigate(ADMIN_DIRECTORIES);
               },
             },
             {
@@ -323,7 +311,7 @@ function Pages() {
               labelId: 'admin.workflows.title' as const,
               keywords: ['status', 'transition', 'guard', 'check', 'effect', 'publish'],
               run: () => {
-                window.location.hash = ADMIN_WORKFLOWS;
+                navigate(ADMIN_WORKFLOWS);
               },
             },
             {
@@ -331,7 +319,7 @@ function Pages() {
               labelId: 'admin.users.title' as const,
               keywords: ['people', 'user', 'account', 'deactivate', 'invite', 'password'],
               run: () => {
-                window.location.hash = ADMIN_USERS;
+                navigate(ADMIN_USERS);
               },
             },
             {
@@ -339,7 +327,7 @@ function Pages() {
               labelId: 'admin.tracks.title' as const,
               keywords: ['track', 'project', 'roles', 'members', 'archive'],
               run: () => {
-                window.location.hash = ADMIN_TRACKS;
+                navigate(ADMIN_TRACKS);
               },
             },
             {
@@ -347,7 +335,7 @@ function Pages() {
               labelId: 'admin.maps.title' as const,
               keywords: ['workflow', 'map', 'ticket type', 'scheme'],
               run: () => {
-                window.location.hash = ADMIN_WORKFLOW_MAPS;
+                navigate(ADMIN_WORKFLOW_MAPS);
               },
             },
             {
@@ -355,7 +343,7 @@ function Pages() {
               labelId: 'admin.fields.title' as const,
               keywords: ['field', 'custom field', 'options', 'choice'],
               run: () => {
-                window.location.hash = ADMIN_FIELDS;
+                navigate(ADMIN_FIELDS);
               },
             },
             {
@@ -363,7 +351,7 @@ function Pages() {
               labelId: 'admin.permissions.title' as const,
               keywords: ['permission', 'role', 'access policy', 'grant', 'scheme'],
               run: () => {
-                window.location.hash = ADMIN_PERMISSIONS;
+                navigate(ADMIN_PERMISSIONS);
               },
             },
             {
@@ -371,7 +359,7 @@ function Pages() {
               labelId: 'admin.sets.title' as const,
               keywords: ['type set', 'field rules', 'required', 'hidden', 'scheme'],
               run: () => {
-                window.location.hash = ADMIN_SETS;
+                navigate(ADMIN_SETS);
               },
             },
             {
@@ -379,7 +367,7 @@ function Pages() {
               labelId: 'guardrails.title' as const,
               keywords: ['limits', 'guardrail', 'usage', 'quota'],
               run: () => {
-                window.location.hash = ADMIN_GUARDRAILS;
+                navigate(ADMIN_GUARDRAILS);
               },
             },
             {
@@ -387,7 +375,7 @@ function Pages() {
               labelId: 'admin.groups.title' as const,
               keywords: ['group', 'team', 'members', 'nested'],
               run: () => {
-                window.location.hash = ADMIN_GROUPS;
+                navigate(ADMIN_GROUPS);
               },
             },
           ]

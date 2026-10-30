@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { navigate, routeHref } from '../routing/router';
 import { useSession } from './SessionProvider';
 
 export interface UserMenuProps {
@@ -52,7 +53,7 @@ export function UserMenu({ onSignedOut }: UserMenuProps) {
   if (session.status === 'loading') return null;
   if (session.status === 'anonymous') {
     return (
-      <a className="topbar-link" href="#/sign-in">
+      <a className="topbar-link" href={routeHref('#/sign-in')}>
         {t('auth.signIn')}
       </a>
     );
@@ -165,7 +166,7 @@ export function UserMenu({ onSignedOut }: UserMenuProps) {
               className="user-menu-item"
               onClick={() => {
                 close(true);
-                window.location.hash = ACCOUNT;
+                navigate(ACCOUNT);
               }}
             >
               {t('userMenu.account')}

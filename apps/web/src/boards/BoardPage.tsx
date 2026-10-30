@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import {
   type Board,
   type BoardCard,
@@ -351,7 +352,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       >
         <a
           className="board-card-link"
-          href={`#/tickets/${encodeURIComponent(card.key)}`}
+          href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
           aria-describedby={hintId}
           ref={(el) => {
             if (el) links.current.set(card.id, el);
@@ -429,15 +430,15 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           {board.name}
         </h1>
         {board.kind === 'scrum' && (
-          <a className="board-settings-link" href={`#/boards/${boardId}/backlog`}>
+          <a className="board-settings-link" href={routeHref(`#/boards/${boardId}/backlog`)}>
             {t('sprints.backlog.link')}
           </a>
         )}
-        <a className="board-settings-link" href={`#/boards/${boardId}/reports`}>
+        <a className="board-settings-link" href={routeHref(`#/boards/${boardId}/reports`)}>
           {t('reports.link')}
         </a>
         {board.mayConfigure && (
-          <a className="board-settings-link" href={`#/boards/${boardId}/settings`}>
+          <a className="board-settings-link" href={routeHref(`#/boards/${boardId}/settings`)}>
             {t('boards.settings.link')}
           </a>
         )}

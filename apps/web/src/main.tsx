@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { router } from './routing/router';
 import './styles/tokens.css';
 import './styles/shell.css';
 import './styles/forms.css';
@@ -26,6 +27,9 @@ import './styles/charts.css';
 import './styles/dashboards.css';
 import './styles/releases.css';
 import './styles/timeline.css';
+
+// Clean URLs (M1-105): a hash link becomes its path and links stay in the page.
+router.start();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element in index.html');

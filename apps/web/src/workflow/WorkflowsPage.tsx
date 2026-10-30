@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { navigate, routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { type WorkflowSummary, type WorkflowsClient, workflowsClient } from './client';
 import type { Status, WorkflowDefinition } from './definition';
@@ -23,7 +24,7 @@ type State =
 export const workflowHref = (workflowId: number) => `#/admin/workflows/${workflowId}`;
 
 const openByHash = (workflowId: number) => {
-  window.location.hash = workflowHref(workflowId);
+  navigate(workflowHref(workflowId));
 };
 
 /**
@@ -229,7 +230,7 @@ function WorkflowItem({
     <li className="workflow-item">
       <div className="trash-main">
         <p className="trash-name">
-          <a className="workflow-name-link" href={workflowHref(workflow.id)}>
+          <a className="workflow-name-link" href={routeHref(workflowHref(workflow.id))}>
             {name}
           </a>{' '}
           {workflow.isDefault && (
@@ -278,7 +279,7 @@ function WorkflowItem({
         <div className="token-actions">
           <a
             className="button-secondary button-link"
-            href={workflowHref(workflow.id)}
+            href={routeHref(workflowHref(workflow.id))}
             aria-label={t('admin.workflows.editNamed', { name })}
           >
             {t('admin.workflows.edit')}

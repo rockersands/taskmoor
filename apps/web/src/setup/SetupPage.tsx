@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { currentRoute, routeHref } from '../routing/router';
 import { PASSWORD_MIN_LENGTH, passwordProblemMessages } from '../session/errors';
 import { PasswordField } from '../session/PasswordField';
 import { useSession } from '../session/SessionProvider';
@@ -23,7 +24,7 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
   const t = useT();
   const { refresh } = useSession();
   const id = useId();
-  const token = setupTokenFromHash(window.location.hash);
+  const token = setupTokenFromHash(currentRoute());
   const [status, setStatus] = useState<Status>(token ? 'checking' : 'no-token');
   const [error, setError] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
@@ -100,7 +101,7 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
           {status === 'no-token' ? t('setup.noToken') : t('setup.alreadySetUp')}
         </p>
         {status === 'already-set-up' && (
-          <a className="button-primary setup-link" href="#/settings">
+          <a className="button-primary setup-link" href={routeHref('#/settings')}>
             {t('auth.signIn')}
           </a>
         )}

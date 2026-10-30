@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import type { Board } from '../boards/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { ColumnChart } from './ColumnChart';
 import {
   type CumulativeFlow,
@@ -208,7 +209,7 @@ export function BoardReportsPage({
             deviation: p.deviation,
             label: p.ticket.key,
             detail: p.ticket.summary,
-            href: `#/tickets/${encodeURIComponent(p.ticket.key)}`,
+            href: routeHref(`#/tickets/${encodeURIComponent(p.ticket.key)}`),
           }))}
           from={Date.parse(c.start)}
           to={Date.parse(c.end)}
@@ -359,7 +360,7 @@ export function BoardReportsPage({
         <h1 id={`${id}-title`} className="page-title">
           {board ? t('reports.title', { name: board.name }) : t('reports.titleLoading')}
         </h1>
-        <a className="board-settings-link" href={`#/boards/${boardId}`}>
+        <a className="board-settings-link" href={routeHref(`#/boards/${boardId}`)}>
           {t('reports.back')}
         </a>
       </div>
@@ -367,7 +368,7 @@ export function BoardReportsPage({
         {BOARD_REPORTS.filter((r) => !isScope(r) || board?.kind === 'scrum').map((r) => (
           <a
             key={r}
-            href={`#/boards/${boardId}/reports/${r}`}
+            href={routeHref(`#/boards/${boardId}/reports/${r}`)}
             aria-current={r === report ? 'page' : undefined}
           >
             {t(TAB[r])}
