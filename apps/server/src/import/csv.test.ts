@@ -259,8 +259,8 @@ describe('CSV import (M1-098)', () => {
     const gap = found.find((p) => p.sourceId === 'CSV-7');
     expect(gap?.warnings.map((w) => `${w.code}:${w.detail ?? ''}`).sort()).toEqual([
       'invalid_value:createdAt',
-      'unknown_value:cf[' + severity + ']',
-      'value_invalid:cf[' + points + ']',
+      `unknown_value:cf[${severity}]`,
+      `value_invalid:cf[${points}]`,
     ]);
     expect((await database.db.selectFrom('ticket').select('id').execute()).length).toBe(
       before.length,
