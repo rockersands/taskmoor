@@ -16,6 +16,8 @@ export interface CleanStats {
   charRef: number;
   /** Byte offsets of the first removals, for the import log. */
   firstOffsets: number[];
+  /** The first five offsets of each kind, for the import report's examples (M1-088). */
+  offsets: Record<'nul' | 'control' | 'noncharacter' | 'charRef', number[]>;
 }
 
 const MAX_REF = 12; // "&#x10FFFF;" is 10 bytes; allow a little slack.
@@ -69,13 +71,15 @@ export class XmlCleaner extends Transform {
     noncharacter: 0,
     charRef: 0,
     firstOffsets: [],
+    offsets: { nul: [], control: [], noncharacter: [], charRef: [] },
   };
   private pending: Buffer = Buffer.alloc(0);
   private offset = 0;
 
-  private note(kind: keyof Omit<CleanStats, 'firstOffsets'>, at: number): void {
+  private note(kind: keyof CleanStats['offsets'], at: number): void {
     this.stats[kind]++;
     if (this.stats.firstOffsets.length < 20) this.stats.firstOffsets.push(at);
+    if (this.stats.offsets[kind].length < 5) this.stats.offsets[kind].push(at);
   }
 
   /** Cleans `buf[0..end)`; returns the output and how many input bytes were consumed. */

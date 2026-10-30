@@ -1,11 +1,12 @@
 import { createReadStream, createWriteStream, readFileSync, statSync } from 'node:fs';
-import { mkdir, open, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import type { JsonValue } from '@taskmoor/db';
 import yauzl from 'yauzl';
 import { z } from 'zod';
 import { EXPORT_FILES, MANIFEST, type Manifest, manifestSchema } from '../export/format';
+import { readJsonLines } from './lines';
 import type {
   Command,
   ImportFormat,
@@ -144,38 +145,12 @@ export class ExportSource implements ImportSource {
     const root = await this.folder();
     const file = EXPORT_FILES.find((f) => f.kind === kind)?.file;
     if (!file) return [];
-    const handle = await open(join(root, file), 'r');
-    try {
-      const out: SourceItem[] = [];
-      let position = after === null ? 0 : Number(after);
-      let pending = Buffer.alloc(0);
-      const chunk = Buffer.alloc(1024 * 1024);
-      while (out.length < limit) {
-        const { bytesRead } = await handle.read(chunk, 0, chunk.length, position + pending.length);
-        if (bytesRead === 0) break;
-        pending = Buffer.concat([pending, chunk.subarray(0, bytesRead)]);
-        let start = 0;
-        for (;;) {
-          const end = pending.indexOf(10, start);
-          if (end < 0 || out.length >= limit) break;
-          const line = pending.subarray(start, end).toString('utf8');
-          start = end + 1;
-          if (line.trim() === '') continue;
-          const data = JSON.parse(line) as Record<string, unknown>;
-          out.push({
-            kind,
-            id: String(data.id),
-            data,
-            cursor: String(position + start),
-          });
-        }
-        position += start;
-        pending = pending.subarray(start);
-      }
-      return out;
-    } finally {
-      await handle.close();
-    }
+    return (await readJsonLines(join(root, file), after, limit)).map(({ value, cursor }) => ({
+      kind,
+      id: String(value.id),
+      data: value,
+      cursor,
+    }));
   }
 
   private file(locator: string): string {

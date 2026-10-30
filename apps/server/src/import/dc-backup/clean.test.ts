@@ -16,6 +16,10 @@ describe('XmlCleaner', () => {
     expect(out.toString('utf8')).toBe(CLEAN);
     expect(stats).toMatchObject({ nul: 1, control: 2, noncharacter: 2, charRef: 4 });
     expect(stats.firstOffsets.length).toBe(9);
+    // Each kind keeps its own first offsets, for the import report's examples (M1-088).
+    expect(stats.offsets.nul).toEqual([7]);
+    expect(stats.offsets.control).toEqual([8, 9]);
+    expect(stats.offsets.charRef.length).toBe(4);
   });
 
   it('gives the same result however the input is split into chunks', async () => {

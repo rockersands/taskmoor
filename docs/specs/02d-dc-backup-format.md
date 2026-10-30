@@ -359,6 +359,22 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   row at a time. Stage rows by entity and id, and resolve references after the whole file. The
   validator works the same way (`validate.ts`). It keeps a bitmap per entity for ids and
   references, a few bytes per issue for project and number, and one entry per attachment.
+- **Our choice:** the importer (M1-088, ADR-081) stages a backup once into a folder next to the
+  ZIP (`stage.ts`): one file of records per kind it maps, written after the whole file is read,
+  and a count of every other element, table and file. The validator and the stage share
+  `parse.ts`.
+- **Our choice:** people are known by their lower-case user key. A person attribute that holds a
+  user name instead is resolved through the user-key table, and a user row without a key row
+  is keyed by its user name. A key that names no user row is a deleted person. The importer keeps
+  one only when some row names them: the person attributes of `format.ts`, user role actors, and
+  the old and new values of assignee and reporter changes.
+- **Our choice:** when the same user or group name is in several directories, the active
+  directory with the lowest `directoryPosition` wins, as for user names in [S17].
+- **Our choice:** a group is known by its lower-case name, because memberships, role actors and
+  comment restrictions name groups that way. A `Membership` of the type `GROUP_GROUP` is read
+  as a group inside a group (**Verify**), and any other type as a user in a group.
+- **Our choice:** the reader takes the status category by number or by key (`new`,
+  `indeterminate`, `done`), and a group's `description` when it is there.
 
 ## Sources
 

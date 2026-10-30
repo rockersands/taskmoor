@@ -58,6 +58,18 @@ const example = (): FidelityReport => ({
   unsupported: [{ kind: 'board', count: 2, reason: 'no_importer_for_kind' }],
   failures: [{ kind: 'ticket', sourceId: 'i9', error: 'number_taken' }],
   failuresTruncated: false,
+  mapping: [
+    {
+      kind: 'status',
+      sourceId: 's1',
+      label: 'In <review>',
+      outcome: 'linked',
+      targetId: 3,
+      reason: null,
+      warnings: ['stage_differs: In <review>'],
+    },
+  ],
+  mappingTruncated: false,
 });
 
 describe('the fidelity report (M1-086, IMP-010)', () => {
@@ -115,6 +127,8 @@ describe('the fidelity report (M1-086, IMP-010)', () => {
     expect(html).not.toContain('<img');
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
     expect(html).toContain('88.89%');
+    // The mapping (M1-088) names each object, escaped like the rest.
+    expect(html).toContain('<td>In &lt;review&gt;</td><td>linked</td>');
   });
 });
 

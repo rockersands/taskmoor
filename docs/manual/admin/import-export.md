@@ -1,22 +1,27 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
 accessed: 2026-10-30
 attestation: own-words
 jira-names: import sources and field mapping
 ---
 # Importing and exporting
 
-Taskmoor imports CSV files and its own full exports, and exports a whole workspace, chosen
-tracks, or the results of a search. Imports are for site administrators and run in the
-background; exports of search results are open to everyone who can search.
+Taskmoor imports CSV files, its own full exports and the configuration of a Jira Data Center
+backup, and exports a whole workspace, chosen tracks, or the results of a search. Imports are
+for site administrators and run in the background; exports of search results are open to
+everyone who can search.
 
 ## Importing from Jira Cloud or Jira Data Center
 
-Taskmoor does not yet import a Jira Cloud site or a Jira Data Center backup ZIP. Any CSV file can
-be imported today with a mapping of its columns, including one exported from another tracker;
-see [CSV import](#csv-import).
+A Jira Data Center or Server backup ZIP imports its people, groups, roles, projects (as tracks),
+issue types, statuses, priorities and resolutions today; see
+[Data Center backups](#data-center-backups). Its issues, comments, history, custom fields,
+workflows, boards and filters are not imported yet: the report counts each of them under
+"Not imported". Taskmoor does not yet import a Jira Cloud site. Any CSV file can be imported with
+a mapping of its columns, including one exported from another tracker; see
+[CSV import](#csv-import).
 
 ## How imports run
 
@@ -56,8 +61,9 @@ Content-Type: application/json
 
 `name` is optional. The answer is `202` with the new run. `source.format` is `csv` (see
 [CSV import](#csv-import)),
-`taskmoor` (see [Importing an export](#importing-an-export)), or `synthetic`, a test format of
-Taskmoor's own with a seeded generator, for trying the importer on a scratch instance.
+`taskmoor` (see [Importing an export](#importing-an-export)), `dc-backup` (see
+[Data Center backups](#data-center-backups)), or `synthetic`, a test format of Taskmoor's own
+with a seeded generator, for trying the importer on a scratch instance.
 
 ### Following a run
 
@@ -67,12 +73,21 @@ Taskmoor's own with a seeded generator, for trying the importer on a scratch ins
 | `GET /api/v1/admin/imports/<id>` | One run: state, the kind it is on, batches, and per kind the records read, created, updated, unchanged, linked to an existing object, failed and skipped; the number of warnings and the last error |
 | `GET /api/v1/admin/imports/<id>/report` | The fidelity report as JSON; `?format=html` downloads it as a standalone page. `409` until the run has finished |
 | `GET /api/v1/admin/imports/<id>/problems` | Every record with a failure or warnings, 100 a page |
+| `GET /api/v1/admin/imports/<id>/records` | Every record with its name in the source and what became of it, 100 a page |
 | `POST /api/v1/admin/imports/<id>/cancel` | Asks a running import to stop after its current batch |
 
 The **fidelity report** says, per kind, how many records the source had, what became of them,
 how many objects exist after the run and the ratio of the two. It compares checksums on a sample
 of records (the source's against the record read back), groups warnings by code, counts the kinds
-Taskmoor could not import, and lists the first 100 failures.
+Taskmoor could not import with the reason, and lists the first 100 failures.
+
+Its **mapping** names each configuration object: people, groups, teams, roles, statuses,
+priorities, close reasons, ticket types, link types, tracks, releases, areas, fields and
+workflows. For each it gives the name the object had in the source, and whether the import
+created it, linked it to your object of the same name (people by email address), found it
+unchanged since the last run, or left it out, with the reason. It lists up to 500 objects of a
+kind. The **records** list has them all and takes `kind`, `outcome` (`created`, `updated`,
+`unchanged`, `linked`, `failed` or `skipped`), `limit` and `after`, like the problems list.
 
 The **problems** list takes `outcome` (`failed`, `skipped` or `warned`), `kind` (such as
 `ticket`), `limit` (up to 1000) and `after` (the `next` value of the previous page). Each entry
@@ -89,6 +104,69 @@ by a path inside the imports folder: `TASKMOOR_IMPORT_DIR`, by default `imports`
 docker compose exec taskmoor mkdir -p /data/imports
 docker compose cp ./backlog.csv taskmoor:/data/imports/backlog.csv
 ```
+
+## Data Center backups
+
+A Jira Data Center or Server backup is the ZIP the server writes into the `export` folder of its
+home directory. Copy it into the imports folder and start a dry run first:
+
+```bash
+docker compose cp ./jira-backup.zip taskmoor:/data/imports/jira-backup.zip
+```
+
+```http
+POST /api/v1/admin/imports
+Content-Type: application/json
+
+{"name": "Jira, first look", "dryRun": true, "source": {"format": "dc-backup", "path": "jira-backup.zip", "system": "jira-prod"}}
+```
+
+`system` names the Jira instance, by default `dc`. Importing a later backup with the same
+`system` updates what the first import made instead of adding copies. Give each instance its own
+name if you import several into one workspace.
+
+The request only checks that the file is a ZIP with `entities.xml` at its root. The job then
+reads the whole backup once, as a stream, and keeps what it read in a folder next to the ZIP
+(`jira-backup.zip.staged`). Later runs of the same file, such as the real run after the dry run,
+use that folder instead of reading the backup again. Delete it when you no longer need it. The
+imports folder needs room for it.
+
+What the import makes of the backup:
+
+| In the backup | In Taskmoor | How it matches what you have |
+|---|---|---|
+| Users | People | By email address. A person already here is linked, never changed |
+| Inactive users | Deactivated people | By email address |
+| Deleted users that issues, comments, history or roles still name | Deactivated people with a placeholder address, so attribution stays | Never matched |
+| Groups and their user members | Groups, with the members added | By name. A linked group keeps its own members too |
+| Project roles | Roles | By name |
+| Projects | Tracks, with key, name, description, lead as owner, type and the last issue number used | Never matched: a key you already use fails that track |
+| Project role members (people and groups) | Role members of the track | Added, never removed |
+| Issue types | Ticket types; sub-task types become subticket types | By name |
+| Statuses | Statuses, with their category as the stage | By name |
+| Priorities | Priorities, after your own | By name |
+| Resolutions | Close reasons, after your own | By name |
+
+The report's mapping names each of these objects with its outcome. The warnings to look for:
+
+| Warning | Meaning |
+|---|---|
+| `removed_character` (kind `source`) | Characters XML does not allow (NUL, control characters, U+FFFE and U+FFFF, and references to them) were removed while reading. The examples give the file and byte offset |
+| `deleted_user`, `placeholder_email`, `no_email` | A person became a deactivated placeholder, or has no address in the backup |
+| `nested_group_not_imported` | A group inside a group: its members are not added yet |
+| `member_not_found` | A membership names a user the backup does not have |
+| `status_not_in_workflow` | A new status is in no workflow until workflows are imported |
+| `unknown_status_category` | The status's category is not one Taskmoor knows: it is imported as a new-stage status |
+| `unknown_project_type` | A project type other than software or business: the track is a business track |
+| `original_key_not_kept` | The project was renamed in Jira: its earlier key is not kept yet |
+| `role_actor_unknown_group`, `role_actor_unknown_role`, `role_actor_not_imported` | A project role member that could not be added |
+
+Under "Not imported", the report counts each part of the backup the importer does not handle
+yet: issues, comments, history, time entries, links, labels, attachments, filters, boards and
+sprints, by their names in the backup, with the reason `not_imported_yet`. The id counters of
+the backup are listed as `not_needed`, because Taskmoor gives its own ids.
+
+Times in a backup carry no time zone. Nothing imported so far depends on them.
 
 ## CSV import
 

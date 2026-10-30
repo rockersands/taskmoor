@@ -66,6 +66,11 @@ export interface SourceRecord {
   kind: string;
   id: string;
   data: Record<string, unknown>;
+  /**
+   * How people know the record in the source (a name, a key, an address), for the report's
+   * mapping of configuration (M1-088); left out, the command's name stands in.
+   */
+  label?: string;
 }
 
 /** A record and the cursor that resumes after it. */
@@ -90,6 +95,17 @@ export interface ImportSource {
   openFile?(locator: string): Promise<NodeJS.ReadableStream>;
   /** The size of such a file, or null when the source has none by that locator. */
   fileSize?(locator: string): Promise<number | null>;
+  /**
+   * Records of a kind the framework has no loader for, counted without reading them, and why
+   * the source leaves them out (M1-088). Null, or no such method: the run reads them a page at
+   * a time to count them, under the reason `no_importer_for_kind`.
+   */
+  unsupported?(kind: string): Promise<{ count: number; reason: string } | null>;
+  /**
+   * What the source itself has to report, once per run: characters it removed while reading,
+   * say (IMP-001 (2)). They join the report's warnings under the kind `source`.
+   */
+  notes?(): Promise<SourceNote[]>;
 }
 
 /** Something left out or changed on the way, counted per kind, code and detail in the report. */
@@ -97,6 +113,12 @@ export interface Warning {
   code: string;
   /** A field name, a value or another detail that groups warnings of one code. */
   detail?: string;
+}
+
+/** A warning about the source as a whole, with its count and up to five places it concerns. */
+export interface SourceNote extends Warning {
+  count: number;
+  examples: string[];
 }
 
 /** A status's place in the workflow stages (spec 01a). */
@@ -200,6 +222,11 @@ export interface TrackCommand {
   lastNumber?: number;
   icon?: string | null;
   color?: string | null;
+  /**
+   * The people and groups that hold each role in the track (M1-088): added, never removed, so
+   * actors given in Taskmoor stay.
+   */
+  roleActors?: { role: Ref; user: Ref | null; group: Ref | null }[];
 }
 
 /** A release of a track, linked by name within the track. */

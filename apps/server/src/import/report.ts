@@ -3,7 +3,7 @@ import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { checksum } from './load';
 import { LOADERS } from './loaders';
-import { ENTITY_KINDS } from './model';
+import { type Command, ENTITY_KINDS, type EntityKind, type SourceRecord } from './model';
 
 /**
  * The fidelity report (M1-086; IMP-010): for each entity kind, how many records the source had
@@ -13,11 +13,16 @@ import { ENTITY_KINDS } from './model';
  * and the records that failed. A dry run has no targets: its counts say what would happen and
  * its samples carry the source side only.
  *
+ * Its mapping (M1-088) names each configuration object and what became of it: created, linked
+ * to the target's object of the same name, or not mapped with the reason, so an administrator
+ * sees which of their statuses, priorities or groups an import reused.
+ *
  * The schema below is the contract: `fidelityReport.parse` checks every report the runner
  * writes, and `fidelityReportJsonSchema` publishes it for other tools.
  */
 const count = z.number().int().min(0);
 const ratio = z.number().min(0).max(1);
+const outcome = z.enum(['created', 'updated', 'unchanged', 'linked', 'failed', 'skipped']);
 
 export const REPORT_VERSION = 1;
 
@@ -107,6 +112,26 @@ export const fidelityReport = z
     ),
     /** More failures than listed. */
     failuresTruncated: z.boolean(),
+    /** Each configuration object (`MAPPED_KINDS`) by kind and source id. */
+    mapping: z.array(
+      z
+        .object({
+          kind: z.enum(ENTITY_KINDS),
+          sourceId: z.string(),
+          /** How people know it in the source: a name, a key or an address. */
+          label: z.string().nullable(),
+          outcome,
+          /** Null when nothing was written: a dry run's new objects, failures, skips. */
+          targetId: z.number().int().positive().nullable(),
+          /** Why it was not mapped (failed or skipped). */
+          reason: z.string().nullable(),
+          /** The record's warnings, as `code` or `code: detail`. */
+          warnings: z.array(z.string()).max(20),
+        })
+        .strict(),
+    ),
+    /** More than `MAPPING_PER_KIND` objects of a kind: the run's records route lists them all. */
+    mappingTruncated: z.boolean(),
   })
   .strict();
 
@@ -117,6 +142,43 @@ export type OutcomeCounts = z.infer<typeof outcomeCounts>;
 export const fidelityReportJsonSchema = () => z.toJSONSchema(fidelityReport);
 
 const MAX_FAILURES = 100;
+/** Configuration objects of one kind the report's mapping lists. */
+export const MAPPING_PER_KIND = 500;
+
+/** The kinds the report maps object by object: configuration, never content. */
+export const MAPPED_KINDS: readonly string[] = [
+  'user',
+  'group',
+  'team',
+  'role',
+  'status',
+  'priority',
+  'close_reason',
+  'ticket_type',
+  'link_type',
+  'track',
+  'release',
+  'area',
+  'field',
+  'field_context',
+  'workflow',
+  'workflow_map',
+] satisfies EntityKind[];
+
+/** A record's label for the mapping: the source's, or else the command's key or name. */
+export function labelOf(record: SourceRecord, command: Command | null): string | null {
+  let label = record.label;
+  if (label === undefined && command !== null) {
+    const named = command as { key?: unknown; name?: unknown };
+    if (command.kind === 'track' && typeof named.key === 'string') label = named.key;
+    else if (typeof named.name === 'string') label = named.name;
+  }
+  return label === undefined ? null : label.slice(0, 200);
+}
+
+/** A kind without a loader: counted while read (a number), or counted by its source, with why. */
+export type UnsupportedTally = number | { count: number; reason: string };
+export const unsupportedCount = (t: UnsupportedTally) => (typeof t === 'number' ? t : t.count);
 
 export interface Tally extends OutcomeCounts {
   read: number;
@@ -244,6 +306,47 @@ export async function buildReport(
     .execute();
   const failedTotal = entities.reduce((n, e) => n + e.outcomes.failed, 0);
 
+  const { rows: mapped } = await sql<{
+    entity_kind: string;
+    source_id: string;
+    label: string | null;
+    outcome: z.infer<typeof outcome>;
+    target_id: string | null;
+    error: { error?: string; warnings?: { code: string; detail?: string }[] } | null;
+  }>`
+    SELECT entity_kind, source_id, label, outcome, target_id, error
+      FROM (SELECT r.*, row_number() OVER (PARTITION BY r.entity_kind ORDER BY r.source_id) AS n
+              FROM import_record r
+             WHERE r.run_id = ${Number(run.id)}
+               AND r.entity_kind = ANY(${[...MAPPED_KINDS]}::text[])) numbered
+     WHERE n <= ${MAPPING_PER_KIND + 1}
+     ORDER BY entity_kind, source_id`.execute(db);
+  const perKind = new Map<string, number>();
+  let mappingTruncated = false;
+  const mapping: FidelityReport['mapping'] = [];
+  for (const kind of ENTITY_KINDS) {
+    for (const m of mapped.filter((r) => r.entity_kind === kind)) {
+      const n = (perKind.get(kind) ?? 0) + 1;
+      perKind.set(kind, n);
+      if (n > MAPPING_PER_KIND) {
+        mappingTruncated = true;
+        break;
+      }
+      const targetId = m.target_id === null ? null : Number(m.target_id);
+      mapping.push({
+        kind,
+        sourceId: m.source_id,
+        label: m.label,
+        outcome: m.outcome,
+        targetId: targetId !== null && targetId > 0 ? targetId : null,
+        reason: m.outcome === 'failed' || m.outcome === 'skipped' ? (m.error?.error ?? null) : null,
+        warnings: (m.error?.warnings ?? [])
+          .slice(0, 20)
+          .map((w) => (w.detail === undefined ? w.code : `${w.code}: ${w.detail}`)),
+      });
+    }
+  }
+
   const report: FidelityReport = {
     version: REPORT_VERSION,
     run: {
@@ -283,9 +386,13 @@ export async function buildReport(
           a.code.localeCompare(b.code) ||
           (a.detail ?? '').localeCompare(b.detail ?? ''),
       ),
-    unsupported: Object.entries(run.unsupported as Record<string, number>)
-      .filter(([, n]) => n > 0)
-      .map(([kind, n]) => ({ kind, count: n, reason: 'no_importer_for_kind' }))
+    unsupported: Object.entries(run.unsupported as Record<string, UnsupportedTally>)
+      .filter(([, t]) => unsupportedCount(t) > 0)
+      .map(([kind, t]) => ({
+        kind,
+        count: unsupportedCount(t),
+        reason: typeof t === 'number' ? 'no_importer_for_kind' : t.reason,
+      }))
       .sort((a, b) => a.kind.localeCompare(b.kind)),
     failures: failed.slice(0, MAX_FAILURES).map((f) => ({
       kind: f.entity_kind,
@@ -293,6 +400,8 @@ export async function buildReport(
       error: String((f.error as { error?: string } | null)?.error ?? 'failed'),
     })),
     failuresTruncated: failed.length > MAX_FAILURES,
+    mapping,
+    mappingTruncated,
   };
   return fidelityReport.parse(report);
 }
@@ -361,6 +470,19 @@ ${table(
 ${table(
   ['Kind', 'Code', 'Detail', 'Count', 'Examples'],
   report.warnings.map((w) => [w.kind, w.code, w.detail, w.count, w.examples.join(', ')]),
+)}
+<h2>Mapping</h2>
+${report.mappingTruncated ? '<p>Only the first objects of some kinds are listed.</p>\n' : ''}${table(
+  ['Kind', 'Source id', 'Name', 'Outcome', 'Target id', 'Reason', 'Warnings'],
+  report.mapping.map((m) => [
+    m.kind,
+    m.sourceId,
+    m.label,
+    m.outcome,
+    m.targetId,
+    m.reason,
+    m.warnings.join('; '),
+  ]),
 )}
 <h2>Not imported</h2>
 ${table(

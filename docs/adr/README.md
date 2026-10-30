@@ -84,5 +84,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [077](0077-clone-and-deep-clone.md) | Clone and deep clone run as a bulk operation, each copy made through the create route | Accepted |
 | [078](0078-allowlists-and-syslog.md) | IP allowlists matched in each process, and the audit log forwarded to syslog by cursor | Accepted |
 | [079](0079-board-managed-workflows.md) | Board-managed workflows as ordinary workflows the board rewrites | Accepted |
+| [081](0081-dc-backup-mapping.md) | The Data Center backup import: a streaming stage of per-kind files, and a mapping report by name | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
