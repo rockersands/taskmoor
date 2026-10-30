@@ -1555,7 +1555,12 @@
     ],
     "indexes": [
       "CREATE INDEX ticket_change_actor_idx ON ONLY public.ticket_change USING btree (actor_id, at) WHERE (actor_id IS NOT NULL)",
-      "CREATE UNIQUE INDEX ticket_change_pkey ON ONLY public.ticket_change USING btree (ticket_id, id)"
+      "CREATE INDEX ticket_change_field_at_idx ON ONLY public.ticket_change USING btree (field, at)",
+      "CREATE INDEX ticket_change_from_idx ON ONLY public.ticket_change USING btree (field, \"left\"(from_value, 200), at)",
+      "CREATE UNIQUE INDEX ticket_change_pkey ON ONLY public.ticket_change USING btree (ticket_id, id)",
+      "CREATE INDEX ticket_change_ticket_field_idx ON ONLY public.ticket_change USING btree (ticket_id, field, at, id)",
+      "CREATE INDEX ticket_change_to_idx ON ONLY public.ticket_change USING btree (field, \"left\"(to_value, 200), at)",
+      "CREATE INDEX ticket_change_to_name_idx ON ONLY public.ticket_change USING btree (field, lower(\"left\"(to_display, 200)), at)"
     ]
   },
   "ticket_comment": {

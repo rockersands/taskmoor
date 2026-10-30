@@ -911,9 +911,8 @@ describe('search (M1-037)', () => {
     expect((await refused('requestType = x')).message).toContain('service tracks');
     // Saved searches run since M1-063: an unknown one reads as missing.
     expect((await refused('filter = 10')).message).toBe('Saved search "10" does not exist');
-    expect((await refused('status WAS Closed')).message).toBe(
-      '"status" WAS: searching the change history is not available yet',
-    );
+    // History runs since M1-039; sprint changes are kept apart and not read by it yet.
+    expect((await refused('sprint CHANGED')).message).toContain('do not read sprint changes yet');
     expect((await refused('lastViewed > -1d')).message).toBe('"lastViewed" is not recorded yet');
     expect((await refused('status = Nonsense')).message).toBe('"status" has no value "Nonsense"');
     expect((await refused('Team = Purple')).message).toContain('has no option "Purple"');

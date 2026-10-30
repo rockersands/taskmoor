@@ -78,9 +78,17 @@ export type Pred =
       predicates: HistoryPredicate[];
     };
 
+/**
+ * A predicate of a history clause (M1-039; spec 01b section 1.3). `FROM` and `TO` (CHANGED
+ * only) take values of the field and `EMPTY` (`empty`); `BY` people; `AFTER` and `BEFORE` one
+ * instant; `DURING` two, its start and end; `ON` the day it names as two instants, the day's
+ * first and the next day's first on the person's calendar.
+ */
 export interface HistoryPredicate {
   kind: Predicate['kind'];
   values: Typed[];
+  /** `FROM EMPTY`, `TO EMPTY`, alone or in a list. */
+  empty?: boolean;
 }
 
 export interface Plan {
@@ -229,6 +237,18 @@ class Resolver {
         const empty = given.some((v) => v.kind === 'empty');
         const values = given.filter((v) => v.kind !== 'empty').map((v) => this.typed(field, v));
         const order = ['from', 'to', 'by', 'after', 'before', 'on', 'during'];
+        const seen = new Set<string>();
+        for (const p of c.predicates) {
+          const word = p.kind.toUpperCase();
+          if (c.kind === 'was' && (p.kind === 'from' || p.kind === 'to')) {
+            throw fail(
+              `${word} goes with CHANGED; WAS takes AFTER, BEFORE, BY, DURING and ON`,
+              p.span,
+            );
+          }
+          if (seen.has(p.kind)) throw fail(`${word} is given twice`, p.span);
+          seen.add(p.kind);
+        }
         return {
           kind: 'history',
           field,
@@ -245,17 +265,48 @@ class Resolver {
   }
 
   private predicate(field: Field, p: Predicate): HistoryPredicate {
+    const word = p.kind.toUpperCase();
     switch (p.kind) {
       case 'from':
-      case 'to':
-        return { kind: p.kind, values: p.values.map((v) => this.typed(field, v)) };
+      case 'to': {
+        const empty = p.values.some((v) => v.kind === 'empty');
+        return {
+          kind: p.kind,
+          values: p.values.filter((v) => v.kind !== 'empty').map((v) => this.typed(field, v)),
+          ...(empty ? { empty: true } : {}),
+        };
+      }
       case 'by':
         return { kind: 'by', values: p.values.map((v) => this.user(v)) };
       case 'before':
-      case 'after':
-      case 'on':
-      case 'during':
-        return { kind: p.kind, values: p.values.map((v) => this.datetime(v)) };
+      case 'after': {
+        if (p.values.length !== 1) throw fail(`${word} takes one date`, p.span);
+        return { kind: p.kind, values: [this.datetime(p.values[0] as Value)] };
+      }
+      case 'on': {
+        if (p.values.length !== 1) throw fail('ON takes one date', p.span);
+        // The whole day the value falls on, on the person's calendar (QRY-006).
+        const at = this.datetime(p.values[0] as Value).value;
+        const cal = { timeZone: this.timeZone, weekStart: this.weekStart };
+        return {
+          kind: 'on',
+          values: [
+            { type: 'datetime', value: boundary(at, 'start', 'day', undefined, cal) },
+            { type: 'datetime', value: boundary(at, 'start', 'day', { n: 1, unit: 'd' }, cal) },
+          ],
+        };
+      }
+      case 'during': {
+        if (p.values.length !== 2) {
+          throw fail('DURING takes two dates: DURING (start, end)', p.span);
+        }
+        const [start, end] = p.values.map((v) => this.datetime(v)) as [
+          { type: 'datetime'; value: Date },
+          { type: 'datetime'; value: Date },
+        ];
+        if (end.value < start.value) throw fail('DURING ends before it starts', p.span);
+        return { kind: 'during', values: [start, end] };
+      }
     }
   }
 
