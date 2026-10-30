@@ -1878,6 +1878,36 @@ export interface ApiTokenTable {
   replaced_by: number | null;
 }
 
+/** A workspace's IP allowlist (M1-085; IAM-015): on or off, and the groups exempt from it. */
+export interface IpAllowlistTable {
+  workspace_id: number;
+  enabled: Generated<boolean>;
+  exempt_group_ids: ColumnType<number[], number[] | undefined, number[]>;
+  updated_at: DefaultTimestamp;
+}
+
+/** An address or range the allowlist lets in, as typed (`inet`: an address with its prefix). */
+export interface IpAllowlistEntryTable {
+  id: Generated<number>;
+  workspace_id: number;
+  range: string;
+  note: Generated<string>;
+  created_at: DefaultTimestamp;
+}
+
+/** Where audit records are forwarded over syslog, and how far it has got (M1-085). */
+export interface AuditSyslogTable {
+  workspace_id: number;
+  enabled: Generated<boolean>;
+  host: string;
+  port: number;
+  transport: 'udp' | 'tcp' | 'tls';
+  last_seq: ColumnType<string, string | number | undefined, string | number>;
+  last_sent_at: Timestamp | null;
+  last_error: string | null;
+  updated_at: DefaultTimestamp;
+}
+
 /**
  * A workspace's rate limits (M1-066; API-010): requests a second and burst per API token,
  * signed-in person, address without either, and per ticket for writes.
@@ -2168,6 +2198,9 @@ export interface Database {
   api_token: ApiTokenTable;
   token_policy: TokenPolicyTable;
   rate_limit_policy: RateLimitPolicyTable;
+  ip_allowlist: IpAllowlistTable;
+  ip_allowlist_entry: IpAllowlistEntryTable;
+  audit_syslog: AuditSyslogTable;
   api_usage: ApiUsageTable;
   scim_user: ScimUserTable;
   scim_group: ScimGroupTable;

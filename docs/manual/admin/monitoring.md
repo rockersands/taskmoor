@@ -1,7 +1,7 @@
 ---
 title: "Monitoring and logs"
 audience: admins
-sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md
+sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -9,7 +9,7 @@ attestation: own-words
 
 Every Taskmoor process answers health probes, serves Prometheus metrics on an internal port,
 writes JSON logs to standard output and can send traces to an OpenTelemetry collector. Site
-administrators also have a status page in the app and an audit log through the API.
+administrators also have a status page and an audit log page in the app.
 
 ## Health and readiness
 
@@ -154,8 +154,14 @@ Edits to tickets are not in the audit log: each ticket's history holds them.
 
 ### Searching and exporting
 
-Taskmoor does not yet have an audit log page in the web app. Site administrators use the API
-(an API token needs the admin scope; see [The REST API](rest-api.md)):
+Site administrators open **Settings**, **Audit log**. It lists records newest first, 50 at a
+time (**Show older records** reads further back), with filters for a first and last day and an
+action (`user.` finds every user event). **Download as CSV** and **Download as JSON Lines** save
+every record the filter finds, oldest first; each download is itself recorded. **Check the
+chain** verifies the whole log and says where it breaks, if it does.
+
+The same is available through the API (an API token needs the admin scope; see
+[The REST API](rest-api.md)):
 
 | Request | Does |
 |---|---|
@@ -183,10 +189,28 @@ the head hash it prints, or the last line of an export, somewhere else as well.
 
 ### Retention
 
-The log keeps 12 months by default; `PUT /api/v1/audit/settings` with `{"retentionMonths": 24}`
-changes it for the whole instance, and `0` keeps everything. Once a day the worker drops the
+The log keeps 12 months by default. **Keep records for** on the audit log page changes it for
+the whole instance, as does `PUT /api/v1/audit/settings` with `{"retentionMonths": 24}`; `0`
+(**Forever**) keeps everything. Once a day the worker drops the
 months older than that, after checking the part of the chain it drops; a range that does not
 verify is kept and reported instead. Each drop is itself recorded in the log.
+
+### Forwarding to syslog
+
+Under **Forward to syslog** on the audit log page, name a syslog receiver (a SIEM or a log
+collector): its host, port and transport (TLS, TCP or UDP), and **Forward new records**. Every
+ten seconds the worker sends the records the log gained since its last run, oldest first, as
+RFC 5424 messages (facility 13, log audit; severity notice) whose text is the record as JSON,
+with the same fields as the JSON Lines download. Over TLS and TCP each message is preceded by
+its length in bytes (octet counting, RFC 6587); over UDP each is one datagram, and a lost
+datagram is not sent again, so prefer TLS.
+
+The receiver gets what happens after you name it; the downloads have the past. When it cannot be
+reached, forwarding stops where it was, the page shows the error, and it catches up once the
+receiver answers. **Send a test message** sends one message, `audit.syslog_test`, without
+moving that position. The same settings are `GET` and `PUT /api/v1/audit/syslog` and
+`POST /api/v1/audit/syslog/test`. A continuous stream in other formats (CEF, HTTPS,
+OpenTelemetry) is planned for release 2.0.
 
 ## Instance and version information
 

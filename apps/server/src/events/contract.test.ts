@@ -644,6 +644,26 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/admin/ip-allowlist',
+      expect: 'ip_allowlist.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/ip-allowlist',
+          payload: { enabled: false, entries: [{ range: '203.0.113.0/24', note: 'Office' }] },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/audit/syslog',
+      expect: 'audit.syslog_updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/audit/syslog',
+          payload: { enabled: false, host: '127.0.0.1', port: 6514, transport: 'tls' },
+        }),
+    },
+    {
       route: 'PUT /api/v1/admin/rate-limits',
       expect: 'rate_limits.updated',
       run: () =>

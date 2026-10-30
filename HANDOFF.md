@@ -108,6 +108,16 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-085 IP allowlists, audit log page, syslog
+
+ADR-078; migration **0062** (0060 and 0061 are reserved for M1-123 and M1-124, which may merge
+after it: fresh databases do not mind; a long-lived one that ran 0062 first must be recreated).
+- The allowlist hook runs after authentication; `cli.mjs allowlist-off` is the way back in.
+- Syslog forwarding runs in the worker by cursor (`audit_syslog.last_seq`), at least once.
+- **Decision for the user:** external-user policies by email domain (IAM-004) are in M1-085's
+  title but not built: which domains are internal, and what may an external person not do
+  (two-factor required, shorter sessions, no admin groups)?
+
 ## 2026-10-30: M1-066 rate limits and API usage
 
 ADR-075; migration **0059** (`0059_rate_limits.ts`).

@@ -5,6 +5,7 @@ import { scheduleSweep } from './attachments/cleanup';
 import { registerAttachmentJobs } from './attachments/jobs';
 import { attachmentStores } from './attachments/stores';
 import { registerAuditJobs, scheduleRetention } from './audit/retention';
+import { forwardAudit } from './audit/syslog';
 import { Authorizer } from './authz/authorizer';
 import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/schedule';
 import { registerBulkJobs } from './bulk/jobs';
@@ -205,6 +206,16 @@ if (config.roles.includes('worker') && db) {
       })
       .catch((error) => app.log.warn({ error }, 'sprint cycles not rolled'));
   void rollCycles();
+  // Audit records to syslog (M1-085): every ten seconds, what the log gained since the last run.
+  const syslogHost = new URL(config.publicUrl).hostname;
+  const forwardToSyslog = () =>
+    defaultWorkspaceId(db)
+      .then((ws) => forwardAudit(db, ws, syslogHost))
+      .then((run) => {
+        if (run?.error) app.log.warn({ error: run.error }, 'audit records not sent to syslog');
+      })
+      .catch((error) => app.log.warn({ error }, 'audit forwarding to syslog failed'));
+  timers.push(setInterval(forwardToSyslog, 10 * 1000));
   timers.push(setInterval(rollCycles, 60 * 1000));
   // Email notifications (M1-057): every 30 seconds, what is due goes out. Workers lock each
   // person's notifications while sending, so several can run.

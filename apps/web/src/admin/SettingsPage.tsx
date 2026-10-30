@@ -67,6 +67,14 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.apiUsageHint')}</p>
             </li>
             <li>
+              <a href={routeHref('#/admin/audit')}>{t('settings.auditLog')}</a>
+              <p className="page-note">{t('settings.auditLogHint')}</p>
+            </li>
+            <li>
+              <a href={routeHref('#/admin/network-access')}>{t('settings.networkAccess')}</a>
+              <p className="page-note">{t('settings.networkAccessHint')}</p>
+            </li>
+            <li>
               <a href={routeHref('#/admin/identity-providers')}>{t('settings.singleSignOn')}</a>
               <p className="page-note">{t('settings.singleSignOnHint')}</p>
             </li>

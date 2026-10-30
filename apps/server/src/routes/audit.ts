@@ -7,6 +7,7 @@ import { appendAudit, verifyChain } from '../audit/chain';
 import { type AuditFilter, CSV_COLUMNS, csvLine, exportAudit, searchAudit } from '../audit/query';
 import { AUDIT_ACTIONS } from '../audit/record';
 import { MAX_RETENTION_MONTHS, RETENTION_SETTING, retentionMonths } from '../audit/retention';
+import { latestSeq, type SyslogTarget, sendSyslog, syslogMessage } from '../audit/syslog';
 import { requireSiteAdmin } from '../auth';
 import { withEvent } from '../events/bus';
 import { writeSetting } from '../setup';
@@ -76,7 +77,30 @@ function describeFilter(query: FilterQuery): Record<string, unknown> {
  * cursor, streamed export as CSV or JSON Lines (itself recorded in the log), chain
  * verification and the retention setting. The admin UI (M1-053) builds on these.
  */
-export function registerAuditRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+const syslogBody = z
+  .object({
+    enabled: z.boolean(),
+    host: z
+      .string()
+      .trim()
+      .min(1)
+      .max(253)
+      .regex(/^[A-Za-z0-9.:[\]-]+$/),
+    port: z.number().int().min(1).max(65535),
+    transport: z.enum(['udp', 'tcp', 'tls']),
+  })
+  .strict();
+
+export function registerAuditRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  options: {
+    hostname?: string;
+    send?: (t: SyslogTarget, m: readonly string[]) => Promise<void>;
+  } = {},
+): void {
+  const send = options.send ?? sendSyslog;
+  const hostname = options.hostname ?? 'taskmoor';
   app.get('/api/v1/audit', async (request, reply) => {
     if (!(await requireSiteAdmin(request, reply))) return reply;
     const parsed = searchQuery.safeParse(request.query);
@@ -157,5 +181,109 @@ export function registerAuditRoutes(app: FastifyInstance, db: Kysely<Database>):
         },
       };
     });
+  });
+
+  // Forwarding to syslog (M1-085): where, and how far it has got.
+  const syslogView = async (workspaceId: number) => {
+    const row = await db
+      .selectFrom('audit_syslog')
+      .selectAll()
+      .where('workspace_id', '=', workspaceId)
+      .executeTakeFirst();
+    return {
+      syslog: row
+        ? {
+            enabled: row.enabled,
+            host: row.host,
+            port: row.port,
+            transport: row.transport,
+            lastSeq: Number(row.last_seq),
+            lastSentAt: row.last_sent_at?.toISOString() ?? null,
+            lastError: row.last_error,
+          }
+        : null,
+    };
+  };
+
+  app.get('/api/v1/audit/syslog', async (request, reply) => {
+    if (!(await requireSiteAdmin(request, reply))) return reply;
+    return syslogView(request.workspaceId);
+  });
+
+  app.put('/api/v1/audit/syslog', async (request, reply) => {
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
+    const parsed = syslogBody.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+    const ws = request.workspaceId;
+    const next = parsed.data;
+    await withEvent(db, { workspaceId: ws, actorId: admin.id }, async (trx) => {
+      const before = await trx
+        .selectFrom('audit_syslog')
+        .select(['enabled', 'host', 'port', 'transport'])
+        .where('workspace_id', '=', ws)
+        .executeTakeFirst();
+      // A new receiver starts with what happens from now on; the file export has the past.
+      const moved = !before?.enabled || before.host !== next.host || before.port !== next.port;
+      const start = moved ? await latestSeq(trx as never, ws) : undefined;
+      const row = {
+        enabled: next.enabled,
+        host: next.host,
+        port: next.port,
+        transport: next.transport,
+        ...(start !== undefined ? { last_seq: start, last_error: null } : {}),
+        updated_at: new Date(),
+      };
+      await trx
+        .insertInto('audit_syslog')
+        .values({ workspace_id: ws, ...row, last_seq: start ?? 0 })
+        .onConflict((oc) => oc.column('workspace_id').doUpdateSet(row))
+        .execute();
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      for (const key of ['enabled', 'host', 'port', 'transport'] as const) {
+        if (before?.[key] !== next[key])
+          changes[key] = { from: before?.[key] ?? null, to: next[key] };
+      }
+      return {
+        result: null,
+        event:
+          Object.keys(changes).length === 0
+            ? null
+            : { type: 'audit.syslog_updated', subjectId: ws, payload: { changes } },
+      };
+    });
+    return syslogView(ws);
+  });
+
+  // Sends one message to check the receiver, without moving the position.
+  app.post('/api/v1/audit/syslog/test', async (request, reply) => {
+    if (!(await requireSiteAdmin(request, reply))) return reply;
+    const parsed = syslogBody.omit({ enabled: true }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+    const now = new Date().toISOString();
+    const message = syslogMessage(
+      {
+        seq: 0,
+        occurredAt: now,
+        recordedAt: now,
+        actor: null,
+        action: 'audit.syslog_test',
+        subject: null,
+        details: { test: true },
+        ip: request.ip,
+        sourceEventId: null,
+        prevHash: '',
+        hash: '',
+      },
+      hostname,
+    );
+    try {
+      await send(parsed.data, [message]);
+      return { ok: true };
+    } catch (error) {
+      return reply
+        .code(502)
+        .send({ error: 'syslog_unreachable', reason: error instanceof Error ? error.message : '' });
+    }
   });
 }

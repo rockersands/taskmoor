@@ -80,5 +80,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [073](0073-workflow-files.md) | Workflow files: the stored definition with document ids and name tables, mapped by name and never widened | Accepted |
 | [074](0074-offline-manual.md) | The manual is Markdown with provenance, built into an offline bundle by our own script | Accepted |
 | [075](0075-rate-limits.md) | Rate limits as in-process token buckets, with usage counted per minute | Accepted |
+| [078](0078-allowlists-and-syslog.md) | IP allowlists matched in each process, and the audit log forwarded to syslog by cursor | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

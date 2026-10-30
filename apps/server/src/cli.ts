@@ -28,6 +28,8 @@
 //                                       is locked out, or after a lost password keyring)
 //   node cli.mjs audit-verify           checks every workspace's audit hash chain (IAM-013);
 //                                       exit 1 when one is broken
+//   node cli.mjs allowlist-off          turns every workspace's IP allowlist off (M1-085), for
+//                                       an administrator who locked themselves out
 //   node cli.mjs mcp                    MCP over stdio for local MCP clients (M1-072): each line
 //                                       is a JSON-RPC message sent to TASKMOOR_URL with the API
 //                                       token in TASKMOOR_TOKEN; answers on stdout, logs on stderr
@@ -75,7 +77,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | report-verify | mcp>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | mcp>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -374,6 +376,37 @@ try {
         say(JSON.stringify({ workspace: workspace.key, ...status }));
         if (!status.ok) process.exitCode = 1;
       }
+      break;
+    }
+    case 'allowlist-off': {
+      // From the server itself: the audit log records the change with no person as its actor.
+      const turned = await db.transaction().execute(async (trx) => {
+        const rows = await trx
+          .updateTable('ip_allowlist')
+          .set({ enabled: false, updated_at: new Date() })
+          .where('enabled', '=', true)
+          .returning(['workspace_id', 'exempt_group_ids'])
+          .execute();
+        for (const row of rows) {
+          await emit(
+            trx,
+            { workspaceId: row.workspace_id, actorId: null },
+            {
+              type: 'ip_allowlist.updated',
+              subjectId: row.workspace_id,
+              payload: {
+                enabled: { from: true, to: false },
+                added: [],
+                removed: [],
+                exemptGroupIds: row.exempt_group_ids,
+                lockoutConfirmed: false,
+              },
+            },
+          );
+        }
+        return rows.length;
+      });
+      say(turned === 0 ? 'no allowlist was on' : `allowlist turned off in ${turned} workspace(s)`);
       break;
     }
     case 'report-verify': {

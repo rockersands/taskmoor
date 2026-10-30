@@ -195,6 +195,8 @@ export const AUDITED_EVENTS = [
   'token.rotated',
   'token.bulk_revoked',
   'token_policy.updated',
+  'ip_allowlist.updated',
+  'audit.syslog_updated',
   'rate_limits.updated',
   'service_account.created',
   'service_account.updated',

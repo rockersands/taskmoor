@@ -1,0 +1,119 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { I18nProvider } from '../../i18n/I18nProvider';
+import { SessionProvider } from '../../session/SessionProvider';
+import { untranslated, visibleTexts } from '../../test/backend';
+import { setViewportWidth } from '../../test/viewport';
+import { ADMIN, MEMBER } from '../fixtures';
+import { AuditPage } from './AuditPage';
+import { filterParams } from './client';
+import { fakeAuditClient, RECORDS } from './fixtures';
+
+function renderPage(client = fakeAuditClient(), locale: 'en' | 'en-XA' = 'en', session = ADMIN) {
+  const errors: Error[] = [];
+  const view = render(
+    <I18nProvider locale={locale} onError={(e) => errors.push(e)}>
+      <SessionProvider session={session}>
+        <AuditPage client={client} />
+      </SessionProvider>
+    </I18nProvider>,
+  );
+  return { client, errors, container: view.container };
+}
+
+describe('audit log page (M1-085)', () => {
+  it('[IAM-013] lists records newest first and filters them by action', async () => {
+    const { client } = renderPage();
+    const table = await screen.findByRole('table', { name: 'Audit records, newest first' });
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows.map((r) => within(r).getAllByRole('cell')[2]?.textContent)).toEqual([
+      'token.created',
+      'user.signed_in',
+      'backup.completed',
+    ]);
+    expect(within(rows[2] as HTMLElement).getByText('Taskmoor')).toBeVisible();
+    await userEvent.type(screen.getByLabelText('Action'), 'user.');
+    await userEvent.click(screen.getByRole('button', { name: 'Show' }));
+    await expect.poll(() => within(screen.getByRole('table')).getAllByRole('row').length).toBe(2);
+    expect(client.calls.at(-1)).toContain('"action":"user."');
+    // The downloads take the filter in force.
+    expect(screen.getByRole('link', { name: 'Download as CSV' }).getAttribute('href')).toBe(
+      '/api/v1/audit/export?format=csv&action=user.',
+    );
+  });
+
+  it('[IAM-013] pages back through older records', async () => {
+    renderPage(fakeAuditClient({ pageSize: 2 }));
+    await screen.findByRole('table');
+    await userEvent.click(screen.getByRole('button', { name: 'Show older records' }));
+    await expect
+      .poll(() => within(screen.getByRole('table')).getAllByRole('row').length)
+      .toBe(RECORDS.length + 1);
+    expect(screen.queryByRole('button', { name: 'Show older records' })).toBeNull();
+  });
+
+  it('[IAM-013] (1) checks the hash chain and says where it breaks', async () => {
+    renderPage(fakeAuditClient({ brokenAt: 2 }));
+    await screen.findByRole('table');
+    await userEvent.click(screen.getByRole('button', { name: 'Check the chain' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('broken at record 2');
+  });
+
+  it('[IAM-013] names a syslog receiver and sends it a test message', async () => {
+    const { client } = renderPage();
+    await screen.findByRole('table');
+    const form = screen.getByRole('form', { name: 'Forward to syslog' });
+    await userEvent.type(within(form).getByLabelText('Host'), 'siem.example.com');
+    await userEvent.click(within(form).getByRole('checkbox', { name: 'Forward new records' }));
+    await userEvent.click(within(form).getByRole('button', { name: 'Save forwarding' }));
+    expect(await within(form).findByRole('status')).toHaveTextContent('Forwarding saved.');
+    expect(await client.syslog()).toMatchObject({ host: 'siem.example.com', enabled: true });
+    await userEvent.click(within(form).getByRole('button', { name: 'Send a test message' }));
+    expect(await within(form).findByText('The receiver accepted the test message.')).toBeVisible();
+  });
+
+  it('[IAM-013] (2) keeps records for the months chosen', async () => {
+    renderPage();
+    const select = await screen.findByRole('combobox', { name: 'Keep records for' });
+    await expect.poll(() => (select as HTMLSelectElement).value).toBe('12');
+    await userEvent.selectOptions(select, '84');
+    expect(await screen.findByText('Retention saved.')).toBeVisible();
+  });
+
+  it('[IAM-013] turns a day filter into a half-open range', () => {
+    expect(
+      filterParams({ from: '2026-10-01', to: '2026-10-31', action: ' user. ' }).toString(),
+    ).toBe('from=2026-10-01&to=2026-11-01&action=user.');
+  });
+
+  it('[IAM-013] is for site administrators only', () => {
+    renderPage(fakeAuditClient(), 'en', MEMBER);
+    expect(screen.getByText('Only site administrators read the audit log.')).toBeVisible();
+  });
+
+  it('passes every string through the pseudo-locale', async () => {
+    const { container, errors } = renderPage(fakeAuditClient(), 'en-XA');
+    await screen.findByRole('table');
+    const data = [
+      'Ada Lovelace',
+      '203.0.113.5',
+      'token.created',
+      'user.signed_in',
+      'backup.completed',
+      'api_token 7',
+      'user 1',
+    ];
+    const texts = visibleTexts(container).filter(
+      (t) => !/\d{4}|\d:\d\d/.test(t) && !data.includes(t),
+    );
+    expect(untranslated(texts)).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  it('fits a small phone', async () => {
+    setViewportWidth(360);
+    renderPage();
+    expect(await screen.findByRole('table')).toBeVisible();
+  });
+});

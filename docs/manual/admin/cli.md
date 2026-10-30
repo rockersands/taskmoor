@@ -51,6 +51,7 @@ links. See [Configuration reference](configuration.md).
 | `report-verify` | Replays every ticket's report events | 1 a ticket differs |
 | `password-link <email>` | A one-time link to set a password | 1 no active account, 2 no email |
 | `audit-verify` | Checks the audit log's hash chains | 1 a chain is broken |
+| `allowlist-off` | Turns the IP allowlist off, for an administrator locked out by it | |
 | `mcp` | MCP over standard input and output | 2 `TASKMOOR_URL` or `TASKMOOR_TOKEN` missing |
 
 Any command exits with 1 when it fails with an error, printed on standard error with passwords
@@ -169,6 +170,12 @@ Prints a one-time link to set a password, for any active account, administrators
 account without a password gets an activation link, one with a password a reset link. The link
 is valid for three days and works once. Set `PUBLIC_URL` so the link carries the right address.
 The link's creation is recorded in the audit log. See [People and groups](people-and-groups.md).
+
+### allowlist-off
+
+Turns off the IP allowlist of every workspace where it is on ([network
+access](permissions.md#network-access-the-ip-allowlist)), for an administrator who saved a list
+that keeps them out. The change is in the audit log without a person as its actor.
 
 ### audit-verify
 

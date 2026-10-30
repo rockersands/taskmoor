@@ -110,14 +110,15 @@ export async function searchAudit(
   return { records, nextCursor: rows.length > page.limit && last ? String(last.seq) : null };
 }
 
-/** Every matching record, oldest first, read in batches. */
+/** Every matching record after `from` (a seq), oldest first, read in batches. */
 export async function* exportAudit(
   db: Kysely<Database>,
   workspaceId: number,
   filter: AuditFilter,
   batch = 1000,
+  from = 0,
 ): AsyncGenerator<AuditView> {
-  let after = 0;
+  let after = from;
   for (;;) {
     const rows = await selectRecords(db, workspaceId, filter)
       .where('e.seq', '>', String(after))

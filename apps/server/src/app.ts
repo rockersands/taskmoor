@@ -19,6 +19,7 @@ import { FieldCatalogs } from './fields/catalog';
 import { serveFrontend } from './frontend';
 import { GuardrailExceeded } from './guardrails/model';
 import { DirectoryGateway } from './ldap/gateway';
+import { Allowlists } from './network/allowlist';
 import { instrumentApp, type Metrics } from './observability';
 import { RateLimiter, RateLimitPolicies } from './ratelimit/limiter';
 import { UsageRecorder } from './ratelimit/usage';
@@ -43,6 +44,7 @@ import { registerGuardrailRoutes } from './routes/guardrails';
 import { registerHomeRoutes } from './routes/home';
 import { registerImportRoutes } from './routes/imports';
 import { registerInboxRoutes } from './routes/inbox';
+import { registerAllowlist, registerAllowlistRoutes } from './routes/ip-allowlist';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerListViewRoutes } from './routes/list-views';
@@ -222,6 +224,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       request.user = request.authSession?.user ?? null;
       request.authz = authorizer.context(request.workspaceId, { userId: request.user?.id ?? null });
     });
+    // The IP allowlist after authentication, so members of exempt groups get in (M1-085).
+    const allowlists = new Allowlists(db);
+    registerAllowlist(app, db, allowlists);
     // Rate limits after authentication, so a token or a person is limited as itself (M1-066).
     const usage = new UsageRecorder(db, deps.rateLimits?.now);
     const policies = new RateLimitPolicies(db);
@@ -373,7 +378,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerSavedSearchRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
-    registerAuditRoutes(app, db);
+    registerAuditRoutes(app, db, {
+      hostname: new URL(deps.publicUrl ?? 'http://localhost:8080').hostname,
+    });
+    registerAllowlistRoutes(app, db, allowlists);
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);
     registerRateLimitRoutes(app, db, {

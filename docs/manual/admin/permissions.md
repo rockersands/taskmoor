@@ -1,7 +1,7 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md
+sources: apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -224,3 +224,32 @@ them in.
 Anyone can ask about themselves: `GET /api/v1/me/permissions?trackId=7` lists their global
 permissions and their permissions in the track. `GET /api/v1/permissions/catalogue` lists
 every permission code and grantee kind.
+
+## Network access: the IP allowlist
+
+**Settings**, **Network access** limits where people may connect from. With **Only allow these
+addresses** on, the web app this server serves and every API, administration and MCP included,
+answer only requests from the addresses and ranges listed: one per line, an IPv4 or IPv6
+address or a range such as `203.0.113.0/24` or `2001:db8::/32`, with a note after `#` if you
+like. There is no limit on how many. Everyone else gets `403 ip_not_allowed`, signing in
+included. Members of the groups under **Allowed from anywhere** get in from any address once
+signed in, for people who travel. The health probes `/health` and `/ready` always answer.
+
+The page shows the address you are connecting from and whether the list lets it in. Saving a
+list that would not let you in asks you to confirm with **Save and lock me out**, so a typo
+cannot lock out the person making the change; the API answers `409 would_lock_you_out` unless
+the request says `"confirmLockout": true`. Each change is in the audit log, with what was
+added and removed.
+
+Behind a reverse proxy, set `TASKMOOR_TRUSTED_PROXIES` so the list sees the real client address
+rather than the proxy's ([configuration](configuration.md)). A frontend kit on a static host
+outside this server is not covered (its files are public), but everything it asks the API is.
+Through the API: `GET` and `PUT /api/v1/admin/ip-allowlist`, with `enabled`, `entries`
+(`range` and `note`) and `exemptGroupIds`.
+
+If you lock yourself out, turn the list off from the server itself:
+
+```bash
+docker compose exec taskmoor node cli.mjs allowlist-off
+```
+

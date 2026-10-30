@@ -969,6 +969,19 @@ export const EVENT_TYPES = {
     }),
   },
   'token_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  /** The IP allowlist was replaced (M1-085, IAM-015): what changed, and a confirmed lock-out. */
+  'ip_allowlist.updated': {
+    subject: 'workspace',
+    payload: z.object({
+      enabled: z.object({ from: z.boolean(), to: z.boolean() }),
+      added: z.array(z.string()),
+      removed: z.array(z.string()),
+      exemptGroupIds: z.array(z.number().int()),
+      lockoutConfirmed: z.boolean(),
+    }),
+  },
+  /** Where audit records are forwarded over syslog changed (M1-085). */
+  'audit.syslog_updated': { subject: 'workspace', payload: z.object({ changes }) },
   /** A site administrator changed the workspace's rate limits (M1-066). */
   'rate_limits.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // SCIM provisioning (M1-083, IAM-006, ADR-038); the actor is the provisioning service account.
