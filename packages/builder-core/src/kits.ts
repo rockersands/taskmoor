@@ -74,14 +74,19 @@ function backendEnv(
   return `${lines.join('\n')}\n`;
 }
 
-/** The frontend's public runtime configuration, the keys of the slot in index.html (ADR-066). */
-export function frontendConfig(inputs: BuilderInputs): RuntimeConfig {
+/**
+ * The frontend's public runtime configuration, the keys of the slot in index.html (ADR-066),
+ * pinned to the manifest's instance so the app checks it reached that backend (M1-111).
+ */
+export function frontendConfig(inputs: BuilderInputs, manifest: ConnectionManifest): RuntimeConfig {
   return {
     ...DEFAULT_RUNTIME_CONFIG,
     apiUrl: apiOrigin(inputs) === frontendOrigin(inputs) ? '' : apiOrigin(inputs),
     routing: inputs.routing,
     basePath: basePath(inputs),
     instanceName: inputs.instanceName,
+    instanceId: manifest.instanceId,
+    instanceKey: manifest.publicKey,
   };
 }
 
@@ -104,7 +109,7 @@ export async function buildKits(
       [MANIFEST_FILE]: json(manifest),
     },
     frontend: {
-      [CONFIG_FILE]: json(frontendConfig(inputs)),
+      [CONFIG_FILE]: json(frontendConfig(inputs, manifest.manifest)),
       [MANIFEST_FILE]: json(manifest),
     },
   };
@@ -161,6 +166,9 @@ export async function checkKits(
   if (target !== m.apiUrl) problems.push('the frontend talks to another backend');
   if (config.routing !== m.routing || config.basePath !== m.basePath) {
     problems.push('the frontend routing differs from the manifest');
+  }
+  if (config.instanceId !== m.instanceId || config.instanceKey !== m.publicKey) {
+    problems.push('the frontend is pinned to another instance');
   }
   const secret = [
     ...(secrets ? secretValues(secrets) : [key ?? '']),

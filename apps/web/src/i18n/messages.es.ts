@@ -20,6 +20,11 @@ export const messagesEs: Record<MessageId, string> = {
   'update.available':
     'Esta aplicación es la versión {version} y el servidor ejecuta la {server}. Recarga la página para actualizarla.',
   'update.reload': 'Recargar',
+  'instance.wrongTitle': 'Esta aplicación pertenece a otro servidor',
+  'instance.wrong':
+    'Se hizo para otro servidor de Taskmoor y no inicia sesión aquí, para que nada de lo que escribas vaya a un servidor que no querías.',
+  'instance.wrongAdmin':
+    'Pide a tu administrador la aplicación de este servidor, o la dirección correcta de esta aplicación.',
   'update.later': 'Ahora no',
   'update.requiredTitle': 'Actualización necesaria',
   'update.required':

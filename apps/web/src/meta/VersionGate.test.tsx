@@ -1,3 +1,5 @@
+import { generateKeyPairSync, sign } from 'node:crypto';
+import { type PinnedInstance, signedMetaText } from '@taskmoor/webconfig';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -13,15 +15,20 @@ const backend = (version: string, minimum: string | null, recommended: string | 
     meta: async (): Promise<Meta> => ({
       version,
       frontend: { minimum, recommended },
-      instance: { id: 'i-1', name: 'Acme' },
+      instance: { id: 'i-1', name: 'Acme', publicKey: '' },
     }),
   }) satisfies MetaClient;
 
-function open(client: MetaClient, version: string, locale: Locale = 'en') {
+function open(
+  client: MetaClient,
+  version: string,
+  locale: Locale = 'en',
+  pin: PinnedInstance | null = null,
+) {
   const errors: Error[] = [];
   const view = render(
     <I18nProvider locale={locale} onError={(e) => errors.push(e)}>
-      <VersionGate client={client} version={version}>
+      <VersionGate client={client} version={version} pin={pin}>
         <main>
           <UpdateBanner />
           <h1>The app</h1>
@@ -79,5 +86,59 @@ describe('frontend and backend versions (M1-106)', () => {
     await screen.findByRole('button');
     expect(untranslated(visibleTexts(container).filter((t) => !/\d/.test(t)))).toEqual([]);
     expect(errors).toEqual([]);
+  });
+
+  describe('a frontend kit pinned to its instance (M1-111)', () => {
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const key = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    const instance = (id: string, signer = privateKey): MetaClient => ({
+      meta: async (nonce) => ({
+        version: '1.4.2',
+        frontend: { minimum: '1.3.0', recommended: '1.4.0' },
+        instance: { id, name: 'Acme', publicKey: key },
+        ...(nonce
+          ? {
+              signature: {
+                nonce,
+                value: sign(null, Buffer.from(signedMetaText(id, nonce)), signer).toString(
+                  'base64url',
+                ),
+              },
+            }
+          : {}),
+      }),
+    });
+    const pin = { id: 'instance-a', publicKey: key };
+
+    it('[API-017] (2) runs on the instance it was built for', async () => {
+      // One release behind: the notice shows only once the instance checked out.
+      open(instance('instance-a'), '1.3.5', 'en', pin);
+      expect(
+        await screen.findByRole('region', { name: 'A newer version is available.' }),
+      ).toBeVisible();
+      expect(screen.getByRole('heading', { name: 'The app' })).toBeVisible();
+    });
+
+    it('[API-017] (2) refuses another instance before anyone signs in', async () => {
+      open(instance('instance-b'), '1.4.0', 'en', pin);
+      expect(
+        await screen.findByRole('heading', {
+          level: 1,
+          name: 'This app belongs to another server',
+        }),
+      ).toBeVisible();
+      expect(screen.queryByRole('heading', { name: 'The app' })).toBeNull();
+    });
+
+    it('[API-017] (2) refuses a backend that signs with another key under the pinned id', async () => {
+      const other = generateKeyPairSync('ed25519').privateKey;
+      open(instance('instance-a', other), '1.4.0', 'en', pin);
+      expect(
+        await screen.findByRole('heading', {
+          level: 1,
+          name: 'This app belongs to another server',
+        }),
+      ).toBeVisible();
+    });
   });
 });

@@ -62,7 +62,14 @@ describe('frontend artefact with clean URLs', () => {
   it('[OPS-017] fills the runtime configuration for this instance, nothing else', async () => {
     const before = await page(app, '/');
     expect(readRuntimeConfig(before.body)).toEqual({
-      config: { apiUrl: '', routing: 'path', basePath: '/tm/', instanceName: '' },
+      config: {
+        apiUrl: '',
+        routing: 'path',
+        basePath: '/tm/',
+        instanceName: '',
+        instanceId: '',
+        instanceKey: '',
+      },
       problems: [],
     });
     // The name given at setup appears once there is one.

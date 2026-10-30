@@ -77,6 +77,21 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-111 frontend kit
+
+ADR-031 has a second implementation section; no migration.
+- **Pinning:** the runtime config has `instanceId` and `instanceKey`. The app refuses a
+  backend that is not the pinned instance.
+- **Builder CLI:** `pnpm builder --project <file>` writes
+  `taskmoor-backend-kit.zip` (the `.env` and the manifest, for now),
+  `taskmoor-frontend-kit.zip` and `taskmoor-frontend-single.html`.
+- **e2e:** `e2e/kit-server.ts` (ports 4178 to 4180) serves the kits for `kits.spec.ts`.
+- **Flake seen:** `sync/log.test.ts` (commit order of two racing transactions) failed once
+  under a full gate and passed three times alone.
+- **Next:** M1-110 grows the backend kit (Compose pinned to the version, Caddy, `install.sh`
+  and `install.ps1`, the DNS README) around the same `.env`. The web Builder page is still to
+  come. Real static hosts (Apache, Netlify, Cloudflare Pages, S3 with a CDN) are untried.
+
 ## 2026-10-30: M1-134 clean URLs in the install kits
 
 ADR-066 has the note. The Compose kits, the all-in-one image and Helm (`webRouting`) default to

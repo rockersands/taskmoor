@@ -23,6 +23,9 @@
     },
     {
       "path": "../../packages/devtools"
+    },
+    {
+      "path": "../../packages/builder-core"
     }
   ]
 }

@@ -22,6 +22,13 @@ export interface RuntimeConfig {
   basePath: string;
   /** The instance's name, shown in the page title; empty for the product name alone. */
   instanceName: string;
+  /**
+   * The instance a frontend kit was built for (M1-111, ADR-070): its id and public key, from
+   * the connection manifest. When set, the app checks the backend's signed meta answer against
+   * them before anyone signs in; empty on a frontend the backend serves itself.
+   */
+  instanceId: string;
+  instanceKey: string;
 }
 
 export const DEFAULT_RUNTIME_CONFIG: Readonly<RuntimeConfig> = Object.freeze({
@@ -29,6 +36,8 @@ export const DEFAULT_RUNTIME_CONFIG: Readonly<RuntimeConfig> = Object.freeze({
   routing: 'hash',
   basePath: '/',
   instanceName: '',
+  instanceId: '',
+  instanceKey: '',
 });
 
 export const RUNTIME_CONFIG_KEYS = Object.keys(DEFAULT_RUNTIME_CONFIG) as (keyof RuntimeConfig)[];
@@ -40,6 +49,9 @@ export const CONFIG_ELEMENT_ID = 'taskmoor-config';
 export const INSTANCE_NAME_MAX = 100;
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const INSTANCE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/** An Ed25519 public key as SPKI DER (44 bytes), base64url. */
+const INSTANCE_KEY = /^MCowBQYDK2VwAyEA[A-Za-z0-9_-]{43}$/;
 /** Path characters that need no escaping in an attribute or a URL: no quotes, angle brackets or spaces. */
 const BASE_PATH = /^\/(?:[A-Za-z0-9._~!$&'()*+,;=:@%-]+\/)*$/;
 
@@ -116,9 +128,29 @@ export function parseRuntimeConfig(raw: unknown): { config: RuntimeConfig; probl
           problems.push(`instanceName must be text of at most ${INSTANCE_NAME_MAX} characters`);
         }
         break;
+      case 'instanceId':
+        if (typeof value === 'string' && (value === '' || INSTANCE_ID.test(value))) {
+          config.instanceId = value;
+        } else {
+          problems.push('instanceId must be the instance id of the connection manifest');
+        }
+        break;
+      case 'instanceKey':
+        if (typeof value === 'string' && (value === '' || INSTANCE_KEY.test(value))) {
+          config.instanceKey = value;
+        } else {
+          problems.push('instanceKey must be the public key of the connection manifest');
+        }
+        break;
       default:
         problems.push(`unknown setting ${JSON.stringify(key)}`);
     }
+  }
+  // A pin is an id and its key together; half of one pins nothing and is dropped.
+  if ((config.instanceId === '') !== (config.instanceKey === '')) {
+    problems.push('instanceId and instanceKey go together');
+    config.instanceId = '';
+    config.instanceKey = '';
   }
   return { config, problems };
 }

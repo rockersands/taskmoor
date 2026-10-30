@@ -3,10 +3,20 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  buildKits,
+  frontendKit,
+  generateSecrets,
+  kitText,
+  secretValues,
+  systemRandom,
+  validateInputs,
+} from '@taskmoor/builder-core';
 import { buildApp } from '@taskmoor/server';
 import { DEFAULT_RUNTIME_CONFIG, parseManifest, readRuntimeConfig } from '@taskmoor/webconfig';
 import { build, type Plugin } from 'vite';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { scanText } from '../../../packages/devtools/src/secrets';
 import {
   scanArtefact,
   serverCode,
@@ -54,6 +64,43 @@ describe('the frontend build', () => {
     vi.unstubAllEnvs();
   });
   afterAll(() => rmSync(outDir, { recursive: true, force: true }));
+
+  it('[OPS-013] makes frontend kits from the build with no secret in them', async () => {
+    const files = (dir: string, prefix = ''): Record<string, Uint8Array> =>
+      Object.fromEntries(
+        readdirSync(join(dir, prefix), { withFileTypes: true }).flatMap((e) =>
+          e.isDirectory()
+            ? Object.entries(files(dir, `${prefix}${e.name}/`))
+            : [[`${prefix}${e.name}`, new Uint8Array(readFileSync(join(dir, prefix, e.name)))]],
+        ),
+      );
+    const web = files(outDir);
+    const form = validateInputs({
+      backendUrl: 'https://api.example.com',
+      frontendUrl: 'https://tracker.example.com/',
+    });
+    if (!form.ok) throw new Error('inputs');
+    const secrets = await generateSecrets(systemRandom);
+    const kits = await buildKits(
+      form.inputs,
+      secrets,
+      { smtpPassword: 'smtp secret value' },
+      {
+        backendVersion: VERSION,
+        kitVersion: VERSION,
+      },
+    );
+    for (const singleFile of [false, true]) {
+      const kit = await frontendKit(kits, web, { singleFile });
+      for (const [path, file] of Object.entries(kit)) {
+        const text = kitText(file);
+        expect(scanText(path, text), path).toEqual([]);
+        for (const s of [...secretValues(secrets), 'smtp secret value'])
+          expect(text).not.toContain(s);
+      }
+      expect(kitText(kit['index.html'])).toContain(secrets.instanceId);
+    }
+  });
 
   it('[OPS-013] is a versioned artefact whose manifest lists every file it ships', () => {
     const manifest = parseManifest(JSON.parse(readFileSync(join(outDir, 'version.json'), 'utf8')));

@@ -7,7 +7,7 @@ const backend: MetaClient = {
   meta: async () => ({
     version: '1.4.2',
     frontend: { minimum: '1.3.0', recommended: '1.4.0' },
-    instance: { id: 'i-1', name: 'Acme' },
+    instance: { id: 'i-1', name: 'Acme', publicKey: '' },
   }),
 };
 
@@ -46,6 +46,20 @@ export const UpdateRequired: Story = {
     const canvas = within(canvasElement);
     await expect(
       await canvas.findByRole('heading', { level: 1, name: 'Update required' }),
+    ).toBeVisible();
+  },
+};
+
+/** A frontend kit pinned to another instance than the backend that answers. */
+export const WrongInstance: Story = {
+  args: {
+    version: '1.4.0',
+    pin: { id: 'another-instance', publicKey: `MCowBQYDK2VwAyEA${'A'.repeat(43)}` },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('heading', { level: 1, name: 'This app belongs to another server' }),
     ).toBeVisible();
   },
 };

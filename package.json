@@ -22,6 +22,7 @@
     "next-task": "tsx packages/devtools/src/cli/next-task.ts",
     "trace": "tsx packages/devtools/src/cli/trace.ts",
     "i18n:check": "tsx packages/devtools/src/cli/i18n-check.ts",
+    "builder": "tsx packages/devtools/src/cli/builder.ts",
     "dco": "tsx packages/devtools/src/cli/dco.ts",
     "gen": "tsx packages/testkit/src/cli/gen.ts",
     "gen:dc-backup": "tsx apps/server/src/import/dc-backup/cli.ts",

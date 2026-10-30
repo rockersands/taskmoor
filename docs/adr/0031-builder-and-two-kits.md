@@ -97,3 +97,38 @@ module, so the web Builder and the CLI share every byte of it.
   from a restore, is kept. `meta.builder.test.ts` installs from a generated kit, and the meta
   endpoint's answer passes the frontend's `verifyInstance` with the kit's pinned identity.
 
+## Implementation (M1-111: the frontend kit)
+
+- **Pinning.** The runtime config of ADR-066 gained `instanceId` and `instanceKey`, which go
+  together or not at all.
+  - `buildKits` writes the manifest's id and public key into the frontend config, and
+    `checkKits` requires them to match.
+  - In the app, `VersionGate` asks `/api/meta` to sign a fresh nonce and checks the answer
+    with `verifyInstance`. A backend that is not the pinned instance gets "This app belongs to
+    another server" in place of the app, so nobody signs in to the wrong server (API-017 (2)).
+  - Unreachable backends are not blocked: the page's own requests show the failure.
+  - A frontend the backend serves itself has no pin.
+- **Assembly** (`builder-core/src/frontend.ts`, browser-safe):
+  - `assembleFrontendKit` fills the slot and adds `integrity="sha384-…"` to every script and
+    stylesheet.
+  - For clean URLs it adds `.htaccess`, `_redirects` and `nginx.conf` below the base path.
+  - The single-file form inlines the scripts and stylesheet into index.html (`</script>` and
+    `</style>` escaped) and uses hash routing, since one file cannot answer deep links. It
+    gives up a strict Content-Security-Policy, which the zip form keeps.
+  - `frontendKit` does the same from a Builder run's kits and ships the manifest beside it.
+- **CLI** (`pnpm builder --project <file>`, `packages/devtools/src/builder.ts`): writes the
+  backend kit's core and the frontend kit as a zip and as one file. With `--seed`, the bytes
+  match any other run of the same project file and build. A passphrase comes from an
+  environment variable named on the command line, never from the command line itself. The
+  web Builder page that shares this core is still to come.
+- **Checks:**
+  - The web-build test project assembles both forms from a real build and runs the
+    repository's secret scanner over every file.
+  - `e2e/kit-server.ts` serves three kits from this run's build as a plain static host
+    would, with `/api` and WebSockets passed to the backend. `kits.spec.ts` checks:
+    - the zip kit: a deep link and its reload, with integrity on the assets;
+    - the single file: nothing fetched from its host but the page;
+    - a kit pinned to another instance: refused.
+  - Uploads to real Apache, S3 with a CDN, Netlify and Cloudflare Pages hosts (OPS-013 (1))
+    have not been tried from here.
+

@@ -193,6 +193,8 @@ describe('the kits (M1-109)', () => {
       basePath: '/',
       instanceName: 'Acme tracker',
       routing: 'hash',
+      instanceId: secrets.instanceId,
+      instanceKey: secrets.instanceKey.publicKey,
     });
     // On the backend's own origin, the frontend calls its own origin.
     const same = await buildKits(

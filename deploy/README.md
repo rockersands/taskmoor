@@ -31,6 +31,12 @@ in front of Taskmoor cannot pass deep links through. Either way links of the oth
 open, so switching breaks no bookmark or email. Behind a reverse proxy that serves
 Taskmoor under a path, put that path in `PUBLIC_URL` (`https://example.com/tracker`).
 
+A frontend kit made by the Builder (`pnpm builder --project <file>`, ADR-031) is that folder
+ready for a static host: index.html carries the configuration, pinned to its instance, with
+integrity hashes on every script and stylesheet. For clean URLs it brings `.htaccess` (Apache),
+`_redirects` (Netlify, Cloudflare Pages) and an `nginx.conf` snippet. The single-file form is
+one index.html with everything inside, for hosts that take one file; it uses hash routing.
+
 The same folder runs on any static host (ADR-066). Its index.html carries the public runtime
 configuration in a JSON block you fill without rebuilding; only these keys are accepted:
 

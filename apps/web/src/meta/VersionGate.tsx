@@ -1,6 +1,7 @@
-import { frontendSkew, type Skew } from '@taskmoor/webconfig';
+import { frontendSkew, type PinnedInstance, type Skew, verifyInstance } from '@taskmoor/webconfig';
 import { createContext, type ReactNode, useContext, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { runtimeConfig } from '../runtime/config';
 import { WEB_VERSION } from '../runtime/version';
 import { httpMetaClient, type MetaClient } from './client';
 
@@ -10,6 +11,10 @@ import { httpMetaClient, type MetaClient } from './client';
  * upgraded under an open tab. One release behind, it keeps working and the shell shows a
  * notice (`UpdateBanner`); older than the backend serves, it shows an "update required" page
  * instead of failing request by request. When the backend cannot be asked, nothing is said.
+ *
+ * A frontend kit is pinned to its instance (M1-111; API-017 (2)): the app asks the backend to
+ * sign a fresh nonce and checks the answer against the pinned id and key. Another backend gets
+ * a page saying so instead of the app, so nobody signs in to the wrong server.
  */
 const RECHECK_MS = 30 * 60 * 1000;
 
@@ -32,38 +37,61 @@ const VersionContext = createContext<VersionState>({
 
 export const useVersionSkew = () => useContext(VersionContext);
 
+const configuredPin: PinnedInstance | null = runtimeConfig.instanceId
+  ? { id: runtimeConfig.instanceId, publicKey: runtimeConfig.instanceKey }
+  : null;
+
+/** A nonce of 24 base64url characters. */
+function freshNonce(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(18));
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
 export function VersionGate({
   client = httpMetaClient,
   version = WEB_VERSION,
+  pin = configuredPin,
   children,
 }: {
   client?: MetaClient;
   version?: string;
+  /** The instance this frontend was built for; null when the backend serves it itself. */
+  pin?: PinnedInstance | null;
   children: ReactNode;
 }) {
   const [found, setFound] = useState<{ skew: Skew; server: string }>({
     skew: 'unknown',
     server: '',
   });
+  const [wrongInstance, setWrongInstance] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     let live = true;
-    const check = () =>
-      client.meta().then(
-        (meta) => {
-          if (live) setFound({ skew: frontendSkew(version, meta.frontend), server: meta.version });
-        },
-        () => {},
-      );
+    const check = async () => {
+      const nonce = pin ? freshNonce() : undefined;
+      try {
+        const meta = await client.meta(nonce);
+        if (pin && nonce && !(await verifyInstance(pin, meta, nonce))) {
+          if (live) setWrongInstance(true);
+          return;
+        }
+        if (live) setFound({ skew: frontendSkew(version, meta.frontend), server: meta.version });
+      } catch {
+        // Unreachable or not a meta answer: the page's own requests show any real failure.
+      }
+    };
     void check();
     const timer = window.setInterval(check, RECHECK_MS);
     return () => {
       live = false;
       window.clearInterval(timer);
     };
-  }, [client, version]);
+  }, [client, version, pin]);
 
+  if (wrongInstance) return <WrongInstance />;
   if (found.skew === 'update-required') {
     return <UpdateRequired version={version} server={found.server} />;
   }
@@ -77,6 +105,17 @@ export function VersionGate({
 }
 
 const reload = () => window.location.reload();
+
+function WrongInstance() {
+  const t = useT();
+  return (
+    <main id="main" className="update-required" tabIndex={-1}>
+      <h1>{t('instance.wrongTitle')}</h1>
+      <p>{t('instance.wrong')}</p>
+      <p className="page-note">{t('instance.wrongAdmin')}</p>
+    </main>
+  );
+}
 
 function UpdateRequired({ version, server }: { version: string; server: string }) {
   const t = useT();

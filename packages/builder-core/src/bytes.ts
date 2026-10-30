@@ -51,3 +51,11 @@ function sortKeys(value: unknown): unknown {
       .map((k) => [k, sortKeys((value as Record<string, unknown>)[k])]),
   );
 }
+
+/** A Subresource Integrity value: `sha384-` and the base64 digest of the bytes. */
+export async function sha384Integrity(data: Uint8Array): Promise<string> {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-384', new Uint8Array(data)));
+  let binary = '';
+  for (const b of digest) binary += String.fromCharCode(b);
+  return `sha384-${btoa(binary)}`;
+}

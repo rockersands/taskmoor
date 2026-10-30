@@ -1,4 +1,5 @@
 export * from './bytes';
+export * from './frontend';
 export * from './inputs';
 export * from './kits';
 export * from './manifest';

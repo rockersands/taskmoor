@@ -26,6 +26,11 @@ const BUILT = `<!doctype html>
 </html>
 `;
 
+const PIN = {
+  instanceId: '00000000-0000-4000-8000-000000000001',
+  instanceKey: `MCowBQYDK2VwAyEA${'A'.repeat(43)}`,
+};
+
 describe('runtime configuration', () => {
   it('[OPS-013] reads defaults from an empty slot and from a page that was never filled', () => {
     expect(parseSlotText('')).toEqual({ config: DEFAULT_RUNTIME_CONFIG, problems: [] });
@@ -79,7 +84,12 @@ describe('runtime configuration', () => {
       instanceName: 'Acme',
     });
     expect(readRuntimeConfig(html)).toEqual({
-      config: { apiUrl: '', routing: 'path', basePath: '/tracker/', instanceName: 'Acme' },
+      config: {
+        ...DEFAULT_RUNTIME_CONFIG,
+        routing: 'path',
+        basePath: '/tracker/',
+        instanceName: 'Acme',
+      },
       problems: [],
     });
     const base = html.indexOf('<base href="/tracker/" />');
@@ -102,22 +112,50 @@ describe('runtime configuration', () => {
     expect(fill({}, '<!doctype html><title>x</title>')).toThrow(/no configuration slot/);
   });
 
+  it('[API-017] pins an instance by its id and key together, or not at all', () => {
+    expect(parseRuntimeConfig(PIN)).toEqual({
+      config: { ...DEFAULT_RUNTIME_CONFIG, ...PIN },
+      problems: [],
+    });
+    const half = parseRuntimeConfig({ instanceId: PIN.instanceId });
+    expect(half.config.instanceId).toBe('');
+    expect(half.problems).toEqual(['instanceId and instanceKey go together']);
+    expect(parseRuntimeConfig({ ...PIN, instanceKey: 'not-a-key' }).problems).toContain(
+      'instanceKey must be the public key of the connection manifest',
+    );
+    expect(parseRuntimeConfig({ ...PIN, instanceId: 'ACME' }).problems).toContain(
+      'instanceId must be the instance id of the connection manifest',
+    );
+  });
+
   it('[OPS-013] round-trips any valid configuration and never lets a value close the slot', () => {
     const config = fc.record({
       apiUrl: fc.constantFrom('', 'https://api.example.com', 'http://localhost:8080'),
       routing: fc.constantFrom('hash' as const, 'path' as const),
       basePath: fc.constantFrom('/', '/tracker/', '/a/b/'),
       instanceName: fc.string({ maxLength: 100 }).map((s) => s.trim()),
+      instanceId: fc.constant(''),
+      instanceKey: fc.constant(''),
     });
+    const pins = fc.constantFrom({ instanceId: '', instanceKey: '' }, PIN);
     fc.assert(
-      fc.property(config, fc.constantFrom('</script>', '<!--', '</SCRIPT >', ''), (c, evil) => {
-        const value = { ...c, instanceName: `${evil}${c.instanceName}`.slice(0, 100).trim() };
-        const html = fillRuntimeConfig(BUILT, value);
-        expect(readRuntimeConfig(html)).toEqual({ config: value, problems: [] });
-        // The page keeps exactly its own script elements.
-        expect(html.match(/<\/script>/gi)).toHaveLength(3);
-        expect(html.match(/<base /g) ?? []).toHaveLength(value.routing === 'path' ? 1 : 0);
-      }),
+      fc.property(
+        config,
+        pins,
+        fc.constantFrom('</script>', '<!--', '</SCRIPT >', ''),
+        (c, pin, evil) => {
+          const value = {
+            ...c,
+            ...pin,
+            instanceName: `${evil}${c.instanceName}`.slice(0, 100).trim(),
+          };
+          const html = fillRuntimeConfig(BUILT, value);
+          expect(readRuntimeConfig(html)).toEqual({ config: value, problems: [] });
+          // The page keeps exactly its own script elements.
+          expect(html.match(/<\/script>/gi)).toHaveLength(3);
+          expect(html.match(/<base /g) ?? []).toHaveLength(value.routing === 'path' ? 1 : 0);
+        },
+      ),
     );
   });
 });

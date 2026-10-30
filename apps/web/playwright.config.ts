@@ -71,5 +71,14 @@ export default defineConfig({
       timeout: 120_000,
       env: { VITE_API_PROXY: `http://127.0.0.1:${api}` },
     })),
+    // Frontend kits (M1-111) made from that build and served as a static host would, with /api
+    // passed to the attachments backend: the zip kit (4178), the single file (4179) and a kit
+    // pinned to another instance (4180).
+    {
+      command: `${tsx} e2e/kit-server.ts`,
+      url: 'http://127.0.0.1:4178/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
   ],
 });

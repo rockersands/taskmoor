@@ -9,6 +9,11 @@ export const messagesEn = {
   'update.available':
     'This app is version {version} and the server runs {server}. Reload the page to update it.',
   'update.reload': 'Reload',
+  'instance.wrongTitle': 'This app belongs to another server',
+  'instance.wrong':
+    'It was made for another Taskmoor server and does not sign in here, so that nothing you type goes to a server you did not mean.',
+  'instance.wrongAdmin':
+    'Ask your administrator for the app of this server, or for the right address of this app.',
   'update.later': 'Not now',
   'update.requiredTitle': 'Update required',
   'update.required':
