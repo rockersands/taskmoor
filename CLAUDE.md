@@ -52,6 +52,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
 | `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `upgrade [--dry-run]`, `migrate`, `status`, `backup`, `restore`, `checksum`, `drill`, `purge-trash`, `field-values [--repair]`, `password-link <email>`, `audit-verify`, `report-verify`); in the image: `docker compose exec taskmoor node cli.mjs check-upgrade` |
 | `pnpm builder --project <file>` | The Builder CLI (ADR-031): backend kit, frontend kit zip and single file from a project file (or `--backend-url` and `--frontend-url`); `--seed` for byte-identical rebuilds |
+| `pnpm run docs [--out <dir>]` | Checks the manual in `docs/manual` and builds its offline HTML bundle into `dist/docs`; lists external links without fetching them (ADR-074). Bare `pnpm docs` is pnpm's own command |
 | `pnpm i18n:check` | Hard-coded user-facing strings in the web app's components (must be none) |
 | `bash tools/image/smoke-backend-kit.sh` | Makes a backend kit for https://localhost:18443 and installs it against the local image: health through Caddy, the setup link, the kit's instance at `/api/meta` |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
@@ -95,6 +96,7 @@ on another disk (for example while a benchmark saturates this one).
 | `docs/specs` | Requirements spec with stable IDs (`requirements-index.csv`) |
 | `docs/adr` | Architecture decision records |
 | `docs/research` | Research report behind the plan |
+| `docs/manual` | The manual for administrators and users: pages with provenance front matter, ordered by `nav.json` |
 
 ## Conventions
 
@@ -122,6 +124,8 @@ on another disk (for example while a benchmark saturates this one).
   against the English IDs: a missing one fails the typecheck). The `en-XA` pseudo-locale test
   and `pnpm i18n:check` fail on strings that bypass the catalogue.
 - Secrets never enter the repo or the frontend bundle.
+- The manual (`docs/manual`) describes the product as built: a change people or administrators
+  can see updates its page in the same task, in our own words and with its `sources` current.
 
 ## Clean room (ADR-003)
 

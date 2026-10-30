@@ -27,6 +27,8 @@ corepack pnpm --filter @taskmoor/web exec playwright install chromium
 
 ## Documentation
 
+- [Manual for administrators and users](docs/manual/index.md); `pnpm run docs` builds it into an
+  offline bundle in `dist/docs`
 - [Build plan](docs/plan/build-plan.md), with the [backlog](docs/plan/backlog.csv) and
   [milestones](docs/plan/milestones.csv)
 - [Requirements spec](docs/specs/)

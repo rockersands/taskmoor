@@ -193,7 +193,9 @@ describe('the server-code guard', () => {
     for (const name of ['fastify', 'kysely', 'pg', 'nodemailer', '@fastify/static', 'ldapts']) {
       expect(code.packages).toContain(name);
     }
-    for (const name of ['react', 'react-dom', 'yjs', '@tiptap/core', '@taskmoor/db']) {
+    // micromark: a direct dependency of devtools (the docs build), and browser code too, which
+    // the app reaches through @taskmoor/richtext and mdast-util-from-markdown.
+    for (const name of ['react', 'react-dom', 'yjs', '@tiptap/core', '@taskmoor/db', 'micromark']) {
       expect(code.packages).not.toContain(name);
     }
     expect(code.dirs.some((d) => d.endsWith('/apps/server/'))).toBe(true);

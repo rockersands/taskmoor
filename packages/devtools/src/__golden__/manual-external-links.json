@@ -1,0 +1,32 @@
+[
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf"
+  },
+  {
+    "pages": [
+      "admin/mcp.md"
+    ],
+    "url": "https://modelcontextprotocol.io"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://openid.net/specs/openid-connect-core-1_0.html"
+  },
+  {
+    "pages": [
+      "admin/scim.md"
+    ],
+    "url": "https://www.rfc-editor.org/rfc/rfc7643"
+  },
+  {
+    "pages": [
+      "admin/scim.md"
+    ],
+    "url": "https://www.rfc-editor.org/rfc/rfc7644"
+  }
+]
