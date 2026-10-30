@@ -1129,28 +1129,14 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 'address', '192.0.2.10', '2026-10-30T12:00:00Z', 3, 1)`.execute(db);
     },
   },
-  '0062_allowlists_syslog': {
+  '0060_teams': {
     tables: {
-      ip_allowlist: "enabled AND exempt_group_ids = '{}'",
-      ip_allowlist_entry: "range = '2001:db8::/32'::inet AND note = 'Office'",
-      audit_syslog: "transport = 'tls' AND last_seq = 0",
-      organization_domain: "domain = 'example.com'",
-    },
-    seed: async (db) => {
-      // An office range in IPv6 and a syslog receiver not yet sent to.
-      await sql`INSERT INTO ip_allowlist (workspace_id, enabled) VALUES (1, true)`.execute(db);
-      await sql`INSERT INTO ip_allowlist_entry (workspace_id, range, note)
-        VALUES (1, '2001:db8::/32', 'Office')`.execute(db);
-      await sql`INSERT INTO audit_syslog (workspace_id, host, port, transport)
-        VALUES (1, 'siem.example.com', 6514, 'tls')`.execute(db);
-      await sql`INSERT INTO organization_domain (workspace_id, domain)
-        VALUES (1, 'example.com')`.execute(db);
-  '0060_teams': 
       team: "name = 'Seed team' AND lead_id IS NOT NULL",
       team_member: "team_id IN (SELECT id FROM team WHERE name = 'Seed team')",
       board: "name = 'Seed board' AND team_id IS NOT NULL",
       area: "name = 'Seed area' AND owner_team_id IS NOT NULL",
-      field: "name = 'Seed team field' AND type = 'team'",,
+      field: "name = 'Seed team field' AND type = 'team'",
+    },
     seed: async (db) => {
       // A team led by the seed person, who is its member; it has the seed board, owns the
       // seed area, and a Team field exists.
@@ -1167,10 +1153,14 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       await sql`INSERT INTO field (workspace_id, name, type) VALUES (1, 'Seed team field', 'team')`.execute(
         db,
       );
-  '0061_clone': 
+    },
+  },
+  '0061_clone': {
+    tables: {
       bulk_operation: "action = 'clone' AND total = 1 AND params->>'descendants' = 'true'",
-      bulk_item: "ref = 'SEED-57' AND result_ticket_id IS NOT NULL AND result->>'key' = 'SEED-58'",,
-    seed: async (db) => 
+      bulk_item: "ref = 'SEED-57' AND result_ticket_id IS NOT NULL AND result->>'key' = 'SEED-58'",
+    },
+    seed: async (db) => {
       // A finished deep clone of the seed search ticket, which made SEED-58.
       await sql`INSERT INTO bulk_operation (workspace_id, user_id, action, params, status, total,
           succeeded, started_at, finished_at)
@@ -1183,9 +1173,31 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           '{"key": "SEED-58", "attachments": 0, "links": 1, "webLinks": 0, "left": []}'::jsonb
           FROM bulk_operation o, ticket k
          WHERE o.action = 'clone' AND k.summary = 'Seed search'`.execute(db);
-  '0063_board_workflow': 
-      board: "name = 'Seed managed board' AND manages_workflow",,
-    seed: async (db) => 
+    },
+  },
+  '0062_allowlists_syslog': {
+    tables: {
+      ip_allowlist: "enabled AND exempt_group_ids = '{}'",
+      ip_allowlist_entry: "range = '2001:db8::/32'::inet AND note = 'Office'",
+      audit_syslog: "transport = 'tls' AND last_seq = 0",
+      organization_domain: "domain = 'example.com'",
+    },
+    seed: async (db) => {
+      // An office range in IPv6 and a syslog receiver not yet sent to.
+      await sql`INSERT INTO ip_allowlist (workspace_id, enabled) VALUES (1, true)`.execute(db);
+      await sql`INSERT INTO ip_allowlist_entry (workspace_id, range, note)
+        VALUES (1, '2001:db8::/32', 'Office')`.execute(db);
+      await sql`INSERT INTO audit_syslog (workspace_id, host, port, transport)
+        VALUES (1, 'siem.example.com', 6514, 'tls')`.execute(db);
+      await sql`INSERT INTO organization_domain (workspace_id, domain)
+        VALUES (1, 'example.com')`.execute(db);
+    },
+  },
+  '0063_board_workflow': {
+    tables: {
+      board: "name = 'Seed managed board' AND manages_workflow",
+    },
+    seed: async (db) => {
       // A board that manages its track's workflow.
       await sql`INSERT INTO board (workspace_id, name, kind, location_track_id, filter_query,
           columns, swimlanes, card_rules, manages_workflow)
@@ -1194,7 +1206,10 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
                '{"mode": "none", "lanes": [], "unassigned": "last", "otherName": "Everything else"}'::jsonb,
                '{"colourBy": "type", "colours": [], "fields": [], "daysInColumn": true}'::jsonb,
                true
-          FROM track t WHERE t.key = 'SEED'`.execute(db);,,;
+          FROM track t WHERE t.key = 'SEED'`.execute(db);
+    },
+  },
+};
 
 /**
  * How many of the rows the named seeds wrote are still there: one per seed and table when

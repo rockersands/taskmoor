@@ -2,13 +2,16 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: 2026-10-30, overnight and morning (Mac, main session)
+## Start here: 2026-10-30, overnight and day (Mac, main session)
 
 Everything below is on `main` and passed `pnpm verify --e2e` before each push. In order:
 M1-115 accessibility, M1-105 static frontend, M1-106 meta endpoint, M1-116 i18n and Spanish,
 M1-087 synthetic backups, M1-109, M1-111 and M1-110 (the Builder core and both kits), M1-134
 clean URLs, M1-132 cross-browser e2e, M1-130 async bulk API, M1-040 full-text search, M1-127
-workflow files, M1-114 the manual, M1-125 info fields. Each has its own section below.
+workflow files, M1-114 the manual, M1-125 info fields, M1-066 rate limits, eight fixes for
+gaps the manual found, then together M1-085 (IP allowlists, the audit log page, syslog,
+external people), M1-123 teams, M1-124 clone and M1-126 board-managed workflows. Each has its
+own section below. Migrations now run to 0063 and ADRs to 079.
 
 **Decisions waiting for the user**
 - M1-040: rank only the 10,000 most recently updated matches for `ORDER BY relevance` at 10M
@@ -35,8 +38,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Numbering in flight**: migration 0059 and ADR-075 are M1-066 (rate limits); 0060 and ADR-076
-are reserved for M1-123 (teams), 0061 and ADR-077 for M1-124 (clone).
+**Next free numbers**: migration 0064, ADR-080.
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
