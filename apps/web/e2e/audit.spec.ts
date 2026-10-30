@@ -17,14 +17,13 @@ test('[IAM-013] finds a refused sign-in on the audit page and downloads it', asy
   const marker = `audit-${testInfo.project.name}-${testInfo.workerIndex}-${Date.now()}@nobody.test`;
   const stranger = await playwright.request.newContext({ baseURL: BASE });
   expect(
-    (await stranger.post('/api/v1/session', { data: { email: marker, password: 'wrong-pass' } }))
-      .status(),
+    (
+      await stranger.post('/api/v1/session', { data: { email: marker, password: 'wrong-pass' } })
+    ).status(),
   ).toBe(401);
   await stranger.dispose();
 
-  expect(
-    (await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN })).status(),
-  ).toBe(200);
+  expect((await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN })).status()).toBe(200);
   await page.goto(`${BASE}/#/admin/audit`);
   await expect(page.getByRole('heading', { level: 1, name: 'Audit log' })).toBeVisible();
   await page.getByLabel('Action').fill('session.sign_in_failed');

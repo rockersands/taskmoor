@@ -20,6 +20,10 @@ describe('query compiler against the side schema', () => {
 
   beforeAll(async () => {
     pool = new pg.Pool({ connectionString: database.url, max: 3 });
+    // The file's database is dropped with its connections at the end; a client still open or
+    // closing then hears "terminating connection", which is no failure of this test.
+    pool.on('error', () => {});
+    pool.on('connect', (client) => client.on('error', () => {}));
     await loadDataset(pool, createDataset(scaleConfig(4_000, { seed: 21, fields: 80 })));
     await buildCandidate(pool, candidates.side);
     ctx = await datasetContext(pool);

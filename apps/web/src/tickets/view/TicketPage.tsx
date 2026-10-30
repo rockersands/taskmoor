@@ -12,8 +12,8 @@ import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { useSyncEngine } from '../../sync/SyncProvider';
-import type { CloneClient } from '../clone/client';
 import { CloneDialog } from '../clone/CloneDialog';
+import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {

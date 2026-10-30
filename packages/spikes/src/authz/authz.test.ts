@@ -53,6 +53,10 @@ describe('in-process evaluator', () => {
 
   beforeAll(async () => {
     pool = new pg.Pool({ connectionString: database.url, max: 3 });
+    // The file's database is dropped with its connections at the end; a client still open or
+    // closing then hears "terminating connection", which is no failure of this test.
+    pool.on('error', () => {});
+    pool.on('connect', (client) => client.on('error', () => {}));
     await loadAuthz(pool, model);
   });
   afterAll(async () => {
