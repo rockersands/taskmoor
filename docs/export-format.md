@@ -28,7 +28,8 @@ The import runs in the background through the importer framework (ADR-048): a dr
 you like, progress at `GET /api/v1/admin/imports/<id>`, the fidelity report at
 `.../report` (JSON or HTML), every record's problems at `.../problems`. It can be interrupted and
 resumes where it stopped; importing the same export again changes nothing, and importing a later
-export of the same workspace updates what changed.
+export of the same workspace updates the records that changed and adds the new ones (history
+entries are only ever added, and a workflow the import created keeps the version it published).
 
 Objects the target already has are matched rather than created: people by email; groups, roles,
 statuses, priorities, close reasons, ticket types, link types and workflows by name; the default
