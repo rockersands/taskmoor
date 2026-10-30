@@ -103,6 +103,17 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-047 backlog planning** (ADR-054 "Planning on the backlog"; no migration):
+  `routes/backlog-planning.ts` serves the panels (`GET /boards/:id/backlog/panels`) and three
+  batches (`POST /boards/:id/backlog/rank`, `/parent`, `/release`) that run the ticket routes
+  as the person, one ticket at a time, through `callRoute` (registered in `routes/boards.ts`
+  with `sprintRoutes.board`). The backlog route adds `parentId`, `releaseIds` and the board's
+  `track`. Web: `sprints/BacklogPage.tsx` (selection, drag to a section place or a panel item,
+  the selection's menus, Alt+arrows, filter, inline create) and `sprints/PlanningPanels.tsx`.
+  Tests: `routes/backlog-planning.test.ts`, `BacklogPage.test.tsx`, stories, e2e
+  `backlog-planning.spec.ts` (desktop drags; mobile menus and keyboard); 10k ranking stability
+  in `routes/backlog-planning.large.test.ts` (`TASKMOOR_LARGE_BACKLOG=1`; longest key 14,
+  block move p95 74 ms).
 - **M1-046 board drag and drop** (ADR-049 "Drag and drop"): `boards/BoardPage.tsx` cards are
   draggable, cells take drops (place by the pointer's half of a card), one move request with
   `before`/`after`; cards grouped by cell once per render. `FiveThousandCards` story times the

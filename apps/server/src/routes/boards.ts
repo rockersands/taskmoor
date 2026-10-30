@@ -39,6 +39,7 @@ import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
+import { registerBacklogPlanningRoutes } from './backlog-planning';
 import { registerBoardReportRoutes } from './board-reports';
 import { registerScopeReportRoutes } from './scope-reports';
 import { searchRefusal } from './search';
@@ -1006,6 +1007,23 @@ export function registerBoardRoutes(
     },
   };
   registerSprintRoutes(app, db, sprintRoutes);
+  // Planning on the backlog (M1-047): ranks, parents and releases through the ticket routes.
+  const updateTicket = handler('PATCH', '/api/v1/tickets/:id');
+  registerBacklogPlanningRoutes(app, db, {
+    catalogs,
+    timeoutMs,
+    board: sprintRoutes.board,
+    ticket: (request, route, ticketId, body) =>
+      callRoute(route === 'rank' ? rankTicket : updateTicket, {
+        workspaceId: request.workspaceId,
+        user: request.user,
+        authz: request.authz,
+        apiToken: request.apiToken,
+        params: { id: String(ticketId) },
+        query: {},
+        body,
+      }),
+  });
   // Release and outcome reports of Scrum boards (M1-062).
   registerScopeReportRoutes(app, db, sprintRoutes);
 }

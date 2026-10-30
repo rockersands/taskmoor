@@ -45,6 +45,10 @@ export interface BacklogTicket {
   done: boolean;
   estimate: number | null;
   remainingEstimate: number | null;
+  /** The ticket's parent, such as an outcome (M1-047). */
+  parentId: number | null;
+  /** The releases the ticket targets (M1-047). */
+  releaseIds: number[];
 }
 
 export interface Totals {
@@ -65,6 +69,42 @@ export interface Backlog {
   sprints: SprintSection[];
   backlog: { tickets: BacklogTicket[]; totals: Totals };
   truncated: boolean;
+  /** The board's track, where tickets made inline go; null for a board in a person's space. */
+  track: { id: number; key: string } | null;
+}
+
+/** An open outcome of the board's tracks, with how many of its tickets the viewer sees. */
+export interface OutcomeItem {
+  id: number;
+  key: string;
+  summary: string;
+  status: string;
+  tickets: number;
+  closed: number;
+}
+
+/** An unshipped release of the board's tracks. */
+export interface ReleaseItem {
+  id: number;
+  name: string;
+  trackId: number;
+  releaseDate: string | null;
+  tickets: number;
+}
+
+/** `GET /api/v1/boards/:id/backlog/panels` (M1-047). */
+export interface BacklogPanels {
+  outcomes: OutcomeItem[];
+  releases: ReleaseItem[];
+}
+
+/** Where a block of tickets goes in the rank: before or after a ticket, or at an end. */
+export type RankPlace = { before: number } | { after: number } | { position: 'top' | 'bottom' };
+
+/** A planning change to selected tickets: how many went through and how many were refused. */
+export interface Planned {
+  done: number;
+  refused: number;
 }
 
 export interface ReportTicket {
@@ -146,7 +186,27 @@ export interface SprintClient {
   report(sprintId: number): Promise<SprintReport>;
   burndown(sprintId: number): Promise<SprintBurndown>;
   velocity(boardId: number): Promise<Velocity>;
+  /** The outcome and release panels (M1-047). */
+  panels(boardId: number): Promise<BacklogPanels>;
+  /** Ranks selected tickets together, in the order given (M1-047). */
+  rank(boardId: number, ticketIds: number[], place: RankPlace): Promise<Planned>;
+  /** Puts selected tickets under a parent, or takes them from theirs (null). */
+  setParent(boardId: number, ticketIds: number[], parent: number | null): Promise<Planned>;
+  /** Adds selected tickets to a release, keeping the releases they target. */
+  addRelease(boardId: number, ticketIds: number[], releaseId: number): Promise<Planned>;
+  /** Makes a ticket in a track from its summary alone. */
+  createTicket(track: string, summary: string): Promise<{ id: number; key: string }>;
 }
+
+interface BatchAnswer {
+  ranked?: number;
+  updated?: number;
+  results: { ok: boolean }[];
+}
+const planned = (answer: BatchAnswer): Planned => ({
+  done: answer.ranked ?? answer.updated ?? 0,
+  refused: answer.results.filter((r) => !r.ok).length,
+});
 
 export const sprintClient: SprintClient = {
   backlog: (boardId) => api<Backlog>(`/boards/${boardId}/backlog`),
@@ -177,6 +237,35 @@ export const sprintClient: SprintClient = {
   report: (sprintId) => api<SprintReport>(`/sprints/${sprintId}/report`),
   burndown: (sprintId) => api<SprintBurndown>(`/sprints/${sprintId}/burndown`),
   velocity: (boardId) => api<Velocity>(`/boards/${boardId}/velocity`),
+  panels: (boardId) => api<BacklogPanels>(`/boards/${boardId}/backlog/panels`),
+  rank: async (boardId, tickets, place) =>
+    planned(
+      await api<BatchAnswer>(`/boards/${boardId}/backlog/rank`, {
+        method: 'POST',
+        body: { tickets, ...place },
+      }),
+    ),
+  setParent: async (boardId, tickets, parent) =>
+    planned(
+      await api<BatchAnswer>(`/boards/${boardId}/backlog/parent`, {
+        method: 'POST',
+        body: { tickets, parent },
+      }),
+    ),
+  addRelease: async (boardId, tickets, releaseId) =>
+    planned(
+      await api<BatchAnswer>(`/boards/${boardId}/backlog/release`, {
+        method: 'POST',
+        body: { tickets, releaseId },
+      }),
+    ),
+  createTicket: async (track, summary) =>
+    (
+      await api<{ ticket: { id: number; key: string } }>('/tickets', {
+        method: 'POST',
+        body: { track, summary },
+      })
+    ).ticket,
 };
 
 /** An estimate as the board's statistic reads: hours for time, the number otherwise. */

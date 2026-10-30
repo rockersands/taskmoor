@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { BacklogPage } from './BacklogPage';
 import { fakeSprintClient } from './fixtures';
 
@@ -39,5 +39,19 @@ export const ReadOnly: Story = {
         backlog: async () => ({ ...(await client.backlog(7)), mayManage: false }),
       };
     })(),
+  },
+};
+
+/** Planning (M1-047): two tickets selected, with the selection's menus and the panels. */
+export const Planning: Story = {
+  args: { client: fakeSprintClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Select CHK-4' }));
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Select CHK-5' }));
+    await expect(await canvas.findByRole('group', { name: 'Selected tickets' })).toBeVisible();
+    await expect(
+      canvas.getByRole('complementary', { name: 'Outcomes and releases' }),
+    ).toBeVisible();
   },
 };

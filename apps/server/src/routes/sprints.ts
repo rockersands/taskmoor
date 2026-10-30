@@ -305,6 +305,8 @@ export function registerSprintRoutes(
       estimate: number | string | null;
       remaining_estimate: number | null;
       sprint_id: number | null;
+      parent_id: number | null;
+      release_ids: number[];
     }
     try {
       const c = await compiled(request, board);
@@ -313,7 +315,10 @@ export function registerSprintRoutes(
           SELECT k.id, t.key || '-' || k.number AS key, k.summary, k.status_id,
                  s.name AS status_name, y.name AS type_name,
                  ${estimateSql(board.settings)} AS estimate, k.remaining_estimate,
-                 st.sprint_id
+                 st.sprint_id, k.parent_id,
+                 ARRAY(SELECT tr.release_id FROM ticket_release tr
+                        WHERE tr.ticket_id = k.id AND tr.role = 'target'
+                        ORDER BY tr.release_id) AS release_ids
             FROM ticket k
             JOIN track t ON t.id = k.track_id
             JOIN status s ON s.id = k.status_id
@@ -338,6 +343,9 @@ export function registerSprintRoutes(
         done: doneSet.has(r.status_id),
         estimate: num(r.estimate),
         remainingEstimate: r.remaining_estimate,
+        // For the outcome and release panels (M1-047).
+        parentId: r.parent_id,
+        releaseIds: r.release_ids,
       });
       const totals = (list: Row[]) => {
         const estimate = list.reduce((sum, r) => sum + (num(r.estimate) ?? 0), 0);
@@ -350,9 +358,19 @@ export function registerSprintRoutes(
           ...(board.settings.timeTracking === 'remainingEstimate' ? { remaining } : {}),
         };
       };
+      const track =
+        board.record.locationTrackId === null
+          ? null
+          : ((await db
+              .selectFrom('track')
+              .select(['id', 'key'])
+              .where('id', '=', board.record.locationTrackId)
+              .executeTakeFirst()) ?? null);
       return {
         settings: board.settings,
         mayManage: board.manage,
+        // Where tickets made on the backlog go (M1-047).
+        track,
         sprints: sprints.map((s) => {
           const list = shown.filter((r) => r.sprint_id === s.id);
           return { ...sprintView(s), tickets: list.map(card), totals: totals(list) };
