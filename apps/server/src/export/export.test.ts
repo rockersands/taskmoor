@@ -601,11 +601,23 @@ describe('the full export (M1-098)', () => {
         kind,
       ).toEqual(fromFolder.map((r) => r.data));
     }
+    // Chosen tracks: one, or none (configuration only); an unknown key is refused.
+    const one = await admin({ method: 'GET', url: '/api/v1/admin/export?tracks=OPS' });
+    expect(one.headers['content-type']).toBe('application/zip');
+    const none = await admin({ method: 'GET', url: '/api/v1/admin/export?tracks=' });
+    expect(none.headers['content-type']).toBe('application/zip');
+    await as('admin', { method: 'GET', url: '/api/v1/admin/export?tracks=NOPE' }, 400);
     const audited = await source.db
       .selectFrom('domain_event')
-      .select('type')
+      .select(['type', 'actor_id', 'payload'])
       .where('type', '=', 'workspace.exported')
+      .orderBy('id')
       .execute();
-    expect(audited.length).toBeGreaterThan(0);
+    expect(audited.map((e) => e.payload)).toEqual([
+      { tracks: null },
+      { tracks: ['OPS'] },
+      { tracks: [] },
+    ]);
+    expect(audited.every((e) => e.actor_id === users.admin?.id)).toBe(true);
   });
 });

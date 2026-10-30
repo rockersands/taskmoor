@@ -171,7 +171,10 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
     .select(['id', 'key'])
     .where('workspace_id', '=', ws)
     .where('deleted_at', 'is', null)
-    .$if(options.tracks != null, (q) => q.where('id', 'in', [...(options.tracks ?? [0])]))
+    .$if(options.tracks != null, (q) =>
+      // No tracks chosen: configuration only (an empty list is not valid SQL).
+      q.where('id', 'in', options.tracks?.length ? [...options.tracks] : [0]),
+    )
     .orderBy('id')
     .execute();
   const trackIds = tracks.map((t) => t.id);

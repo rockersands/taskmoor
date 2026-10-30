@@ -71,8 +71,8 @@ export const csvMapping = z
   .object({
     /** The track of rows without a track or key column. */
     track: trackKey.optional(),
-    /** The ticket type of rows without a type column (it must exist). */
-    type: z.string().min(1).max(255).default('Task'),
+    /** The ticket type of rows without a type (it must exist); the track's default if left out. */
+    type: z.string().min(1).max(255).optional(),
     columns: z
       .array(
         z
@@ -234,7 +234,7 @@ export interface CsvRow {
   duplicate?: boolean;
   track: string | null;
   number: number | null;
-  type: string;
+  type: string | null;
   /** Properties the mapping fills (a row leaves the others as they are on update). */
   mapped: string[];
   values: Partial<Record<CsvTarget, string[]>>;
@@ -325,7 +325,7 @@ export class CsvSource implements ImportSource {
       line,
       track: (one('track') ?? keyMatch?.[1] ?? this.mapping.track ?? null)?.toUpperCase() ?? null,
       number: keyMatch ? Number(keyMatch[2]) : null,
-      type: one('type') ?? this.mapping.type,
+      type: one('type') ?? this.mapping.type ?? null,
       mapped: [...columns.keys()],
       values,
       people,
@@ -383,7 +383,7 @@ export class CsvSource implements ImportSource {
     for (const r of raw) {
       const row = this.row(r.rec.fields, r.rec.line);
       if (row.track) add('track', row.track, { key: row.track });
-      add('ticket_type', row.type.toLowerCase(), { name: row.type });
+      if (row.type) add('ticket_type', row.type.toLowerCase(), { name: row.type });
       const status = row.values.status?.find((t) => t.trim() !== '')?.trim();
       if (status) add('status', status.toLowerCase(), { name: status });
       for (const p of PEOPLE) {
@@ -571,7 +571,7 @@ function mapRow(row: CsvRow): Mapped {
     kind: 'ticket',
     track: { kind: 'track', id: row.track },
     number: row.number,
-    type: { kind: 'ticket_type', id: row.type.toLowerCase() },
+    type: row.type === null ? null : { kind: 'ticket_type', id: row.type.toLowerCase() },
     status: status === null ? null : { kind: 'status', id: status.toLowerCase() },
     summary: summary ?? '',
     description: one('description'),

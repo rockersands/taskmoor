@@ -1019,11 +1019,12 @@ const tickets: Loader<TicketCommand> = {
     const kept = <T>(property: TicketProperty, mine: () => T, theirs: (row: TicketRow) => T) =>
       current && keep.has(property) ? theirs(current) : mine();
 
-    const type = kept(
-      'type',
-      () => required(ctx, cmd.type, 'type'),
-      (r) => r.ticket_type_id,
-    );
+    const type =
+      current && keep.has('type')
+        ? current.ticket_type_id
+        : cmd.type === null
+          ? await defaultTypeOf(ctx, track)
+          : required(ctx, cmd.type, 'type');
     let priority: number | null = null;
     if (cmd.priorityRef !== undefined) {
       priority = optional(ctx, cmd.priorityRef, 'priority');
@@ -1176,7 +1177,16 @@ const tickets: Loader<TicketCommand> = {
         : null,
     };
     if (cmd.rank !== undefined && values.rank === null) ctx.warn({ code: 'rank_changed' });
-    const fingerprint = ticketPrint(values);
+    // What the ticket will hold: values the command leaves out stay as they are (or empty).
+    const fingerprint = ticketPrint({
+      ...values,
+      compared: values.compared ?? withoutFormulas(current?.fields ?? {}, formulas),
+      releases: values.releases ?? {
+        target: currentReleases('target_releases'),
+        found: currentReleases('found_releases'),
+      },
+      areas: values.areas ?? (current?.areas ?? []).map((a) => a.id),
+    });
     if (target !== null) {
       return { action: 'update', targetId: target, fingerprint, data: values };
     }
@@ -1217,7 +1227,7 @@ const tickets: Loader<TicketCommand> = {
       ctx.cache.set(offeredKey, offered ? 1 : null);
     }
     if (ctx.cache.get(offeredKey) === null) {
-      ctx.warn({ code: 'type_not_offered', detail: cmd.type.id });
+      ctx.warn({ code: 'type_not_offered', detail: cmd.type?.id ?? String(type) });
     }
     return { action: 'create', targetId: null, fingerprint, data: values };
   },
@@ -1382,6 +1392,24 @@ const tickets: Loader<TicketCommand> = {
     );
   },
 };
+
+/** The type a track preselects for new tickets (its type set's default, else its first). */
+async function defaultTypeOf(ctx: LoadContext, track: number): Promise<number> {
+  if (track === PENDING) return PENDING;
+  const id = await byName(ctx, `default_type:${track}`, () =>
+    ctx.trx
+      .selectFrom('track as t')
+      .innerJoin('type_set as s', 's.id', 't.type_set_id')
+      .innerJoin('type_set_member as m', 'm.type_set_id', 's.id')
+      .select(sql<number>`coalesce(s.default_type_id, m.ticket_type_id)`.as('id'))
+      .where('t.id', '=', track)
+      .orderBy(sql`m.ticket_type_id = s.default_type_id`, 'desc')
+      .orderBy('m.sort_order')
+      .executeTakeFirst(),
+  );
+  if (id === null) throw new PlanFailure('no_ticket_type');
+  return id;
+}
 
 /** A ticket of the target by its key (KEY-12), or null. */
 async function ticketByKey(ctx: LoadContext, key: string): Promise<number | null> {

@@ -291,7 +291,8 @@ export interface TicketCommand {
    * number (CSV rows without a key).
    */
   number: number | null;
-  type: Ref;
+  /** Null: the track's default type (CSV rows without a type). */
+  type: Ref | null;
   status: Ref | null;
   summary: string;
   /** Markdown; converted to the canonical document on load. */
