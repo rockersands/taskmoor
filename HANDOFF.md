@@ -273,6 +273,44 @@ ADR-070; no migration.
   wants to; the value is public either way. Key rotation needs a procedure when kits pin the
   key (ADR-070).
 
+## Side session 2026-10-30: M1-127 workflow files
+
+Built on the branch `claude/blissful-hawking-450e3f` in a side session; the main session merges
+it after its own gate. ADR-073 (and a pointer in ADR-039); no migration, no new dependency.
+
+- **Format** (`apps/server/src/workflows/transfer.ts`): `format: "taskmoor-workflow"`,
+  `version: 1`, the definition in its stored shape with **document ids** (1..n per kind, in the
+  order the definition first names them, the workflow's statuses first) and tables naming them:
+  statuses (stage, description), groups, roles, people (email), priorities, close reasons,
+  ticket types, releases and areas (track key). Exporting what an import made gives the same
+  bytes. `mapDefinition` is the one walker for both directions.
+- **What does not map never widens access**: guards become `always-false` (an empty `any`
+  would allow everyone, so emptied lists do too), lists lose members, checks and `restrict-*`
+  rules are removed and their transition gets an `always-false` guard first, effects, other
+  rules and layout fields are removed, status locks narrow; unknown permission keys stay.
+  Every case is a report entry (`kind`, the file's name, `rule`, `outcome`, where).
+- **Matching** (`transfer-store.ts`): statuses by name without case, created when missing
+  (under the status list lock); groups, roles, priorities, close reasons, ticket types by
+  name; people by email; releases and areas by track key and name. Only statuses are created.
+- **Routes** (`routes/workflows.ts`, admin token scope): `GET /api/v1/admin/workflows/:id/export
+  [?version=N]`, `POST /api/v1/admin/workflows/import` (new workflow, version 1 published;
+  `name`, `description`, `trackId`), `POST /api/v1/admin/workflows/:id/import` (next draft).
+  Events `workflow.exported` and `workflow.imported` (one per import, with the created status
+  ids), both audited. A result that fails `definitionProblem` rolls back whole (the created
+  statuses too). `saveDraft` was split: `writeDraft` writes without an event.
+- **Web**: "Import a workflow" and a Download link per workflow on `#/admin/workflows`
+  (`workflow/WorkflowImport.tsx`: the form and the report); 32 new messages in English and
+  Spanish. The file is read with `FileReader` (jsdom has no `Blob.text`).
+- **Tests**: `routes/workflow-transfer.test.ts` (two databases: goldens of three fixture files
+  byte for byte, `__golden__/workflow-file-*.json`; same-workspace import gives an identical
+  draft; import into a bare database with the report golden; byte-identical re-export once the
+  target has the named objects; refusals and rollback; events), `workflows/transfer.test.ts`
+  (property: never widens a guard; identity changes nothing), contract scenarios for both
+  imports (the export is in `EXPORT_EVENTS`), `WorkflowsPage.test.tsx`, stories with axe, and
+  two e2e tests in `setup.spec.ts` (download and import on desktop; the page on a phone).
+- **Not done**: custom fields and visibility levels are not workflow references yet (levels
+  are names already); the Jira-compatible mapping is M1-090 and can reuse `mapDefinition`.
+
 ## Side session 2026-10-30: M1-105 static frontend artefact
 
 Built on the branch `claude/nifty-hermann-b572d0` in a side session and merged into main after

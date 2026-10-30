@@ -1,0 +1,395 @@
+{
+  "format": "taskmoor-workflow",
+  "version": 1,
+  "workflow": {
+    "name": "Everything",
+    "description": "The everything fixture"
+  },
+  "statuses": [
+    {
+      "id": 1,
+      "name": "New",
+      "stage": "new",
+      "description": ""
+    },
+    {
+      "id": 2,
+      "name": "Active",
+      "stage": "active",
+      "description": ""
+    },
+    {
+      "id": 3,
+      "name": "QA",
+      "stage": "active",
+      "description": ""
+    },
+    {
+      "id": 4,
+      "name": "Verify",
+      "stage": "active",
+      "description": ""
+    },
+    {
+      "id": 5,
+      "name": "Closed",
+      "stage": "closed",
+      "description": ""
+    },
+    {
+      "id": 6,
+      "name": "In Review",
+      "stage": "active",
+      "description": ""
+    },
+    {
+      "id": 7,
+      "name": "Cancelled",
+      "stage": "closed",
+      "description": ""
+    }
+  ],
+  "groups": [
+    {
+      "id": 1,
+      "name": "Reviewers"
+    }
+  ],
+  "roles": [
+    {
+      "id": 1,
+      "name": "Auditors"
+    },
+    {
+      "id": 2,
+      "name": "Members"
+    }
+  ],
+  "people": [
+    {
+      "id": 1,
+      "name": "Mira Member",
+      "email": "mira@example.com"
+    }
+  ],
+  "priorities": [
+    {
+      "id": 1,
+      "name": "High"
+    }
+  ],
+  "closeReasons": [
+    {
+      "id": 1,
+      "name": "Duplicate"
+    }
+  ],
+  "ticketTypes": [
+    {
+      "id": 1,
+      "name": "Bug"
+    }
+  ],
+  "releases": [
+    {
+      "id": 1,
+      "name": "1.0",
+      "track": "SRC"
+    }
+  ],
+  "areas": [
+    {
+      "id": 1,
+      "name": "Backend",
+      "track": "SRC"
+    }
+  ],
+  "definition": {
+    "initialStatusId": 1,
+    "statuses": [
+      {
+        "statusId": 1,
+        "x": 0,
+        "y": 0
+      },
+      {
+        "statusId": 2,
+        "x": 200,
+        "y": 0
+      },
+      {
+        "statusId": 3,
+        "x": 400,
+        "y": 0
+      },
+      {
+        "statusId": 4,
+        "x": 600,
+        "y": 0
+      },
+      {
+        "statusId": 5,
+        "x": 800,
+        "y": 0
+      }
+    ],
+    "transitions": [
+      {
+        "id": 1,
+        "name": "Start",
+        "from": [
+          1
+        ],
+        "to": 2,
+        "layout": [
+          "assignee",
+          "priority"
+        ],
+        "guards": {
+          "all": [
+            {
+              "type": "user-in-group",
+              "group": "1"
+            },
+            {
+              "any": [
+                {
+                  "type": "user-in-any-role",
+                  "roles": [
+                    "1",
+                    "2"
+                  ]
+                },
+                {
+                  "type": "permission",
+                  "permission": "transition_tickets"
+                }
+              ]
+            }
+          ]
+        },
+        "effects": [
+          {
+            "type": "update-field",
+            "field": "priority",
+            "value": 1
+          },
+          {
+            "type": "assign-to-current-user"
+          }
+        ],
+        "properties": {
+          "opsbar-sequence": "10"
+        },
+        "event": "work-started"
+      },
+      {
+        "id": 2,
+        "name": "To QA",
+        "from": [
+          2
+        ],
+        "to": 3,
+        "guards": {
+          "type": "value-field",
+          "field": "priority",
+          "op": "=",
+          "value": "1"
+        },
+        "checks": [
+          {
+            "type": "field-required",
+            "field": "assignee",
+            "message": "Someone must own it"
+          },
+          {
+            "type": "regex",
+            "field": "summary",
+            "pattern": "^[A-Z]"
+          }
+        ],
+        "effects": [
+          {
+            "type": "update-field",
+            "field": "target-release",
+            "value": [
+              1
+            ]
+          },
+          {
+            "type": "update-field",
+            "field": "area",
+            "value": [
+              "1"
+            ]
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Verify",
+        "from": [
+          3
+        ],
+        "to": 4,
+        "guards": {
+          "type": "previous-status",
+          "status": "6"
+        },
+        "checks": [
+          {
+            "type": "parent-status",
+            "statuses": [
+              "2",
+              "3"
+            ]
+          },
+          {
+            "type": "previous-state",
+            "status": "2",
+            "mostRecentOnly": true
+          },
+          {
+            "type": "permission",
+            "permission": "close_tickets"
+          }
+        ],
+        "effects": [
+          {
+            "type": "set-visibility-level-from-role",
+            "levels": {
+              "1": "Staff"
+            }
+          },
+          {
+            "type": "webhook",
+            "url": "https://hooks.example.test/verified"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Close",
+        "from": "any",
+        "to": 5,
+        "layout": [
+          "close-reason"
+        ],
+        "guards": {
+          "type": "subticket-blocking",
+          "statuses": [
+            "5",
+            "7"
+          ]
+        },
+        "checks": [
+          {
+            "type": "field-required",
+            "field": "close-reason"
+          }
+        ],
+        "effects": [
+          {
+            "type": "update-system-field",
+            "field": "close-reason",
+            "value": "1"
+          }
+        ],
+        "triggers": [
+          {
+            "event": "pull-request.merged"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Reopen",
+        "from": [
+          5
+        ],
+        "to": 1,
+        "guards": {
+          "type": "separation-of-duties",
+          "transition": "4"
+        },
+        "effects": [
+          {
+            "type": "clear-field",
+            "field": "close-reason"
+          },
+          {
+            "type": "copy-field",
+            "from": "requester",
+            "to": "assignee"
+          }
+        ]
+      }
+    ],
+    "onCreate": {
+      "effects": [
+        {
+          "type": "update-field",
+          "field": "assignee",
+          "value": "1"
+        }
+      ],
+      "event": "ticket-opened"
+    },
+    "rules": {
+      "1": [
+        {
+          "type": "assign",
+          "to": {
+            "user": "1"
+          }
+        },
+        {
+          "type": "restrict-who",
+          "users": [
+            "1"
+          ],
+          "groups": [
+            "1"
+          ],
+          "roles": [
+            "1"
+          ]
+        }
+      ],
+      "2": [
+        {
+          "type": "restrict-field-value",
+          "field": "ticket-type",
+          "value": "1"
+        }
+      ],
+      "3": [
+        {
+          "type": "restrict-been-through",
+          "status": "2"
+        },
+        {
+          "type": "validate-permission",
+          "permission": "edit_tickets"
+        }
+      ]
+    },
+    "statusPermissions": {
+      "3": {
+        "edit": [
+          {
+            "role": "1"
+          },
+          {
+            "group": "1"
+          }
+        ],
+        "transition": [
+          {
+            "group": "1"
+          }
+        ]
+      }
+    }
+  }
+}

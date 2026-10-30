@@ -1,6 +1,8 @@
 import { ApiError } from '../api/client';
 import type {
   Impact,
+  Imported,
+  ImportProblem,
   Lookups,
   VersionEntry,
   WorkflowSummary,
@@ -192,6 +194,8 @@ export function fakeWorkflowsClient(
     statuses?: Status[];
     ticketsIn?: Record<number, number>;
     lookups?: Lookups;
+    /** What an import reports as not found here (M1-127). */
+    importProblems?: ImportProblem[];
   } = {},
 ): WorkflowsClient & { calls: string[] } {
   const calls: string[] = [];
@@ -250,8 +254,93 @@ export function fakeWorkflowsClient(
     return clone(s.view);
   };
 
+  /**
+   * A workflow file's definition here: statuses by name, created when missing (only the
+   * statuses are mapped; the real server maps everything the file names).
+   */
+  const fromFile = (document: unknown) => {
+    const file = document as {
+      format?: string;
+      workflow: { name: string; description: string };
+      statuses: { id: number; name: string; stage: Stage }[];
+      definition: WorkflowDefinition;
+    };
+    if (file?.format !== 'taskmoor-workflow') {
+      throw new ApiError(400, { error: 'not_a_workflow_document' });
+    }
+    const ids = new Map<number, number>();
+    const report: Imported['report'] = {
+      statuses: [],
+      problems: clone(options.importProblems ?? []),
+    };
+    for (const entry of file.statuses) {
+      let found = statuses.find((x) => x.name.toLowerCase() === entry.name.toLowerCase());
+      const outcome = found ? 'matched' : 'created';
+      if (!found) {
+        found = {
+          id: nextId++,
+          name: entry.name,
+          description: '',
+          stage: entry.stage,
+          order: statuses.length + 1,
+        };
+        statuses = [...statuses, found];
+      }
+      ids.set(entry.id, found.id);
+      report.statuses.push({
+        name: entry.name,
+        stage: entry.stage,
+        statusId: found.id,
+        outcome,
+        ...(found.stage !== entry.stage ? { stageHere: found.stage } : {}),
+      });
+    }
+    const id = (x: number) => ids.get(x) ?? x;
+    const d = file.definition;
+    const definition: WorkflowDefinition = {
+      ...d,
+      initialStatusId: id(d.initialStatusId),
+      statuses: d.statuses.map((x) => ({ ...x, statusId: id(x.statusId) })),
+      transitions: d.transitions.map((x) => ({
+        ...x,
+        from: x.from === 'any' ? 'any' : x.from.map(id),
+        to: id(x.to),
+      })),
+    };
+    return { file, definition, report };
+  };
+
   return {
     calls,
+    exportHref: (id) => `/api/v1/admin/workflows/${id}/export`,
+    importNew: async (document, name) => {
+      calls.push('importNew');
+      const { file, definition, report } = fromFile(document);
+      const workflowName = name ?? file.workflow.name;
+      if ([...store.values()].some((x) => x.view.name === workflowName)) {
+        throw new ApiError(409, { error: 'name_taken' });
+      }
+      const id = nextId++;
+      const created = view(id, workflowName, clone(definition), {
+        description: file.workflow.description,
+        published: {
+          version: 1,
+          definition: clone(definition),
+          createdAt: now(),
+          publishedAt: now(),
+        },
+      });
+      store.set(id, {
+        view: created,
+        versions: new Map([[1, { definition: clone(definition), published: true, at: now() }]]),
+      });
+      return { workflow: clone(created), report };
+    },
+    importDraft: async (id, document) => {
+      calls.push(`importDraft ${id}`);
+      const { definition, report } = fromFile(document);
+      return { workflow: saveDraft(find(id), definition), report };
+    },
     list: async () => {
       calls.push('list');
       return [...store.values()]

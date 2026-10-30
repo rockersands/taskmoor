@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, devices, expect, type Page, test } from '@playwright/test';
 import { ENFORCE_BUDGETS, expectWithinBudget } from './budget';
@@ -1336,6 +1337,111 @@ test('[WF-002] the workflow editor works on a small phone without sideways scrol
     .tap();
   await expect(page.getByRole('heading', { name: 'Transition: Close' })).toBeFocused();
   expect(await overflow()).toBeLessThanOrEqual(0);
+  await context.close();
+});
+
+// Workflow files (M1-127): a workflow downloads from the workflows page in Taskmoor's own
+// format and comes back in as a new workflow, with a report of what this workspace lacks.
+test('[WF-011] the administrator downloads a workflow file and imports it as a new workflow, with a report and no serious axe issue', async ({
+  page,
+}) => {
+  await signInThroughApi(page.request, ADMIN);
+  let imported: string | undefined;
+  try {
+    await page.goto('./#/admin/workflows');
+    await expect(heading(page)).toHaveText('Workflows');
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('link', { name: 'Download Default workflow as a workflow file' }).click();
+    const download = await downloading;
+    expect(download.suggestedFilename()).toBe('Default workflow.workflow.json');
+    const file = JSON.parse(await readFile((await download.path()) as string, 'utf8')) as {
+      format: string;
+      version: number;
+      workflow: { name: string };
+      statuses: { id: number; name: string; stage: string; description: string }[];
+      groups?: { id: number; name: string }[];
+      definition: {
+        statuses: { statusId: number }[];
+        transitions: { name: string; guards?: unknown }[];
+      };
+    };
+    expect(file.format).toBe('taskmoor-workflow');
+    expect(file.version).toBe(1);
+    expect(file.statuses.map((x) => x.name)).toEqual(['New', 'Active', 'In Review', 'Closed']);
+
+    // As another server's file would be: a status and a group this workspace does not have.
+    file.workflow.name = 'Imported flow';
+    const parked = file.statuses.length + 1;
+    file.statuses.push({ id: parked, name: 'Parked', stage: 'new', description: '' });
+    file.definition.statuses.push({ statusId: parked });
+    file.groups = [{ id: 1, name: 'Night shift' }];
+    const first = file.definition.transitions[0] as { name: string; guards?: unknown };
+    first.guards = { type: 'user-in-group', group: '1' };
+
+    await page.getByRole('button', { name: 'Import a workflow' }).click();
+    const form = page.getByRole('form', { name: 'Import a workflow file' });
+    await form.getByLabel('Workflow file').setInputFiles({
+      name: 'imported.workflow.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(file)),
+    });
+    await expect(form.getByLabel('Name', { exact: true })).toHaveValue('Imported flow');
+    expect(await seriousAxeViolations(page)).toEqual([]);
+    await form.getByRole('button', { name: 'Import', exact: true }).click();
+
+    const report = page.getByRole('region', { name: 'Imported Imported flow' });
+    await expect(report.getByRole('heading', { name: 'Imported Imported flow' })).toBeFocused();
+    await expect(report.getByText('New: found here by name')).toBeVisible();
+    await expect(report.getByText('Parked: created, in the New stage')).toBeVisible();
+    await expect(
+      report.getByText(
+        `Group Night shift, in the transition ${first.name}: the guard that names it never passes.`,
+      ),
+    ).toBeVisible();
+    expect(await seriousAxeViolations(page)).toEqual([]);
+    await report.getByRole('link', { name: 'Open Imported flow' }).click();
+    await expect(heading(page)).toHaveText('Imported flow');
+    imported = /#\/admin\/workflows\/(\d+)/.exec(page.url())?.[1];
+    expect(imported).toBeTruthy();
+  } finally {
+    if (imported) await page.request.delete(`/api/v1/workflows/${imported}`);
+    const statuses = await page.request.get('/api/v1/statuses');
+    const parked = (
+      (await statuses.json()) as { statuses: { id: number; name: string }[] }
+    ).statuses.find((x) => x.name === 'Parked');
+    if (parked) await page.request.delete(`/api/v1/statuses/${parked.id}`);
+    await page.request.delete('/api/v1/session');
+  }
+});
+
+test('[WF-011] downloading and importing workflows works on a small phone without sideways scrolling', async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({
+    ...devices['Pixel 7'],
+    viewport: { width: 360, height: 740 },
+    ...at(baseURL),
+  });
+  const page = await context.newPage();
+  await signInThroughApi(context.request, ADMIN);
+  await page.goto('./#/admin/workflows');
+  await expect(heading(page)).toHaveText('Workflows');
+  await page.getByRole('button', { name: 'Import a workflow' }).tap();
+  await expect(page.getByRole('form', { name: 'Import a workflow file' })).toBeVisible();
+  const overflow = () =>
+    page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  const targets = [
+    page.getByRole('button', { name: 'Import a workflow' }),
+    page.getByRole('link', { name: 'Download Default workflow as a workflow file' }),
+    page.getByRole('button', { name: 'Import', exact: true }),
+    page.getByLabel('Import as'),
+  ];
+  for (const target of targets) {
+    expect((await target.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
+  expect(await seriousAxeViolations(page)).toEqual([]);
   await context.close();
 });
 

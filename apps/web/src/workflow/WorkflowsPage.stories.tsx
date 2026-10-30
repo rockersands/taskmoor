@@ -51,6 +51,16 @@ export const CreatingAWorkflow: Story = {
   },
 };
 
+export const ImportingAWorkflow: Story = {
+  args: { client: fakeWorkflowsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Import a workflow' }));
+    await expect(canvas.getByRole('form', { name: 'Import a workflow file' })).toBeVisible();
+    await expect(canvas.getByLabelText('Import as')).toHaveValue('new');
+  },
+};
+
 export const ConfirmingDelete: Story = {
   args: {
     client: fakeWorkflowsClient({ workflows: [{ ...SUPPORT_WORKFLOW, tracks: [] }] }),

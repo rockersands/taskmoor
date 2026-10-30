@@ -4,9 +4,15 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
-import { type WorkflowSummary, type WorkflowsClient, workflowsClient } from './client';
+import {
+  type Imported,
+  type WorkflowSummary,
+  type WorkflowsClient,
+  workflowsClient,
+} from './client';
 import type { Status, WorkflowDefinition } from './definition';
 import { StatusesSection } from './StatusesSection';
+import { ImportReport, ImportWorkflowForm } from './WorkflowImport';
 
 export interface WorkflowsPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
@@ -30,7 +36,9 @@ const openByHash = (workflowId: number) => {
 /**
  * Workflows for administrators (#/admin/workflows; M1-030, WF-001, WF-002, CORE-014): the
  * workflows with their published version, draft and how many tracks use them, creating one
- * (empty or as a copy), deleting an unused one, and the workspace's statuses.
+ * (empty or as a copy), deleting an unused one, and the workspace's statuses. Each workflow
+ * downloads as a file, and a file comes back in as a new workflow or a draft, with a report
+ * of what it names that this workspace lacks (M1-127, WF-011).
  */
 export function WorkflowsPage({
   client = workflowsClient,
@@ -41,11 +49,19 @@ export function WorkflowsPage({
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const createButton = useRef<HTMLButtonElement>(null);
+  const importButton = useRef<HTMLButtonElement>(null);
+  const reportHeading = useRef<HTMLHeadingElement>(null);
   const [state, setState] = useState<State>({ status: 'loading' });
   const [statuses, setStatuses] = useState<Status[] | null>(null);
   const [statusesFailed, setStatusesFailed] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState<{ result: Imported; draft: boolean } | null>(null);
   const [done, setDone] = useState('');
+
+  useEffect(() => {
+    if (imported) reportHeading.current?.focus();
+  }, [imported]);
 
   const refuse = useCallback(
     (e: unknown) => {
@@ -101,20 +117,62 @@ export function WorkflowsPage({
               {t('admin.workflows.list')}
             </h2>
             {state.status === 'loaded' && (
-              <button
-                ref={createButton}
-                type="button"
-                className="button-primary"
-                aria-expanded={creating}
-                onClick={() => {
-                  setDone('');
-                  setCreating(true);
-                }}
-              >
-                {t('admin.workflows.create')}
-              </button>
+              <div className="token-actions">
+                <button
+                  ref={importButton}
+                  type="button"
+                  className="button-secondary"
+                  aria-expanded={importing}
+                  onClick={() => {
+                    setDone('');
+                    setCreating(false);
+                    setImported(null);
+                    setImporting(true);
+                  }}
+                >
+                  {t('admin.workflows.import')}
+                </button>
+                <button
+                  ref={createButton}
+                  type="button"
+                  className="button-primary"
+                  aria-expanded={creating}
+                  onClick={() => {
+                    setDone('');
+                    setImporting(false);
+                    setCreating(true);
+                  }}
+                >
+                  {t('admin.workflows.create')}
+                </button>
+              </div>
             )}
           </div>
+          {state.status === 'loaded' && importing && (
+            <ImportWorkflowForm
+              client={client}
+              workflows={state.workflows}
+              statuses={statuses ?? []}
+              refuse={refuse}
+              onImported={(result, draft) => {
+                setImporting(false);
+                setImported({ result, draft });
+                void load();
+                // Statuses the file named may be new here.
+                client
+                  .statuses()
+                  .then(setStatuses)
+                  .catch(() => {});
+              }}
+              onCancel={() => {
+                setImporting(false);
+                importButton.current?.focus();
+              }}
+            />
+          )}
+          {imported && (
+            <ImportReport ref={reportHeading} imported={imported.result} draft={imported.draft} />
+          )}
           {state.status === 'loaded' && creating && (
             <CreateWorkflowForm
               client={client}
@@ -283,6 +341,14 @@ function WorkflowItem({
             aria-label={t('admin.workflows.editNamed', { name })}
           >
             {t('admin.workflows.edit')}
+          </a>
+          <a
+            className="button-secondary button-link"
+            href={client.exportHref(workflow.id)}
+            download
+            aria-label={t('admin.workflows.exportNamed', { name })}
+          >
+            {t('admin.workflows.export')}
           </a>
           {deletable && (
             <button

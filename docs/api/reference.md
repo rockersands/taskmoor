@@ -1510,5 +1510,5 @@ A `"new"`, `"active"`, `"closed"`.
 
 ## Internal routes
 
-The document also lists 389 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 392 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.
