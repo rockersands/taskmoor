@@ -1,4 +1,5 @@
-import type { TrackType } from '@taskmoor/db';
+import type { AreaDefaultAssignee, JsonValue, TrackType } from '@taskmoor/db';
+import type { FieldType } from '../fields/types';
 
 /**
  * The importer framework's model (M1-086; IMP-009, IMP-010, ADR-048). An import runs three
@@ -15,21 +16,37 @@ import type { TrackType } from '@taskmoor/db';
  *   object, or nothing changed) and, unless the run is a dry run, writes it.
  *
  * A source format brings its reader and mapper; the commands and loaders are shared, so the
- * backup reader, the Cloud REST reader and CSV (later tasks) only extract and map.
+ * backup reader, the Cloud REST reader, CSV (`csv.ts`) and Taskmoor's own export
+ * (`taskmoor.ts`, M1-098) only extract and map.
  */
 
-/** The kinds the framework loads, in the order they run: each needs only kinds before it. */
+/**
+ * The kinds the framework loads, in the order they run: each needs only kinds before it.
+ * History runs last, since its entries name comments, time entries and attachments.
+ */
 export const ENTITY_KINDS = [
   'user',
   'group',
+  'role',
   'status',
+  'priority',
+  'close_reason',
   'ticket_type',
+  'link_type',
   'track',
+  'release',
+  'area',
+  'field',
+  'field_context',
+  'field_option',
+  'workflow',
+  'workflow_map',
   'ticket',
   'comment',
   'link',
-  'history',
   'time_entry',
+  'attachment',
+  'history',
 ] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
@@ -68,6 +85,10 @@ export interface ImportSource {
   /** The kinds the source holds, framework kinds or not. */
   kinds(): Promise<string[]>;
   read(kind: string, after: string | null, limit: number): Promise<SourceItem[]>;
+  /** The bytes of a file the source holds (attachments), by the locator a record gives. */
+  openFile?(locator: string): Promise<NodeJS.ReadableStream>;
+  /** The size of such a file, or null when the source has none by that locator. */
+  fileSize?(locator: string): Promise<number | null>;
 }
 
 /** Something left out or changed on the way, counted per kind, code and detail in the report. */
@@ -93,6 +114,7 @@ export interface UserCommand {
   /** Inactive and deleted source accounts become deactivated users, so attribution stays. */
   active: boolean;
   timeZone: string | null;
+  locale?: string | null;
 }
 
 export interface GroupCommand {
@@ -102,17 +124,54 @@ export interface GroupCommand {
   members: Ref[];
 }
 
+/** A track role, linked to the target's role of the same name. */
+export interface RoleCommand {
+  kind: 'role';
+  name: string;
+  description: string;
+}
+
 export interface StatusCommand {
   kind: 'status';
   name: string;
   stage: Stage;
+  description?: string;
+  /** The target must have it (CSV names statuses): linked, never created. */
+  mustExist?: boolean;
+}
+
+/** Priorities and close reasons are linked by name, or added after the target's own. */
+export interface PriorityCommand {
+  kind: 'priority';
+  name: string;
+  description: string;
+  icon: string | null;
+  color: string | null;
+}
+
+export interface CloseReasonCommand {
+  kind: 'close_reason';
+  name: string;
+  description: string;
 }
 
 export interface TicketTypeCommand {
   kind: 'ticket_type';
   name: string;
   description: string;
-  level: 'standard' | 'subticket';
+  level: 'standard' | 'subticket' | 'outcome';
+  icon?: string | null;
+  color?: string | null;
+  /** The target must have it (CSV names types): linked, never created. */
+  mustExist?: boolean;
+}
+
+/** A link type, linked by name. */
+export interface LinkTypeCommand {
+  kind: 'link_type';
+  name: string;
+  outward: string;
+  inward: string;
 }
 
 export interface TrackCommand {
@@ -122,14 +181,118 @@ export interface TrackCommand {
   description: string;
   owner: Ref | null;
   trackType: TrackType;
+  /**
+   * `key`: the target's track of this key is the one meant (CSV rows name an existing track);
+   * the record links to it and never changes it. Left out, a taken key fails the record.
+   */
+  match?: 'key';
+  /** The last number the source gave out in the track: the counter starts past it. */
+  lastNumber?: number;
+  icon?: string | null;
+  color?: string | null;
+}
+
+/** A release of a track, linked by name within the track. */
+export interface ReleaseCommand {
+  kind: 'release';
+  track: Ref;
+  name: string;
+  description: string;
+  startDate: string | null;
+  releaseDate: string | null;
+  shippedAt: string | null;
+  archivedAt: string | null;
+}
+
+/** An area of a track, linked by name within the track. */
+export interface AreaCommand {
+  kind: 'area';
+  track: Ref;
+  name: string;
+  description: string;
+  owner: Ref | null;
+  defaultAssignee: AreaDefaultAssignee;
+  archivedAt: string | null;
+}
+
+/**
+ * A custom field. `config` is as the source stores it: a formula's expression names fields by
+ * source id (`{cf[12]}`), which the load maps. A track's own field names its track.
+ */
+export interface FieldCommand {
+  kind: 'field';
+  name: string;
+  description: string;
+  type: FieldType;
+  multiple: boolean;
+  config: Record<string, JsonValue>;
+  track: Ref | null;
+}
+
+/** Where a field applies; the default value in stored form with source ids. */
+export interface FieldContextCommand {
+  kind: 'field_context';
+  field: Ref;
+  name: string;
+  description: string;
+  defaultValue: JsonValue | null;
+  config: Record<string, JsonValue>;
+  scopes: { track: Ref | null; type: Ref | null }[];
+}
+
+/** An option of a context; a cascading child names its parent. */
+export interface FieldOptionCommand {
+  kind: 'field_option';
+  context: Ref;
+  parent: Ref | null;
+  value: string;
+  sortOrder: number;
+  disabled: boolean;
+  /** Part of its context's default value (options are loaded after their contexts). */
+  default?: boolean;
+}
+
+/**
+ * A workflow's published definition as the source stores it (statuses, groups, roles, people
+ * and fields by source id), mapped on load. The default workflow links to the target's.
+ */
+export interface WorkflowCommand {
+  kind: 'workflow';
+  name: string;
+  description: string;
+  isDefault: boolean;
+  definition: JsonValue;
+}
+
+/** Which workflow each ticket type uses, and the tracks that use the map. */
+export interface WorkflowMapCommand {
+  kind: 'workflow_map';
+  name: string;
+  description: string;
+  isDefault: boolean;
+  defaultWorkflow: Ref;
+  entries: { type: Ref; workflow: Ref }[];
+  tracks: Ref[];
+}
+
+/** A custom value given as cell text (CSV), read against a target field by its id. */
+export interface CustomText {
+  fieldId: number;
+  /** The cells (a column may repeat); a field with several values splits them on `separator`. */
+  texts: string[];
+  separator: string;
 }
 
 export interface TicketCommand {
   kind: 'ticket';
   track: Ref;
-  /** The source number, kept so keys survive the move (IMP-011). */
-  number: number;
-  type: Ref;
+  /**
+   * The source number, kept so keys survive the move (IMP-011); null takes the track's next
+   * number (CSV rows without a key).
+   */
+  number: number | null;
+  /** Null: the track's default type (CSV rows without a type). */
+  type: Ref | null;
   status: Ref | null;
   summary: string;
   /** Markdown; converted to the canonical document on load. */
@@ -143,12 +306,70 @@ export interface TicketCommand {
   labels: string[];
   startDate: string | null;
   dueDate: string | null;
-  createdAt: string;
-  updatedAt: string;
+  /** Null: the time of the import (a CSV without the column). */
+  createdAt: string | null;
+  updatedAt: string | null;
   closedAt: string | null;
   originalEstimate: number | null;
   remainingEstimate: number | null;
+  /**
+   * Rich text as stored (ProseMirror documents, mentions by source id), instead of the
+   * Markdown of `description`: Taskmoor's own export.
+   */
+  docs?: { description: JsonValue | null; environment: JsonValue | null };
+  closeReason?: Ref | null;
+  /** The priority by reference, instead of by name (`priority`). */
+  priorityRef?: Ref | null;
+  /** A ticket in the source's trash: it stays in the target's. */
+  trash?: { deletedAt: string; deletedBy: Ref | null; trashedWith: Ref | null } | null;
+  /** The source's rank key, kept when the target has no ticket at it. */
+  rank?: string;
+  /** Seconds; a verbatim import keeps it instead of summing time entries. */
+  timeSpent?: number;
+  /** Custom values in stored form, keyed by source field id, references by source id. */
+  fields?: Record<string, JsonValue>;
+  /** Custom values as text (CSV), read against the target's fields. */
+  customTexts?: CustomText[];
+  releases?: { target: Ref[]; found: Ref[] };
+  areas?: Ref[];
+  followers?: Ref[];
+  voters?: Ref[];
+  /** A parent named by key, for a parent the source does not hold (CSV). */
+  parentKey?: string | null;
+  /**
+   * `key`: a ticket the target already has at this track and number is the one meant, and the
+   * record updates it (CSV create-or-update by key, IMP-012).
+   */
+  match?: 'key';
+  /** Properties an update leaves as they are: columns a CSV does not map. */
+  keep?: readonly TicketProperty[];
 }
+
+/** The properties of a ticket command an update may keep. */
+export const TICKET_PROPERTIES = [
+  'type',
+  'status',
+  'summary',
+  'description',
+  'assignee',
+  'requester',
+  'creator',
+  'parent',
+  'priority',
+  'labels',
+  'startDate',
+  'dueDate',
+  'createdAt',
+  'updatedAt',
+  'closedAt',
+  'originalEstimate',
+  'remainingEstimate',
+  'targetReleases',
+  'foundReleases',
+  'areas',
+  'fields',
+] as const;
+export type TicketProperty = (typeof TICKET_PROPERTIES)[number];
 
 export interface CommentCommand {
   kind: 'comment';
@@ -159,6 +380,14 @@ export interface CommentCommand {
   visibleGroup: Ref | null;
   createdAt: string;
   updatedAt: string;
+  /** The body as stored (mentions by source id), instead of the Markdown. */
+  doc?: JsonValue;
+  visibleRole?: Ref | null;
+  editedAt?: string | null;
+  editedBy?: Ref | null;
+  /** A deleted comment stays deleted (history names it). */
+  deletedAt?: string | null;
+  deletedBy?: Ref | null;
 }
 
 export interface LinkCommand {
@@ -178,6 +407,21 @@ export interface HistoryCommand {
   at: string;
   /** Fields as history names them (`tickets/history.ts`). */
   items: { field: string; from: HistoryValue; to: HistoryValue }[];
+  /**
+   * Entries exactly as the source stores them (values with source ids, `cf[<source id>]`),
+   * mapped on load (`remap.ts`): Taskmoor's own export, instead of `items`.
+   */
+  stored?: StoredHistoryItem[];
+}
+
+export interface StoredHistoryItem {
+  field: string;
+  from: string | null;
+  to: string | null;
+  fromDisplay: string | null;
+  toDisplay: string | null;
+  /** The workflow transition that made it; ids inside a definition carry over unchanged. */
+  transition: number | null;
 }
 
 export interface TimeEntryCommand {
@@ -187,19 +431,52 @@ export interface TimeEntryCommand {
   startedAt: string;
   seconds: number;
   description: string;
+  visibleGroup?: Ref | null;
+  visibleRole?: Ref | null;
+  createdBy?: Ref | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** A file on a ticket; `file` is where the source holds its bytes (`ImportSource.openFile`). */
+export interface AttachmentCommand {
+  kind: 'attachment';
+  ticket: Ref;
+  name: string;
+  declaredType: string;
+  sniffedType: string | null;
+  size: number;
+  sha256: string;
+  author: Ref | null;
+  createdAt: string;
+  width: number | null;
+  height: number | null;
+  file: string;
 }
 
 export type Command =
   | UserCommand
   | GroupCommand
+  | RoleCommand
   | StatusCommand
+  | PriorityCommand
+  | CloseReasonCommand
   | TicketTypeCommand
+  | LinkTypeCommand
   | TrackCommand
+  | ReleaseCommand
+  | AreaCommand
+  | FieldCommand
+  | FieldContextCommand
+  | FieldOptionCommand
+  | WorkflowCommand
+  | WorkflowMapCommand
   | TicketCommand
   | CommentCommand
   | LinkCommand
-  | HistoryCommand
-  | TimeEntryCommand;
+  | TimeEntryCommand
+  | AttachmentCommand
+  | HistoryCommand;
 
 /** What the map stage makes of a record. */
 export type Mapped =
@@ -216,4 +493,10 @@ export interface ImportFormat {
   importSource: string;
   open(source: unknown): ImportSource;
   map: Mapper;
+  /**
+   * The source holds complete history and derived values (Taskmoor's own export): tickets get
+   * no starting values written for them, history entries are written as they are, and time
+   * spent and formulas are kept rather than computed.
+   */
+  verbatim?: boolean;
 }

@@ -78,6 +78,11 @@ const JOB_EVENTS: readonly EventType[] = [
 const SCAN_JOB_EVENTS: readonly EventType[] = ['attachment.quarantined'];
 /** The end of an import (M1-086), emitted by its job: checked by its own test below. */
 const IMPORT_JOB_EVENTS: readonly EventType[] = ['import_run.finished'];
+/**
+ * The full export (M1-098) is a read (`GET /api/v1/admin/export`, and the CLI) that is audited:
+ * checked by `export/export.test.ts`.
+ */
+const EXPORT_EVENTS: readonly EventType[] = ['workspace.exported'];
 const PASSWORD = 'ladder violet harbour';
 
 function sessionCookie(res: LightMyRequestResponse): string {
@@ -3062,7 +3067,8 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         !produced.has(t) &&
         !JOB_EVENTS.includes(t) &&
         !SCAN_JOB_EVENTS.includes(t) &&
-        !IMPORT_JOB_EVENTS.includes(t),
+        !IMPORT_JOB_EVENTS.includes(t) &&
+        !EXPORT_EVENTS.includes(t),
     );
     expect(missing, 'event types no route produces').toEqual([]);
   }, 120_000);

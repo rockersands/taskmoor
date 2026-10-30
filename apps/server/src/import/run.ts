@@ -1,18 +1,20 @@
 import { createHash } from 'node:crypto';
 import type { Database, JsonValue } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import type { AttachmentStores } from '../attachments/stores';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import {
   checksum,
-  LOADERS,
   type LoadContext,
   type Loader,
   PENDING,
   PlanFailure,
   Resolver,
   refsOf,
+  targetIdMap,
 } from './load';
+import { LOADERS } from './loaders';
 import {
   type Command,
   ENTITY_KINDS,
@@ -38,6 +40,8 @@ export interface ImportDeps {
   db: Kysely<Database>;
   catalogs: FieldCatalogs;
   formats: Readonly<Record<string, ImportFormat>>;
+  /** Where imported attachments go; without it, attachment records fail. */
+  stores?: AttachmentStores | null;
 }
 
 export interface RunOptions {
@@ -53,6 +57,8 @@ export interface RunOptions {
 }
 
 export const DEFAULT_BATCH = 100;
+/** Warnings kept with one record. */
+const MAX_RECORD_WARNINGS = 20;
 /** Records of a kind always sampled, and the most a kind samples. */
 const SAMPLE_FIRST = 10;
 const SAMPLE_MAX = 50;
@@ -180,7 +186,10 @@ async function step(
   tallies[kind] = tally;
   const warnings = run.warnings as unknown as Record<string, WarningTally>;
   let current = '';
+  /** The current record's own warnings, kept with it: a dry run lists problems per record. */
+  let mine: Warning[] = [];
   const warn = (w: Warning) => {
+    if (mine.length < MAX_RECORD_WARNINGS) mine.push(w);
     const key = `${kind}|${w.code}|${w.detail ?? ''}`;
     const entry = warnings[key] ?? {
       kind,
@@ -225,20 +234,34 @@ async function step(
        AND e.source_id = ANY(${items.map((i) => i.id)}::text[])`.execute(trx);
   const existing = new Map(known.map((k) => [k.source_id, k]));
 
+  const catalog = await deps.catalogs.get(run.workspace_id, trx);
   const ctx: LoadContext = {
     trx,
+    db: deps.db,
     workspaceId: run.workspace_id,
     system: run.source_system,
     importSource: run.import_source,
     dryRun: run.dry_run,
+    verbatim: format.verbatim === true,
+    now: new Date().toISOString(),
     refs: resolver,
-    catalog: await deps.catalogs.get(run.workspace_id, trx),
+    catalog,
+    remap: targetIdMap(resolver, catalog, warn),
+    source,
+    stores: deps.stores ?? null,
     warn,
     warned: (code, detail) => warnings[`${kind}|${code}|${detail ?? ''}`] !== undefined,
     touched: new Set(),
     cache: new Map(),
   };
   const loader = LOADERS[kind] as unknown as Loader<Command>;
+  // Ids inside stored values (`remap.ts`) are looked up for the whole batch at once.
+  await loader.prepare?.(
+    ctx,
+    mapped.flatMap((m) =>
+      'command' in m.result && m.result.command.kind === kind ? [m.result.command] : [],
+    ),
+  );
   const records: {
     source_id: string;
     outcome: 'created' | 'updated' | 'unchanged' | 'linked' | 'failed' | 'skipped';
@@ -253,6 +276,7 @@ async function step(
     options.beforeRecord?.(kind, tally.read);
     tally.read += 1;
     current = item.id;
+    mine = [];
     for (const w of result.warnings ?? []) warn(w);
     if ('skip' in result || 'fail' in result) {
       const failed = 'fail' in result;
@@ -263,7 +287,10 @@ async function step(
         target_id: null,
         checksum: null,
         sampled: false,
-        error: JSON.stringify({ error: failed ? result.fail : result.skip }),
+        error: JSON.stringify({
+          error: failed ? result.fail : result.skip,
+          ...(mine.length > 0 ? { warnings: mine } : {}),
+        }),
       });
       continue;
     }
@@ -306,7 +333,7 @@ async function step(
         target_id: targetId === null || targetId === PENDING ? null : String(targetId),
         checksum: inSample ? checksum(plan.fingerprint) : null,
         sampled: inSample,
-        error: null,
+        error: mine.length > 0 ? JSON.stringify({ warnings: mine }) : null,
       });
       await sql`RELEASE SAVEPOINT import_record`.execute(trx);
     } catch (error) {
@@ -318,7 +345,10 @@ async function step(
         target_id: null,
         checksum: null,
         sampled: false,
-        error: JSON.stringify({ error: errorText(error) }),
+        error: JSON.stringify({
+          error: errorText(error),
+          ...(mine.length > 0 ? { warnings: mine } : {}),
+        }),
       });
     }
   }
