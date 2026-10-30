@@ -38,6 +38,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
 | `pnpm trace` | Requirements cited by tests, per milestone |
 | `pnpm gen --items N` | Generate and load a synthetic dataset into the `bench` cluster (`--force` reloads) |
+| `pnpm gen:dc-backup --issues N --seed N --out x.zip` | Write and validate a synthetic Data Center backup ZIP with its manifest (`--validate x.zip` checks one) |
 | `pnpm spike <name> ...` | Run a benchmark spike (`field-storage`, `query`, `authz`, `authz-overhead`, `sync`, `queue`, `xml`); writes `docs/spikes/<name>.md` and `data/<name>.json` |
 | `pnpm bench:search` | The search spike: the 50-query perf set against a generated dataset (`docs/spikes/search-1m.md`) |
 | `pnpm bench:check [--size 1m] [--e2e]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression), then the tests' speed limits, enforced (ADR-071) |

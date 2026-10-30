@@ -1,0 +1,88 @@
+{
+  "activeObjects": {
+    "AO_60DB71_RAPIDVIEW": 4,
+    "AO_60DB71_SPRINT": 15
+  },
+  "attachments": {
+    "bytes": 2121177,
+    "files": 1042,
+    "sha256": "68951e7f27df2af821dc51085667285f8cb4c7ce124a6750668e0ca0c770e027"
+  },
+  "cases": {
+    "anonymousChanges": 295,
+    "cdataSplits": 3287,
+    "commentsEdited": 1231,
+    "commentsForGroup": 478,
+    "commentsForRole": 362,
+    "customFieldChanges": 539,
+    "deletedUserReferences": 945,
+    "issueNumbersSkipped": 201,
+    "resolvedIssues": 4081,
+    "sprintsActive": 3,
+    "sprintsClosed": 8,
+    "sprintsFuture": 4,
+    "subtasks": 1144,
+    "textInChildElements": 10729,
+    "unassignedIssues": 1927,
+    "userKeysFromNames": 17,
+    "userKeysGenerated": 33,
+    "usersDeleted": 2,
+    "usersDeletedReferenced": 2,
+    "usersInactive": 3,
+    "usersPresent": 50
+  },
+  "entities": {
+    "Action": 12089,
+    "ApplicationUser": 50,
+    "ChangeGroup": 28367,
+    "ChangeItem": 32448,
+    "Directory": 1,
+    "FileAttachment": 1042,
+    "Group": 3,
+    "Issue": 10000,
+    "IssueLink": 1933,
+    "IssueLinkType": 5,
+    "IssueType": 5,
+    "Label": 4673,
+    "Membership": 123,
+    "Priority": 5,
+    "Project": 4,
+    "ProjectRole": 3,
+    "ProjectRoleActor": 12,
+    "Resolution": 4,
+    "SearchRequest": 4,
+    "SequenceValueItem": 22,
+    "Status": 6,
+    "User": 50,
+    "Worklog": 3750
+  },
+  "files": {
+    "activeObjects": {
+      "bytes": 9717,
+      "sha256": "b911039b59956faed5b7b8ae06bfef5d1d02994fc818d0ceef55520b012218b0"
+    },
+    "entities": {
+      "bytes": 19124584,
+      "sha256": "835a6474b43b2715d57d8c0cae4efb76e539ed48327d7295c879f592a921dbb3"
+    }
+  },
+  "forbidden": {
+    "charRef": 14,
+    "control": 20,
+    "noncharacter": 13,
+    "nul": 15
+  },
+  "format": "taskmoor-dc-backup-manifest",
+  "options": {
+    "attachmentRate": 0.05,
+    "compressionLevel": 6,
+    "exportedAt": "2026-01-01T00:00:00.000Z",
+    "forbiddenRate": 0.002,
+    "groups": 3,
+    "issues": 10000,
+    "projects": 4,
+    "seed": 1,
+    "users": 50
+  },
+  "version": 1
+}

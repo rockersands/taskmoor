@@ -1,0 +1,360 @@
+/**
+ * The shape of a Data Center backup ZIP as Taskmoor reads it (M1-087), from public format
+ * descriptions only (ADR-003): `docs/specs/02d-dc-backup-format.md` cites the source of every
+ * rule here and marks the ones still to verify against design partners' backups. The generator
+ * writes this shape and the validator checks it; the backup reader (M1-088) parses it. This is
+ * the format layer, so it uses the format's own names (Issue, Project, Action ...).
+ */
+
+export const ENTITIES_FILE = 'entities.xml';
+export const ACTIVE_OBJECTS_FILE = 'activeobjects.xml';
+export const ATTACHMENTS_DIR = 'data/attachments';
+export const ENTITIES_ROOT = 'entity-engine-xml';
+export const AO_ROOT = 'backup';
+export const AO_NAMESPACE = 'http://www.atlassian.com/ao';
+export const XSI_NAMESPACE = 'http://www.w3.org/2001/XMLSchema-instance';
+
+/** Issue numbers per attachment bucket folder. */
+export const BUCKET_SIZE = 10_000;
+
+/** `data/attachments/<original project key>/<bucket>/<issue key>/<attachment id>`. */
+export function attachmentPath(
+  projectKey: string,
+  issueNumber: number,
+  issueKey: string,
+  attachmentId: number,
+): string {
+  const bucket = Math.ceil(issueNumber / BUCKET_SIZE) * BUCKET_SIZE;
+  return `${ATTACHMENTS_DIR}/${projectKey}/${bucket}/${issueKey}/${attachmentId}`;
+}
+
+/** Splits an attachment path; null when it is not one. */
+export function parseAttachmentPath(
+  path: string,
+): { projectKey: string; bucket: number; issueKey: string; id: number } | null {
+  const m = /^data\/attachments\/([A-Z][A-Z0-9_]*)\/(\d+)\/([A-Z][A-Z0-9_]*-\d+)\/(\d+)$/.exec(
+    path,
+  );
+  if (!m) return null;
+  return {
+    projectKey: m[1] as string,
+    bucket: Number(m[2]),
+    issueKey: m[3] as string,
+    id: Number(m[4]),
+  };
+}
+
+/** A moment as the entities file writes it: `YYYY-MM-DD HH:MM:SS.fff`, no zone (UTC here). */
+export function timestamp(ms: number): string {
+  return new Date(ms).toISOString().replace('T', ' ').slice(0, 23);
+}
+export const TIMESTAMP = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}$/;
+
+/** A text value goes into a child element (CDATA) when it has a line break or is longer. */
+export const ATTRIBUTE_TEXT_MAX = 255;
+
+// --- Entities ------------------------------------------------------------------------------
+
+/**
+ * One attribute: `id` (the row's integer id, unique per element), `int`, `bool` (1 or 0),
+ * `time`, `text`, `enum`, `ref` (another element's id), `user` (a user key, which may name a
+ * person with no row: a deleted user), `group` (a group name).
+ */
+export type Attr =
+  | { type: 'id' }
+  | { type: 'int' | 'bool' | 'time' | 'user' | 'group'; optional?: true }
+  | { type: 'text'; optional?: true; long?: true }
+  | { type: 'enum'; values: readonly string[]; optional?: true }
+  | { type: 'ref'; to: string; optional?: true };
+
+export interface EntitySpec {
+  attrs: Readonly<Record<string, Attr>>;
+}
+
+const id = { type: 'id' } as const;
+const int = { type: 'int' } as const;
+const optInt = { type: 'int', optional: true } as const;
+const bool = { type: 'bool' } as const;
+const time = { type: 'time' } as const;
+const optTime = { type: 'time', optional: true } as const;
+const text = { type: 'text' } as const;
+const optText = { type: 'text', optional: true } as const;
+const longText = { type: 'text', optional: true, long: true } as const;
+const optUser = { type: 'user', optional: true } as const;
+const ref = (to: string) => ({ type: 'ref', to }) as const;
+const optRef = (to: string) => ({ type: 'ref', to, optional: true }) as const;
+
+/** Every element the generator writes, with its attributes. */
+export const ENTITIES = {
+  Action: {
+    attrs: {
+      id,
+      issue: ref('Issue'),
+      author: optUser,
+      type: { type: 'enum', values: ['comment'] },
+      level: { type: 'group', optional: true },
+      rolelevel: optRef('ProjectRole'),
+      body: { type: 'text', long: true },
+      created: time,
+      updateauthor: optUser,
+      updated: time,
+    },
+  },
+  ApplicationUser: { attrs: { id, userKey: text, lowerUserName: text } },
+  ChangeGroup: { attrs: { id, issue: ref('Issue'), author: optUser, created: time } },
+  ChangeItem: {
+    attrs: {
+      id,
+      group: ref('ChangeGroup'),
+      fieldtype: { type: 'enum', values: ['jira', 'custom'] },
+      field: text,
+      oldvalue: optText,
+      oldstring: longText,
+      newvalue: optText,
+      newstring: longText,
+    },
+  },
+  Directory: { attrs: { id, directoryName: text, active: bool, directoryPosition: int } },
+  FileAttachment: {
+    attrs: {
+      id,
+      issue: ref('Issue'),
+      mimetype: text,
+      filename: text,
+      created: time,
+      filesize: int,
+      author: optUser,
+      zip: bool,
+      thumbnailable: bool,
+    },
+  },
+  Group: {
+    attrs: {
+      id,
+      groupName: text,
+      lowerGroupName: text,
+      active: bool,
+      local: bool,
+      createdDate: time,
+      updatedDate: time,
+      type: { type: 'enum', values: ['GROUP'] },
+      directoryId: ref('Directory'),
+    },
+  },
+  Issue: {
+    attrs: {
+      id,
+      project: ref('Project'),
+      number: int,
+      type: ref('IssueType'),
+      status: ref('Status'),
+      priority: optRef('Priority'),
+      resolution: optRef('Resolution'),
+      reporter: optUser,
+      assignee: optUser,
+      creator: optUser,
+      summary: text,
+      description: longText,
+      created: time,
+      updated: time,
+      resolutiondate: optTime,
+      duedate: optTime,
+      votes: int,
+      watches: int,
+      timeoriginalestimate: optInt,
+      timeestimate: optInt,
+      timespent: optInt,
+    },
+  },
+  IssueLink: {
+    attrs: {
+      id,
+      linktype: ref('IssueLinkType'),
+      source: ref('Issue'),
+      destination: ref('Issue'),
+      sequence: optInt,
+    },
+  },
+  IssueLinkType: {
+    attrs: {
+      id,
+      linkname: text,
+      inward: text,
+      outward: text,
+      style: { type: 'enum', values: ['jira_subtask'], optional: true },
+    },
+  },
+  IssueType: {
+    attrs: {
+      id,
+      sequence: int,
+      name: text,
+      style: { type: 'enum', values: ['jira_subtask'], optional: true },
+      description: optText,
+    },
+  },
+  Label: { attrs: { id, issue: ref('Issue'), label: text } },
+  Membership: {
+    attrs: {
+      id,
+      parentId: ref('Group'),
+      childId: ref('User'),
+      membershipType: { type: 'enum', values: ['GROUP_USER'] },
+      parentName: text,
+      lowerParentName: text,
+      childName: text,
+      lowerChildName: text,
+      directoryId: ref('Directory'),
+    },
+  },
+  Priority: { attrs: { id, sequence: int, name: text, description: optText } },
+  Project: {
+    attrs: {
+      id,
+      name: text,
+      key: text,
+      originalkey: text,
+      lead: optUser,
+      description: longText,
+      counter: int,
+      projecttype: { type: 'enum', values: ['software', 'business'] },
+    },
+  },
+  ProjectRole: { attrs: { id, name: text, description: optText } },
+  ProjectRoleActor: {
+    attrs: {
+      id,
+      pid: ref('Project'),
+      projectroleid: ref('ProjectRole'),
+      roletype: {
+        type: 'enum',
+        values: ['atlassian-user-role-actor', 'atlassian-group-role-actor'],
+      },
+      roletypeparameter: text,
+    },
+  },
+  Resolution: { attrs: { id, sequence: int, name: text, description: optText } },
+  SearchRequest: { attrs: { id, name: text, author: optUser, request: longText } },
+  SequenceValueItem: { attrs: { seqName: text, seqId: int } },
+  Status: {
+    attrs: {
+      id,
+      sequence: int,
+      name: text,
+      description: optText,
+      statuscategory: { type: 'enum', values: ['2', '3', '4'] },
+    },
+  },
+  User: {
+    attrs: {
+      id,
+      directoryId: ref('Directory'),
+      userName: text,
+      lowerUserName: text,
+      active: bool,
+      createdDate: time,
+      updatedDate: time,
+      firstName: optText,
+      lowerFirstName: optText,
+      lastName: optText,
+      lowerLastName: optText,
+      displayName: text,
+      lowerDisplayName: text,
+      emailAddress: optText,
+      lowerEmailAddress: optText,
+      credential: optText,
+    },
+  },
+  Worklog: {
+    attrs: {
+      id,
+      issue: ref('Issue'),
+      author: optUser,
+      body: longText,
+      created: time,
+      updateauthor: optUser,
+      updated: time,
+      startdate: time,
+      timeworked: int,
+    },
+  },
+} as const satisfies Record<string, EntitySpec>;
+export type EntityName = keyof typeof ENTITIES;
+
+/**
+ * The order the generator writes elements in: by name, then the id sequences last. The order
+ * is not part of the format, so readers must not depend on it; writing comments and history
+ * before the issues they belong to makes sure ours do not.
+ */
+export const ENTITY_ORDER: readonly EntityName[] = [
+  ...(Object.keys(ENTITIES) as EntityName[]).filter((e) => e !== 'SequenceValueItem').sort(),
+  'SequenceValueItem',
+];
+
+/** Status categories by the number the Status element stores. */
+export const STATUS_CATEGORIES = { new: '2', done: '3', indeterminate: '4' } as const;
+
+// --- Active objects ------------------------------------------------------------------------
+
+export type AoType = 'integer' | 'string' | 'boolean' | 'timestamp' | 'double';
+
+export interface AoColumn {
+  name: string;
+  type: AoType;
+  /** JDBC type number (java.sql.Types) and precision, as the table definition states them. */
+  sqlType: number;
+  precision?: number;
+  primaryKey?: true;
+  autoIncrement?: true;
+}
+
+const BIGINT = -5;
+const INTEGER = 4;
+const VARCHAR = 12;
+const BOOLEAN = 16;
+const CLOB = 2005;
+
+/** The tables the generator writes: the boards and sprints of the agile plugin. */
+export const AO_TABLES: Readonly<Record<string, readonly AoColumn[]>> = {
+  AO_60DB71_RAPIDVIEW: [
+    {
+      name: 'ID',
+      type: 'integer',
+      sqlType: BIGINT,
+      precision: 19,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    { name: 'NAME', type: 'string', sqlType: VARCHAR, precision: 255 },
+    { name: 'OWNER_USER_NAME', type: 'string', sqlType: VARCHAR, precision: 255 },
+    { name: 'SAVED_FILTER_ID', type: 'integer', sqlType: BIGINT, precision: 19 },
+    { name: 'SPRINTS_ENABLED', type: 'boolean', sqlType: BOOLEAN, precision: 1 },
+  ],
+  AO_60DB71_SPRINT: [
+    {
+      name: 'ID',
+      type: 'integer',
+      sqlType: BIGINT,
+      precision: 19,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    { name: 'NAME', type: 'string', sqlType: VARCHAR, precision: 255 },
+    { name: 'RAPID_VIEW_ID', type: 'integer', sqlType: BIGINT, precision: 19 },
+    { name: 'STARTED', type: 'boolean', sqlType: BOOLEAN, precision: 1 },
+    { name: 'CLOSED', type: 'boolean', sqlType: BOOLEAN, precision: 1 },
+    { name: 'START_DATE', type: 'integer', sqlType: BIGINT, precision: 19 },
+    { name: 'END_DATE', type: 'integer', sqlType: BIGINT, precision: 19 },
+    { name: 'COMPLETE_DATE', type: 'integer', sqlType: BIGINT, precision: 19 },
+    { name: 'GOAL', type: 'string', sqlType: CLOB, precision: 2_147_483_647 },
+    { name: 'SEQUENCE', type: 'integer', sqlType: INTEGER, precision: 10 },
+  ],
+};
+
+export const AO_VALUE_TYPES: readonly AoType[] = [
+  'integer',
+  'string',
+  'boolean',
+  'timestamp',
+  'double',
+];

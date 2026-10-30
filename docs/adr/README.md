@@ -75,5 +75,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [068](0068-mcp-server.md) | A built-in MCP tool server over the REST API, as the caller | Accepted |
 | [070](0070-meta-endpoint-and-version-window.md) | The meta endpoint, the instance identity and the frontend version window | Accepted |
 | [071](0071-speed-limits-in-the-benchmark-run.md) | Speed limits are measured in the gate and enforced in the benchmark run | Accepted |
+| [072](0072-synthetic-dc-backups.md) | Synthetic Data Center backups from a seeded streaming generator, with a manifest of exact counts | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
