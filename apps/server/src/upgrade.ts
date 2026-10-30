@@ -806,16 +806,19 @@ async function restoredProblems(
 }
 
 interface DbObject {
-  /** Quoted, schema-qualified name (functions with their argument types). */
+  /** Quoted, schema-qualified name (functions with their argument types; a constraint's own). */
   name: string;
-  /** The DROP statement's object type. */
+  /** The DROP statement's object type; CONSTRAINT for a foreign key. */
   type: string;
+  /** For a constraint: its table, quoted and schema-qualified. */
+  table?: string | null;
 }
 
 /**
  * The objects outside the system schemas that a restore must not find left over: relations,
- * routines, types, extensions and schemas (extension members excluded). Indexes, triggers,
- * constraints and columns go with their tables, which the restore drops and recreates.
+ * routines, types, extensions, schemas (extension members excluded) and foreign keys. Indexes,
+ * triggers, other constraints and columns go with their tables, which the restore drops and
+ * recreates; a new foreign key on a table the backup holds would block that drop.
  */
 async function inventory(db: Kysely<Database>): Promise<DbObject[]> {
   const { rows } = await sql<DbObject>`
@@ -823,30 +826,40 @@ async function inventory(db: Kysely<Database>): Promise<DbObject[]> {
     SELECT format('%I.%I', n.nspname, c.relname) AS name,
            CASE c.relkind WHEN 'v' THEN 'VIEW' WHEN 'm' THEN 'MATERIALIZED VIEW'
                           WHEN 'S' THEN 'SEQUENCE' WHEN 'f' THEN 'FOREIGN TABLE'
-                          ELSE 'TABLE' END AS type
+                          ELSE 'TABLE' END AS type,
+           NULL::text AS "table"
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE c.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
        AND n.nspname <> 'information_schema' AND n.nspname !~ '^pg_'
        AND c.oid NOT IN (SELECT objid FROM ext)
     UNION ALL
     SELECT format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)),
-           CASE p.prokind WHEN 'a' THEN 'AGGREGATE' ELSE 'ROUTINE' END
+           CASE p.prokind WHEN 'a' THEN 'AGGREGATE' ELSE 'ROUTINE' END, NULL
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname <> 'information_schema' AND n.nspname !~ '^pg_'
        AND p.oid NOT IN (SELECT objid FROM ext)
     UNION ALL
     SELECT format('%I.%I', n.nspname, t.typname),
-           CASE t.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END
+           CASE t.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END, NULL
       FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
      WHERE n.nspname <> 'information_schema' AND n.nspname !~ '^pg_'
        AND (t.typtype IN ('e', 'd', 'r', 'm')
             OR (t.typtype = 'c' AND (SELECT relkind FROM pg_class WHERE oid = t.typrelid) = 'c'))
        AND t.oid NOT IN (SELECT objid FROM ext)
     UNION ALL
-    SELECT quote_ident(extname), 'EXTENSION' FROM pg_extension WHERE extname <> 'plpgsql'
+    SELECT quote_ident(extname), 'EXTENSION', NULL FROM pg_extension WHERE extname <> 'plpgsql'
     UNION ALL
-    SELECT quote_ident(nspname), 'SCHEMA' FROM pg_namespace
-     WHERE nspname NOT IN ('public', 'information_schema') AND nspname !~ '^pg_'`.execute(db);
+    SELECT quote_ident(nspname), 'SCHEMA', NULL FROM pg_namespace
+     WHERE nspname NOT IN ('public', 'information_schema') AND nspname !~ '^pg_'
+    UNION ALL
+    -- Foreign keys: one added to a table the backup holds depends on that table's keys, so the
+    -- restore could not drop them (0064 put one on user_session).
+    SELECT quote_ident(con.conname), 'CONSTRAINT', format('%I.%I', n.nspname, c.relname)
+      FROM pg_constraint con
+      JOIN pg_class c ON c.oid = con.conrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE con.contype = 'f'
+       AND n.nspname <> 'information_schema' AND n.nspname !~ '^pg_'`.execute(db);
   return rows;
 }
 
@@ -859,16 +872,29 @@ async function dropNewObjects(
   db: Kysely<Database>,
   before: readonly DbObject[],
 ): Promise<string[]> {
-  const known = new Set(before.map((o) => `${o.type} ${o.name}`));
-  const order = ['SCHEMA', 'TABLE', 'FOREIGN TABLE', 'MATERIALIZED VIEW', 'VIEW', 'SEQUENCE'];
+  const id = (o: DbObject) => `${o.type} ${o.table ? `${o.table}.` : ''}${o.name}`;
+  const known = new Set(before.map(id));
+  const order = [
+    'CONSTRAINT',
+    'SCHEMA',
+    'TABLE',
+    'FOREIGN TABLE',
+    'MATERIALIZED VIEW',
+    'VIEW',
+    'SEQUENCE',
+  ];
   const rank = (type: string) => (order.includes(type) ? order.indexOf(type) : order.length);
   const created = (await inventory(db))
-    .filter((o) => !known.has(`${o.type} ${o.name}`))
+    .filter((o) => !known.has(id(o)))
     .sort((a, b) => rank(a.type) - rank(b.type));
   for (const object of created) {
-    await sql`${sql.raw(`DROP ${object.type} IF EXISTS ${object.name} CASCADE`)}`.execute(db);
+    const drop =
+      object.type === 'CONSTRAINT'
+        ? `ALTER TABLE IF EXISTS ${object.table} DROP CONSTRAINT IF EXISTS ${object.name}`
+        : `DROP ${object.type} IF EXISTS ${object.name} CASCADE`;
+    await sql`${sql.raw(drop)}`.execute(db);
   }
-  return created.map((o) => `${o.type.toLowerCase()} ${o.name}`);
+  return created.map((o) => `${o.type.toLowerCase()} ${o.table ? `${o.table}.` : ''}${o.name}`);
 }
 
 export function upgradeExitCode(outcome: UpgradeOutcome): number {
