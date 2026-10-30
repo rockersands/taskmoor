@@ -49,11 +49,13 @@ const id = z.coerce.number().int().positive().max(MAX_INT);
 const visibility = z
   .union([z.object({ roleId: id }).strict(), z.object({ groupId: id }).strict()])
   .nullable();
-const createBody = z.object({ body: z.unknown(), visibility: visibility.optional() }).strict();
-const updateBody = z
+export const createBody = z
+  .object({ body: z.unknown(), visibility: visibility.optional() })
+  .strict();
+export const updateBody = z
   .object({ body: z.unknown().optional(), visibility: visibility.optional() })
   .strict();
-const listQuery = z
+export const listQuery = z
   .object({
     cursor: z.coerce.number().int().positive().max(MAX_INT).optional(),
     limit: z.coerce.number().int().min(1).max(500).default(100),

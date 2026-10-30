@@ -53,7 +53,7 @@ const instant = z
   .string()
   .max(40)
   .refine((v) => !Number.isNaN(Date.parse(v)), 'an ISO date and time');
-const createBody = z
+export const createBody = z
   .object({
     duration,
     startedAt: instant.optional(),
@@ -77,7 +77,7 @@ const deleteQuery = z
     value: z.string().max(100).optional(),
   })
   .strict();
-const listQuery = z
+export const listQuery = z
   .object({
     cursor: z.coerce.number().int().positive().max(MAX_INT).optional(),
     limit: z.coerce.number().int().min(1).max(500).default(100),

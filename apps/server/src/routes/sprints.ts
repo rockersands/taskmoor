@@ -54,7 +54,9 @@ import { searchRefusal } from './search';
  */
 const MAX_INT = 2_147_483_647;
 const idParam = z.object({ id: z.coerce.number().int().positive().max(MAX_INT) }).strict();
-const listQuery = z.object({ state: z.enum(['future', 'active', 'closed']).optional() }).strict();
+export const listQuery = z
+  .object({ state: z.enum(['future', 'active', 'closed']).optional() })
+  .strict();
 const chartQuery = z
   .object({
     timeZone: z
@@ -68,7 +70,7 @@ const chartQuery = z
 const velocityQuery = z
   .object({ sprints: z.coerce.number().int().min(1).max(50).default(7) })
   .strict();
-const backlogQuery = z
+export const backlogQuery = z
   .object({ limit: z.coerce.number().int().min(1).max(10_000).default(2000) })
   .strict();
 

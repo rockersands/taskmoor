@@ -13,6 +13,9 @@
       "path": "../../packages/testkit"
     },
     {
+      "path": "../../packages/sdk"
+    },
+    {
       "path": "../../packages/iam"
     },
     {

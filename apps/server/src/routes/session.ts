@@ -23,7 +23,7 @@ import {
   twoFactorStatus,
 } from '../two-factor';
 
-const signInBody = z.object({
+export const signInBody = z.object({
   email: z.string().trim().min(1).max(320),
   // Long enough for any policy's maximum; the hash never sees more.
   password: z.string().min(1).max(1024),

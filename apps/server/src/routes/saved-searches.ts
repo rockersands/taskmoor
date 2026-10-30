@@ -49,7 +49,7 @@ const subParam = z
     subscriptionId: z.coerce.number().int().positive().max(MAX_INT),
   })
   .strict();
-const listQuery = z
+export const listQuery = z
   .object({
     filter: z.enum(['visible', 'mine', 'starred']).default('visible'),
     q: z.string().max(255).optional(),
@@ -57,7 +57,7 @@ const listQuery = z
   .strict();
 
 const columnsInput = z.array(z.string().min(1).max(200)).max(100).nullable();
-const createBody = z
+export const createBody = z
   .object({
     name: z.string().trim().min(1).max(255),
     description: z.string().max(4000).optional(),

@@ -161,7 +161,7 @@ const estimate = z.union([z.string().max(100), z.number()]).nullable();
 /** Custom field values by field id (M1-010); null or empty clears one. */
 const customValues = z.record(z.string().max(12), z.unknown());
 
-const createBody = z
+export const createBody = z
   .object({
     track: ref,
     ticketTypeId: idValue.optional(),
@@ -186,7 +186,7 @@ const createBody = z
     visibilityLevelId: idValue.nullable().optional(),
   })
   .strict();
-const updateBody = z
+export const updateBody = z
   .object({
     ticketTypeId: idValue.optional(),
     summary: z.string().optional(),
@@ -228,7 +228,7 @@ const moveBody = z
     version: idValue.optional(),
   })
   .strict();
-const transitionBody = z
+export const transitionBody = z
   .object({
     transitionId: idValue,
     /** Values for the transition's layout, by field name (`close-reason`, `assignee`, ...). */
@@ -245,7 +245,7 @@ const transitionBody = z
 /** What a bulk change asks of each ticket (M1-021): an edit or a move, without a version. */
 export const bulkEditBody = updateBody.omit({ version: true });
 export const bulkMoveBody = moveBody.omit({ version: true });
-const rankBody = z
+export const rankBody = z
   .object({
     before: ref.optional(),
     after: ref.optional(),
@@ -256,11 +256,14 @@ const rankBody = z
     (b) => [b.before, b.after, b.position].filter((v) => v !== undefined).length === 1,
     'exactly one of before, after and position',
   );
-const listQuery = z
+export const listQuery = z
   .object({
     format: z.enum(['doc', 'adf', 'markdown']).optional(),
     track: z.string().min(1).max(300).optional(),
     parent: z.string().min(1).max(300).optional(),
+    /** The `next` of the page before (API v1 paging, M1-065). */
+    cursor: z.string().min(1).max(2000).optional(),
+    /** The same as `cursor`, as this route first named it. */
     after: z.string().min(1).max(2000).optional(),
     limit: z.coerce.number().int().min(1).max(200).default(50),
   })
@@ -275,7 +278,7 @@ const trashQuery = z
     limit: z.coerce.number().int().min(1).max(200).default(50),
   })
   .strict();
-const historyQuery = z
+export const historyQuery = z
   .object({
     order: z.enum(['desc', 'asc']).default('desc'),
     cursor: z
@@ -769,7 +772,8 @@ export function ticketRoutes(
       if (!parent || parent.row.deleted_at) return notFound(reply);
       query = query.where('k.parent_id', '=', parent.row.id);
     }
-    if (q.after !== undefined) query = query.where('k.rank', '>', q.after);
+    const after = q.cursor ?? q.after;
+    if (after !== undefined) query = query.where('k.rank', '>', after);
     const rows = await query
       .orderBy('k.rank')
       .limit(q.limit + 1)

@@ -201,6 +201,15 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-065 REST API v1** (ADR-067; no migration): the contract is `apps/server/src/api/operations.ts`
+  (stable operations over the routes' exported zod schemas) and `schemas.ts` (responses);
+  `openapi.ts` builds `docs/api/openapi.json` (committed; `pnpm verify --update` rewrites it, the
+  reference page and the SDK's generated files); `diff.ts` fails the build on a breaking change
+  against `docs/api/baseline/openapi-v1.json` (re-baseline only with a new major version);
+  `contract.test.ts` calls every stable operation and validates its answer. SDK:
+  `packages/sdk` (`@taskmoor/sdk`). Adding a stable operation: export its route's schemas, add
+  it to `OPERATIONS` with its response schema, call it in `contract.test.ts`, run
+  `pnpm verify --update`. Biome skips `docs/api/**/*.json` and `packages/sdk/src/generated`.
 - **M1-049 list and calendar views** (ADR-065; no migration): `routes/list-views.ts`
   (`POST /search/format-rules`, `GET /tracks/:keyOrId/calendar`), `tracks/lookup.ts`
   (shared track lookup); web `apps/web/src/list` (`ListPage`, groups from the

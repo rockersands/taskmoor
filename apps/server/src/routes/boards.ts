@@ -68,10 +68,10 @@ import { ticketRoutes } from './tickets';
  */
 const MAX_INT = 2_147_483_647;
 const idParam = z.object({ id: z.coerce.number().int().positive().max(MAX_INT) }).strict();
-const listQuery = z
+export const listQuery = z
   .object({ trackId: z.coerce.number().int().positive().max(MAX_INT).optional() })
   .strict();
-const dataQuery = z
+export const dataQuery = z
   .object({
     /** Active board filters, by id, comma separated. */
     filters: z.string().max(2000).optional(),
