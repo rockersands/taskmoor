@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { navigate, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { type DashboardClient, type DashboardSummary, dashboardClient } from './client';
 
@@ -30,7 +31,7 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
     e.preventDefault();
     if (!name.trim()) return;
     const made = await client.create(name.trim());
-    window.location.hash = `#/dashboards/${made.id}`;
+    navigate(`#/dashboards/${made.id}`);
   };
   // Typed freely; kept between ten seconds and an hour when used.
   const turn = Math.min(3600, Math.max(10, Number(seconds) || 60));
@@ -48,7 +49,7 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
           aria-label={t('dashboards.chooseForWallboard', { name: d.name })}
         />
       </label>
-      <a href={`#/dashboards/${d.id}`}>{d.name}</a>
+      <a href={routeHref(`#/dashboards/${d.id}`)}>{d.name}</a>
       <span className="board-meta">
         {t('dashboards.meta', { owner: d.owner.name })}
         {d.isDefault && ` ${t('dashboards.isDefault')}`}
@@ -105,7 +106,9 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
           {chosen.length > 0 ? (
             <a
               className="button-primary"
-              href={`#/dashboards/${chosen[0]}/wallboard?rotate=${chosen.join(',')}&seconds=${turn}`}
+              href={routeHref(
+                `#/dashboards/${chosen[0]}/wallboard?rotate=${chosen.join(',')}&seconds=${turn}`,
+              )}
             >
               {t('dashboards.startWallboard', { count: chosen.length })}
             </a>

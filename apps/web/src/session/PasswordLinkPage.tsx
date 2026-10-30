@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { currentRoute, routeHref } from '../routing/router';
 import { PASSWORD_MIN_LENGTH, passwordProblemMessages, tooManyAttemptsMessage } from './errors';
 import { PasswordField } from './PasswordField';
 import { type SessionUser, useSession } from './SessionProvider';
@@ -67,7 +68,7 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
   const t = useT();
   const { setUser } = useSession();
   const id = useId();
-  const token = passwordTokenFromHash(window.location.hash);
+  const token = passwordTokenFromHash(currentRoute());
   const [state, setState] = useState<State>(
     token ? { status: 'checking' } : { status: 'no-token' },
   );
@@ -148,7 +149,7 @@ export function PasswordLinkPage({ onDone, client = passwordLinkClient }: Passwo
           {note}
         </p>
         {state.status !== 'checking' && (
-          <a className="button-primary setup-link" href="#/sign-in">
+          <a className="button-primary setup-link" href={routeHref('#/sign-in')}>
             {t('passwordLink.goToSignIn')}
           </a>
         )}

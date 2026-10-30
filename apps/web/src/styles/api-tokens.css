@@ -225,3 +225,14 @@
     height: 28px;
   }
 }
+
+/* How to connect an MCP client (M1-072): the address and command, scrolling inside if long. */
+.mcp-snippet {
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-radius: var(--radius-1);
+  background: var(--color-surface-sunken);
+  font-size: var(--font-size-200);
+}

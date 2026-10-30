@@ -7,8 +7,7 @@ name: Nightly benchmarks
 # Sub-millisecond queries need 40 runs for a p95 that ignores a runner's hiccups: with 10
 # runs the p95 is the slowest sample.
 on:
-  schedule:
-    - cron: "0 3 * * *"
+  # Manual only until M1 is finished (the user's decision, 2026-10-30; see HANDOFF).
   workflow_dispatch:
 
 permissions:

@@ -17,7 +17,9 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
     name: 'no-relative-import-into-another-package',
     comment: 'Import another package by its name (@taskmoor/x), never by a relative path.',
     severity: 'error',
-    from: { path: '^(apps|packages)/([^/]+)/' },
+    // The web build's Vite plugin is the exception: Vite loads its config with Node and bundles
+    // only relative imports, so it reaches shared packages by path (apps/web/build/artefact.ts).
+    from: { path: '^(apps|packages)/([^/]+)/', pathNot: '^apps/web/build/' },
     // Package-name imports resolve to the same files; only relative paths ("local") break the rule.
     to: { path: '^(apps|packages)/', pathNot: '^$1/$2/', dependencyTypes: ['local'] },
   },
@@ -26,7 +28,7 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
     comment:
       "Only a package's public entry points (index.ts, testing.ts) may be imported from outside it.",
     severity: 'error',
-    from: { path: '^(apps|packages)/([^/]+)/' },
+    from: { path: '^(apps|packages)/([^/]+)/', pathNot: '^apps/web/build/' },
     to: {
       path: '^packages/([^/]+)/src/',
       pathNot: ['^$1/$2/', '^packages/[^/]+/src/(index|testing)\\.ts$', '^packages/testkit/src/'],
@@ -54,6 +56,8 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
       path: '^(apps|packages)/[^/]+/src/',
       pathNot: [
         '\\.test\\.tsx?$',
+        // Stories run as browser tests (ADR-024) and may use the web app's test helpers.
+        '\\.stories\\.tsx$',
         '^packages/testkit/',
         '^packages/devtools/',
         '^packages/spikes/',

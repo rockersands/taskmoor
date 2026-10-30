@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { ColumnPicker } from '../search/ColumnPicker';
 import {
   type SearchClient,
@@ -216,7 +217,9 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
         <h1 id={`${id}-title`} className="page-title">
           {t('list.title', { name: track.name })}
         </h1>
-        <a href={`#/tracks/${encodeURIComponent(track.key)}`}>{t('releases.toSummary')}</a>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
+          {t('releases.toSummary')}
+        </a>
       </div>
       <div className="list-tools">
         <label className="form-field">
@@ -507,6 +510,7 @@ function RulesPanel({
             type="text"
             value={query}
             required
+            // i18n-ignore: an example in the query language, which is not translated.
             placeholder="due < now() AND stage != closed"
             aria-describedby={`${id}-query-hint`}
             onChange={(e) => setQuery(e.target.value)}

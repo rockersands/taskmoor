@@ -17,6 +17,7 @@ export const OPERATIONS = {
   getBacklog: { method: 'GET', path: '/api/v1/boards/{id}/backlog', paged: false },
   getBoard: { method: 'GET', path: '/api/v1/boards/{id}', paged: false },
   getBoardCards: { method: 'GET', path: '/api/v1/boards/{id}/data', paged: false },
+  getMeta: { method: 'GET', path: '/api/meta', paged: false },
   getRelease: { method: 'GET', path: '/api/v1/releases/{id}', paged: false },
   getSavedSearch: { method: 'GET', path: '/api/v1/saved-searches/{id}', paged: false },
   getSession: { method: 'GET', path: '/api/v1/session', paged: false },

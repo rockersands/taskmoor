@@ -915,6 +915,188 @@
         ],
         "type": "object"
       },
+      "Meta": {
+        "additionalProperties": false,
+        "properties": {
+          "api": {
+            "additionalProperties": false,
+            "properties": {
+              "base": {
+                "description": "Where the native API is, such as `/api/v1`.",
+                "type": "string"
+              },
+              "version": {
+                "description": "The native API’s version.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "version",
+              "base"
+            ],
+            "type": "object"
+          },
+          "frontend": {
+            "additionalProperties": false,
+            "description": "The oldest frontend this backend serves (older ones must update) and the one it was built with (older ones should). Null on a development build, which takes any frontend.",
+            "properties": {
+              "minimum": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "minimum",
+              "recommended"
+            ],
+            "type": "object"
+          },
+          "instance": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "keyAlgorithm": {
+                "const": "Ed25519",
+                "type": "string"
+              },
+              "keyFingerprint": {
+                "description": "`SHA256:` and the key’s digest, base64url.",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "publicKey": {
+                "description": "SPKI DER, base64url.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "keyAlgorithm",
+              "publicKey",
+              "keyFingerprint"
+            ],
+            "type": "object"
+          },
+          "product": {
+            "const": "taskmoor",
+            "type": "string"
+          },
+          "signIn": {
+            "additionalProperties": false,
+            "properties": {
+              "password": {
+                "type": "boolean"
+              },
+              "providers": {
+                "items": {
+                  "$ref": "#/components/schemas/MetaProvider"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "password",
+              "providers"
+            ],
+            "type": "object"
+          },
+          "signature": {
+            "additionalProperties": false,
+            "properties": {
+              "nonce": {
+                "type": "string"
+              },
+              "value": {
+                "description": "Ed25519 over `taskmoor-meta-v1`, the instance id and the nonce, one per line; base64url.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "nonce",
+              "value"
+            ],
+            "type": "object"
+          },
+          "version": {
+            "description": "The backend’s version.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "version",
+          "api",
+          "frontend",
+          "instance",
+          "signIn"
+        ],
+        "type": "object"
+      },
+      "MetaProvider": {
+        "additionalProperties": false,
+        "properties": {
+          "clientId": {
+            "description": "OpenID Connect only.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "issuer": {
+            "description": "OpenID Connect: the issuer URL. SAML: the identity provider’s entity ID.",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "protocol": {
+            "enum": [
+              "oidc",
+              "saml"
+            ],
+            "type": "string"
+          },
+          "ssoUrl": {
+            "description": "SAML only: where sign-in requests go.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startUrl": {
+            "description": "Opens sign-in with this provider.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "protocol",
+          "issuer",
+          "clientId",
+          "ssoUrl",
+          "startUrl"
+        ],
+        "type": "object"
+      },
       "PersonRef": {
         "additionalProperties": {},
         "description": "A person, by id and display name.",
@@ -2587,6 +2769,63 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/meta": {
+      "get": {
+        "description": "Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.",
+        "operationId": "getMeta",
+        "parameters": [
+          {
+            "description": "16 to 128 base64url characters the instance signs, chosen afresh by the caller.",
+            "in": "query",
+            "name": "nonce",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{16,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            },
+            "description": "The instance."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          }
+        },
+        "security": [],
+        "summary": "What this instance is and which clients it works with",
+        "tags": [
+          "Instance"
+        ],
+        "x-taskmoor-access": "public",
+        "x-taskmoor-stability": "stable"
+      }
+    },
     "/api/v1/access-policies": {
       "get": {
         "operationId": "internal-get-access-policies",
@@ -3932,6 +4171,70 @@
             }
           }
         ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/admin/mcp": {
+      "get": {
+        "operationId": "internal-get-admin-mcp",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      },
+      "put": {
+        "operationId": "internal-put-admin-mcp",
         "responses": {
           "default": {
             "content": {
@@ -10040,6 +10343,101 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/mcp": {
+      "delete": {
+        "operationId": "internal-delete-mcp",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "internal"
+      },
+      "get": {
+        "operationId": "internal-get-mcp",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      },
+      "post": {
+        "operationId": "internal-post-mcp",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/me/followed-tickets": {
       "get": {
         "operationId": "internal-get-me-followed-tickets",
@@ -13537,7 +13935,7 @@
           },
           {
             "token": [
-              "write"
+              "read"
             ]
           }
         ],
@@ -13545,7 +13943,7 @@
         "tags": [
           "Internal"
         ],
-        "x-taskmoor-access": "write",
+        "x-taskmoor-access": "read",
         "x-taskmoor-stability": "internal"
       }
     },
@@ -24393,6 +24791,9 @@
     },
     {
       "name": "Comments"
+    },
+    {
+      "name": "Instance"
     },
     {
       "name": "Links"

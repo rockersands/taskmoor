@@ -28,6 +28,9 @@
 //                                       is locked out, or after a lost password keyring)
 //   node cli.mjs audit-verify           checks every workspace's audit hash chain (IAM-013);
 //                                       exit 1 when one is broken
+//   node cli.mjs mcp                    MCP over stdio for local MCP clients (M1-072): each line
+//                                       is a JSON-RPC message sent to TASKMOOR_URL with the API
+//                                       token in TASKMOOR_TOKEN; answers on stdout, logs on stderr
 //   node cli.mjs report-verify          replays every ticket's report events (M1-059, RPT-003)
 //                                       and compares them with the tickets; exit 1 when one
 //                                       differs. Tickets older than the change history
@@ -49,6 +52,7 @@ import { folderSink } from './export/sinks';
 import { exportWorkspace } from './export/write';
 import { FieldCatalogs } from './fields/catalog';
 import { checkFieldValues } from './fields/jobs';
+import { bridgeStdio } from './mcp/stdio';
 import { replayCheck } from './reports/events';
 import { purgeExpired } from './trash/purge';
 import { formatOutcome, upgrade, upgradeExitCode } from './upgrade';
@@ -71,10 +75,28 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | report-verify>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | report-verify | mcp>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
+  process.exit(0);
+}
+
+// The stdio bridge needs no database: it speaks to a running server.
+if (command === 'mcp') {
+  const url = process.env.TASKMOOR_URL;
+  const token = process.env.TASKMOOR_TOKEN;
+  if (!url || !token) {
+    process.stderr.write('TASKMOOR_URL and TASKMOOR_TOKEN are required\n');
+    process.exit(2);
+  }
+  await bridgeStdio({
+    url,
+    token,
+    input: process.stdin,
+    output: process.stdout,
+    log: (line) => process.stderr.write(`${line}\n`),
+  });
   process.exit(0);
 }
 

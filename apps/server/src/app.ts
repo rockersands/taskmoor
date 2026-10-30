@@ -1,14 +1,12 @@
 import { EventEmitter } from 'node:events';
-import { existsSync } from 'node:fs';
 import type { IncomingMessage, Server } from 'node:http';
-import { resolve } from 'node:path';
 import type { Duplex } from 'node:stream';
 import fastifyCookie from '@fastify/cookie';
-import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import type { Tracer } from '@opentelemetry/api';
 import type { Database } from '@taskmoor/db';
 import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/iam';
+import type { RoutingMode } from '@taskmoor/webconfig';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { sweepStorage } from './attachments/cleanup';
@@ -18,6 +16,7 @@ import { Authorizer } from './authz/authorizer';
 import { Collaboration } from './collab/server';
 import type { Role, ServerConfig } from './config';
 import { FieldCatalogs } from './fields/catalog';
+import { serveFrontend } from './frontend';
 import { GuardrailExceeded } from './guardrails/model';
 import { DirectoryGateway } from './ldap/gateway';
 import { instrumentApp, type Metrics } from './observability';
@@ -45,6 +44,8 @@ import { registerInboxRoutes } from './routes/inbox';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerListViewRoutes } from './routes/list-views';
+import { registerMcpRoutes } from './routes/mcp';
+import { registerMetaRoutes } from './routes/meta';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -99,12 +100,16 @@ export interface AppDeps {
   logLevel?: ServerConfig['logLevel'];
   /** Defaults to the API alone, which is what tests exercise. */
   roles?: readonly Role[];
-  /** Built frontend to serve under `/` when the web role is on. */
+  /** The frontend artefact to serve under `/` when the web role is on (M1-105). */
   webDir?: string;
+  /** How the served frontend writes its addresses; hash routing unless told otherwise. */
+  webRouting?: RoutingMode;
   /** Mark session cookies Secure (true behind HTTPS; tests and plain-HTTP trials say false). */
   secureCookies?: boolean;
   /** Where browsers reach this instance; one-time links point here. */
   publicUrl?: string;
+  /** The instance identity a Builder kit gives it (M1-109); otherwise one is made on first use. */
+  instance?: { id: string; seed: string };
   /**
    * Proxies whose X-Forwarded-For is believed (Fastify's trustProxy: addresses, CIDRs or
    * "loopback", "linklocal", "uniquelocal"). Unset, the client is the socket's peer.
@@ -318,6 +323,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
+    // The built-in MCP server (M1-072): tools over the REST API, as the caller.
+    registerMcpRoutes(app, db, { version: deps.version });
+    // The public meta endpoint (M1-106): versions, sign-in methods and the instance's identity.
+    registerMetaRoutes(app, db, {
+      version: deps.version,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      peppers: deps.peppers,
+      ...(deps.instance ? { instance: deps.instance } : {}),
+    });
     // A track's list and calendar views (M1-049): format rules and dated tickets.
     registerListViewRoutes(app, db, {
       catalogs: fieldCatalogs,
@@ -393,36 +407,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   }
 
   if (roles.includes('web') && deps.webDir) {
-    await serveFrontend(app, deps.webDir);
+    await serveFrontend(app, {
+      webDir: deps.webDir,
+      version: deps.version,
+      routing: deps.webRouting ?? 'hash',
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      ...(deps.db ? { db: deps.db } : {}),
+    });
   }
 
   return app;
-}
-
-/**
- * The static frontend (ADR-021, single-server mode): files from the build, and the app shell
- * for every other GET that is not an API or probe path, so deep links such as /browse/ABC-1
- * load. API paths keep their JSON 404 so a client never mistakes HTML for a missing resource.
- */
-async function serveFrontend(app: FastifyInstance, webDir: string): Promise<void> {
-  const root = resolve(webDir);
-  if (!existsSync(resolve(root, 'index.html'))) {
-    throw new Error(`TASKMOOR_WEB_DIR has no index.html: ${root}`);
-  }
-  await app.register(fastifyStatic, { root, wildcard: false, index: ['index.html'] });
-  app.setNotFoundHandler((request, reply) => {
-    const path = request.url.split('?')[0] ?? '';
-    const isApp =
-      request.method === 'GET' &&
-      !path.startsWith('/api/') &&
-      path !== '/health' &&
-      path !== '/ready' &&
-      (request.headers.accept ?? '').includes('text/html');
-    if (isApp) return reply.type('text/html').sendFile('index.html');
-    return reply.code(404).send({
-      message: `Route ${request.method}:${path} not found`,
-      error: 'Not Found',
-      statusCode: 404,
-    });
-  });
 }

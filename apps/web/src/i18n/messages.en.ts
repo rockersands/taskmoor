@@ -4,6 +4,22 @@
  */
 export const messagesEn = {
   'app.name': 'Taskmoor',
+  'app.instanceTitle': '{instance} · Taskmoor',
+  'update.availableTitle': 'A newer version is available.',
+  'update.available':
+    'This app is version {version} and the server runs {server}. Reload the page to update it.',
+  'update.reload': 'Reload',
+  'instance.wrongTitle': 'This app belongs to another server',
+  'instance.wrong':
+    'It was made for another Taskmoor server and does not sign in here, so that nothing you type goes to a server you did not mean.',
+  'instance.wrongAdmin':
+    'Ask your administrator for the app of this server, or for the right address of this app.',
+  'update.later': 'Not now',
+  'update.requiredTitle': 'Update required',
+  'update.required':
+    'This version of the app ({version}) no longer works with the server, which runs {server}. Reload the page to get the current version.',
+  'update.askAdmin':
+    'If this page comes back after reloading, the app itself needs updating: ask your administrator.',
   'shell.skipToContent': 'Skip to content',
   'shell.openNavigation': 'Open navigation',
   'shell.closeNavigation': 'Close navigation',
@@ -326,6 +342,32 @@ export const messagesEn = {
   'settings.security': 'Security',
   'settings.securityHint': 'Who must sign in with two-factor authentication.',
   'settings.trash': 'Trash',
+  'settings.mcp': 'MCP server',
+  'settings.mcpHint': 'Let AI agents and assistants work with tickets, with the tools you allow.',
+  // The MCP server's settings (M1-072).
+  'mcp.title': 'MCP server',
+  'mcp.intro':
+    'AI agents and assistants connect to Taskmoor through the Model Context Protocol with a person’s API token. They can only do what that person and token may, and every tool call is in the audit log.',
+  'mcp.failed': 'The MCP settings could not be loaded.',
+  'mcp.formLabel': 'MCP settings',
+  'mcp.enabled': 'Let agents connect',
+  'mcp.profile': 'Tools agents get',
+  'mcp.profile.readOnly': 'Read-only:',
+  'mcp.profile.readOnlyHint': 'search and read tickets; list tracks, boards and sprints.',
+  'mcp.profile.planner': 'Planner:',
+  'mcp.profile.plannerHint': 'also create and change tickets, comment and link them.',
+  'mcp.profile.full': 'Full:',
+  'mcp.profile.fullHint': 'also move tickets through their workflows.',
+  'mcp.clients': 'Allowed clients',
+  'mcp.clientsHint':
+    'One client name per line, as the client gives it when it connects. Leave empty to allow any.',
+  'mcp.save': 'Save MCP settings',
+  'mcp.saved': 'The MCP settings were saved.',
+  'mcp.saveFailed': 'The MCP settings could not be saved.',
+  'mcp.connect': 'Connecting an agent',
+  'mcp.connectHttp': 'Over HTTP: point the client at this address with an API token.',
+  'mcp.connectStdio':
+    'Over stdio, for clients that start a command: run the server’s command line with the address and token.',
   'settings.trashHint': 'Deleted tickets and tracks, restorable until the retention ends.',
   'settings.singleSignOn': 'Single sign-on',
   'settings.singleSignOnHint':
@@ -3052,7 +3094,7 @@ export const messagesEn = {
   'timeline.progress': '{closed} of {count} closed',
   'timeline.bar': '{key}: {start} to {due}',
   'timeline.rollup': '{key}: {start} to {due}, rolled up from its children',
-  'timeline.schedule': 'Schedule {key}',
+  'timeline.schedule': 'No dates: schedule {key}',
   'timeline.noDates': 'No dates',
   'timeline.noDate': 'none',
   'timeline.rescheduled': '{key} now runs from {start} to {due}.',
@@ -3171,7 +3213,7 @@ export const messagesEn = {
   'summary.noPriority': 'No priority',
   'summary.unassigned': 'Unassigned',
   'summary.nothingOpen': 'No open tickets.',
-  'summary.linkLabel': '{label}: {count}, open the search',
+  'summary.linkLabel': '{label} {count}, open the search',
   'sprints.report.committed': 'Committed at the start',
   'sprints.report.added': 'Added after the start',
   'sprints.report.removedTotal': 'Removed',

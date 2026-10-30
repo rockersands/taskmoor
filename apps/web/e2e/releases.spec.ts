@@ -89,8 +89,8 @@ test('[CORE-016] a release planned, shipped with its open tickets moved on, and 
   await page.reload();
   await hub.getByRole('link', { name: '1.0', exact: true }).click();
   const release = page.getByRole('region', { name: `Shop ${key} 1.0` });
-  await expect(release.getByRole('link', { name: 'Closed: 1, open the search' })).toBeVisible();
-  await expect(release.getByRole('link', { name: 'New: 2, open the search' })).toBeVisible();
+  await expect(release.getByRole('link', { name: 'Closed 1, open the search' })).toBeVisible();
+  await expect(release.getByRole('link', { name: 'New 2, open the search' })).toBeVisible();
   await expect(
     release.getByRole('region', { name: 'Tickets' }).getByRole('link', { name: lastKey }),
   ).toBeVisible();

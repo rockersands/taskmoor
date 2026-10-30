@@ -1,5 +1,5 @@
 # helm test: the app answers through its Service, the database is reachable, and the metrics
-# endpoint publishes the build info.
+# endpoint publishes the build info. It retries for a minute while a new cluster settles.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -41,6 +41,25 @@ spec:
             const setup = JSON.parse(await get(`${base}/api/v1/setup`));
             if (typeof setup.needed !== 'boolean') throw new Error(`setup: ${JSON.stringify(setup)}`);
             if (!(await get(metrics)).includes('taskmoor_build_info')) throw new Error('no build info');
+            {{- if eq (.Values.webRouting | default "path") "path" }}
+            // Clean URLs (M1-134): a deep link is the app itself, on the first visit and a reload.
+            for (const url of [`${base}/tickets/ABC-1`, `${base}/tickets/ABC-1`, `${base}/`]) {
+              const res = await fetch(url, { headers: { accept: 'text/html' }, redirect: 'manual' });
+              const page = await res.text();
+              if (res.status !== 200 || !page.includes('taskmoor-config')) {
+                throw new Error(`${url} answered ${res.status}, not the app`);
+              }
+            }
+            {{- end }}
             console.log(`ok: version ${health.version}, roles ${health.roles.join(',')}`);
           };
-          main().catch((error) => { console.error(error.message); process.exit(1); });
+          // A fresh cluster can take a few seconds to route a new Service: try for a minute.
+          const deadline = Date.now() + 60_000;
+          const attempt = () =>
+            main().catch(async (error) => {
+              const why = `${error.message}${error.cause?.code ? ` (${error.cause.code})` : ''}`;
+              if (Date.now() > deadline) { console.error(why); process.exit(1); }
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              return attempt();
+            });
+          attempt();

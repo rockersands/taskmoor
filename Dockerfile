@@ -12,6 +12,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
 COPY packages/ai/package.json packages/ai/
+COPY packages/builder-core/package.json packages/builder-core/
 COPY packages/db/package.json packages/db/
 COPY packages/devtools/package.json packages/devtools/
 COPY packages/formula/package.json packages/formula/
@@ -22,10 +23,14 @@ COPY packages/sdk/package.json packages/sdk/
 COPY packages/spikes/package.json packages/spikes/
 COPY packages/storage/package.json packages/storage/
 COPY packages/testkit/package.json packages/testkit/
+COPY packages/webconfig/package.json packages/webconfig/
 COPY packages/workflow/package.json packages/workflow/
 RUN pnpm install --frozen-lockfile --ignore-scripts \
       --filter @taskmoor/server... --filter @taskmoor/web...
 COPY . .
+# Stamped into the frontend artefact and the server bundle alike (M1-105): the server refuses
+# a frontend of another version. Declared here so a new version keeps the install layer cached.
+ARG TASKMOOR_VERSION=0.0.0-dev
 RUN pnpm --filter @taskmoor/web build && node tools/build/server.mjs
 
 FROM node:${NODE_VERSION}-alpine AS runtime

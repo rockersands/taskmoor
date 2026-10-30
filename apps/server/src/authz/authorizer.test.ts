@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
+import { ENFORCE_BUDGETS, expectWithinBudget } from '@taskmoor/testkit/budget';
 import { fc } from '@taskmoor/testkit/property';
 import { type Kysely, sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
@@ -581,9 +582,10 @@ describe('authorization service against the reference model (M1-002)', () => {
       }
       times.sort((a, b) => a - b);
       rounds.push(times[Math.floor(times.length * 0.95)] as number);
-      if ((rounds[round] as number) < 10) break;
+      // Outside the benchmark run one round is enough: the budget is only measured there.
+      if (!ENFORCE_BUDGETS || (rounds[round] as number) < 10) break;
     }
-    expect(Math.min(...rounds)).toBeLessThan(10);
+    expectWithinBudget(Math.min(...rounds), 10, 'permission check p95 (ms)');
   });
 
   it('[IAM-012] serves repeated checks from the cache and drops them when the epoch moves', async () => {

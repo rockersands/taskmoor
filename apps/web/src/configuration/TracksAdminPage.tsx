@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import {
@@ -116,7 +117,9 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
           </p>
           {board && (
             <p className="page-note">
-              <a href={`#/boards/${board.id}`}>{t('admin.tracks.openBoard', { key: board.key })}</a>
+              <a href={routeHref(`#/boards/${board.id}`)}>
+                {t('admin.tracks.openBoard', { key: board.key })}
+              </a>
             </p>
           )}
           {problem && (

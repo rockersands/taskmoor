@@ -115,7 +115,7 @@ describe('the timeline (M1-048)', () => {
       }),
     );
     // An unscheduled ticket gets days from its panel too.
-    await user.click(screen.getByRole('button', { name: 'Schedule LCH-6' }));
+    await user.click(screen.getByRole('button', { name: 'No dates: schedule LCH-6' }));
     const venue = within(screen.getByRole('complementary', { name: 'Days of LCH-6' }));
     await user.type(venue.getByLabelText('Start date'), '2026-11-16');
     await user.click(venue.getByRole('button', { name: 'Save dates' }));

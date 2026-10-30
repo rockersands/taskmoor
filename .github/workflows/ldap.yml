@@ -5,18 +5,7 @@ name: Directories
 # deep and runs apps/server/src/ldap/openldap.e2e.test.ts over StartTLS. Runs when directory
 # code changes, weekly (also at IAM-005's 100,000 people), and on demand.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/server/src/ldap/**"
-      - "apps/server/src/routes/directories.ts"
-      - "apps/server/src/routes/session.ts"
-      - "apps/server/src/testing/fake-ldap.ts"
-      - "tools/ldap/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/ldap.yml"
-  schedule:
-    - cron: "0 6 * * 3"
+  # Manual only until M1 is finished (the user's decision, 2026-10-30; see HANDOFF).
   workflow_dispatch:
 
 permissions:

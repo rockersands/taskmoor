@@ -1,4 +1,4 @@
-import { API_BASE, api } from '../api/client';
+import { API_BASE, api, socketUrl } from '../api/client';
 import type { PositionSocket, SyncApi, SyncChange } from './engine';
 import type { OutboxEntry, SyncTrack, TicketSnapshot } from './store';
 
@@ -35,10 +35,9 @@ export const browserSyncApi: SyncApi = {
   },
 };
 
-/** The realtime socket on the page's own host. */
+/** The realtime socket on the backend. */
 export function browserSocket(): PositionSocket {
-  const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  const socket = new WebSocket(`${scheme}://${window.location.host}${API_BASE}/sync/socket`);
+  const socket = new WebSocket(socketUrl('/sync/socket'));
   const keepAlive = setInterval(() => {
     if (socket.readyState === WebSocket.OPEN) socket.send('ping');
   }, 25_000);

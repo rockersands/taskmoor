@@ -7,6 +7,7 @@ import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
+import { routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { usePaletteCommands } from '../../shell/paletteCommands';
@@ -283,11 +284,14 @@ export function TicketPage({
     } else if (key === 'm') {
       event.preventDefault();
       setTab('comments');
-      // The comment editor, once the tab shows it.
-      window.setTimeout(() => {
+      // The comment editor, once the tab shows it: it may take a few frames to mount.
+      let tries = 0;
+      const focusEditor = () => {
         const editor = document.querySelector<HTMLElement>('.comment-composer [contenteditable]');
-        editor?.focus();
-      }, 0);
+        if (editor) editor.focus();
+        else if (++tries < 40) window.setTimeout(focusEditor, 25);
+      };
+      window.setTimeout(focusEditor, 0);
     } else if (key === 'w') {
       event.preventDefault();
       void toggleFollow();
@@ -941,7 +945,7 @@ function Details({
           <dt>{t('workflow.field.parent')}</dt>
           <dd>
             {ticket.parent.key ? (
-              <a href={`#/tickets/${encodeURIComponent(ticket.parent.key)}`}>
+              <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.parent.key)}`)}>
                 {ticket.parent.key} {ticket.parent.summary}
               </a>
             ) : (
@@ -996,7 +1000,7 @@ function LinksPanel({
           <li key={`t${l.id}`}>
             <span className="ticket-link-phrase">{l.phrase}</span>{' '}
             <a
-              href={`#/tickets/${encodeURIComponent(l.ticket.key)}`}
+              href={routeHref(`#/tickets/${encodeURIComponent(l.ticket.key)}`)}
               className={l.ticket.closed ? 'ticket-link-closed' : undefined}
             >
               {l.ticket.key}

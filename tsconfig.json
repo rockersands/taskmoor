@@ -38,6 +38,12 @@
       "path": "packages/sdk"
     },
     {
+      "path": "packages/webconfig"
+    },
+    {
+      "path": "packages/builder-core"
+    },
+    {
       "path": "apps/server"
     },
     {

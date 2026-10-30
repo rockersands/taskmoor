@@ -1187,6 +1187,25 @@ export const EVENT_TYPES = {
     subject: 'workspace',
     payload: z.object({ tracks: z.array(z.string()).nullable() }),
   },
+  /** An MCP client called a tool (M1-072, API-012 (3)): which client, which tool, whether it worked. */
+  'mcp.tool_called': {
+    subject: 'user',
+    payload: z.object({
+      client: z.string(),
+      clientVersion: z.string(),
+      tool: z.string(),
+      ok: z.boolean(),
+    }),
+  },
+  /** The MCP server's settings changed (M1-072): on or off, allowed clients, tool profile. */
+  'mcp.settings_updated': {
+    subject: 'workspace',
+    payload: z.object({
+      enabled: z.boolean(),
+      allowedClients: z.array(z.string()),
+      profile: z.enum(['read-only', 'planner', 'full']),
+    }),
+  },
   // Configuration guardrails (M1-055): an administrator changed a limit.
   'guardrail.changed': {
     subject: 'workspace',

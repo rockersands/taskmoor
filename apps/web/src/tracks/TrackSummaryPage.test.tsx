@@ -32,16 +32,16 @@ describe('track summary page (M1-064)', () => {
         .getAllByRole('link')
         .map((a) => a.getAttribute('aria-label')),
     ).toEqual([
-      'High: 8, open the search',
-      'Medium: 12, open the search',
-      'No priority: 6, open the search',
+      'High 8, open the search',
+      'Medium 12, open the search',
+      'No priority 6, open the search',
     ]);
     const assignees = screen.getByRole('region', { name: 'Open by assignee' });
     expect(
-      within(assignees).getByRole('link', { name: 'Unassigned: 7, open the search' }),
+      within(assignees).getByRole('link', { name: 'Unassigned 7, open the search' }),
     ).toBeVisible();
     expect(screen.getByRole('region', { name: 'By stage' })).toHaveTextContent(
-      'New14Active12Closed120',
+      'New 14Active 12Closed 120',
     );
   });
 

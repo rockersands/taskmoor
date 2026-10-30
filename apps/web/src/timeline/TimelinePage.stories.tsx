@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
+import { expectWithinBudget } from '../test/budget';
 import { fakeTimelineClient, manyItems } from './fixtures';
 import { TimelinePage } from './TimelinePage';
 
@@ -69,6 +70,6 @@ export const TwoThousandTickets: Story = {
       { timeout: 10_000, interval: 10 },
     );
     const took = performance.now() - arrival.at;
-    await expect(took).toBeLessThan(1500);
+    await expectWithinBudget(took, 1500, '2,000 timeline rows on screen (ms)');
   },
 };

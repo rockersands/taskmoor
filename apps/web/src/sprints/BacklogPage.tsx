@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import {
   type Backlog,
   type BacklogPanels,
@@ -360,7 +361,7 @@ export function BacklogPage({
               aria-label={t('sprints.select.label', { key: ticket.key })}
             />
             <a
-              href={`#/tickets/${encodeURIComponent(ticket.key)}`}
+              href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}
               className="sprint-ticket-key"
               aria-describedby={`${id}-hint`}
             >
@@ -463,7 +464,7 @@ export function BacklogPage({
         <h1 id={`${id}-title`} className="page-title">
           {t('sprints.backlog.pageTitle')}
         </h1>
-        <a href={`#/boards/${boardId}`}>{t('sprints.backlog.toBoard')}</a>
+        <a href={routeHref(`#/boards/${boardId}`)}>{t('sprints.backlog.toBoard')}</a>
       </div>
       {failed && (
         <p className="board-problem" role="alert">
@@ -757,7 +758,7 @@ function SprintPanel({
         </span>
         <span className="board-meta">{totals}</span>
         {section.state === 'active' && (
-          <a href={`#/boards/${section.boardId}/sprints/${section.id}/report`}>
+          <a href={routeHref(`#/boards/${section.boardId}/sprints/${section.id}/report`)}>
             {t('sprints.report.link')}
           </a>
         )}

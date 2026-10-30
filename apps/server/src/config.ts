@@ -1,5 +1,11 @@
 import type { S3StoreConfig } from '@taskmoor/storage';
+import { DEV_VERSION, ROUTING_MODES, type RoutingMode } from '@taskmoor/webconfig';
 import { z } from 'zod';
+
+/** Stamped into the bundle by `pnpm build` from TASKMOOR_VERSION, as the frontend artefact is. */
+declare const __TASKMOOR_BUILD_VERSION__: string | undefined;
+const BUILT_VERSION =
+  typeof __TASKMOOR_BUILD_VERSION__ === 'string' ? __TASKMOOR_BUILD_VERSION__ : DEV_VERSION;
 
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
 
@@ -19,10 +25,16 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   HOST: z.string().min(1).default('0.0.0.0'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
-  TASKMOOR_VERSION: z.string().min(1).default('0.0.0-dev'),
+  /** Defaults to the version the bundle was built with; the frontend artefact must match it. */
+  TASKMOOR_VERSION: z.string().min(1).default(BUILT_VERSION),
   TASKMOOR_ROLE: z.string().min(1).default('all'),
   /** Directory with the built frontend, served by the web role; unset means no static files. */
   TASKMOOR_WEB_DIR: z.string().min(1).optional(),
+  /**
+   * How the served frontend writes its addresses (M1-105): `hash` (#/boards/7) or `path`
+   * (clean URLs, /boards/7); either way links of the other kind still open.
+   */
+  TASKMOOR_WEB_ROUTING: z.enum(ROUTING_MODES as [RoutingMode, ...RoutingMode[]]).default('hash'),
   /** Where browsers reach this instance; the setup link and cookie security follow it. */
   PUBLIC_URL: z.string().url().optional(),
   /** Fixed setup token for installers and tests; otherwise one is generated per start. */
@@ -55,6 +67,16 @@ const envSchema = z.object({
    * its keyring in TASKMOOR_DATA/secrets/password-peppers (created on first start).
    */
   TASKMOOR_PASSWORD_PEPPER: z.string().min(32).optional(),
+  /**
+   * The instance's identity from the Builder's backend kit (M1-109, ADR-070): its id and its
+   * Ed25519 key's 32-byte seed in base64url. They seed the identity the meta endpoint serves the
+   * first time it is needed; an identity already stored (a restore) is kept.
+   */
+  TASKMOOR_INSTANCE_ID: z.string().uuid().optional(),
+  TASKMOOR_INSTANCE_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{43}$/, 'must be 32 bytes in base64url, as the Builder writes it')
+    .optional(),
   /**
    * Attachments (M1-016, ADR-040): `local` (files under TASKMOOR_FILES_DIR, by default
    * TASKMOOR_DATA/files) or `s3` (a bucket). Defaults to s3 when a bucket is named.
@@ -115,6 +137,7 @@ export interface ServerConfig {
   version: string;
   roles: readonly Role[];
   webDir: string | undefined;
+  webRouting: RoutingMode;
   publicUrl: string;
   secureCookies: boolean;
   setupToken: string | undefined;
@@ -128,6 +151,8 @@ export interface ServerConfig {
   metricsHost: string;
   trustedProxies: string | undefined;
   passwordPepper: string | undefined;
+  /** The identity a Builder kit gives the instance (TASKMOOR_INSTANCE_ID and _KEY). */
+  instance: { id: string; seed: string } | undefined;
   /**
    * After SIGTERM, how long the server keeps answering (each answer closing its connection)
    * before it stops: keep-alive clients hang up cleanly instead of losing a request.
@@ -199,6 +224,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       'Invalid server configuration:\n- TASKMOOR_S3_ACCESS_KEY_ID and TASKMOOR_S3_SECRET_ACCESS_KEY go together',
     );
   }
+  if (Boolean(e.TASKMOOR_INSTANCE_ID) !== Boolean(e.TASKMOOR_INSTANCE_KEY)) {
+    throw new Error(
+      'Invalid server configuration:\n- TASKMOOR_INSTANCE_ID and TASKMOOR_INSTANCE_KEY go together',
+    );
+  }
   if (Boolean(e.TASKMOOR_SMTP_USER) !== Boolean(e.TASKMOOR_SMTP_PASSWORD)) {
     throw new Error(
       'Invalid server configuration:\n- TASKMOOR_SMTP_USER and TASKMOOR_SMTP_PASSWORD go together',
@@ -243,6 +273,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     version: e.TASKMOOR_VERSION,
     roles,
     webDir: e.TASKMOOR_WEB_DIR,
+    webRouting: e.TASKMOOR_WEB_ROUTING,
     publicUrl: e.PUBLIC_URL ?? `http://localhost:${e.PORT}`,
     secureCookies: (e.PUBLIC_URL ?? '').startsWith('https://'),
     setupToken: e.TASKMOOR_SETUP_TOKEN,
@@ -256,6 +287,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     metricsHost: e.METRICS_HOST ?? e.HOST,
     trustedProxies: e.TASKMOOR_TRUSTED_PROXIES,
     passwordPepper: e.TASKMOOR_PASSWORD_PEPPER,
+    instance:
+      e.TASKMOOR_INSTANCE_ID && e.TASKMOOR_INSTANCE_KEY
+        ? { id: e.TASKMOOR_INSTANCE_ID, seed: e.TASKMOOR_INSTANCE_KEY }
+        : undefined,
     shutdownDrainMs: e.TASKMOOR_SHUTDOWN_DRAIN_MS,
     queryTimeoutMs: e.TASKMOOR_QUERY_TIMEOUT_MS,
     storage: {

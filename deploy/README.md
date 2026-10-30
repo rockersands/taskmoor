@@ -20,6 +20,35 @@ The token works once and expires after 24 hours; restarting the backend prints a
 match the address people use, and `TASKMOOR_SETUP_TOKEN` to choose the token yourself, as an
 installer or a test does.
 
+## The web frontend
+
+The image serves the frontend it was built with (`/app/web`, `version.json` beside
+index.html names its version) and refuses to start the web role next to a frontend of another
+version. The Compose kits, the all-in-one image and the Helm chart use clean URLs
+(`/boards/7`; `TASKMOOR_WEB_ROUTING=path`, Helm `webRouting: path`). A bare server started
+without them uses hash routing (`/#/boards/7`). Set `TASKMOOR_WEB_ROUTING=hash` where something
+in front of Taskmoor cannot pass deep links through. Either way links of the other kind still
+open, so switching breaks no bookmark or email. Behind a reverse proxy that serves
+Taskmoor under a path, put that path in `PUBLIC_URL` (`https://example.com/tracker`).
+
+A frontend kit made by the Builder (`pnpm builder --project <file>`, ADR-031) is that folder
+ready for a static host: index.html carries the configuration, pinned to its instance, with
+integrity hashes on every script and stylesheet. For clean URLs it brings `.htaccess` (Apache),
+`_redirects` (Netlify, Cloudflare Pages) and an `nginx.conf` snippet. The single-file form is
+one index.html with everything inside, for hosts that take one file; it uses hash routing.
+
+The same folder runs on any static host (ADR-066). Its index.html carries the public runtime
+configuration in a JSON block you fill without rebuilding; only these keys are accepted:
+
+```html
+<script id="taskmoor-config" type="application/json">{"apiUrl":"https://api.example.com","routing":"path","basePath":"/","instanceName":"Acme"}</script>
+```
+
+With `"routing": "path"`, add `<base href="/">` (your `basePath`) right before that block and
+have the host answer unknown paths with index.html; with `"routing": "hash"` (the default) no
+host rules are needed. The Builder's frontend kit (M1-111) fills both and adds the host's
+fallback files. Signing in from another origin waits for M1-107.
+
 ## Upgrades
 
 One command takes an instance from any of the last three releases (and from the latest

@@ -29,6 +29,12 @@
     },
     {
       "path": "../../packages/storage"
+    },
+    {
+      "path": "../../packages/builder-core"
+    },
+    {
+      "path": "../../packages/webconfig"
     }
   ]
 }

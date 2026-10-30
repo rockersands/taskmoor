@@ -6,8 +6,7 @@ name: Install matrix
 # job summary. Real virtual machines per OS come when a VM budget exists. The air-gap job
 # installs from the offline bundle on a network with no route out.
 on:
-  schedule:
-    - cron: "0 4 * * *"
+  # Manual only until M1 is finished (the user's decision, 2026-10-30; see HANDOFF).
   workflow_dispatch:
 
 permissions:

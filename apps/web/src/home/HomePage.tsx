@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { type HomeClient, type HomeTicket, homeClient } from './client';
 
@@ -87,7 +88,10 @@ function HomeList({ title, empty, list }: { title: string; empty: string; list: 
         <ul className="home-tickets">
           {list.tickets.map((ticket) => (
             <li key={ticket.id} className="home-ticket">
-              <a href={`#/tickets/${encodeURIComponent(ticket.key)}`} className="home-ticket-link">
+              <a
+                href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}
+                className="home-ticket-link"
+              >
                 <span className="home-ticket-key">{ticket.key}</span>{' '}
                 <span className="home-ticket-summary">{ticket.summary}</span>
               </a>

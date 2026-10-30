@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import {
   type InboxClient,
   type InboxItem,
@@ -90,7 +91,9 @@ const isKnownEvent = (label: string) => KNOWN.has(label.slice('notifications.eve
 
 /** Where an item leads: its ticket, at the comment when it is about one. */
 const linkOf = (item: InboxItem) =>
-  `#/tickets/${encodeURIComponent(item.ticket.key)}${item.comment ? `?comment=${item.comment.id}` : ''}`;
+  routeHref(
+    `#/tickets/${encodeURIComponent(item.ticket.key)}${item.comment ? `?comment=${item.comment.id}` : ''}`,
+  );
 
 /**
  * The in-app inbox (M1-058; NTF-003): mentions and changes to the tickets a person follows,

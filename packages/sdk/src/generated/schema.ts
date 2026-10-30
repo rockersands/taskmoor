@@ -1,5 +1,25 @@
 // Generated from docs/api/openapi.json by packages/sdk/src/generate.ts. Do not edit.
 export interface paths {
+    "/api/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What this instance is and which clients it works with
+         * @description Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.
+         */
+        get: operations["getMeta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/boards": {
         parameters: {
             query?: never;
@@ -856,6 +876,56 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        Meta: {
+            api: {
+                /** @description Where the native API is, such as `/api/v1`. */
+                base: string;
+                /** @description The native API’s version. */
+                version: string;
+            };
+            /** @description The oldest frontend this backend serves (older ones must update) and the one it was built with (older ones should). Null on a development build, which takes any frontend. */
+            frontend: {
+                minimum: string | null;
+                recommended: string | null;
+            };
+            instance: {
+                id: string;
+                /** @constant */
+                keyAlgorithm: "Ed25519";
+                /** @description `SHA256:` and the key’s digest, base64url. */
+                keyFingerprint: string;
+                name: string;
+                /** @description SPKI DER, base64url. */
+                publicKey: string;
+            };
+            /** @constant */
+            product: "taskmoor";
+            signature?: {
+                nonce: string;
+                /** @description Ed25519 over `taskmoor-meta-v1`, the instance id and the nonce, one per line; base64url. */
+                value: string;
+            };
+            signIn: {
+                password: boolean;
+                providers: components["schemas"]["MetaProvider"][];
+            };
+            /** @description The backend’s version. */
+            version: string;
+        };
+        MetaProvider: {
+            /** @description OpenID Connect only. */
+            clientId: string | null;
+            id: number;
+            /** @description OpenID Connect: the issuer URL. SAML: the identity provider’s entity ID. */
+            issuer: string;
+            name: string;
+            /** @enum {string} */
+            protocol: "oidc" | "saml";
+            /** @description SAML only: where sign-in requests go. */
+            ssoUrl: string | null;
+            /** @description Opens sign-in with this provider. */
+            startUrl: string;
+        };
         /** @description A person, by id and display name. */
         PersonRef: {
             id: number;
@@ -1279,6 +1349,47 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getMeta: {
+        parameters: {
+            query?: {
+                /** @description 16 to 128 base64url characters the instance signs, chosen afresh by the caller. */
+                nonce?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The instance. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meta"];
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listBoards: {
         parameters: {
             query?: {

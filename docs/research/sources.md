@@ -793,3 +793,61 @@ their provenance. Implementation works from the specs, not from these pages.
 - <https://www.startuphub.ai/startups/plane>
 - <https://www.tipranks.com/private-companies/linear>
 - <https://www.webull.com/news/15667682435793920>
+
+## Data Center backup format (M1-087)
+
+53 pages, read on 2026-10-30 for `docs/specs/02d-dc-backup-format.md`, which says what each one supports.
+
+- <https://community.unix.com/t/is-it-possible-to-use-sed-to-truncate-email-addresses-within-a-file-so-only-the-user-name-remains/384235>
+- <https://confluence.atlassian.com/adminjiraserver/restoring-data-from-an-xml-backup-938847707.html>
+- <https://confluence.atlassian.com/adminjiraserver0910/backing-up-data-1282246276.html>
+- <https://confluence.atlassian.com/display/JIRA064/Removing+invalid+characters+from+XML+backups>
+- <https://confluence.atlassian.com/jirasoftware/jira-software-7-0-0-release-notes-776997721.html>
+- <https://confluence.atlassian.com/servicedeskcloud/exporting-issues-1097176638.html>
+- <https://developer.atlassian.com/server/framework/atlassian-sdk/table-names>
+- <https://developer.atlassian.com/server/jira/platform/database-change-history/>
+- <https://developer.atlassian.com/server/jira/platform/database-issue-fields/>
+- <https://developer.atlassian.com/server/jira/platform/database-issue-status-and-workflow/>
+- <https://developer.atlassian.com/server/jira/platform/database-schema/>
+- <https://developer.atlassian.com/server/jira/platform/database-user-and-group-tables/>
+- <https://developer.atlassian.com/server/jira/platform/preparing-for-jira-6-1>
+- <https://docs.atlassian.com/software/jira/docs/api/7.0.5/constant-values.html>
+- <https://docs.atlassian.com/software/jira/docs/api/7.6.1/com/atlassian/jira/model/ChangeItem.html>
+- <https://docs.oracle.com/en/java/javase/21/docs/api/constant-values.html>
+- <https://gist.github.com/christo/4316074>
+- <https://github.com/funidata/jira-manglr>
+- <https://github.com/hbrowser/jira-cloud-backup-viewer>
+- <https://jira.atlassian.com/browse/JRA-16054>
+- <https://jira.atlassian.com/browse/JRA-26636>
+- <https://jira.atlassian.com/browse/JRACLOUD-71392>
+- <https://jira.atlassian.com/browse/JRACLOUD-74672>
+- <https://jira.atlassian.com/browse/JRACLOUD-83900>
+- <https://jira.atlassian.com/browse/JRASERVER-29305>
+- <https://jira.atlassian.com/browse/JRASERVER-45917>
+- <https://jira.atlassian.com/browse/JRASERVER-5475>
+- <https://jira.atlassian.com/browse/JRASERVER-61007>
+- <https://jira.atlassian.com/browse/JRASERVER-74729>
+- <https://jira.atlassian.com/browse/JRASERVER-78781>
+- <https://support.atlassian.com/atlassian-cloud/kb/partial-or-selective-import-of-a-jira-backup-export-into-jira-cloud/>
+- <https://support.atlassian.com/jira-cloud-administration/docs/export-issues/>
+- <https://support.atlassian.com/jira/kb/attachment-not-imported-during-backup-restoration-in-jira-data-center/>
+- <https://support.atlassian.com/jira/kb/backup-restore-fails-when-restoring-activeobjects-with-foreign-key-constraint-error-in-jira/>
+- <https://support.atlassian.com/jira/kb/cannot-insert-duplicate-key-in-object-when-adding-content-to-a-jira-application/>
+- <https://support.atlassian.com/jira/kb/could-not-determine-the-proper-mapping-from-oracle-export-for-columndefault/>
+- <https://support.atlassian.com/jira/kb/determining-sprint-status-from-the-database/>
+- <https://support.atlassian.com/jira/kb/duplicate-entry-for-key-cwd_membershipuk_mem_dir_parent_child-error-when-restoring-a-backup/>
+- <https://support.atlassian.com/jira/kb/duplicate-entry-key-uk_lower_user_name-when-upgrading-to-jira-6x>
+- <https://support.atlassian.com/jira/kb/how-to-find-all-the-comments-related-to-one-user-in-the-database>
+- <https://support.atlassian.com/jira/kb/how-to-get-attachment-statistics-from-the-database-in-jiradatacenter-and-server/>
+- <https://support.atlassian.com/jira/kb/how-to-identify-active-objects-ao-tables-in-jira-application-database/>
+- <https://support.atlassian.com/jira/kb/importing-from-cloud-to-server-fails-while-restoring-active-objects-data/>
+- <https://support.atlassian.com/jira/kb/importing-xml-backup-or-anonymizing-data-fails-due-to-invalid-characters-in-attribute-values-in-jira/>
+- <https://support.atlassian.com/jira/kb/jira-project-import-failed-with-unexpected-problem-processing-the-backup-xml-file/>
+- <https://support.atlassian.com/jira/kb/locate-jira-data-center-file-attachments-in-the-filesystem/>
+- <https://support.atlassian.com/jira/kb/project-import-fails-due-to-missing-projectroleid/>
+- <https://support.atlassian.com/jira/kb/removing-a-custom-field-from-an-xml-backup/>
+- <https://support.atlassian.com/jira/kb/restoring-an-xml-backup-fails-due-to-exception-is-orgxmlsaxsaxparseexception>
+- <https://support.atlassian.com/jira/kb/retrieve-a-list-of-users-assigned-to-project-roles-in-jira-data-center/>
+- <https://support.atlassian.com/jira/kb/unable-to-create-issue-due-to-data-corruption/>
+- <https://support.atlassian.com/jira/kb/unable-to-find-jira-backup-entitiesxml-inside-of-zip-file-error/>
+- <https://support.atlassian.com/jira/kb/xml-import-fails-with-ioexception-no-such-file-or-directory/>

@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import type { NumberField } from '../sprints/client';
 import {
@@ -323,7 +324,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
         {t('boards.settings.title', { name: board.name })}
       </h1>
       <p>
-        <a href={`#/boards/${boardId}`}>{t('boards.settings.back')}</a>
+        <a href={routeHref(`#/boards/${boardId}`)}>{t('boards.settings.back')}</a>
       </p>
       {notice && (
         <p

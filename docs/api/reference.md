@@ -8,6 +8,7 @@ it by hand. How to authenticate, page, read errors and what "stable" promises ar
 
 - [Boards](#boards)
 - [Comments](#comments)
+- [Instance](#instance)
 - [Links](#links)
 - [Reference](#reference)
 - [Releases](#releases)
@@ -326,6 +327,24 @@ Responses:
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 - 404: There is no such resource, or the caller may not see it.
 - 409: The resource changed or is in a state that refuses this; read it again.
+
+## Instance
+
+### What this instance is and which clients it works with
+
+`GET /api/meta`, operation `getMeta`, access: public.
+
+Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `nonce` | query | string | no | 16 to 128 base64url characters the instance signs, chosen afresh by the caller. |
+
+Responses:
+
+- 200: The instance. Body: [Meta](#schema-meta).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
 
 ## Links
 
@@ -1118,6 +1137,30 @@ Responses:
 | `inward` | string | yes |  |
 | `isCopy` | boolean | yes |  |
 
+### Schema: Meta
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `product` | `"taskmoor"` | yes |  |
+| `version` | string | yes | The backend’s version. |
+| `api` | object | yes |  |
+| `frontend` | object | yes | The oldest frontend this backend serves (older ones must update) and the one it was built with (older ones should). Null on a development build, which takes any frontend. |
+| `instance` | object | yes |  |
+| `signIn` | object | yes |  |
+| `signature` | object | no |  |
+
+### Schema: MetaProvider
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | yes |  |
+| `name` | string | yes |  |
+| `protocol` | `"oidc"`, `"saml"` | yes |  |
+| `issuer` | string | yes | OpenID Connect: the issuer URL. SAML: the identity provider’s entity ID. |
+| `clientId` | string or null | yes | OpenID Connect only. |
+| `ssoUrl` | string or null | yes | SAML only: where sign-in requests go. |
+| `startUrl` | string | yes | Opens sign-in with this provider. |
+
 ### Schema: PersonRef
 
 A person, by id and display name.
@@ -1349,5 +1392,5 @@ A `"new"`, `"active"`, `"closed"`.
 
 ## Internal routes
 
-The document also lists 389 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 394 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

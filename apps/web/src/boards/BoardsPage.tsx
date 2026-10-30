@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { navigate, routeHref } from '../routing/router';
 import { type BoardClient, type BoardSummary, boardClient } from './client';
 
 export interface BoardsPageProps {
@@ -9,7 +10,7 @@ export interface BoardsPageProps {
 }
 
 const openBoard = (board: BoardSummary) => {
-  window.location.hash = `#/boards/${board.id}`;
+  navigate(`#/boards/${board.id}`);
 };
 
 /**
@@ -47,7 +48,7 @@ export function BoardsPage({ client = boardClient, onCreated = openBoard }: Boar
         <ul className="boards-list">
           {boards.map((board) => (
             <li key={board.id} className="boards-item">
-              <a href={`#/boards/${board.id}`}>{board.name}</a>
+              <a href={routeHref(`#/boards/${board.id}`)}>{board.name}</a>
               <span className="boards-item-meta">
                 {t('boards.meta', {
                   kind: t(board.kind === 'scrum' ? 'boards.kind.scrum' : 'boards.kind.kanban'),

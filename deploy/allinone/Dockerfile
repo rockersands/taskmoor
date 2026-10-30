@@ -13,6 +13,8 @@ RUN apk add --no-cache postgresql16 postgresql16-client postgresql16-contrib su-
 COPY deploy/allinone/entrypoint.sh /usr/local/bin/taskmoor-allinone
 RUN chmod 755 /usr/local/bin/taskmoor-allinone
 ENV TASKMOOR_DATA=/data
+# Clean URLs (M1-134, ADR-066); `-e TASKMOOR_WEB_ROUTING=hash` brings hash routing back.
+ENV TASKMOOR_WEB_ROUTING=path
 VOLUME ["/data"]
 EXPOSE 8080
 ENTRYPOINT ["taskmoor-allinone"]

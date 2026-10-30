@@ -15,8 +15,12 @@ code; the user decides product questions. Start every session by reading `HANDOF
   hook in `.githooks/` adds it; enable it once per clone with `git config core.hooksPath .githooks`.
   The pre-push hook and CI run `pnpm dco`, and unsigned commits fail.
 - Remote: `https://github.com/Rockersands/tracksmith` (private; it keeps the codename until the
-  user renames the repository; free GitHub plan, so there is no branch protection and CI is the
-  gate).
+  user renames the repository; free GitHub plan, so there is no branch protection).
+- **The gate is local:** run the whole `pnpm verify --e2e` before every push to `main`. GitHub
+  Actions is not used until M1 is finished (the user's decision, 2026-10-30): every workflow
+  runs only by hand, and nobody runs them. Never dispatch a workflow or treat a red or missing
+  GitHub run as a blocker. The jobs with no local equivalent (Postgres 18, Windows, the image,
+  Helm, the install matrix) wait for the M1 gate.
 
 ## Commands
 
@@ -34,14 +38,15 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
 | `pnpm trace` | Requirements cited by tests, per milestone |
 | `pnpm gen --items N` | Generate and load a synthetic dataset into the `bench` cluster (`--force` reloads) |
+| `pnpm gen:dc-backup --issues N --seed N --out x.zip` | Write and validate a synthetic Data Center backup ZIP with its manifest (`--validate x.zip` checks one) |
 | `pnpm spike <name> ...` | Run a benchmark spike (`field-storage`, `query`, `authz`, `authz-overhead`, `sync`, `queue`, `xml`); writes `docs/spikes/<name>.md` and `data/<name>.json` |
 | `pnpm bench:search` | The search spike: the 50-query perf set against a generated dataset (`docs/spikes/search-1m.md`) |
-| `pnpm bench:check [--size 1m]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression) |
+| `pnpm bench:check [--size 1m] [--e2e]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression), then the tests' speed limits, enforced (ADR-071) |
 | `pnpm status-report [--date D]` | Weekly status report to `docs/status/<date>.md`; copy it to the user's Drive folder |
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
 | `pnpm conformance <workflow \| query>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`) |
 | `pnpm fuzz query [--minutes N] [--seed N]` | Fuzzes the query parser; report in `.verify/fuzz-query.json`, failing inputs in `.cache/fuzz/` |
-| `pnpm build` | Production build: the static frontend (`apps/web/dist`) and the bundled server (`apps/server/dist/server.mjs`) |
+| `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`) and the bundled server (`apps/server/dist/server.mjs`), both stamped with `TASKMOOR_VERSION` (ADR-066) |
 | `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
@@ -75,8 +80,10 @@ on another disk (for example while a benchmark saturates this one).
 | `packages/ai` | AI gateway: `AiGateway`, provider adapters (Anthropic API, Bedrock, Vertex, Foundry, OpenAI-compatible), feature registry |
 | `packages/db` | Kysely client, `Database` types, forward-only migrations, `useMigratedDatabase()` |
 | `packages/storage` | Attachment stores: local disk and S3-compatible behind one interface, `FakeS3` for tests |
+| `packages/webconfig` | The frontend artefact's contract: the runtime-config slot in index.html and `version.json` (ADR-066) |
 | `packages/iam` | Identity and access: password hashing (scrypt), one-time and session tokens; the providers of ADR-019 join in M1 |
 | `deploy/` | Install kits: `compose/` (bundled or external Postgres) and `allinone/` (image with Postgres inside) |
+| `packages/builder-core` | The Builder's core (ADR-031): inputs, WebCrypto secrets, the signed connection manifest, the project file, deterministic kit zips; browser-safe |
 | `packages/richtext` | Document schema (Tiptap/ProseMirror) and lossless conversion to and from the Jira-compatible document format |
 | `packages/spikes` | Throwaway benchmarks for ADRs (`pnpm spike`); results in `docs/spikes` |
 | `packages/testkit` | Embedded Postgres harness, per-file databases, `stableJson`, fast-check defaults |
@@ -99,13 +106,18 @@ on another disk (for example while a benchmark saturates this one).
   template). Never share state between test files; never call the network.
 - Golden files: `expect(stableJson(x)).toMatchFileSnapshot('./__golden__/name.json')`.
 - Property tests: `import { fc } from '@taskmoor/testkit/property'`.
+- Speed limits: `expectWithinBudget(measured, budget, what)` from `@taskmoor/testkit/budget`
+  (e2e: `./budget`), never a bare `toBeLessThan` on a duration. `pnpm verify` measures them;
+  `pnpm bench:check` enforces them (ADR-071).
 - UI: desktop first, and it must still work on phones (ADR-033). Use design tokens from
   `apps/web/src/styles/tokens.css`; touch targets of at least 44px under `(pointer: coarse)`; no
   sideways scrolling. Component tests use `setViewportWidth()` for compact layouts.
 - Accessibility: semantic roles and names first; tests query by role and name. Every component
   gets a story (`*.stories.tsx`); stories run in a real browser with axe (ADR-024).
 - Strings: never literal UI text in components; add an ID to `apps/web/src/i18n/messages.en.ts`
-  and read it with `useT()`. The `en-XA` pseudo-locale test fails on strings that bypass it.
+  and read it with `useT()`, and give it a Spanish entry in `messages.es.ts` (a draft, typed
+  against the English IDs: a missing one fails the typecheck). The `en-XA` pseudo-locale test
+  and `pnpm i18n:check` fail on strings that bypass the catalogue.
 - Secrets never enter the repo or the frontend bundle.
 
 ## Clean room (ADR-003)

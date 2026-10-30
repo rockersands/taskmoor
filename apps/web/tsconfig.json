@@ -9,10 +9,23 @@
   },
   "include": [
     "src",
+    "build",
     "e2e",
     "playwright.config.ts",
     ".storybook",
     "vitest.stories.config.ts",
-    "vitest.stories-dark.config.ts"
+    "vitest.stories-dark.config.ts",
+    "vitest.build.config.ts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/webconfig"
+    },
+    {
+      "path": "../../packages/devtools"
+    },
+    {
+      "path": "../../packages/builder-core"
+    }
   ]
 }

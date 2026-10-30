@@ -51,6 +51,14 @@ export default defineConfig({
       timeout: 120_000,
       env: { VITE_API_PROXY: `http://127.0.0.1:${API_PORT}` },
     },
+    // The backend serving that build itself (M1-105), once with hash routing (4176) and once
+    // with clean URLs (4177), for routing.spec.ts.
+    {
+      command: `${tsx} e2e/web-server.ts`,
+      url: 'http://127.0.0.1:4177/health',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
     // Attachments (M1-016) on local disk and on S3: the same build, proxied to the two APIs
     // the API server starts on 8791 and 8792. Servers start in order, so the build is there.
     ...[
@@ -63,5 +71,14 @@ export default defineConfig({
       timeout: 120_000,
       env: { VITE_API_PROXY: `http://127.0.0.1:${api}` },
     })),
+    // Frontend kits (M1-111) made from that build and served as a static host would, with /api
+    // passed to the attachments backend: the zip kit (4178), the single file (4179) and a kit
+    // pinned to another instance (4180).
+    {
+      command: `${tsx} e2e/kit-server.ts`,
+      url: 'http://127.0.0.1:4178/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
   ],
 });
