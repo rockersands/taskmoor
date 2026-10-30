@@ -81,7 +81,7 @@ export function TrackSummaryPage({ trackKey, client = trackClient }: TrackSummar
                   href={searchHref(item.query)}
                   aria-label={t('summary.linkLabel', { label: label(item), count: number(item) })}
                 >
-                  <span className="summary-label">{label(item)}</span>
+                  <span className="summary-label">{label(item)}</span>{' '}
                   <span className="summary-count">{number(item)}</span>
                 </a>
                 <span className="summary-bar" aria-hidden="true">

@@ -201,6 +201,9 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-115 accessibility pass** (ADR-024 "The WCAG 2.1 AA pass"): e2e `a11y.spec.ts` (every page,
+  axe WCAG 2.1 AA, 0 serious or critical) and `a11y-keyboard.spec.ts` (keyboard-only journey);
+  `styles/contrast.test.ts` (token pairs). A new page belongs in the sweep's list.
 - **M1-072 MCP server** (ADR-068; no migration): `apps/server/src/mcp` (protocol, tools over the
   REST API as the caller, settings in `instance_setting` `mcp`, the stdio bridge behind
   `node cli.mjs mcp`), `routes/mcp.ts` (`/api/v1/mcp`, `/api/v1/admin/mcp`), web

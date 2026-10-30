@@ -26,9 +26,9 @@ describe('a release’s page (M1-050)', () => {
     renderRelease();
     expect(await screen.findByRole('heading', { name: 'Checkout 2.0' })).toBeVisible();
     const progress = section('Progress');
-    const closed = progress.getByRole('link', { name: 'Closed: 1, open the search' });
+    const closed = progress.getByRole('link', { name: 'Closed 1, open the search' });
     expect(searchOf(closed.getAttribute('href'))).toBe('targetRelease = 2 AND stage = closed');
-    expect(progress.getByRole('link', { name: 'New: 2, open the search' })).toBeVisible();
+    expect(progress.getByRole('link', { name: 'New 2, open the search' })).toBeVisible();
     const warnings = section('Warnings');
     expect(
       warnings.getByText('3 tickets are still open and the release date has passed.'),

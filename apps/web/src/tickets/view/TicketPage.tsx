@@ -283,11 +283,14 @@ export function TicketPage({
     } else if (key === 'm') {
       event.preventDefault();
       setTab('comments');
-      // The comment editor, once the tab shows it.
-      window.setTimeout(() => {
+      // The comment editor, once the tab shows it: it may take a few frames to mount.
+      let tries = 0;
+      const focusEditor = () => {
         const editor = document.querySelector<HTMLElement>('.comment-composer [contenteditable]');
-        editor?.focus();
-      }, 0);
+        if (editor) editor.focus();
+        else if (++tries < 40) window.setTimeout(focusEditor, 25);
+      };
+      window.setTimeout(focusEditor, 0);
     } else if (key === 'w') {
       event.preventDefault();
       void toggleFollow();
