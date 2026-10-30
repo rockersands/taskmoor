@@ -2,6 +2,23 @@
 
 Read this first in every session, then update it before you stop.
 
+## For the next session on the Mac: install Docker and run the image, kit and Helm checks
+
+Left by the cloud session on 2026-10-30 at the user's request. Do this before the next task:
+GitHub Actions is off until M1 is finished (below), so these checks have not run since M1-059.
+
+1. Install a local Docker with Colima (free, open source, command line only; recommended over
+   Docker Desktop, whose licence is paid for larger companies): `brew install colima docker docker-compose docker-buildx kind
+   helm`, then link the Compose and Buildx plugins into `~/.docker/cli-plugins` as Homebrew's
+   notes say. If Homebrew or macOS asks for the user's password, ask the user.
+2. `colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60` (Rosetta runs the amd64
+   image too); check with `docker run --rm hello-world`.
+3. Run `bash tools/image/smoke.sh`, `bash tools/image/smoke-kits.sh`,
+   `bash tools/image/drill-backup.sh` and `bash tools/helm/kind-test.sh`. Fix what they find (in a commit of its own per cause), then record the
+   results here and remove this section.
+4. Note in "Notes from the Mac" how to start and stop Colima (`colima start`, `colima stop`;
+   it holds about 8 GB of memory while running).
+
 ## No GitHub Actions until M1 is finished (2026-10-30)
 
 GitHub Actions stopped starting jobs on 2026-10-29 evening (the free private-repo minutes ran
