@@ -63,6 +63,7 @@ import { registerTicketTypeRoutes } from './routes/ticket-types';
 import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
 import { registerTokenRoutes } from './routes/tokens';
+import { registerTrackSummaryRoutes } from './routes/track-summary';
 import { registerTrackRoutes } from './routes/tracks';
 import { registerTrashRoutes } from './routes/trash';
 import { registerTwoFactorRoutes } from './routes/two-factor';
@@ -291,6 +292,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // Dashboards (M1-064): shared like saved searches; widgets read as the viewer.
     registerDashboardRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // A track's summary (M1-064): every number with the query it counts.
+    registerTrackSummaryRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });

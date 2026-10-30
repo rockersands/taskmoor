@@ -163,6 +163,69 @@
   background: var(--color-canvas);
 }
 
+/* A track's summary (M1-064): numbers that open their search, with a bar for their share. */
+.track-summary {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.summary-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-4);
+}
+
+.summary-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.summary-section h2 {
+  margin: 0;
+  font-size: var(--font-size-300);
+}
+
+.summary-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summary-list a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+}
+
+.summary-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.summary-bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-surface-sunken);
+}
+
+.summary-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-chart-1);
+}
+
 @media (max-width: 767px) {
   .dashboard-grid,
   .dashboard-grid.layout-two-wide-left,
@@ -173,7 +236,8 @@
 
 @media (pointer: coarse) {
   .dashboard-widget-tools button,
-  .dashboard-row .reports-check {
+  .dashboard-row .reports-check,
+  .summary-list a {
     min-height: var(--hit-target-touch);
   }
 }

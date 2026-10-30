@@ -55,6 +55,11 @@ Saved searches (ADR-053) already have the sharing model, and the general and agi
   dashboard without the navigation, with a full-screen button, reads its widgets again every five
   minutes and turns to the next dashboard of the rotation; the list page starts one with the
   dashboards chosen.
+- **Track summaries** (`GET /api/v1/tracks/:keyOrId/summary`, `#/tracks/<KEY>`): open,
+  created, closed, updated and soon-due tickets, and the open ones by stage, priority, type and
+  assignee (the ten with most). Each number carries the query that finds its tickets and is that
+  query's count through the search runner as the viewer, so it equals the search it links to by
+  construction, and a test checks it against the search API.
 - **Copying** makes the person's own dashboard from one they see, without its shares.
 - **Events** `dashboard.created`, `.updated` (changes; widget settings only as changed),
   `.deleted` and `.default_set` (on the workspace) are audited.
@@ -73,4 +78,7 @@ Saved searches (ADR-053) already have the sharing model, and the general and agi
 - RPT-004 (1) holds by construction: there is no path from a widget to data except running its
   settings as the viewer.
 - Signed embed links, per-share edit rights, wallboard rotation settings stored on the server,
-  and dashboard import (RPT-004 (3)) come later.
+  dashboard import (RPT-004 (3)), per-track insight dashboards edited by track administrators
+  (RPT-006), the rest of the widget catalog, and anonymous viewing of public dashboards on the web
+  come later. A summary costs one count per number (about twenty); a cached rollup comes if
+  large tracks need it.

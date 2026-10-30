@@ -64,6 +64,7 @@ import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { TicketPage } from './tickets/view/TicketPage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
+import { TrackSummaryPage } from './tracks/TrackSummaryPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
 import { WorkflowsPage } from './workflow/WorkflowsPage';
 
@@ -137,6 +138,8 @@ const TICKET = '#/tickets';
 const BULK = '#/bulk';
 /** A board by id (#/boards/7), and the list of boards at #/boards (M1-043). */
 const BOARDS = '#/boards';
+/** A track's summary by key (M1-064); the list of tracks itself is still to come. */
+const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 /** Dashboards (M1-064): the list, one by id, and one as a wallboard turning to the next. */
 const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
@@ -474,6 +477,11 @@ function Pages() {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
     content = <BulkOperationPage key={id} id={id} />;
+  } else if (TRACK_SUMMARY.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_SUMMARY.exec(hash)?.[1] ?? '';
+    content = <TrackSummaryPage key={key} trackKey={key} />;
   } else if (isRoute(hash, DASHBOARDS)) {
     active = 'dashboards';
     guarded = true;
