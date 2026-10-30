@@ -61,6 +61,8 @@
 }
 
 .chart-plot {
+  /* A drawing in its own coordinates: left to right under every script (M1-116, ADR-024). */
+  direction: ltr;
   position: relative;
   min-width: 0;
   overflow: hidden;
@@ -178,11 +180,11 @@
 .chart-table td {
   padding: var(--space-1) var(--space-2);
   border-bottom: 1px solid var(--color-border);
-  text-align: right;
+  text-align: end;
 }
 
 .chart-table th:first-child {
-  text-align: left;
+  text-align: start;
 }
 
 .chart-group {
@@ -383,11 +385,11 @@
 .report-table td {
   padding: var(--space-1) var(--space-2);
   border-bottom: 1px solid var(--color-border);
-  text-align: right;
+  text-align: end;
 }
 
 .report-table :is(th, td):is(:first-child, :nth-child(2)) {
-  text-align: left;
+  text-align: start;
 }
 
 @media (pointer: coarse) {

@@ -47,6 +47,19 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-116 i18n completeness (in progress)
+
+ADR-024 has a new section; no migration.
+- **Done:**
+  - `pnpm i18n:check` reports zero hard-coded strings, and a test keeps it there.
+  - The `ar-XB` bidi pseudo-locale (`?locale=ar-XB`) mirrors the app through logical CSS
+    properties; the timeline, charts and workflow diagram stay left-to-right islands.
+  - `e2e/rtl.spec.ts` checks six pages on desktop and phone.
+- **Next:** the Spanish machine draft (`apps/web/src/i18n/messages.es.ts`, typed
+  `Record<MessageId, string>`, glossary in its header), then `es` in `SUPPORTED_LOCALES` and
+  `resolveLocale`. Later, the person's saved language (`user.locale`) could pick the
+  catalogue; today only the URL, the saved preference and the browser language do.
+
 ## 2026-10-30: speed limits moved to the benchmark run (ADR-071)
 
 The user asked for this. Time budgets in tests now go through `expectWithinBudget`, from

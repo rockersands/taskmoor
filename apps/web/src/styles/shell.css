@@ -54,7 +54,7 @@ body {
 
 .skip-link {
   position: absolute;
-  left: var(--space-2);
+  inset-inline-start: var(--space-2);
   top: -100px;
   z-index: 100;
   padding: var(--space-2) var(--space-4);
@@ -180,7 +180,7 @@ body {
 }
 
 .shell-topbar-end {
-  margin-left: auto;
+  margin-inline-start: auto;
   /* Lets the palette trigger shorten on narrow screens instead of pushing the page sideways. */
   min-width: 0;
   display: flex;
@@ -257,7 +257,7 @@ body {
 .user-menu-popup {
   position: absolute;
   top: calc(100% + var(--space-1));
-  right: 0;
+  inset-inline-end: 0;
   z-index: 30;
   width: max-content;
   min-width: 14rem;
@@ -468,12 +468,15 @@ body {
 
 .shell-drawer {
   position: fixed;
-  inset: 0 auto 0 0;
+  inset-block: 0;
+  inset-inline: 0 auto;
   z-index: 50;
   width: min(84vw, 320px);
   padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) var(--space-3);
   background: var(--color-surface);
-  border-radius: 0 var(--radius-3) var(--radius-3) 0;
+  border-radius: 0;
+  border-start-end-radius: var(--radius-3);
+  border-end-end-radius: var(--radius-3);
   overflow-y: auto;
   box-shadow: var(--shadow-3);
 }
@@ -517,6 +520,17 @@ body {
   @keyframes drawer-in {
     from {
       transform: translateX(-16px);
+      opacity: 0;
+    }
+  }
+
+  :root[dir="rtl"] .shell-drawer {
+    animation-name: drawer-in-rtl;
+  }
+
+  @keyframes drawer-in-rtl {
+    from {
+      transform: translateX(16px);
       opacity: 0;
     }
   }

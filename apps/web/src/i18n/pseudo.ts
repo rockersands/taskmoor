@@ -71,11 +71,23 @@ export function pseudoText(text: string): string {
   return accented + '~'.repeat(Math.ceil(letters * 0.3)) + trailing;
 }
 
-function transform(elements: MessageFormatElement[]): MessageFormatElement[] {
+/**
+ * The bidi pseudo-locale's text (M1-116): each run is forced right to left (U+202E ... U+202C),
+ * so English reads mirrored the way a right-to-left script would sit in the layout, while the
+ * arguments between runs stay as they are.
+ */
+export function pseudoBidiText(text: string): string {
+  return /\S/.test(text) ? `\u202E${text}\u202C` : text;
+}
+
+function transform(
+  elements: MessageFormatElement[],
+  literal: (text: string) => string = pseudoText,
+): MessageFormatElement[] {
   return elements.map((el): MessageFormatElement => {
     switch (el.type) {
       case TYPE.literal:
-        return { ...el, value: pseudoText(el.value) };
+        return { ...el, value: literal(el.value) };
       case TYPE.plural:
       case TYPE.select:
         return {
@@ -83,12 +95,12 @@ function transform(elements: MessageFormatElement[]): MessageFormatElement[] {
           options: Object.fromEntries(
             Object.entries(el.options).map(([key, option]) => [
               key,
-              { ...option, value: transform(option.value) },
+              { ...option, value: transform(option.value, literal) },
             ]),
           ),
         };
       case TYPE.tag:
-        return { ...el, children: transform(el.children) };
+        return { ...el, children: transform(el.children, literal) };
       default:
         return el;
     }
@@ -97,6 +109,11 @@ function transform(elements: MessageFormatElement[]): MessageFormatElement[] {
 
 export function pseudoLocalize(message: string): string {
   return `[${print(transform(parse(message)))}]`;
+}
+
+/** A message in the bidi pseudo-locale (`ar-XB`): every run of text right to left. */
+export function pseudoBidi(message: string): string {
+  return print(transform(parse(message), pseudoBidiText));
 }
 
 /** Writes an ICU message back from its tree. Covers what the catalogue uses. */

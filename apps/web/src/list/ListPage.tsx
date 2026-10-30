@@ -510,6 +510,7 @@ function RulesPanel({
             type="text"
             value={query}
             required
+            // i18n-ignore: an example in the query language, which is not translated.
             placeholder="due < now() AND stage != closed"
             aria-describedby={`${id}-query-hint`}
             onChange={(e) => setQuery(e.target.value)}
