@@ -86,6 +86,36 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
   length in days and a time zone (the person's, or UTC, to begin with). The refusals above
   show next to the cycle, its length or its time zone.
 
+## Planning on the backlog (M1-047; AGL-008, AGL-009)
+
+- **Batches run the ticket routes.** `POST /api/v1/boards/:id/backlog/rank` (a block of up to
+  1,000 selected tickets, `before`, `after` or `position` top or bottom),
+  `/backlog/parent` (`parent`: an id, a key or null) and `/backlog/release` (`releaseId`,
+  added to the releases a ticket already targets) call `PUT /tickets/:id/rank` and
+  `PATCH /tickets/:id` as the person, one ticket at a time (`callRoute`, as board moves and
+  bulk changes do, ADR-043), so permissions, hierarchy rules, refusals and events are the
+  ticket routes' own. The answer lists each ticket's outcome; when none went through it carries
+  the first refusal's status and code, as for one ticket. Scrum boards only (409 `not_scrum`).
+- **A block keeps its order**: the first ticket goes to the place asked for and each next one
+  right after the one before. A rank stops at the first refusal (the rest would land in the
+  wrong place); parents and releases go on past one.
+- **Into a sprint stays one operation**: moving a selection into a sprint is
+  `POST /sprints/:id/tickets` with every id (one membership write, one event); a drop at a
+  place in a section moves the block there first, then ranks it.
+- **Panels**: `GET /api/v1/boards/:id/backlog/panels` gives the open tickets of the outcome
+  level in the board's tracks (the first 200 by rank) with how many of their children the
+  viewer sees and how many are closed, and the unshipped, unarchived releases of those tracks
+  with how many of their target tickets the viewer sees. The backlog's tickets carry
+  `parentId` and `releaseIds`, and the backlog names the board's track for inline create.
+- **Web** (`BacklogPage`, `PlanningPanels`): a checkbox per ticket and per section selects;
+  the selection (or the ticket in hand) drags to a place in any section, onto an outcome or a
+  release; the selection's menus move to a section, to the top or the bottom, under an outcome
+  (or none) and into a release; Alt with the up or down arrow ranks a ticket past its
+  neighbour and keeps the focus on it; choosing a panel item filters the sections to its
+  tickets; a field at the end of each section makes a ticket from a summary in the board's
+  track (into that sprint for a sprint section). Phones use the menus; the panels follow the
+  sections in one column.
+
 ## Options considered
 
 | Option | For | Against |
@@ -94,6 +124,8 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
 | A multi-valued sprint field on the ticket | One place, like an imported Jira field | History only through the change log; no index for `sprint = <id>` |
 | Rows written by an event subscriber | Routes stay thin | Subscribers run after the transaction, at least once; the report could miss or double a change |
 | Estimates read only from the change log at report time | No copies | Every report replays field history; points fields stored in JSON need per-field reads |
+| Planning batches through the ticket routes (chosen, M1-047) | One set of rules and events per change | One statement set per ticket; a block of 1,000 takes seconds |
+| A planning route that writes ranks and parents itself | One transaction per batch | A second copy of permission, hierarchy and event rules to keep in step |
 
 ## Consequences
 
@@ -101,6 +133,10 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
   `TASKMOOR_LARGE_SPRINTS=1`, a member on a 20,000-ticket Scrum board): adding 500 tickets
   73 to 82 ms, the backlog (2,000 rows) p95 55 to 59 ms, the report of a 1,000-ticket sprint
   p95 57 to 60 ms, completing it into the next sprint 162 to 230 ms.
+- Ranking at size (`routes/backlog-planning.large.test.ts`, `TASKMOOR_LARGE_BACKLOG=1`):
+  300 random block moves of one to twenty tickets on a 10,000-ticket backlog keep the order
+  equal to the same moves applied to a list, every key well formed and unique, and the longest
+  key at 14 characters; a block move p95 74 ms on this machine (2026-10-29). No rebalance.
 - M1-045 added `sprint` to the query catalogue over `sprint_ticket` and `openSprints()`,
   `closedSprints()`, `futureSprints()` over `sprint.state`, without a schema change (ADR-010,
   "Functions (M1-045)").

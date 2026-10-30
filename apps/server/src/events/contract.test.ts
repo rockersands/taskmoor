@@ -2188,6 +2188,70 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { tickets: [state.ticket] },
         }),
     },
+    // Backlog planning (M1-047): each ticket goes through the ticket routes, one event each.
+    {
+      route: 'POST /api/v1/boards/:id/backlog/rank',
+      expect: 'ticket.ranked',
+      prepare: async () => {
+        const ticket = await admin({ method: 'GET', url: `/api/v1/tickets/${state.ticket}` });
+        const track = ticket.json().ticket.track as { key: string };
+        const anchor = await admin({
+          method: 'POST',
+          url: '/api/v1/tickets',
+          payload: { track: track.key, summary: 'Contract rank anchor' },
+        });
+        state.rankAnchor = anchor.json().ticket?.id;
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/boards/${state.scrumBoard}/backlog/rank`,
+          payload: { tickets: [state.ticket], after: state.rankAnchor },
+        }),
+    },
+    {
+      route: 'POST /api/v1/boards/:id/backlog/parent',
+      expect: 'ticket.updated',
+      prepare: async () => {
+        const ticket = await admin({ method: 'GET', url: `/api/v1/tickets/${state.ticket}` });
+        const track = ticket.json().ticket.track as { id: number; key: string };
+        const outcomeType = await database.db
+          .selectFrom('ticket_type as y')
+          .innerJoin('hierarchy_level as h', 'h.id', 'y.level_id')
+          .select('y.id')
+          .where('h.kind', '=', 'outcome')
+          .where('y.owner_track_id', 'is', null)
+          .executeTakeFirstOrThrow();
+        const outcome = await admin({
+          method: 'POST',
+          url: '/api/v1/tickets',
+          payload: { track: track.key, summary: 'Contract outcome', ticketTypeId: outcomeType.id },
+        });
+        state.outcome = outcome.json().ticket?.id;
+        const release = await admin({
+          method: 'POST',
+          url: `/api/v1/tracks/${track.id}/releases`,
+          payload: { name: 'Planning release' },
+        });
+        state.planningRelease = release.json().release?.id;
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/boards/${state.scrumBoard}/backlog/parent`,
+          payload: { tickets: [state.ticket], parent: state.outcome },
+        }),
+    },
+    {
+      route: 'POST /api/v1/boards/:id/backlog/release',
+      expect: 'ticket.updated',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/boards/${state.scrumBoard}/backlog/release`,
+          payload: { tickets: [state.ticket], releaseId: state.planningRelease },
+        }),
+    },
     {
       route: 'POST /api/v1/sprints/:id/tickets/remove',
       expect: 'sprint.tickets_removed',

@@ -27,6 +27,7 @@ import {
   TRACK_TYPES,
   type TrackFeatures,
 } from '../tracks/model';
+import { TEMPLATE_RECIPES, TRACK_TEMPLATES } from '../tracks/templates';
 import { purgeTrack } from '../trash/purge';
 import { defaultMapId, loadMap, workflowForType, workflowsOf } from '../workflows/maps';
 import {
@@ -39,6 +40,7 @@ import {
   typeStatusMappingSchema,
 } from '../workflows/migration';
 import { defaultWorkflowId, holdWorkflow } from '../workflows/store';
+import type { BoardRoutes } from './boards';
 
 /**
  * Tracks and track categories (M1-006; CORE-001, CORE-002, CORE-003, CORE-025).
@@ -115,6 +117,10 @@ const createBody = z
     accessPolicyId: trackFields.accessPolicyId.optional(),
     typeSetId: trackFields.typeSetId.optional(),
     features: trackFields.features.optional(),
+    /** A template (M1-054): its type, feature toggles and board. */
+    template: z.enum(TRACK_TEMPLATES).optional(),
+    /** A shared-mode track whose configuration the new one takes (M1-054). */
+    copyFrom: id.optional(),
   })
   .strict();
 const updateBody = z
@@ -298,10 +304,19 @@ function loadTrack(
 /** Escapes LIKE wildcards so a search for "50%" means those characters. */
 const likeEscape = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
 
+/**
+ * What track routes use from routes registered after them: the boards' create, for the board a
+ * template makes (M1-054). Filled in once the boards are registered.
+ */
+export interface TrackRouteHooks {
+  createBoard?: BoardRoutes['createBoard'];
+}
+
 export function registerTrackRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
   catalogs: FieldCatalogs,
+  hooks: TrackRouteHooks = {},
 ): void {
   const by = (request: FastifyRequest) => ({
     workspaceId: request.workspaceId,
@@ -499,6 +514,16 @@ export function registerTrackRoutes(
     if (!parsed.success) return invalid(reply);
     const body = parsed.data;
     const ws = request.workspaceId;
+    // A type given outright, not the schema's default (a template or a copy chooses it then).
+    const typeGiven =
+      typeof request.body === 'object' && request.body !== null && 'type' in request.body;
+    if (body.template !== undefined && body.copyFrom !== undefined) {
+      return invalid(reply, 'a template or a track to copy, not both');
+    }
+    const recipe = body.template === undefined ? null : TEMPLATE_RECIPES[body.template];
+    if (recipe && typeGiven && body.type !== recipe.type) {
+      return invalid(reply, `the ${body.template} template makes ${recipe.type} tracks`);
+    }
     const global = await request.authz.global();
     const allowed =
       body.mode === 'shared'
@@ -524,12 +549,28 @@ export function registerTrackRoutes(
     if (body.typeSetId !== undefined && !(await isSharedTypeSet(db, ws, body.typeSetId))) {
       return invalid(reply, 'typeSetId');
     }
-    const chosen = { ...FEATURE_DEFAULTS[body.type], ...(body.features ?? {}) };
+    // Copying a track's configuration (M1-054): its type, policy, sets, map and toggles, all
+    // shared ones, so the source must be a shared-mode track the caller sees.
+    let source: TrackRow | undefined;
+    if (body.copyFrom !== undefined) {
+      if (body.mode === 'local')
+        return invalid(reply, 'a local-mode track gets its own configuration');
+      source = await loadTrack(db, ws, body.copyFrom);
+      if (!source || !(await canSee(request, source.id))) return invalid(reply, 'copyFrom');
+      if (source.mode !== 'shared') return reply.code(409).send({ error: 'source_not_shared' });
+    }
+    const trackType = recipe ? recipe.type : source && !typeGiven ? source.type : body.type;
+    const chosen = {
+      ...(recipe?.features ?? (source ? featuresOf(source) : FEATURE_DEFAULTS[trackType])),
+      ...(body.features ?? {}),
+    };
     try {
       const created = await db.transaction().execute(async (trx) => {
-        const base = body.accessPolicyId ?? (await defaultPolicy(trx, ws));
+        const base =
+          body.accessPolicyId ?? source?.access_policy_id ?? (await defaultPolicy(trx, ws));
         if (base === null) return { error: 'no_default_access_policy' as const };
-        const baseTypes = body.typeSetId ?? (await defaultTypeSetId(trx, ws, body.type));
+        const baseTypes =
+          body.typeSetId ?? source?.type_set_id ?? (await defaultTypeSetId(trx, ws, trackType));
         if (baseTypes === null) return { error: 'no_default_type_set' as const };
         const row = await trx
           .insertInto('track')
@@ -538,14 +579,25 @@ export function registerTrackRoutes(
             key: key.key,
             name: body.name,
             description: body.description ?? '',
-            type: body.type,
+            type: trackType,
             mode: body.mode,
             owner_id: ownerId,
-            category_id: body.categoryId ?? null,
+            category_id:
+              body.categoryId !== undefined ? body.categoryId : (source?.category_id ?? null),
             icon: body.icon ?? null,
             color: body.color ?? null,
             access_policy_id: base,
             type_set_id: baseTypes,
+            ...(source
+              ? {
+                  priority_set_id: source.priority_set_id,
+                  workflow_map_id: source.workflow_map_id,
+                  field_rule_set_id: source.field_rule_set_id,
+                  layout_set_id: source.layout_set_id,
+                  visibility_policy_id: source.visibility_policy_id,
+                  notification_policy_id: source.notification_policy_id,
+                }
+              : {}),
             ...Object.fromEntries(TRACK_FEATURES.map((f) => [featureColumn(f), chosen[f]])),
           })
           .returning('id')
@@ -603,21 +655,38 @@ export function registerTrackRoutes(
           payload: {
             key: key.key,
             name: body.name,
-            type: body.type,
+            type: trackType,
             mode: body.mode,
             ownerId,
-            categoryId: body.categoryId ?? null,
+            categoryId:
+              body.categoryId !== undefined ? body.categoryId : (source?.category_id ?? null),
             accessPolicyId: policyId,
             administratorRoleId: roleId,
             typeSetId,
             ...(workflowMapId !== null ? { workflowMapId } : {}),
+            ...(body.template ? { template: body.template } : {}),
+            ...(source ? { copiedFrom: source.id } : {}),
           },
         });
         return { track: await loadTrack(trx, ws, row.id) };
       });
       if ('error' in created) return reply.code(409).send({ error: created.error });
       if (!created.track) return notFound(reply);
-      return reply.code(201).send({ track: trackView(created.track) });
+      // The template's board, made as the creator once the track exists (its own event).
+      let board: { board?: unknown; boardProblem?: unknown } = {};
+      if (recipe?.board && hooks.createBoard) {
+        const made = await hooks.createBoard(request, {
+          name: body.name,
+          kind: recipe.board.kind,
+          trackId: created.track.id,
+          source: { query: recipe.board.query(key.key) },
+        });
+        board =
+          made.statusCode === 201
+            ? { board: (made.payload as { board: unknown }).board }
+            : { boardProblem: made.payload };
+      }
+      return reply.code(201).send({ track: trackView(created.track), ...board });
     } catch (error) {
       const constraint = uniqueViolation(error);
       if (constraint !== null && KEY_CONSTRAINTS.includes(constraint)) {

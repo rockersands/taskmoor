@@ -39,6 +39,7 @@ import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
+import { registerBacklogPlanningRoutes } from './backlog-planning';
 import { registerBoardReportRoutes } from './board-reports';
 import { registerScopeReportRoutes } from './scope-reports';
 import { searchRefusal } from './search';
@@ -246,13 +247,24 @@ export async function visibleBoardRecord(
   };
 }
 
+/** A route's answer as a status and a body, for callers inside the server. */
+export interface RouteAnswer {
+  statusCode: number;
+  payload: unknown;
+}
+
+/** What other routes may do with boards: make one as the caller (track templates, M1-054). */
+export interface BoardRoutes {
+  createBoard: (request: FastifyRequest, body: unknown) => Promise<RouteAnswer>;
+}
+
 export function registerBoardRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
   authorizer: Authorizer,
   catalogs: FieldCatalogs,
   options: BoardRouteOptions = {},
-): void {
+): BoardRoutes {
   const timeoutMs = options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS;
   const handlers = ticketRoutes(db, authorizer, catalogs);
   const handler = (method: string, url: string) =>
@@ -532,11 +544,16 @@ export function registerBoardRoutes(
     return { boards };
   });
 
-  app.post('/api/v1/boards', async (request, reply) => {
-    const user = requireUser(request, reply);
-    if (!user) return reply;
-    const parsed = createBoardBody.safeParse(request.body);
-    if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
+  /** Makes a board as the caller: the create route's checks, defaults and event. */
+  async function createBoard(request: FastifyRequest, input: unknown): Promise<RouteAnswer> {
+    const user = request.user;
+    if (!user) return { statusCode: 401, payload: { error: 'unauthenticated' } };
+    const refused = (fields: Record<string, string>) => ({
+      statusCode: 400,
+      payload: { error: 'invalid_fields', fields },
+    });
+    const parsed = createBoardBody.safeParse(input);
+    if (!parsed.success) return refused(shapeErrors(parsed.error));
     const body = parsed.data;
     const ws = request.workspaceId;
     const trackId = body.trackId ?? null;
@@ -548,16 +565,14 @@ export function registerBoardRoutes(
         .where('workspace_id', '=', ws)
         .where('deleted_at', 'is', null)
         .executeTakeFirst();
-      if (!track) return invalidFields(reply, { trackId: 'not_found' });
+      if (!track) return refused({ trackId: 'not_found' });
       const held = await request.authz.track(trackId);
       const browses = held.has('browse_track') || held.has('administer_track');
-      if (!browses && !(await isConfigAdmin(request))) {
-        return invalidFields(reply, { trackId: 'not_found' });
-      }
-      if (track.archived_at) return reply.code(409).send({ error: 'track_archived' });
+      if (!browses && !(await isConfigAdmin(request))) return refused({ trackId: 'not_found' });
+      if (track.archived_at) return { statusCode: 409, payload: { error: 'track_archived' } };
     }
     const checked = await checkConfiguration(request, body);
-    if (Object.keys(checked.fields).length > 0) return invalidFields(reply, checked.fields);
+    if (Object.keys(checked.fields).length > 0) return refused(checked.fields);
     const scope = await boardScope(db, catalogs, request);
     const columns =
       checked.columns ?? (await defaultColumns(scope, sourceQuery(body.source), trackId));
@@ -605,7 +620,13 @@ export function registerBoardRoutes(
       return row.id;
     });
     const row = await boardQuery(db, ws).where('b.id', '=', created).executeTakeFirstOrThrow();
-    return reply.code(201).send({ board: view(row, await adminsOf(created), true) });
+    return { statusCode: 201, payload: { board: view(row, await adminsOf(created), true) } };
+  }
+
+  app.post('/api/v1/boards', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const answer = await createBoard(request, request.body);
+    return reply.code(answer.statusCode).send(answer.payload);
   });
 
   app.get('/api/v1/boards/:id', async (request, reply) => {
@@ -1006,6 +1027,25 @@ export function registerBoardRoutes(
     },
   };
   registerSprintRoutes(app, db, sprintRoutes);
+  // Planning on the backlog (M1-047): ranks, parents and releases through the ticket routes.
+  const updateTicket = handler('PATCH', '/api/v1/tickets/:id');
+  registerBacklogPlanningRoutes(app, db, {
+    catalogs,
+    timeoutMs,
+    board: sprintRoutes.board,
+    ticket: (request, route, ticketId, body) =>
+      callRoute(route === 'rank' ? rankTicket : updateTicket, {
+        workspaceId: request.workspaceId,
+        user: request.user,
+        authz: request.authz,
+        apiToken: request.apiToken,
+        params: { id: String(ticketId) },
+        query: {},
+        body,
+      }),
+  });
   // Release and outcome reports of Scrum boards (M1-062).
   registerScopeReportRoutes(app, db, sprintRoutes);
+
+  return { createBoard };
 }

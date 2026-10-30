@@ -97,9 +97,14 @@ export function TrackSummaryPage({ trackKey, client = trackClient }: TrackSummar
 
   return (
     <section className="track-summary" aria-labelledby={`${id}-title`}>
-      <h1 id={`${id}-title`} className="page-title">
-        {t('summary.title', { name: summary.track.name, key: summary.track.key })}
-      </h1>
+      <div className="board-header">
+        <h1 id={`${id}-title`} className="page-title">
+          {t('summary.title', { name: summary.track.name, key: summary.track.key })}
+        </h1>
+        <a href={`#/tracks/${encodeURIComponent(summary.track.key)}/releases`}>
+          {t('summary.releases')}
+        </a>
+      </div>
       <dl className="report-stats">
         {summary.overview.map((item) => (
           <div key={item.id}>

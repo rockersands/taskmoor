@@ -22,6 +22,7 @@ import '../src/styles/richtext.css';
 import '../src/styles/search.css';
 import '../src/styles/charts.css';
 import '../src/styles/dashboards.css';
+import '../src/styles/releases.css';
 
 const preview: Preview = {
   parameters: {

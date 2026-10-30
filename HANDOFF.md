@@ -147,6 +147,33 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-054 track templates** (ADR-062; no migration): `tracks/templates.ts` recipes;
+  `POST /api/v1/tracks` takes `template` (then makes the board through
+  `BoardRoutes.createBoard`, which `registerBoardRoutes` now returns; the track routes get it
+  through `TrackRouteHooks`, filled in `buildApp` after the boards register) and `copyFrom`
+  (shared sources only, sets by reference). Web: "Start from" in the tracks admin page's add
+  form. Tests: `routes/track-templates.test.ts`, `ConfigurationPages.test.tsx`, e2e
+  `track-templates.spec.ts`.
+- **M1-050 releases hub** (ADR-061; no migration): `routes/release-hub.ts` serves
+  `GET /releases/:id/overview` (stage counts and warnings as search-runner counts with their
+  queries, approvers, the viewer's rights) and `GET /releases/:id/notes` (closed tickets by
+  type; done is the first close reason or none; Markdown, `?format=markdown` as a file;
+  golden `__golden__/release-notes.json`, shipped on a fixed day so it never changes).
+  `GET /tracks/:id/releases` now says `mayManage`. Web: `apps/web/src/releases`
+  (`ReleasesPage` at `#/tracks/<KEY>/releases`, `ReleasePage` at `#/releases/<id>`,
+  `ReleaseState`, `styles/releases.css`); the track summary links the hub. e2e
+  `releases.spec.ts`.
+- **M1-047 backlog planning** (ADR-054 "Planning on the backlog"; no migration):
+  `routes/backlog-planning.ts` serves the panels (`GET /boards/:id/backlog/panels`) and three
+  batches (`POST /boards/:id/backlog/rank`, `/parent`, `/release`) that run the ticket routes
+  as the person, one ticket at a time, through `callRoute` (registered in `routes/boards.ts`
+  with `sprintRoutes.board`). The backlog route adds `parentId`, `releaseIds` and the board's
+  `track`. Web: `sprints/BacklogPage.tsx` (selection, drag to a section place or a panel item,
+  the selection's menus, Alt+arrows, filter, inline create) and `sprints/PlanningPanels.tsx`.
+  Tests: `routes/backlog-planning.test.ts`, `BacklogPage.test.tsx`, stories, e2e
+  `backlog-planning.spec.ts` (desktop drags; mobile menus and keyboard); 10k ranking stability
+  in `routes/backlog-planning.large.test.ts` (`TASKMOOR_LARGE_BACKLOG=1`; longest key 14,
+  block move p95 74 ms).
 - **M1-046 board drag and drop** (ADR-049 "Drag and drop"): `boards/BoardPage.tsx` cards are
   draggable, cells take drops (place by the pointer's half of a card), one move request with
   `before`/`after`; cards grouped by cell once per render. `FiveThousandCards` story times the

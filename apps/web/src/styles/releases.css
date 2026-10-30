@@ -1,0 +1,328 @@
+/*
+ * The releases hub (M1-050): a track's releases with their progress, and a release's page. A
+ * release's state is a word with a tone, never colour alone; its tickets by stage are one bar of
+ * the flow reports' ordinal blue, with a legend that carries the numbers.
+ */
+.releases-page,
+.release-page {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.release-create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.release-create .form-field {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.release-create .board-problem {
+  flex-basis: 100%;
+}
+
+.release-group,
+.release-section {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.release-group h2,
+.release-section h2 {
+  margin: 0;
+  font-size: var(--font-size-400);
+}
+
+.release-group summary {
+  min-height: var(--hit-target);
+  cursor: pointer;
+}
+
+.release-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.release-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 2fr);
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.release-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.release-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.release-state {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  font-size: var(--font-size-200);
+}
+
+.release-state[data-state="overdue"] {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.release-state[data-state="shipped"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.release-state[data-state="archived"] {
+  background: var(--color-surface-sunken);
+}
+
+.release-progress {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.release-meter {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-surface-sunken);
+}
+
+.release-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--color-flow-last);
+}
+
+.release-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+}
+
+.release-facts dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.release-facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.release-description {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* Stages as one bar: a 2px surface gap between segments, rounded ends. */
+.release-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+}
+
+.release-bar > span {
+  min-width: 4px;
+  border-radius: 4px;
+}
+
+.release-bar-empty {
+  flex-grow: 1;
+  background: var(--color-surface-sunken);
+}
+
+.release-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.release-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.release-legend a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--hit-target);
+  font-variant-numeric: tabular-nums;
+}
+
+.release-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.release-warnings,
+.release-approvers {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.release-warnings li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
+.release-warning-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-weight: 700;
+}
+
+.release-approvers li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.release-approver {
+  font-weight: 600;
+}
+
+.release-decision {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  font-size: var(--font-size-200);
+}
+
+.release-decision[data-decision="approved"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.release-decision[data-decision="declined"] {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.release-decide,
+.release-ship {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 32rem;
+}
+
+.release-decide input {
+  max-width: 100%;
+}
+
+.release-ship-open {
+  display: grid;
+  gap: var(--space-1);
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+}
+
+.release-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.release-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.release-table th,
+.release-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: start;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.release-table tr[data-stage="closed"] td:nth-child(2) {
+  text-decoration: line-through;
+}
+
+.release-notes h3 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--font-size-300);
+}
+
+.release-notes ul {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+
+@media (max-width: 767px) {
+  .release-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (pointer: coarse) {
+  .release-create input,
+  .release-create button,
+  .release-decide input,
+  .release-decide button,
+  .release-ship input,
+  .release-ship button,
+  .release-section .form-actions a,
+  .release-name,
+  .release-table a {
+    min-height: var(--hit-target-touch);
+  }
+
+  .release-name,
+  .release-table a {
+    display: inline-flex;
+    align-items: center;
+  }
+}

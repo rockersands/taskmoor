@@ -31,6 +31,8 @@ import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { GroupsPage } from './people/GroupsPage';
 import { UsersPage } from './people/UsersPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
+import { ReleasePage } from './releases/ReleasePage';
+import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
 import { queryFromHash, SearchPage } from './search/SearchPage';
 import { savedSearchFromHash } from './search/savedClient';
@@ -140,6 +142,9 @@ const BULK = '#/bulk';
 const BOARDS = '#/boards';
 /** A track's summary by key (M1-064); the list of tracks itself is still to come. */
 const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
+/** A track's releases hub and a release's page (M1-050). */
+const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
+const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
 /** Dashboards (M1-064): the list, one by id, and one as a wallboard turning to the next. */
 const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
@@ -477,6 +482,16 @@ function Pages() {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
     content = <BulkOperationPage key={id} id={id} />;
+  } else if (TRACK_RELEASES.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_RELEASES.exec(hash)?.[1] ?? '';
+    content = <ReleasesPage key={key} trackKey={key} />;
+  } else if (RELEASE.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const releaseId = Number(RELEASE.exec(hash)?.[1]);
+    content = <ReleasePage key={releaseId} releaseId={releaseId} />;
   } else if (TRACK_SUMMARY.test(hash)) {
     active = 'tracks';
     guarded = true;

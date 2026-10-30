@@ -351,7 +351,8 @@ export function registerReleaseRoutes(
     const params = z.object({ id }).safeParse(request.params);
     const query = archivedQuery.safeParse(request.query);
     if (!params.success || !query.success) return invalid(reply);
-    if (!(await visibleTrack(request, reply, params.data.id))) return reply;
+    const track = await visibleTrack(request, reply, params.data.id);
+    if (!track) return reply;
     let q = releaseQuery(db, request.workspaceId, await visibleTo(request)).where(
       'r.track_id',
       '=',
@@ -360,7 +361,11 @@ export function registerReleaseRoutes(
     if (query.data.archived === 'exclude') q = q.where('r.archived_at', 'is', null);
     if (query.data.archived === 'only') q = q.where('r.archived_at', 'is not', null);
     const rows = await q.orderBy('r.sort_order').execute();
-    return { releases: rows.map(releaseView) };
+    // Whether the caller may change them, for the releases hub (M1-050).
+    const mayManage =
+      track.archived_at === null &&
+      ((await request.authz.can('administer_track', params.data.id)) || (await isAdmin(request)));
+    return { releases: rows.map(releaseView), mayManage };
   });
 
   app.post('/api/v1/tracks/:id/releases', async (request, reply) => {

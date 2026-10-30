@@ -99,15 +99,21 @@ export function fakeConfigurationClient(
     createTrack: async (body) => {
       log('createTrack', body);
       if (tracks.some((t) => t.key === body.key)) throw new ApiError(409, { error: 'key_taken' });
+      const source = tracks.find((t) => t.id === body.copyFrom);
       const made: Track = {
         id: ++next,
+        key: body.key,
+        name: body.name,
+        mode: body.mode,
         description: '',
-        workflowMapId: null,
+        workflowMapId: source?.workflowMapId ?? null,
         archived: false,
-        ...body,
       };
       tracks = [...tracks, made];
-      return structuredClone(made);
+      // Every template but Blank makes a board named after the track (M1-054).
+      const board =
+        body.template && body.template !== 'blank' ? { id: ++next, name: body.name } : undefined;
+      return structuredClone({ track: made, ...(board ? { board } : {}) });
     },
     updateTrack: async (id, change) => {
       log('updateTrack', id, change);
