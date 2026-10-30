@@ -85,9 +85,10 @@ was a constant.
   at start with both versions in the message. `tools/image/smoke.sh` checks `/version.json`
   against `/health` and both deep-link behaviours.
 - Single-server installs can turn on clean URLs with `TASKMOOR_WEB_ROUTING=path` without a
-  rebuild; hash links keep working after the switch. The default stays hash for now; the spec's
-  default for Builder kits is clean URLs (M1-111 writes `routing: "path"` and the host
-  fallbacks).
+  rebuild; hash links keep working after the switch. Decided by the user on 2026-10-30: the
+  Compose, all-in-one and Helm kits turn clean URLs on (M1-134); a bare server and static hosts
+  without rewrite rules keep hash routing; Builder kits write their own setting (M1-111 writes
+  `routing: "path"` and the host fallbacks).
 - `apiUrl` makes the client call another origin, but cross-origin sessions (CORS, credentials,
   PKCE) are M1-107; until then a split deployment needs a same-site layout or a proxy.
 - M1-106 can compare `version.json` with the meta endpoint's minimum frontend version, and

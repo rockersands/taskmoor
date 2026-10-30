@@ -29,6 +29,8 @@ agent budgets, cross-browser e2e, AI eval sets; the first ten gate M1-120), M2-0
 M3-016 to M3-018, M4-014 and M4-015. Six M1 "Should" requirements (AGL-020, NTF-009, API-015,
 API-016, AI-010, RPT-009) moved to M2 in the specs. M1-085 keeps IP allowlists and a syslog
 audit export; continuous SIEM streaming is M2-018. M0-001, M0-008, M1-116 and M1-118 reworded.
+Also decided: release 1.0 ships English and Spanish (M1-116; the other five languages of NFR-006
+are M2-037), and the Compose, all-in-one and Helm kits default to clean URLs (M1-134, ADR-066).
 
 ## No GitHub Actions until M1 is finished (2026-10-30)
 
