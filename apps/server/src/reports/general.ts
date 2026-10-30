@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
+import type { Scope } from '../boards/data';
 
 /**
  * General reports over any query (M1-062; RPT-002; ADR-059), counted in SQL so they stay one
@@ -123,12 +124,39 @@ export type CustomAxisKind = 'option' | 'user' | 'group' | 'release' | 'area' | 
 
 export type Axis =
   | { kind: 'system'; field: SystemAxis }
-  | { kind: 'custom'; fieldId: number; values: CustomAxisKind };
+  | { kind: 'custom'; fieldId: number; values: CustomAxisKind }
+  /** One value for every ticket: counting by one field is counting by it and this. */
+  | { kind: 'all' };
+
+/** How each custom field type groups, where it can. */
+const CUSTOM_AXES: Readonly<Record<string, CustomAxisKind>> = {
+  select: 'option',
+  'cascading-select': 'option',
+  user: 'user',
+  group: 'group',
+  release: 'release',
+  area: 'area',
+  labels: 'label',
+};
+
+/** An axis by its query name: a system field or `cf[<id>]` of a field that groups. */
+export function parseAxis(name: string, scope: Scope): Axis | 'not_found' | 'not_groupable' {
+  if ((SYSTEM_AXES as readonly string[]).includes(name)) {
+    return { kind: 'system', field: name as SystemAxis };
+  }
+  const custom = /^cf\[(\d{1,10})\]$/.exec(name);
+  if (!custom) return 'not_found';
+  const field = scope.catalog.fields.get(Number(custom[1]));
+  if (!field) return 'not_found';
+  const values = CUSTOM_AXES[field.type];
+  return values ? { kind: 'custom', fieldId: field.id, values } : 'not_groupable';
+}
 
 export const MAX_AXIS_VALUES = 50;
 
 /** The ids of an axis' values on the ticket `k`, as text; empty where it has none. */
 function axisValues(axis: Axis): RawBuilder<string[]> {
+  if (axis.kind === 'all') return sql<string[]>`ARRAY['all']::text[]`;
   if (axis.kind === 'custom') {
     const table =
       axis.values === 'user' ? 'v_user' : axis.values === 'label' ? 'v_text' : 'v_option';
@@ -207,6 +235,7 @@ async function names(
         .sort((a, b) => a.localeCompare(b))
         .map((id, i): [string, Named] => [id, { id, name: id, order: i }]),
     );
+  if (axis.kind === 'all') return new Map([['all', { id: 'all', name: '', order: 0 }]]);
   if (axis.kind === 'custom') {
     switch (axis.values) {
       case 'option':
@@ -371,4 +400,80 @@ export async function twoDimensional(
     if (other) other.total = await otherTotal(a, values);
   }
   return { x: ax.out, y: ay.out, cells, total };
+}
+
+/** Tickets counted by one field (pie charts, ticket statistics): its values with their totals. */
+export async function oneDimensional(
+  db: Db,
+  input: { workspaceId: number; scope: RawBuilder<boolean>; axis: Axis },
+): Promise<{ values: AxisValue[]; total: number }> {
+  const table = await twoDimensional(db, { ...input, x: input.axis, y: { kind: 'all' } });
+  return { values: table.x, total: table.total };
+}
+
+/**
+ * - **Average age**: at the end of each period, how long the tickets open then had been open,
+ *   on average (open: created by then and without a close reason then, by the history).
+ */
+export async function averageAge(
+  db: Db,
+  input: { scope: RawBuilder<boolean>; ends: readonly Date[] },
+): Promise<{ age: number; open: number }[]> {
+  const { rows } = await sql<{ i: string; n: number; age: number }>`
+    SELECT e.i, count(*)::int AS n,
+           coalesce(avg(EXTRACT(EPOCH FROM (e.at - k.created_at))), 0)::float AS age
+      FROM unnest(${input.ends.map((d) => d.toISOString())}::timestamptz[]) WITH ORDINALITY AS e(at, i)
+      JOIN ticket k ON k.created_at <= e.at AND ${input.scope}
+     WHERE (SELECT c.to_value FROM ticket_change c
+             WHERE c.ticket_id = k.id AND c.field = 'closeReason' AND c.at <= e.at
+             ORDER BY c.at DESC, c.id DESC LIMIT 1) IS NULL
+     GROUP BY e.i`.execute(db);
+  const byIndex = new Map(rows.map((r) => [Number(r.i), r]));
+  return input.ends.map((_, i) => {
+    const r = byIndex.get(i + 1);
+    return { age: Math.round(r?.age ?? 0), open: r?.n ?? 0 };
+  });
+}
+
+/**
+ * - **Time to close**: per period, the closings in it and how long their tickets had taken
+ *   from creation, on average.
+ */
+export async function timeToClose(
+  db: Db,
+  input: {
+    workspaceId: number;
+    scope: RawBuilder<boolean>;
+    from: string;
+    to: string;
+    start: Date;
+    end: Date;
+    timeZone: string;
+    period: Period;
+  },
+): Promise<{ periods: string[]; closed: number[]; average: number[] }> {
+  const { rows } = await sql<{ day: string; n: number; total: number }>`
+    SELECT to_char((c.at AT TIME ZONE ${input.timeZone})::date, 'YYYY-MM-DD') AS day,
+           count(*)::int AS n, sum(EXTRACT(EPOCH FROM (c.at - k.created_at)))::float AS total
+      FROM ticket_change c JOIN ticket k ON k.id = c.ticket_id
+     WHERE c.workspace_id = ${input.workspaceId}::int AND c.field = 'closeReason'
+       AND c.from_value IS NULL AND c.to_value IS NOT NULL
+       AND c.at >= ${input.start}::timestamptz AND c.at < ${input.end}::timestamptz
+       AND ${input.scope}
+     GROUP BY 1`.execute(db);
+  const periods = periodsBetween(input.from, input.to, input.period);
+  const index = new Map(periods.map((p, i) => [p, i]));
+  const closed = new Array<number>(periods.length).fill(0);
+  const total = new Array<number>(periods.length).fill(0);
+  for (const r of rows) {
+    const i = index.get(periodStart(r.day, input.period));
+    if (i === undefined) continue;
+    closed[i] = (closed[i] ?? 0) + r.n;
+    total[i] = (total[i] ?? 0) + r.total;
+  }
+  return {
+    periods,
+    closed,
+    average: closed.map((n, i) => (n === 0 ? 0 : Math.round((total[i] ?? 0) / n))),
+  };
 }

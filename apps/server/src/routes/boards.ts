@@ -42,7 +42,7 @@ import { resolveTicket } from '../tickets/store';
 import { registerBoardReportRoutes } from './board-reports';
 import { registerScopeReportRoutes } from './scope-reports';
 import { searchRefusal } from './search';
-import { registerSprintRoutes, type SprintRouteDeps } from './sprints';
+import { registerSprintRoutes, type SprintBoard, type SprintRouteDeps } from './sprints';
 import { ticketRoutes } from './tickets';
 
 /**
@@ -186,6 +186,66 @@ function sortKeys(value: unknown): unknown {
 
 const STAGE_NAMES: Record<string, string> = { new: 'New', active: 'Active', closed: 'Closed' };
 
+function boardAdmins(db: Db, boardId: number): Promise<{ id: number; name: string }[]> {
+  return db
+    .selectFrom('board_admin as a')
+    .innerJoin('app_user as u', 'u.id', 'a.user_id')
+    .select(['u.id', 'u.name'])
+    .where('a.board_id', '=', boardId)
+    .orderBy('u.name')
+    .orderBy('u.id')
+    .execute();
+}
+
+async function isConfigAdmin(request: FastifyRequest): Promise<boolean> {
+  const global = await request.authz.global();
+  return global.has('site_admin') || global.has('configuration_admin');
+}
+
+/** Who sees a board: its track's browsers, or its owner and admins; administrators. */
+async function sees(request: FastifyRequest, row: BoardRow, admins: readonly number[]) {
+  const userId = request.user?.id;
+  if (userId === undefined) return false;
+  if (row.location_track_id !== null) {
+    if (row.track_deleted_at !== null) return false;
+    const held = await request.authz.track(row.location_track_id);
+    if (held.has('browse_track') || held.has('administer_track')) return true;
+  } else if (row.location_user_id === userId) {
+    return true;
+  }
+  if (admins.includes(userId)) return true;
+  return isConfigAdmin(request);
+}
+
+/**
+ * A board as the sprint and report routes read it, when the person sees it; null otherwise
+ * (dashboard widgets, M1-064, which answer for themselves).
+ */
+export async function visibleBoardRecord(
+  db: Db,
+  request: FastifyRequest,
+  id: number,
+): Promise<Omit<SprintBoard, 'manage'> | null> {
+  const row = await boardQuery(db, request.workspaceId).where('b.id', '=', id).executeTakeFirst();
+  if (!row) return null;
+  const admins = await boardAdmins(db, row.id);
+  if (
+    !(await sees(
+      request,
+      row,
+      admins.map((a) => a.id),
+    ))
+  ) {
+    return null;
+  }
+  return {
+    record: record(row),
+    kind: row.kind,
+    name: row.name,
+    settings: readSprintSettings(row.sprint_settings),
+  };
+}
+
 export function registerBoardRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
@@ -206,36 +266,7 @@ export function registerBoardRoutes(
     actorId: request.user?.id ?? null,
   });
 
-  async function adminsOf(boardId: number): Promise<{ id: number; name: string }[]> {
-    return db
-      .selectFrom('board_admin as a')
-      .innerJoin('app_user as u', 'u.id', 'a.user_id')
-      .select(['u.id', 'u.name'])
-      .where('a.board_id', '=', boardId)
-      .orderBy('u.name')
-      .orderBy('u.id')
-      .execute();
-  }
-
-  async function isConfigAdmin(request: FastifyRequest): Promise<boolean> {
-    const global = await request.authz.global();
-    return global.has('site_admin') || global.has('configuration_admin');
-  }
-
-  /** Who sees a board: its track's browsers, or its owner and admins; administrators. */
-  async function sees(request: FastifyRequest, row: BoardRow, admins: readonly number[]) {
-    const userId = request.user?.id;
-    if (userId === undefined) return false;
-    if (row.location_track_id !== null) {
-      if (row.track_deleted_at !== null) return false;
-      const held = await request.authz.track(row.location_track_id);
-      if (held.has('browse_track') || held.has('administer_track')) return true;
-    } else if (row.location_user_id === userId) {
-      return true;
-    }
-    if (admins.includes(userId)) return true;
-    return isConfigAdmin(request);
-  }
+  const adminsOf = (boardId: number) => boardAdmins(db, boardId);
 
   /** Who changes a board (AGL-001 (2)). */
   async function mayConfigure(request: FastifyRequest, row: BoardRow, admins: readonly number[]) {

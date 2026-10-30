@@ -1,0 +1,292 @@
+{
+  "age": {
+    "age": [
+      388800,
+      259200,
+      244800,
+      388800,
+      331200,
+      561600
+    ],
+    "open": [
+      1,
+      2,
+      3,
+      2,
+      3,
+      2,
+      2
+    ],
+    "periods": [
+      "d-6",
+      "d-5",
+      "d-4",
+      "d-3",
+      "d-2",
+      "d-1",
+      "d-0"
+    ],
+    "timeZone": "UTC"
+  },
+  "close": {
+    "average": [
+      0,
+      0,
+      0,
+      172800,
+      0,
+      86400,
+      0
+    ],
+    "closed": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0
+    ],
+    "periods": [
+      "d-6",
+      "d-5",
+      "d-4",
+      "d-3",
+      "d-2",
+      "d-1",
+      "d-0"
+    ],
+    "timeZone": "UTC"
+  },
+  "cvc": {
+    "closed": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0
+    ],
+    "created": [
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+    ],
+    "cumulative": false,
+    "periods": [
+      "d-6",
+      "d-5",
+      "d-4",
+      "d-3",
+      "d-2",
+      "d-1",
+      "d-0"
+    ],
+    "timeZone": "UTC"
+  },
+  "cvc-total": {
+    "closed": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      2,
+      2
+    ],
+    "created": [
+      0,
+      1,
+      2,
+      2,
+      3,
+      3,
+      3
+    ],
+    "cumulative": true,
+    "periods": [
+      "d-6",
+      "d-5",
+      "d-4",
+      "d-3",
+      "d-2",
+      "d-1",
+      "d-0"
+    ],
+    "timeZone": "UTC"
+  },
+  "flow": {
+    "unavailable": "not_scrum"
+  },
+  "grid": {
+    "cells": [
+      [
+        1,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "fields": {
+      "x": "priority",
+      "y": "cf[1]"
+    },
+    "total": 4,
+    "x": [
+      {
+        "id": "2",
+        "kind": "value",
+        "name": "High",
+        "total": 2
+      },
+      {
+        "id": "4",
+        "kind": "value",
+        "name": "Low",
+        "total": 1
+      },
+      {
+        "id": null,
+        "kind": "none",
+        "name": null,
+        "total": 1
+      }
+    ],
+    "y": [
+      {
+        "id": "1",
+        "kind": "value",
+        "name": "Red",
+        "total": 1
+      },
+      {
+        "id": "2",
+        "kind": "value",
+        "name": "Blue",
+        "total": 1
+      },
+      {
+        "id": null,
+        "kind": "none",
+        "name": null,
+        "total": 2
+      }
+    ]
+  },
+  "health": {
+    "completed": 0.5,
+    "remaining": 1,
+    "scopeChange": 0
+  },
+  "intro": null,
+  "links": null,
+  "pie": {
+    "field": "priority",
+    "total": 4,
+    "values": [
+      {
+        "id": "2",
+        "kind": "value",
+        "name": "High",
+        "total": 2
+      },
+      {
+        "id": "4",
+        "kind": "value",
+        "name": "Low",
+        "total": 1
+      },
+      {
+        "id": null,
+        "kind": "none",
+        "name": null,
+        "total": 1
+      }
+    ]
+  },
+  "recent": {
+    "created": [
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0
+    ],
+    "periods": [
+      "d-6",
+      "d-5",
+      "d-4",
+      "d-3",
+      "d-2",
+      "d-1",
+      "d-0"
+    ],
+    "timeZone": "UTC"
+  },
+  "results": {
+    "tickets": [
+      {
+        "assignee": "bob",
+        "id": 0,
+        "key": "WA-n",
+        "priority": null,
+        "status": "New",
+        "summary": "wid d",
+        "updatedAt": ""
+      },
+      {
+        "assignee": "alice",
+        "id": 0,
+        "key": "WA-n",
+        "priority": "High",
+        "status": "Closed",
+        "summary": "wid a",
+        "updatedAt": ""
+      }
+    ],
+    "total": {
+      "count": 4,
+      "exact": true
+    }
+  },
+  "stats": {
+    "field": "labels",
+    "total": 4,
+    "values": [
+      {
+        "id": "x",
+        "kind": "value",
+        "name": "x",
+        "total": 2
+      },
+      {
+        "id": "y",
+        "kind": "value",
+        "name": "y",
+        "total": 2
+      },
+      {
+        "id": null,
+        "kind": "none",
+        "name": null,
+        "total": 1
+      }
+    ]
+  }
+}

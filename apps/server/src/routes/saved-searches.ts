@@ -1,4 +1,4 @@
-import type { Database, JsonValue, SavedSearchShareScope } from '@taskmoor/db';
+import type { Database, JsonValue } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
@@ -8,6 +8,14 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { DEFAULT_QUERY_TIMEOUT_MS, prepareSearch } from '../search/run';
 import { savedSearchVisible } from '../search/saved';
 import { nextRun, parseCron, ScheduleError, validTimeZone } from '../search/schedule';
+import {
+  checkShares,
+  SAVED_SEARCH_SHARES,
+  shareInput,
+  shareKey,
+  sharesOf,
+  writeShares,
+} from '../sharing/shares';
 import { searchPerson, searchRefusal, searchScope } from './search';
 
 /**
@@ -47,17 +55,6 @@ const listQuery = z
     q: z.string().max(255).optional(),
   })
   .strict();
-
-const shareInput = z.discriminatedUnion('scope', [
-  z.object({ scope: z.literal('user'), userId: idNum }).strict(),
-  z.object({ scope: z.literal('group'), groupId: idNum }).strict(),
-  z
-    .object({ scope: z.literal('track'), trackId: idNum, roleId: idNum.nullable().optional() })
-    .strict(),
-  z.object({ scope: z.literal('any_user') }).strict(),
-  z.object({ scope: z.literal('public') }).strict(),
-]);
-type ShareInput = z.infer<typeof shareInput>;
 
 const columnsInput = z.array(z.string().min(1).max(200)).max(100).nullable();
 const createBody = z
@@ -124,28 +121,6 @@ function shapeErrors(error: z.ZodError): Record<string, string> {
   return out;
 }
 
-/** A share as the API shows and compares it. */
-interface ShareView {
-  scope: SavedSearchShareScope;
-  userId?: number;
-  userName?: string;
-  groupId?: number;
-  groupName?: string;
-  trackId?: number;
-  trackKey?: string;
-  roleId?: number | null;
-  roleName?: string | null;
-}
-
-const shareKey = (s: ShareInput | ShareView) =>
-  s.scope === 'user'
-    ? `user:${s.userId}`
-    : s.scope === 'group'
-      ? `group:${s.groupId}`
-      : s.scope === 'track'
-        ? `track:${s.trackId}:${s.roleId ?? '*'}`
-        : s.scope;
-
 export function registerSavedSearchRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
@@ -176,55 +151,13 @@ export function registerSavedSearchRoutes(
       ])
       .where('s.workspace_id', '=', ws);
 
-  async function sharesOf(ids: readonly number[]): Promise<Map<number, ShareView[]>> {
-    const out = new Map<number, ShareView[]>();
-    if (ids.length === 0) return out;
-    const found = await db
-      .selectFrom('saved_search_share as sh')
-      .leftJoin('app_user as u', 'u.id', 'sh.user_id')
-      .leftJoin('user_group as g', 'g.id', 'sh.group_id')
-      .leftJoin('track as t', 't.id', 'sh.track_id')
-      .leftJoin('role as r', 'r.id', 'sh.role_id')
-      .select([
-        'sh.saved_search_id',
-        'sh.scope',
-        'sh.user_id',
-        'u.name as user_name',
-        'sh.group_id',
-        'g.name as group_name',
-        'sh.track_id',
-        't.key as track_key',
-        'sh.role_id',
-        'r.name as role_name',
-      ])
-      .where('sh.saved_search_id', 'in', [...ids])
-      .orderBy('sh.id')
-      .execute();
-    for (const s of found) {
-      const view: ShareView =
-        s.scope === 'user'
-          ? { scope: s.scope, userId: s.user_id as number, userName: s.user_name ?? '' }
-          : s.scope === 'group'
-            ? { scope: s.scope, groupId: s.group_id as number, groupName: s.group_name ?? '' }
-            : s.scope === 'track'
-              ? {
-                  scope: s.scope,
-                  trackId: s.track_id as number,
-                  trackKey: s.track_key ?? '',
-                  roleId: s.role_id,
-                  roleName: s.role_name,
-                }
-              : { scope: s.scope };
-      const list = out.get(s.saved_search_id) ?? [];
-      list.push(view);
-      out.set(s.saved_search_id, list);
-    }
-    return out;
-  }
-
   async function view(request: FastifyRequest, list: Row[]) {
     const userId = request.user?.id ?? null;
-    const shares = await sharesOf(list.map((r) => r.id));
+    const shares = await sharesOf(
+      db,
+      SAVED_SEARCH_SHARES,
+      list.map((r) => r.id),
+    );
     const starred =
       userId === null || list.length === 0
         ? new Set<number>()
@@ -273,73 +206,6 @@ export function registerSavedSearchRoutes(
     const userId = request.user?.id ?? null;
     if (userId === null) return false;
     return row.owner_id === userId || (await request.authz.isSiteAdmin());
-  }
-
-  /** Checks the shares: what they name exists, and the person may share at all. */
-  async function checkShares(
-    request: FastifyRequest,
-    shares: readonly ShareInput[],
-  ): Promise<{ fields: Record<string, string>; forbidden: boolean }> {
-    const fields: Record<string, string> = {};
-    if (shares.length === 0) return { fields, forbidden: false };
-    if (!(await request.authz.hasGlobal('share_saved_searches'))) {
-      return { fields, forbidden: true };
-    }
-    const ws = request.workspaceId;
-    for (const [i, s] of shares.entries()) {
-      if (s.scope === 'user') {
-        const u = await db
-          .selectFrom('app_user')
-          .select('id')
-          .where('id', '=', s.userId)
-          .where('workspace_id', '=', ws)
-          .executeTakeFirst();
-        if (!u) fields[`shares.${i}.userId`] = 'not_found';
-      } else if (s.scope === 'group') {
-        const g = await db
-          .selectFrom('user_group')
-          .select('id')
-          .where('id', '=', s.groupId)
-          .where('workspace_id', '=', ws)
-          .executeTakeFirst();
-        if (!g) fields[`shares.${i}.groupId`] = 'not_found';
-      } else if (s.scope === 'track') {
-        // Only to a track the person browses: sharing never confirms a hidden track exists.
-        const held = await request.authz.track(s.trackId);
-        if (!held.has('browse_track')) fields[`shares.${i}.trackId`] = 'not_found';
-        if (s.roleId !== undefined && s.roleId !== null) {
-          const r = await db
-            .selectFrom('role')
-            .select('id')
-            .where('id', '=', s.roleId)
-            .where('workspace_id', '=', ws)
-            .executeTakeFirst();
-          if (!r) fields[`shares.${i}.roleId`] = 'not_found';
-        }
-      }
-    }
-    const keys = shares.map(shareKey);
-    if (new Set(keys).size !== keys.length) fields.shares = 'duplicate';
-    return { fields, forbidden: false };
-  }
-
-  async function writeShares(trx: Db, ws: number, id: number, shares: readonly ShareInput[]) {
-    await trx.deleteFrom('saved_search_share').where('saved_search_id', '=', id).execute();
-    if (shares.length === 0) return;
-    await trx
-      .insertInto('saved_search_share')
-      .values(
-        shares.map((s) => ({
-          workspace_id: ws,
-          saved_search_id: id,
-          scope: s.scope,
-          user_id: s.scope === 'user' ? s.userId : null,
-          group_id: s.scope === 'group' ? s.groupId : null,
-          track_id: s.scope === 'track' ? s.trackId : null,
-          role_id: s.scope === 'track' ? (s.roleId ?? null) : null,
-        })),
-      )
-      .execute();
   }
 
   /**
@@ -412,7 +278,7 @@ export function registerSavedSearchRoutes(
     const body = parsed.data;
     const ws = request.workspaceId;
     const shares = body.shares ?? [];
-    const checked = await checkShares(request, shares);
+    const checked = await checkShares(db, request, shares);
     if (checked.forbidden) {
       return reply.code(403).send({ error: 'forbidden', permission: 'share_saved_searches' });
     }
@@ -432,7 +298,7 @@ export function registerSavedSearchRoutes(
         })
         .returning('id')
         .executeTakeFirstOrThrow();
-      await writeShares(trx, ws, row.id, shares);
+      await writeShares(trx, SAVED_SEARCH_SHARES, ws, row.id, shares);
       await emit(trx, by(request), {
         type: 'saved_search.created',
         subjectId: row.id,
@@ -487,11 +353,11 @@ export function registerSavedSearchRoutes(
     ) {
       return invalidFields(reply, { name: 'taken' });
     }
-    const sharesBefore = (await sharesOf([row.id])).get(row.id) ?? [];
+    const sharesBefore = (await sharesOf(db, SAVED_SEARCH_SHARES, [row.id])).get(row.id) ?? [];
     if (body.shares !== undefined) {
       const before = new Set(sharesBefore.map(shareKey));
       const added = body.shares.filter((s) => !before.has(shareKey(s)));
-      const checked = await checkShares(request, added);
+      const checked = await checkShares(db, request, added);
       if (checked.forbidden) {
         return reply.code(403).send({ error: 'forbidden', permission: 'share_saved_searches' });
       }
@@ -546,7 +412,8 @@ export function registerSavedSearchRoutes(
         })
         .where('id', '=', row.id)
         .execute();
-      if (body.shares !== undefined) await writeShares(trx, ws, row.id, body.shares);
+      if (body.shares !== undefined)
+        await writeShares(trx, SAVED_SEARCH_SHARES, ws, row.id, body.shares);
       await emit(trx, by(request), {
         type: 'saved_search.updated',
         subjectId: row.id,

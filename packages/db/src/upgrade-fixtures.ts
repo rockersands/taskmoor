@@ -1038,6 +1038,21 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM webhook WHERE name = 'Seed webhook'`.execute(db);
     },
   },
+  '0054_dashboards': {
+    tables: {
+      dashboard: "name = 'Seed dashboard' AND layout = 'two' AND jsonb_array_length(widgets) = 1",
+      dashboard_share: "scope = 'any_user'",
+    },
+    seed: async (db) => {
+      // A dashboard of the seed person with one widget, shared with everyone signed in.
+      await sql`INSERT INTO dashboard (workspace_id, owner_id, name, widgets)
+        SELECT 1, id, 'Seed dashboard',
+          '[{"id":"intro","kind":"introduction","column":0,"title":"","config":{"text":"Hi"}}]'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO dashboard_share (workspace_id, dashboard_id, scope)
+        SELECT 1, id, 'any_user' FROM dashboard WHERE name = 'Seed dashboard'`.execute(db);
+    },
+  },
 };
 
 /**

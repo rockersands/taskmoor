@@ -775,6 +775,22 @@ export const EVENT_TYPES = {
     subject: 'saved_search',
     payload: z.object({ subscriptionId: id }),
   },
+  // Dashboards (M1-064): the widget kinds and share scopes, never a widget's settings; the
+  // default dashboard is the workspace's choice.
+  'dashboard.created': {
+    subject: 'dashboard',
+    payload: z.object({
+      name: z.string(),
+      widgets: z.array(z.string()),
+      shares: z.array(z.string()),
+    }),
+  },
+  'dashboard.updated': { subject: 'dashboard', payload: z.object({ changes }) },
+  'dashboard.deleted': { subject: 'dashboard', payload: z.object({ name: z.string() }) },
+  'dashboard.default_set': {
+    subject: 'workspace',
+    payload: z.object({ dashboardId: id.nullable(), previousId: id.nullable() }),
+  },
   /**
    * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
    * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay

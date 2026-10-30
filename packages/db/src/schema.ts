@@ -812,6 +812,37 @@ export interface SavedSearchTable {
 
 export type SavedSearchShareScope = 'user' | 'group' | 'track' | 'any_user' | 'public';
 
+export type DashboardLayout = 'one' | 'two' | 'two-wide-left' | 'two-wide-right' | 'three';
+
+/** A page of widgets kept by its owner (M1-064; RPT-004; ADR-060). */
+export interface DashboardTable {
+  id: Generated<number>;
+  workspace_id: number;
+  owner_id: number;
+  name: string;
+  description: Generated<string>;
+  layout: ColumnType<DashboardLayout, DashboardLayout | undefined, DashboardLayout>;
+  /** The widgets in order: id, kind, column, title and the kind's settings (checked by the API). */
+  widgets: ColumnType<JsonValue, string | undefined, string>;
+  /** The administrator's choice for everyone's home; at most one per workspace. */
+  is_default: Generated<boolean>;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** Who besides its owner sees a dashboard; the scopes of saved searches (ADR-053). */
+export interface DashboardShareTable {
+  id: Generated<number>;
+  workspace_id: number;
+  dashboard_id: number;
+  scope: SavedSearchShareScope;
+  user_id: number | null;
+  group_id: number | null;
+  track_id: number | null;
+  role_id: number | null;
+}
+
 /** Who besides its owner sees a saved search; no row means private (QRY-011). */
 export interface SavedSearchShareTable {
   id: Generated<number>;
@@ -2024,6 +2055,8 @@ export interface Database {
   sprint_change: SprintChangeTable;
   saved_search: SavedSearchTable;
   saved_search_share: SavedSearchShareTable;
+  dashboard: DashboardTable;
+  dashboard_share: DashboardShareTable;
   saved_search_star: SavedSearchStarTable;
   saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;

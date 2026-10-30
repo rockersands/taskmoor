@@ -2293,6 +2293,61 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'saved_search.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/saved-searches/${state.savedSearch}` }),
     },
+    // Dashboards (M1-064): made, changed, copied, made the default and removed.
+    {
+      route: 'POST /api/v1/dashboards',
+      expect: 'dashboard.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/dashboards',
+          payload: {
+            name: 'Contract dashboard',
+            widgets: [{ kind: 'introduction', config: { text: 'Hello' } }],
+          },
+        });
+        state.dashboard = res.json().dashboard?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/dashboards/:id',
+      expect: 'dashboard.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/dashboards/${state.dashboard}`,
+          payload: { layout: 'three', shares: [{ scope: 'any_user' }] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/dashboards/:id/copy',
+      expect: 'dashboard.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/dashboards/${state.dashboard}/copy`,
+          payload: {},
+        });
+        state.dashboardCopy = res.json().dashboard?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PUT /api/v1/dashboards/default',
+      expect: 'dashboard.default_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/dashboards/default',
+          payload: { dashboardId: state.dashboardCopy },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/dashboards/:id',
+      expect: 'dashboard.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/dashboards/${state.dashboard}` }),
+    },
     {
       route: 'DELETE /api/v1/workflows/:id',
       expect: 'workflow.deleted',

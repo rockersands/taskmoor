@@ -32,6 +32,7 @@ import { registerBackupRoutes } from './routes/backups';
 import { registerBoardRoutes } from './routes/boards';
 import { registerBulkRoutes } from './routes/bulk';
 import { registerCommentRoutes } from './routes/comments';
+import { registerDashboardRoutes } from './routes/dashboards';
 import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
 import { registerFieldRoutes } from './routes/fields';
@@ -285,6 +286,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // General reports over any query (M1-062): created vs closed, two-dimensional statistics.
     registerReportRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // Dashboards (M1-064): shared like saved searches; widgets read as the viewer.
+    registerDashboardRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });

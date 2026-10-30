@@ -108,9 +108,11 @@ function shapeErrors(error: z.ZodError): Record<string, string> {
 const num = (v: number | string | null | undefined): number | null =>
   v === null || v === undefined ? null : Number(v);
 
-type SprintRow = Awaited<ReturnType<ReturnType<typeof sprintQuery>['executeTakeFirstOrThrow']>>;
+export type SprintRow = Awaited<
+  ReturnType<ReturnType<typeof sprintQuery>['executeTakeFirstOrThrow']>
+>;
 
-function sprintQuery(db: Db, workspaceId: number) {
+export function sprintQuery(db: Db, workspaceId: number) {
   return db
     .selectFrom('sprint')
     .selectAll()
@@ -118,7 +120,7 @@ function sprintQuery(db: Db, workspaceId: number) {
     .where('deleted_at', 'is', null);
 }
 
-const sprintView = (s: SprintRow) => ({
+export const sprintView = (s: SprintRow) => ({
   id: s.id,
   boardId: s.board_id,
   name: s.name,
@@ -131,6 +133,84 @@ const sprintView = (s: SprintRow) => ({
   completedAt: s.completed_at?.toISOString() ?? null,
   version: s.version,
 });
+
+/** A sprint that has started: its start and planned end are set. */
+export type StartedSprint = SprintRow & { started_at: Date; end_at: Date };
+
+export const hasStarted = (sprint: SprintRow): sprint is StartedSprint =>
+  sprint.state !== 'future' && sprint.started_at !== null && sprint.end_at !== null;
+
+/**
+ * A started sprint's burndown and burnup as the viewer sees it (M1-060): the route's answer, and
+ * the sprint widgets' (M1-064).
+ */
+export async function sprintBurndown(
+  db: Kysely<Database>,
+  catalogs: FieldCatalogs,
+  request: FastifyRequest,
+  sprint: StartedSprint,
+  board: Pick<SprintBoard, 'record' | 'settings'>,
+  timeZone: string,
+) {
+  const ws = request.workspaceId;
+  const scope = await boardScope(db, catalogs, request);
+  // Every ticket that was ever in the sprint, as far as the viewer may see it now.
+  const ever = await db
+    .selectFrom('sprint_change')
+    .select('ticket_id')
+    .distinct()
+    .where('sprint_id', '=', sprint.id)
+    .execute();
+  const candidates = ever.map((r) => r.ticket_id);
+  const visible =
+    candidates.length === 0
+      ? []
+      : (
+          await sql<{ id: number; key: string; summary: string }>`
+            SELECT k.id, t.key || '-' || k.number AS key, k.summary
+              FROM ticket k JOIN track t ON t.id = k.track_id
+             WHERE k.id = ANY(${candidates}::int[]) AND k.workspace_id = ${ws}::int
+               AND ${scope.filter.sql}`.execute(db)
+        ).rows;
+  const estimation = board.settings.estimation;
+  const events = await readReportEvents(
+    db,
+    ws,
+    visible.map((t) => t.id),
+    estimation.statistic === 'field' && estimation.fieldId !== undefined
+      ? { numberFields: [estimation.fieldId] }
+      : {},
+  );
+  const burnRemaining =
+    board.settings.timeTracking === 'remainingEstimate' &&
+    estimation.statistic === 'originalEstimate';
+  const chart = sprintChart({
+    sprintId: sprint.id,
+    startedAt: sprint.started_at,
+    endAt: sprint.end_at,
+    completedAt: sprint.state === 'closed' ? sprint.completed_at : null,
+    estimation:
+      estimation.statistic === 'field'
+        ? { statistic: 'field', fieldId: estimation.fieldId as number }
+        : { statistic: estimation.statistic },
+    burnRemaining,
+    done: new Set(doneStatuses(board.record)),
+    events,
+    now: new Date(),
+    timeZone,
+  });
+  const stepped = new Set(chart.steps.map((s) => s.ticketId));
+  return {
+    sprint: sprintView(sprint),
+    statistic: estimation,
+    burnRemaining,
+    timeZone,
+    ...chart,
+    tickets: visible
+      .filter((t) => stepped.has(t.id))
+      .map((t) => ({ id: t.id, key: t.key, summary: t.summary })),
+  };
+}
 
 export function registerSprintRoutes(
   app: FastifyInstance,
@@ -880,69 +960,10 @@ export function registerSprintRoutes(
     if (!found) return reply;
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
     const { sprint, board } = found;
-    if (sprint.state === 'future' || !sprint.started_at || !sprint.end_at) {
-      return reply.code(409).send({ error: 'sprint_not_started' });
-    }
-    const ws = request.workspaceId;
-    const scope = await boardScope(db, catalogs, request);
-    // Every ticket that was ever in the sprint, as far as the viewer may see it now.
-    const ever = await db
-      .selectFrom('sprint_change')
-      .select('ticket_id')
-      .distinct()
-      .where('sprint_id', '=', sprint.id)
-      .execute();
-    const candidates = ever.map((r) => r.ticket_id);
-    const visible =
-      candidates.length === 0
-        ? []
-        : (
-            await sql<{ id: number; key: string; summary: string }>`
-              SELECT k.id, t.key || '-' || k.number AS key, k.summary
-                FROM ticket k JOIN track t ON t.id = k.track_id
-               WHERE k.id = ANY(${candidates}::int[]) AND k.workspace_id = ${ws}::int
-                 AND ${scope.filter.sql}`.execute(db)
-          ).rows;
-    const estimation = board.settings.estimation;
-    const events = await readReportEvents(
-      db,
-      ws,
-      visible.map((t) => t.id),
-      estimation.statistic === 'field' && estimation.fieldId !== undefined
-        ? { numberFields: [estimation.fieldId] }
-        : {},
-    );
-    const burnRemaining =
-      board.settings.timeTracking === 'remainingEstimate' &&
-      estimation.statistic === 'originalEstimate';
+    if (!hasStarted(sprint)) return reply.code(409).send({ error: 'sprint_not_started' });
     const timeZone =
       q.data.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
-    const chart = sprintChart({
-      sprintId: sprint.id,
-      startedAt: sprint.started_at,
-      endAt: sprint.end_at,
-      completedAt: sprint.state === 'closed' ? sprint.completed_at : null,
-      estimation:
-        estimation.statistic === 'field'
-          ? { statistic: 'field', fieldId: estimation.fieldId as number }
-          : { statistic: estimation.statistic },
-      burnRemaining,
-      done: new Set(doneStatuses(board.record)),
-      events,
-      now: new Date(),
-      timeZone,
-    });
-    const stepped = new Set(chart.steps.map((s) => s.ticketId));
-    return {
-      sprint: sprintView(sprint),
-      statistic: estimation,
-      burnRemaining,
-      timeZone,
-      ...chart,
-      tickets: visible
-        .filter((t) => stepped.has(t.id))
-        .map((t) => ({ id: t.id, key: t.key, summary: t.summary })),
-    };
+    return sprintBurndown(db, catalogs, request, sprint, board, timeZone);
   });
 
   // Velocity (M1-060; RPT-001 (2)): committed and completed per closed sprint, newest last, from

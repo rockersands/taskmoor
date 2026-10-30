@@ -7,15 +7,7 @@ import { requireUser } from '../auth';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
 import { datesBetween, dayEnd, dayStart } from '../reports/flow';
-import {
-  type Axis,
-  type CustomAxisKind,
-  createdVsClosed,
-  PERIODS,
-  SYSTEM_AXES,
-  type SystemAxis,
-  twoDimensional,
-} from '../reports/general';
+import { createdVsClosed, PERIODS, parseAxis, twoDimensional } from '../reports/general';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { searchRefusal } from './search';
 
@@ -65,30 +57,6 @@ function shapeErrors(error: z.ZodError): Record<string, string> {
 
 const daysBefore = (date: string, n: number) =>
   new Date(Date.parse(`${date}T00:00:00Z`) - n * DAY).toISOString().slice(0, 10);
-
-/** How each custom field type groups, where it can. */
-const CUSTOM_AXES: Readonly<Record<string, CustomAxisKind>> = {
-  select: 'option',
-  'cascading-select': 'option',
-  user: 'user',
-  group: 'group',
-  release: 'release',
-  area: 'area',
-  labels: 'label',
-};
-
-/** An axis by its query name: a system field or `cf[<id>]` of a field that groups. */
-export function parseAxis(name: string, scope: Scope): Axis | 'not_found' | 'not_groupable' {
-  if ((SYSTEM_AXES as readonly string[]).includes(name)) {
-    return { kind: 'system', field: name as SystemAxis };
-  }
-  const custom = /^cf\[(\d{1,10})\]$/.exec(name);
-  if (!custom) return 'not_found';
-  const field = scope.catalog.fields.get(Number(custom[1]));
-  if (!field) return 'not_found';
-  const values = CUSTOM_AXES[field.type];
-  return values ? { kind: 'custom', fieldId: field.id, values } : 'not_groupable';
-}
 
 export interface ReportRouteDeps {
   catalogs: FieldCatalogs;

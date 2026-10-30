@@ -84,6 +84,17 @@ stop (CI is the gate).
   events follow `targetRelease` now and the replay check compares it. Web: three Scrum tabs on
   the reports page (`reports/ScopeReports.tsx`). Charts: x labels thin by their own width, and
   the charts' and reports' tables scroll inside their own box on phones (ADR-033).
+- **M1-064 dashboards, part 1 of 4** (ADR-060; migration 0054 `dashboard`, `dashboard_share`):
+  the model and API (`routes/dashboards.ts`: list, create, read, change with a version, copy,
+  delete, the administrators' default at `/dashboards/default`), widgets checked per kind
+  (`dashboards/model.ts`, sixteen kinds), shares through `sharing/shares.ts`, which saved
+  searches now use too. Part 2: each widget's data as the viewer at
+  `GET /dashboards/:id/widgets/:widgetId` (`dashboards/widgets.ts`; `visibleBoardRecord` in
+  `routes/boards.ts` and `sprintBurndown` in `routes/sprints.ts` are shared with it;
+  `averageAge`, `timeToClose`, `oneDimensional` and `parseAxis` in `reports/general.ts`),
+  golden-tested in `routes/dashboard-widgets.test.ts` (`__golden__/dashboard-widgets.json`,
+  dates as days before today). **Half-done**: part 3 the web page (layout editing, widget
+  settings, wallboard), part 4 the track summary pages.
 - **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
   the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
   settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
@@ -131,6 +142,9 @@ stop (CI is the gate).
   now (`SearchPage.tsx`, `caretAfter`).
 - `BulkOperationPage.test.tsx` read the failed tickets as soon as their region showed, before
   their own request answered, and failed under load; it waits for the items now.
+- Watch list: `routes/fields.test.ts` "[CORE-009] renames, reorders and disables options"
+  got 409 `in_use` deleting a field once in a full gate (load about 30) and passes alone. Its
+  ticket change before the delete was not checked; it is now, so a repeat names the cause.
 
 - `apps/server/src/routes/search.run.test.ts` "[QRY-010] stops a query over the timeout" timed
   out at 60 s in a full gate here (load average 16 to 19: its 20,000-row insert waits); it
