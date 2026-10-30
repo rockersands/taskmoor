@@ -1639,6 +1639,30 @@
         ],
         "type": "object"
       },
+      "SearchTotal": {
+        "additionalProperties": {},
+        "description": "Exact up to 10,000; beyond, an estimate from a sample, or \"more than 10,000\" when no sample is precise enough.",
+        "properties": {
+          "approximate": {
+            "description": "The count is an estimate, within 10% of the true count 99 times in 100. With neither flag, the count is a lower bound: there are more.",
+            "type": "boolean"
+          },
+          "count": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "exact": {
+            "description": "The count is exact.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "count",
+          "exact"
+        ],
+        "type": "object"
+      },
       "SignedInUser": {
         "additionalProperties": {},
         "properties": {
@@ -13038,7 +13062,7 @@
     },
     "/api/v1/search": {
       "get": {
-        "description": "The query language of the search page. Pages follow `next`; the first page carries a count (capped) unless asked not to.",
+        "description": "The query language of the search page. Pages follow `next`; the first page carries a count unless asked not to: exact up to 10,000, then an estimate within 10% (`approximate`) or a lower bound.",
         "operationId": "search",
         "parameters": [
           {
@@ -13153,22 +13177,7 @@
                       "type": "array"
                     },
                     "total": {
-                      "additionalProperties": {},
-                      "properties": {
-                        "count": {
-                          "maximum": 9007199254740991,
-                          "minimum": -9007199254740991,
-                          "type": "integer"
-                        },
-                        "exact": {
-                          "type": "boolean"
-                        }
-                      },
-                      "required": [
-                        "count",
-                        "exact"
-                      ],
-                      "type": "object"
+                      "$ref": "#/components/schemas/SearchTotal"
                     }
                   },
                   "required": [
@@ -13325,6 +13334,9 @@
                         "$ref": "#/components/schemas/SearchTicket"
                       },
                       "type": "array"
+                    },
+                    "total": {
+                      "$ref": "#/components/schemas/SearchTotal"
                     }
                   },
                   "required": [
