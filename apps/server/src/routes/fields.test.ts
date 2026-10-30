@@ -501,7 +501,9 @@ describe('custom fields (M1-010)', () => {
       error: 'in_use',
       ticketCount: 1,
     });
-    await patch('alice', `/api/v1/tickets/${t.id}`, { fields: { [f.id]: null } });
+    // The value must be gone before the field can go: a failed change shows here, not below.
+    const cleared = await patch('alice', `/api/v1/tickets/${t.id}`, { fields: { [f.id]: null } });
+    expect(cleared.statusCode, cleared.body).toBe(200);
     expect((await del('admin', `/api/v1/fields/${f.id}`)).statusCode).toBe(204);
     expect((await get('admin', `/api/v1/fields/${f.id}`)).statusCode).toBe(404);
   });
