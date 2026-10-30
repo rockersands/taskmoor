@@ -51,7 +51,8 @@ export interface FakeSearchClient extends SearchClient {
 
 /**
  * An in-memory backend: a query naming `nope` is refused at that word, as the backend's check
- * would; results come two at a time. Edits apply to the tickets, except that a closed ticket
+ * would; results come two at a time. A query naming `many` counts as an estimate and one naming
+ * `lots` as more than the cap, as the backend counts beyond 10,000 (M1-040). Edits apply to the tickets, except that a closed ticket
  * is locked (as a status lock refuses it), an empty summary is invalid, and a ticket edited
  * with an old version is stale.
  */
@@ -68,7 +69,15 @@ export function fakeSearchClient(): FakeSearchClient {
       return {
         tickets: all.slice(from, from + 2).map((t) => ({ ...t })),
         next: from + 2 < all.length ? String(from + 2) : null,
-        ...(cursor ? {} : { total: { count: all.length, exact: true } }),
+        ...(cursor
+          ? {}
+          : {
+              total: q.includes('many')
+                ? { count: 123_456, exact: false, approximate: true }
+                : q.includes('lots')
+                  ? { count: 10_000, exact: false }
+                  : { count: all.length, exact: true },
+            }),
       };
     },
     check: async (q) => {

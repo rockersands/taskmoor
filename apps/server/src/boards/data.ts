@@ -215,6 +215,7 @@ export interface Compiled {
 
 const compileContext = (scope: Scope) => ({
   comments: commentReadableSql(scope.ws, scope.userId),
+  commentsOf: (track: RawBuilder<unknown>) => commentReadableSql(scope.ws, scope.userId, track),
   filter: scope.filter.sql,
   workspaceId: scope.ws,
 });

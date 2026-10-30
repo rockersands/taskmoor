@@ -1,6 +1,6 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import { schema } from '@taskmoor/richtext';
-import { type Kysely, sql, type Transaction } from 'kysely';
+import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 
 /**
  * Comments (M1-018; CORE-020, NTF-001 (3); ADR-044): who may read a comment, the same rule on
@@ -70,9 +70,14 @@ export function onceAudience(load: () => Promise<Audience>): () => Promise<Audie
 /**
  * The same rule as a SQL condition on a `ticket_comment` row aliased `c` whose ticket is joined
  * as `k`, for set-based readers (search and export, M1-037 and later). The reader must already
- * see the ticket, which this does not check.
+ * see the ticket, which this does not check. `track` names the ticket's track another way, for
+ * a reader without `k` (the comments of `text ~`, M1-040).
  */
-export function commentReadableSql(workspaceId: number, userId: number | null) {
+export function commentReadableSql(
+  workspaceId: number,
+  userId: number | null,
+  track: RawBuilder<unknown> = sql`k.track_id`,
+) {
   const open = sql<boolean>`(c.visible_role_id IS NULL AND c.visible_group_id IS NULL)`;
   if (userId === null) return sql<boolean>`(c.deleted_at IS NULL AND ${open})`;
   const groups = sql`(WITH RECURSIVE g(id) AS (
@@ -85,7 +90,7 @@ export function commentReadableSql(workspaceId: number, userId: number | null) {
       OR c.author_id = ${userId}
       OR c.visible_group_id IN ${groups}
       OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a
-           WHERE a.track_id = k.track_id
+           WHERE a.track_id = ${track}
              AND (a.user_id = ${userId} OR a.group_id IN ${groups}))))`;
 }
 

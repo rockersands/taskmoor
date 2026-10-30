@@ -95,6 +95,7 @@ export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
     filter: input.filter.sql,
     tracks: input.filter.tracks,
     comments: commentReadableSql(input.workspaceId, input.currentUserId),
+    commentsOf: (track) => commentReadableSql(input.workspaceId, input.currentUserId, track),
     ...(input.anchor === undefined ? {} : { anchor: input.anchor }),
     ...(input.branches === undefined ? {} : { branches: input.branches }),
   });

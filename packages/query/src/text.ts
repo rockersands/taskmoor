@@ -23,10 +23,13 @@ export type TextTerm =
   | { kind: 'word'; text: string; prefix?: true }
   /** Words that must stand next to each other, in order. */
   | { kind: 'phrase'; text: string }
-  /** A word with `?` wildcards: the text between them; `prefix` with a trailing `*` too. */
-  | { kind: 'wildcard'; parts: string[]; prefix?: true }
-  /** A word or one edit away from it. */
-  | { kind: 'fuzzy'; text: string }
+  /**
+   * A word with `?` wildcards: the text between them; `prefix` with a trailing `*` too. `words`:
+   * the words it stands for that occur in the searched texts, which the server fills in.
+   */
+  | { kind: 'wildcard'; parts: string[]; prefix?: true; words?: string[] }
+  /** A word or one edit away from it; `words` as for a wildcard. */
+  | { kind: 'fuzzy'; text: string; words?: string[] }
   /** Text inside the field: literal `parts` with `gaps` between them (`*` many, `?` one). */
   | { kind: 'pattern'; parts: string[]; gaps: ('many' | 'one')[] };
 

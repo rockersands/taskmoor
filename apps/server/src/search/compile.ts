@@ -57,6 +57,11 @@ export interface CompileOptions {
    * (`commentReadableSql`, M1-018). Comment search and `text ~` see no other comment.
    */
   comments: RawBuilder<boolean>;
+  /**
+   * The same, with the comment's track given as an expression instead of `k.track_id`
+   * (`commentReadableSql`'s `track`), so the comments of `text ~` read as one table (M1-040).
+   */
+  commentsOf?: (track: RawBuilder<unknown>) => RawBuilder<boolean>;
   /** Drive from a side table when the order allows (default true); tests compare both forms. */
   anchor?: boolean;
   /** Merge value branches when the first key allows (default true); tests compare both forms. */
@@ -621,6 +626,7 @@ const anyId = (column: string, values: readonly number[]) =>
 /** What a condition needs from the viewer beyond the ticket filter. */
 interface CondContext {
   comments: RawBuilder<boolean>;
+  commentsOf?: ((track: RawBuilder<unknown>) => RawBuilder<boolean>) | undefined;
   /** The viewer's predicate on ticket `k`, for tickets other than the row (a parent). */
   filter: RawBuilder<boolean>;
   workspaceId: number;
@@ -811,14 +817,46 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
 
 /**
  * The master text field (spec 01b section 1.5): tickets whose summary, description or
- * environment, a comment the viewer reads, or a text field matches, as one set of ids that does
- * not depend on the row (`k.id IN (... UNION ALL ...)`). At the top of a query the planner can
- * then either start from the word indexes, for rare words, or probe each ticket as it walks the
- * order, for common ones; an OR of the five places would only allow the walk, which reads the
- * whole table when a word is rare. Comment readability is judged against each comment's own
- * ticket (`k` inside the branch).
+ * environment, a comment the viewer reads, or a text field matches. Two forms, chosen by the
+ * binder from the planner's estimate of the matches (`textForms` in `bind.ts`):
+ *
+ * - **Few matches:** one set of ids that does not depend on the row
+ *   (`k.id IN (... UNION ALL ...)`), which the planner starts from: the word indexes give the
+ *   few tickets, then the order sorts them. An OR of the five places could only walk the order,
+ *   and for a rare word that reads the whole table. Comment readability is judged against each
+ *   comment's own ticket (its track read per matching comment).
+ * - **Many matches (`common`):** an OR of the five places as a test of the row, so walking the
+ *   order stops after a page. The set form would read every match first: Postgres estimates the
+ *   distinct ids of a UNION ALL at 200 whatever they are, so it would always start from the set.
  */
 function masterText(c: Extract<Cond, { kind: 'text' }>, ctx: CondContext): RawBuilder<boolean> {
+  if (c.common) {
+    // Many matches: a test of the row, so walking the order stops after a page.
+    const parts = [
+      textMatch(raw('k.summary_words'), raw('k.summary'), c.search),
+      textMatch(raw('k.description_words'), null, c.search),
+      textMatch(raw('k.environment_words'), null, c.search),
+      commentRows(ctx, textMatch(raw('c.body_words'), null, c.search)),
+    ];
+    const value = textMatch(wordsOf(raw('v.value')), raw('v.value'), c.search);
+    if (c.fieldIds.length > 0 && value !== FALSE) {
+      parts.push(
+        sql<boolean>`EXISTS (SELECT 1 FROM v_text v WHERE ${and([sql<boolean>`v.ticket_id = k.id`, sql<boolean>`v.field_id = ANY(${array(c.fieldIds, 'int')})`, value])})`,
+      );
+    }
+    return or(parts);
+  }
+  const branches = textSetBranches(c, ctx);
+  return branches.length === 0
+    ? FALSE
+    : sql<boolean>`k.id IN (${sql.join(branches, raw(' UNION ALL '))})`;
+}
+
+/** The set form's branches: the ids of tickets whose own text, comment or text field matches. */
+function textSetBranches(
+  c: Extract<Cond, { kind: 'text' }>,
+  ctx: CondContext,
+): RawBuilder<unknown>[] {
   const ws = param(ctx.workspaceId, 'int');
   const branches: RawBuilder<unknown>[] = [];
   const own = or([
@@ -834,7 +872,13 @@ function masterText(c: Extract<Cond, { kind: 'text' }>, ctx: CondContext): RawBu
   const comment = textMatch(raw('c.body_words'), null, c.search);
   if (comment !== FALSE) {
     branches.push(
-      sql`SELECT c.ticket_id FROM ticket_comment c JOIN ticket k ON k.id = c.ticket_id WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, ctx.comments, comment])}`,
+      ctx.commentsOf
+        ? // The comment's track read per matching comment, so the branch is one table and the
+          // planner can probe it per ticket.
+          sql`SELECT c.ticket_id FROM ticket_comment c WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, comment, ctx.commentsOf(sql`(SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)`)])}`
+        : // The comment's ticket as `k`, looked up per matching comment: `OFFSET 0` keeps the
+          // planner from joining the whole ticket table instead.
+          sql`SELECT c.ticket_id FROM ticket_comment c CROSS JOIN LATERAL (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id OFFSET 0) k WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, comment, ctx.comments])}`,
     );
   }
   const value = textMatch(wordsOf(raw('v.value')), raw('v.value'), c.search);
@@ -843,9 +887,24 @@ function masterText(c: Extract<Cond, { kind: 'text' }>, ctx: CondContext): RawBu
       sql`SELECT v.ticket_id FROM v_text v WHERE ${and([sql<boolean>`v.field_id = ANY(${array(c.fieldIds, 'int')})`, value])}`,
     );
   }
-  return branches.length === 0
-    ? FALSE
-    : sql<boolean>`k.id IN (${sql.join(branches, raw(' UNION ALL '))})`;
+  return branches;
+}
+
+/**
+ * The tickets a master text search matches, as the planner sees them (M1-040): the set form of
+ * `masterText`, without the viewer's filter and comment readability, for an estimate.
+ */
+export function masterTextSet(
+  c: Extract<Cond, { kind: 'text' }>,
+  workspaceId: number,
+): RawBuilder<unknown> | undefined {
+  const branches = textSetBranches(c, {
+    comments: sql<boolean>`c.deleted_at IS NULL`,
+    commentsOf: () => sql<boolean>`c.deleted_at IS NULL`,
+    filter: TRUE,
+    workspaceId,
+  });
+  return branches.length === 0 ? undefined : sql.join(branches, raw(' UNION ALL '));
 }
 
 /** The expression a key orders by, on ticket `k`; `comments` are the ones the viewer reads. */
@@ -1035,6 +1094,7 @@ export function compileSearch(bound: Bound, options: CompileOptions): CompiledSe
   const signature = keys.map((k) => `${JSON.stringify(k.source)}:${k.direction}`).join('|');
   const ctx: CondContext = {
     comments: options.comments,
+    commentsOf: options.commentsOf,
     filter: options.filter,
     workspaceId: options.workspaceId,
   };

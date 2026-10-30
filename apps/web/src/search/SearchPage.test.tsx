@@ -113,6 +113,16 @@ describe('the search page (M1-041)', () => {
     expect(queryFromHash('#/search?q=track%20%3D%20SHOP')).toBe('track = SHOP');
   });
 
+  it('[QRY-009] says when a count is an estimate or a lower bound (M1-040)', async () => {
+    renderPage('text ~ many');
+    expect(await screen.findByText('About 123,456 tickets')).toBeVisible();
+  });
+
+  it('[QRY-009] says when there are more results than were counted', async () => {
+    renderPage('text ~ lots');
+    expect(await screen.findByText('More than 10,000 tickets')).toBeVisible();
+  });
+
   it('fits a small phone', async () => {
     setViewportWidth(375);
     renderPage();

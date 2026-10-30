@@ -83,6 +83,7 @@ export function webhookSubscriber(
         const cond = await bindCondition(db, scope, hook.filter_query, event.occurredAt);
         match = compileCond(cond, {
           comments: commentReadableSql(ws, hook.owner_id),
+          commentsOf: (track) => commentReadableSql(ws, hook.owner_id, track),
           filter: filter.sql,
           workspaceId: ws,
         });

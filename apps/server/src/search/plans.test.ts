@@ -159,6 +159,30 @@ const HISTORY_CASES: PlanCase[] = [
   },
 ];
 
+/**
+ * Text search (M1-040): one ticket in 4,999 says "zebracorn" in its summary, one in 2,500 in a
+ * comment and one in 3,000 in its Notes; every ticket says one of WORDS twice. A rare word
+ * starts from the word indexes, across all five places of the master text field; a common one
+ * walks the order and probes each ticket; patterns use the trigram indexes.
+ */
+const TEXT_CASES: PlanCase[] = [
+  {
+    q: 'text ~ zebracorn ORDER BY updated DESC',
+    uses: ['ticket_summary_words_idx', 'ticket_comment_words_idx', 'v_text_words_idx'],
+  },
+  {
+    q: 'text ~ payment ORDER BY updated DESC',
+    uses: ['ticket_updated_idx|ticket_summary_words_idx'],
+  },
+  { q: 'summary ~ "*ebracor*" ORDER BY created DESC', uses: ['ticket_summary_trigram_idx'] },
+  { q: 'Notes ~ zebracorn ORDER BY created DESC', uses: ['v_text_words_idx'] },
+  { q: 'Notes ~ "*ebracor*"', uses: ['v_text_trigram_idx'] },
+  { q: 'summary ~ "zebr?corn" ORDER BY created DESC', uses: ['ticket_summary_words_idx'] },
+  { q: 'summary ~ "zebracron~" ORDER BY created DESC', uses: ['ticket_summary_words_idx'] },
+  { q: 'summary ~ "\\"zebracorn ticket\\""', uses: ['ticket_summary_words_idx'] },
+  { q: 'text ~ zebracorn ORDER BY relevance', uses: ['ticket_summary_words_idx'] },
+];
+
 /** A plan as node types, scan directions, indexes and relations, one line per node. */
 function shape(node: Record<string, unknown>, depth = 0, out: string[] = []): string[] {
   const parts = [node['Node Type'] as string];
@@ -252,6 +276,7 @@ describe('query plans (M1-037)', () => {
       Team: { type: 'select', context: { options: opts(['O1', 'O2', 'O3', 'O4', 'O5']) } },
       Tags: { type: 'select', multiple: true, context: { options: opts(['A', 'B', 'C', 'D']) } },
       Reviewer: { type: 'user' },
+      Notes: { type: 'text' },
     })) {
       fieldIds[name] = (await post('/api/v1/fields', { name, ...payload })).field.id;
     }
@@ -314,6 +339,15 @@ describe('query plans (M1-037)', () => {
             jsonb_build_object('type', 'text', 'text', 'Seen with ' || split_part(k.summary, ' ', 6)))))),
         CASE WHEN k.id % 3 = 0 THEN (SELECT id FROM role WHERE name = 'Administrators') END
         FROM ticket k WHERE k.id % 40 = 0`.execute(db);
+    // Text search (M1-040): rare words in summaries, comments and Notes.
+    await sql`UPDATE ticket SET summary = summary || ' zebracorn ticket' WHERE id % 4999 = 0`.execute(
+      db,
+    );
+    await sql`INSERT INTO ticket_comment (workspace_id, ticket_id, author_id, body)
+      SELECT 1, k.id, ${member}, jsonb_build_object('type', 'doc', 'content',
+          jsonb_build_array(jsonb_build_object('type', 'paragraph', 'content', jsonb_build_array(
+            jsonb_build_object('type', 'text', 'text', 'A zebracorn sighting')))))
+        FROM ticket k WHERE k.id % 2500 = 7`.execute(db);
     await sql`UPDATE ticket k SET closed_at = k.updated_at FROM status s
       WHERE s.id = k.status_id AND s.stage = 'closed'`.execute(db);
     // Every tenth ticket is a subticket of the one before.
@@ -369,6 +403,12 @@ describe('query plans (M1-037)', () => {
       `${fieldIds.Reviewer}, ${member} + (k.id * 13) % ${USERS}`,
       'k.id % 3 = 0',
     );
+    await sql`INSERT INTO v_text (workspace_id, ticket_id, track_id, field_id, value, sort_key, created_at)
+      SELECT 1, k.id, k.track_id, ${fieldIds.Notes},
+             CASE WHEN k.id % 3000 = 11 THEN 'zebracorn notes' ELSE 'deployment notes ' || k.id END,
+             CASE WHEN k.id % 3000 = 11 THEN 'zebracorn notes' ELSE 'deployment notes ' || k.id END,
+             k.created_at
+        FROM ticket k WHERE k.id % 4 = 1`.execute(db);
     // History (M1-039): first statuses, changes, reviews and assignments, as HISTORY_CASES says.
     await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, at, actor_id, field,
         to_value, to_display)
@@ -408,6 +448,7 @@ describe('query plans (M1-037)', () => {
       'v_date',
       'v_option',
       'v_user',
+      'v_text',
       'ticket_follower',
       'ticket_comment',
       'ticket_change',
@@ -498,6 +539,30 @@ describe('query plans (M1-037)', () => {
     }
     if (major === 16) {
       await expect(stableJson(plans)).toMatchFileSnapshot('./__golden__/plans-history-pg16.json');
+    }
+  });
+
+  it('[QRY-007] [QRY-010] plans text searches on the word and trigram indexes (M1-040)', async () => {
+    const version = await sql<{
+      v: string;
+    }>`SELECT current_setting('server_version_num') AS v`.execute(db);
+    const major = Math.floor(Number(version.rows[0]?.v ?? 0) / 10_000);
+    const plans: Record<string, string[]> = {};
+    for (const c of TEXT_CASES) {
+      const lines = await explain(c.q);
+      plans[c.q] = lines;
+      const used = indexesOf(lines);
+      for (const index of c.uses) {
+        expect(
+          index.split('|').some((i) => used.has(i)),
+          `${c.q} uses ${index}: ${[...used].join(', ')}`,
+        ).toBe(true);
+      }
+      expect(lines.join('\n'), c.q).not.toMatch(/Seq Scan on ticket( |$)/m);
+      expect(lines.join('\n'), c.q).not.toMatch(/Seq Scan on (ticket_comment|v_text)/m);
+    }
+    if (major === 16) {
+      await expect(stableJson(plans)).toMatchFileSnapshot('./__golden__/plans-text-pg16.json');
     }
   });
 

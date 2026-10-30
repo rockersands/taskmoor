@@ -199,7 +199,17 @@ export type Cond =
    * The master text field: summary, description, environment, the comments the viewer reads
    * and the text custom fields.
    */
-  | { kind: 'text'; search: TextSearch; fieldIds: number[]; negated: boolean }
+  | {
+      kind: 'text';
+      search: TextSearch;
+      fieldIds: number[];
+      negated: boolean;
+      /**
+       * The planner expects many tickets to match (M1-040): test each ticket as the order is
+       * walked, instead of starting from the word indexes (`compile.ts`, `masterText`).
+       */
+      common?: boolean;
+    }
   | { kind: 'side'; side: SideRef; test: ValueTest; quantifier: Quantifier }
   | { kind: 'sideEmpty'; side: SideRef; negated: boolean }
   | { kind: 'related'; related: Related; quantifier: Quantifier }
