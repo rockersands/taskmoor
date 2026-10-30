@@ -3,6 +3,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute, replaceRoute } from '../routing/router';
 import {
+  appBase,
   type Discovery,
   hashParam,
   returnTo,
@@ -128,7 +129,7 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
   const others = providers.filter((p) => p.id !== organisation?.id);
 
   const start = (provider: SsoProviderSummary) =>
-    ssoClient.go(startUrl(provider, returnTo(currentRoute())));
+    ssoClient.go(startUrl(provider, returnTo(currentRoute(), appBase())));
 
   const promptFor = (provider: SsoProviderSummary) => {
     const answer: Discovery = { provider, password: false };

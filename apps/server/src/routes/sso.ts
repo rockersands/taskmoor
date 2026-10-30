@@ -14,6 +14,7 @@ import {
   type Provider,
   providerConfiguration,
   providerForDomain,
+  returnAddress,
   safeReturnTo,
   startAuthorization,
 } from '../sso/oidc';
@@ -179,9 +180,16 @@ function fingerprints(pems: readonly string[]): (string | null)[] {
 export function registerSsoRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { secureCookies: boolean; peppers: PepperRing | undefined; publicUrl: string },
+  options: {
+    secureCookies: boolean;
+    peppers: PepperRing | undefined;
+    publicUrl: string;
+    /** Frontends a sign-in may return to (M1-107). */
+    allowedOrigins?: readonly string[];
+  },
 ): void {
   const base = options.publicUrl.replace(/\/+$/, '');
+  const frontends = new Set(options.allowedOrigins ?? []);
   const redirectUri = `${base}/api/v1/auth/oidc/callback`;
 
   function view(p: Provider, map: GroupMap) {
@@ -300,7 +308,7 @@ export function registerSsoRoutes(
         browser_hash: tokenHash(browser),
         nonce: start.nonce,
         code_verifier_sealed: sealSecret(start.verifier, options.peppers?.active),
-        return_to: safeReturnTo(query.data.returnTo),
+        return_to: safeReturnTo(query.data.returnTo, frontends),
         expires_at: new Date(Date.now() + LOGIN_TTL_MS),
       })
       .execute();
@@ -376,7 +384,7 @@ export function registerSsoRoutes(
       });
       return fail(reply, outcome.error);
     }
-    return reply.redirect(`${base}${login.return_to === '/' ? '/' : login.return_to}`, 302);
+    return reply.redirect(returnAddress(base, login.return_to), 302);
   });
 
   // ---- Administration ----

@@ -92,7 +92,8 @@ was a constant.
   `path` in both Compose files and the all-in-one image, Helm has `webRouting: path`, and
   `tools/image/smoke-kits.sh` and `helm test` open a deep link as a clean URL, reload it and open
   the start page that old hash links land on.
-- `apiUrl` makes the client call another origin, but cross-origin sessions (CORS, credentials,
-  PKCE) are M1-107; until then a split deployment needs a same-site layout or a proxy.
+- `apiUrl` makes the client call another origin. M1-107 (ADR-080) added CORS, credentials and
+  PKCE: the slot's `auth` key says whether the app uses the backend's cookie (`session`, the
+  same site) or OAuth (`oauth`, another site).
 - M1-106 can compare `version.json` with the meta endpoint's minimum frontend version, and
   M1-111 can take SRI hashes from the manifest's files.

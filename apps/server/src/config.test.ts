@@ -16,6 +16,8 @@ describe('loadConfig', () => {
       webRouting: 'hash',
       publicUrl: 'http://localhost:8080',
       secureCookies: false,
+      allowedOrigins: [],
+      oauthRedirectUris: [],
       setupToken: undefined,
       dataDir: undefined,
       metricsPort: 9464,
@@ -156,6 +158,48 @@ describe('loadConfig', () => {
       setupToken: 'fixed-token-for-the-installer',
     });
     expect(() => loadConfig({ DATABASE_URL: DB, PUBLIC_URL: 'tracker' })).toThrow(/PUBLIC_URL/);
+  });
+
+  it('[IAM-025] reads the allowed frontend origins and OAuth redirect URIs exactly', () => {
+    const none = loadConfig({ DATABASE_URL: DB });
+    expect(none.allowedOrigins).toEqual([]);
+    expect(none.oauthRedirectUris).toEqual([]);
+    const listed = loadConfig({
+      DATABASE_URL: DB,
+      TASKMOOR_ALLOWED_ORIGINS:
+        'https://Tracker.Example.org, http://localhost:4178/,https://tracker.example.org',
+    });
+    expect(listed.allowedOrigins).toEqual(['https://tracker.example.org', 'http://localhost:4178']);
+    // Unset, each origin's root is where sign-in may return.
+    expect(listed.oauthRedirectUris).toEqual([
+      'https://tracker.example.org/',
+      'http://localhost:4178/',
+    ]);
+    const kit = loadConfig({
+      DATABASE_URL: DB,
+      TASKMOOR_ALLOWED_ORIGINS: 'https://example.org',
+      TASKMOOR_OAUTH_REDIRECT_URIS: 'https://example.org/tracker/',
+    });
+    expect(kit.oauthRedirectUris).toEqual(['https://example.org/tracker/']);
+    for (const bad of [
+      'http://tracker.example.org',
+      'https://tracker.example.org/app',
+      'https://tracker.example.org/?x=1',
+      '*',
+      'null',
+      'tracker.example.org',
+    ]) {
+      expect(() => loadConfig({ DATABASE_URL: DB, TASKMOOR_ALLOWED_ORIGINS: bad }), bad).toThrow(
+        /TASKMOOR_ALLOWED_ORIGINS/,
+      );
+    }
+    expect(() =>
+      loadConfig({
+        DATABASE_URL: DB,
+        TASKMOOR_ALLOWED_ORIGINS: 'https://example.org',
+        TASKMOOR_OAUTH_REDIRECT_URIS: 'https://elsewhere.example/',
+      }),
+    ).toThrow(/TASKMOOR_OAUTH_REDIRECT_URIS/);
   });
 
   it('treats empty variables as unset, which is what Compose passes for them', () => {

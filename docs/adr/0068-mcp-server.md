@@ -72,7 +72,8 @@ audit log (ADR-016) exist.
 
 ## Consequences
 
-- OAuth 2.1 for MCP clients waits for the cross-origin auth (M1-107); personal and
+- OAuth 2.1 for MCP clients waits for the cross-origin auth (M1-107, done: ADR-080 lists what
+  MCP clients still need: client registration, consent, scopes and discovery); personal and
   service-account tokens work now.
 - Sessions are per process: behind several API instances a client needs sticky routing or
   re-initializes on 404, which the protocol expects.

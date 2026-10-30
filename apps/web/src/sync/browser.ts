@@ -1,4 +1,4 @@
-import { API_BASE, api, socketUrl } from '../api/client';
+import { API_BASE, api, apiFetch, openSocket } from '../api/client';
 import type { PositionSocket, SyncApi, SyncChange } from './engine';
 import type { OutboxEntry, SyncTrack, TicketSnapshot } from './store';
 
@@ -14,9 +14,8 @@ export const browserSyncApi: SyncApi = {
       `/sync/changes?after=${after}&limit=1000`,
     ),
   send: async (entry: OutboxEntry, clientId: string) => {
-    const response = await fetch(`${API_BASE}${entry.path}`, {
+    const response = await apiFetch(`${API_BASE}${entry.path}`, {
       method: entry.method,
-      credentials: 'same-origin',
       headers: {
         'taskmoor-client-id': clientId,
         'taskmoor-mutation-id': entry.mutationId,
@@ -37,7 +36,7 @@ export const browserSyncApi: SyncApi = {
 
 /** The realtime socket on the backend. */
 export function browserSocket(): PositionSocket {
-  const socket = new WebSocket(socketUrl('/sync/socket'));
+  const socket = openSocket('/sync/socket');
   const keepAlive = setInterval(() => {
     if (socket.readyState === WebSocket.OPEN) socket.send('ping');
   }, 25_000);

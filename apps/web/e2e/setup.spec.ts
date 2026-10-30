@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, devices, expect, type Page, test } from '@playwright/test';
@@ -1157,7 +1158,8 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
 /** axe on the page as it stands: its serious and critical violations, each with its count. */
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 async function seriousAxeViolations(page: Page): Promise<string[]> {
-  await page.addScriptTag({ path: AXE });
+  // Evaluated, not a script element, which the app's content security policy refuses (M1-107).
+  await page.evaluate(readFileSync(AXE, 'utf8'));
   return page.evaluate(async () => {
     const axe = (
       window as unknown as {

@@ -10,6 +10,8 @@ import * as Y from 'yjs';
 import { resolveSession, SECURE_SESSION_COOKIE, SESSION_COOKIE } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import type { FieldCatalogs } from '../fields/catalog';
+import { isAccessToken, resolveAccessToken } from '../oauth/tokens';
+import { OriginPolicy } from '../origins';
 import { checkRichText } from '../tickets/model';
 import { docHash } from '../tickets/rich-text';
 import { loadTicket } from '../tickets/store';
@@ -22,8 +24,11 @@ import { loadState, mayEditText, writeCollaborativeText } from './persist';
  * - Clients connect a WebSocket to `/api/v1/collab` (the realtime role, on the HTTP server
  *   of the process) and open documents named `ticket/<id>/<field>` over the Hocuspocus
  *   protocol: one Yjs document per rich text field.
- * - The upgrade needs a signed-in session (the cookie) and, when the browser names an origin,
- *   this instance's own origin (cross-site WebSocket hijacking, ADR-032). Each document then
+ * - The upgrade needs, when the browser names an origin, this instance's own origin or an
+ *   allowed frontend's (cross-site WebSocket hijacking, ADR-032, ADR-080), and a signed-in
+ *   session (the cookie). A frontend on another site has no cookie here: it asks for
+ *   `?auth=bearer` and signs each document in with its OAuth access token, which the provider
+ *   sends as its token (M1-107); without one the documents are refused. Each document then
  *   needs what an edit of the field through the API needs: the person sees the ticket (track
  *   browsing and its visibility level, M1-020), holds "Edit tickets" there, and the edit form
  *   shows the field. People who may only read it are refused and read it through the API.
@@ -46,6 +51,7 @@ const RECHECK_AFTER_WRITE_MS = 50;
 
 export interface CollabContext {
   workspaceId: number;
+  /** 0 until an access token signs a bearer connection in. */
   userId: number;
 }
 
@@ -84,6 +90,8 @@ export interface CollaborationOptions {
   catalogs: FieldCatalogs;
   /** Where browsers reach this instance; its origin may open sockets. */
   publicUrl: string;
+  /** Frontends on other origins that may open sockets too (TASKMOOR_ALLOWED_ORIGINS). */
+  allowedOrigins?: readonly string[];
   /** Milliseconds of quiet before a save (tests shorten it). */
   debounceMs?: number;
 }
@@ -92,26 +100,28 @@ export class Collaboration {
   readonly hocuspocus: Hocuspocus<CollabContext>;
   private readonly sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_BYTES });
   private readonly open = new Map<string, OpenDocument>();
-  private readonly publicOrigin: string | null;
+  private readonly origins: OriginPolicy;
   private recheckTimer: NodeJS.Timeout | undefined;
   private everyTimer: NodeJS.Timeout | undefined;
   private recheckRunning: Promise<void> | null = null;
   private log: FastifyInstance['log'] | undefined;
 
   constructor(private readonly options: CollaborationOptions) {
-    try {
-      this.publicOrigin = new URL(options.publicUrl).origin;
-    } catch {
-      this.publicOrigin = null;
-    }
+    this.origins = new OriginPolicy({
+      publicUrl: options.publicUrl,
+      allowedOrigins: options.allowedOrigins ?? [],
+    });
     this.hocuspocus = new Hocuspocus<CollabContext>({
       quiet: true,
       debounce: options.debounceMs ?? 2_000,
       maxDebounce: Math.max(10_000, options.debounceMs ?? 0),
-      onAuthenticate: async ({ documentName: name, context }) => {
+      onAuthenticate: async ({ documentName: name, context, token }) => {
         const doc = parseName(name);
         if (!doc) throw new Refusal('not-found');
-        await this.admit(context, doc.ticketId, doc.field);
+        const userId = context.userId || (await this.userOfToken(context.workspaceId, token));
+        await this.admit({ ...context, userId }, doc.ticketId, doc.field);
+        // Hocuspocus adds what this returns to the document's context, for the later hooks.
+        return { userId };
       },
       onLoadDocument: async ({ documentName: name, document, context }) => {
         const doc = parseName(name) as { ticketId: number; field: RichTextField };
@@ -220,11 +230,13 @@ export class Collaboration {
     const cookies = app.parseCookie(request.headers.cookie ?? '');
     const token = cookies[SECURE_SESSION_COOKIE] ?? cookies[SESSION_COOKIE];
     const session = await resolveSession(db, workspaceId, token);
-    if (!session) {
+    const bearer =
+      new URL(request.url ?? '/', 'http://localhost').searchParams.get('auth') === 'bearer';
+    if (!session && !bearer) {
       reject(socket, 401);
       return;
     }
-    const context: CollabContext = { workspaceId, userId: session.user.id };
+    const context: CollabContext = { workspaceId, userId: session?.user.id ?? 0 };
     // What the hooks see of the request: no cookie or credentials travel further.
     const headers = new Headers();
     for (const name of ['user-agent', 'origin', 'host']) {
@@ -245,17 +257,17 @@ export class Collaboration {
     });
   }
 
-  /** A browser may connect only from this instance's own origin (or its public URL's). */
+  /** A browser may connect only from this instance's own origin or an allowed frontend's. */
   private originAllowed(request: IncomingMessage): boolean {
-    const origin = request.headers.origin;
-    if (origin === undefined) return true;
-    let url: URL;
-    try {
-      url = new URL(origin);
-    } catch {
-      return false;
-    }
-    return url.origin === this.publicOrigin || url.host === request.headers.host;
+    return this.origins.allows(request.headers.origin, request.headers.host);
+  }
+
+  /** The person an OAuth access token signs in, or a refusal (M1-107). */
+  private async userOfToken(workspaceId: number, token: string | undefined): Promise<number> {
+    if (!token || !isAccessToken(token)) throw new Refusal('forbidden');
+    const family = await resolveAccessToken(this.options.db, workspaceId, token);
+    if (!family) throw new Refusal('forbidden');
+    return family.user.id;
   }
 
   private async admit(context: CollabContext, ticketId: number, field: RichTextField) {

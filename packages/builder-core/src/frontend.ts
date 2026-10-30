@@ -1,4 +1,9 @@
-import { fillRuntimeConfig, type RuntimeConfig } from '@taskmoor/webconfig';
+import {
+  contentSecurityPolicy,
+  cspMetaElement,
+  fillRuntimeConfig,
+  type RuntimeConfig,
+} from '@taskmoor/webconfig';
 import { sha384Integrity } from './bytes';
 import { CONFIG_FILE, type Kits, MANIFEST_FILE } from './kits';
 
@@ -9,7 +14,9 @@ import { CONFIG_FILE, type Kits, MANIFEST_FILE } from './kits';
  * URLs it brings the fallbacks static hosts need to send deep links to index.html: `.htaccess`
  * (Apache), `_redirects` (Netlify, Cloudflare Pages) and `nginx.conf`. The single-file form puts
  * the scripts and styles into index.html itself, for a host that takes one file; it uses hash
- * routing, since one file cannot answer deep links.
+ * routing, since one file cannot answer deep links. Both forms carry the app's content security
+ * policy in a meta element (M1-107, IAM-025): scripts and styles from the kit itself (the single
+ * file allows its inline blocks by their hashes) and calls to the configured backend only.
  */
 export type WebFiles = Record<string, Uint8Array>;
 export type KitFiles = Record<string, Uint8Array | string>;
@@ -64,6 +71,35 @@ function inlined(html: string, web: WebFiles): string {
     });
 }
 
+const INLINE_SCRIPT = /<script\b(?![^>]*\btype="application\/json")[^>]*>([\s\S]*?)<\/script>/g;
+const INLINE_STYLE = /<style\b[^>]*>([\s\S]*?)<\/style>/g;
+
+async function sha256Source(text: string): Promise<string> {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)),
+  );
+  let binary = '';
+  for (const byte of digest) binary += String.fromCharCode(byte);
+  return `'sha256-${btoa(binary)}'`;
+}
+
+/** The page with its policy in a meta element right after the charset, before any script. */
+async function withPolicy(html: string, config: RuntimeConfig, inline: boolean): Promise<string> {
+  const hashes = async (pattern: RegExp) =>
+    Promise.all(
+      [...html.matchAll(pattern)]
+        .filter((m) => (m[1] ?? '') !== '')
+        .map((m) => sha256Source(m[1] ?? '')),
+    );
+  const policy = contentSecurityPolicy({
+    apiUrl: config.apiUrl,
+    ...(inline
+      ? { scriptHashes: await hashes(INLINE_SCRIPT), styleHashes: await hashes(INLINE_STYLE) }
+      : {}),
+  });
+  return html.replace(/(<meta charset="[^"]*"\s*\/?>)/i, `$1\n    ${cspMetaElement(policy)}`);
+}
+
 /** Where a host sends a deep link: the app's index.html below its base path. */
 function fallbacks(basePath: string): Record<string, string> {
   const index = `${basePath}index.html`;
@@ -100,10 +136,15 @@ export async function assembleFrontendKit(
   options: { singleFile?: boolean; manifest?: string } = {},
 ): Promise<KitFiles> {
   if (options.singleFile) {
-    const page = fillRuntimeConfig(inlined(indexOf(web), web), { ...config, routing: 'hash' });
-    return { 'index.html': page };
+    const single = { ...config, routing: 'hash' as const };
+    const page = fillRuntimeConfig(inlined(indexOf(web), web), single);
+    return { 'index.html': await withPolicy(page, single, true) };
   }
-  const page = fillRuntimeConfig(await withIntegrity(indexOf(web), web), config);
+  const page = await withPolicy(
+    fillRuntimeConfig(await withIntegrity(indexOf(web), web), config),
+    config,
+    false,
+  );
   const files: KitFiles = { ...web, 'index.html': page };
   if (options.manifest) files[MANIFEST_FILE] = options.manifest;
   if (config.routing === 'path') Object.assign(files, fallbacks(config.basePath));

@@ -2,6 +2,8 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import type { WebSocket } from 'ws';
+import { isAccessToken, resolveAccessToken } from '../oauth/tokens';
+import type { OriginPolicy } from '../origins';
 import { logPosition } from './log';
 
 /**
@@ -13,7 +15,9 @@ import { logPosition } from './log';
  * One poller per process reads the newest position of each workspace with clients every 250 ms
  * (an index-only read), well inside the one-second budget of NTF-008, instead of LISTEN/NOTIFY,
  * which would need a connection outside the pool. A handshake from another site is refused:
- * the session cookie is SameSite=Lax, and the Origin is checked against the host as well.
+ * the session cookie is SameSite=Lax, and the Origin must be this instance's own or an allowed
+ * frontend's (M1-107, ADR-080). A frontend on another site has no cookie here: it opens
+ * `?auth=bearer` and sends `{"type":"auth","token":"<access token>"}` first, within ten seconds.
  *
  * The same poll tells each person's open inboxes when their inbox changed (M1-058, NTF-003):
  * `{"type":"inbox","version":"7"}` at once and whenever their `inbox_state` counter moves (a
@@ -21,6 +25,7 @@ import { logPosition } from './log';
  * judges every item by its permissions. One primary-key read per workspace and poll.
  */
 const POLL_MS = 250;
+const AUTH_WAIT_MS = 10_000;
 
 interface Client {
   socket: WebSocket;
@@ -43,7 +48,50 @@ async function inboxVersions(
   return new Map(rows.map((r) => [r.user_id, String(r.version)]));
 }
 
-export function registerSyncSocket(app: FastifyInstance, db: Kysely<Database>): void {
+/**
+ * The person a bearer socket's first message signs in with its access token, or null. The
+ * listener goes on at once, before any await, so the message cannot slip past.
+ */
+function signInByMessage(
+  socket: WebSocket,
+  db: Kysely<Database>,
+  workspaceId: number,
+): Promise<number | null> {
+  return new Promise((resolve) => {
+    const done = (userId: number | null) => {
+      clearTimeout(timer);
+      socket.off('message', onMessage);
+      socket.off('close', onClose);
+      resolve(userId);
+    };
+    const onClose = () => done(null);
+    const onMessage = (data: unknown) => {
+      let token: unknown;
+      try {
+        token = (JSON.parse(String(data)) as { type?: unknown; token?: unknown }).token;
+      } catch {
+        token = undefined;
+      }
+      if (typeof token !== 'string' || !isAccessToken(token)) {
+        done(null);
+        return;
+      }
+      resolveAccessToken(db, workspaceId, token).then(
+        (family) => done(family?.user.id ?? null),
+        () => done(null),
+      );
+    };
+    const timer = setTimeout(() => done(null), AUTH_WAIT_MS);
+    socket.on('message', onMessage);
+    socket.on('close', onClose);
+  });
+}
+
+export function registerSyncSocket(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  options: { origins: OriginPolicy },
+): void {
   const clients = new Map<number, Set<Client>>();
   let timer: NodeJS.Timeout | undefined;
   let polling = false;
@@ -81,23 +129,27 @@ export function registerSyncSocket(app: FastifyInstance, db: Kysely<Database>): 
     }
   }
 
-  const sameOrigin = (request: FastifyRequest) => {
-    const origin = request.headers.origin;
-    if (!origin) return true;
-    try {
-      return new URL(origin).host === request.headers.host;
-    } catch {
-      return false;
-    }
-  };
+  const allowed = (request: FastifyRequest) =>
+    options.origins.allows(request.headers.origin, request.headers.host);
+  const bearer = (request: FastifyRequest) =>
+    (request.query as { auth?: unknown } | undefined)?.auth === 'bearer';
 
   app.get('/api/v1/sync/socket', { websocket: true }, async (socket, request) => {
-    if (!request.user || !sameOrigin(request)) {
-      socket.close(4401, request.user ? 'cross-site' : 'sign in');
+    const workspaceId = request.workspaceId;
+    const waiting =
+      !request.user && bearer(request) && allowed(request)
+        ? signInByMessage(socket, db, workspaceId)
+        : null;
+    if (!allowed(request)) {
+      socket.close(4401, 'cross-site');
       return;
     }
-    const workspaceId = request.workspaceId;
-    const client: Client = { socket, position: '', userId: request.user.id, inbox: '' };
+    const userId = request.user?.id ?? (waiting ? await waiting : null);
+    if (userId === null) {
+      socket.close(4401, 'sign in');
+      return;
+    }
+    const client: Client = { socket, position: '', userId, inbox: '' };
     const set = clients.get(workspaceId) ?? new Set();
     set.add(client);
     clients.set(workspaceId, set);

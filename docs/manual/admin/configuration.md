@@ -1,7 +1,7 @@
 ---
 title: "Configuration reference"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -69,6 +69,17 @@ The operator CLI runs as `api` unless told otherwise. Every process answers `/he
 | `TASKMOOR_WEB_ROUTING` | `hash` | `path` for clean URLs (the kits' setting) or `hash` ([installing Taskmoor](install.md#clean-urls-or-hash-routing)) |
 | `TASKMOOR_VERSION` | The version the server was built with | Leave it alone: the `web` role refuses a web app of another version |
 
+## Frontends on other origins
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `TASKMOOR_ALLOWED_ORIGINS` | none | Origins of web apps served elsewhere, such as `https://tracker.example.com`, comma-separated: scheme, name and port only, `https` (plain `http` only for `localhost` and names under it). They may call the API with the backend's cookie, open its WebSockets and sign in through OAuth |
+| `TASKMOOR_OAUTH_REDIRECT_URIS` | Each allowed origin with `/` | Where sign-in from another site may send people back: exact addresses on the allowed origins, comma-separated |
+
+Requests that name any other origin are refused (`403 origin_not_allowed`), including
+WebSocket connections; programs, which name none, are not affected. The Builder writes both
+settings ([the Builder's kits](builder-kits.md#frontend-and-backend-on-different-origins)).
+
 ## Setup and instance identity
 
 | Variable | Default | Meaning |
@@ -82,8 +93,9 @@ The operator CLI runs as `api` unless told otherwise. Every process answers `/he
 |---|---|---|
 | `TASKMOOR_PASSWORD_PEPPER` | The keyring in `TASKMOOR_DATA/secrets/password-peppers` | The secret key mixed into every password hash, 32 characters or more. Unset, the server creates a keyring file on first start; without either, passwords are hashed without a pepper and the log says so |
 
-The Builder's backend kit also writes `TASKMOOR_ALLOWED_ORIGINS`, `TASKMOOR_TOKEN_SIGNING_KEY`
-and `TASKMOOR_MASTER_KEY`. The server does not read them yet.
+The Builder's backend kit also writes `TASKMOOR_TOKEN_SIGNING_KEY` and `TASKMOOR_MASTER_KEY`.
+The server does not read them yet: its sign-in tokens are random and kept as hashes, so they
+need no signing key.
 
 ## Data, backups and imports
 

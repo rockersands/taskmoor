@@ -203,13 +203,15 @@ you fill without rebuilding:
 <script id="taskmoor-config" type="application/json">{"apiUrl":"https://api.example.com","routing":"path","basePath":"/","instanceName":"Acme"}</script>
 ```
 
-The accepted keys are `apiUrl`, `routing`, `basePath`, `instanceName`, `instanceId` and
-`instanceKey`; anything else is ignored with a warning in the browser console. With
+The accepted keys are `apiUrl`, `routing`, `basePath`, `instanceName`, `instanceId`,
+`instanceKey` and `auth` (`session`, or `oauth` for a backend on another site); anything else is
+ignored with a warning in the browser console. With
 `"routing": "path"`, add `<base href="/">` (your `basePath`) right before the block and have the
 host answer unknown paths with `index.html`. The Builder's frontend kit does all of this for
 you, with integrity hashes and the host's fallback files ([the Builder's kits](builder-kits.md)).
-Taskmoor does not yet support signing in from another origin: the web app and the API must be
-reachable on the same origin.
+A web app on another origin than the API must be listed in the backend's
+`TASKMOOR_ALLOWED_ORIGINS`
+([frontend and backend on different origins](builder-kits.md#frontend-and-backend-on-different-origins)).
 
 ## Building from source
 

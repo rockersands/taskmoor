@@ -5,7 +5,7 @@ import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import { useEffect, useMemo, useState } from 'react';
 import * as Y from 'yjs';
-import { socketUrl } from '../api/client';
+import { socketToken, socketUrl } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MentionSource } from './mentions';
 import { RichTextEditor } from './RichTextEditor';
@@ -42,6 +42,8 @@ export const connectToServer: Connect = (name, onStatus) => {
     url: collabUrl(),
     name,
     document,
+    // A frontend on another site signs each document in with its access token (M1-107).
+    ...(socketToken ? { token: socketToken } : {}),
     onSynced: ({ state }) => {
       if (state) onStatus('live');
     },

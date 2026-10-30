@@ -232,9 +232,29 @@ export async function syncGroups(
   return { added, removed };
 }
 
-/** Only same-origin paths are followed after sign-in, so the callback cannot redirect away. */
-export function safeReturnTo(value: string | undefined): string {
+/**
+ * Only same-origin paths are followed after sign-in, so the callback cannot redirect away; and
+ * addresses on an allowed frontend origin (M1-107), so a frontend on a sibling subdomain gets
+ * the person back.
+ */
+export function safeReturnTo(
+  value: string | undefined,
+  frontends: ReadonlySet<string> = new Set(),
+): string {
+  if (value && /^https?:\/\//.test(value) && value.length <= 500) {
+    try {
+      const url = new URL(value);
+      if (frontends.has(url.origin) && !url.username && !url.password) return url.href;
+    } catch {
+      return '/';
+    }
+  }
   if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\'))
     return '/';
   return value.slice(0, 500);
+}
+
+/** Where a finished sign-in goes: a frontend's own address, or a path of this instance. */
+export function returnAddress(base: string, returnTo: string): string {
+  return /^https?:\/\//.test(returnTo) ? returnTo : `${base}${returnTo}`;
 }

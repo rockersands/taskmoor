@@ -46,3 +46,16 @@ fully cross-site layouts (IAM-024), strict origin controls (IAM-025), a public m
 
 The release checklist runs the previous release's frontend kit against the candidate backend.
 Breaking API changes wait for a major and come with a migration period for frontends.
+
+## Implementation (M1-107): ADR-080
+
+ADR-080 builds the sign-in half and changes three points of the decision above:
+- The session cookie stays host-only on the backend (`__Host-`), not scoped to the parent
+  domain: only the backend reads it, and sibling subdomains send it as one site.
+- The refresh token never sits in a cookie on the backend. It lives in the page's memory and
+  goes to sessionStorage only while the page unloads, one path for every browser.
+- The origin check refuses every request from an origin that is neither the instance's own
+  nor listed, not only state-changing ones, and covers `/api/meta`.
+
+The origin, redirect URI and WebSocket lists come from `TASKMOOR_ALLOWED_ORIGINS` and
+`TASKMOOR_OAUTH_REDIRECT_URIS` until M1-108 moves them to the admin area.

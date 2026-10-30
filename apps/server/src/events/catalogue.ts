@@ -48,7 +48,16 @@ export const EVENT_TYPES = {
     subject: 'user',
     payload: z.object({
       sessionId: id,
-      method: z.enum(['password', 'password_link', 'setup', 'totp', 'webauthn', 'recovery_code']),
+      // `oauth` (M1-107): a frontend on another site exchanged a code for a token family.
+      method: z.enum([
+        'password',
+        'password_link',
+        'setup',
+        'totp',
+        'webauthn',
+        'recovery_code',
+        'oauth',
+      ]),
       // Added with directories (M1-082): the directory that checked the password.
       directoryId: id.optional(),
     }),
@@ -56,7 +65,11 @@ export const EVENT_TYPES = {
   'session.ended': { subject: 'user', payload: z.object({ sessionId: id.nullable() }) },
   'session.revoked': {
     subject: 'user',
-    payload: z.object({ count: z.number().int().min(0), by: z.enum(['self', 'admin']) }),
+    // `reuse` (M1-107): a spent refresh token or code came back and its sessions were ended.
+    payload: z.object({
+      count: z.number().int().min(0),
+      by: z.enum(['self', 'admin', 'reuse']),
+    }),
   },
 
   // People

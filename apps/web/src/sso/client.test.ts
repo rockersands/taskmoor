@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import {
+  continuation,
   hashParam,
   identityProvidersClient,
   normalizeDomain,
@@ -26,6 +27,25 @@ describe('single sign-on client helpers (M1-080)', () => {
     expect(returnTo(`#/${'a'.repeat(600)}`)).toBe('/');
     // A route that only starts like the sign-in page is a page of its own.
     expect(returnTo('#/sign-inside')).toBe('/#/sign-inside');
+  });
+
+  it('[IAM-024] returns to the app on a sibling subdomain, and to a waiting authorization', () => {
+    const app = 'https://tracker.example.com/';
+    expect(returnTo('#/settings', app)).toBe('https://tracker.example.com/#/settings');
+    expect(returnTo('#/sign-in', app)).toBe(app);
+    const authorize = '/api/v1/oauth/authorize?response_type=code&client_id=taskmoor-web&state=x';
+    const signIn = `#/sign-in?continue=${encodeURIComponent(authorize)}`;
+    expect(continuation(signIn)).toBe(authorize);
+    expect(returnTo(signIn)).toBe(authorize);
+    // Only the backend's own authorization: nothing else is followed.
+    for (const other of [
+      'https://evil.example/api/v1/oauth/authorize?x=1',
+      '//evil.example/api/v1/oauth/authorize?x=1',
+      '/api/v1/session?x=1',
+      '/api/v1/oauth/authorize?x=1#frag',
+    ]) {
+      expect(continuation(`#/sign-in?continue=${encodeURIComponent(other)}`), other).toBeNull();
+    }
   });
 
   it('[IAM-003] starts a sign-in at the backend with the return address encoded', () => {

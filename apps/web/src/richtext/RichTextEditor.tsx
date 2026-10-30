@@ -390,6 +390,9 @@ export function RichTextEditor({
 
   const editor = useEditor(
     {
+      // The editor's base rules live in richtext.css: an injected style element would be
+      // refused by the content security policy (M1-107, IAM-025).
+      injectCSS: false,
       extensions,
       ...(collaboration ? {} : initial ? { content: initial } : {}),
       editable,

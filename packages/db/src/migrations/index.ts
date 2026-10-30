@@ -56,6 +56,7 @@ import * as m0060 from './0060_teams';
 import * as m0061 from './0061_clone';
 import * as m0062 from './0062_allowlists_syslog';
 import * as m0063 from './0063_board_workflow';
+import * as m0064 from './0064_oauth';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -122,4 +123,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0061_clone': m0061,
   '0062_allowlists_syslog': m0062,
   '0063_board_workflow': m0063,
+  '0064_oauth': m0064,
 };

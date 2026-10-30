@@ -69,6 +69,7 @@ describe('frontend artefact with clean URLs', () => {
         instanceName: '',
         instanceId: '',
         instanceKey: '',
+        auth: 'session',
       },
       problems: [],
     });
@@ -83,6 +84,20 @@ describe('frontend artefact with clean URLs', () => {
     expect(Object.keys(JSON.parse(slot)).sort()).toEqual(
       Object.keys(DEFAULT_RUNTIME_CONFIG).sort(),
     );
+  });
+
+  it('[IAM-025] sends the app with a strict content security policy that refuses framing', async () => {
+    for (const url of ['/', '/boards/7']) {
+      const res = await page(app, url);
+      const csp = String(res.headers['content-security-policy']);
+      expect(csp).toContain("script-src 'self'");
+      expect(csp).toContain("style-src-elem 'self'");
+      expect(csp).toContain("object-src 'none'");
+      expect(csp).toContain("frame-ancestors 'none'");
+      expect(csp).not.toContain('unsafe-eval');
+      expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+    }
   });
 
   it('[OPS-013] serves the app shell for deep links, with a base for its relative assets', async () => {

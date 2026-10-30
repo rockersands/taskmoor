@@ -62,7 +62,9 @@ describe('runtime configuration', () => {
     expect(api('https://example.com/tracker/').config.apiUrl).toBe('https://example.com/tracker');
     expect(api('http://localhost:8080').config.apiUrl).toBe('http://localhost:8080');
     expect(api('http://127.0.0.1:8080').problems).toEqual([]);
+    expect(api('http://api.taskmoor.localhost:8794').problems).toEqual([]);
     expect(api('http://api.example.com').problems).toHaveLength(1);
+    expect(api('http://localhost.example.com').problems).toHaveLength(1);
     expect(api('https://user:pw@api.example.com').problems).toHaveLength(1);
     expect(api('https://api.example.com/?x=1').problems).toHaveLength(1);
     expect(api('not a url').problems).toHaveLength(1);
@@ -128,15 +130,33 @@ describe('runtime configuration', () => {
     );
   });
 
-  it('[OPS-013] round-trips any valid configuration and never lets a value close the slot', () => {
-    const config = fc.record({
-      apiUrl: fc.constantFrom('', 'https://api.example.com', 'http://localhost:8080'),
-      routing: fc.constantFrom('hash' as const, 'path' as const),
-      basePath: fc.constantFrom('/', '/tracker/', '/a/b/'),
-      instanceName: fc.string({ maxLength: 100 }).map((s) => s.trim()),
-      instanceId: fc.constant(''),
-      instanceKey: fc.constant(''),
+  it('[IAM-024] signs in by session unless told to use OAuth with another backend', () => {
+    expect(parseRuntimeConfig({}).config.auth).toBe('session');
+    expect(parseRuntimeConfig({ apiUrl: 'https://api.example.net', auth: 'oauth' })).toEqual({
+      config: { ...DEFAULT_RUNTIME_CONFIG, apiUrl: 'https://api.example.net', auth: 'oauth' },
+      problems: [],
     });
+    const nowhere = parseRuntimeConfig({ auth: 'oauth' });
+    expect(nowhere.config.auth).toBe('session');
+    expect(nowhere.problems).toEqual(['auth oauth needs an apiUrl']);
+    expect(parseRuntimeConfig({ auth: 'cookie' }).problems).toEqual([
+      'auth must be session or oauth',
+    ]);
+  });
+
+  it('[OPS-013] round-trips any valid configuration and never lets a value close the slot', () => {
+    const config = fc
+      .record({
+        apiUrl: fc.constantFrom('', 'https://api.example.com', 'http://localhost:8080'),
+        routing: fc.constantFrom('hash' as const, 'path' as const),
+        basePath: fc.constantFrom('/', '/tracker/', '/a/b/'),
+        instanceName: fc.string({ maxLength: 100 }).map((s) => s.trim()),
+        instanceId: fc.constant(''),
+        instanceKey: fc.constant(''),
+        auth: fc.constantFrom('session' as const, 'oauth' as const),
+      })
+      // OAuth needs a backend to sign in at.
+      .map((c) => ({ ...c, auth: c.apiUrl === '' ? ('session' as const) : c.auth }));
     const pins = fc.constantFrom({ instanceId: '', instanceKey: '' }, PIN);
     fc.assert(
       fc.property(

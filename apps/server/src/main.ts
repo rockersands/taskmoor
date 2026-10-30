@@ -97,6 +97,17 @@ if (config.roles.includes('api') && !attachments.active) {
   );
 }
 
+/**
+ * Where browsers download attachments kept in S3 (signed URLs), for the app's content security
+ * policy: the public endpoint, the endpoint (with the bucket in front unless path-style), or AWS.
+ */
+function bucketOrigin(s3: NonNullable<typeof config.storage.s3>): string {
+  const endpoint = s3.publicEndpoint ?? s3.endpoint;
+  if (!endpoint) return `https://${s3.bucket}.s3.${s3.region}.amazonaws.com`;
+  const url = new URL(endpoint);
+  return s3.forcePathStyle ? url.origin : `${url.protocol}//${s3.bucket}.${url.host}`;
+}
+
 const app = await buildApp({
   rateLimits: {},
   passwords: passwordHasher(peppers),
@@ -107,6 +118,9 @@ const app = await buildApp({
   roles: config.roles,
   secureCookies: config.secureCookies,
   publicUrl: config.publicUrl,
+  allowedOrigins: config.allowedOrigins,
+  oauthRedirectUris: config.oauthRedirectUris,
+  mediaOrigins: config.storage.s3 ? [bucketOrigin(config.storage.s3)] : [],
   ...(config.instance ? { instance: config.instance } : {}),
   ...(config.trustedProxies ? { trustedProxies: config.trustedProxies } : {}),
   ...(config.webDir ? { webDir: config.webDir, webRouting: config.webRouting } : {}),

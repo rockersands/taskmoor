@@ -20,7 +20,9 @@ import { serveFrontend } from './frontend';
 import { GuardrailExceeded } from './guardrails/model';
 import { DirectoryGateway } from './ldap/gateway';
 import { Allowlists } from './network/allowlist';
+import { isAccessToken, pruneOAuth, resolveAccessToken } from './oauth/tokens';
 import { instrumentApp, type Metrics } from './observability';
+import { OriginPolicy, registerCrossOrigin } from './origins';
 import { RateLimiter, RateLimitPolicies } from './ratelimit/limiter';
 import { UsageRecorder } from './ratelimit/usage';
 import { registerRequestScope } from './request-scope';
@@ -52,6 +54,7 @@ import { registerListViewRoutes } from './routes/list-views';
 import { registerMcpRoutes } from './routes/mcp';
 import { registerMetaRoutes } from './routes/meta';
 import { registerNotificationRoutes } from './routes/notifications';
+import { registerOAuthRoutes } from './routes/oauth';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerRateLimitRoutes, registerRateLimits } from './routes/rate-limits';
@@ -115,6 +118,17 @@ export interface AppDeps {
   secureCookies?: boolean;
   /** Where browsers reach this instance; one-time links point here. */
   publicUrl?: string;
+  /**
+   * Frontends on other origins (M1-107, ADR-080): CORS, WebSockets and OAuth sign-in are
+   * open to these exact origins besides this instance's own.
+   */
+  allowedOrigins?: readonly string[];
+  /** Where OAuth sign-in may return; each allowed origin's root unless given. */
+  oauthRedirectUris?: readonly string[];
+  /** How long OAuth access tokens live (ten minutes); tests shorten it. */
+  accessTokenTtlMs?: number;
+  /** Origins attachments are downloaded from besides this one (a bucket), for the CSP. */
+  mediaOrigins?: readonly string[];
   /** The instance identity a Builder kit gives it (M1-109); otherwise one is made on first use. */
   instance?: { id: string; seed: string };
   /**
@@ -207,19 +221,47 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   };
   const authorizer = deps.db ? (deps.authorizer ?? new Authorizer(deps.db)) : null;
   const fieldCatalogs = deps.db ? new FieldCatalogs(deps.db) : null;
+  // Which browser origins may call the API and open its sockets (M1-107, ADR-080).
+  const origins = new OriginPolicy({
+    publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+    allowedOrigins: deps.allowedOrigins ?? [],
+  });
 
   if (roles.includes('api') && deps.db && authorizer && fieldCatalogs) {
     const db = deps.db;
     app.decorateRequest('user', null);
     app.decorateRequest('authSession', null);
     app.decorateRequest('apiToken', null);
+    app.decorateRequest('tokenFamily', null);
     app.decorateRequest('workspaceId', 0);
     app.decorateRequest('authz', null as unknown as never);
+    // Strict CORS and the origin check come first: a refused origin costs no database work.
+    registerCrossOrigin(app, origins);
     app.addHook('onRequest', async (request, reply) => {
       if (!request.url.startsWith('/api/')) return;
       request.workspaceId = await defaultWorkspaceId(db);
       // A bearer token (IAM-007) speaks for itself; the cookie is not looked at then.
       const bearer = bearerToken(request.headers.authorization);
+      // An OAuth access token (M1-107): a frontend on another site acting as its person, with
+      // everything a session may do. Expired ones are routine (the client refreshes), so they
+      // do not count as failed attempts the way unknown API tokens do.
+      if (bearer !== undefined && isAccessToken(bearer)) {
+        const family = await resolveAccessToken(db, request.workspaceId, bearer);
+        if (!family) {
+          return reply
+            .code(401)
+            .header(
+              'www-authenticate',
+              'Bearer realm="taskmoor", error="invalid_token", error_description="The access token has expired or was revoked"',
+            )
+            .send({ error: 'invalid_token', reason: 'expired' });
+        }
+        request.authSession = { id: family.id, user: family.user };
+        request.tokenFamily = { parentId: family.parentId };
+        request.user = family.user;
+        request.authz = authorizer.context(request.workspaceId, { userId: family.user.id });
+        return;
+      }
       if (bearer !== undefined) {
         if (!(await authenticateBearer(db, authorizer, request, reply, bearer))) return reply;
         return;
@@ -260,7 +302,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       await app.register(fastifyWebsocket, {
         options: { server: upgrades as unknown as Server },
       });
-      registerSyncSocket(app, db);
+      registerSyncSocket(app, db, { origins });
     }
     const passwords = deps.passwords ?? passwordHasher(deps.peppers);
     const cookieOptions = { secureCookies: deps.secureCookies ?? false, passwords };
@@ -268,6 +310,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const directories = new DirectoryGateway(db, deps.peppers);
     registerSetupRoutes(app, db, cookieOptions);
     registerSessionRoutes(app, db, { ...cookieOptions, authorizer, directories });
+    // OAuth 2.1 with PKCE for frontends on another site (M1-107, ADR-080).
+    await registerOAuthRoutes(app, db, {
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      redirectUris: deps.oauthRedirectUris ?? (deps.allowedOrigins ?? []).map((o) => `${o}/`),
+      ...(deps.accessTokenTtlMs ? { accessTtlMs: deps.accessTokenTtlMs } : {}),
+    });
     registerAccountRoutes(app, db, { passwords, directories });
     registerUserRoutes(app, db, {
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
@@ -289,10 +337,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       secureCookies: cookieOptions.secureCookies,
       peppers: deps.peppers,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      allowedOrigins: deps.allowedOrigins ?? [],
     });
     await registerSamlRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      allowedOrigins: deps.allowedOrigins ?? [],
     });
     // Filled in once the boards are registered: the board a track template makes (M1-054).
     const trackHooks: TrackRouteHooks = {};
@@ -406,7 +456,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // Expired sessions, used links, stale counters and long-dead tokens go at start and every
     // six hours.
     const prune = () =>
-      Promise.all([pruneIdentityData(db), pruneApiTokens(db)]).catch((error) =>
+      Promise.all([pruneIdentityData(db), pruneApiTokens(db), pruneOAuth(db)]).catch((error) =>
         app.log.warn({ error }, 'prune failed'),
       );
     let pruneTimer: NodeJS.Timeout | undefined;
@@ -447,6 +497,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       authorizer,
       catalogs: fieldCatalogs,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      allowedOrigins: deps.allowedOrigins ?? [],
       ...(deps.collabDebounceMs !== undefined ? { debounceMs: deps.collabDebounceMs } : {}),
     });
     collaboration.attach(app, passOn);
@@ -461,6 +512,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       version: deps.version,
       routing: deps.webRouting ?? 'hash',
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      mediaOrigins: deps.mediaOrigins ?? [],
       ...(deps.db ? { db: deps.db } : {}),
     });
   }

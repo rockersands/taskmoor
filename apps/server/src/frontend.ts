@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import fastifyStatic from '@fastify/static';
 import type { Database } from '@taskmoor/db';
 import {
+  contentSecurityPolicy,
   fillRuntimeConfig,
   MANIFEST_FILE,
   parseManifest,
@@ -21,6 +22,8 @@ export interface FrontendOptions {
   routing: RoutingMode;
   /** Where browsers reach this instance; its path is the app's base path. */
   publicUrl: string;
+  /** Origins attachments are downloaded from besides this one (a bucket), for the CSP. */
+  mediaOrigins?: readonly string[];
   /** For the instance name in the page; without one the page has none. */
   db?: Kysely<Database>;
 }
@@ -64,12 +67,14 @@ export function checkArtefact(webDir: string, version: string): { template: stri
  * runtime-config slot filled for this instance (routing mode, base path, the name given at
  * setup). Every other GET for a page is a deep link: with clean URLs it gets the app shell, so
  * /boards/7 loads; with hash routing it is redirected to its hash route, /#/boards/7. API and
- * probe paths, and requests that do not want HTML, keep their JSON 404.
+ * probe paths, and requests that do not want HTML, keep their JSON 404. The page goes out with
+ * the app's content security policy (M1-107, IAM-025), framing by other pages refused.
  */
 export async function serveFrontend(app: FastifyInstance, options: FrontendOptions): Promise<void> {
   const { template } = checkArtefact(options.webDir, options.version);
   const basePath = basePathOf(options.publicUrl);
   const { db, routing } = options;
+  const csp = contentSecurityPolicy({ mediaOrigins: options.mediaOrigins ?? [], header: true });
 
   const instanceName = async (): Promise<string> => {
     if (!db) return '';
@@ -86,7 +91,12 @@ export async function serveFrontend(app: FastifyInstance, options: FrontendOptio
       basePath,
       instanceName: await instanceName(),
     });
-    return reply.type('text/html; charset=utf-8').header('cache-control', 'no-cache').send(html);
+    return reply
+      .type('text/html; charset=utf-8')
+      .header('cache-control', 'no-cache')
+      .header('content-security-policy', csp)
+      .header('x-content-type-options', 'nosniff')
+      .send(html);
   };
 
   await app.register(fastifyStatic, {

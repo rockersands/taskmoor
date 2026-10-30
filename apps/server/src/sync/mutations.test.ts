@@ -207,9 +207,11 @@ describe('mutations at most once and the realtime socket (M1-032)', () => {
       new Promise<number>((resolve) => socket.once('close', (code) => resolve(code)));
     const anonymous = await app.injectWS('/api/v1/sync/socket', { headers: {} });
     expect(await closed(anonymous)).toBe(4401);
-    const foreign = await app.injectWS('/api/v1/sync/socket', {
-      headers: { cookie, origin: 'https://evil.example', host: 'localhost:80' },
-    });
-    expect(await closed(foreign)).toBe(4401);
+    // Another site's handshake is refused before it upgrades (M1-107, origins.ts).
+    await expect(
+      app.injectWS('/api/v1/sync/socket', {
+        headers: { cookie, origin: 'https://evil.example', host: 'localhost:80' },
+      }),
+    ).rejects.toThrow('403');
   });
 });

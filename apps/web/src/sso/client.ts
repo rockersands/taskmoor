@@ -1,5 +1,6 @@
 import type { GroupSummary } from '../admin/SecurityPage';
 import { API_BASE, api } from '../api/client';
+import { runtimeConfig } from '../runtime/config';
 
 /** The protocol a provider speaks: OpenID Connect (M1-080) or SAML 2.0 (M1-081). */
 export type SsoProtocol = 'oidc' | 'saml';
@@ -38,14 +39,45 @@ export const signInSsoClient: SignInSsoClient = {
 const RETURN_TO_MAX = 500;
 
 /**
- * Where the browser comes back after signing in at the provider: the page the person was on
- * (`/#/settings`), or the start page when they were on the sign-in page itself.
+ * Where the sign-in page goes once someone is signed in, when a frontend on another site sent
+ * the person here to approve its sign-in (M1-107): the backend's authorization, nowhere else.
  */
-export function returnTo(hash: string): string {
+export function continuation(hash: string): string | null {
+  const next = hashParam(hash, 'continue');
+  return next !== null &&
+    next.length <= RETURN_TO_MAX &&
+    /^\/api\/v1\/oauth\/authorize\?[^#\s\\]*$/.test(next)
+    ? next
+    : null;
+}
+
+/**
+ * The app's own address when its backend is another origin of the same site (sibling
+ * subdomains, M1-107), so single sign-on comes back to the app rather than to the backend's
+ * pages; empty when the backend serves this page's origin.
+ */
+export function appBase(): string {
+  if (!runtimeConfig.apiUrl || typeof window === 'undefined') return '';
+  const here = window.location.origin;
+  return new URL(runtimeConfig.apiUrl).origin === here ? '' : `${here}${runtimeConfig.basePath}`;
+}
+
+/**
+ * Where the browser comes back after signing in at the provider: the page the person was on
+ * (`/#/settings`), the start page when they were on the sign-in page itself, or the
+ * authorization a frontend on another site is waiting for. `base` is the app's own address
+ * when the backend lives on another origin (`appBase`).
+ */
+export function returnTo(hash: string, base = ''): string {
   const route = hash.replace(/^#/, '');
-  if (!route.startsWith('/') || route === '/' || /^\/sign-in(?:[?/]|$)/.test(route)) return '/';
-  const address = `/#${route}`;
-  return address.length > RETURN_TO_MAX ? '/' : address;
+  if (/^\/sign-in(?:[?/]|$)/.test(route)) {
+    const next = continuation(hash);
+    if (next) return next;
+  }
+  const start = base || '/';
+  if (!route.startsWith('/') || route === '/' || /^\/sign-in(?:[?/]|$)/.test(route)) return start;
+  const address = `${start}#${route}`;
+  return address.length > RETURN_TO_MAX ? start : address;
 }
 
 /** The backend address that starts a sign-in with a provider, by its protocol. */

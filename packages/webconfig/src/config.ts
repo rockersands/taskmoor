@@ -13,6 +13,15 @@ export type RoutingMode = 'hash' | 'path';
 
 export const ROUTING_MODES: readonly RoutingMode[] = ['hash', 'path'];
 
+/**
+ * How the app signs in to its backend (M1-107, ADR-080): `session` keeps the backend's cookie
+ * (the same origin, or sibling subdomains of one site); `oauth` signs in at the backend and
+ * calls it with short-lived bearer tokens, for a frontend on another site.
+ */
+export type AuthMode = 'session' | 'oauth';
+
+export const AUTH_MODES: readonly AuthMode[] = ['session', 'oauth'];
+
 export interface RuntimeConfig {
   /** The backend's public URL, such as `https://api.example.com`; empty for the page's own origin. */
   apiUrl: string;
@@ -29,6 +38,8 @@ export interface RuntimeConfig {
    */
   instanceId: string;
   instanceKey: string;
+  /** Cookie sessions (the default) or OAuth with bearer tokens for another site's backend. */
+  auth: AuthMode;
 }
 
 export const DEFAULT_RUNTIME_CONFIG: Readonly<RuntimeConfig> = Object.freeze({
@@ -38,6 +49,7 @@ export const DEFAULT_RUNTIME_CONFIG: Readonly<RuntimeConfig> = Object.freeze({
   instanceName: '',
   instanceId: '',
   instanceKey: '',
+  auth: 'session',
 });
 
 export const RUNTIME_CONFIG_KEYS = Object.keys(DEFAULT_RUNTIME_CONFIG) as (keyof RuntimeConfig)[];
@@ -62,7 +74,10 @@ export class RuntimeConfigError extends Error {
   }
 }
 
-/** The backend URL without a trailing slash, or a problem. Plain http only for this machine (ADR-032). */
+/**
+ * The backend URL without a trailing slash, or a problem. Plain http only for this machine
+ * (ADR-032): localhost, its addresses, and names under localhost, which browsers keep local.
+ */
 function checkApiUrl(value: unknown): string | { problem: string } {
   if (typeof value !== 'string') return { problem: 'apiUrl must be text' };
   if (value === '') return '';
@@ -72,7 +87,8 @@ function checkApiUrl(value: unknown): string | { problem: string } {
   } catch {
     return { problem: `apiUrl is not a URL: ${value}` };
   }
-  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && LOCAL_HOSTS.has(url.hostname))) {
+  const local = LOCAL_HOSTS.has(url.hostname) || url.hostname.endsWith('.localhost');
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) {
     return { problem: 'apiUrl must use https (plain http only for localhost)' };
   }
   if (url.username || url.password) return { problem: 'apiUrl must not carry a user or password' };
@@ -142,6 +158,13 @@ export function parseRuntimeConfig(raw: unknown): { config: RuntimeConfig; probl
           problems.push('instanceKey must be the public key of the connection manifest');
         }
         break;
+      case 'auth':
+        if ((AUTH_MODES as readonly unknown[]).includes(value)) {
+          config.auth = value as AuthMode;
+        } else {
+          problems.push(`auth must be ${AUTH_MODES.join(' or ')}`);
+        }
+        break;
       default:
         problems.push(`unknown setting ${JSON.stringify(key)}`);
     }
@@ -151,6 +174,11 @@ export function parseRuntimeConfig(raw: unknown): { config: RuntimeConfig; probl
     problems.push('instanceId and instanceKey go together');
     config.instanceId = '';
     config.instanceKey = '';
+  }
+  // OAuth signs in at another backend: without one there is nowhere to go.
+  if (config.auth === 'oauth' && config.apiUrl === '') {
+    problems.push('auth oauth needs an apiUrl');
+    config.auth = 'session';
   }
   return { config, problems };
 }

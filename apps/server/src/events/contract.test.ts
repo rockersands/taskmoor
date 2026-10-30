@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -40,6 +41,7 @@ const REDIRECT_MUTATIONS = [
   'GET /api/v1/auth/oidc/callback',
   'GET /api/v1/auth/saml/:id/start',
   'GET /api/v1/auth/saml/continue',
+  'GET /api/v1/oauth/authorize',
 ];
 const EXEMPT: Record<string, string> = {
   'POST /api/v1/audit/syslog/test':
@@ -54,6 +56,8 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/auth/discover': 'reads only: which sign-in methods a domain uses',
   'GET /api/v1/auth/oidc/:id/start':
     'transient sign-in state: the state, nonce and verifier of a single sign-on in progress',
+  'GET /api/v1/oauth/authorize':
+    'transient sign-in state: a one-minute authorization code for a frontend on another site; the session starts when the code is exchanged (M1-107)',
   'GET /api/v1/auth/saml/:id/start':
     'transient sign-in state: the request ID of a SAML sign-in in progress, bound to the browser',
   'POST /api/v1/auth/saml/:id/acs':
@@ -98,6 +102,8 @@ const EXPORT_EVENTS: readonly EventType[] = [
   'workflow.exported',
 ];
 const PASSWORD = 'ladder violet harbour';
+/** A frontend on another site that signs in through OAuth (M1-107). */
+const FRONTEND = 'https://tracker.example.org';
 
 function sessionCookie(res: LightMyRequestResponse): string {
   const header = res.headers['set-cookie'];
@@ -171,7 +177,13 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     await idp.start();
     await ldap.start();
     attachments = storesOf(await LocalStore.open(files));
-    app = await buildApp({ db: database.db, version: 'test', roles: ['api'], attachments });
+    app = await buildApp({
+      db: database.db,
+      version: 'test',
+      roles: ['api'],
+      attachments,
+      allowedOrigins: [FRONTEND],
+    });
   });
   afterAll(async () => {
     await app.close();
@@ -241,6 +253,51 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         state.bo1 = sessionCookie(res);
         return res;
       },
+    },
+    {
+      route: 'POST /api/v1/oauth/token',
+      expect: 'session.started',
+      prepare: async () => {
+        // A code for a frontend on another site, approved by Bo's browser session (M1-107).
+        state.verifier = randomBytes(32).toString('base64url');
+        const params = new URLSearchParams({
+          response_type: 'code',
+          client_id: 'taskmoor-web',
+          redirect_uri: `${FRONTEND}/`,
+          code_challenge: createHash('sha256').update(String(state.verifier)).digest('base64url'),
+          code_challenge_method: 'S256',
+        });
+        const res = await call(String(state.bo1), {
+          method: 'GET',
+          url: `/api/v1/oauth/authorize?${params}`,
+        });
+        state.oauthCode = new URL(res.headers.location as string).searchParams.get('code') ?? '';
+      },
+      run: async () => {
+        const res = await call(undefined, {
+          method: 'POST',
+          url: '/api/v1/oauth/token',
+          payload: {
+            grant_type: 'authorization_code',
+            client_id: 'taskmoor-web',
+            code: state.oauthCode,
+            redirect_uri: `${FRONTEND}/`,
+            code_verifier: state.verifier,
+          },
+        });
+        state.refreshToken = res.json().refresh_token;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/oauth/revoke',
+      expect: 'session.ended',
+      run: () =>
+        call(undefined, {
+          method: 'POST',
+          url: '/api/v1/oauth/revoke',
+          payload: { token: state.refreshToken, client_id: 'taskmoor-web' },
+        }),
     },
     {
       route: 'PATCH /api/v1/account',
