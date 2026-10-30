@@ -51,7 +51,9 @@ Built in a side session on the branch `claude/m1-098-csv-export-553b10`; ADR-063
 - Measured (2026-10-30, load average 15 to 20 from other sessions' gates): 100,000 tickets
   (395,271 records, 184.4 MB with 100 attachments) export in 8.0 s with no live heap growth,
   import into a newly migrated database in 413.5 s (3,967 batches of 100), export again in
-  13.5 s; all 22 files and the attachments identical by SHA-256. CSVMEASURED
+  13.5 s; all 22 files and the attachments identical by SHA-256. 100,000 CSV
+  rows with a parent column (children listed before their parents) import in 790.6 s with
+  every parent right (IMP-012 (1)).
 - Not done / follow-ups: the import wizard and CLI for these sources (M1-097); a ZIP named by
   path is unpacked inside the start request (a very large ZIP should be unpacked by the job);
   set-based loading for faster imports (M1-091); the "Not carried in version 1" list of
