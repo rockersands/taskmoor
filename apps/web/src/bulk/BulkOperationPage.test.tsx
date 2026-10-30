@@ -33,7 +33,8 @@ describe('bulk operation progress (M1-021)', () => {
       screen.getByRole('progressbar', { name: '643 of 1,200 tickets finished' }),
     ).toHaveAttribute('value', '643');
     const failures = await screen.findByRole('region', { name: 'Tickets that were not changed' });
-    const items = within(failures).getAllByRole('listitem');
+    // The region shows before its items, which come from a request of their own.
+    const items = await within(failures).findAllByRole('listitem');
     expect(items.map((li) => li.textContent)).toEqual([
       'SHOP-12In status Approved, only the Approvers group can edit this ticket.',
       'SHOP-19You may not make this change to this ticket.',
