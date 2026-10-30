@@ -61,6 +61,8 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
         '^packages/testkit/',
         '^packages/devtools/',
         '^packages/spikes/',
+        // The load-test runner (M1-104): benchmark tooling the server never imports.
+        '^apps/server/src/load/',
         '/testing\\.ts$',
         '^apps/web/src/test/',
       ],
