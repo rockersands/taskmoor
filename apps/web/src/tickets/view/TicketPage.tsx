@@ -12,6 +12,7 @@ import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { useSyncEngine } from '../../sync/SyncProvider';
+import { splitLabels } from '../form';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
   type Priority,
@@ -862,7 +863,7 @@ function Details({
                 type="button"
                 className="button-secondary ticket-action"
                 aria-label={t('ticketView.editLabels')}
-                onClick={() => setLabels(ticket.labels.join(', '))}
+                onClick={() => setLabels(ticket.labels.join(' '))}
               >
                 {t('ticketView.edit')}
               </button>
@@ -872,10 +873,7 @@ function Details({
               className="ticket-inline-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                const next = labels
-                  .split(',')
-                  .map((l) => l.trim())
-                  .filter(Boolean);
+                const next = splitLabels(labels);
                 void onEdit({ labels: next }).then((ok) => ok && setLabels(null));
               }}
             >

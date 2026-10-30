@@ -107,8 +107,9 @@ Header:  Authorization: Bearer <token>
 ```
 
 The client sends `initialize` first and receives an `Mcp-Session-Id` header, which it sends
-with every following message. A `DELETE` to the same address ends the session. Taskmoor speaks
-the protocol versions 2024-11-05, 2025-03-26, 2025-06-18 and 2025-11-25.
+with every following message. A `DELETE` to the same address ends the session, with a read-only
+token too. Taskmoor speaks the protocol versions 2024-11-05, 2025-03-26, 2025-06-18 and
+2025-11-25.
 
 The **MCP server** settings page shows this address for your server under **Connecting an
 agent**.

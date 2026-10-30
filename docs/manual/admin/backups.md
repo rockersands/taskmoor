@@ -51,8 +51,10 @@ In the image `TASKMOOR_DATA` is `/data`, so backups land in `/data/backups` on t
 `<time>` is UTC, for example `2026-10-30T02-30-00`. A backup taken by hand ignores
 `TASKMOOR_BACKUP_DIR`: give it `--out` to put it next to the scheduled ones.
 
-`TASKMOOR_BACKUP_DIR=off` stops a process from taking scheduled backups. The Compose files do not
-pass `TASKMOOR_BACKUP_DIR` through; add it to the `taskmoor` service with a Compose override file.
+`TASKMOOR_BACKUP_DIR=off` stops a process from taking scheduled backups. The Compose kits pass
+`TASKMOOR_BACKUP_DIR` from `.env`; a directory outside the data volume also needs a volume for it
+in a Compose override file. `cli.mjs backup` without `--out` writes there too, so the restore
+drill finds backups taken by hand.
 Keeping backups on the same disk as the data protects against mistakes, not against losing the
 disk, so copy them to another host as well.
 

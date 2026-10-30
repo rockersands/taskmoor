@@ -140,6 +140,8 @@ export interface AppDeps {
   attachments?: AttachmentStores;
   /** Whether an SMTP server is configured for email notifications (M1-057). */
   smtpConfigured?: boolean;
+  /** TASKMOOR_SMTP_PASSWORD, for the setup form's mail server when it names a user. */
+  smtpPassword?: string;
   /** Quiet time before collaborative edits are saved (M1-017); tests shorten it. */
   collabDebounceMs?: number;
   /** How long a search statement may run, in milliseconds (QRY-010; default 30 s). */
@@ -302,7 +304,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // The in-app inbox and activity streams (M1-058).
     registerInboxRoutes(app, db);
     registerActivityRoutes(app, db);
-    await registerEmailRoutes(app, db, { smtpConfigured: deps.smtpConfigured ?? false });
+    await registerEmailRoutes(app, db, {
+      smtpConfigured: deps.smtpConfigured ?? false,
+      ...(deps.smtpPassword ? { smtpPassword: deps.smtpPassword } : {}),
+    });
     registerSyncRoutes(app, db, authorizer);
     registerSearchRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),

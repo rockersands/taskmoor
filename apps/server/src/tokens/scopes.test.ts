@@ -6,7 +6,7 @@ import { bearerToken } from './api-tokens';
 import {
   ADMIN_ROUTE_PREFIXES,
   PUBLIC_ROUTES,
-  READ_ONLY_POST_ROUTES,
+  READ_ONLY_ROUTES,
   routeAccess,
   SESSION_ONLY_ROUTES,
   scopeDenial,
@@ -26,7 +26,7 @@ describe('token scopes per route (IAM-007)', () => {
   });
 
   it('[IAM-007] names only routes that exist, so a renamed route cannot slip out of its class', () => {
-    const missing = [...PUBLIC_ROUTES, ...SESSION_ONLY_ROUTES, ...READ_ONLY_POST_ROUTES].filter(
+    const missing = [...PUBLIC_ROUTES, ...SESSION_ONLY_ROUTES, ...READ_ONLY_ROUTES].filter(
       (r) => !api.includes(r),
     );
     expect(missing).toEqual([]);
@@ -140,6 +140,8 @@ describe('token scopes per route (IAM-007)', () => {
     expect(scopeDenial('GET', undefined, ['read'])).toBeNull();
     // A path that merely starts like an administration path is not one.
     expect(routeAccess('GET', '/api/v1/usersettings')).toBe('read');
+    // A read-only MCP client may end the session it opened (M1-072).
+    expect(scopeDenial('DELETE', '/api/v1/mcp', ['read'])).toBeNull();
   });
 
   it('[IAM-007] reads only the Bearer scheme of the Authorization header', () => {

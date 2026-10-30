@@ -47,7 +47,7 @@ it. The same form also has its own page at the address ending in `create`.
    type ask for. Required fields say **(required)**; fields hidden for the type are not shown.
    Some fields sit under further tabs, such as **More fields**.
 2. Fill in the fields. Rich text fields (description and environment) use the editor described
-   in [Descriptions and rich text](#descriptions-and-rich-text). Separate labels with spaces.
+   in [Descriptions and rich text](#descriptions-and-rich-text). Separate labels with spaces or commas.
 3. Press **Create**. The dialog says **PAY-42 was created.** and offers **Open PAY-42**.
 
 Some fields cannot be set in this form yet, such as people, releases and areas. The form says
@@ -84,7 +84,7 @@ The **Details** section lists the ticket's fields. Some can be changed in place:
 | **Assignee** | **Assign to me** or **Unassign** |
 | **Requester** | Read |
 | **Priority** | Choose from the list, or **None** |
-| **Labels** | **Edit**, then type labels separated by commas and press **Save** |
+| **Labels** | **Edit**, then type labels separated by spaces or commas and press **Save**; a label has no spaces |
 | **Start date**, **Due date** | Pick a date, or clear it |
 | **Original estimate**, **Time spent**, **Remaining estimate** | Read, in hours |
 | **Target releases**, **Areas** | Read |

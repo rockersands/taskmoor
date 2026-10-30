@@ -108,7 +108,7 @@ describe('the create form (M1-012)', () => {
     const labels = screen.getByLabelText('Labels');
     expect(labels).toBeDisabled();
     expect(labels).toHaveAccessibleDescription(
-      'Separate labels with spaces. Only the Administrators role or the Leads group can set this field.',
+      'Separate labels with spaces or commas. Only the Administrators role or the Leads group can set this field.',
     );
     await user.type(screen.getByLabelText('Summary (required)'), 'Tidy up');
     await user.click(screen.getByRole('button', { name: 'Create' }));

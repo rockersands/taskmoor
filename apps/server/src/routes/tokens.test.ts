@@ -222,6 +222,30 @@ describe('API tokens (M1-004)', () => {
       });
       expect(res.statusCode).toBe(400);
       expect(res.json()).toEqual({ error: 'scope_not_allowed' });
+      // The Account page asks the same question before it offers the scope.
+      const list = await withCookie(cookie, { method: 'GET', url: '/api/v1/account/tokens' });
+      expect(list.json().adminScopeAllowed).toBe(false);
+      const admins = await withCookie(adminCookie, {
+        method: 'GET',
+        url: '/api/v1/account/tokens',
+      });
+      expect(admins.json().adminScopeAllowed).toBe(true);
+    });
+
+    it('[IAM-007] offers the admin scope to configuration administrators too', async () => {
+      const id = await createUser('config-admin@example.com');
+      await database.db
+        .insertInto('global_grant')
+        .values({
+          workspace_id: 1,
+          permission: 'configuration_admin',
+          grantee: 'user',
+          user_id: id,
+        })
+        .execute();
+      const cookie = await signIn('config-admin@example.com');
+      const list = await withCookie(cookie, { method: 'GET', url: '/api/v1/account/tokens' });
+      expect(list.json().adminScopeAllowed).toBe(true);
     });
 
     it('[IAM-007] lets people revoke and rotate only their own tokens', async () => {

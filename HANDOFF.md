@@ -18,13 +18,18 @@ workflow files, M1-114 the manual, M1-125 info fields. Each has its own section 
 - Still open from before: the AI provider key for M1-073 and M1-074's live tests, the release
   signing key (M1-100), image publishing on ghcr.io and the repository rename.
 
-**Product gaps the manual found (M1-114)**: the setup form's mail fields are never used and
-name the wrong variable; Compose passes only 8 variables from `.env`; Helm runs no backup
-before migrating and its worker has nowhere to keep backups; `cli.mjs backup` ignores
-`TASKMOOR_BACKUP_DIR`; "Call a webhook" sends nothing; track feature switches hide nothing; five
-global permissions are never checked; the saved language is not applied; the server reads none
-of the Builder's `TASKMOOR_ALLOWED_ORIGINS`, `TOKEN_SIGNING_KEY`, `MASTER_KEY` and `AI_*`. The
-manual states each as "not yet". Fix them before 1.0 and update the page with each fix.
+**Product gaps the manual found (M1-114)**: fixed on 2026-10-30 (commit "Fix eight gaps the
+manual found"): the setup form's mail server is used, Compose passes mail, S3, backup and
+telemetry settings, `cli.mjs backup` honours `TASKMOOR_BACKUP_DIR`, labels split the same way
+everywhere, "screens" left the layouts permission, a read-only token may end its MCP session,
+the admin token scope is offered to every administrator, and the account's language applies.
+Still open: Helm runs no backup before migrating and its worker has nowhere to keep backups;
+backups skip attachments outside `TASKMOOR_DATA/files` (S3); "Call a webhook" sends nothing;
+track feature switches hide nothing; five global permissions are never checked; the server
+reads none of the Builder's `TASKMOOR_ALLOWED_ORIGINS`, `TOKEN_SIGNING_KEY`, `MASTER_KEY` and
+`AI_*` (M1-107, M1-075); `install.ps1` ignores `TASKMOOR_PULL` and `TASKMOOR_COMPOSE_OVERRIDE`;
+the Builder CLI takes no SMTP password or AI key and fails on a From with a display name. The
+manual states each as "not yet"; update its page with each fix.
 
 **Not verified here**: a fresh-VM install with real DNS, `install.ps1` on Windows, real static
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and

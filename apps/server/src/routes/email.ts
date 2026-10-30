@@ -4,7 +4,9 @@ import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal } from '../auth';
 import { unsubscribeHash } from '../email/deliver';
+import { type StoredSmtp, storedSmtp } from '../email/smtp';
 import { diff, emit } from '../events/bus';
+import { readSetting, SMTP_KEY } from '../setup';
 
 /**
  * Email notification settings and unsubscribe links (M1-057; NTF-002).
@@ -31,7 +33,7 @@ const invalid = (reply: FastifyReply) => reply.code(400).send({ error: 'invalid_
 export async function registerEmailRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { smtpConfigured: boolean },
+  options: { smtpConfigured: boolean; smtpPassword?: string },
 ): Promise<void> {
   const by = (request: FastifyRequest, actorId: number | null = request.user?.id ?? null) => ({
     workspaceId: request.workspaceId,
@@ -47,7 +49,10 @@ export async function registerEmailRoutes(
     return {
       batchWindowSeconds: row?.batch_window_seconds ?? 120,
       digestHour: row?.digest_hour ?? 8,
-      smtpConfigured: options.smtpConfigured,
+      // The environment's server, or the setup form's when it can sign in.
+      smtpConfigured:
+        options.smtpConfigured ||
+        storedSmtp(await readSetting<StoredSmtp>(db, SMTP_KEY), options.smtpPassword) !== null,
     };
   }
 
