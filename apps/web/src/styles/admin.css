@@ -130,3 +130,101 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* API usage and limits (M1-066). */
+.api-usage-page {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.api-usage-section {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.api-usage-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.api-usage-window {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.api-usage-window [aria-pressed="true"] {
+  background: var(--color-accent-soft);
+}
+
+.api-usage-table-wrap {
+  overflow-x: auto;
+}
+
+.api-usage-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.api-usage-table :is(th, td) {
+  padding-block: var(--space-2);
+  padding-inline: 0 var(--space-4);
+  border-block-end: 1px solid var(--color-border);
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.api-usage-table thead th {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  font-weight: 600;
+}
+
+.api-usage-table tbody th {
+  font-weight: normal;
+}
+
+.api-usage-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.api-usage-table td[data-throttled] {
+  font-weight: 600;
+}
+
+.api-limits-form {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.api-limits-scope {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.api-limits-scope legend {
+  font-weight: 600;
+}
+
+.api-limits-scope .form-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.api-limits-scope label {
+  display: grid;
+  gap: var(--space-1);
+}

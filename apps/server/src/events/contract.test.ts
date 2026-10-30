@@ -644,6 +644,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/admin/rate-limits',
+      expect: 'rate_limits.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/rate-limits',
+          payload: { address: { rate: 25, burst: 120 } },
+        }),
+    },
+    {
       route: 'POST /api/v1/service-accounts/:id/deactivate',
       expect: 'service_account.deactivated',
       run: () =>

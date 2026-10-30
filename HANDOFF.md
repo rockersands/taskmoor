@@ -108,6 +108,23 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-066 rate limits and API usage
+
+ADR-075; migration **0059** (`0059_rate_limits.ts`).
+- Buckets live in each API process (`ratelimit/limiter.ts`); `buildApp` applies them only when
+  given `rateLimits` (the server always does; tests and the e2e servers do not).
+- Usage is counted in memory and added to `api_usage` every 10 seconds; the page flushes first.
+- Exact limits across several API processes would need the buckets in Postgres: see the ADR.
+
+## 2026-10-30: M1-125 read-only info fields
+
+ADR-010 has a new section; migration **0058** (`0058_info_fields.ts`).
+- `ticket.first_response_at` and `last_comment_at` are kept by triggers; code never writes them.
+  Only comments without a role or group restriction and outside the trash count.
+- Query fields `firstResponse`, `daysSinceLastComment` (ordering uses the column reversed) and
+  `participants`. `GET /api/v1/tickets/:id/info` adds time in status from the history.
+- The ticket page has an Info panel under Details (a new `.ticket-side` column wrapper).
+
 ## 2026-10-30: M1-130 async bulk API
 
 ADR-043 has a new section; no migration.
