@@ -8,6 +8,7 @@ import { registerAuditJobs, scheduleRetention } from './audit/retention';
 import { Authorizer } from './authz/authorizer';
 import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/schedule';
 import { registerBulkJobs } from './bulk/jobs';
+import { trimBulkOperations } from './bulk/model';
 import { loadConfig } from './config';
 import { deliverEmail } from './email/deliver';
 import { smtpTransport } from './email/transport';
@@ -180,11 +181,12 @@ if (config.roles.includes('worker') && db) {
       scheduleChangeLogTrim(db),
       scheduleFormulaRefresh(db, formulaCatalogs),
       trimWebhookDeliveries(db),
+      trimBulkOperations(db),
       defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
     ]).catch((error) =>
       app.log.warn(
         { error },
-        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery trim or storage sweep not queued',
+        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery or bulk operation trim, or storage sweep not queued',
       ),
     );
   void scheduleHousekeeping();

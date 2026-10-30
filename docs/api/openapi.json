@@ -610,6 +610,160 @@
         ],
         "type": "object"
       },
+      "BulkItem": {
+        "additionalProperties": {},
+        "properties": {
+          "error": {},
+          "key": {
+            "description": "The ticket key, when the reader may see the ticket now.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "done",
+              "failed",
+              "skipped",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "position": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "ref": {
+            "description": "The ticket as it was given: an id or a key.",
+            "type": "string"
+          },
+          "statusCode": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "position",
+          "ref",
+          "key",
+          "outcome",
+          "statusCode",
+          "error"
+        ],
+        "type": "object"
+      },
+      "BulkOperation": {
+        "additionalProperties": {},
+        "properties": {
+          "action": {
+            "enum": [
+              "edit",
+              "move",
+              "transition",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "cancelRequested": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "failed": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "params": {
+            "description": "What the operation applies, as it was asked."
+          },
+          "pending": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "skipped": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "description": "`queued`, `running`, `done` or `cancelled`.",
+            "type": "string"
+          },
+          "succeeded": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "total": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "userId": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "params",
+          "status",
+          "cancelRequested",
+          "total",
+          "succeeded",
+          "failed",
+          "skipped",
+          "pending",
+          "userId",
+          "createdAt",
+          "startedAt",
+          "finishedAt"
+        ],
+        "type": "object"
+      },
       "Change": {
         "additionalProperties": {},
         "properties": {
@@ -6887,9 +7041,31 @@
     },
     "/api/v1/bulk-operations": {
       "get": {
-        "operationId": "internal-get-bulk-operations",
+        "operationId": "listBulkOperations",
         "responses": {
-          "default": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "bulkOperations": {
+                      "items": {
+                        "$ref": "#/components/schemas/BulkOperation"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "bulkOperations"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The 50 most recent, newest first."
+          },
+          "401": {
             "content": {
               "application/json": {
                 "schema": {
@@ -6897,7 +7073,17 @@
                 }
               }
             },
-            "description": "The route’s answer; refusals have the shared error shape."
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
           }
         },
         "security": [
@@ -6910,17 +7096,480 @@
             ]
           }
         ],
-        "summary": "Internal route of the web app; it may change in any release.",
+        "summary": "The caller’s latest bulk changes",
         "tags": [
-          "Internal"
+          "Bulk changes"
         ],
         "x-taskmoor-access": "read",
-        "x-taskmoor-stability": "internal"
+        "x-taskmoor-stability": "stable"
       },
       "post": {
-        "operationId": "internal-post-bulk-operations",
+        "description": "Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).",
+        "operationId": "createBulkOperation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "edit",
+                        "type": "string"
+                      },
+                      "edit": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "areaIds": {
+                            "items": {
+                              "exclusiveMinimum": 0,
+                              "maximum": 2147483647,
+                              "type": "integer"
+                            },
+                            "maxItems": 50,
+                            "type": "array"
+                          },
+                          "assigneeId": {
+                            "anyOf": [
+                              {
+                                "exclusiveMinimum": 0,
+                                "maximum": 2147483647,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "closeReasonId": {
+                            "anyOf": [
+                              {
+                                "exclusiveMinimum": 0,
+                                "maximum": 2147483647,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {},
+                          "dueDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "environment": {},
+                          "fields": {
+                            "additionalProperties": {},
+                            "propertyNames": {
+                              "maxLength": 12,
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "foundInReleaseIds": {
+                            "items": {
+                              "exclusiveMinimum": 0,
+                              "maximum": 2147483647,
+                              "type": "integer"
+                            },
+                            "maxItems": 100,
+                            "type": "array"
+                          },
+                          "labels": {
+                            "items": {
+                              "maxLength": 1000,
+                              "type": "string"
+                            },
+                            "maxItems": 1000,
+                            "type": "array"
+                          },
+                          "originalEstimate": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "maxLength": 100,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "parent": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 2147483647,
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "maxLength": 300,
+                                    "minLength": 1,
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "priorityId": {
+                            "anyOf": [
+                              {
+                                "exclusiveMinimum": 0,
+                                "maximum": 2147483647,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "remainingEstimate": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "maxLength": 100,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "requesterId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647,
+                            "type": "integer"
+                          },
+                          "startDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "statusId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647,
+                            "type": "integer"
+                          },
+                          "summary": {
+                            "type": "string"
+                          },
+                          "targetReleaseIds": {
+                            "items": {
+                              "exclusiveMinimum": 0,
+                              "maximum": 2147483647,
+                              "type": "integer"
+                            },
+                            "maxItems": 100,
+                            "type": "array"
+                          },
+                          "ticketTypeId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647,
+                            "type": "integer"
+                          },
+                          "visibilityLevelId": {
+                            "anyOf": [
+                              {
+                                "exclusiveMinimum": 0,
+                                "maximum": 2147483647,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "query": {
+                        "maxLength": 100000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "tickets": {
+                        "items": {
+                          "anyOf": [
+                            {
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "maxLength": 300,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "maxItems": 100000,
+                        "minItems": 1,
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "edit"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "move",
+                        "type": "string"
+                      },
+                      "move": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "parent": {
+                            "anyOf": [
+                              {
+                                "anyOf": [
+                                  {
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 2147483647,
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "maxLength": 300,
+                                    "minLength": 1,
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "statusId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647,
+                            "type": "integer"
+                          },
+                          "subticketTypeId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647,
+                            "type": "integer"
+                          },
+                          "ticketTypeId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 2147483647,
+                            "type": "integer"
+                          },
+                          "track": {
+                            "anyOf": [
+                              {
+                                "exclusiveMinimum": 0,
+                                "maximum": 2147483647,
+                                "type": "integer"
+                              },
+                              {
+                                "maxLength": 300,
+                                "minLength": 1,
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "visibilityLevelId": {
+                            "anyOf": [
+                              {
+                                "exclusiveMinimum": 0,
+                                "maximum": 2147483647,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "track"
+                        ],
+                        "type": "object"
+                      },
+                      "query": {
+                        "maxLength": 100000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "tickets": {
+                        "items": {
+                          "anyOf": [
+                            {
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "maxLength": 300,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "maxItems": 100000,
+                        "minItems": 1,
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "move"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "transition",
+                        "type": "string"
+                      },
+                      "query": {
+                        "maxLength": 100000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "tickets": {
+                        "items": {
+                          "anyOf": [
+                            {
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "maxLength": 300,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "maxItems": 100000,
+                        "minItems": 1,
+                        "type": "array"
+                      },
+                      "transition": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "fields": {
+                            "additionalProperties": {},
+                            "propertyNames": {
+                              "maxLength": 100,
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "statusId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991,
+                            "type": "integer"
+                          },
+                          "transitionId": {
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991,
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "transition"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "action": {
+                        "const": "delete",
+                        "type": "string"
+                      },
+                      "query": {
+                        "maxLength": 100000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "tickets": {
+                        "items": {
+                          "anyOf": [
+                            {
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991,
+                              "type": "integer"
+                            },
+                            {
+                              "maxLength": 300,
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "maxItems": 100000,
+                        "minItems": 1,
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "action"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "default": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "bulkOperation": {
+                      "$ref": "#/components/schemas/BulkOperation"
+                    }
+                  },
+                  "required": [
+                    "bulkOperation"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Started; poll the operation for its progress."
+          },
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -6928,7 +7577,37 @@
                 }
               }
             },
-            "description": "The route’s answer; refusals have the shared error shape."
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
           }
         },
         "security": [
@@ -6941,19 +7620,21 @@
             ]
           }
         ],
-        "summary": "Internal route of the web app; it may change in any release.",
+        "summary": "Start a bulk change",
         "tags": [
-          "Internal"
+          "Bulk changes"
         ],
         "x-taskmoor-access": "write",
-        "x-taskmoor-stability": "internal"
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/bulk-operations/{id}": {
       "get": {
-        "operationId": "internal-get-bulk-operations-by-id",
+        "description": "Readable for 14 days after it finishes.",
+        "operationId": "getBulkOperation",
         "parameters": [
           {
+            "description": "The bulk operation.",
             "in": "path",
             "name": "id",
             "required": true,
@@ -6963,7 +7644,26 @@
           }
         ],
         "responses": {
-          "default": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "bulkOperation": {
+                      "$ref": "#/components/schemas/BulkOperation"
+                    }
+                  },
+                  "required": [
+                    "bulkOperation"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The operation."
+          },
+          "401": {
             "content": {
               "application/json": {
                 "schema": {
@@ -6971,7 +7671,27 @@
                 }
               }
             },
-            "description": "The route’s answer; refusals have the shared error shape."
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
           }
         },
         "security": [
@@ -6984,19 +7704,21 @@
             ]
           }
         ],
-        "summary": "Internal route of the web app; it may change in any release.",
+        "summary": "A bulk change’s progress",
         "tags": [
-          "Internal"
+          "Bulk changes"
         ],
         "x-taskmoor-access": "read",
-        "x-taskmoor-stability": "internal"
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/bulk-operations/{id}/cancel": {
       "post": {
-        "operationId": "internal-post-bulk-operations-by-id-cancel",
+        "description": "Tickets already in hand finish; the ones not reached are skipped.",
+        "operationId": "cancelBulkOperation",
         "parameters": [
           {
+            "description": "The bulk operation.",
             "in": "path",
             "name": "id",
             "required": true,
@@ -7006,7 +7728,26 @@
           }
         ],
         "responses": {
-          "default": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "bulkOperation": {
+                      "$ref": "#/components/schemas/BulkOperation"
+                    }
+                  },
+                  "required": [
+                    "bulkOperation"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cancelling."
+          },
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7014,7 +7755,47 @@
                 }
               }
             },
-            "description": "The route’s answer; refusals have the shared error shape."
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
           }
         },
         "security": [
@@ -7027,29 +7808,101 @@
             ]
           }
         ],
-        "summary": "Internal route of the web app; it may change in any release.",
+        "summary": "Cancel the rest of a bulk change",
         "tags": [
-          "Internal"
+          "Bulk changes"
         ],
         "x-taskmoor-access": "write",
-        "x-taskmoor-stability": "internal"
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/bulk-operations/{id}/items": {
       "get": {
-        "operationId": "internal-get-bulk-operations-by-id-items",
+        "description": "In the order the tickets were given, a page at a time: pass the answer’s `next` as `after`. Filter by `outcome` to read only the failures, say.",
+        "operationId": "listBulkItems",
         "parameters": [
           {
+            "description": "The bulk operation.",
             "in": "path",
             "name": "id",
             "required": true,
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "enum": [
+                "done",
+                "failed",
+                "skipped",
+                "pending"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "maximum": 9007199254740991,
+              "minimum": -1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
-          "default": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "items": {
+                      "items": {
+                        "$ref": "#/components/schemas/BulkItem"
+                      },
+                      "type": "array"
+                    },
+                    "next": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The cursor of the next page (an id); null on the last one."
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "next"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A page of results."
+          },
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7057,7 +7910,37 @@
                 }
               }
             },
-            "description": "The route’s answer; refusals have the shared error shape."
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
           }
         },
         "security": [
@@ -7070,12 +7953,12 @@
             ]
           }
         ],
-        "summary": "Internal route of the web app; it may change in any release.",
+        "summary": "Each ticket’s result in a bulk change",
         "tags": [
-          "Internal"
+          "Bulk changes"
         ],
         "x-taskmoor-access": "read",
-        "x-taskmoor-stability": "internal"
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/close-reasons": {
@@ -24776,6 +25659,9 @@
   "tags": [
     {
       "name": "Boards"
+    },
+    {
+      "name": "Bulk changes"
     },
     {
       "name": "Comments"

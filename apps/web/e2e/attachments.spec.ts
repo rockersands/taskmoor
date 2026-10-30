@@ -185,9 +185,10 @@ test('[CORE-021] takes files dropped on the panel or pasted into it, and refuses
   await page.getByLabel('Attach files').evaluate((element) => {
     const transfer = new DataTransfer();
     transfer.items.add(new File(['pasted bytes'], 'image.png', { type: 'image/png' }));
-    element.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }),
-    );
+    // A plain event carrying the data: Firefox drops the clipboardData given to new ClipboardEvent.
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', { value: transfer });
+    element.dispatchEvent(paste);
   });
   await expect(page.getByText(/^pasted-.*\.png attached\.$/)).toBeVisible();
 

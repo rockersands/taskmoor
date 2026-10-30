@@ -206,6 +206,7 @@ export const messagesEs: Record<MessageId, string> = {
   'guardrails.name.statuses_per_workflow': 'Estados por flujo de trabajo',
   'guardrails.name.areas_per_track': 'Áreas por track',
   'guardrails.name.priorities_per_track': 'Prioridades por conjunto de prioridades',
+  'guardrails.name.tickets_per_bulk_operation': 'Tickets por cambio en bloque',
   'home.title': 'Inicio',
   'home.greeting': 'Hola, {name}.',
   'home.assigned': 'Asignado a ti',

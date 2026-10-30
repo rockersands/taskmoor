@@ -10,6 +10,7 @@ import { JobRunner } from '../events/queue';
 import { FieldCatalogs } from '../fields/catalog';
 import { ticketRoutes } from '../routes/tickets';
 import { registerBulkJobs } from './jobs';
+import { BULK_RETENTION_DAYS, trimBulkOperations } from './model';
 import { runBulkOperation } from './run';
 
 const PASSWORD = 'ladder violet harbour';
@@ -443,4 +444,151 @@ describe('bulk operations (M1-021)', () => {
        WHERE track_id = ${trackId} AND labels @> ARRAY['many']::text[]`.execute(database.db);
     expect(labelled.rows[0]?.n).toBe(1200);
   }, 300_000);
+
+  // M1-130 (API-007): bulk changes as tasks in the stable API.
+  it('[API-007] (1) transitions 1,000 tickets with mixed transitions and reports each one', async () => {
+    const S = (name: string) => status[name] as number;
+    const waiting = await post('admin', '/api/v1/statuses', { name: 'Waiting', stage: 'active' });
+    expect(waiting.statusCode, waiting.body).toBe(201);
+    status.Waiting = waiting.json().status.id;
+    const trackId = await track('BX', [['alice', 'Members']], {
+      initialStatusId: S('New'),
+      statuses: [{ statusId: S('New') }, { statusId: S('Waiting') }, { statusId: S('Approved') }],
+      transitions: [
+        { id: 1, name: 'Approve', from: [S('New')], to: S('Approved') },
+        { id: 2, name: 'Accept', from: [S('Waiting')], to: S('Approved') },
+        { id: 3, name: 'Hold', from: [S('New')], to: S('Waiting') },
+      ],
+    });
+    const type = (
+      await database.db
+        .selectFrom('ticket_type')
+        .select('id')
+        .where('workspace_id', '=', 1)
+        .orderBy('id')
+        .executeTakeFirstOrThrow()
+    ).id;
+    // 1,000 tickets: half New, half Waiting, so two transitions reach Approved; the last 10 are
+    // Approved already, with no transition into where they are.
+    await sql`INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary,
+          requester_id, creator_id, rank, status_id)
+        SELECT 1, ${trackId}, g + 1, ${type}, 'Mixed ' || g,
+               ${users.admin?.id}, ${users.admin?.id}, 'zmix' || lpad(g::text, 5, '0'),
+               CASE WHEN g >= 990 THEN ${S('Approved')}::int WHEN g % 2 = 0 THEN ${S('New')}::int
+                    ELSE ${S('Waiting')}::int END
+          FROM generate_series(0, 999) g`.execute(database.db);
+    await sql`INSERT INTO ticket_counter (track_id, workspace_id, last_number)
+        VALUES (${trackId}, 1, 1000)
+        ON CONFLICT (track_id) DO UPDATE SET last_number = 1000`.execute(database.db);
+    const keys = Array.from({ length: 1000 }, (_, i) => `BX-${i + 1}`);
+    const op = await bulk('alice', {
+      action: 'transition',
+      tickets: keys,
+      transition: { statusId: S('Approved') },
+    });
+    expect(op).toMatchObject({ status: 'queued', total: 1000 });
+    await drain();
+    expect(await operation(op.id)).toMatchObject({
+      status: 'done',
+      total: 1000,
+      succeeded: 990,
+      failed: 10,
+      pending: 0,
+    });
+    // Each ticket's result, in the order given, a page at a time.
+    let after = -1;
+    const all: Item[] = [];
+    for (;;) {
+      const page = (
+        await get('alice', `/api/v1/bulk-operations/${op.id}/items?limit=400&after=${after}`)
+      ).json();
+      all.push(...(page.items as Item[]));
+      if (page.next === null) break;
+      after = page.next;
+    }
+    expect(all).toHaveLength(1000);
+    expect(all.filter((i) => i.outcome === 'done')).toHaveLength(990);
+    expect(all.slice(-10).map((i) => [i.ref, i.outcome])).toEqual(
+      keys.slice(-10).map((k) => [k, 'failed']),
+    );
+    const approved = await sql<{ n: number }>`
+      SELECT count(*)::int AS n FROM ticket WHERE track_id = ${trackId} AND status_id = ${S('Approved')}`.execute(
+      database.db,
+    );
+    expect(approved.rows[0]?.n).toBe(1000);
+  }, 300_000);
+
+  it('[API-007] holds an operation to the workspace limit, 10,000 by default', async () => {
+    const keys = await tickets('BA', ['Limit one', 'Limit two', 'Limit three', 'Limit four']);
+    await database.db
+      .insertInto('guardrail_limit')
+      .values({ workspace_id: 1, name: 'tickets_per_bulk_operation', value: 3 })
+      .execute();
+    try {
+      const over = await post('alice', '/api/v1/bulk-operations', {
+        action: 'edit',
+        tickets: keys,
+        edit: { labels: ['limited'] },
+      });
+      expect(over.statusCode).toBe(400);
+      expect(over.json()).toEqual({
+        error: 'too_many_tickets',
+        max: 3,
+        guardrail: 'tickets_per_bulk_operation',
+      });
+      // A query finding more than the limit is refused the same way.
+      const byQuery = await post('alice', '/api/v1/bulk-operations', {
+        action: 'edit',
+        query: 'track = BA',
+        edit: { labels: ['limited'] },
+      });
+      expect(byQuery.json().error).toBe('too_many_tickets');
+      expect(
+        (
+          await bulk('alice', {
+            action: 'edit',
+            tickets: keys.slice(0, 3),
+            edit: { labels: ['ok'] },
+          })
+        ).total,
+      ).toBe(3);
+    } finally {
+      await database.db
+        .deleteFrom('guardrail_limit')
+        .where('name', '=', 'tickets_per_bulk_operation')
+        .execute();
+    }
+  });
+
+  it('[API-007] (2) keeps a finished operation readable for 14 days, then removes it', async () => {
+    const [key] = await tickets('BA', ['Kept for a while']);
+    const op = await bulk('alice', { action: 'edit', tickets: [key], edit: { labels: ['kept'] } });
+    await drain();
+    const finishedAgo = (days: number) =>
+      database.db
+        .updateTable('bulk_operation')
+        .set({ finished_at: new Date(Date.now() - days * 24 * 3600 * 1000) })
+        .where('id', '=', String(op.id))
+        .execute();
+    await finishedAgo(13);
+    await trimBulkOperations(database.db);
+    expect((await get('alice', `/api/v1/bulk-operations/${op.id}`)).statusCode).toBe(200);
+    expect(await items(op.id)).toHaveLength(1);
+    await finishedAgo(BULK_RETENTION_DAYS + 1);
+    expect(await trimBulkOperations(database.db)).toBeGreaterThanOrEqual(1);
+    expect((await get('alice', `/api/v1/bulk-operations/${op.id}`)).statusCode).toBe(404);
+    // An operation still running is never removed, however old.
+    const running = await bulk('alice', {
+      action: 'edit',
+      tickets: [key],
+      edit: { labels: ['x'] },
+    });
+    await database.db
+      .updateTable('bulk_operation')
+      .set({ created_at: new Date(Date.now() - 400 * 24 * 3600 * 1000) })
+      .where('id', '=', String(running.id))
+      .execute();
+    await trimBulkOperations(database.db);
+    expect((await get('alice', `/api/v1/bulk-operations/${running.id}`)).statusCode).toBe(200);
+  });
 });

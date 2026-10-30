@@ -8,6 +8,7 @@
 //   pnpm verify --changed       tests related to uncommitted changes only (--changed=<ref> for a ref)
 //   pnpm verify --only=tests    run a subset: lint, types, tests, e2e (comma-separated)
 //   pnpm verify --e2e           also run Playwright (desktop and mobile)
+//   pnpm verify --e2e --browsers   ... on every supported browser too (Firefox, WebKit, iPhone, 360 px)
 //   pnpm verify --ci            CI mode: biome ci, e2e included, golden files never written
 //   pnpm verify --update        rewrite golden files (vitest -u)
 //   pnpm verify --coverage      collect coverage into .verify/coverage
@@ -92,6 +93,7 @@ const steps = [
       '--reporter=line',
     ],
     cwd: join(ROOT, 'apps', 'web'),
+    env: flag('browsers') ? { TASKMOOR_E2E_BROWSERS: 'all' } : {},
     summarize: summarizeE2e,
   },
 ].filter((step) => wants(step.id));
@@ -171,7 +173,7 @@ function runStep(step) {
       const args = typeof step.args === 'function' ? step.args() : step.args;
       child = spawn(step.cmd, args, {
         cwd: step.cwd ?? ROOT,
-        env: { ...process.env, FORCE_COLOR: '0' },
+        env: { ...process.env, ...step.env, FORCE_COLOR: '0' },
         windowsHide: true,
       });
     } catch (error) {

@@ -145,7 +145,8 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
               </select>
             </div>
             <div className="form-actions">
-              <button type="submit" className="button-primary">
+              {/* Until the workflows are in, there is no default to give the map (M1-132). */}
+              <button type="submit" className="button-primary" disabled={!defaultWorkflow}>
                 {t('admin.maps.add')}
               </button>
             </div>

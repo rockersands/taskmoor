@@ -62,6 +62,16 @@ export function AttachmentPreview({ attachment: a, client, onClose }: Attachment
     };
   }, [a, client]);
 
+  // Escape closes even once focus has left the dialog: Safari does not focus a link it follows,
+  // such as a ZIP entry's download (M1-132). Inside, onKeyDown below handles it first.
+  useEffect(() => {
+    const onDocumentKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onDocumentKey);
+    return () => document.removeEventListener('keydown', onDocumentKey);
+  }, [onClose]);
+
   // Escape closes; Tab cycles within the dialog.
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {

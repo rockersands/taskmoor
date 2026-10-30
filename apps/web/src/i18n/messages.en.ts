@@ -193,6 +193,7 @@ export const messagesEn = {
   'guardrails.name.statuses_per_workflow': 'Statuses per workflow',
   'guardrails.name.areas_per_track': 'Areas per track',
   'guardrails.name.priorities_per_track': 'Priorities per priority set',
+  'guardrails.name.tickets_per_bulk_operation': 'Tickets per bulk change',
   'home.title': 'Home',
   'home.greeting': 'Hello, {name}.',
   'home.assigned': 'Assigned to you',

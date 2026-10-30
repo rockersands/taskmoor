@@ -38,8 +38,11 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
   page,
   playwright,
   isMobile,
+  browserName,
 }, testInfo) => {
   test.skip(isMobile, 'a keyboard journey: desktop');
+  // WebKit, like Safari until "Press Tab to highlight each item" is on, skips links on Tab.
+  test.skip(browserName === 'webkit', 'WebKit skips links on Tab by default');
   test.setTimeout(120_000);
   const api = await playwright.request.newContext({ baseURL: BASE });
   expect((await api.post('/api/v1/session', { data: ADMIN })).status()).toBe(200);
