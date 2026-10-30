@@ -10,17 +10,23 @@ M1-087 synthetic backups, M1-109, M1-111 and M1-110 (the Builder core and both k
 clean URLs, M1-132 cross-browser e2e, M1-130 async bulk API, M1-040 full-text search, M1-127
 workflow files, M1-114 the manual, M1-125 info fields, M1-066 rate limits, eight fixes for
 gaps the manual found, then together M1-085 (IP allowlists, the audit log page, syslog,
-external people), M1-123 teams, M1-124 clone and M1-126 board-managed workflows, and last
-M1-104 load tests. Each has its own section below. Migrations run to 0063 and ADRs to 082.
+external people), M1-123 teams, M1-124 clone and M1-126 board-managed workflows, then
+M1-104 load tests, and last the two side sessions' branches: M1-107 cross-origin sign-in
+(OAuth 2.1, strict CORS and CSP; migration 0064, ADR-080) and M1-088 Data Center import of
+people and configuration (migration 0065, ADR-081). Each has its own section below. Migrations
+run to 0065 and ADRs to 082.
 
-**In flight when this session stopped (side sessions, their own branches, not merged)**
-- M1-107 cross-origin sign-in, OAuth 2.1 and CORS: migration 0064, ADR-080 reserved.
-- M1-088 Data Center import, people and configuration: migration 0065, ADR-081 reserved.
-Merge each after its own gate: resolve the appended rows (progress, STATUS, HANDOFF, the ADR
+**Since M1-107**: the backend refuses any `/api/` request whose Origin is neither its own nor in
+`TASKMOOR_ALLOWED_ORIGINS`, and every e2e spec runs under the strict CSP. New backend calls in
+the web app go through `apiFetch` (`apps/web/src/api/client.ts`), or they break in the OAuth
+layout; a library that injects `<style>` elements or evaluates text fails under the CSP.
+
+**Merging side branches**: resolve the appended rows (progress, STATUS, HANDOFF, the ADR
 index, migration index, upgrade seeds) by keeping both sides, then `pnpm verify --update`,
 `npx vitest run --project sdk -u packages/sdk/src/generate.test.ts`, and the full gate. The
 upgrade seeds file is an object: when two branches append to it, rebuild the tail from each
-branch's own block rather than keeping both conflict sides line by line.
+branch's own block rather than keeping both conflict sides line by line. A merge commit made
+with `--no-edit` has no sign-off: `git commit --amend --no-edit -s` before the next merge.
 
 **Gate under load**: several sessions share this Mac and one lock (`/tmp/taskmoor-gate.lock`).
 Write gate logs outside `.verify/`, which verify clears. Do not run other tests while a gate
@@ -51,7 +57,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Next free numbers**: migration 0066 and ADR-083 (0064, 0065, 080 and 081 are reserved above).
+**Next free numbers**: migration 0066 and ADR-083.
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
@@ -139,7 +145,7 @@ creation was over (236 ms against 200). The reference-hardware and 10M runs are 
 ## Side session 2026-10-30: M1-107 cross-origin sign-in
 
 ADR-080; migration **0064** (`0064_oauth`). The main session gave this task 0064 and ADR-080,
-so the "Next free numbers" line above moves on when this merges.
+so the "Next free numbers" line above moved on when this merged.
 - **Origins**: `apps/server/src/origins.ts`. Every `/api/` request with an Origin that is neither
   the instance's own nor in `TASKMOOR_ALLOWED_ORIGINS` gets 403 before authentication, including
   `/api/meta` (no longer `*`) and the sync socket's handshake. Co-editing checks the same policy.
