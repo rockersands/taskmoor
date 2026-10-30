@@ -68,7 +68,7 @@
       "is_site_admin boolean not null default false",
       "created_at timestamp with time zone not null default now()",
       "deactivated_at timestamp with time zone",
-      "workspace_id integer not null default 1",
+      "workspace_id integer not null",
       "time_zone text",
       "locale text",
       "password_changed_at timestamp with time zone",
@@ -1336,20 +1336,6 @@
       "CREATE UNIQUE INDEX scim_user_pkey ON public.scim_user USING btree (user_id)",
       "CREATE INDEX scim_user_workspace_external_id_idx ON public.scim_user USING btree (workspace_id, external_id) WHERE (external_id IS NOT NULL)",
       "CREATE UNIQUE INDEX scim_user_workspace_user_name_idx ON public.scim_user USING btree (workspace_id, lower(user_name)) WHERE (removed_at IS NULL)"
-    ]
-  },
-  "session": {
-    "columns": [
-      "id text not null",
-      "user_id integer not null",
-      "created_at timestamp with time zone not null default now()",
-      "expires_at timestamp with time zone not null",
-      "last_seen_at timestamp with time zone not null default now()"
-    ],
-    "indexes": [
-      "CREATE INDEX session_expires_at_idx ON public.session USING btree (expires_at)",
-      "CREATE UNIQUE INDEX session_pkey ON public.session USING btree (id)",
-      "CREATE INDEX session_user_id_idx ON public.session USING btree (user_id)"
     ]
   },
   "sign_in_challenge": {

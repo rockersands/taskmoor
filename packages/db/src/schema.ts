@@ -1985,18 +1985,6 @@ export interface LdapSyncRunTable {
   error: string | null;
 }
 
-/**
- * The M0 session table, replaced by user_session. Kept until a later release so the previous
- * release keeps working during a rolling upgrade (ADR-022); nothing in this release uses it.
- */
-export interface SessionTable {
-  id: string;
-  user_id: number;
-  created_at: DefaultTimestamp;
-  expires_at: Timestamp;
-  last_seen_at: DefaultTimestamp;
-}
-
 /** Every table Kysely knows about. Add a table here in the same change as its migration. */
 export interface Database {
   instance_setting: InstanceSettingTable;
@@ -2138,5 +2126,4 @@ export interface Database {
   ldap_user: LdapUserTable;
   ldap_group: LdapGroupTable;
   ldap_sync_run: LdapSyncRunTable;
-  session: SessionTable;
 }

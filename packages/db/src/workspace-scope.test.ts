@@ -11,7 +11,6 @@ import { useMigratedDatabase } from './testing';
 const INSTANCE_TABLES: Record<string, string> = {
   workspace: 'the workspaces themselves',
   instance_setting: 'instance-wide settings: setup state, instance name, mail configuration',
-  session: 'the M0 session table, kept for rolling upgrades until a later release drops it',
   backup_run: 'backups and restore drills, which cover the whole instance (M1-101, OPS-008)',
   [MIGRATION_TABLE]: 'migration bookkeeping',
   [MIGRATION_LOCK_TABLE]: 'migration bookkeeping',

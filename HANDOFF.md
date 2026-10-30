@@ -103,6 +103,10 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-121 contract step for M1-001** (ADR-022 "Contract step for M1-001"): migration
+  `0055_contract_m0_session` drops the M0 `session` table and the `app_user.workspace_id`
+  default. The user chose to land it before the first release (none is published). M1-039's
+  branch also made a 0055 (`0055_history_search`): renumber it to 0056 when merging.
 - **M1-054 track templates** (ADR-062; no migration): `tracks/templates.ts` recipes;
   `POST /api/v1/tracks` takes `template` (then makes the board through
   `BoardRoutes.createBoard`, which `registerBoardRoutes` now returns; the track routes get it
@@ -1034,7 +1038,7 @@ agent's worktree under `.claude/worktrees/` (locked by the agent tool; its branc
 4. `pnpm next-task` for the rest (M1-073 AI gateway core and M1-082 LDAP are also ready). The
    query catalogue gaps (targetRelease, area, sprint, due; history on every field; user values
    by name; function arity) belong to M1-036.
-5. M1-121 is the contract step for M1-001: one release later, drop the M0 `session` table and
+5. (Done 2026-10-30, migration 0055.) M1-121 was the contract step for M1-001: drop the M0 `session` table and
    the default on `app_user.workspace_id` (ADR-022).
 6. **Upgrade the local demo** once the WIP branches are merged or dropped. It ran on the Windows
    machine (see Local demo); this Mac has no Docker yet.

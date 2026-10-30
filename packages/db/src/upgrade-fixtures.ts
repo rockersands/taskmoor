@@ -22,7 +22,9 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
   },
   '0002_users_and_sessions': {
-    tables: { app_user: "email = 'seed@example.com'", session: "id = 'seed-session'" },
+    // Its session row is not checked afterwards: 0003 copies it to user_session and 0055 drops
+    // the M0 table (M1-121).
+    tables: { app_user: "email = 'seed@example.com'" },
     seed: async (db) => {
       await sql`INSERT INTO app_user (email, name, password_hash, is_site_admin)
         VALUES ('seed@example.com', 'Seed', 'scrypt$x', true)`.execute(db);
@@ -1051,6 +1053,14 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE email = 'seed@example.com'`.execute(db);
       await sql`INSERT INTO dashboard_share (workspace_id, dashboard_id, scope)
         SELECT 1, id, 'any_user' FROM dashboard WHERE name = 'Seed dashboard'`.execute(db);
+    },
+  },
+  '0055_contract_m0_session': {
+    tables: { app_user: "email = 'seed-0055@example.com' AND workspace_id = 1" },
+    seed: async (db) => {
+      // With the default gone, a user names its workspace.
+      await sql`INSERT INTO app_user (workspace_id, email, name)
+        VALUES (1, 'seed-0055@example.com', 'Seed 0055')`.execute(db);
     },
   },
 };

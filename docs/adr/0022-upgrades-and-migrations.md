@@ -195,3 +195,15 @@ after two real migrations ran, and by restore after an online index and a segmen
 tables, types, functions and a schema committed; every case compares migrations, schema and
 every table's checksum with the state before. Not run here: `upgrade.sh` and the all-in-one
 entrypoint against Docker (CI's kit smoke test runs both with the same image).
+
+## Contract step for M1-001 (M1-121)
+
+Migration `0055_contract_m0_session` drops the M0 `session` table and the default on
+`app_user.workspace_id` that 0003 kept for rolling upgrades from M0. The rule above says a
+contract step ships one release after its expand step; on 2026-10-30 the user chose to land it
+before the first release, since none is published (`RELEASES` is empty): no install runs code
+that reads the table or writes users without a workspace, and every database reaches 0055
+through 0003, whose copy of the live sessions ran first. The upgrade harness covers it like any
+migration (the 0002 seed's session row is no longer checked; a 0055 seed writes a user with its
+workspace), and the workspace fitness test no longer exempts `session`. Once releases are
+published, contract steps wait for the next release as written.
