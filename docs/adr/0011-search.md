@@ -40,3 +40,13 @@ required search cluster contradicts ADR-006 and the self-hosting targets.
 
 Relevance is tuned with weights and `ts_rank_cd`, and measured on the synthetic dataset in the
 query benchmark. The adapter boundary is set now so the M2 work changes one package.
+
+## Changes (M1-040)
+
+Built as ADR-068 describes, with three departures: the words are kept per text in stored
+columns (summary, description, environment, each comment), not one weighted vector per ticket,
+so a field's search is exact in the index and a phrase stays inside its field; comments cannot
+share the ticket's vector because some are restricted to a role or group; and the configuration
+is English stemming without stop words (`taskmoor_search`), the only language the product
+ships. `pg_trgm` serves patterns (`*Exception`) on summaries and custom text values; autocomplete
+does not use it yet.

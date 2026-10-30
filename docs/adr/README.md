@@ -69,5 +69,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [062](0062-track-templates.md) | Track templates as recipes over the create route, and configuration copied by reference | Accepted |
 | [063](0063-full-export-format.md) | Full export as canonical NDJSON with source ids, imported verbatim; checked by a translated re-export | Accepted |
 | [064](0064-timeline.md) | The timeline reads dates and roll-ups in one request and reschedules through tickets | Accepted |
+| [068](0068-full-text-search.md) | Full-text search: stemmed word columns, the search syntax as tsquery, relevance, and counts estimated from block samples | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

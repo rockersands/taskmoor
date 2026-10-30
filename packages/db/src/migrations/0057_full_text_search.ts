@@ -1,14 +1,14 @@
 import { type Kysely, sql } from 'kysely';
 
 /**
- * Full-text search (M1-040; QRY-007; ADR-065). Replaces the word indexes of 0043, which read
+ * Full-text search (M1-040; QRY-007; ADR-068). Replaces the word indexes of 0043, which read
  * words as written (`simple`), with stemmed ones kept in stored columns, and adds trigram
  * indexes for patterns on short text.
  *
  * - `taskmoor_search`, a text search configuration: English stemming (the site's language; the
  *   only one the product ships) without stop words, so "the", "not" and "it" are searchable
  *   and a phrase keeps every word. Changing the language later means altering this
- *   configuration and rewriting the columns below (ADR-065).
+ *   configuration and rewriting the columns below (ADR-068).
  * - `taskmoor_document_text(jsonb)`: the text of a rich-text document (ADR-014), the text nodes
  *   of each block joined as written (marks split a word into several nodes) and blocks and hard
  *   breaks apart; null for a document without text.

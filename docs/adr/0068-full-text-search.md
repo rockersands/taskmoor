@@ -1,4 +1,4 @@
-# ADR-065: Full-text search: stemmed word columns, the search syntax as tsquery, relevance, and counts estimated from block samples
+# ADR-068: Full-text search: stemmed word columns, the search syntax as tsquery, relevance, and counts estimated from block samples
 
 - Status: Accepted
 - Date: 2026-10-30
