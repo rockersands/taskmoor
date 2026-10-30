@@ -671,6 +671,27 @@ export const EVENT_TYPES = {
     }),
   },
   'workflow.deleted': { subject: 'workflow', payload: z.object({ name: z.string() }) },
+  /** A workflow version taken out as a file in Taskmoor's own format (M1-127, WF-011). */
+  'workflow.exported': {
+    subject: 'workflow',
+    payload: z.object({ version: z.number().int().positive() }),
+  },
+  /**
+   * A workflow file read in (M1-127, WF-011): a new workflow (its version 1) or a new draft of
+   * one. Statuses the workspace lacked were created with it; `problems` counts what the file
+   * named that the workspace has no match for (reported to the administrator).
+   */
+  'workflow.imported': {
+    subject: 'workflow',
+    payload: z.object({
+      name: z.string(),
+      version: z.number().int().positive(),
+      draft: z.boolean(),
+      createdStatusIds: z.array(id),
+      problems: z.number().int().min(0),
+      trackId: id.optional(),
+    }),
+  },
   // Workflow maps (M1-028): which workflow each ticket type uses. Entries are ticket type id to
   // workflow id.
   'workflow_map.created': {

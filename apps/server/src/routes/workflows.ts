@@ -2,6 +2,7 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
+import { contentDisposition } from '../attachments/filename';
 import { requireGlobal, requireUser, type SessionUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
@@ -23,6 +24,14 @@ import {
   type WorkflowDefinition,
 } from '../workflows/model';
 import { holdWorkflow, loadDefinition, remapStatuses, ticketsInStatuses } from '../workflows/store';
+import {
+  documentRefusal,
+  documentSchema,
+  MissingStatus,
+  unlistedStatus,
+  type WorkflowDocument,
+} from '../workflows/transfer';
+import { exportDocument, type ImportResult, importDocument } from '../workflows/transfer-store';
 
 /**
  * Statuses and workflows (M1-023; CORE-014, WF-001, WF-002; spec 01a sections 1.6 and 3).
@@ -45,6 +54,11 @@ import { holdWorkflow, loadDefinition, remapStatuses, ticketsInStatuses } from '
  * - Which tracks use a workflow ("used by", the impact of a publish) comes from the workflow
  *   maps that name it; a publish waits while a status migration runs over one of those tracks
  *   (409 `status_migration_running`).
+ *
+ * - A workflow version goes out as a file in Taskmoor's own format and comes back into this
+ *   or another workspace as a new workflow or a new draft of one (M1-127, WF-011,
+ *   `/api/v1/admin/workflows`; `workflows/transfer.ts`): statuses match by name or are
+ *   created, and the answer reports what the file named that the workspace has no match for.
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -70,6 +84,31 @@ const updateWorkflowBody = z.object({ name, description }).partial().strict();
 /** For each status a draft drops that tickets are in: the status they go to. */
 const statusMapping = z.record(z.string().regex(/^\d{1,10}$/), id);
 const publishBody = z.object({ statusMapping: statusMapping.optional() }).strict();
+/** Workflow files (M1-127): the document is checked on its own, for a precise refusal. */
+const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+const importNewBody = z
+  .object({
+    document: z.unknown(),
+    /** The new workflow's name and description; the document's when left out. */
+    name: name.optional(),
+    description: description.optional(),
+    trackId: id.optional(),
+  })
+  .strict();
+const importDraftBody = z.object({ document: z.unknown() }).strict();
+
+/** An import whose result cannot be saved: nothing it did stays (the transaction rolls back). */
+class ImportRefused extends Error {
+  constructor(readonly detail: unknown) {
+    super('import refused');
+  }
+}
+
+/** What an import answers beside the workflow: how statuses came in, and what did not map. */
+const reportOf = (result: ImportResult) => ({
+  statuses: result.statuses,
+  problems: result.problems,
+});
 
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -687,6 +726,33 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     }
   });
 
+  /** Writes a definition as the draft, after the published version; its version, or null. */
+  async function writeDraft(
+    trx: Transaction<Database>,
+    request: FastifyRequest,
+    workflowId: number,
+    definition: WorkflowDefinition,
+  ): Promise<{ version: number; name: string } | null> {
+    const ws = request.workspaceId;
+    const row = await trx
+      .selectFrom('workflow')
+      .select(['id', 'name', 'published_version', 'draft_version'])
+      .where('id', '=', workflowId)
+      .where('workspace_id', '=', ws)
+      .forNoKeyUpdate()
+      .executeTakeFirst();
+    if (!row) return null;
+    const version = row.draft_version ?? row.published_version + 1;
+    // A draft number may have been used by a discarded draft: it is replaced.
+    await writeVersion(trx, ws, row.id, version, definition, request.user?.id ?? null, false);
+    await trx
+      .updateTable('workflow')
+      .set({ draft_version: version, updated_at: new Date() })
+      .where('id', '=', row.id)
+      .execute();
+    return { version, name: row.name };
+  }
+
   /** Saves a definition as the draft, after the published version. */
   async function saveDraft(
     request: FastifyRequest,
@@ -694,30 +760,15 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     definition: WorkflowDefinition,
     restoredFrom: number | null,
   ) {
-    const ws = request.workspaceId;
     return db.transaction().execute(async (trx) => {
-      const row = await trx
-        .selectFrom('workflow')
-        .select(['id', 'published_version', 'draft_version'])
-        .where('id', '=', workflowId)
-        .where('workspace_id', '=', ws)
-        .forNoKeyUpdate()
-        .executeTakeFirst();
-      if (!row) return null;
-      const version = row.draft_version ?? row.published_version + 1;
-      // A draft number may have been used by a discarded draft: it is replaced.
-      await writeVersion(trx, ws, row.id, version, definition, request.user?.id ?? null, false);
-      await trx
-        .updateTable('workflow')
-        .set({ draft_version: version, updated_at: new Date() })
-        .where('id', '=', row.id)
-        .execute();
+      const draft = await writeDraft(trx, request, workflowId, definition);
+      if (!draft) return null;
       await emit(trx, by(request), {
         type: 'workflow.draft_saved',
-        subjectId: row.id,
-        payload: { version, restoredFrom },
+        subjectId: workflowId,
+        payload: { version: draft.version, restoredFrom },
       });
-      return version;
+      return draft.version;
     });
   }
 
@@ -975,4 +1026,198 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     }
     return reply.code(204).send();
   });
+
+  // Workflow files (M1-127, WF-011): Taskmoor's own format, read by any workspace.
+
+  /** The document in a body, or the refusal sent. */
+  async function readDocument(
+    reply: FastifyReply,
+    body: unknown,
+  ): Promise<WorkflowDocument | null> {
+    const refusal = documentRefusal(body);
+    if (refusal) {
+      await reply.code(400).send({ error: refusal });
+      return null;
+    }
+    const parsed = documentSchema.safeParse(body);
+    if (!parsed.success) {
+      await invalid(reply, {
+        document: parsed.error.issues
+          .slice(0, 10)
+          .map((i) => ({ path: i.path.join('.'), message: i.message })),
+      });
+      return null;
+    }
+    const unlisted = unlistedStatus(parsed.data);
+    if (unlisted !== null) {
+      await invalid(reply, {
+        document: [{ path: 'statuses', message: `status ${unlisted} is not in the table` }],
+      });
+      return null;
+    }
+    return parsed.data;
+  }
+
+  /** A definition an import made, checked as a saved one is; refused otherwise. */
+  async function checkImported(trx: Transaction<Database>, ws: number, result: ImportResult) {
+    const problem = definitionProblem(result.definition, await knownStatuses(trx, ws));
+    if (problem) throw new ImportRefused(problem);
+  }
+
+  app.get('/api/v1/admin/workflows/:id/export', async (request, reply) => {
+    if (!(await workflowAccess(request, reply, false))) return reply;
+    const params = z.object({ id }).safeParse(request.params);
+    const query = z.object({ version: id.optional() }).strict().safeParse(request.query);
+    if (!params.success || !query.success) return invalid(reply);
+    const ws = request.workspaceId;
+    const row = await workflowRow(ws, params.data.id);
+    if (!row) return notFound(reply);
+    const version = query.data.version ?? row.published_version;
+    const stored = await db
+      .selectFrom('workflow_version')
+      .select('definition')
+      .where('workflow_id', '=', row.id)
+      .where('version', '=', version)
+      .executeTakeFirst();
+    if (!stored) return notFound(reply);
+    let document: WorkflowDocument;
+    try {
+      document = await exportDocument(db, ws, row, definitionSchema.parse(stored.definition));
+    } catch (error) {
+      if (!(error instanceof MissingStatus)) throw error;
+      // An earlier version naming a status deleted since (the current ones keep theirs).
+      return reply.code(409).send({ error: 'unknown_status', statusId: error.statusId });
+    }
+    await emit(db, by(request), {
+      type: 'workflow.exported',
+      subjectId: row.id,
+      payload: { version },
+    });
+    return reply
+      .header('content-type', 'application/json; charset=utf-8')
+      .header('content-disposition', contentDisposition('attachment', `${row.name}.workflow.json`))
+      .send(`${JSON.stringify(document, null, 2)}\n`);
+  });
+
+  // A new workflow from a file, published as its version 1 like any new workflow.
+  app.post(
+    '/api/v1/admin/workflows/import',
+    { bodyLimit: MAX_DOCUMENT_BYTES },
+    async (request, reply) => {
+      const user = requireUser(request, reply);
+      if (!user) return reply;
+      const parsed = importNewBody.safeParse(request.body);
+      if (!parsed.success) {
+        return (await configAdmin(request, reply)) ? invalid(reply) : reply;
+      }
+      const ws = request.workspaceId;
+      const trackId = parsed.data.trackId ?? null;
+      if (trackId === null) {
+        if (!(await configAdmin(request, reply))) return reply;
+      } else {
+        if (!(await mayConfigureTrack(request, reply, trackId, true))) return reply;
+        const track = await db
+          .selectFrom('track')
+          .select('mode')
+          .where('id', '=', trackId)
+          .executeTakeFirstOrThrow();
+        if (track.mode !== 'local') {
+          return invalid(reply, 'a shared-mode track uses shared workflows');
+        }
+      }
+      const document = await readDocument(reply, parsed.data.document);
+      if (!document) return reply;
+      await enforceLimit(db, ws, 'statuses_per_workflow', document.definition.statuses.length);
+      const workflowName = parsed.data.name ?? document.workflow.name;
+      try {
+        const done = await db.transaction().execute(async (trx) => {
+          const result = await importDocument(trx, ws, document, trackId);
+          await checkImported(trx, ws, result);
+          const row = await trx
+            .insertInto('workflow')
+            .values({
+              workspace_id: ws,
+              name: workflowName,
+              description: parsed.data.description ?? document.workflow.description,
+              owner_track_id: trackId,
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await writeVersion(trx, ws, row.id, 1, result.definition, user.id, true);
+          await emit(trx, by(request), {
+            type: 'workflow.imported',
+            subjectId: row.id,
+            payload: {
+              name: workflowName,
+              version: 1,
+              draft: false,
+              createdStatusIds: result.statuses
+                .filter((s) => s.outcome === 'created')
+                .map((s) => s.statusId),
+              problems: result.problems.length,
+              ...(trackId !== null ? { trackId } : {}),
+            },
+          });
+          return { workflowId: row.id, result };
+        });
+        return reply.code(201).send({
+          workflow: await workflowView(ws, done.workflowId),
+          report: reportOf(done.result),
+        });
+      } catch (error) {
+        if (error instanceof ImportRefused) return invalid(reply, error.detail);
+        if (uniqueViolation(error) === 'workflow_name_idx') {
+          return reply.code(409).send({ error: 'name_taken' });
+        }
+        throw error;
+      }
+    },
+  );
+
+  // A file as the next draft of a workflow, to check and publish like any other draft.
+  app.post(
+    '/api/v1/admin/workflows/:id/import',
+    { bodyLimit: MAX_DOCUMENT_BYTES },
+    async (request, reply) => {
+      const access = await workflowAccess(request, reply, true);
+      if (!access) return reply;
+      const params = z.object({ id }).safeParse(request.params);
+      const parsed = importDraftBody.safeParse(request.body);
+      if (!params.success || !parsed.success) return invalid(reply);
+      const document = await readDocument(reply, parsed.data.document);
+      if (!document) return reply;
+      const ws = request.workspaceId;
+      await enforceLimit(db, ws, 'statuses_per_workflow', document.definition.statuses.length);
+      try {
+        const done = await db.transaction().execute(async (trx) => {
+          const result = await importDocument(trx, ws, document, access.ownerTrackId);
+          await checkImported(trx, ws, result);
+          const draft = await writeDraft(trx, request, params.data.id, result.definition);
+          // Deleted meanwhile: nothing the import created stays.
+          if (!draft) throw new ImportRefused(null);
+          await emit(trx, by(request), {
+            type: 'workflow.imported',
+            subjectId: params.data.id,
+            payload: {
+              name: draft.name,
+              version: draft.version,
+              draft: true,
+              createdStatusIds: result.statuses
+                .filter((s) => s.outcome === 'created')
+                .map((s) => s.statusId),
+              problems: result.problems.length,
+              ...(access.ownerTrackId !== null ? { trackId: access.ownerTrackId } : {}),
+            },
+          });
+          return result;
+        });
+        return { workflow: await workflowView(ws, params.data.id), report: reportOf(done) };
+      } catch (error) {
+        if (error instanceof ImportRefused) {
+          return error.detail === null ? notFound(reply) : invalid(reply, error.detail);
+        }
+        throw error;
+      }
+    },
+  );
 }

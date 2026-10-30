@@ -41,6 +41,53 @@ function openPage(handlers: Record<string, Handler> = {}, session = ADMIN) {
   return calls;
 }
 
+/** A workflow file as a Taskmoor server writes it (M1-127); every name is made up. */
+const FILE = {
+  format: 'taskmoor-workflow',
+  version: 1,
+  workflow: { name: 'Support copy', description: '' },
+  statuses: [
+    { id: 1, name: 'Open', stage: 'new', description: '' },
+    { id: 2, name: 'Waiting', stage: 'active', description: '' },
+    { id: 3, name: 'Approved', stage: 'active', description: '' },
+  ],
+  groups: [{ id: 1, name: 'Agents' }],
+  definition: {
+    initialStatusId: 1,
+    statuses: [{ statusId: 1 }, { statusId: 2 }, { statusId: 3 }],
+    transitions: [
+      { id: 1, name: 'Wait', from: [1], to: 2, guards: { type: 'user-in-group', group: '1' } },
+    ],
+  },
+};
+const REPORT = {
+  statuses: [
+    { name: 'Open', stage: 'new', statusId: S.Open, outcome: 'matched' },
+    { name: 'Waiting', stage: 'active', statusId: 77, outcome: 'created' },
+    {
+      name: 'Approved',
+      stage: 'active',
+      statusId: S.Approved,
+      outcome: 'matched',
+      stageHere: 'closed',
+    },
+  ],
+  problems: [
+    {
+      kind: 'group',
+      name: 'Agents',
+      rule: 'user-in-group',
+      outcome: 'guard_never_passes',
+      transition: { id: 1, name: 'Wait' },
+    },
+    { kind: 'role', name: 'Leads', rule: 'edit', outcome: 'narrowed', status: 'Waiting' },
+  ],
+};
+const fileOf = (content: unknown, name = 'support.workflow.json') =>
+  new File([typeof content === 'string' ? content : JSON.stringify(content)], name, {
+    type: 'application/json',
+  });
+
 const workflowItem = async (name: string) => {
   const list = await screen.findByRole('list', { name: 'Workflows in this workspace' });
   const item = within(list)
@@ -210,6 +257,125 @@ describe('workflows administration (M1-030)', () => {
     expect(
       await screen.findByText('Only site and configuration administrators manage workflows.'),
     ).toBeVisible();
+  });
+
+  it("[WF-011] downloads each workflow as a file in Taskmoor's own format", async () => {
+    openPage();
+    window.location.hash = '#/admin/workflows';
+    const support = await workflowItem('Support');
+    const download = within(support).getByRole('link', {
+      name: 'Download Support as a workflow file',
+    });
+    expect(download).toHaveAttribute('href', '/api/v1/admin/workflows/2/export');
+    expect(download).toHaveAttribute('download');
+  });
+
+  it('[WF-011] imports a file as a new workflow and reports what was not found here', async () => {
+    const user = userEvent.setup();
+    const calls = openPage({
+      'POST /admin/workflows/import': () =>
+        jsonResponse(201, {
+          workflow: { ...SUPPORT_WORKFLOW, id: 9, name: 'Support copy', draft: null },
+          report: REPORT,
+        }),
+    });
+    window.location.hash = '#/admin/workflows';
+    await user.click(await screen.findByRole('button', { name: 'Import a workflow' }));
+    const form = screen.getByRole('form', { name: 'Import a workflow file' });
+    const input = within(form).getByLabelText('Workflow file');
+    expect(input).toHaveFocus();
+    await user.click(within(form).getByRole('button', { name: 'Import' }));
+    expect(within(form).getByRole('alert')).toHaveTextContent('Choose a workflow file.');
+    await user.upload(input, fileOf(FILE));
+    // The name comes from the file, and can be changed.
+    await waitFor(() => expect(within(form).getByLabelText('Name')).toHaveValue('Support copy'));
+    await user.click(within(form).getByRole('button', { name: 'Import' }));
+    const report = await screen.findByRole('region', { name: 'Imported Support copy' });
+    expect(within(report).getByRole('heading', { name: 'Imported Support copy' })).toHaveFocus();
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
+      document: FILE,
+      name: 'Support copy',
+    });
+    const lines = within(report)
+      .getAllByRole('listitem')
+      .map((li) => li.textContent);
+    expect(lines).toEqual([
+      'Open: found here by name',
+      'Waiting: created, in the Active stage',
+      'Approved: found here by name, but it is in the Closed stage here and in the Active stage in the file',
+      'Group Agents, in the transition Wait: the guard that names it never passes.',
+      'Role Leads, in the edit lock of the status Waiting: left out of the list.',
+    ]);
+    expect(within(report).getByRole('link', { name: 'Open Support copy' })).toHaveAttribute(
+      'href',
+      '#/admin/workflows/9',
+    );
+  });
+
+  it('[WF-011] imports a file as the next draft of a workflow, and says why a file is refused', async () => {
+    const user = userEvent.setup();
+    let answer = jsonResponse(400, { error: 'unsupported_version' });
+    const calls = openPage({ 'POST /admin/workflows/2/import': () => answer });
+    window.location.hash = '#/admin/workflows';
+    await user.click(await screen.findByRole('button', { name: 'Import a workflow' }));
+    const form = screen.getByRole('form', { name: 'Import a workflow file' });
+    await user.upload(within(form).getByLabelText('Workflow file'), fileOf('not json'));
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'This file is not JSON. Choose a workflow file downloaded from Taskmoor.',
+    );
+    await user.upload(within(form).getByLabelText('Workflow file'), fileOf(FILE));
+    await user.selectOptions(within(form).getByLabelText('Import as'), '2');
+    expect(within(form).queryByLabelText('Name')).toBeNull();
+    await user.click(within(form).getByRole('button', { name: 'Import' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'This workflow file comes from a newer version of Taskmoor. Update this server to import it.',
+    );
+    answer = jsonResponse(400, {
+      error: 'invalid_request',
+      detail: { document: [{ path: 'statuses.0.stage', message: 'Invalid option' }] },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Import' }));
+    await waitFor(() =>
+      expect(within(form).getByRole('alert')).toHaveTextContent(
+        'The workflow file is damaged at statuses.0.stage, so nothing was imported.',
+      ),
+    );
+    answer = jsonResponse(200, {
+      workflow: { ...SUPPORT_WORKFLOW, draft: { ...SUPPORT_WORKFLOW.published, version: 3 } },
+      report: { statuses: REPORT.statuses.slice(0, 1), problems: [] },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Import' }));
+    const report = await screen.findByRole('region', { name: 'Imported Support' });
+    expect(report).toHaveTextContent(
+      'It is the draft, version 3: check it in the editor and publish it when it is right.',
+    );
+    expect(report).toHaveTextContent('Everything else the file names was found here.');
+    expect(calls.filter((c) => c.path === '/admin/workflows/2/import')).toHaveLength(3);
+  });
+
+  it('[WF-011] words the import report through the catalogue (pseudo-locale)', async () => {
+    const user = userEvent.setup();
+    const errors: Error[] = [];
+    stubBackend({
+      'GET /workflows': () => jsonResponse(200, { workflows: SUMMARIES }),
+      'GET /statuses': () => jsonResponse(200, { statuses: STATUSES }),
+      'POST /admin/workflows/import': () =>
+        jsonResponse(201, { workflow: { ...SUPPORT_WORKFLOW, id: 9 }, report: REPORT }),
+    });
+    window.location.hash = '#/admin/workflows';
+    render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
+    const main = screen.getByRole('main');
+    const buttons = await within(main).findAllByRole('button', { expanded: false });
+    await user.click(buttons[0] as HTMLElement);
+    const form = within(main).getByRole('form');
+    const [input] = within(form).getAllByLabelText(/.+/);
+    await user.upload(input as HTMLElement, fileOf(FILE));
+    await user.click(within(form).getAllByRole('button')[0] as HTMLElement);
+    await waitFor(() => expect(main.querySelector('.workflow-import-report')).not.toBeNull());
+    const texts = visibleTexts(main.querySelector('.workflow-import-report') as HTMLElement);
+    expect(texts.length).toBeGreaterThan(8);
+    expect(untranslated(texts)).toEqual([]);
+    expect(errors).toEqual([]);
   });
 
   it('[WF-002] passes the pseudo-locale check', async () => {

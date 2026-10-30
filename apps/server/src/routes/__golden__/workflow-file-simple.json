@@ -1,0 +1,41 @@
+{
+  "format": "taskmoor-workflow",
+  "version": 1,
+  "workflow": {
+    "name": "Simple",
+    "description": "The simple fixture"
+  },
+  "statuses": [
+    {
+      "id": 1,
+      "name": "New",
+      "stage": "new",
+      "description": ""
+    },
+    {
+      "id": 2,
+      "name": "Closed",
+      "stage": "closed",
+      "description": ""
+    }
+  ],
+  "definition": {
+    "initialStatusId": 1,
+    "statuses": [
+      {
+        "statusId": 1
+      },
+      {
+        "statusId": 2
+      }
+    ],
+    "transitions": [
+      {
+        "id": 1,
+        "name": "Done",
+        "from": "any",
+        "to": 2
+      }
+    ]
+  }
+}

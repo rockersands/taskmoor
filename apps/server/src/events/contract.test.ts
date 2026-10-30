@@ -85,7 +85,11 @@ const IMPORT_JOB_EVENTS: readonly EventType[] = ['import_run.finished'];
  * The full export (M1-098) is a read (`GET /api/v1/admin/export`, and the CLI) that is audited:
  * checked by `export/export.test.ts`.
  */
-const EXPORT_EVENTS: readonly EventType[] = ['workspace.exported'];
+const EXPORT_EVENTS: readonly EventType[] = [
+  'workspace.exported',
+  // A workflow file downloaded (M1-127): checked by `routes/workflow-transfer.test.ts`.
+  'workflow.exported',
+];
 const PASSWORD = 'ladder violet harbour';
 
 function sessionCookie(res: LightMyRequestResponse): string {
@@ -2053,6 +2057,37 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'workflow.published',
       run: () =>
         admin({ method: 'POST', url: `/api/v1/workflows/${state.workflow}/publish`, payload: {} }),
+    },
+    {
+      route: 'POST /api/v1/admin/workflows/import',
+      expect: 'workflow.imported',
+      prepare: async () => {
+        // The default workflow's file: its statuses outlive the scenarios that delete one.
+        const list = await admin({ method: 'GET', url: '/api/v1/workflows' });
+        const fallback = list.json().workflows.find((w: { isDefault: boolean }) => w.isDefault)
+          ?.id as number;
+        const file = await admin({
+          method: 'GET',
+          url: `/api/v1/admin/workflows/${fallback}/export`,
+        });
+        state.workflowFile = file.body;
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: '/api/v1/admin/workflows/import',
+          payload: { document: JSON.parse(String(state.workflowFile)), name: 'Imported workflow' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/admin/workflows/:id/import',
+      expect: 'workflow.imported',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/admin/workflows/${state.workflow}/import`,
+          payload: { document: JSON.parse(String(state.workflowFile)) },
+        }),
     },
     {
       route: 'POST /api/v1/workflow-maps',
