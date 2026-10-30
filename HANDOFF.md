@@ -121,6 +121,13 @@ after it: fresh databases do not mind; a long-lived one that ran 0062 first must
 - Syslog forwarding runs in the worker by cursor (`audit_syslog.last_seq`), at least once.
 - External people (IAM-004), decided by the user on 2026-10-30: anyone whose email is not at one
   of the organization's domains (Security page) must use two-factor; nothing else differs.
+## 2026-10-30: M1-126 board-managed workflow
+
+ADR-079; migration **0063** (0060 to 0062 are M1-123, M1-124 and M1-085).
+- The managed workflow is an ordinary versioned workflow with `definition.board`; the board
+  rewrites and publishes it on every column change (`workflows/board-managed.ts`).
+- One `board.updated` event carries the workflow change (M1-005: one event per mutation).
+- `writeVersion` now lives in `workflows/store.ts`.
 
 ## 2026-10-30: M1-066 rate limits and API usage
 

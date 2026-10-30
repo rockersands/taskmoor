@@ -61,6 +61,36 @@ describe('board settings (M1-043)', () => {
     await waitFor(() => expect(client.patches[1]?.teamId).toBeNull());
   });
 
+  it('[WF-010] lets the columns become the track’s statuses, and hides the status mapping', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    await ready();
+    const managed = screen.getByRole('checkbox', {
+      name: 'This board’s columns are its track’s statuses',
+    });
+    expect(managed).not.toBeChecked();
+    expect(screen.getByRole('table', { name: 'Which column shows each status' })).toBeVisible();
+    await user.click(managed);
+    expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
+    expect(managed).toBeChecked();
+    expect(managed).toHaveAccessibleDescription(/A new column gets a status of its own/);
+    expect(screen.queryByRole('table', { name: 'Which column shows each status' })).toBeNull();
+  });
+
+  it('[WF-010] explains why a board cannot manage its workflow', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient();
+    client.manageWorkflow = async () => ({ ok: false, problem: 'shared_mode_track' });
+    renderSettings(client);
+    await ready();
+    await user.click(
+      screen.getByRole('checkbox', { name: 'This board’s columns are its track’s statuses' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Only a board of a local-mode track can manage its workflow.',
+    );
+  });
+
   it('[AGL-004] [AGL-005] sets the lanes and orders the board filters', async () => {
     const user = userEvent.setup();
     const client = renderSettings();

@@ -1187,6 +1187,20 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           '{"key": "SEED-58", "attachments": 0, "links": 1, "webLinks": 0, "left": []}'::jsonb
           FROM bulk_operation o, ticket k
          WHERE o.action = 'clone' AND k.summary = 'Seed search'`.execute(db);
+  '0063_board_workflow': {
+    tables: {
+      board: "name = 'Seed managed board' AND manages_workflow",
+    },
+    seed: async (db) => {
+      // A board that manages its track's workflow.
+      await sql`INSERT INTO board (workspace_id, name, kind, location_track_id, filter_query,
+          columns, swimlanes, card_rules, manages_workflow)
+        SELECT 1, 'Seed managed board', 'kanban', t.id, 'track = SEED',
+               '[{"id": "c1", "name": "New", "statusIds": [], "min": null, "max": null}]'::jsonb,
+               '{"mode": "none", "lanes": [], "unassigned": "last", "otherName": "Everything else"}'::jsonb,
+               '{"colourBy": "type", "colours": [], "fields": [], "daysInColumn": true}'::jsonb,
+               true
+          FROM track t WHERE t.key = 'SEED'`.execute(db);
     },
   },
 };

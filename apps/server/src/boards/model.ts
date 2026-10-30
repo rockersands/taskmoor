@@ -194,6 +194,11 @@ export const createBoardBody = z
 export const updateBoardBody = z
   .object({
     version: z.number().int().positive().optional(),
+    /**
+     * For a board that manages its workflow (M1-126): where the tickets of a removed column go,
+     * by status id; the leftmost column otherwise.
+     */
+    statusMapping: z.record(z.string().regex(/^\d{1,10}$/), id).optional(),
     name: name.optional(),
     description: z.string().max(10_000).optional(),
     kind: z.enum(BOARD_KINDS).optional(),

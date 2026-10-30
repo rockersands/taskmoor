@@ -752,7 +752,26 @@ export const EVENT_TYPES = {
       query: z.string(),
     }),
   },
-  'board.updated': { subject: 'board', payload: z.object({ changes }) },
+  /**
+   * `workflow` when the board manages its track's workflow (M1-126): what its columns did to
+   * it, told here because a mutation emits one event.
+   */
+  'board.updated': {
+    subject: 'board',
+    payload: z.object({
+      changes,
+      workflow: z
+        .object({
+          workflowId: id,
+          version: z.number().int().positive(),
+          createdWorkflow: z.boolean(),
+          createdStatusIds: z.array(id),
+          removedStatusIds: z.array(id),
+          ticketsMoved: z.number().int().min(0),
+        })
+        .optional(),
+    }),
+  },
   'board.deleted': { subject: 'board', payload: z.object({ name: z.string() }) },
   // Sprints (M1-044): a board's sprint lifecycle and its tickets. `afterStart` marks scope
   // change; `sprint.completed` counts where the tickets went (AGL-010, AGL-011).

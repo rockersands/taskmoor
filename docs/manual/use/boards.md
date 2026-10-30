@@ -84,6 +84,7 @@ has these sections, saved together with **Save settings**:
 |---|---|
 | **Board** | **Name**, **Kind**, **Team** (the team whose board this is, or **No team**), **Tickets (a query)** and **Sub-filter (optional)**, a second query that tickets must also match, for example to hide shipped work |
 | **Columns** | Each column's name, **Minimum** and **Maximum**; **Add a column**; move or remove columns |
+| **This board's columns are its track's statuses** | On a local-mode track: each column is a status, any card goes to any column, and the rightmost closes tickets as Completed ([board-managed workflows](../admin/workflows.md#board-managed-workflows)) |
 | **Which column shows each status** | A column for each status, or **None (unmapped)** |
 | **Swimlanes** | **Group cards**: **Not at all**, **By queries**, **By assignee** or **By parent**; for assignee lanes, whether **Unassigned tickets** come **First** or **Last**; for query lanes, each lane's name and query and the name of the lane for everything else |
 | **Board filters** | Each filter's name, query and description; **Show board filters as** **Buttons** or **A menu** |
