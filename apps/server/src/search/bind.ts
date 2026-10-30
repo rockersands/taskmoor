@@ -18,6 +18,7 @@ import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
 import type { SideTable } from '../fields/storage';
 import { masterTextSet } from './compile';
+import { COUNT_CAP } from './count';
 import type {
   Bound,
   Cond,
@@ -358,21 +359,28 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
 }
 
 /**
- * Matches the planner expects of a master text search beyond which walking the order and
- * testing each ticket beats starting from the word indexes (M1-040).
+ * When testing each ticket while walking the order beats starting from the word indexes for a
+ * master text search, by the planner's estimate `m` of its matches among `n` tickets (M1-040).
+ * Reading a match out of the set (the word indexes, a hash of the ids, a fetch by primary key)
+ * costs about four times testing a row in the walk, which stops once it has what it needs:
  *
- * - A page: at least 5,000 and 0.3% of the tickets. At 10M tickets a word in 0.3% of them fills
- *   a page within about 17,000 tickets walked, and its 30,000 matches sort in about as long.
- * - A count, which reads matches until one past the cap (10,000): at least 50,000 and 5% of the
- *   tickets, so 10,001 matches come within about 200,000 tickets walked. Below that, walking
- *   would read most of the table to count fewer; at 200,000 tickets a word in 9,651 of them took
- *   305 ms to count by walking.
- * - Relevance ranks every match, so ordering by it always starts from the word indexes.
+ * - a page needs 51 matches: from 5,000 matches and 0.3% of the tickets (at 10M a word in 0.3%
+ *   of them fills a page within about 17,000 tickets walked; its 30,000 matches sort in about as
+ *   long);
+ * - a count needs one past its cap (10,000): from twice the cap and `sqrt(cap · n / 4)` matches,
+ *   where walking to 10,001 of them costs less than reading all from the set (at 200,000 tickets
+ *   22,000; at 10M 158,000). Below the cap walking would read the whole table;
+ * - relevance ranks every match: walking reads every ticket, the set every match four times
+ *   over, so from 5,000 matches and a quarter of the tickets.
+ *
+ * Measured at 200,000 tickets: a prefix with 28,000 matches counted in 917 ms from the set and
+ * 101 ms walking; a word in 84,000 tickets ordered by relevance took 1,007 ms from the set and
+ * 185 ms walking.
  */
-const PER_ROW = {
-  page: { least: 5_000, share: 0.003 },
-  count: { least: 50_000, share: 0.05 },
-};
+const perRowPage = (m: number, n: number) => m >= Math.max(5_000, 0.003 * n);
+const perRowCount = (m: number, n: number) =>
+  m >= Math.max(2 * COUNT_CAP, Math.sqrt((COUNT_CAP * n) / 4));
+const perRowRanked = (m: number, n: number) => m >= Math.max(5_000, n / 4);
 
 /**
  * Chooses the form of each master text search (`compile.ts`, `masterText`) from the planner's
@@ -391,8 +399,6 @@ async function textForms(db: Db, workspaceId: number, where: Cond, ranked: boole
     SELECT greatest(reltuples, 0)::float8 AS n FROM pg_class
      WHERE oid = 'ticket'::regclass`.execute(db);
   const tickets = rows[0]?.n ?? 0;
-  const over = (estimate: number, t: { least: number; share: number }) =>
-    estimate >= Math.max(t.least, t.share * tickets);
   for (const c of texts) {
     // Expanded words always start from the word indexes (`expands`).
     if (expands(c.search)) continue;
@@ -403,8 +409,8 @@ async function textForms(db: Db, workspaceId: number, where: Cond, ranked: boole
     }>`EXPLAIN (FORMAT JSON) ${set}`.execute(db);
     const estimate = plan.rows[0]?.['QUERY PLAN'][0]?.Plan['Plan Rows'] ?? 0;
     c.perRow = {
-      page: !ranked && over(estimate, PER_ROW.page),
-      count: over(estimate, PER_ROW.count),
+      page: ranked ? perRowRanked(estimate, tickets) : perRowPage(estimate, tickets),
+      count: perRowCount(estimate, tickets),
     };
   }
 }

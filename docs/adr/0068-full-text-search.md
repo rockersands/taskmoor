@@ -92,15 +92,22 @@ indexed text:
 reads, or a text field matches. Two forms, chosen when the query is bound from the planner's
 estimate of the matches (one `EXPLAIN` of the set form, a millisecond or two):
 
-- **Few matches** (fewer than 5,000 and 0.3% of the tickets): one set of ids that does not
-  depend on the row, `k.id IN (tickets UNION ALL comments UNION ALL text fields)`; the planner
-  starts from the word indexes and sorts the few matches. An OR of the five places can only
-  walk the order, which reads the whole table for a rare word. The comment branch reads each
-  matching comment's track by primary key, so it stays one table (a join made the planner hash
-  the whole ticket table).
-- **Many matches:** an OR of the five places as a test of the row, so walking the order stops
-  after a page. The set form would read every match first: Postgres estimates the distinct ids
-  of a UNION ALL at 200 whatever they are, so it always starts from the set.
+- **A set:** ids that do not depend on the row, `k.id IN (tickets UNION ALL comments UNION ALL
+  text fields)`; the planner starts from the word indexes and sorts the matches. An OR of the
+  five places can only walk the order, which reads the whole table for a rare word. The comment
+  branch reads each matching comment's track by primary key, so it stays one table (a join made
+  the planner hash the whole ticket table).
+- **A test per row:** an OR of the five places, so walking the order stops after a page. The set
+  form reads every match first: Postgres estimates the distinct ids of a UNION ALL at 200
+  whatever they are, so it always starts from the set.
+
+A page tests per row from 5,000 expected matches and 0.3% of the tickets (at 10M a word in 0.3%
+fills a page within about 17,000 tickets walked, and its 30,000 matches sort in about as long).
+A count reads matches until one past its cap, so it tests per row only from 50,000 and 5%:
+below that, walking reads most of the table to count fewer matches (305 ms for a word in 9,651
+of 200,000 tickets). Ordering by relevance ranks every match, so it always takes the set; the
+count and the page are compiled separately for that reason. Searches with a `?` or fuzzy word
+always take the set (above).
 
 ### Relevance
 

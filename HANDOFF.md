@@ -38,12 +38,15 @@ migration **0057** `0057_full_text_search.ts`.
   substring search on short text): the user may want to confirm or drop them.
 - **Compile** (`search/text.ts`, `search/compile.ts`): one `to_tsquery('taskmoor_search', $n)`
   parameter per search with quoted operands; `?` and fuzzy words expand into the words they
-  stand for and are read by probing the word index once per word (`matchesFrom`) into an id
+  stand for and are read by probing the word index once per word (`matchesFrom`, a fenced `LATERAL`
+  subquery per word) into an id
   array (`k.id = ANY(ARRAY(...))`), because the planner takes an OR of hundreds of unknown
   words for most of the table. `text ~` has two forms chosen in `bind.ts` `textForms` from an
-  `EXPLAIN` of the set form: a set of ids (`k.id IN (... UNION ALL ...)`) for fewer than
-  max(5,000, 0.3% of tickets) expected matches, an OR tested per row otherwise (Postgres
-  estimates a UNION ALL's distinct ids at 200, so the set form always reads every match first).
+  `EXPLAIN` of the set form (`perRow`): a set of ids (`k.id IN (... UNION ALL ...)`), or an OR
+  tested per row for a page from max(5,000, 0.3% of tickets) expected matches and for a count
+  from max(50,000, 5%); ordering by relevance always takes the set (Postgres estimates a UNION
+  ALL's distinct ids at 200, so the set form always reads every match first). The count and
+  sample statements are compiled with `purpose: 'count'`.
   The comment branch reads each comment's track by key (`commentReadableSql` takes a `track`
   expression now; `CompileOptions.commentsOf`, passed by search, boards and webhooks).
 - **`ORDER BY relevance`**: a system field of type `relevance` (no operators; refused without a
