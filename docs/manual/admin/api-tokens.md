@@ -1,7 +1,7 @@
 ---
 title: "API tokens and service accounts"
 audience: admins
-sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md
+sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, docs/adr/0075-rate-limits.md
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -182,6 +182,7 @@ When a request carries a bearer token, the server does not look at any session c
 | `403 insufficient_scope` | The route needs a scope the token lacks; `requiredScope` and the `WWW-Authenticate` header name it |
 | `403 session_required` | The route needs a signed-in browser, such as managing your own tokens |
 | `429 too_many_attempts` | Too many failed attempts from this address (below) |
+| `429 rate_limited` | Over a rate limit; wait as `Retry-After` says (below) |
 
 ## Throttling and rate limits
 
@@ -193,8 +194,28 @@ A broken script and a person mistyping a password therefore do not lock each oth
 Behind a reverse proxy, set `TASKMOOR_TRUSTED_PROXIES` so the count follows the real client
 address rather than the proxy's; see [Configuration reference](configuration.md).
 
-Taskmoor does not yet limit how many requests a valid token may make, and it has no usage
-dashboard per token.
+Every API request also counts against a rate limit: each token on its own, each signed-in
+person with all their sessions together, and each address for requests with neither. A client
+may send a burst of requests at once, then a steady number a second; changes to one ticket
+have a limit of their own, whoever sends them. Over a limit the answer is `429 rate_limited`
+with the `scope` that was reached (`token`, `user`, `address` or `ticket`), a `Retry-After`
+header and `retryAfterSeconds`. Every answer carries `RateLimit-Limit`, `RateLimit-Remaining`
+and `RateLimit-Reset` (seconds until the bucket is full again), so a script can slow down
+before it is refused.
+
+| Client | Requests a second | Burst |
+|---|---|---|
+| An API token | 50 | 200 |
+| A signed-in person | 50 | 200 |
+| An address without a session or token | 20 | 100 |
+| Changes to one ticket | 10 | 40 |
+
+Site administrators change these under **Settings**, **API usage and limits**, or with
+`PUT /api/v1/admin/rate-limits`; the change is in the audit log. The same page lists the 20
+clients with the most requests in the last hour or day, with their errors and refused
+requests: a token by its name and owner, a person by name, an address as itself
+(`GET /api/v1/admin/api-usage?window=hour`). Each server process counts on its own, so with
+several API processes a client may reach its limit once per process.
 
 ## What the audit log keeps
 

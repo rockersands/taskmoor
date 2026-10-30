@@ -59,6 +59,20 @@
       "CREATE INDEX api_token_workspace_created_idx ON public.api_token USING btree (workspace_id, created_at, id)"
     ]
   },
+  "api_usage": {
+    "columns": [
+      "workspace_id integer not null",
+      "client_kind text not null",
+      "client text not null",
+      "minute timestamp with time zone not null",
+      "requests integer not null default 0",
+      "errors integer not null default 0",
+      "throttled integer not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX api_usage_pkey ON public.api_usage USING btree (workspace_id, minute, client_kind, client)"
+    ]
+  },
   "app_user": {
     "columns": [
       "id integer not null default nextval('app_user_id_seq'::regclass)",
@@ -1117,6 +1131,23 @@
     "indexes": [
       "CREATE UNIQUE INDEX priority_set_member_pkey ON public.priority_set_member USING btree (priority_set_id, priority_id)",
       "CREATE INDEX priority_set_member_priority_idx ON public.priority_set_member USING btree (priority_id)"
+    ]
+  },
+  "rate_limit_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "token_rate integer not null default 50",
+      "token_burst integer not null default 200",
+      "user_rate integer not null default 50",
+      "user_burst integer not null default 200",
+      "address_rate integer not null default 20",
+      "address_burst integer not null default 100",
+      "ticket_write_rate integer not null default 10",
+      "ticket_write_burst integer not null default 40",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX rate_limit_policy_pkey ON public.rate_limit_policy USING btree (workspace_id)"
     ]
   },
   "recovery_code": {

@@ -1115,6 +1115,20 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE k.summary = 'Seed search' AND u.email = 'seed-0055@example.com'`.execute(db);
     },
   },
+  '0059_rate_limits': {
+    tables: {
+      rate_limit_policy: 'token_rate = 80 AND ticket_write_burst = 40',
+      api_usage: "client_kind = 'address' AND requests = 3 AND errors = 1",
+    },
+    seed: async (db) => {
+      // Limits an administrator raised, and a minute of usage by an address.
+      await sql`INSERT INTO rate_limit_policy (workspace_id, token_rate) VALUES (1, 80)`.execute(
+        db,
+      );
+      await sql`INSERT INTO api_usage (workspace_id, client_kind, client, minute, requests, errors)
+        VALUES (1, 'address', '192.0.2.10', '2026-10-30T12:00:00Z', 3, 1)`.execute(db);
+    },
+  },
 };
 
 /**

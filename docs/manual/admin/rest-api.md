@@ -109,7 +109,7 @@ also has `fields`, which says what is wrong with each field.
 | 403 | The token's scope or the person's permissions do not allow it |
 | 404 | No such resource, or one you may not see; the two look the same on purpose |
 | 409 | A version conflict, or a state that refuses the change |
-| 429 | Too many failed attempts; wait as `Retry-After` says |
+| 429 | Too many failed attempts, or over a [rate limit](api-tokens.md#throttling-and-rate-limits); wait as `Retry-After` says |
 
 ## Rich text
 
