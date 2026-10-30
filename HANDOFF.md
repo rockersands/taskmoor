@@ -14,6 +14,55 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## Side session 2026-10-30: M1-087 synthetic Data Center backups
+
+Built on the branch `claude/vigilant-ramanujan-625cc8` in a side session; the main session
+merges it after its own gate. ADR-070; no migration; one new server dependency (`saxes` 6.0.0,
+ISC, already in the lockfile through the spikes).
+
+- **Format notes** `docs/specs/02d-dc-backup-format.md`: the backup ZIP, the entities file, the
+  active-objects file and the attachment layout, in our own words. Every statement cites one of
+  53 numbered public sources (also in `docs/research/sources.md`) or is marked **Verify** (an
+  assumption the generator writes until a design partner's backup confirms it) or **Our
+  choice**; `dc-backup.test.ts` fails an unmarked statement. The research ran in subagents
+  separate from the code (ADR-003); only facts reached the notes.
+- **Code** `apps/server/src/import/dc-backup/` (the format layer, so it uses the format's
+  names): `format.ts` (files, roots, every element's attributes and types, the attachment path,
+  timestamps, the two agile tables), `world.ts` and `parts.ts` (the synthetic instance: small
+  parts built once, every issue and its comments, history, links, labels, time entries and
+  attachments recomputed from their own seed streams), `generate.ts` (one pass per element into
+  a yazl ZIP, a manifest beside it), `validate.ts` (streams through `clean.ts`, moved from the
+  parser spike, and saxes; checks rows, references after the file, issue numbers, sequences,
+  attachment paths and sizes, active-objects tables, and the manifest), `cli.ts`
+  (`pnpm gen:dc-backup --issues N --seed N --out x.zip`, `--validate x.zip`).
+- **Manifest** (`<zip>.manifest.json`, `manifest.ts`): options, both XML files' size and
+  SHA-256, attachments, rows per element and table, the importer's cases (deleted and inactive
+  people, skipped numbers, sub-tasks, restricted comments, anonymous and custom-field changes,
+  sprint states, CDATA splits) and the forbidden characters written on purpose. Golden for
+  10,000 issues, seed 1: `__golden__/dc-backup-10k-seed1.manifest.json`; **M1-088 onwards
+  compare their imported counts with it**, and every generator change shows there.
+- **Tests**: `dc-backup.test.ts` (10,000 issues validate, every element, table, case and
+  forbidden kind non-zero, golden manifest; same seed same bytes; CDATA and escaping; every
+  forbidden kind counted; attachment path rule; eight kinds of damage the validator must catch;
+  the notes' citations), `clean.test.ts` (the cleaner's spike tests), and
+  `dc-backup.large.test.ts` with `TASKMOOR_LARGE_DC_BACKUP=1` (1,000,000 issues;
+  `TASKMOOR_LARGE_DC_BACKUP_DIR` keeps the ZIP for M1-091, `TASKMOOR_LARGE_DC_BACKUP_REPORT`
+  appends the measurements to a file, since Vitest here drops console output).
+- **Measured** (2026-10-30, load average 9 to 18 from other sessions): 1,000,000 issues give
+  9,490,567 rows, a 343.4 MB ZIP (entities.xml 1,850.9 MB, 100,104 attachment files of 195.7
+  MB). It was written in 280.9 s with a peak live heap of 99 MB, while a whole-repo typecheck
+  ran beside it (an earlier run without the typecheck took 141 s to write and validate), and
+  validated in 48.0 s with 148 MB. 100,000 issues through the CLI: 33.2 MB ZIP, 34.6 s,
+  validated in 26.1 s. The 10,000-issue gate test takes about 2 s.
+- **For M1-088 onwards**: rows are written in name order (comments and history before their
+  issues), so the reader stages and resolves after the file; people are named by user keys
+  (a third are lower-case user names, the rest `JIRAUSER<n>`), one in 40 is deleted (named,
+  no rows); times have no zone (the generator writes UTC); the sub-task link type is
+  `jira_subtask_link` with style `jira_subtask`. Not generated yet (each mapping adds what it
+  maps, with the notes and the validator): custom fields and values, versions, components,
+  followers and votes, key history, renamed projects, workflows, rank, board columns and sprint
+  membership, schemes, other filters, dashboards, avatars, thumbnails.
+
 ## Side session 2026-10-30: M1-039 history operators
 
 Built on the branch `claude/m1-039-history-operators-d9010b` in a side session while the main

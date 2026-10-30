@@ -23,6 +23,7 @@
     "trace": "tsx packages/devtools/src/cli/trace.ts",
     "dco": "tsx packages/devtools/src/cli/dco.ts",
     "gen": "tsx packages/testkit/src/cli/gen.ts",
+    "gen:dc-backup": "tsx apps/server/src/import/dc-backup/cli.ts",
     "spike": "tsx packages/spikes/src/cli/spike.ts",
     "bench:check": "tsx packages/devtools/src/cli/bench-check.ts",
     "bench:search": "tsx apps/server/src/search/bench/cli.ts",
