@@ -46,6 +46,7 @@ import { registerLinkRoutes } from './routes/links';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
+import { registerReleaseHubRoutes } from './routes/release-hub';
 import { registerReleaseRoutes } from './routes/releases';
 import { registerReportRoutes } from './routes/reports';
 import { registerRichTextRoutes } from './routes/rich-text';
@@ -297,6 +298,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // A track's summary (M1-064): every number with the query it counts.
     registerTrackSummaryRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // The releases hub (M1-050): a release's progress, warnings and generated notes.
+    registerReleaseHubRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });

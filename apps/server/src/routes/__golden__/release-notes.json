@@ -1,0 +1,53 @@
+{
+  "leftOut": [
+    {
+      "count": 1,
+      "reason": "Not planned"
+    },
+    {
+      "count": 1,
+      "reason": "Duplicate"
+    }
+  ],
+  "markdown": "# Checkout 1.9\n\nReleased on 2026-10-01.\n\nCard payments, at last.\n\n## Feature\n\n- RH-6 Wallet \\*payments\\* \\[beta\\]\n- RH-8 A card form\n\n## Bug\n\n- RH-7 Totals off by a cent\n",
+  "release": {
+    "id": 2,
+    "name": "1.9",
+    "releaseDate": "2026-10-01",
+    "shipped": true,
+    "shippedOn": "2026-10-01",
+    "track": {
+      "id": 1,
+      "key": "RH",
+      "name": "Checkout"
+    }
+  },
+  "sections": [
+    {
+      "tickets": [
+        {
+          "id": 6,
+          "key": "RH-6",
+          "summary": "Wallet *payments* [beta]"
+        },
+        {
+          "id": 8,
+          "key": "RH-8",
+          "summary": "A card form"
+        }
+      ],
+      "type": "Feature"
+    },
+    {
+      "tickets": [
+        {
+          "id": 7,
+          "key": "RH-7",
+          "summary": "Totals off by a cent"
+        }
+      ],
+      "type": "Bug"
+    }
+  ],
+  "truncated": false
+}

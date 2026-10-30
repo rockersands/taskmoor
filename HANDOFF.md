@@ -103,6 +103,15 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-050 releases hub** (ADR-061; no migration): `routes/release-hub.ts` serves
+  `GET /releases/:id/overview` (stage counts and warnings as search-runner counts with their
+  queries, approvers, the viewer's rights) and `GET /releases/:id/notes` (closed tickets by
+  type; done is the first close reason or none; Markdown, `?format=markdown` as a file;
+  golden `__golden__/release-notes.json`, shipped on a fixed day so it never changes).
+  `GET /tracks/:id/releases` now says `mayManage`. Web: `apps/web/src/releases`
+  (`ReleasesPage` at `#/tracks/<KEY>/releases`, `ReleasePage` at `#/releases/<id>`,
+  `ReleaseState`, `styles/releases.css`); the track summary links the hub. e2e
+  `releases.spec.ts`.
 - **M1-047 backlog planning** (ADR-054 "Planning on the backlog"; no migration):
   `routes/backlog-planning.ts` serves the panels (`GET /boards/:id/backlog/panels`) and three
   batches (`POST /boards/:id/backlog/rank`, `/parent`, `/release`) that run the ticket routes
