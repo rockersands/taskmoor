@@ -201,6 +201,12 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-049 list and calendar views** (ADR-065; no migration): `routes/list-views.ts`
+  (`POST /search/format-rules`, `GET /tracks/:keyOrId/calendar`), `tracks/lookup.ts`
+  (shared track lookup); web `apps/web/src/list` (`ListPage`, groups from the
+  two-dimensional report with `y=track`; rules and columns in localStorage) and
+  `apps/web/src/calendar` (`CalendarPage`), `styles/views.css`; `ResultTable` takes a
+  `format` callback. e2e `list-calendar.spec.ts`.
 - **M1-048 timeline** (ADR-064; no migration): `routes/timeline.ts` (one read with
   recursive roll-ups over the whole track), `apps/web/src/timeline` (`TimelinePage` at
   `#/tracks/<KEY>/timeline`, `styles/timeline.css`); rescheduling is the ticket PATCH.

@@ -1,10 +1,10 @@
 import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Kysely, sql } from 'kysely';
-import { z } from 'zod';
 import { boardScope, compileQuery } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
+import { trackParam, visibleTrack } from '../tracks/lookup';
 import { searchRefusal } from './search';
 
 /**
@@ -26,16 +26,7 @@ import { searchRefusal } from './search';
  * Rescheduling is the ticket routes' own change (`PATCH /tickets/:id` with `startDate` and
  * `dueDate`), with its permission ("Schedule tickets"), history and events.
  */
-const MAX_INT = 2_147_483_647;
 const LISTED = 5000;
-const trackParam = z
-  .object({
-    id: z.union([
-      z.coerce.number().int().positive().max(MAX_INT),
-      z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,29}$/),
-    ]),
-  })
-  .strict();
 
 export interface TimelineOptions {
   catalogs: FieldCatalogs;
@@ -78,20 +69,8 @@ export function registerTimelineRoutes(
     const p = trackParam.safeParse(request.params);
     if (!p.success) return reply.code(404).send({ error: 'not_found' });
     const ws = request.workspaceId;
-    let lookup = db
-      .selectFrom('track')
-      .select(['id', 'key', 'name'])
-      .where('workspace_id', '=', ws)
-      .where('deleted_at', 'is', null);
-    lookup =
-      typeof p.data.id === 'number'
-        ? lookup.where('id', '=', p.data.id)
-        : lookup.where(sql<boolean>`upper(key) = upper(${p.data.id})`);
-    const track = await lookup.executeTakeFirst();
-    const held = track ? await request.authz.track(track.id) : null;
-    if (!track || !held || !(held.has('browse_track') || held.has('administer_track'))) {
-      return reply.code(404).send({ error: 'not_found' });
-    }
+    const track = await visibleTrack(db, request, p.data.id);
+    if (!track) return reply.code(404).send({ error: 'not_found' });
     try {
       const scope = await boardScope(db, options.catalogs, request);
       // The viewer's tickets of the track, as the search finds them.
