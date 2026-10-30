@@ -655,6 +655,11 @@ const anyId = (column: string, values: readonly number[]) =>
 interface CondContext {
   /** What the condition serves: a page (the default) or a count of all matches. */
   purpose?: 'page' | 'count';
+  /**
+   * The condition is tested on a few known tickets (a webhook's one): text searches stay a test
+   * of the row, never a set of every match in the workspace (M1-040).
+   */
+  rows?: boolean;
   comments: RawBuilder<boolean>;
   commentsOf?: ((track: RawBuilder<unknown>) => RawBuilder<boolean>) | undefined;
   /** The viewer's predicate on ticket `k`, for tickets other than the row (a parent). */
@@ -791,7 +796,7 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
     case 'labelsEmpty':
       return sql<boolean>`cardinality(k.labels) ${raw(c.negated ? '>' : '=')} 0`;
     case 'words': {
-      if (!c.negated && expands(c.search)) return textSet(c.source, c.search, ctx);
+      if (!c.negated && !ctx.rows && expands(c.search)) return textSet(c.source, c.search, ctx);
       if (c.source === 'summary') {
         const match = textMatch(raw('k.summary_words'), raw('k.summary'), c.search);
         return c.negated ? not(match) : match;
@@ -817,7 +822,12 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
     }
     case 'side': {
       const test = valueTest(raw('v.value'), c.test, c.side.type);
-      if (c.quantifier === 'some' && c.test.kind === 'words' && expands(c.test.search)) {
+      if (
+        c.quantifier === 'some' &&
+        !ctx.rows &&
+        c.test.kind === 'words' &&
+        expands(c.test.search)
+      ) {
         // Expanded words start from the word index (`expands`, `textSet`).
         return sql<boolean>`k.id = ANY(ARRAY(SELECT v.ticket_id FROM ${matchesFrom(c.side.table, 'v', [wordsOf(raw('v.value'))], c.test.search)} WHERE ${and([sql<boolean>`v.field_id = ${param(c.side.fieldId, 'int')}`, test])}))`;
       }
@@ -865,7 +875,7 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
  *   distinct ids of a UNION ALL at 200 whatever they are, so it would always start from the set.
  */
 function masterText(c: Extract<Cond, { kind: 'text' }>, ctx: CondContext): RawBuilder<boolean> {
-  if (ctx.purpose === 'count' ? c.perRow?.count : c.perRow?.page) {
+  if (ctx.rows || (ctx.purpose === 'count' ? c.perRow?.count : c.perRow?.page)) {
     // Many matches: a test of the row, so walking the order stops after a page.
     const parts = [
       textMatch(raw('k.summary_words'), raw('k.summary'), c.search),

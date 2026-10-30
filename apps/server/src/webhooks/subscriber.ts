@@ -86,6 +86,8 @@ export function webhookSubscriber(
           commentsOf: (track) => commentReadableSql(ws, hook.owner_id, track),
           filter: filter.sql,
           workspaceId: ws,
+          // Tested on the event's one ticket.
+          rows: true,
         });
       } catch (error) {
         return { error: `The webhook's query cannot run: ${(error as Error).message}` };

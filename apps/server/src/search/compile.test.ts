@@ -13,7 +13,7 @@ import { SESSION_COOKIE } from '../auth';
 import { FieldCatalogs } from '../fields/catalog';
 import { pushNot } from './bind';
 import { queryCatalogue } from './catalogue';
-import { findAnchor } from './compile';
+import { compileCond, findAnchor } from './compile';
 import { prepareSearch } from './run';
 
 const NOW = new Date('2026-10-28T12:00:00Z');
@@ -315,6 +315,20 @@ describe('query compiler (M1-037)', () => {
       ),
       { numRuns: Number(process.env.SEARCH_FUZZ_RUNS ?? 10_000) },
     );
+  });
+
+  it('[QRY-007] keeps text searches a test of the row for a few known tickets (webhooks)', async () => {
+    const q = 'text ~ cookies AND summary ~ "cokies~" AND Notes ~ "dr?ft" AND comment ~ "deplyo~"';
+    const { bound, compiled } = await prepare(q);
+    const ctx = { comments: sql<boolean>`true`, filter: FILTER.sql, workspaceId: 1 };
+    const text = (rows: boolean) =>
+      sql`SELECT 1 FROM ticket k WHERE ${compileCond(bound.where, { ...ctx, rows })}`.compile(db)
+        .sql;
+    // A search over the workspace reads sets of matches...
+    expect(compiled.page(51).compile(db).sql).toMatch(/UNION ALL[\s\S]*ARRAY\(/);
+    // ...a test of one ticket never does.
+    expect(text(true)).not.toMatch(/UNION ALL|ARRAY\(|unnest\(/);
+    expect(text(true)).toContain('k.summary_words @@');
   });
 
   it('[QRY-002] pushes NOT down to the clauses by turning their operators around', () => {

@@ -101,13 +101,18 @@ estimate of the matches (one `EXPLAIN` of the set form, a millisecond or two):
   form reads every match first: Postgres estimates the distinct ids of a UNION ALL at 200
   whatever they are, so it always starts from the set.
 
-A page tests per row from 5,000 expected matches and 0.3% of the tickets (at 10M a word in 0.3%
-fills a page within about 17,000 tickets walked, and its 30,000 matches sort in about as long).
-A count reads matches until one past its cap, so it tests per row only from 50,000 and 5%:
-below that, walking reads most of the table to count fewer matches (305 ms for a word in 9,651
-of 200,000 tickets). Ordering by relevance ranks every match, so it always takes the set; the
-count and the page are compiled separately for that reason. Searches with a `?` or fuzzy word
-always take the set (above).
+Reading a match out of the set (the word indexes, a hash of the ids, a fetch by primary key)
+costs about four times testing a row in a walk, and a walk stops once it has what it needs. So,
+by the planner's estimate `m` of the matches among `n` tickets: a page (51 rows) tests per row
+from 5,000 matches and 0.3% of the tickets (at 10M a word in 0.3% fills a page within about
+17,000 tickets walked, and its 30,000 matches sort in about as long); a count (one past its cap
+of 10,000) from twice the cap and `sqrt(cap · n / 4)` matches (22,000 at 200,000 tickets,
+158,000 at 10M; below the cap a walk reads the whole table); relevance, which ranks every
+match, from 5,000 and a quarter of the tickets. The page and the count (with its sample) are
+compiled separately for that reason. Measured at 200,000 tickets before this split: a prefix
+with 28,000 matches counted in 917 ms from the set and 101 ms walking; a word in 84,000 tickets
+ordered by relevance took 1,007 ms from the set and 185 ms walking. Searches with a `?` or fuzzy
+word always take the set (above).
 
 ### Relevance
 
@@ -144,10 +149,6 @@ cursors carry it exactly and ties fall back to the ticket id.
 - The web says "About 123,456 tickets" for an estimate and "More than 10,000 tickets" for a lower
   bound; subscription emails say "about".
 
-### Measured
-
-See "Measurements" below (filled in from `search/text.large.test.ts`).
-
 ## Options considered
 
 | Option | For | Against |
@@ -176,4 +177,50 @@ See "Measurements" below (filled in from `search/text.large.test.ts`).
 
 ## Measurements
 
-(Filled in below.)
+`search/text.large.test.ts` (`TASKMOOR_LARGE_TEXT=1`, `TASKMOOR_LARGE_TEXT_TICKETS` for the
+size): tickets over 20 tracks, text drawn from 6,000 made-up words with a long tail (8-word
+summaries; three in five with a 60-word description; one in three with a 25-word comment, one
+comment in ten for a role only; one in four with a 6-word text field), a member who sees half
+the tracks. Each query as the search route runs it on a first page, binding included: the page
+of 50, then the count (exact to 10,000, then the estimate, the cache emptied each time); p95 in
+ms; the estimate against the exact count. On this Mac (Apple silicon, 11 cores, 36 GB, other
+sessions' tests running alongside, load average 5 to 12), 2026-10-30.
+
+**200,000 tickets** (ticket 392 MB, comments 62 MB, text values 46 MB), p95 of 10:
+
+| Query | Page | Count | Total given (exact) |
+|---|---:|---:|---|
+| `text ~` a word in 42% of tickets, by updated | 11.5 | 64.6 | about 83,824 (84,696; 1.0%) |
+| `text ~` a word in 5% | 6.4 | 90.5 | 9,651 exact |
+| `text ~` a rare word | 3.1 | 1.4 | 108 exact |
+| `text ~` an absent word | 3.2 | 1.7 | 0 |
+| `summary ~` two words; a phrase | 0.5 to 1.0 | 0.5 to 0.7 | exact |
+| `description ~` a word `AND track = T01` | 4.2 | 3.0 | 1,127 exact |
+| `comment ~` a word in 5% of comments, by created | 85.8 | 102.4 | 1,437 exact |
+| `text ~ "kate*"` (a prefix of many words) | 5.0 | 100.3 | about 27,884 (28,049; 0.6%) |
+| `summary ~` a `?` word | 2.3 | 0.9 | 32 exact |
+| `summary ~` a fuzzy word (one edit) | 40.7 | 37.4 | 832 exact |
+| `summary ~` a pattern (`*akazis*`) | 5.5 | 3.6 | 32 exact |
+| `Notes ~` a word | 2.8 | 1.4 | 213 exact |
+| `text ~` a word in 42%, `ORDER BY relevance` | 205.3 | 50.5 | about 83,824 |
+| `text ~` a word in 5%, `ORDER BY relevance` | 93.9 | 74.5 | 9,651 exact |
+| `text ~` a word in 42% `AND status = New` | 7.7 | 237.2 | about 12,808 (12,345; 3.8%) |
+| everything, by created | 1.0 | 22.6 | about 101,064 (100,000; 1.1%) |
+| two tracks; one status; the newest 15% | 1.0 to 1.6 | 27 to 75 | about, within 0.7% to 3.5% |
+
+Every first page is under 300 ms; every estimate is within 3.8% of the exact count. Before the
+fixes the same run found a fuzzy word at 11.8 s (the planner tested every expanded word against
+a materialised table scan: now a fenced probe per word) and a middling word's exact count at
+305 ms (a walk through the whole table: now the set). The clustered newest 15% got an estimate
+here (15,130 matches in the last 15% of blocks, so a fifth of the sample's blocks hold them);
+at `count.test.ts`'s smaller sample it reports "more than".
+
+**1,000,000 tickets:** see below.
+
+**10M is not measured** (done-when: p95 under 300 ms at 10M). What grows with the data: ranking
+every match of a very common word (`ORDER BY relevance` reads all of them), exact counts of
+words just under 10,000 matches (the set of matches, read whole), the count's sample (up to
+500,000 rows when matches are uneven over the blocks), and comment searches, whose readability
+check runs per matching comment. What does not: pages that walk an index, rare words and `?`
+and fuzzy words (index probes), and patterns on summaries. M1-117 (the 10M nightly) should load
+text as this test does and run its queries.

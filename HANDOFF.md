@@ -43,12 +43,15 @@ migration **0057** `0057_full_text_search.ts`.
   array (`k.id = ANY(ARRAY(...))`), because the planner takes an OR of hundreds of unknown
   words for most of the table. `text ~` has two forms chosen in `bind.ts` `textForms` from an
   `EXPLAIN` of the set form (`perRow`): a set of ids (`k.id IN (... UNION ALL ...)`), or an OR
-  tested per row for a page from max(5,000, 0.3% of tickets) expected matches and for a count
-  from max(50,000, 5%); ordering by relevance always takes the set (Postgres estimates a UNION
-  ALL's distinct ids at 200, so the set form always reads every match first). The count and
-  sample statements are compiled with `purpose: 'count'`.
+  tested per row for a page from max(5,000, 0.3% of tickets) expected matches, for a count from
+  max(20,000, sqrt(10,000 · tickets / 4)), and when ordering by relevance from max(5,000, a
+  quarter of the tickets) (Postgres estimates a UNION ALL's distinct ids at 200, so the set form
+  always reads every match first). The count and sample statements are compiled with
+  `purpose: 'count'`.
   The comment branch reads each comment's track by key (`commentReadableSql` takes a `track`
-  expression now; `CompileOptions.commentsOf`, passed by search, boards and webhooks).
+  expression now; `CompileOptions.commentsOf`, passed by search, boards and webhooks). A
+  condition tested on a few known tickets passes `rows: true` (webhooks do), which keeps every
+  text search a test of the row instead of a set of all matches in the workspace.
 - **`ORDER BY relevance`**: a system field of type `relevance` (no operators; refused without a
   text search that must match). Weighted `ts_rank` (summary 1, description 0.4, environment
   0.2, custom 0.4, best readable comment 0.2), negated `float8`: ascending (the default) puts the
