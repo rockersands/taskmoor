@@ -1,5 +1,5 @@
 # helm test: the app answers through its Service, the database is reachable, and the metrics
-# endpoint publishes the build info.
+# endpoint publishes the build info. It retries for a minute while a new cluster settles.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -43,4 +43,13 @@ spec:
             if (!(await get(metrics)).includes('taskmoor_build_info')) throw new Error('no build info');
             console.log(`ok: version ${health.version}, roles ${health.roles.join(',')}`);
           };
-          main().catch((error) => { console.error(error.message); process.exit(1); });
+          // A fresh cluster can take a few seconds to route a new Service: try for a minute.
+          const deadline = Date.now() + 60_000;
+          const attempt = () =>
+            main().catch(async (error) => {
+              const why = `${error.message}${error.cause?.code ? ` (${error.cause.code})` : ''}`;
+              if (Date.now() > deadline) { console.error(why); process.exit(1); }
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              return attempt();
+            });
+          attempt();
