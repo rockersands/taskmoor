@@ -234,6 +234,7 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'ticket.updated': TICKET_ACTIVITY,
   'ticket.moved': TICKET_ACTIVITY,
   'ticket.ranked': TICKET_ACTIVITY,
+  'ticket.cloned': TICKET_ACTIVITY,
   'ticket.linked': TICKET_ACTIVITY,
   'ticket.unlinked': TICKET_ACTIVITY,
   'ticket.web_link_added': TICKET_ACTIVITY,

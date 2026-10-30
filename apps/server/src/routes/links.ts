@@ -113,7 +113,8 @@ const linkTypeView = (t: LinkTypeRow) => ({
   isCopy: t.is_copy,
 });
 
-async function linksEnabled(db: Db, workspaceId: number): Promise<boolean> {
+/** Whether ticket links are on in the workspace (the copy link of a clone too). */
+export async function linksEnabled(db: Db, workspaceId: number): Promise<boolean> {
   const row = await db
     .selectFrom('link_policy')
     .select('enabled')

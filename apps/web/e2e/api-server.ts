@@ -157,7 +157,10 @@ await attachApps[1]?.listen({ port: E2E_ATTACH_S3_PORT, host: '127.0.0.1' });
 
 // Bulk changes on the attachments database: the worker's loop, for their task alone.
 const bulkRunner = new JobRunner(attachDb, 'e2e-bulk', { tasks: [BULK_TASK] });
-registerBulkJobs(bulkRunner, attachDb, new Authorizer(attachDb), new FieldCatalogs(attachDb));
+// Clones (M1-124) run there too, copying attachments between both stores.
+registerBulkJobs(bulkRunner, attachDb, new Authorizer(attachDb), new FieldCatalogs(attachDb), {
+  stores: storesOf(local, { others: [s3] }),
+});
 let bulkRunning = true;
 const bulkLoop = (async () => {
   while (bulkRunning) {

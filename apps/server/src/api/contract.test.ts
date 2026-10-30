@@ -4,6 +4,10 @@ import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { Authorizer } from '../authz/authorizer';
+import { runBulkOperation } from '../bulk/run';
+import { FieldCatalogs } from '../fields/catalog';
+import { ticketRoutes } from '../routes/tickets';
 
 // Made for this run: no password is written in the repository.
 const PASSWORD = `api-${randomBytes(18).toString('base64url')}`;
@@ -207,6 +211,33 @@ describe('API v1 contract (M1-065)', () => {
       '/api/v1/bulk-operations/:id/cancel',
       `/api/v1/bulk-operations/${bulk.id}/cancel`,
     );
+    // Clone (M1-124): its operation runs here by hand, so an item shows the copy it made.
+    const clone = (
+      await call('POST', '/api/v1/tickets/:id/clone', `/api/v1/tickets/${a.key}/clone`, {
+        summary: 'A copied',
+      })
+    ).bulkOperation;
+    const authorizer = new Authorizer(database.db);
+    const catalogs = new FieldCatalogs(database.db);
+    await runBulkOperation(
+      {
+        db: database.db,
+        authorizer,
+        routes: ticketRoutes(database.db, authorizer, catalogs),
+        catalogs,
+      },
+      String(clone.id),
+      { until: Date.now() + 60_000 },
+    );
+    const copied = (
+      await call(
+        'GET',
+        '/api/v1/bulk-operations/:id/items',
+        `/api/v1/bulk-operations/${clone.id}/items`,
+      )
+    ).items;
+    const copyKey = copied[0].result.ticket.key as string;
+    expect(copyKey).toMatch(/^API-\d+$/);
     await call('GET', '/api/v1/search', '/api/v1/search?q=track%20%3D%20API&limit=2');
     await call('POST', '/api/v1/search', '/api/v1/search', { q: 'track = API', limit: 2 });
     await call('GET', '/api/v1/search/check', '/api/v1/search/check?q=track%20%3D%20API');
@@ -268,7 +299,8 @@ describe('API v1 contract (M1-065)', () => {
       seen.push(...page.tickets.map((t) => t.key));
       cursor = page.next;
     } while (cursor);
-    expect(seen.sort()).toEqual(['API-1', 'API-3']);
+    // A's copy is in the track too.
+    expect(seen.sort()).toEqual(['API-1', 'API-3', copyKey].sort());
     await call('DELETE', '/api/v1/session', '/api/v1/session');
 
     // Every answer against the document.

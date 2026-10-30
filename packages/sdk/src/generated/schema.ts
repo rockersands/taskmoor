@@ -477,6 +477,26 @@ export interface paths {
         patch: operations["updateTicket"];
         trace?: never;
     };
+    "/api/v1/tickets/{id}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy a ticket, or a ticket and everything below it
+         * @description Starts a task that copies the ticket, by default into its own track with its subtickets, attachments and links; each copy gets a Copies link to its original. With `descendants`, every ticket below it at every level is copied too (a deep clone). Values the caller may not set, or the track does not take, are left out. Poll the bulk operation it answers; each item names the copy it made.
+         */
+        post: operations["cloneTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tickets/{id}/comments": {
         parameters: {
             query?: never;
@@ -908,13 +928,30 @@ export interface components {
             position: number;
             /** @description The ticket as it was given: an id or a key. */
             ref: string;
+            /** @description For a clone, the copy the item made, while the reader may see it. */
+            result: ({
+                attachments: number;
+                key: string;
+                /** @description What the copy does not have: values left out, as the create body names them, and `attachments` or `links` when the caller may not add those. */
+                left: string[];
+                links: number;
+                ticket: {
+                    id: number;
+                    key: string;
+                } & {
+                    [key: string]: unknown;
+                };
+                webLinks: number;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             statusCode: number | null;
         } & {
             [key: string]: unknown;
         };
         BulkOperation: {
             /** @enum {string} */
-            action: "edit" | "move" | "transition" | "delete";
+            action: "edit" | "move" | "transition" | "delete" | "clone";
             cancelRequested: boolean;
             /** Format: date-time */
             createdAt: string;
@@ -3771,6 +3808,93 @@ export interface operations {
                 content: {
                     "application/json": {
                         ticket: components["schemas"]["Ticket"];
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cloneTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ticket: its id or its key, such as `PAY-12`. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default true */
+                    attachments?: boolean;
+                    /** @default false */
+                    descendants?: boolean;
+                    /** @default true */
+                    links?: boolean;
+                    /** @default true */
+                    subtickets?: boolean;
+                    summary?: string;
+                    track?: number | string;
+                };
+            };
+        };
+        responses: {
+            /** @description Started; poll the operation for its progress and the copies. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        bulkOperation: components["schemas"]["BulkOperation"];
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };

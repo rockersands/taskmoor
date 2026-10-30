@@ -4,7 +4,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { bulkJob } from '../bulk/jobs';
-import { bulkBody, MAX_BULK_TICKETS, paramsOf } from '../bulk/model';
+import { type BulkAction, bulkBody, MAX_BULK_TICKETS, paramsOf } from '../bulk/model';
 import { emit } from '../events/bus';
 import { enqueue } from '../events/queue';
 import type { FieldCatalogs } from '../fields/catalog';
@@ -82,7 +82,8 @@ type OperationRow = Awaited<ReturnType<typeof operationQuery>>[number];
 const operationQuery = (db: Db, workspaceId: number) =>
   db.selectFrom('bulk_operation').selectAll().where('workspace_id', '=', workspaceId).execute();
 
-const view = (row: OperationRow) => ({
+/** An operation as the API shows it. */
+export const bulkOperationView = (row: OperationRow) => ({
   id: Number(row.id),
   action: row.action,
   params: row.params,
@@ -98,6 +99,69 @@ const view = (row: OperationRow) => ({
   startedAt: row.started_at?.toISOString() ?? null,
   finishedAt: row.finished_at?.toISOString() ?? null,
 });
+
+/**
+ * Writes an operation and its items in the order given and queues its job, in one transaction:
+ * an item that names no ticket fails at once as `not_found`. Emits `bulk_operation.created`.
+ */
+export async function startBulkOperation(
+  db: Kysely<Database>,
+  workspaceId: number,
+  userId: number,
+  action: BulkAction | 'clone',
+  params: Record<string, unknown>,
+  items: readonly { ref: string; ticketId: number | null }[],
+): Promise<OperationRow> {
+  const ws = workspaceId;
+  return db.transaction().execute(async (trx) => {
+    const created = await trx
+      .insertInto('bulk_operation')
+      .values({
+        workspace_id: ws,
+        user_id: userId,
+        action,
+        params: JSON.stringify(params),
+        total: items.length,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    for (let i = 0; i < items.length; i += RESOLVE_CHUNK) {
+      const chunk = items.slice(i, i + RESOLVE_CHUNK);
+      const missing = JSON.stringify({ error: 'not_found' });
+      await sql`
+        INSERT INTO bulk_item (operation_id, workspace_id, position, ref, ticket_id, outcome,
+            status_code, error, finished_at)
+        SELECT ${Number(created.id)}, ${ws}, i.position, i.ref, i.ticket_id,
+               CASE WHEN i.ticket_id IS NULL THEN 'failed' END,
+               CASE WHEN i.ticket_id IS NULL THEN 404 END,
+               CASE WHEN i.ticket_id IS NULL THEN ${missing}::jsonb END,
+               CASE WHEN i.ticket_id IS NULL THEN now() END
+          FROM unnest(${chunk.map((_, j) => i + j)}::int[], ${chunk.map((c) => c.ref)}::text[],
+                      ${chunk.map((c) => c.ticketId)}::int[]) AS i (position, ref, ticket_id)`.execute(
+        trx,
+      );
+    }
+    const unknown = items.filter((it) => it.ticketId === null).length;
+    if (unknown > 0) {
+      await trx
+        .updateTable('bulk_operation')
+        .set({ failed: unknown })
+        .where('id', '=', created.id)
+        .execute();
+    }
+    await emit(
+      trx,
+      { workspaceId: ws, actorId: userId },
+      {
+        type: 'bulk_operation.created',
+        subjectId: Number(created.id),
+        payload: { action, total: items.length },
+      },
+    );
+    await enqueue(trx, [bulkJob(ws, created.id)]);
+    return { ...created, failed: unknown };
+  });
+}
 
 export interface BulkRouteOptions {
   /** How long each statement of a selection by query may run (QRY-010 (3)). */
@@ -189,55 +253,8 @@ export function registerBulkRoutes(
       if ((body.tickets ?? []).length > limit) return tooMany();
       items = await resolveRefs(db, ws, body.tickets ?? []);
     }
-    const row = await db.transaction().execute(async (trx) => {
-      const created = await trx
-        .insertInto('bulk_operation')
-        .values({
-          workspace_id: ws,
-          user_id: user.id,
-          action: body.action,
-          params: JSON.stringify(paramsOf(body)),
-          total: items.length,
-        })
-        .returningAll()
-        .executeTakeFirstOrThrow();
-      for (let i = 0; i < items.length; i += RESOLVE_CHUNK) {
-        const chunk = items.slice(i, i + RESOLVE_CHUNK);
-        const missing = JSON.stringify({ error: 'not_found' });
-        await sql`
-          INSERT INTO bulk_item (operation_id, workspace_id, position, ref, ticket_id, outcome,
-              status_code, error, finished_at)
-          SELECT ${Number(created.id)}, ${ws}, i.position, i.ref, i.ticket_id,
-                 CASE WHEN i.ticket_id IS NULL THEN 'failed' END,
-                 CASE WHEN i.ticket_id IS NULL THEN 404 END,
-                 CASE WHEN i.ticket_id IS NULL THEN ${missing}::jsonb END,
-                 CASE WHEN i.ticket_id IS NULL THEN now() END
-            FROM unnest(${chunk.map((_, j) => i + j)}::int[], ${chunk.map((c) => c.ref)}::text[],
-                        ${chunk.map((c) => c.ticketId)}::int[]) AS i (position, ref, ticket_id)`.execute(
-          trx,
-        );
-      }
-      const unknown = items.filter((it) => it.ticketId === null).length;
-      if (unknown > 0) {
-        await trx
-          .updateTable('bulk_operation')
-          .set({ failed: unknown })
-          .where('id', '=', created.id)
-          .execute();
-      }
-      await emit(
-        trx,
-        { workspaceId: ws, actorId: user.id },
-        {
-          type: 'bulk_operation.created',
-          subjectId: Number(created.id),
-          payload: { action: body.action, total: items.length },
-        },
-      );
-      await enqueue(trx, [bulkJob(ws, created.id)]);
-      return { ...created, failed: unknown };
-    });
-    return reply.code(202).send({ bulkOperation: view(row) });
+    const row = await startBulkOperation(db, ws, user.id, body.action, paramsOf(body), items);
+    return reply.code(202).send({ bulkOperation: bulkOperationView(row) });
   });
 
   app.get('/api/v1/bulk-operations', async (request, reply) => {
@@ -252,7 +269,7 @@ export function registerBulkRoutes(
       .orderBy('id', 'desc')
       .limit(50)
       .execute();
-    return { bulkOperations: rows.map(view) };
+    return { bulkOperations: rows.map(bulkOperationView) };
   });
 
   app.get('/api/v1/bulk-operations/:id', async (request, reply) => {
@@ -261,11 +278,11 @@ export function registerBulkRoutes(
     if (!p.success) return notFound(reply);
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
-    return { bulkOperation: view(row) };
+    return { bulkOperation: bulkOperationView(row) };
   });
 
   // Per-ticket results, in the order given, a page at a time; keys only for tickets the reader
-  // may see now.
+  // may see now. A clone's item names the copy it made (M1-124), on the same terms.
   app.get('/api/v1/bulk-operations/:id/items', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = idParam.safeParse(request.params);
@@ -277,7 +294,16 @@ export function registerBulkRoutes(
     const limit = q.data.limit ?? 100;
     let query = db
       .selectFrom('bulk_item')
-      .select(['position', 'ref', 'ticket_id', 'outcome', 'status_code', 'error'])
+      .select([
+        'position',
+        'ref',
+        'ticket_id',
+        'outcome',
+        'status_code',
+        'error',
+        'result_ticket_id',
+        'result',
+      ])
       .where('operation_id', '=', row.id)
       .where('position', '>', q.data.after ?? -1)
       .orderBy('position')
@@ -289,12 +315,21 @@ export function registerBulkRoutes(
     const tickets = await loadTickets(
       db,
       request.workspaceId,
-      page.flatMap((i) => (i.ticket_id === null ? [] : [i.ticket_id])),
+      page.flatMap((i) =>
+        [i.ticket_id, i.result_ticket_id].filter((id): id is number => id !== null),
+      ),
     );
     const seen = await request.authz.visibleTickets([...tickets.keys()]);
+    const keyOf = (id: number | null) => {
+      const t = id === null ? undefined : tickets.get(id);
+      return t && seen.has(t.id) && !t.deleted_at
+        ? { id: t.id, key: ticketKey(t.track_key, t.number) }
+        : null;
+    };
     return {
       items: page.map((i) => {
         const t = i.ticket_id === null ? undefined : tickets.get(i.ticket_id);
+        const made = i.outcome === 'done' ? keyOf(i.result_ticket_id) : null;
         return {
           position: i.position,
           ref: i.ref,
@@ -302,6 +337,9 @@ export function registerBulkRoutes(
           outcome: i.outcome ?? 'pending',
           statusCode: i.status_code,
           error: i.error,
+          result: made
+            ? { ...(i.result as Record<string, unknown>), ticket: made, key: made.key }
+            : null,
         };
       }),
       next: items.length > limit ? (page[page.length - 1]?.position ?? null) : null,
@@ -339,6 +377,6 @@ export function registerBulkRoutes(
       }
       return changed ?? row;
     });
-    return reply.code(202).send({ bulkOperation: view(updated) });
+    return reply.code(202).send({ bulkOperation: bulkOperationView(updated) });
   });
 }

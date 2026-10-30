@@ -25,6 +25,7 @@ const TITLES: Record<BulkOperation['action'], MessageId> = {
   move: 'bulk.title.move',
   transition: 'bulk.title.transition',
   delete: 'bulk.title.delete',
+  clone: 'bulk.title.clone',
 };
 const STATUSES: Record<BulkOperation['status'], MessageId> = {
   queued: 'bulk.status.queued',
@@ -42,12 +43,14 @@ const REASONS: Record<string, MessageId> = {
   in_trash: 'bulk.reason.inTrash',
   moved_meanwhile: 'bulk.reason.movedMeanwhile',
   requester_deactivated: 'bulk.reason.requesterDeactivated',
+  parent_not_cloned: 'bulk.reason.parentNotCloned',
+  copy_gone: 'bulk.reason.copyGone',
   internal: 'bulk.reason.internal',
 };
 const LOCK_ACTIONS: readonly string[] = ['edit', 'comment', 'attach', 'assign', 'transition'];
 
 /** Why one ticket was not changed, in the reader's words. */
-function useReason(): (error: BulkError | null) => string {
+export function useReason(): (error: BulkError | null) => string {
   const t = useT();
   const lockText = useLockText();
   return (error) => {
@@ -182,6 +185,7 @@ export function BulkOperationPage({
   }
   const done = op.total - op.pending;
   const number = (n: number) => intl.formatNumber(n);
+  const cloning = op.action === 'clone';
   return (
     <section aria-labelledby={titleId} className="bulk-page">
       <h1 id={titleId} className="page-title">
@@ -198,11 +202,11 @@ export function BulkOperationPage({
       </div>
       <dl className="bulk-counts">
         <div>
-          <dt>{t('bulk.count.succeeded')}</dt>
+          <dt>{t(cloning ? 'bulk.clone.copied' : 'bulk.count.succeeded')}</dt>
           <dd>{number(op.succeeded)}</dd>
         </div>
         <div>
-          <dt>{t('bulk.count.failed')}</dt>
+          <dt>{t(cloning ? 'bulk.clone.notCopied' : 'bulk.count.failed')}</dt>
           <dd>{number(op.failed)}</dd>
         </div>
         <div>
@@ -234,7 +238,7 @@ export function BulkOperationPage({
       {op.failed > 0 && (
         <section aria-labelledby={failuresId} className="facts">
           <h2 id={failuresId} className="facts-title">
-            {t('bulk.failures')}
+            {t(cloning ? 'bulk.clone.failures' : 'bulk.failures')}
           </h2>
           <ul className="bulk-failures">
             {failures.map((item) => (

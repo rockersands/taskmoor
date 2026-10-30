@@ -78,6 +78,14 @@ and adds the two things API-007 asks for beyond them.
   ten that have no such transition, finishes with 990 succeeded and 10 failed with
   `no_transition`, and the items read back a page at a time (`bulk/bulk.test.ts`).
 
+## Clones (M1-124; CORE-023)
+
+A clone or deep clone is a bulk operation of a fifth action, `clone`, started by
+`POST /api/v1/tickets/:id/clone` without "Make bulk changes" (ADR-077). Its items run one at a
+time, parents first, and record their own outcome; `bulk_item` gained `result_ticket_id` (the
+copy) and `result` (what came with it), and the items route shows the copy as `result`
+(migration 0061).
+
 ## Options considered
 
 | Option | For | Against |

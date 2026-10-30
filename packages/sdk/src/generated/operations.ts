@@ -6,6 +6,7 @@ export const OPERATIONS = {
   addSprintTickets: { method: 'POST', path: '/api/v1/sprints/{id}/tickets', paged: false },
   cancelBulkOperation: { method: 'POST', path: '/api/v1/bulk-operations/{id}/cancel', paged: false },
   checkQuery: { method: 'GET', path: '/api/v1/search/check', paged: false },
+  cloneTicket: { method: 'POST', path: '/api/v1/tickets/{id}/clone', paged: false },
   completeSprint: { method: 'POST', path: '/api/v1/sprints/{id}/complete', paged: false },
   createBoard: { method: 'POST', path: '/api/v1/boards', paged: false },
   createBulkOperation: { method: 'POST', path: '/api/v1/bulk-operations', paged: false },

@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import type { Kysely } from 'kysely';
+import type { AttachmentStores } from '../attachments/stores';
 import type { Authorizer } from '../authz/authorizer';
 import { enqueue, extendLock, type JobRunner } from '../events/queue';
 import type { FieldCatalogs } from '../fields/catalog';
@@ -24,7 +25,12 @@ export function registerBulkJobs(
   db: Kysely<Database>,
   authorizer: Authorizer,
   catalogs: FieldCatalogs,
-  options: { partMs?: number; concurrency?: number } = {},
+  options: {
+    partMs?: number;
+    concurrency?: number;
+    /** Where a clone copies attachments (M1-124); without them it copies none. */
+    stores?: AttachmentStores;
+  } = {},
 ): void {
   const routes = ticketRoutes(db, authorizer, catalogs);
   runner.handle(BULK_TASK, async (job) => {
@@ -32,7 +38,14 @@ export function registerBulkJobs(
     // A part runs for most of a minute: keep its lock, so no second worker takes it meanwhile.
     const keep = setInterval(() => void extendLock(db, job.id).catch(() => {}), 15_000);
     try {
-      const state = await runBulkOperation({ db, authorizer, routes }, operationId, {
+      const deps = {
+        db,
+        authorizer,
+        routes,
+        catalogs,
+        ...(options.stores ? { stores: options.stores } : {}),
+      };
+      const state = await runBulkOperation(deps, operationId, {
         until: Date.now() + (options.partMs ?? PART_MS),
         ...(options.concurrency ? { concurrency: options.concurrency } : {}),
       });

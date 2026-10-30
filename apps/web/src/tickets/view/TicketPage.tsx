@@ -7,11 +7,13 @@ import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
-import { routeHref } from '../../routing/router';
+import { navigate, routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { useSyncEngine } from '../../sync/SyncProvider';
+import type { CloneClient } from '../clone/client';
+import { CloneDialog } from '../clone/CloneDialog';
 import { splitLabels } from '../form';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
@@ -33,6 +35,8 @@ export interface TicketPageProps {
   client?: TicketClient;
   attachments?: AttachmentClient;
   comments?: CommentClient;
+  /** Where the Clone action starts its copies (M1-124). */
+  clone?: CloneClient;
   /** How the description's shared document opens (M1-017); stories keep it in the page. */
   connect?: Connect;
   /** Where "@" finds people; the backend's list for the ticket by default. */
@@ -75,6 +79,7 @@ export function TicketPage({
   client = ticketClient,
   attachments,
   comments,
+  clone,
   connect,
   mentions = (ticketId) => mentionSource({ ticket: ticketId }),
 }: TicketPageProps) {
@@ -102,6 +107,7 @@ export function TicketPage({
   const [editingSummary, setEditingSummary] = useState(false);
   const [asking, setAsking] = useState<Transition | null>(null);
   const [helping, setHelping] = useState(false);
+  const [cloning, setCloning] = useState(false);
   const [tab, setTab] = useState<ActivityTab>('comments');
   const [revision, setRevision] = useState(0);
   const transitionsRef = useRef<HTMLFieldSetElement>(null);
@@ -110,6 +116,8 @@ export function TicketPage({
   useEffect(() => {
     let live = true;
     setState({ status: 'loading' });
+    // A dialog belongs to the ticket it was opened on.
+    setCloning(false);
     client.get(ticket).then(
       (found) => live && setState({ status: 'loaded', ticket: found }),
       () => live && setState({ status: 'missing' }),
@@ -497,6 +505,13 @@ export function TicketPage({
               </button>
             )}
             <button
+              type="button"
+              className="button-secondary ticket-action"
+              onClick={() => setCloning(true)}
+            >
+              {t('clone.action')}
+            </button>
+            <button
               ref={helpButton}
               type="button"
               className="button-secondary ticket-action"
@@ -571,6 +586,23 @@ export function TicketPage({
           </div>
         )}
       </div>
+      {cloning && loaded && (
+        <CloneDialog
+          ticket={{
+            id: loaded.id,
+            key: loaded.key,
+            summary: loaded.summary,
+            track: loaded.track,
+            level: loaded.ticketType.level?.rank ?? 0,
+          }}
+          {...(clone ? { client: clone } : {})}
+          onClose={() => setCloning(false)}
+          onCloned={(key) => {
+            setCloning(false);
+            navigate(`#/tickets/${encodeURIComponent(key)}`);
+          }}
+        />
+      )}
       {helping && (
         <ShortcutsDialog
           onClose={() => {

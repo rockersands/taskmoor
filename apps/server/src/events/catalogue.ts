@@ -353,6 +353,23 @@ export const EVENT_TYPES = {
       subtickets: z.array(z.object({ id, from: z.string(), to: z.string(), ticketTypeId: id })),
     }),
   },
+  /**
+   * A copy made by a clone (M1-124, CORE-023), once it has what came with it: emitted by the
+   * clone's job after the copy's own `ticket.created`. The Copies link to the original
+   * (`copyLinkId`, null with links off) and the links, web links and attachments copied.
+   */
+  'ticket.cloned': {
+    subject: 'ticket',
+    payload: z.object({
+      key: z.string(),
+      source: z.object({ id, key: z.string() }),
+      operationId: id,
+      copyLinkId: id.nullable(),
+      links: z.number().int().min(0),
+      webLinks: z.number().int().min(0),
+      attachments: z.number().int().min(0),
+    }),
+  },
   'ticket.ranked': {
     subject: 'ticket',
     payload: z.object({ key: z.string(), from: z.string(), to: z.string() }),
@@ -1182,14 +1199,15 @@ export const EVENT_TYPES = {
   'bulk_operation.created': {
     subject: 'bulk_operation',
     payload: z.object({
-      action: z.enum(['edit', 'move', 'transition', 'delete']),
+      // `clone` added with clone and deep clone (M1-124).
+      action: z.enum(['edit', 'move', 'transition', 'delete', 'clone']),
       total: z.number().int().min(1),
     }),
   },
   'bulk_operation.cancelled': {
     subject: 'bulk_operation',
     payload: z.object({
-      action: z.enum(['edit', 'move', 'transition', 'delete']),
+      action: z.enum(['edit', 'move', 'transition', 'delete', 'clone']),
       total: z.number().int().min(1),
     }),
   },

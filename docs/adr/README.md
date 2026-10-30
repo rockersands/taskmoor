@@ -81,6 +81,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [074](0074-offline-manual.md) | The manual is Markdown with provenance, built into an offline bundle by our own script | Accepted |
 | [075](0075-rate-limits.md) | Rate limits as in-process token buckets, with usage counted per minute | Accepted |
 | [076](0076-teams.md) | Teams: their own table, named by id everywhere, granting nothing | Accepted |
+| [077](0077-clone-and-deep-clone.md) | Clone and deep clone run as a bulk operation, each copy made through the create route | Accepted |
 | [078](0078-allowlists-and-syslog.md) | IP allowlists matched in each process, and the audit log forwarded to syslog by cursor | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

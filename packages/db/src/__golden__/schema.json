@@ -280,12 +280,15 @@
       "outcome text",
       "status_code smallint",
       "error jsonb",
-      "finished_at timestamp with time zone"
+      "finished_at timestamp with time zone",
+      "result_ticket_id integer",
+      "result jsonb"
     ],
     "indexes": [
       "CREATE INDEX bulk_item_failed_idx ON public.bulk_item USING btree (operation_id, \"position\") WHERE (outcome = 'failed'::text)",
       "CREATE INDEX bulk_item_pending_idx ON public.bulk_item USING btree (operation_id, \"position\") WHERE (outcome IS NULL)",
-      "CREATE UNIQUE INDEX bulk_item_pkey ON public.bulk_item USING btree (operation_id, \"position\")"
+      "CREATE UNIQUE INDEX bulk_item_pkey ON public.bulk_item USING btree (operation_id, \"position\")",
+      "CREATE INDEX bulk_item_ticket_idx ON public.bulk_item USING btree (operation_id, ticket_id)"
     ]
   },
   "bulk_operation": {
