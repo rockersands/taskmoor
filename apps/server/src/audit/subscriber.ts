@@ -195,6 +195,7 @@ export const AUDITED_EVENTS = [
   'token.rotated',
   'token.bulk_revoked',
   'token_policy.updated',
+  'rate_limits.updated',
   'service_account.created',
   'service_account.updated',
   'service_account.deactivated',

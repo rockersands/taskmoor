@@ -27,6 +27,9 @@ describe('loadDataset', () => {
 
   beforeAll(async () => {
     pool = new pg.Pool({ connectionString: database.url, max: 3 });
+    // The file's database is dropped with its connections at the end; a client still closing
+    // then hears "terminating connection", which is no failure of this test.
+    pool.on('error', () => {});
     result = await loadDataset(pool, dataset);
   }, 120_000);
   afterAll(async () => {

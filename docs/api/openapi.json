@@ -3914,6 +3914,39 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/admin/api-usage": {
+      "get": {
+        "operationId": "internal-get-admin-api-usage",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/admin/attachment-settings": {
       "get": {
         "operationId": "internal-get-admin-attachment-settings",
@@ -4487,6 +4520,70 @@
       },
       "put": {
         "operationId": "internal-put-admin-mcp",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/admin/rate-limits": {
+      "get": {
+        "operationId": "internal-get-admin-rate-limits",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      },
+      "put": {
+        "operationId": "internal-put-admin-rate-limits",
         "responses": {
           "default": {
             "content": {

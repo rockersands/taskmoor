@@ -969,6 +969,8 @@ export const EVENT_TYPES = {
     }),
   },
   'token_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  /** A site administrator changed the workspace's rate limits (M1-066). */
+  'rate_limits.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // SCIM provisioning (M1-083, IAM-006, ADR-038); the actor is the provisioning service account.
   /** A person provisioned; `revived` when it brings back an account SCIM removed before. */
   'scim.user_created': {
