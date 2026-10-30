@@ -4,9 +4,7 @@
     "outDir": ".tsbuild",
     "rootDir": "src"
   },
-  "include": [
-    "src"
-  ],
+  "include": ["src"],
   "references": [
     {
       "path": "../../packages/db"
