@@ -86,6 +86,7 @@ const fresh = (): ReportState => ({
   inTrash: false,
   numbers: {},
   sprints: new Set(),
+  targetReleases: new Set(),
 });
 
 /** One ticket's value by the board's statistic. */

@@ -21,7 +21,8 @@ estimates at that moment).
 - **No new table.** `apps/server/src/reports/events.ts` reads both logs as one ordered stream
   of typed report events per ticket: field events for track, type, status, close reason,
   assignee, parent, original and remaining estimate, time spent, the trash and custom number
-  fields (`cf[<id>]`, story points), and sprint events. Ordered by time, then by the row that
+  fields (`cf[<id>]`, story points), target releases (since M1-062, ADR-059), and sprint
+  events. Ordered by time, then by the row that
   wrote them.
 - **A state is a fold.** `fold` applies events from nothing (creation writes every first value)
   to a `ReportState` per ticket; `stateAt` folds the events up to a moment, so later edits

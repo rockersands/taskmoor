@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { BoardReportsPage } from './BoardReportsPage';
-import { fakeReportClient } from './fixtures';
+import { fakeReportClient, SCRUM_REPORT_BOARD } from './fixtures';
 
 const meta = {
   title: 'Reports/BoardReportsPage',
@@ -65,5 +65,38 @@ export const TimeInStatus: Story = {
 
 export const Phone: Story = {
   args: { report: 'control-chart' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** A Scrum board's release, sprint by sprint, with a forecast at its velocity (M1-062). */
+export const ReleaseBurndown: Story = {
+  args: { report: 'release-burndown', client: fakeReportClient(SCRUM_REPORT_BOARD) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('figure', { name: 'Remaining work' })).toBeVisible();
+    await expect(canvas.getByRole('figure', { name: 'Work per sprint' })).toBeVisible();
+  },
+};
+
+export const OutcomeBurndown: Story = {
+  args: { report: 'outcome-burndown', client: fakeReportClient(SCRUM_REPORT_BOARD) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
+    await userEvent.click(canvas.getByRole('button', { name: 'Show' }));
+    await expect(await canvas.findByRole('link', { name: 'SHOP-7' })).toBeVisible();
+  },
+};
+
+export const ReleaseReport: Story = {
+  args: { report: 'release-report', client: fakeReportClient(SCRUM_REPORT_BOARD) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('figure', { name: 'Release progress' })).toBeVisible();
+  },
+};
+
+export const ReleaseBurndownPhone: Story = {
+  args: { report: 'release-burndown', client: fakeReportClient(SCRUM_REPORT_BOARD) },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };

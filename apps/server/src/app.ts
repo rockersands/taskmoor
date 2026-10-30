@@ -46,6 +46,7 @@ import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerReleaseRoutes } from './routes/releases';
+import { registerReportRoutes } from './routes/reports';
 import { registerRichTextRoutes } from './routes/rich-text';
 import { registerSamlRoutes } from './routes/saml';
 import { registerSavedSearchRoutes } from './routes/saved-searches';
@@ -280,6 +281,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerGuardrailRoutes(app, db);
     // Boards (M1-043): reads go through the search compiler, moves through the ticket routes.
     registerBoardRoutes(app, db, authorizer, fieldCatalogs, {
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // General reports over any query (M1-062): created vs closed, two-dimensional statistics.
+    registerReportRoutes(app, db, {
+      catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     // Saved searches (M1-063): sharing, stars and subscriptions; queries checked on save.

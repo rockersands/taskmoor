@@ -213,6 +213,42 @@ export interface Compiled {
   warnings: string[];
 }
 
+const compileContext = (scope: Scope) => ({
+  comments: commentReadableSql(scope.ws, scope.userId),
+  filter: scope.filter.sql,
+  workspaceId: scope.ws,
+});
+
+/** The tickets of the workspace the viewer sees, before any query. */
+function viewerBase(scope: Scope): RawBuilder<boolean>[] {
+  const base: RawBuilder<boolean>[] = [
+    sql<boolean>`k.workspace_id = ${scope.ws}::int`,
+    sql<boolean>`k.deleted_at IS NULL`,
+    scope.filter.sql,
+  ];
+  if (scope.filter.tracks !== 'all') {
+    base.push(sql<boolean>`k.track_id = ANY(${[...scope.filter.tracks]}::int[])`);
+  }
+  return base;
+}
+
+/**
+ * Any query's tickets as the viewer sees them, as a condition on the ticket `k` (M1-062: the
+ * general reports). An empty query is every ticket they see; a bad one throws, as a search does.
+ */
+export async function compileQuery(
+  db: Db,
+  scope: Scope,
+  text: string,
+  now: Date,
+): Promise<RawBuilder<boolean>> {
+  const base = viewerBase(scope);
+  if (text.trim() !== '') {
+    base.push(compileCond(await bindCondition(db, scope, text, now), compileContext(scope)));
+  }
+  return and(base);
+}
+
 /**
  * The board's conditions for a viewer. A bad filter query or sub-filter throws (the board
  * cannot be shown); a lane or colour query the viewer's catalogue cannot read matches nothing
@@ -225,21 +261,10 @@ export async function compileBoard(
   active: readonly BoardFilter[],
   now: Date,
 ): Promise<Compiled> {
-  const ctx = {
-    comments: commentReadableSql(scope.ws, scope.userId),
-    filter: scope.filter.sql,
-    workspaceId: scope.ws,
-  };
+  const ctx = compileContext(scope);
   const cond = async (text: string) =>
     compileCond(await bindCondition(db, scope, text, now, board.id), ctx);
-  const base: RawBuilder<boolean>[] = [
-    sql<boolean>`k.workspace_id = ${scope.ws}::int`,
-    sql<boolean>`k.deleted_at IS NULL`,
-    scope.filter.sql,
-  ];
-  if (scope.filter.tracks !== 'all') {
-    base.push(sql<boolean>`k.track_id = ANY(${[...scope.filter.tracks]}::int[])`);
-  }
+  const base = viewerBase(scope);
   base.push(await cond(board.filterQuery));
   if (board.subFilterQuery !== null) base.push(await cond(board.subFilterQuery));
   const filters: RawBuilder<boolean>[] = [];

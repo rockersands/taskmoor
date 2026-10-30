@@ -36,6 +36,8 @@ export const REPORT_FIELDS = [
   'remainingEstimate',
   'timeSpent',
   'trash',
+  // Release membership (M1-062): ids by commas.
+  'targetRelease',
 ] as const;
 export type ReportField = (typeof REPORT_FIELDS)[number];
 
@@ -82,9 +84,12 @@ export interface ReportState {
   numbers: Record<number, number | null>;
   /** The open sprints the ticket is in: future or active ones (completing a sprint closes it). */
   sprints: Set<number>;
+  /** The releases it targets (M1-062). */
+  targetReleases: Set<number>;
 }
 
-const emptyState = (): ReportState => ({
+/** A ticket before its first event. */
+export const emptyState = (): ReportState => ({
   trackId: null,
   typeId: null,
   statusId: null,
@@ -97,6 +102,7 @@ const emptyState = (): ReportState => ({
   inTrash: false,
   numbers: {},
   sprints: new Set(),
+  targetReleases: new Set(),
 });
 
 const int = (text: string | null) => (text === null ? null : Number(text));
@@ -140,6 +146,9 @@ export function apply(state: ReportState, event: ReportEvent): void {
       return;
     case 'trash':
       state.inTrash = v !== null;
+      return;
+    case 'targetRelease':
+      state.targetReleases = new Set(v === null ? [] : v.split(',').map(Number));
       return;
     default: {
       const m = CUSTOM.exec(event.field);
@@ -348,6 +357,16 @@ export async function replayCheck(
       .where('ticket_id', 'in', ids)
       .where('open', '=', true)
       .execute();
+    const targets = await db
+      .selectFrom('ticket_release')
+      .select(['ticket_id', 'release_id'])
+      .where('ticket_id', 'in', ids)
+      .where('role', '=', 'target')
+      .execute();
+    const targetsOf = new Map<number, number[]>();
+    for (const r of targets) {
+      targetsOf.set(r.ticket_id, [...(targetsOf.get(r.ticket_id) ?? []), r.release_id]);
+    }
     const openOf = new Map<number, number[]>();
     for (const o of open)
       openOf.set(o.ticket_id, [...(openOf.get(o.ticket_id) ?? []), o.sprint_id]);
@@ -399,6 +418,16 @@ export async function replayCheck(
           field: 'sprints',
           replayed: replayedSprints,
           live: liveSprints,
+        });
+      }
+      const liveTargets = (targetsOf.get(t.id) ?? []).sort((a, b) => a - b);
+      const replayedTargets = [...s.targetReleases].sort((a, b) => a - b);
+      if (liveTargets.join(',') !== replayedTargets.join(',')) {
+        mismatches.push({
+          ticketId: t.id,
+          field: 'targetRelease',
+          replayed: replayedTargets,
+          live: liveTargets,
         });
       }
     }

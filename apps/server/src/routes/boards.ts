@@ -40,8 +40,9 @@ import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
 import { registerBoardReportRoutes } from './board-reports';
+import { registerScopeReportRoutes } from './scope-reports';
 import { searchRefusal } from './search';
-import { registerSprintRoutes } from './sprints';
+import { registerSprintRoutes, type SprintRouteDeps } from './sprints';
 import { ticketRoutes } from './tickets';
 
 /**
@@ -953,7 +954,7 @@ export function registerBoardRoutes(
   });
 
   // Sprints (M1-044): on Scrum boards, managed by "Manage sprints" or the board's configurers.
-  registerSprintRoutes(app, db, {
+  const sprintRoutes: SprintRouteDeps = {
     catalogs,
     timeoutMs,
     board: async (request, reply, id) => {
@@ -972,5 +973,8 @@ export function registerBoardRoutes(
         manage,
       };
     },
-  });
+  };
+  registerSprintRoutes(app, db, sprintRoutes);
+  // Release and outcome reports of Scrum boards (M1-062).
+  registerScopeReportRoutes(app, db, sprintRoutes);
 }

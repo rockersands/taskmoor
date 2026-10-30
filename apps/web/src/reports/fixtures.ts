@@ -5,8 +5,10 @@ import type {
   CycleParams,
   CyclePointView,
   CycleTime,
+  ReleaseReport,
   ReportClient,
   ReportParams,
+  ScopeBurndown,
   TimeInStatus,
 } from './client';
 
@@ -157,17 +159,87 @@ export function timeInStatusFixture(): TimeInStatus {
   };
 }
 
-export interface FakeReportClient extends ReportClient {
-  calls: { report: string; params: CycleParams }[];
+/** The same board as a Scrum board estimating in story points (M1-062). */
+export const SCRUM_REPORT_BOARD: Board = {
+  ...REPORT_BOARD,
+  kind: 'scrum',
+  sprintSettings: {
+    ...REPORT_BOARD.sprintSettings,
+    estimation: { statistic: 'field', fieldId: 31 },
+    timeTracking: 'none',
+  },
+};
+
+export const RELEASES: { id: number; name: string }[] = [
+  { id: 31, name: 'Checkout 2.0' },
+  { id: 32, name: 'Checkout 2.1' },
+];
+
+/** Three sprints of a release in points: two completed, one running. */
+export function scopeFixture(): ScopeBurndown {
+  const sprint = (
+    n: number,
+    state: 'active' | 'closed',
+    work: [number, number, number, number, number],
+  ) => ({
+    sprintId: n,
+    name: `Checkout Sprint ${n}`,
+    state,
+    startedAt: `2026-10-${String(n * 2 - 8).padStart(2, '0')}T09:00:00Z`,
+    completedAt:
+      state === 'closed' ? `2026-10-${String(n * 2 - 7 + 4).padStart(2, '0')}T17:00:00Z` : null,
+    start: work[0],
+    completed: work[1],
+    added: work[2],
+    removed: work[3],
+    end: work[4],
+  });
+  return {
+    statistic: { statistic: 'field', fieldId: 31 },
+    sprints: [
+      sprint(8, 'closed', [40, 12, 5, 0, 33]),
+      sprint(9, 'closed', [33, 10, 8, 3, 28]),
+      sprint(10, 'active', [30, 6, 0, 0, 24]),
+    ],
+    now: { scope: 64, completed: 40, remaining: 24 },
+    velocity: 11,
+    forecast: 3,
+  };
 }
 
-export function fakeReportClient(): FakeReportClient {
-  const calls: { report: string; params: CycleParams }[] = [];
+export function releaseReportFixture(): ReleaseReport {
+  const days = Array.from({ length: 22 }, (_, i) => ({
+    date: new Date(Date.parse('2026-10-08T00:00:00Z') + i * DAY_MS).toISOString().slice(0, 10),
+    scope: 40 + Math.min(24, Math.floor(i * 1.3)),
+    completed: Math.round(i * 1.85),
+  }));
+  return {
+    release: {
+      id: 31,
+      name: 'Checkout 2.0',
+      startDate: '2026-10-08',
+      releaseDate: '2026-11-30',
+      shippedAt: null,
+    },
+    statistic: { statistic: 'field', fieldId: 31 },
+    timeZone: 'UTC',
+    days,
+    pace: 1.86,
+    forecast: '2026-11-11',
+  };
+}
+
+export interface FakeReportClient extends ReportClient {
+  calls: { report: string; params: CycleParams | { release: number } | { outcome: string } }[];
+}
+
+export function fakeReportClient(board: Board = REPORT_BOARD): FakeReportClient {
+  const calls: FakeReportClient['calls'] = [];
   const record = (report: string, params: ReportParams | CycleParams) =>
     calls.push({ report, params: { ...params } });
   return {
     calls,
-    board: async () => REPORT_BOARD,
+    board: async () => board,
     cumulativeFlow: async (_board, params) => {
       record('cumulative-flow', params);
       return flowFixture();
@@ -180,5 +252,20 @@ export function fakeReportClient(): FakeReportClient {
       record('time-in-status', params);
       return timeInStatusFixture();
     },
+    releases: async () => RELEASES,
+    releaseBurndown: async (_board, releaseId) => {
+      calls.push({ report: 'release-burndown', params: { release: releaseId } });
+      const release = RELEASES.find((r) => r.id === releaseId);
+      return { ...scopeFixture(), ...(release ? { release } : {}) };
+    },
+    outcomeBurndown: async (_board, outcome) => {
+      calls.push({ report: 'outcome-burndown', params: { outcome } });
+      if (outcome !== 'SHOP-7') throw new Error('not_found');
+      return {
+        ...scopeFixture(),
+        outcome: { id: 77, key: 'SHOP-7', summary: 'One-page checkout' },
+      };
+    },
+    releaseReport: async () => releaseReportFixture(),
   };
 }

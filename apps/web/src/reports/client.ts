@@ -1,5 +1,6 @@
 import { api } from '../api/client';
 import { type Board, boardClient } from '../boards/client';
+import type { SprintSettings } from '../sprints/client';
 
 /** The flow reports of a board (M1-061; `GET /api/v1/boards/:id/reports/...`). */
 export interface ReportWindow {
@@ -57,6 +58,50 @@ export interface TimeInStatus extends ReportWindow {
   }[];
 }
 
+/** One sprint of a release or outcome burndown (M1-062). */
+export interface SprintWork {
+  sprintId: number;
+  name: string;
+  state: 'active' | 'closed' | 'future';
+  startedAt: string | null;
+  completedAt: string | null;
+  /** Remaining at the start and at the end (now while it runs), by the board's statistic. */
+  start: number;
+  end: number;
+  completed: number;
+  added: number;
+  removed: number;
+}
+
+export interface ScopeBurndown {
+  statistic: SprintSettings['estimation'];
+  sprints: SprintWork[];
+  now: { scope: number; completed: number; remaining: number };
+  /** Completed per sprint over the last three completed sprints. */
+  velocity: number;
+  /** Sprints still needed at that velocity; null without one. */
+  forecast: number | null;
+  release?: { id: number; name: string };
+  outcome?: { id: number; key: string; summary: string };
+}
+
+export interface ReleaseReport {
+  release: {
+    id: number;
+    name: string;
+    startDate: string | null;
+    releaseDate: string | null;
+    shippedAt: string | null;
+  };
+  statistic: SprintSettings['estimation'];
+  timeZone: string;
+  days: { date: string; scope: number; completed: number }[];
+  /** Completed per day over the last 14 days. */
+  pace: number;
+  /** The local date the work would be complete at that pace; null without pace. */
+  forecast: string | null;
+}
+
 export interface ReportParams {
   from?: string;
   to?: string;
@@ -76,6 +121,12 @@ export interface ReportClient {
   cumulativeFlow(boardId: number, params: ReportParams): Promise<CumulativeFlow>;
   cycleTime(boardId: number, params: CycleParams): Promise<CycleTime>;
   timeInStatus(boardId: number, params: ReportParams): Promise<TimeInStatus>;
+  /** The releases of a track, for the release reports. */
+  releases(trackId: number): Promise<{ id: number; name: string }[]>;
+  releaseBurndown(boardId: number, releaseId: number): Promise<ScopeBurndown>;
+  /** An outcome by key or id. */
+  outcomeBurndown(boardId: number, outcome: string): Promise<ScopeBurndown>;
+  releaseReport(boardId: number, releaseId: number): Promise<ReleaseReport>;
 }
 
 /** A report's path with its query string; empty values are left out. */
@@ -99,4 +150,15 @@ export const reportClient: ReportClient = {
   cycleTime: (boardId, params) => api<CycleTime>(reportPath(boardId, 'cycle-time', params)),
   timeInStatus: (boardId, params) =>
     api<TimeInStatus>(reportPath(boardId, 'time-in-status', params)),
+  releases: async (trackId) =>
+    (await api<{ releases: { id: number; name: string }[] }>(`/tracks/${trackId}/releases`))
+      .releases,
+  releaseBurndown: (boardId, releaseId) =>
+    api<ScopeBurndown>(`/boards/${boardId}/reports/release-burndown?release=${releaseId}`),
+  outcomeBurndown: (boardId, outcome) =>
+    api<ScopeBurndown>(
+      `/boards/${boardId}/reports/outcome-burndown?outcome=${encodeURIComponent(outcome)}`,
+    ),
+  releaseReport: (boardId, releaseId) =>
+    api<ReleaseReport>(`/boards/${boardId}/reports/release-report?release=${releaseId}`),
 };

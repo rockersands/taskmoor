@@ -361,6 +361,18 @@
   font-weight: 650;
 }
 
+/* Wide tables scroll inside their own box, never the page (ADR-033). */
+.report-table,
+.chart-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.report-table:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 .report-table table {
   width: 100%;
   border-collapse: collapse;

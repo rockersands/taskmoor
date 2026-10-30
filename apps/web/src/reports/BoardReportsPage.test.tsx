@@ -6,7 +6,13 @@ import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { type BoardReport, BoardReportsPage } from './BoardReportsPage';
-import { fakeReportClient, REPORT_BOARD, SUMMARIES } from './fixtures';
+import {
+  fakeReportClient,
+  RELEASES,
+  REPORT_BOARD,
+  SCRUM_REPORT_BOARD,
+  SUMMARIES,
+} from './fixtures';
 
 function open(report: BoardReport, locale: Locale = 'en', client = fakeReportClient()) {
   const errors: Error[] = [];
@@ -188,6 +194,107 @@ describe('board reports (M1-061)', () => {
         'Closed',
         'Parked',
         ...SUMMARIES,
+      ]);
+      const texts = visibleTexts(container).filter((t) => !/\d/.test(t) && !data.has(t));
+      expect(untranslated(texts)).toEqual([]);
+      expect(errors).toEqual([]);
+      container.remove();
+    }
+  });
+});
+
+describe('release and outcome reports of a Scrum board (M1-062)', () => {
+  const scrum = () => fakeReportClient(SCRUM_REPORT_BOARD);
+
+  it('[RPT-001] only a Scrum board offers them', async () => {
+    open('cumulative-flow');
+    await screen.findByRole('figure', { name: 'Cumulative flow' });
+    expect(screen.queryByRole('link', { name: 'Release burndown' })).toBeNull();
+    const nav = screen.getByRole('navigation', { name: 'Reports' });
+    expect(within(nav).getAllByRole('link')).toHaveLength(4);
+  });
+
+  it('[RPT-001] the release burndown shows the work at each sprint and a forecast', async () => {
+    const user = userEvent.setup();
+    const { client } = open('release-burndown', 'en', scrum());
+    const remaining = await screen.findByRole('figure', { name: 'Remaining work' });
+    expect(
+      screen.getByText('24 remaining of 64; 40 done. At 11 a sprint, about 3 more sprints.'),
+    ).toBeVisible();
+    expect(
+      within(remaining)
+        .getAllByRole('row')
+        .map((r) => cells(r)),
+    ).toEqual([
+      ['When', 'Remaining work'],
+      ['Checkout Sprint 8', '40'],
+      ['Checkout Sprint 9', '33'],
+      ['Checkout Sprint 10', '30'],
+      ['Now', '24'],
+    ]);
+    const perSprint = screen.getByRole('figure', { name: 'Work per sprint' });
+    expect(within(perSprint).getByRole('list').textContent).toBe('CompletedAdded');
+    const table = screen.getAllByRole('table').at(-1) as HTMLElement;
+    expect(cells(within(table).getAllByRole('row')[2] as HTMLElement)).toEqual([
+      'Checkout Sprint 9',
+      '33',
+      '10',
+      '8',
+      '3',
+      '28',
+    ]);
+    expect(client.calls.at(-1)).toEqual({ report: 'release-burndown', params: { release: 31 } });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Release' }), 'Checkout 2.1');
+    await waitFor(() =>
+      expect(client.calls.at(-1)).toEqual({ report: 'release-burndown', params: { release: 32 } }),
+    );
+  });
+
+  it('[RPT-001] the outcome burndown follows the outcome whose key is given', async () => {
+    const user = userEvent.setup();
+    open('outcome-burndown', 'en', scrum());
+    expect(await screen.findByText('Enter an outcome’s key to see its burndown.')).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
+    await user.click(screen.getByRole('button', { name: 'Show' }));
+    expect(await screen.findByRole('link', { name: 'SHOP-7' })).toHaveAttribute(
+      'href',
+      '#/tickets/SHOP-7',
+    );
+    expect(screen.getByText('One-page checkout')).toBeVisible();
+    await user.clear(screen.getByRole('textbox', { name: 'Outcome' }));
+    await user.type(screen.getByRole('textbox', { name: 'Outcome' }), 'SHOP-404{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No outcome with that key is visible to you.',
+    );
+  });
+
+  it('[RPT-001] the release report shows progress by day, the plan and a forecast', async () => {
+    open('release-report', 'en', scrum());
+    const figure = await screen.findByRole('figure', { name: 'Release progress' });
+    expect(within(figure).getByRole('list').textContent).toBe('CompletedScope');
+    expect(
+      screen.getByText(
+        'Planned for Nov 30. At the pace of the last 14 days, the work is done by Nov 11.',
+      ),
+    ).toBeVisible();
+    expect(within(figure).getAllByRole('row')).toHaveLength(23);
+  });
+
+  it('[RPT-001] says when the board’s track has no releases', async () => {
+    const client = scrum();
+    client.releases = async () => [];
+    open('release-report', 'en', client);
+    expect(await screen.findByText('The board’s track has no releases.')).toBeVisible();
+  });
+
+  it('[RPT-001] every text goes through the catalogue (en-XA)', async () => {
+    for (const report of ['release-burndown', 'release-report'] as const) {
+      const { container, errors } = open(report, 'en-XA', scrum());
+      await screen.findAllByRole('figure');
+      const data = new Set([
+        SCRUM_REPORT_BOARD.name,
+        ...RELEASES.map((r) => r.name),
+        'Checkout Sprint',
       ]);
       const texts = visibleTexts(container).filter((t) => !/\d/.test(t) && !data.has(t));
       expect(untranslated(texts)).toEqual([]);

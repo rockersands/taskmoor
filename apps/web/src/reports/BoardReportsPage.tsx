@@ -14,6 +14,7 @@ import {
   type TimeInStatus,
 } from './client';
 import { ScatterChart } from './ScatterChart';
+import { SCOPE_REPORTS, ScopeReport, type ScopeReportKind } from './ScopeReports';
 import { StackedAreaChart } from './StackedAreaChart';
 
 export const BOARD_REPORTS = [
@@ -21,6 +22,8 @@ export const BOARD_REPORTS = [
   'control-chart',
   'cycle-time',
   'time-in-status',
+  // Scrum boards only (M1-062).
+  ...SCOPE_REPORTS,
 ] as const;
 export type BoardReport = (typeof BOARD_REPORTS)[number];
 
@@ -29,7 +32,12 @@ const TAB: Record<BoardReport, MessageId> = {
   'control-chart': 'reports.tab.control',
   'cycle-time': 'reports.tab.cycle',
   'time-in-status': 'reports.tab.time',
+  'release-burndown': 'reports.tab.releaseBurndown',
+  'outcome-burndown': 'reports.tab.outcomeBurndown',
+  'release-report': 'reports.tab.releaseReport',
 };
+const isScope = (r: BoardReport): r is ScopeReportKind =>
+  (SCOPE_REPORTS as readonly string[]).includes(r);
 const PERIODS = ['14', '30', '90', '180', '365'] as const;
 type Period = (typeof PERIODS)[number] | 'custom';
 const HOUR = 3600;
@@ -45,7 +53,7 @@ export interface BoardReportsPageProps {
  * A board's flow reports (M1-061; RPT-001): cumulative flow, the control chart, the cycle time
  * distribution and time in status, over a period of days and the board filters chosen. The
  * control chart and the distribution count the columns chosen as the work and average over
- * neighbouring tickets or over days.
+ * neighbouring tickets or over days. Scrum boards add the release and outcome reports (M1-062).
  */
 export function BoardReportsPage({
   boardId,
@@ -73,6 +81,7 @@ export function BoardReportsPage({
   }, [client, boardId]);
 
   useEffect(() => {
+    if (isScope(report)) return;
     let live = true;
     setFailed(false);
     const base: ReportParams = {
@@ -297,7 +306,8 @@ export function BoardReportsPage({
           tableLabel={t('reports.table')}
           categoryHeader={t('reports.time.status')}
         />
-        <div className="report-table">
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard */}
+        <section className="report-table" aria-label={t('reports.time.table')} tabIndex={0}>
           <table>
             <thead>
               <tr>
@@ -322,7 +332,7 @@ export function BoardReportsPage({
               ))}
             </tbody>
           </table>
-        </div>
+        </section>
       </>
     );
   };
@@ -354,7 +364,7 @@ export function BoardReportsPage({
         </a>
       </div>
       <nav className="reports-tabs" aria-label={t('reports.tabs')}>
-        {BOARD_REPORTS.map((r) => (
+        {BOARD_REPORTS.filter((r) => !isScope(r) || board?.kind === 'scrum').map((r) => (
           <a
             key={r}
             href={`#/boards/${boardId}/reports/${r}`}
@@ -364,133 +374,139 @@ export function BoardReportsPage({
           </a>
         ))}
       </nav>
-      <div className="reports-controls">
-        <div className="form-field">
-          <label htmlFor={`${id}-period`}>{t('reports.period')}</label>
-          <select
-            id={`${id}-period`}
-            value={period}
-            onChange={(e) => {
-              const next = e.target.value as Period;
-              if (next === 'custom' && current) {
-                setFrom(current.from);
-                setTo(current.to);
-              }
-              setPeriod(next);
-            }}
-          >
-            {PERIODS.map((p) => (
-              <option key={p} value={p}>
-                {t('reports.period.days', { count: Number(p) })}
-              </option>
-            ))}
-            <option value="custom">{t('reports.period.custom')}</option>
-          </select>
-        </div>
-        {period === 'custom' && (
-          <>
+      {isScope(report) ? (
+        board && <ScopeReport board={board} kind={report} client={client} />
+      ) : (
+        <>
+          <div className="reports-controls">
             <div className="form-field">
-              <label htmlFor={`${id}-from`}>{t('reports.from')}</label>
-              <input
-                id={`${id}-from`}
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor={`${id}-to`}>{t('reports.to')}</label>
-              <input
-                id={`${id}-to`}
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-              />
-            </div>
-          </>
-        )}
-        {(report === 'control-chart' || report === 'cycle-time') && (
-          <>
-            <div className="form-field">
-              <label htmlFor={`${id}-average`}>{t('reports.average')}</label>
+              <label htmlFor={`${id}-period`}>{t('reports.period')}</label>
               <select
-                id={`${id}-average`}
-                value={average}
+                id={`${id}-period`}
+                value={period}
                 onChange={(e) => {
-                  setAverage(e.target.value as 'tickets' | 'days');
-                  setSize('');
+                  const next = e.target.value as Period;
+                  if (next === 'custom' && current) {
+                    setFrom(current.from);
+                    setTo(current.to);
+                  }
+                  setPeriod(next);
                 }}
               >
-                <option value="tickets">{t('reports.average.tickets')}</option>
-                <option value="days">{t('reports.average.days')}</option>
+                {PERIODS.map((p) => (
+                  <option key={p} value={p}>
+                    {t('reports.period.days', { count: Number(p) })}
+                  </option>
+                ))}
+                <option value="custom">{t('reports.period.custom')}</option>
               </select>
             </div>
-            <div className="form-field">
-              <label htmlFor={`${id}-window`}>
-                {t(average === 'tickets' ? 'reports.window.tickets' : 'reports.window.days')}
-              </label>
-              <input
-                id={`${id}-window`}
-                type="number"
-                min={1}
-                max={10000}
-                inputMode="numeric"
-                value={size}
-                placeholder={cycle ? String(cycle.averaging.size) : ''}
-                onChange={(e) => setSize(e.target.value)}
-              />
-            </div>
-          </>
-        )}
-      </div>
-      {board && (report === 'control-chart' || report === 'cycle-time') && (
-        <fieldset className="reports-choices">
-          <legend>{t('reports.columns')}</legend>
-          <p className="report-note">{t('reports.columnsHint')}</p>
-          {board.columns.map((c) => {
-            const on = chosen.includes(c.id);
-            return (
-              <label key={c.id} className="reports-check">
-                <input
-                  type="checkbox"
-                  checked={on}
-                  disabled={on && chosen.length === 1}
-                  onChange={(e) => toggleColumn(c.id, e.target.checked)}
-                />
-                {c.name}
-              </label>
-            );
-          })}
-        </fieldset>
-      )}
-      {board && board.boardFilters.length > 0 && (
-        <fieldset className="reports-choices">
-          <legend>{t('reports.filters')}</legend>
-          {board.boardFilters.map((f) => (
-            <label key={f.id} className="reports-check">
-              <input
-                type="checkbox"
-                checked={filters.includes(f.id)}
-                onChange={(e) => toggleFilter(f.id, e.target.checked)}
-              />
-              {f.name}
-            </label>
-          ))}
-        </fieldset>
-      )}
-      {failed ? (
-        <p className="board-problem" role="alert">
-          {t('reports.failed')}
-        </p>
-      ) : (
-        <div className="reports-body">
-          {current && (
-            <p className="report-note">
-              {t('reports.window', { from: day(current.from), to: day(current.to) })}
-            </p>
+            {period === 'custom' && (
+              <>
+                <div className="form-field">
+                  <label htmlFor={`${id}-from`}>{t('reports.from')}</label>
+                  <input
+                    id={`${id}-from`}
+                    type="date"
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                  />
+                </div>
+                <div className="form-field">
+                  <label htmlFor={`${id}-to`}>{t('reports.to')}</label>
+                  <input
+                    id={`${id}-to`}
+                    type="date"
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+            {(report === 'control-chart' || report === 'cycle-time') && (
+              <>
+                <div className="form-field">
+                  <label htmlFor={`${id}-average`}>{t('reports.average')}</label>
+                  <select
+                    id={`${id}-average`}
+                    value={average}
+                    onChange={(e) => {
+                      setAverage(e.target.value as 'tickets' | 'days');
+                      setSize('');
+                    }}
+                  >
+                    <option value="tickets">{t('reports.average.tickets')}</option>
+                    <option value="days">{t('reports.average.days')}</option>
+                  </select>
+                </div>
+                <div className="form-field">
+                  <label htmlFor={`${id}-window`}>
+                    {t(average === 'tickets' ? 'reports.window.tickets' : 'reports.window.days')}
+                  </label>
+                  <input
+                    id={`${id}-window`}
+                    type="number"
+                    min={1}
+                    max={10000}
+                    inputMode="numeric"
+                    value={size}
+                    placeholder={cycle ? String(cycle.averaging.size) : ''}
+                    onChange={(e) => setSize(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          {board && (report === 'control-chart' || report === 'cycle-time') && (
+            <fieldset className="reports-choices">
+              <legend>{t('reports.columns')}</legend>
+              <p className="report-note">{t('reports.columnsHint')}</p>
+              {board.columns.map((c) => {
+                const on = chosen.includes(c.id);
+                return (
+                  <label key={c.id} className="reports-check">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={on && chosen.length === 1}
+                      onChange={(e) => toggleColumn(c.id, e.target.checked)}
+                    />
+                    {c.name}
+                  </label>
+                );
+              })}
+            </fieldset>
           )}
-          {body}
-        </div>
+          {board && board.boardFilters.length > 0 && (
+            <fieldset className="reports-choices">
+              <legend>{t('reports.filters')}</legend>
+              {board.boardFilters.map((f) => (
+                <label key={f.id} className="reports-check">
+                  <input
+                    type="checkbox"
+                    checked={filters.includes(f.id)}
+                    onChange={(e) => toggleFilter(f.id, e.target.checked)}
+                  />
+                  {f.name}
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {failed ? (
+            <p className="board-problem" role="alert">
+              {t('reports.failed')}
+            </p>
+          ) : (
+            <div className="reports-body">
+              {current && (
+                <p className="report-note">
+                  {t('reports.window', { from: day(current.from), to: day(current.to) })}
+                </p>
+              )}
+              {body}
+            </div>
+          )}
+        </>
       )}
     </section>
   );

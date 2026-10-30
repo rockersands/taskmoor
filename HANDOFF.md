@@ -73,6 +73,17 @@ stop (CI is the gate).
   `ScatterChart`, tokens `--color-flow-first` and `--color-flow-last` (an ordinal ramp, mixed
   with `color-mix` in oklab). e2e `board-reports.spec.ts`. 100,000 tickets:
   `board-reports.large.test.ts` with `TASKMOOR_LARGE_REPORTS=1`.
+- **M1-062 release, outcome and general reports** (ADR-059; no migration). General reports over
+  any query, counted in SQL (`reports/general.ts`, `routes/reports.ts`):
+  `GET /api/v1/reports/created-vs-closed` (closings are close-reason events; day, week, month)
+  and `/two-dimensional` (system fields and grouping custom fields; several values count under
+  each; 50 values then "other"); `compileQuery` in `boards/data.ts` compiles any query for the
+  viewer. Release and outcome reports of Scrum boards from report events
+  (`reports/scope-burndown.ts`, `routes/scope-reports.ts`, registered with the sprint routes):
+  `/boards/:id/reports/release-burndown`, `/outcome-burndown`, `/release-report`. Report
+  events follow `targetRelease` now and the replay check compares it. Web: three Scrum tabs on
+  the reports page (`reports/ScopeReports.tsx`). Charts: x labels thin by their own width, and
+  the charts' and reports' tables scroll inside their own box on phones (ADR-033).
 - **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
   the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
   settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
@@ -97,10 +108,10 @@ stop (CI is the gate).
 
 1. The overnight list below without M1-045: M1-040 full-text search and M1-039 history
    operators (both measured at 10M tickets: this Mac has 33 GB free, the 137 GB dataset stayed
-   on Windows, so their timing criteria need another machine or CI), M1-062 outcome and
-   release burndowns, release report, created vs closed and two-dimensional statistics (next:
-   on M1-059's events, drawn with the chart components of M1-060 and M1-061), then M1-064
-   dashboards, M1-046 board drag and drop, M1-098 CSV, M1-105, M1-115, M1-116.
+   on Windows, so their timing criteria need another machine or CI), M1-064 dashboards (next:
+   its created vs closed, two-dimensional statistics, burndown and other widgets read the M1-060
+   to M1-062 endpoints; RPT-002 (3) is measured there), M1-046 board drag and drop, M1-098 CSV,
+   M1-105, M1-115, M1-116.
 2. Sprint editing in the web UI (name, goal and dates; API only since M1-044) and the rest of
    M1-044's "Left" list below. Sprint settings are in the web UI now (above). Webhooks have no
    web page yet (API only).
@@ -118,6 +129,8 @@ stop (CI is the gate).
   straight after the Tab could land first and the caret jumped back, so `search.spec.ts` failed
   about one run in eight ("ATT" not offered after `track = `). It is placed in a layout effect
   now (`SearchPage.tsx`, `caretAfter`).
+- `BulkOperationPage.test.tsx` read the failed tickets as soon as their region showed, before
+  their own request answered, and failed under load; it waits for the items now.
 
 - `apps/server/src/routes/search.run.test.ts` "[QRY-010] stops a query over the timeout" timed
   out at 60 s in a full gate here (load average 16 to 19: its 20,000-row insert waits); it

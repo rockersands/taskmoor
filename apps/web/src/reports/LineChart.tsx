@@ -58,11 +58,12 @@ export function LineChart({
   const top = ticks[ticks.length - 1] ?? 1;
   const x = (i: number) => M.left + (n <= 1 ? plotW / 2 : (i * plotW) / (n - 1));
   const y = (v: number) => M.top + plotH - (v / top) * plotH;
-  // As many date labels as fit, the first and the last always.
-  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(plotW / 72))));
+  // As many labels as fit at their own width (about 6.8px a character), the first and last always.
+  const labelWidth = Math.max(72, ...xLabels.map((l) => l.length * 6.8 + 16));
+  const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(plotW / labelWidth))));
   const shownX = xLabels
     .map((label, i) => ({ label, i }))
-    .filter(({ i }) => i === 0 || i === n - 1 || (i % every === 0 && n - 1 - i >= every / 2));
+    .filter(({ i }) => i === 0 || i === n - 1 || (i % every === 0 && n - 1 - i >= every));
 
   const paths = series.map((s) => {
     let d = '';
