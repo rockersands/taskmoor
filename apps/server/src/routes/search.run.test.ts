@@ -972,9 +972,10 @@ describe('search (M1-037)', () => {
     expect(unknown.statusCode).toBe(400);
   });
   // Last: it adds 20,000 tickets, enough work that a 1 ms timeout always stops the query, also
-  // where the server's timers fire late (Windows: about every 15 ms).
+  // where the server's timers fire late (Windows: about every 15 ms). Writing them takes a few
+  // seconds alone and over a minute while other suites load the machine, hence the long limit.
   it('[QRY-010] stops a query over the timeout with a clear error', {
-    timeout: 60_000,
+    timeout: 180_000,
   }, async () => {
     const type = await database.db
       .selectFrom('ticket_type')
