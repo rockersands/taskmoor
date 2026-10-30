@@ -19,6 +19,8 @@ describe('text search syntax (M1-040)', () => {
       { kind: 'word', text: 'now' },
     ]);
     expect(terms('log*')).toEqual([{ kind: 'word', text: 'log', prefix: true }]);
+    // Stars side by side are one (found by the print property: `ßßé**` printed as a prefix).
+    expect(terms('ßßé**')).toEqual([{ kind: 'word', text: 'ßßé', prefix: true }]);
     expect(terms('lo?in')).toEqual([{ kind: 'wildcard', parts: ['lo', 'in'] }]);
     expect(terms('?og?n*')).toEqual([{ kind: 'wildcard', parts: ['', 'og', 'n'], prefix: true }]);
     expect(terms('login~')).toEqual([{ kind: 'fuzzy', text: 'login' }]);

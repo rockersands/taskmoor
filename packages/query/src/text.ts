@@ -117,8 +117,10 @@ export function parseTextSearch(value: string): TextSearch {
   return { terms, excluded };
 }
 
-function termOf(word: Char[], at: number): TextTerm | undefined {
+function termOf(typed: Char[], at: number): TextTerm | undefined {
   const is = (x: Char | undefined, c: string) => x?.special === true && x.c === c;
+  // Stars side by side are one: `log**` is `log*`, a prefix.
+  const word = typed.filter((x, i) => !(is(x, '*') && is(typed[i + 1], '*')));
   const last = word[word.length - 1];
   if (is(last, '~')) {
     const body = word.slice(0, -1);
