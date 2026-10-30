@@ -115,3 +115,20 @@ the synthetic format and fixtures are written by us.
   record by record inside the batch (fine for the framework, to be made set-based for the
   1M-ticket runs of M1-091). Imported statuses and ticket types are not added to workflows or
   type sets; the report warns (`status_not_in_workflow`, `type_not_offered`).
+
+## Changes (M1-098, 2026-10-30)
+
+- `ENTITY_KINDS` gained role, priority, close reason, link type, release, area, field, field
+  context, field option, workflow, workflow map and attachment, and history now runs last, since
+  history entries name comments, time entries and files. The fidelity report's kind list grew
+  with it (its JSON Schema golden changed).
+- A loader may `prepare` a batch before planning (the ids inside stored values, `remap.ts`);
+  `LOADERS` moved to `import/loaders.ts`.
+- A format may be **verbatim** (Taskmoor's own export, ADR-061): no starting values or other
+  history rows are made for it, and time spent, formulas, ranks and counters come from it.
+- Ticket commands may name the type as the track's default, take a number from the track's
+  counter, match a ticket the target has by key and keep the properties a source does not give
+  (CSV, `import/csv.ts`); statuses and types may be required to exist.
+- Each record's warnings are stored with it (`import_record.error.warnings`) and listed by
+  `GET /api/v1/admin/imports/:id/problems`, so a dry run shows every record's problems.
+- Timestamps are written as the source's text, so microseconds survive.

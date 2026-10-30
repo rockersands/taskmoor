@@ -1,6 +1,6 @@
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
-import { isRankKey, keyBetween, RANK_DIGITS, sequenceKey } from './rank';
+import { isRankKey, keyBetween, RANK_DIGITS, sequenceKey, sequenceValueOf } from './rank';
 
 /** A deterministic stand-in for Math.random. */
 function seeded(seed: number): () => number {
@@ -90,6 +90,20 @@ describe('rank keys (AGL-009)', () => {
         expect(keyBetween(sequenceKey(n), null)).toBe(sequenceKey(n + 1));
       }),
     );
+  });
+
+  it('[AGL-009] reads the sequence value back from a key, so imported ranks stay above it', () => {
+    fc.assert(
+      fc.property(fc.nat({ max: 100_000_000 }), fc.string({ maxLength: 3 }), (n, tail) => {
+        const key = sequenceKey(n);
+        expect(sequenceValueOf(key)).toBe(BigInt(n));
+        // A key between two others keeps its integer part.
+        expect(sequenceValueOf(`${key}${tail.replace(/[^0-9A-Za-z]/g, '')}`)).toBe(BigInt(n));
+        expect(sequenceKey(n + 1) > key).toBe(true);
+      }),
+    );
+    expect(sequenceValueOf('')).toBe(0n);
+    expect(sequenceValueOf('c1')).toBe(0n);
   });
 
   it('[AGL-009] keeps keys short for ten million appends', () => {

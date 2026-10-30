@@ -1043,6 +1043,15 @@ const tickets: Loader<TicketCommand> = {
       parent = await ticketByKey(ctx, cmd.parentKey);
       if (parent === null) ctx.warn({ code: 'missing_reference', detail: 'parent' });
     }
+    if (parent !== null && parent !== PENDING && type !== PENDING && !ctx.verbatim) {
+      // A parent sits on a higher hierarchy level (CORE-006); a source that says otherwise
+      // loses the link, with a warning, rather than break the hierarchy.
+      const [mine, theirs] = [await levelOfType(ctx, type), await levelOfTicket(ctx, parent)];
+      if (theirs !== null && mine !== null && theirs <= mine) {
+        ctx.warn({ code: 'parent_wrong_level' });
+        parent = null;
+      }
+    }
     const docs = docsOf(ctx, cmd);
     const formulas = formulaIds(ctx.catalog);
     let fields: Record<string, JsonValue> | null = null;
@@ -1338,9 +1347,9 @@ const tickets: Loader<TicketCommand> = {
       }
     }
     if (v.rank !== null) {
-      const top = ctx.cache.get('rank:max') ?? null;
+      const top = ctx.cache.get('sequence:rank') ?? null;
       const value = Number(sequenceValueOf(v.rank));
-      if (top === null || value > top) ctx.cache.set('rank:max', value);
+      if (top === null || value > top) ctx.cache.set('sequence:rank', value);
     }
     // Numbers come from the source: the counter moves past them (CORE-001).
     const last = ctx.cache.get(`counter:${v.track_id}`) ?? null;
@@ -1392,6 +1401,29 @@ const tickets: Loader<TicketCommand> = {
     );
   },
 };
+
+/** A ticket type's hierarchy rank, kept for the batch. */
+const levelOfType = (ctx: LoadContext, type: number) =>
+  byName(ctx, `level:type:${type}`, () =>
+    ctx.trx
+      .selectFrom('ticket_type as t')
+      .innerJoin('hierarchy_level as l', 'l.id', 't.level_id')
+      .select('l.rank as id')
+      .where('t.id', '=', type)
+      .executeTakeFirst(),
+  );
+
+/** The hierarchy rank of a ticket's type. */
+const levelOfTicket = (ctx: LoadContext, ticket: number) =>
+  byName(ctx, `level:ticket:${ticket}`, () =>
+    ctx.trx
+      .selectFrom('ticket as k')
+      .innerJoin('ticket_type as t', 't.id', 'k.ticket_type_id')
+      .innerJoin('hierarchy_level as l', 'l.id', 't.level_id')
+      .select('l.rank as id')
+      .where('k.id', '=', ticket)
+      .executeTakeFirst(),
+  );
 
 /** The type a track preselects for new tickets (its type set's default, else its first). */
 async function defaultTypeOf(ctx: LoadContext, track: number): Promise<number> {
@@ -1483,7 +1515,7 @@ async function moveCounters(ctx: LoadContext): Promise<void> {
       ctx.trx,
     );
   }
-  const top = ctx.cache.get('rank:max') ?? null;
+  const top = ctx.cache.get('sequence:rank') ?? null;
   if (top !== null) {
     // Later tickets take sequence keys: they must sort after every rank imported.
     await sql`

@@ -191,13 +191,18 @@ export function sequenceKey(n: bigint | number | string): string {
  * source's ranks, M1-098): a later sequence key then sorts after all of them.
  */
 export function sequenceValueOf(key: string): bigint {
-  check(key);
   const length = key.charCodeAt(0) - 96;
+  const digits = key.slice(1, 1 + length);
+  // Not an integer part this order knows (a key written by other means): nothing to pass.
+  if (length < 1 || length > 26 || digits.length !== length) return 0n;
   const base = BigInt(BASE);
+  let shorter = 0n;
+  for (let l = 1; l < length; l++) shorter += base ** BigInt(l);
   let value = 0n;
-  for (let l = 1; l < length; l++) value += base ** BigInt(l);
-  for (const digit of key.slice(1, 1 + length)) {
-    value = value * base + BigInt(RANK_DIGITS.indexOf(digit));
+  for (const digit of digits) {
+    const d = RANK_DIGITS.indexOf(digit);
+    if (d < 0) return 0n;
+    value = value * base + BigInt(d);
   }
-  return value;
+  return shorter + value;
 }

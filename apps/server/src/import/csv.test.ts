@@ -221,6 +221,7 @@ describe('CSV import (M1-098)', () => {
     track: 'CSV',
     columns: [
       { column: 'Key', to: 'key' },
+      { column: 'Type', to: 'type' },
       { column: 'Summary', to: 'summary' },
       { column: 'Description', to: 'description' },
       { column: 'Status', to: 'status' },
@@ -239,10 +240,10 @@ describe('CSV import (M1-098)', () => {
   // The child comes before its parent in the file; one label column repeats.
   const file = (summary2 = 'Child of the first') =>
     [
-      'Key,Summary,Description,Status,Assignee,Parent,Labels,Labels,Fix version,Severity,Points,Topics,Created,Notes',
-      `CSV-2,"${summary2}",,Active,Dana Doe,CSV-1,one,two,1.0; 2.0,S2,3,x y,2026-01-02 10:00,ignored`,
-      'CSV-1,"First, with a comma","Some **bold** text",New,dana@example.com,,,,2.0,S1,5,,2026-01-01,',
-      'CSV-7,A gap in numbers,,New,ghost@example.com,,,,,S9,lots,,yesterday,',
+      'Key,Type,Summary,Description,Status,Assignee,Parent,Labels,Labels,Fix version,Severity,Points,Topics,Created,Notes',
+      `CSV-2,Subticket,"${summary2}",,Active,Dana Doe,CSV-1,one,two,1.0; 2.0,S2,3,x y,2026-01-02 10:00,ignored`,
+      'CSV-1,,"First, with a comma","Some **bold** text",New,dana@example.com,,,,2.0,S1,5,,2026-01-01,',
+      'CSV-7,,A gap in numbers,,New,ghost@example.com,,,,,S9,lots,,yesterday,',
     ].join('\r\n');
 
   it('[IMP-012][IMP-009] a dry run lists every row problem and writes nothing', async () => {
@@ -379,6 +380,34 @@ describe('CSV import (M1-098)', () => {
       },
     });
     expect(again.statusCode, again.body).toBe(202);
+  });
+
+  it('[IMP-012] drops a parent that does not sit on a higher level, with a warning', async () => {
+    const { id } = await run({
+      source: {
+        format: 'csv',
+        system: 'levels',
+        data: 'Id,Summary,Parent\nA,Same level parent,\nB,Same level child,A\n',
+        mapping: {
+          track: 'CSV',
+          columns: [
+            { column: 'Id', to: 'id' },
+            { column: 'Summary', to: 'summary' },
+            { column: 'Parent', to: 'parent' },
+          ],
+        },
+      },
+    });
+    const child = await database.db
+      .selectFrom('ticket')
+      .select('parent_id')
+      .where('summary', '=', 'Same level child')
+      .executeTakeFirstOrThrow();
+    expect(child.parent_id).toBeNull();
+    const found = await problems(id, '?outcome=warned');
+    expect(found.find((p) => p.sourceId === 'B')?.warnings).toEqual([
+      { code: 'parent_wrong_level' },
+    ]);
   });
 
   it('[IMP-012] reads files on the server only inside the imports folder', async () => {

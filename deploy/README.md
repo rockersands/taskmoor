@@ -162,6 +162,15 @@ Files already on disk stay readable after a switch to S3 while the data volume i
 Site administrators set the largest file allowed (1 GB by default, no upper limit) with
 `PUT /api/v1/admin/attachment-settings`; there is no storage quota.
 
+## Exports and imports
+
+Site administrators download the whole workspace at any time as documented files
+(`docs/export-format.md`): `GET /api/v1/admin/export` streams a ZIP, and
+`docker compose exec taskmoor node cli.mjs export /data/exports/<name>` writes the same into a
+folder. Imports of CSV files (`docs/csv-import.md`) and of such exports read files named by path
+only inside `/data/imports` (`TASKMOOR_IMPORT_DIR` names another directory, `off` refuses
+paths); uploads of up to 16 MB need no folder.
+
 ## Email notifications
 
 Notification emails go through an SMTP server you name with these variables; the password comes

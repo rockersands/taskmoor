@@ -152,6 +152,17 @@ const HISTORY_REFS: Readonly<Record<string, { kind: EntityKind; list?: true }>> 
  */
 export const UNCARRIED_HISTORY_FIELDS: ReadonlySet<string> = new Set(['visibilityLevel']);
 
+/** Rich text kept as JSON text, mentions mapped; text that is not JSON stays as it is. */
+function richValue(value: string, map: IdMap): string {
+  let doc: JsonValue;
+  try {
+    doc = JSON.parse(value) as JsonValue;
+  } catch {
+    return value;
+  }
+  return canonicalJson(remapDoc(doc, map));
+}
+
 /** History fields holding rich text as canonical JSON. */
 const RICH_HISTORY_FIELDS: ReadonlySet<string> = new Set(['description', 'environment']);
 
@@ -166,7 +177,7 @@ export function remapHistoryValue(field: string, value: string | null, map: IdMa
     map.unmapped?.('history', where);
     return null;
   }
-  if (RICH_HISTORY_FIELDS.has(field)) return canonicalJson(remapDoc(JSON.parse(value), map));
+  if (RICH_HISTORY_FIELDS.has(field)) return richValue(value, map);
   if (field === 'timeEntry') {
     // `<time entry>:<seconds>`
     const cut = value.indexOf(':');
@@ -185,7 +196,7 @@ export function remapHistoryValue(field: string, value: string | null, map: IdMa
   if (custom) {
     const shape = map.field(custom[1] as string);
     if (shape === undefined) return value;
-    if (shape.type === 'paragraph') return canonicalJson(remapDoc(JSON.parse(value), map));
+    if (shape.type === 'paragraph') return richValue(value, map);
     const reference = REFERENCE_OF[shape.type];
     if (reference === undefined) return value;
     const kind = KIND_OF_REFERENCE[reference];
