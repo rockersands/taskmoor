@@ -19,6 +19,17 @@ GitHub Actions is off until M1 is finished (below), so these checks have not run
 4. Note in "Notes from the Mac" how to start and stop Colima (`colima start`, `colima stop`;
    it holds about 8 GB of memory while running).
 
+## Backlog review applied (2026-10-30)
+
+A review of the backlog against the requirements (Drive: "Taskmoor backlog review, 30 October
+2026") was applied with the user's decisions (`docs/plan/decisions.csv`). 31 new tasks, 237 in
+all: M1-123 to M1-133 (teams, clone and deep clone, computed info fields, board-managed
+workflow, workflow export and import, Jira URL redirects, entity properties, async bulk API,
+agent budgets, cross-browser e2e, AI eval sets; the first ten gate M1-120), M2-022 to M2-036,
+M3-016 to M3-018, M4-014 and M4-015. Six M1 "Should" requirements (AGL-020, NTF-009, API-015,
+API-016, AI-010, RPT-009) moved to M2 in the specs. M1-085 keeps IP allowlists and a syslog
+audit export; continuous SIEM streaming is M2-018. M0-001, M0-008, M1-116 and M1-118 reworded.
+
 ## No GitHub Actions until M1 is finished (2026-10-30)
 
 GitHub Actions stopped starting jobs on 2026-10-29 evening (the free private-repo minutes ran
