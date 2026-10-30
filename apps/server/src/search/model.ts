@@ -205,10 +205,11 @@ export type Cond =
       fieldIds: number[];
       negated: boolean;
       /**
-       * The planner expects many tickets to match (M1-040): test each ticket as the order is
-       * walked, instead of starting from the word indexes (`compile.ts`, `masterText`).
+       * The planner expects so many tickets to match (M1-040) that a page (`page`) or a count
+       * (`count`) is better served by testing each ticket as the order is walked than by
+       * starting from the word indexes (`compile.ts`, `masterText`; `bind.ts`, `textForms`).
        */
-      common?: boolean;
+      perRow?: { page: boolean; count: boolean };
     }
   | { kind: 'side'; side: SideRef; test: ValueTest; quantifier: Quantifier }
   | { kind: 'sideEmpty'; side: SideRef; negated: boolean }

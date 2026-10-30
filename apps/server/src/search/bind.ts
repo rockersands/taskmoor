@@ -17,6 +17,7 @@ import { isTrackPermission, type TrackPermission } from '../authz/permissions';
 import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
 import type { SideTable } from '../fields/storage';
+import { masterTextSet } from './compile';
 import type {
   Bound,
   Cond,
@@ -39,7 +40,6 @@ import type {
   TimeEdge,
   ValueTest,
 } from './model';
-import { masterTextSet } from './compile';
 import { expands, hasPattern } from './text';
 
 /**
@@ -331,7 +331,12 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
   const where = plan.where
     ? await binder.cond(pushNot(plan.where))
     : { kind: 'const', value: true };
-  await textForms(ctx.db, ctx.workspaceId, where as Cond);
+  await textForms(
+    ctx.db,
+    ctx.workspaceId,
+    where as Cond,
+    plan.orderBy.some((o) => o.field.type === 'relevance'),
+  );
   const orderBy: OrderKey[] = [];
   for (const o of plan.orderBy) {
     if (o.field.type === 'relevance') {
@@ -354,18 +359,27 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
 
 /**
  * Matches the planner expects of a master text search beyond which walking the order and
- * testing each ticket beats starting from the word indexes (M1-040): at least 5,000, and 0.3%
- * of the tickets. At 10M tickets a word in 0.3% of them fills a page within about 17,000 tickets
- * walked, and its 30,000 matches sort in about as long.
+ * testing each ticket beats starting from the word indexes (M1-040).
+ *
+ * - A page: at least 5,000 and 0.3% of the tickets. At 10M tickets a word in 0.3% of them fills
+ *   a page within about 17,000 tickets walked, and its 30,000 matches sort in about as long.
+ * - A count, which reads matches until one past the cap (10,000): at least 50,000 and 5% of the
+ *   tickets, so 10,001 matches come within about 200,000 tickets walked. Below that, walking
+ *   would read most of the table to count fewer; at 200,000 tickets a word in 9,651 of them took
+ *   305 ms to count by walking.
+ * - Relevance ranks every match, so ordering by it always starts from the word indexes.
  */
-const COMMON_MATCHES = { least: 5_000, share: 0.003 };
+const PER_ROW = {
+  page: { least: 5_000, share: 0.003 },
+  count: { least: 50_000, share: 0.05 },
+};
 
 /**
  * Chooses the form of each master text search (`compile.ts`, `masterText`) from the planner's
  * estimate of how many tickets it matches: the rows of the set form, planned with the search's
  * own words (one EXPLAIN, a millisecond or two).
  */
-async function textForms(db: Db, workspaceId: number, where: Cond): Promise<void> {
+async function textForms(db: Db, workspaceId: number, where: Cond, ranked: boolean): Promise<void> {
   const texts: Extract<Cond, { kind: 'text' }>[] = [];
   const visit = (c: Cond) => {
     if (c.kind === 'and' || c.kind === 'or') c.items.forEach(visit);
@@ -376,7 +390,9 @@ async function textForms(db: Db, workspaceId: number, where: Cond): Promise<void
   const { rows } = await sql<{ n: number }>`
     SELECT greatest(reltuples, 0)::float8 AS n FROM pg_class
      WHERE oid = 'ticket'::regclass`.execute(db);
-  const threshold = Math.max(COMMON_MATCHES.least, COMMON_MATCHES.share * (rows[0]?.n ?? 0));
+  const tickets = rows[0]?.n ?? 0;
+  const over = (estimate: number, t: { least: number; share: number }) =>
+    estimate >= Math.max(t.least, t.share * tickets);
   for (const c of texts) {
     // Expanded words always start from the word indexes (`expands`).
     if (expands(c.search)) continue;
@@ -386,7 +402,10 @@ async function textForms(db: Db, workspaceId: number, where: Cond): Promise<void
       'QUERY PLAN': { Plan: { 'Plan Rows': number } }[];
     }>`EXPLAIN (FORMAT JSON) ${set}`.execute(db);
     const estimate = plan.rows[0]?.['QUERY PLAN'][0]?.Plan['Plan Rows'] ?? 0;
-    if (estimate >= threshold) c.common = true;
+    c.perRow = {
+      page: !ranked && over(estimate, PER_ROW.page),
+      count: over(estimate, PER_ROW.count),
+    };
   }
 }
 

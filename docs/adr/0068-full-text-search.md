@@ -67,12 +67,19 @@ indexed text:
 | `C\+\+` | the backslash makes the next character literal | `'C++'` |
 
 - **Expansions instead of rechecks.** `?` and fuzzy words become the words they stand for
-  (letters, digits, the word's own characters and Latin-1 accented letters; a fuzzy word of 3 to
-  24 characters), each an exact lexeme the word index looks up, each stemmed like the indexed
-  words were. The binder then keeps only the words that occur in some searched text of the
-  workspace (`pruneExpansions`: one index lookup per word in one statement), because the planner
-  cannot weigh an OR of seventy words and would walk the whole order for a rare one. A search
-  whose words do not occur keeps one word that matches nothing.
+  (letters, digits, the word's own characters, and Latin-1 accented letters for one `?` and for
+  fuzzy words of up to 12 characters or with an accent; a fuzzy word of 3 to 24 characters),
+  each an exact lexeme the word index looks up, each stemmed like the indexed words were.
+- **Probing per word.** The planner estimates each word it has no statistics for at a small
+  share of the rows and adds them up, so an OR of seventy or six hundred words looks like most of
+  the table: it walked the whole order, or read the table whole even inside a subquery. A search
+  that must match a `?` or fuzzy word therefore reads its matches by probing the word index once
+  per word of its first such term (`unnest(words) JOIN ticket t ON t.summary_words @@
+  to_tsquery(x.q)`, an index lookup per word the planner cannot mistake for a scan), filters
+  those rows by the whole search, and hands the ids over as an array computed once
+  (`k.id = ANY(ARRAY(...))`), fetched by primary key whatever the planner expects. Pruning the
+  words first with one `EXISTS` per word was tried: inside `EXISTS` the planner expects an early
+  hit and scans the table per missing word (33 s at 200,000 tickets for one fuzzy word).
 - **Patterns** need the trigram indexes, which only short texts have: summaries and text fields
   take them; description, environment, comment and history (`WAS`, `CHANGED`) refuse them with
   a message; `text ~` applies them to summaries and text fields and says so in a warning.

@@ -228,7 +228,6 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_TEXT)('full-text search at size (M1-
     }
     const file = process.env.TASKMOOR_SEARCH_REPORT;
     if (file) appendFileSync(file, `${report.join('\n')}\n`);
-    console.log(report.join('\n'));
     expect(wrong).toEqual([]);
     expect(over).toEqual([]);
   }, 3_600_000);

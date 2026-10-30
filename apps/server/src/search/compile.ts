@@ -173,9 +173,12 @@ function textMatch(
 /**
  * FROM for reading the matches of `search` out of `table` (alias `alias`, word columns
  * `words`). When the search must match a `?` or fuzzy word, the word index is probed with each
- * word that term stands for, one at a time (`unnest(...) JOIN table ON words @@ to_tsquery(x.q)`):
- * the planner sees a small lookup per word, where an OR of hundreds of words would look like
- * most of the table and be read whole (`expands`). The full search still filters the rows found.
+ * word that term stands for, one at a time: for each word, a subquery that only that word's
+ * index lookup can answer well (`unnest(...) CROSS JOIN LATERAL (... OFFSET 0)`; the fence keeps
+ * the planner from scanning the table once and testing every word against every row, which it
+ * chose at 200,000 tickets: 12 s). An OR of hundreds of words would look like most of the table
+ * and be read whole (`expands`). The full search still filters the rows found. Word indexes on
+ * tickets and comments cover live rows only, so the probe says so too.
  */
 function matchesFrom(
   table: string,
@@ -191,7 +194,8 @@ function matchesFrom(
   const { words: each, prefix } = expansions(term);
   const probes = each.map((w) => `${operand(w)}${prefix ? ':*' : ''}`);
   const on = or(words.map((w) => sql<boolean>`${w} @@ to_tsquery(${config}, x.q)`));
-  return sql`unnest(${array(probes, 'text')}) AS x (q) JOIN ${raw(table)} ${raw(alias)} ON ${on}`;
+  const live = table === 'v_text' ? TRUE : sql<boolean>`${raw(alias)}.deleted_at IS NULL`;
+  return sql`unnest(${array(probes, 'text')}) AS x (q) CROSS JOIN LATERAL (SELECT * FROM ${raw(table)} ${raw(alias)} WHERE ${and([on, live])} OFFSET 0) ${raw(alias)}`;
 }
 
 /** How much each place counts towards relevance. */
@@ -649,6 +653,8 @@ const anyId = (column: string, values: readonly number[]) =>
 
 /** What a condition needs from the viewer beyond the ticket filter. */
 interface CondContext {
+  /** What the condition serves: a page (the default) or a count of all matches. */
+  purpose?: 'page' | 'count';
   comments: RawBuilder<boolean>;
   commentsOf?: ((track: RawBuilder<unknown>) => RawBuilder<boolean>) | undefined;
   /** The viewer's predicate on ticket `k`, for tickets other than the row (a parent). */
@@ -854,12 +860,12 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
  *   few tickets, then the order sorts them. An OR of the five places could only walk the order,
  *   and for a rare word that reads the whole table. Comment readability is judged against each
  *   comment's own ticket (its track read per matching comment).
- * - **Many matches (`common`):** an OR of the five places as a test of the row, so walking the
+ * - **Many matches (`perRow`, for a page or a count):** an OR of the five places as a test of the row, so walking the
  *   order stops after a page. The set form would read every match first: Postgres estimates the
  *   distinct ids of a UNION ALL at 200 whatever they are, so it would always start from the set.
  */
 function masterText(c: Extract<Cond, { kind: 'text' }>, ctx: CondContext): RawBuilder<boolean> {
-  if (c.common) {
+  if (ctx.purpose === 'count' ? c.perRow?.count : c.perRow?.page) {
     // Many matches: a test of the row, so walking the order stops after a page.
     const parts = [
       textMatch(raw('k.summary_words'), raw('k.summary'), c.search),
@@ -1159,6 +1165,9 @@ export function compileSearch(bound: Bound, options: CompileOptions): CompiledSe
   };
   const where = compileCond(bound.where, ctx);
   const plainWhere = [...baseConditions(options), ...(where === TRUE ? [] : [where])];
+  // Counts read all matches, and may want another form of a text search (M1-040).
+  const countCond = compileCond(bound.where, { ...ctx, purpose: 'count' });
+  const countWhere = [...baseConditions(options), ...(countCond === TRUE ? [] : [countCond])];
   const anchor = options.anchor === false ? undefined : findAnchor(bound);
   const plain: Walk = {
     from: raw('ticket k'),
@@ -1193,13 +1202,13 @@ export function compileSearch(bound: Bound, options: CompileOptions): CompiledSe
     count: (cap) =>
       sql<{
         n: number;
-      }>`SELECT count(*)::int AS n FROM (SELECT 1 FROM ticket k WHERE ${join(plainWhere, ' AND ')} LIMIT ${param(cap, 'int')}) c`,
+      }>`SELECT count(*)::int AS n FROM (SELECT 1 FROM ticket k WHERE ${join(countWhere, ' AND ')} LIMIT ${param(cap, 'int')}) c`,
     sample: (percent, seed) =>
       sql<{
         blocks: number;
         m: number;
         m2: number;
-      }>`SELECT count(*)::float8 AS blocks, coalesce(sum(b.n), 0)::float8 AS m, coalesce(sum(b.n * b.n), 0)::float8 AS m2 FROM (SELECT count(*) FILTER (WHERE ${join(plainWhere, ' AND ')}) AS n FROM ticket k TABLESAMPLE SYSTEM (${param(percent, 'float8')}) REPEATABLE (${param(seed, 'float8')}) GROUP BY (k.ctid::text::point)[0]) b`,
+      }>`SELECT count(*)::float8 AS blocks, coalesce(sum(b.n), 0)::float8 AS m, coalesce(sum(b.n * b.n), 0)::float8 AS m2 FROM (SELECT count(*) FILTER (WHERE ${join(countWhere, ' AND ')}) AS n FROM ticket k TABLESAMPLE SYSTEM (${param(percent, 'float8')}) REPEATABLE (${param(seed, 'float8')}) GROUP BY (k.ctid::text::point)[0]) b`,
     workspaceId: options.workspaceId,
   };
 }
