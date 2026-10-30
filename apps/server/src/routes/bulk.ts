@@ -8,6 +8,7 @@ import { bulkBody, MAX_BULK_TICKETS, paramsOf } from '../bulk/model';
 import { emit } from '../events/bus';
 import { enqueue } from '../events/queue';
 import type { FieldCatalogs } from '../fields/catalog';
+import { guardrailLimit } from '../guardrails/model';
 import { collectIds, DEFAULT_QUERY_TIMEOUT_MS, prepareSearch } from '../search/run';
 import { parseTicketKey, ticketKey } from '../tickets/model';
 import { loadTickets } from '../tickets/store';
@@ -32,7 +33,7 @@ const ITEMS_PAGE = 500;
 type Db = Kysely<Database> | Transaction<Database>;
 
 const idParam = z.object({ id: z.string().regex(/^[1-9][0-9]{0,17}$/) });
-const itemsQuery = z
+export const itemsQuery = z
   .object({
     outcome: z.enum(['done', 'failed', 'skipped', 'pending']).optional(),
     after: z.coerce.number().int().min(-1).optional(),
@@ -144,6 +145,17 @@ export function registerBulkRoutes(
     }
     const body = parsed.data;
     const ws = request.workspaceId;
+    // The workspace's own limit (M1-130; API-007), within what one request carries.
+    const limit = Math.min(
+      MAX_BULK_TICKETS,
+      await guardrailLimit(db, ws, 'tickets_per_bulk_operation'),
+    );
+    const tooMany = () =>
+      reply.code(400).send({
+        error: 'too_many_tickets',
+        max: limit,
+        guardrail: 'tickets_per_bulk_operation',
+      });
     if ((body.tickets === undefined) === (body.query === undefined)) {
       return reply
         .code(400)
@@ -164,16 +176,17 @@ export function registerBulkRoutes(
           q: body.query,
           ...searchPerson(request),
         });
-        chosen = await collectIds(db, compiled, { max: MAX_BULK_TICKETS, timeoutMs });
+        chosen = await collectIds(db, compiled, { max: limit, timeoutMs });
       } catch (error) {
         return searchRefusal(reply, error, timeoutMs);
       }
       if (chosen.more) {
-        return reply.code(400).send({ error: 'too_many_tickets', max: MAX_BULK_TICKETS });
+        return tooMany();
       }
       if (chosen.ids.length === 0) return reply.code(400).send({ error: 'no_tickets' });
       items = chosen.ids.map((id) => ({ ref: String(id), ticketId: id }));
     } else {
+      if ((body.tickets ?? []).length > limit) return tooMany();
       items = await resolveRefs(db, ws, body.tickets ?? []);
     }
     const row = await db.transaction().execute(async (trx) => {

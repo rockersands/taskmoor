@@ -1,3 +1,5 @@
+import type { Database } from '@taskmoor/db';
+import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { bulkEditBody, bulkMoveBody } from '../routes/tickets';
 
@@ -58,4 +60,18 @@ export function paramsOf(request: BulkRequest): Record<string, unknown> {
     case 'delete':
       return chosen;
   }
+}
+
+/** How long a finished bulk operation and its per-ticket results stay readable (API-007 (2)). */
+export const BULK_RETENTION_DAYS = 14;
+
+/** Removes finished operations older than the retention, with their items; how many went. */
+export async function trimBulkOperations(db: Kysely<Database>, now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - BULK_RETENTION_DAYS * 24 * 3600 * 1000);
+  const result = await db
+    .deleteFrom('bulk_operation')
+    .where('finished_at', 'is not', null)
+    .where('finished_at', '<', cutoff)
+    .executeTakeFirst();
+  return Number(result.numDeletedRows);
 }

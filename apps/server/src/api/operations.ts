@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { createBoardBody } from '../boards/model';
+import { bulkBody } from '../bulk/model';
 import { dataQuery as boardDataQuery, listQuery as boardListQuery } from '../routes/boards';
+import { itemsQuery as bulkItemsQuery } from '../routes/bulk';
 import {
   createBody as commentCreateBody,
   listQuery as commentListQuery,
@@ -708,6 +710,84 @@ export const OPERATIONS: readonly Operation[] = [
       200: {
         description: 'The statuses with their stages.',
         schema: z.object({ statuses: z.array(s.status) }).loose(),
+      },
+    },
+  }),
+
+  // Bulk changes as tasks (M1-130; API-007): start one, poll it, read each ticket's result.
+  op({
+    method: 'POST',
+    path: '/api/v1/bulk-operations',
+    id: 'createBulkOperation',
+    tag: 'Bulk changes',
+    summary: 'Start a bulk change',
+    description:
+      'Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).',
+    body: bulkBody,
+    responses: {
+      202: {
+        description: 'Started; poll the operation for its progress.',
+        schema: z.object({ bulkOperation: s.bulkOperation }).loose(),
+      },
+    },
+  }),
+  op({
+    method: 'GET',
+    path: '/api/v1/bulk-operations',
+    id: 'listBulkOperations',
+    tag: 'Bulk changes',
+    summary: 'The caller’s latest bulk changes',
+    responses: {
+      200: {
+        description: 'The 50 most recent, newest first.',
+        schema: z.object({ bulkOperations: z.array(s.bulkOperation) }).loose(),
+      },
+    },
+  }),
+  op({
+    method: 'GET',
+    path: '/api/v1/bulk-operations/:id',
+    id: 'getBulkOperation',
+    tag: 'Bulk changes',
+    summary: 'A bulk change’s progress',
+    description: 'Readable for 14 days after it finishes.',
+    params: { id: 'The bulk operation.' },
+    responses: {
+      200: {
+        description: 'The operation.',
+        schema: z.object({ bulkOperation: s.bulkOperation }).loose(),
+      },
+    },
+  }),
+  op({
+    method: 'GET',
+    path: '/api/v1/bulk-operations/:id/items',
+    id: 'listBulkItems',
+    tag: 'Bulk changes',
+    summary: 'Each ticket’s result in a bulk change',
+    description:
+      'In the order the tickets were given, a page at a time: pass the answer’s `next` as `after`. Filter by `outcome` to read only the failures, say.',
+    params: { id: 'The bulk operation.' },
+    query: bulkItemsQuery,
+    responses: {
+      200: {
+        description: 'A page of results.',
+        schema: z.object({ items: z.array(s.bulkItem), next: s.nextId }).loose(),
+      },
+    },
+  }),
+  op({
+    method: 'POST',
+    path: '/api/v1/bulk-operations/:id/cancel',
+    id: 'cancelBulkOperation',
+    tag: 'Bulk changes',
+    summary: 'Cancel the rest of a bulk change',
+    description: 'Tickets already in hand finish; the ones not reached are skipped.',
+    params: { id: 'The bulk operation.' },
+    responses: {
+      202: {
+        description: 'Cancelling.',
+        schema: z.object({ bulkOperation: s.bulkOperation }).loose(),
       },
     },
   }),

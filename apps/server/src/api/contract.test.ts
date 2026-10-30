@@ -186,6 +186,26 @@ describe('API v1 contract (M1-065)', () => {
       { duration: '1h 30m' },
     );
     await call('GET', '/api/v1/tickets/:id/time-entries', `/api/v1/tickets/${a.key}/time-entries`);
+    // Bulk changes as tasks (M1-130): no worker runs here, so it stays queued until cancelled.
+    const bulk = (
+      await call('POST', '/api/v1/bulk-operations', '/api/v1/bulk-operations', {
+        action: 'edit',
+        tickets: [a.key, b.key, 'API-999'],
+        edit: { labels: ['bulk'] },
+      })
+    ).bulkOperation;
+    await call('GET', '/api/v1/bulk-operations', '/api/v1/bulk-operations');
+    await call('GET', '/api/v1/bulk-operations/:id', `/api/v1/bulk-operations/${bulk.id}`);
+    await call(
+      'GET',
+      '/api/v1/bulk-operations/:id/items',
+      `/api/v1/bulk-operations/${bulk.id}/items?limit=2`,
+    );
+    await call(
+      'POST',
+      '/api/v1/bulk-operations/:id/cancel',
+      `/api/v1/bulk-operations/${bulk.id}/cancel`,
+    );
     await call('GET', '/api/v1/search', '/api/v1/search?q=track%20%3D%20API&limit=2');
     await call('POST', '/api/v1/search', '/api/v1/search', { q: 'track = API', limit: 2 });
     await call('GET', '/api/v1/search/check', '/api/v1/search/check?q=track%20%3D%20API');

@@ -107,6 +107,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bulk-operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The caller’s latest bulk changes */
+        get: operations["listBulkOperations"];
+        put?: never;
+        /**
+         * Start a bulk change
+         * @description Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).
+         */
+        post: operations["createBulkOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bulk-operations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A bulk change’s progress
+         * @description Readable for 14 days after it finishes.
+         */
+        get: operations["getBulkOperation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bulk-operations/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel the rest of a bulk change
+         * @description Tickets already in hand finish; the ones not reached are skipped.
+         */
+        post: operations["cancelBulkOperation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bulk-operations/{id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Each ticket’s result in a bulk change
+         * @description In the order the tickets were given, a page at a time: pass the answer’s `next` as `after`. Filter by `outcome` to read only the failures, say.
+         */
+        get: operations["listBulkItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fields": {
         parameters: {
             query?: never;
@@ -784,6 +865,41 @@ export interface components {
                 [key: string]: unknown;
             });
             name: string;
+        } & {
+            [key: string]: unknown;
+        };
+        BulkItem: {
+            error: unknown;
+            /** @description The ticket key, when the reader may see the ticket now. */
+            key: string | null;
+            /** @enum {string} */
+            outcome: "done" | "failed" | "skipped" | "pending";
+            position: number;
+            /** @description The ticket as it was given: an id or a key. */
+            ref: string;
+            statusCode: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        BulkOperation: {
+            /** @enum {string} */
+            action: "edit" | "move" | "transition" | "delete";
+            cancelRequested: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            failed: number;
+            finishedAt: string | null;
+            id: number;
+            /** @description What the operation applies, as it was asked. */
+            params: unknown;
+            pending: number;
+            skipped: number;
+            startedAt: string | null;
+            /** @description `queued`, `running`, `done` or `cancelled`. */
+            status: string;
+            succeeded: number;
+            total: number;
+            userId: number;
         } & {
             [key: string]: unknown;
         };
@@ -1891,6 +2007,366 @@ export interface operations {
             };
             /** @description The resource changed or is in a state that refuses this; read it again. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBulkOperations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The 50 most recent, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        bulkOperations: components["schemas"]["BulkOperation"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createBulkOperation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @constant */
+                    action: "edit";
+                    edit: {
+                        areaIds?: number[];
+                        assigneeId?: number | null;
+                        closeReasonId?: number | null;
+                        description?: unknown;
+                        dueDate?: string | null;
+                        environment?: unknown;
+                        fields?: {
+                            [key: string]: unknown;
+                        };
+                        foundInReleaseIds?: number[];
+                        labels?: string[];
+                        originalEstimate?: (string | number) | null;
+                        parent?: (number | string) | null;
+                        priorityId?: number | null;
+                        remainingEstimate?: (string | number) | null;
+                        requesterId?: number;
+                        startDate?: string | null;
+                        statusId?: number;
+                        summary?: string;
+                        targetReleaseIds?: number[];
+                        ticketTypeId?: number;
+                        visibilityLevelId?: number | null;
+                    };
+                    query?: string;
+                    tickets?: (number | string)[];
+                } | {
+                    /** @constant */
+                    action: "move";
+                    move: {
+                        parent?: (number | string) | null;
+                        statusId?: number;
+                        subticketTypeId?: number;
+                        ticketTypeId?: number;
+                        track: number | string;
+                        visibilityLevelId?: number | null;
+                    };
+                    query?: string;
+                    tickets?: (number | string)[];
+                } | {
+                    /** @constant */
+                    action: "transition";
+                    query?: string;
+                    tickets?: (number | string)[];
+                    transition: {
+                        fields?: {
+                            [key: string]: unknown;
+                        };
+                        statusId?: number;
+                        transitionId?: number;
+                    };
+                } | {
+                    /** @constant */
+                    action: "delete";
+                    query?: string;
+                    tickets?: (number | string)[];
+                };
+            };
+        };
+        responses: {
+            /** @description Started; poll the operation for its progress. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        bulkOperation: components["schemas"]["BulkOperation"];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getBulkOperation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The bulk operation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The operation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        bulkOperation: components["schemas"]["BulkOperation"];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelBulkOperation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The bulk operation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancelling. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        bulkOperation: components["schemas"]["BulkOperation"];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBulkItems: {
+        parameters: {
+            query?: {
+                after?: number;
+                limit?: number;
+                outcome?: "done" | "failed" | "skipped" | "pending";
+            };
+            header?: never;
+            path: {
+                /** @description The bulk operation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of results. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["BulkItem"][];
+                        /** @description The cursor of the next page (an id); null on the last one. */
+                        next: number | null;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

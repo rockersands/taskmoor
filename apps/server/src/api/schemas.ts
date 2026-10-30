@@ -390,3 +390,39 @@ export const queryCheck = z
       .loose(),
   ])
   .meta({ id: 'QueryCheck' });
+
+/** A bulk change as a task (M1-130; API-007): what it does and how far it has got. */
+export const bulkOperation = z
+  .object({
+    id,
+    action: z.enum(['edit', 'move', 'transition', 'delete']),
+    params: z.unknown().meta({ description: 'What the operation applies, as it was asked.' }),
+    status: z.string().meta({ description: '`queued`, `running`, `done` or `cancelled`.' }),
+    cancelRequested: z.boolean(),
+    total: z.number().int(),
+    succeeded: z.number().int(),
+    failed: z.number().int(),
+    skipped: z.number().int(),
+    pending: z.number().int(),
+    userId: id,
+    createdAt: instant,
+    startedAt: nullable(instant),
+    finishedAt: nullable(instant),
+  })
+  .loose()
+  .meta({ id: 'BulkOperation' });
+
+/** One ticket's result in a bulk operation, in the order the tickets were given. */
+export const bulkItem = z
+  .object({
+    position: z.number().int(),
+    ref: z.string().meta({ description: 'The ticket as it was given: an id or a key.' }),
+    key: nullable(z.string()).meta({
+      description: 'The ticket key, when the reader may see the ticket now.',
+    }),
+    outcome: z.enum(['done', 'failed', 'skipped', 'pending']),
+    statusCode: nullable(z.number().int()),
+    error: z.unknown(),
+  })
+  .loose()
+  .meta({ id: 'BulkItem' });

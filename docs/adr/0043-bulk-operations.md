@@ -53,6 +53,31 @@ those tickets, referenced by id; the operation's `params` keep the query, so the
 can show what chose them. The selection is a snapshot: tickets that match later are not
 added, and each item is still checked when its turn comes.
 
+## The bulk API (M1-130; API-007)
+
+The routes above are the asynchronous bulk API; M1-130 makes them part of the stable contract
+and adds the two things API-007 asks for beyond them.
+
+- **Contract.** `createBulkOperation` (202), `listBulkOperations`, `getBulkOperation`,
+  `listBulkItems` (keyset pages, `next` cursor) and `cancelBulkOperation` (202) are stable
+  operations under the "Bulk changes" tag, with `BulkOperation` and `BulkItem` schemas. The
+  contract test calls each one, so the OpenAPI document and the SDK cannot drift from the
+  routes.
+- **A configurable limit.** The most tickets one operation may take is the guardrail
+  `tickets_per_bulk_operation` (default 10,000; ADR-051's table of limits, overridable per
+  workspace by a site administrator). The route takes the smaller of the guardrail and the
+  hard ceiling of 100,000, for a ticket list and a query alike, and answers 400
+  `too_many_tickets` with `max` and the guardrail's name, so a client can say which limit it
+  met. The guardrail page shows its usage as the largest operation so far.
+- **Fourteen days of results.** An operation and its per-ticket results stay readable for 14
+  days after it finishes (`BULK_RETENTION_DAYS`). The housekeeping loop deletes finished
+  operations older than that (`trimBulkOperations`; items go with them by the foreign key);
+  queued and running ones are never trimmed. After that, the routes answer 404 as for an
+  operation that never existed.
+- **Measured.** A transition of 1,000 tickets, half to one status and half to another, with
+  ten that have no such transition, finishes with 990 succeeded and 10 failed with
+  `no_transition`, and the items read back a page at a time (`bulk/bulk.test.ts`).
+
 ## Options considered
 
 | Option | For | Against |
