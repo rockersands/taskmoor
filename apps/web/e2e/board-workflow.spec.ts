@@ -11,9 +11,7 @@ const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATT
 
 test('[WF-010] columns become statuses, and the rightmost column closes a card as Completed', async ({
   page,
-  isMobile,
 }, testInfo) => {
-  test.skip(isMobile, 'mouse dragging; phones move cards with the Move menu');
   test.setTimeout(90_000);
   expect((await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN })).status()).toBe(200);
   const suffix = `${testInfo.workerIndex}${Date.now().toString(36)}`.toUpperCase().slice(-6);
@@ -35,10 +33,13 @@ test('[WF-010] columns become statuses, and the rightmost column closes a card a
 
   // The settings make the columns the statuses, and a new column a status of its own.
   await page.goto(`${BASE}/#/boards/${boardId}/settings`);
-  await page
-    .getByRole('checkbox', { name: 'This board’s columns are its track’s statuses' })
-    .check();
+  // The switch follows the server: it is checked once the board answers.
+  const managed = page.getByRole('checkbox', {
+    name: 'This board’s columns are its track’s statuses',
+  });
+  await managed.click();
   await expect(page.getByRole('status')).toHaveText('Saved.');
+  await expect(managed).toBeChecked();
   await page.getByRole('button', { name: 'Add a column' }).click();
   const names = page.getByRole('textbox', { name: /^Name of column \d+$/ });
   const added = names.last();
@@ -52,25 +53,25 @@ test('[WF-010] columns become statuses, and the rightmost column closes a card a
   }[];
   expect(statuses.map((s) => s.name)).toContain(`Waiting ${suffix}`);
 
-  // Any card to any column: straight to the rightmost, then back to the new one.
+  // Any card to any column: straight to the rightmost, then back to the new one. The card's
+  // Move menu offers every column (dragging the same moves is the board-drag test's).
   await page.goto(`${BASE}/#/boards/${boardId}`);
   const board = page.getByRole('region', { name: `Team ${suffix}` });
-  const columns = board.locator('ul.board-cell');
-  const card = board.locator('li.board-card', { hasText: ticketKey });
-  await expect(card).toBeVisible();
-  await card.dragTo(columns.last());
+  const cell = (column: string) => board.getByRole('list', { name: column, exact: true });
+  await expect(cell('New').getByRole('link')).toHaveCount(1);
+  const moveTo = async (label: string) => {
+    await board.getByRole('button', { name: `Move ${ticketKey}` }).click();
+    await board.getByRole('button', { name: label }).click();
+  };
+  const ticketNow = async () =>
+    (await (await page.request.get(`${BASE}/api/v1/tickets/${ticketKey}`)).json()).ticket;
+  // Closed is the rightmost column: the new one went to its left.
+  await moveTo('Forward to Closed');
+  await expect(cell('Closed').getByRole('link')).toHaveCount(1);
+  await expect.poll(async () => (await ticketNow()).closeReason?.name ?? null).toBe('Completed');
+  await moveTo(`Back to Waiting ${suffix}`);
+  await expect(cell(`Waiting ${suffix}`).getByRole('link')).toHaveCount(1);
   await expect
-    .poll(
-      async () =>
-        (await (await page.request.get(`${BASE}/api/v1/tickets/${ticketKey}`)).json()).ticket
-          .closeReason?.name ?? null,
-    )
-    .toBe('Completed');
-  await card.dragTo(board.getByRole('list', { name: `Waiting ${suffix}`, exact: true }));
-  await expect
-    .poll(
-      async () =>
-        (await (await page.request.get(`${BASE}/api/v1/tickets/${ticketKey}`)).json()).ticket,
-    )
+    .poll(ticketNow)
     .toMatchObject({ status: { name: `Waiting ${suffix}` }, closeReason: null });
 });
