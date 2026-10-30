@@ -130,7 +130,7 @@ export function registerMetaRoutes(
       }
       signature = { nonce: query.data.nonce, value };
     }
-    reply.header('access-control-allow-origin', '*');
+    // Cross-origin readers are the allowed frontends, approved like every API call (M1-107).
     reply.header('cache-control', 'no-store');
     return {
       product: 'taskmoor' as const,

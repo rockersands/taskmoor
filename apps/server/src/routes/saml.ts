@@ -4,7 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { recordSsoRefusal } from '../audit/record';
-import { PROVIDER_COLUMNS, type Provider, safeReturnTo } from '../sso/oidc';
+import { PROVIDER_COLUMNS, type Provider, returnAddress, safeReturnTo } from '../sso/oidc';
 import {
   authnRequestUrl,
   decodeSamlResponse,
@@ -52,9 +52,15 @@ const identitySchema = z.object({
 export async function registerSamlRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { secureCookies: boolean; publicUrl: string },
+  options: {
+    secureCookies: boolean;
+    publicUrl: string;
+    /** Frontends a sign-in may return to (M1-107). */
+    allowedOrigins?: readonly string[];
+  },
 ): Promise<void> {
   const base = options.publicUrl.replace(/\/+$/, '');
+  const frontends = new Set(options.allowedOrigins ?? []);
 
   async function loadSamlProvider(workspaceId: number, providerId: number) {
     const row = (await db
@@ -123,7 +129,7 @@ export async function registerSamlRoutes(
         provider_id: provider.id,
         request_id: requestId,
         browser_hash: tokenHash(browser),
-        return_to: safeReturnTo(query.data.returnTo),
+        return_to: safeReturnTo(query.data.returnTo, frontends),
         expires_at: new Date(Date.now() + LOGIN_TTL_MS),
       })
       .execute();
@@ -234,7 +240,7 @@ export async function registerSamlRoutes(
           .values({
             workspace_id: ws,
             provider_id: provider.id,
-            return_to: safeReturnTo(form.data.RelayState),
+            return_to: safeReturnTo(form.data.RelayState, frontends),
             ...waiting,
           })
           .execute();
@@ -286,6 +292,6 @@ export async function registerSamlRoutes(
       });
       return fail(reply, outcome.error);
     }
-    return reply.redirect(`${base}${login.return_to === '/' ? '/' : login.return_to}`, 302);
+    return reply.redirect(returnAddress(base, login.return_to), 302);
   });
 }

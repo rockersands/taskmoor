@@ -34,8 +34,9 @@ and the instance had neither an identity nor a key.
     than quietly making a new instance that every pinned kit would reject.
   - The fingerprint is `SHA256:` plus the base64url digest of the key's SPKI DER.
 - **`GET /api/meta`** sits outside `/api/v1` because it is how a client picks a version. It
-  needs no sign-in and sets no cookie, and every value in it is public, so it answers
-  `Access-Control-Allow-Origin: *`. It holds:
+  needs no sign-in and sets no cookie, and every value in it is public, so it answered
+  `Access-Control-Allow-Origin: *`. Since M1-107 (ADR-080) it answers CORS like the rest of the
+  API: the allowed frontend origins only (API-017 (3)). It holds:
   - product, backend version, API version and base;
   - the frontend window;
   - the instance's id, name, key algorithm, public key and fingerprint;

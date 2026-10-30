@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { SignInSsoClient } from '../sso/client';
+import { OAuthSignIn } from './OAuthSignIn';
+import { oauthClient } from './oauth';
 import { useSession } from './SessionProvider';
 import { SignInForm } from './SignInForm';
 
@@ -13,7 +15,7 @@ export interface SignInPageProps {
 /**
  * The sign-in page (#/sign-in): where "Sign in" in the top bar leads, where signing out lands
  * and where a failed single sign-on returns. Once someone is signed in it hands over to
- * `onSignedIn`.
+ * `onSignedIn`. With a backend on another site, it leads to that backend's sign-in (M1-107).
  */
 export function SignInPage({ onSignedIn, ssoClient }: SignInPageProps) {
   const t = useT();
@@ -41,6 +43,8 @@ export function SignInPage({ onSignedIn, ssoClient }: SignInPageProps) {
         <p className="page-note" aria-live="polite">
           {t('auth.checking')}
         </p>
+      ) : oauthClient ? (
+        <OAuthSignIn />
       ) : (
         <SignInForm {...(ssoClient ? { ssoClient } : {})} />
       )}

@@ -84,5 +84,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [077](0077-clone-and-deep-clone.md) | Clone and deep clone run as a bulk operation, each copy made through the create route | Accepted |
 | [078](0078-allowlists-and-syslog.md) | IP allowlists matched in each process, and the audit log forwarded to syslog by cursor | Accepted |
 | [079](0079-board-managed-workflows.md) | Board-managed workflows as ordinary workflows the board rewrites | Accepted |
+| [080](0080-cross-origin-auth.md) | Cross-origin sign-in with the backend's cookie on one site and OAuth across sites | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

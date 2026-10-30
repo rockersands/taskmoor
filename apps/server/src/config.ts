@@ -37,6 +37,18 @@ const envSchema = z.object({
   TASKMOOR_WEB_ROUTING: z.enum(ROUTING_MODES as [RoutingMode, ...RoutingMode[]]).default('hash'),
   /** Where browsers reach this instance; the setup link and cookie security follow it. */
   PUBLIC_URL: z.string().url().optional(),
+  /**
+   * Frontends on other origins (M1-107, ADR-080), comma-separated exact origins such as
+   * https://tracker.example.com: they get CORS answers, may open WebSockets and may sign in
+   * through OAuth. The Builder's backend kit writes it. Unset, only this instance's own origin
+   * is let in.
+   */
+  TASKMOOR_ALLOWED_ORIGINS: z.string().min(1).optional(),
+  /**
+   * Where OAuth sign-in may send a frontend back, comma-separated exact URLs on allowed
+   * origins (the Builder writes the frontend's URL). Unset, each allowed origin's root.
+   */
+  TASKMOOR_OAUTH_REDIRECT_URIS: z.string().min(1).optional(),
   /** Fixed setup token for installers and tests; otherwise one is generated per start. */
   TASKMOOR_SETUP_TOKEN: z.string().min(16).optional(),
   /** Files, backups and the backup marker (ADR-021); the image sets /data. */
@@ -140,6 +152,10 @@ export interface ServerConfig {
   webRouting: RoutingMode;
   publicUrl: string;
   secureCookies: boolean;
+  /** Frontend origins besides this instance's own (TASKMOOR_ALLOWED_ORIGINS). */
+  allowedOrigins: string[];
+  /** Where OAuth sign-in may return (TASKMOOR_OAUTH_REDIRECT_URIS or each allowed origin's root). */
+  oauthRedirectUris: string[];
   setupToken: string | undefined;
   dataDir: string | undefined;
   /** Scheduled backups' directory as configured: a path, `off`, or unset for the default. */
@@ -204,6 +220,66 @@ export function parseRoles(text: string): Role[] {
   return ROLES.filter((r) => names.includes(r));
 }
 
+/** Hosts where plain http is fine: this machine (ADR-032). */
+function isLocalHost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]'
+  );
+}
+
+/**
+ * TASKMOOR_ALLOWED_ORIGINS as origins (scheme, host and port, nothing else): https, or http for
+ * this machine. Throws naming the entry that is not one; origins are public, so they may be shown.
+ */
+export function parseAllowedOrigins(text: string | undefined): string[] {
+  const origins: string[] = [];
+  for (const entry of (text ?? '').split(',').map((s) => s.trim())) {
+    if (!entry) continue;
+    let url: URL | undefined;
+    try {
+      url = new URL(entry);
+    } catch {
+      url = undefined;
+    }
+    const plain =
+      url && !url.username && !url.password && !url.search && !url.hash && url.pathname === '/';
+    const secure =
+      url && (url.protocol === 'https:' || (url.protocol === 'http:' && isLocalHost(url.hostname)));
+    if (!url || !plain || !secure) {
+      throw new Error(
+        `Invalid server configuration:\n- TASKMOOR_ALLOWED_ORIGINS must list origins such as https://tracker.example.com (plain http only for localhost): ${entry}`,
+      );
+    }
+    if (!origins.includes(url.origin)) origins.push(url.origin);
+  }
+  return origins;
+}
+
+/** TASKMOOR_OAUTH_REDIRECT_URIS: exact URLs on allowed origins, without a fragment. */
+export function parseRedirectUris(text: string | undefined, origins: readonly string[]): string[] {
+  if (text === undefined) return origins.map((o) => `${o}/`);
+  const uris: string[] = [];
+  for (const entry of text.split(',').map((s) => s.trim())) {
+    if (!entry) continue;
+    let url: URL | undefined;
+    try {
+      url = new URL(entry);
+    } catch {
+      url = undefined;
+    }
+    if (!url || url.hash || url.username || url.password || !origins.includes(url.origin)) {
+      throw new Error(
+        `Invalid server configuration:\n- TASKMOOR_OAUTH_REDIRECT_URIS must list URLs on the allowed origins, without a fragment: ${entry}`,
+      );
+    }
+    if (!uris.includes(url.href)) uris.push(url.href);
+  }
+  return uris;
+}
+
 /**
  * Reads server settings from environment variables. Errors name the variable and the rule it
  * broke but never echo the value, because DATABASE_URL can hold a password.
@@ -248,6 +324,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       'Invalid server configuration:\n- TASKMOOR_STORAGE=s3 needs TASKMOOR_S3_BUCKET',
     );
   }
+  const allowedOrigins = parseAllowedOrigins(e.TASKMOOR_ALLOWED_ORIGINS);
+  const oauthRedirectUris = parseRedirectUris(e.TASKMOOR_OAUTH_REDIRECT_URIS, allowedOrigins);
   const s3: S3StoreConfig | undefined = e.TASKMOOR_S3_BUCKET
     ? {
         bucket: e.TASKMOOR_S3_BUCKET,
@@ -285,6 +363,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     webRouting: e.TASKMOOR_WEB_ROUTING,
     publicUrl: e.PUBLIC_URL ?? `http://localhost:${e.PORT}`,
     secureCookies: (e.PUBLIC_URL ?? '').startsWith('https://'),
+    allowedOrigins,
+    oauthRedirectUris,
     setupToken: e.TASKMOOR_SETUP_TOKEN,
     dataDir: e.TASKMOOR_DATA,
     backupDir: e.TASKMOOR_BACKUP_DIR,

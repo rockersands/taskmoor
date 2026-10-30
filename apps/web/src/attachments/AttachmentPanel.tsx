@@ -15,6 +15,7 @@ import { type Lock, useLockText } from '../locks/useLockText';
 import { AttachmentPreview, previewable } from './AttachmentPreview';
 import { type Attachment, type AttachmentClient, attachmentClient } from './client';
 import { formatSize } from './format';
+import { MediaImage } from './media';
 
 export interface AttachmentPanelProps {
   /** The ticket, by id or key. */
@@ -177,10 +178,10 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
 
   const picture = (a: Attachment) => {
     if (a.scan === 'clean' && a.thumbnail) {
-      return <img className="attachment-thumb" src={client.urls.thumbnail(a)} alt="" />;
+      return <MediaImage className="attachment-thumb" src={client.urls.thumbnail(a)} alt="" />;
     }
     if (a.scan === 'clean' && a.kind === 'image' && a.size <= INLINE_IMAGE_BYTES) {
-      return <img className="attachment-thumb" src={client.urls.content(a, true)} alt="" />;
+      return <MediaImage className="attachment-thumb" src={client.urls.content(a, true)} alt="" />;
     }
     return (
       <span className="attachment-thumb attachment-glyph">

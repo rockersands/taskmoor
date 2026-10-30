@@ -1209,6 +1209,30 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM track t WHERE t.key = 'SEED'`.execute(db);
     },
   },
+  '0064_oauth': {
+    tables: {
+      user_session: "client_id = 'taskmoor-web' AND token_hash IS NULL AND parent_id IS NOT NULL",
+      oauth_code: "code_hash = 'seed-code' AND used_at IS NOT NULL AND family_id IS NOT NULL",
+      oauth_token: "token_hash = 'seed-refresh' AND kind = 'refresh' AND used_at IS NULL",
+    },
+    seed: async (db) => {
+      // A frontend's token family under the seed browser session, the code it came from and
+      // its current refresh token.
+      await sql`INSERT INTO user_session (workspace_id, user_id, token_hash, expires_at,
+          client_id, parent_id)
+        SELECT s.workspace_id, s.user_id, NULL, s.expires_at, 'taskmoor-web', s.id
+          FROM user_session s WHERE s.token_hash = 'seed-hash'`.execute(db);
+      await sql`INSERT INTO oauth_code (code_hash, workspace_id, session_id, client_id,
+          redirect_uri, code_challenge, expires_at, used_at, family_id)
+        SELECT 'seed-code', 1, f.parent_id, 'taskmoor-web', 'https://tracker.example.com/',
+               'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', now() + interval '1 minute', now(),
+               f.id
+          FROM user_session f WHERE f.client_id = 'taskmoor-web'`.execute(db);
+      await sql`INSERT INTO oauth_token (token_hash, workspace_id, session_id, kind, expires_at)
+        SELECT 'seed-refresh', f.workspace_id, f.id, 'refresh', f.expires_at
+          FROM user_session f WHERE f.client_id = 'taskmoor-web'`.execute(db);
+    },
+  },
 };
 
 /**

@@ -25,7 +25,8 @@ test('[API-017] the meta endpoint answers without signing in, signing a nonce', 
   const anonymous = await playwright.request.newContext({ baseURL: BASE });
   const res = await anonymous.get('/api/meta?nonce=e2e-nonce-0123456789');
   expect(res.status()).toBe(200);
-  expect(res.headers()['access-control-allow-origin']).toBe('*');
+  // No CORS answer for a caller without an Origin; listed frontends get theirs (M1-107).
+  expect(res.headers()['access-control-allow-origin']).toBeUndefined();
   const body = await res.json();
   expect(body.product).toBe('taskmoor');
   expect(body.instance.keyAlgorithm).toBe('Ed25519');

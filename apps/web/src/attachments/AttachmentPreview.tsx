@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { Attachment, AttachmentClient, ZipListing } from './client';
 import { formatSize } from './format';
+import { useMediaUrl } from './media';
 
 export interface AttachmentPreviewProps {
   attachment: Attachment;
@@ -97,9 +98,11 @@ export function AttachmentPreview({ attachment: a, client, onClose }: Attachment
     }
   };
 
-  const inline = client.urls.content(a, true);
+  const inline = useMediaUrl(client.urls.content(a, true));
+  const media = a.kind === 'image' || a.kind === 'pdf' || a.kind === 'video';
   let body: React.ReactNode;
-  if (loaded.status === 'loading') {
+  // A file fetched with the access token (M1-107) shows once it has arrived.
+  if (loaded.status === 'loading' || (media && inline === null)) {
     body = (
       <p role="status" className="page-note">
         {t('attachments.previewLoading')}
@@ -112,13 +115,18 @@ export function AttachmentPreview({ attachment: a, client, onClose }: Attachment
       </p>
     );
   } else if (a.kind === 'image') {
-    body = <img className="attachment-preview-image" src={inline} alt={a.name} />;
+    body = <img className="attachment-preview-image" src={inline ?? undefined} alt={a.name} />;
   } else if (a.kind === 'pdf') {
-    body = <iframe className="attachment-preview-frame" src={inline} title={a.name} />;
+    body = <iframe className="attachment-preview-frame" src={inline ?? undefined} title={a.name} />;
   } else if (a.kind === 'video') {
     body = (
       // biome-ignore lint/a11y/useMediaCaption: attachments come without caption tracks
-      <video className="attachment-preview-video" src={inline} controls aria-label={a.name} />
+      <video
+        className="attachment-preview-video"
+        src={inline ?? undefined}
+        controls
+        aria-label={a.name}
+      />
     );
   } else if (loaded.status === 'text') {
     body = (

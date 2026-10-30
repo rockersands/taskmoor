@@ -113,8 +113,8 @@ module, so the web Builder and the CLI share every byte of it.
     stylesheet.
   - For clean URLs it adds `.htaccess`, `_redirects` and `nginx.conf` below the base path.
   - The single-file form inlines the scripts and stylesheet into index.html (`</script>` and
-    `</style>` escaped) and uses hash routing, since one file cannot answer deep links. It
-    gives up a strict Content-Security-Policy, which the zip form keeps.
+    `</style>` escaped) and uses hash routing, since one file cannot answer deep links. Since
+    M1-107 both forms carry a strict policy (below).
   - `frontendKit` does the same from a Builder run's kits and ships the manifest beside it.
 - **CLI** (`pnpm builder --project <file>`, `packages/devtools/src/builder.ts`): writes the
   backend kit's core and the frontend kit as a zip and as one file. With `--seed`, the bytes
@@ -164,3 +164,16 @@ module, so the web Builder and the CLI share every byte of it.
   - Not yet run: the fresh-VM install with real DNS (the nightly matrix) and `install.ps1` on
     Windows.
 
+## Implementation (M1-107: sign-in across origins)
+
+- The backend's `.env` gets `TASKMOOR_OAUTH_REDIRECT_URIS` (the manifest's redirect URIs), and
+  `checkKits` checks it against the manifest. The Helm values carry it beside
+  `TASKMOOR_ALLOWED_ORIGINS`.
+- The frontend's config gets `auth` (ADR-080). The Builder picks it from the two URLs: `session`
+  for one origin, one host inside the other, or siblings under a shared parent; `oauth`
+  otherwise. Without the public suffix list it judges carefully: a parent such as `co.uk` is no
+  site, and in doubt it says OAuth, which works across any two sites. The `signIn` input
+  (`auto`, `session`, `oauth`) overrides it.
+- Both kit forms carry the app's content security policy in a meta element. The single file
+  allows its inline script and style blocks by their SHA-256 hashes, so it no longer gives up a
+  strict policy. `frame-ancestors` needs a header from the host, which a meta element cannot set.

@@ -1,6 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { applyAppearance, toAppearance } from '../skins/skins';
+import { oauthClient } from './oauth';
 
 export interface SessionUser {
   id: number;
@@ -54,8 +55,9 @@ const SessionContext = createContext<SessionContextValue>({
 });
 
 /**
- * Who is signed in, from the backend's cookie session (GET /api/v1/session). A fixed `session`
- * prop skips the request: tests and stories start where they need to.
+ * Who is signed in, from the backend's cookie session (GET /api/v1/session), or from the OAuth
+ * tokens of a backend on another site (M1-107). A fixed `session` prop skips the request:
+ * tests and stories start where they need to.
  */
 export function SessionProvider({
   session: fixed,
@@ -67,6 +69,11 @@ export function SessionProvider({
   const [session, setSession] = useState<Session>(fixed ?? { status: 'loading' });
 
   const refresh = useCallback(async () => {
+    // Without a token there is nobody to ask about: the backend's cookie does not come here.
+    if (oauthClient && !oauthClient.hasTokens()) {
+      setSession({ status: 'anonymous' });
+      return;
+    }
     try {
       const { user } = await api<{ user: SessionUser }>('/session');
       setSession({ status: 'signed-in', user });
@@ -82,6 +89,12 @@ export function SessionProvider({
   useEffect(() => {
     if (!fixed) void refresh();
   }, [fixed, refresh]);
+
+  // The backend refused a refresh (signed out elsewhere, or a reused token ended the session).
+  useEffect(() => {
+    if (fixed || !oauthClient) return;
+    return oauthClient.onSignedOut(() => setSession({ status: 'anonymous' }));
+  }, [fixed]);
 
   // The account's appearance wins wherever the person signs in (M1-122, ADR-036); signed out,
   // the browser keeps what it last showed.
@@ -103,7 +116,12 @@ export function SessionProvider({
   }, []);
 
   const signOut = useCallback(async () => {
-    await api<null>('/session', { method: 'DELETE' });
+    try {
+      await api<null>('/session', { method: 'DELETE' });
+    } finally {
+      // Ends the token family and the backend session behind it; the tokens go either way.
+      oauthClient?.clear();
+    }
     setSession({ status: 'anonymous' });
   }, []);
 

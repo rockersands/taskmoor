@@ -107,18 +107,54 @@ export interface GroupNestingTable {
 
 /**
  * Sign-in sessions (ADR-032): the browser holds a random token, the row keeps its SHA-256.
- * A session ends at `expires_at` or after the idle timeout since `last_seen_at`.
+ * A session ends at `expires_at` or after the idle timeout since `last_seen_at`. A row with a
+ * `client_id` is an OAuth token family instead (M1-107, ADR-080): no cookie token, its tokens
+ * in `oauth_token`, ended with the browser session (`parent_id`) that approved it.
  */
 export interface UserSessionTable {
   id: Generated<number>;
   workspace_id: number;
   user_id: number;
-  token_hash: string;
+  /** Null exactly for token families. */
+  token_hash: string | null;
   created_at: DefaultTimestamp;
   expires_at: Timestamp;
   last_seen_at: DefaultTimestamp;
   ip: string | null;
   user_agent: string | null;
+  /** The frontend a token family belongs to; null for a cookie session. */
+  client_id: ColumnType<string | null, string | null | undefined, string | null>;
+  /** The cookie session that approved a token family's code. */
+  parent_id: ColumnType<number | null, number | null | undefined, number | null>;
+}
+
+/** One-minute authorization codes with their PKCE challenge (M1-107, ADR-080). */
+export interface OauthCodeTable {
+  code_hash: string;
+  workspace_id: number;
+  /** The signed-in browser session at this backend that approved the code. */
+  session_id: number;
+  client_id: string;
+  redirect_uri: string;
+  /** BASE64URL(SHA-256(verifier)): only S256 is accepted. */
+  code_challenge: string;
+  expires_at: Timestamp;
+  used_at: Timestamp | null;
+  /** The token family the code was exchanged for; ended if the code comes back. */
+  family_id: number | null;
+  created_at: DefaultTimestamp;
+}
+
+/** Access and refresh tokens of the token families, by hash (M1-107, ADR-080). */
+export interface OauthTokenTable {
+  token_hash: string;
+  workspace_id: number;
+  session_id: number;
+  kind: 'access' | 'refresh';
+  expires_at: Timestamp;
+  /** When a refresh token was exchanged; presenting it again ends the family. */
+  used_at: Timestamp | null;
+  created_at: DefaultTimestamp;
 }
 
 /** Failed sign-ins per key (an account's email or a client address) for lockout and rate limits. */
@@ -2116,6 +2152,8 @@ export interface Database {
   team_member: TeamMemberTable;
   group_nesting: GroupNestingTable;
   user_session: UserSessionTable;
+  oauth_code: OauthCodeTable;
+  oauth_token: OauthTokenTable;
   sign_in_throttle: SignInThrottleTable;
   password_link: PasswordLinkTable;
   role: RoleTable;

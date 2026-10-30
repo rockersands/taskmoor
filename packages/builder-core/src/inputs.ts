@@ -42,6 +42,11 @@ export const builderInputs = z.object({
     .optional(),
   ai: z.object({ provider: z.enum(AI_PROVIDERS) }).optional(),
   target: z.enum(['compose', 'helm']).default('compose'),
+  /**
+   * How the frontend signs in (M1-107, ADR-080): `auto` picks the backend's cookie when both
+   * addresses are one site and OAuth otherwise; `session` or `oauth` overrides that.
+   */
+  signIn: z.enum(['auto', 'session', 'oauth']).default('auto'),
 });
 
 export type BuilderInputs = z.output<typeof builderInputs>;
@@ -134,3 +139,33 @@ export const apiOrigin = (inputs: BuilderInputs) => new URL(inputs.backendUrl).o
 export const frontendOrigin = (inputs: BuilderInputs) => new URL(inputs.frontendUrl).origin;
 /** Where on its host the app sits: `/` or `/tracker/`. */
 export const basePath = (inputs: BuilderInputs) => new URL(inputs.frontendUrl).pathname;
+
+const IP = /^(\d{1,3}\.){3}\d{1,3}$|^\[/;
+/** Two-letter country suffixes under a short label, which nobody registers below: co.uk, com.au. */
+const SHORT_SUFFIX = /^[a-z]{2,3}\.[a-z]{2}$/;
+
+/**
+ * Whether two hosts are one site for the browser's cookie rules (M1-107): the same host, one
+ * inside the other, or siblings under a parent of at least two labels that is not a country
+ * suffix such as co.uk. Without the public suffix list this is careful, so when in doubt it
+ * says no: OAuth then signs the frontend in, which works across any two sites.
+ */
+export function sameSite(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (IP.test(a) || IP.test(b)) return false;
+  const site = (parent: string) => parent.split('.').length >= 2 && !SHORT_SUFFIX.test(parent);
+  if (a.endsWith(`.${b}`)) return site(b);
+  if (b.endsWith(`.${a}`)) return site(a);
+  const parent = (host: string) => host.slice(host.indexOf('.') + 1);
+  return a.includes('.') && parent(a) === parent(b) && site(parent(a));
+}
+
+/** How the frontend kit signs in: the backend's cookie on one site, OAuth across sites. */
+export function signInMode(inputs: BuilderInputs): 'session' | 'oauth' {
+  if (inputs.signIn !== 'auto') return inputs.signIn;
+  const api = new URL(inputs.backendUrl);
+  const app = new URL(inputs.frontendUrl);
+  return api.protocol === app.protocol && sameSite(api.hostname, app.hostname)
+    ? 'session'
+    : 'oauth';
+}

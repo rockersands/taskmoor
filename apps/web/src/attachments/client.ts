@@ -1,4 +1,4 @@
-import { API_BASE, ApiError, api } from '../api/client';
+import { API_BASE, ApiError, api, apiFetch } from '../api/client';
 import type { Lock } from '../locks/useLockText';
 
 /** An attachment as `GET /api/v1/tickets/:id/attachments` shows it (CORE-021). */
@@ -70,11 +70,7 @@ export function attachmentClient(ticket: number | string): AttachmentClient {
     upload: async (file) => {
       const form = new FormData();
       form.append('file', file, file.name);
-      const response = await fetch(`${API_BASE}${base}`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        body: form,
-      });
+      const response = await apiFetch(`${API_BASE}${base}`, { method: 'POST', body: form });
       const text = await response.text();
       const body: unknown = text ? JSON.parse(text) : null;
       if (!response.ok) throw new ApiError(response.status, body);

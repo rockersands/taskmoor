@@ -1,4 +1,4 @@
-import { api, socketUrl } from '../api/client';
+import { api, openSocket } from '../api/client';
 
 /** One inbox item, as `GET /api/v1/inbox` gives it (M1-058; NTF-003). */
 export interface InboxItem {
@@ -87,7 +87,7 @@ function subscribeSocket(onChange: () => void): () => void {
   let version: string | null = null;
   const open = () => {
     if (stopped || typeof WebSocket === 'undefined') return;
-    socket = new WebSocket(socketUrl('/sync/socket'));
+    socket = openSocket('/sync/socket');
     keepAlive = setInterval(() => {
       if (socket?.readyState === WebSocket.OPEN) socket.send('ping');
     }, 25_000);

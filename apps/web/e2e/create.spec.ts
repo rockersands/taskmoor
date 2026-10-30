@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
 
@@ -14,7 +15,8 @@ const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATT
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 async function seriousAxeViolations(page: Page): Promise<string[]> {
-  await page.addScriptTag({ path: AXE });
+  // Evaluated, not a script element, which the app's content security policy refuses (M1-107).
+  await page.evaluate(readFileSync(AXE, 'utf8'));
   return page.evaluate(async () => {
     const axe = (
       window as unknown as {

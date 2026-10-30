@@ -67,6 +67,12 @@ describe('the frontend kit (M1-111)', () => {
       `href="./assets/index-def.css" integrity="${await sha384Integrity(utf8(CSS))}"`,
     );
     expect(page).toContain(`src="./skin-boot.js" integrity="sha384-`);
+    // The app's content security policy, before any script: the kit's files and its backend.
+    const csp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)" \/>/.exec(page);
+    expect(page.indexOf('Content-Security-Policy')).toBeLessThan(page.indexOf('<script'));
+    expect(csp?.[1]).toContain("script-src 'self';");
+    expect(csp?.[1]).toContain("connect-src 'self' https://api.example.com wss://api.example.com");
+    expect(csp?.[1]).not.toContain('unsafe-inline;');
     expect(kitText(files[MANIFEST_FILE])).toBe(kits.frontend[MANIFEST_FILE]);
     const all = Object.values(files).map(kitText).join('\n');
     for (const s of secretValues(secrets)) expect(all).not.toContain(s);
@@ -96,6 +102,12 @@ describe('the frontend kit (M1-111)', () => {
     expect(readRuntimeConfig(page)?.config.routing).toBe('hash');
     // Exactly the page's own script elements remain: the config, skin-boot and the app.
     expect(page.match(/<\/script>/g)).toHaveLength(3);
+    // Its inline scripts and styles run by their hashes alone, never 'unsafe-inline' for them.
+    const csp = /content="([^"]+)"/.exec(page)?.[1] ?? '';
+    const scriptSrc = csp.split('; ').find((d) => d.startsWith('script-src ')) ?? '';
+    expect(scriptSrc.match(/'sha256-/g)).toHaveLength(2);
+    expect(scriptSrc).not.toContain('unsafe-inline');
+    expect(csp.split('; ').find((d) => d.startsWith('style-src-elem '))).toMatch(/'sha256-/);
   });
 
   it('[OPS-016] zips to the same bytes for the same build and kits', async () => {

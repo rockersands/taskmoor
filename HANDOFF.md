@@ -29,8 +29,8 @@ the admin token scope is offered to every administrator, and the account's langu
 Still open: Helm runs no backup before migrating and its worker has nowhere to keep backups;
 backups skip attachments outside `TASKMOOR_DATA/files` (S3); "Call a webhook" sends nothing;
 track feature switches hide nothing; five global permissions are never checked; the server
-reads none of the Builder's `TASKMOOR_ALLOWED_ORIGINS`, `TOKEN_SIGNING_KEY`, `MASTER_KEY` and
-`AI_*` (M1-107, M1-075); `install.ps1` ignores `TASKMOOR_PULL` and `TASKMOOR_COMPOSE_OVERRIDE`;
+reads none of the Builder's `TOKEN_SIGNING_KEY` (not needed: ADR-080), `MASTER_KEY` and `AI_*`
+(M1-075; `TASKMOOR_ALLOWED_ORIGINS` is read since M1-107); `install.ps1` ignores `TASKMOOR_PULL` and `TASKMOOR_COMPOSE_OVERRIDE`;
 the Builder CLI takes no SMTP password or AI key and fails on a From with a display name. The
 manual states each as "not yet"; update its page with each fix.
 
@@ -114,6 +114,38 @@ like `wip/m1-007-ticket-types`, can be deleted from GitHub. Migration numbers 00
 all on the branch now; a long-lived development database that ran 0013 or 0014 before 0012
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
+
+## Side session 2026-10-30: M1-107 cross-origin sign-in
+
+ADR-080; migration **0064** (`0064_oauth`). The main session gave this task 0064 and ADR-080,
+so the "Next free numbers" line above moves on when this merges.
+- **Origins**: `apps/server/src/origins.ts`. Every `/api/` request with an Origin that is neither
+  the instance's own nor in `TASKMOOR_ALLOWED_ORIGINS` gets 403 before authentication, including
+  `/api/meta` (no longer `*`) and the sync socket's handshake. Co-editing checks the same policy.
+  A new route other sites post to by design (like the SAML ACS) goes in `OPEN_TO_ANY_ORIGIN`.
+- **OAuth**: `oauth/tokens.ts`, `routes/oauth.ts`. A token family is a `user_session` row with
+  `client_id` and the approving cookie session as `parent_id`, so existing session code reaches
+  it. `request.tokenFamily` marks requests signed in by an access token. A refresh emits no
+  event, on purpose (ADR-080).
+- **Web**: `session/oauth.ts` (the client), `api/client.ts` (`apiFetch`, `openSocket`; new raw
+  `fetch` calls to the backend should go through `apiFetch`), `session/OAuthSignIn.tsx`,
+  `attachments/media.tsx`. Runtime config key `auth`.
+- **CSP everywhere**: the e2e preview (4173) now sends the policy, so the whole browser suite
+  runs under it. Tiptap's `injectCSS` is off; its base rules are in `richtext.css`. A library
+  that injects a `<style>` element or evaluates text will break under it.
+- **e2e**: `web-server.ts` runs a third backend at `api.taskmoor.localhost:8794` (listening on
+  `::`); `kit-server.ts` serves `app.taskmoor.localhost:4181` (same site) and `127.0.0.1:4182`
+  (another site). `cross-origin.spec.ts` covers both layouts. Not tried on Firefox or WebKit
+  (`--browsers`), where `*.localhost` resolution may differ.
+- **Gate**: `pnpm verify --e2e` green on the branch (4,619 tests, 144 e2e). Two earlier runs each
+  had one unrelated failure under load that passed on the rerun: the artefact guard's
+  server-package test (Rolldown reported `node:crypto` before `packages/db`) and setup.spec's
+  NTF-008 live-update test (the change reached the local copy before the test read its
+  starting position).
+- **Not done**: origins and redirect URIs in the admin area (M1-108); OAuth for MCP clients
+  (ADR-080 lists client registration, consent, scopes and discovery); S3 previews in the OAuth
+  layout need a bucket CORS rule, untested; SSO errors from a sibling frontend land on the
+  backend's sign-in page.
 
 ## 2026-10-30: M1-085 IP allowlists, audit log page, syslog
 

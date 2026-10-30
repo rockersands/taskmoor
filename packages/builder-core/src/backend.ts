@@ -295,6 +295,8 @@ extraEnv:
     valueFrom: { secretKeyRef: { name: taskmoor-kit, key: TASKMOOR_INSTANCE_KEY } }
   - name: TASKMOOR_ALLOWED_ORIGINS
     value: "${frontendOrigin(inputs)}"
+  - name: TASKMOOR_OAUTH_REDIRECT_URIS
+    value: "${new URL(inputs.frontendUrl).href}"
 `;
 }
 

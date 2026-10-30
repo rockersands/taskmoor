@@ -1,7 +1,7 @@
 ---
 title: "The Builder's kits"
 audience: admins
-sources: packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, apps/web/src/api/client.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md
+sources: packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -80,6 +80,7 @@ The project file keeps the answers, so you can build the kits again. It is JSON:
 | `instanceName` | Up to 100 characters; shown in the page title |
 | `routing` | `path` (clean URLs, the default) or `hash` |
 | `target` | `compose` (the default) or `helm` |
+| `signIn` | `auto` (the default), `session` or `oauth`: how the frontend signs in when it is on another origin than the backend ([below](#frontend-and-backend-on-different-origins)) |
 | `smtp` | `host`, `port`, `user`, `from`; port 465 means TLS from the start. Values cannot contain spaces |
 | `ai` | `provider`: `anthropic`, `bedrock`, `vertex`, `foundry` or `openai-compatible` |
 | `defaultLanguage`, `branding.accentColour` | `en` or `es`, and a colour such as `#3366cc`; kept in the file, not yet used by the kits |
@@ -174,18 +175,48 @@ location / {
 
 With hash routing no host rule is needed. The single file `taskmoor-frontend-single.html` holds
 the scripts and styles inside it and always uses hash routing, since one file cannot answer
-deep links; it cannot use a strict Content-Security-Policy, which the zip form allows. Rename it
-to `index.html` where the host expects that name.
+deep links. Rename it to `index.html` where the host expects that name.
+
+Both forms carry the app's content security policy in their `index.html`: scripts and styles
+only from the kit itself (the single file allows exactly its own inline blocks, by their
+hashes), and calls only to the kit's backend. A page cannot refuse to be framed by other sites
+on its own; to refuse that too, have the host send the header
+`Content-Security-Policy: frame-ancestors 'none'` with `index.html`.
+
+## Frontend and backend on different origins
+
+When the frontend address and the backend address differ, the Builder writes three settings for
+the pair: the backend's `.env` gets `TASKMOOR_ALLOWED_ORIGINS` (the frontend's origin) and
+`TASKMOOR_OAUTH_REDIRECT_URIS` (the frontend address), and the frontend's `index.html` gets
+`auth`, how the app signs in. Browsers send the backend's sign-in cookie with the app's calls
+only when both addresses are one site, so there are two layouts:
+
+- **One site** (`auth: "session"`): sibling names such as `tracker.example.com` and
+  `api.example.com`, or one name inside the other. The app shows its own sign-in form, and the
+  backend's cookie does the rest. This is the layout to prefer.
+- **Two sites** (`auth: "oauth"`): for example the app on `acme.netlify.app` and the backend on
+  `tasks.example.com`. The app sends people to the backend's own sign-in page, where any second
+  factor and single sign-on work as usual, and they come back signed in. The app then calls the
+  backend with tokens that last ten minutes and renew themselves. A reload keeps the person
+  signed in; a new tab signs in again on its own while the backend still knows the browser.
+
+With `signIn` set to `auto` the Builder chooses from the two addresses. It treats a shared
+parent such as `co.uk` as no site, and when in doubt it chooses OAuth, which works for any
+pair. Set `session` or `oauth` to decide yourself.
+
+The backend answers only its own origin and the listed frontend: any other site gets no
+answer its scripts can read, and its requests are refused. Signing out in the app signs the
+person out at the backend too. If one of the app's renewal tokens is ever used twice, the
+backend takes it for a stolen copy, ends that sign-in and signs the person out.
+
+With attachments in an S3 bucket and the OAuth layout, the app fetches previews from the
+bucket itself: add a CORS rule to the bucket that allows `GET` from the frontend's origin.
 
 ## What is not there yet
 
-- **Signing in from another origin.** The web app sends its session cookie only to its own
-  origin, so a frontend kit on another origin than the backend (another host name or port)
-  cannot sign in yet. Until it
-  can, serve the frontend from the backend's own origin, for example from a host that passes
-  `/api/` and WebSocket traffic through to the backend, or let the backend serve the web app.
 - **Settings the server does not read yet.** The backend kit's `.env` also carries
-  `TASKMOOR_ALLOWED_ORIGINS`, `TASKMOOR_TOKEN_SIGNING_KEY`, `TASKMOOR_MASTER_KEY`,
-  `TASKMOOR_AI_PROVIDER` and `TASKMOOR_AI_KEY`. They are kept for later releases; today they
-  change nothing.
+  `TASKMOOR_TOKEN_SIGNING_KEY`, `TASKMOOR_MASTER_KEY`, `TASKMOOR_AI_PROVIDER` and
+  `TASKMOOR_AI_KEY`. They are kept for later releases; today they change nothing.
+- **Allowed origins in the admin area.** The frontend origins come from `.env` and change with
+  a restart; an admin page for them is still to come.
 - **The web page Builder**, which runs the same core in a browser with no network access.

@@ -1100,6 +1100,40 @@
       "CREATE UNIQUE INDEX notification_rule_unique_idx ON public.notification_rule USING btree (policy_id, event, recipient, COALESCE(user_id, 0), COALESCE(group_id, 0), COALESCE(role_id, 0), COALESCE(field_key, ''::text))"
     ]
   },
+  "oauth_code": {
+    "columns": [
+      "code_hash text not null",
+      "workspace_id integer not null",
+      "session_id integer not null",
+      "client_id text not null",
+      "redirect_uri text not null",
+      "code_challenge text not null",
+      "expires_at timestamp with time zone not null",
+      "used_at timestamp with time zone",
+      "family_id integer",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX oauth_code_expires_idx ON public.oauth_code USING btree (expires_at)",
+      "CREATE UNIQUE INDEX oauth_code_pkey ON public.oauth_code USING btree (code_hash)"
+    ]
+  },
+  "oauth_token": {
+    "columns": [
+      "token_hash text not null",
+      "workspace_id integer not null",
+      "session_id integer not null",
+      "kind text not null",
+      "expires_at timestamp with time zone not null",
+      "used_at timestamp with time zone",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX oauth_token_expires_idx ON public.oauth_token USING btree (expires_at)",
+      "CREATE UNIQUE INDEX oauth_token_pkey ON public.oauth_token USING btree (token_hash)",
+      "CREATE INDEX oauth_token_session_idx ON public.oauth_token USING btree (session_id)"
+    ]
+  },
   "oidc_login": {
     "columns": [
       "id integer not null default nextval('oidc_login_id_seq'::regclass)",
@@ -2196,15 +2230,18 @@
       "id integer not null default nextval('user_session_id_seq'::regclass)",
       "workspace_id integer not null",
       "user_id integer not null",
-      "token_hash text not null",
+      "token_hash text",
       "created_at timestamp with time zone not null default now()",
       "expires_at timestamp with time zone not null",
       "last_seen_at timestamp with time zone not null default now()",
       "ip text",
-      "user_agent text"
+      "user_agent text",
+      "client_id text",
+      "parent_id integer"
     ],
     "indexes": [
       "CREATE INDEX user_session_expires_idx ON public.user_session USING btree (expires_at)",
+      "CREATE INDEX user_session_parent_idx ON public.user_session USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
       "CREATE UNIQUE INDEX user_session_pkey ON public.user_session USING btree (id)",
       "CREATE UNIQUE INDEX user_session_token_hash_key ON public.user_session USING btree (token_hash)",
       "CREATE INDEX user_session_user_idx ON public.user_session USING btree (user_id)"

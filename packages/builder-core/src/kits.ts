@@ -5,6 +5,7 @@ import {
   type BuilderInputs,
   basePath,
   frontendOrigin,
+  signInMode,
   type UserSecrets,
 } from './inputs';
 import {
@@ -51,6 +52,7 @@ function backendEnv(
     // No TASKMOOR_VERSION: the image stamps its own, and the backend kit pins the image tag.
     envLine('PUBLIC_URL', apiOrigin(inputs)),
     envLine('TASKMOOR_ALLOWED_ORIGINS', manifest.frontendOrigins.join(',')),
+    envLine('TASKMOOR_OAUTH_REDIRECT_URIS', manifest.redirectUris.join(',')),
     envLine('TASKMOOR_WEB_ROUTING', inputs.routing),
     envLine('TASKMOOR_INSTANCE_ID', secrets.instanceId),
     envLine('TASKMOOR_INSTANCE_KEY', secrets.instanceKey.seed),
@@ -76,12 +78,15 @@ function backendEnv(
 
 /**
  * The frontend's public runtime configuration, the keys of the slot in index.html (ADR-066),
- * pinned to the manifest's instance so the app checks it reached that backend (M1-111).
+ * pinned to the manifest's instance so the app checks it reached that backend (M1-111), and
+ * signing in the way the two addresses allow (M1-107).
  */
 export function frontendConfig(inputs: BuilderInputs, manifest: ConnectionManifest): RuntimeConfig {
+  const sameOrigin = apiOrigin(inputs) === frontendOrigin(inputs);
   return {
     ...DEFAULT_RUNTIME_CONFIG,
-    apiUrl: apiOrigin(inputs) === frontendOrigin(inputs) ? '' : apiOrigin(inputs),
+    apiUrl: sameOrigin ? '' : apiOrigin(inputs),
+    auth: sameOrigin ? 'session' : signInMode(inputs),
     routing: inputs.routing,
     basePath: basePath(inputs),
     instanceName: inputs.instanceName,
@@ -159,6 +164,10 @@ export async function checkKits(
   const allowed = (env.TASKMOOR_ALLOWED_ORIGINS ?? '').split(',');
   for (const origin of m.frontendOrigins) {
     if (!allowed.includes(origin)) problems.push(`the backend does not allow ${origin}`);
+  }
+  const returns = (env.TASKMOOR_OAUTH_REDIRECT_URIS ?? '').split(',');
+  for (const uri of m.redirectUris) {
+    if (!returns.includes(uri)) problems.push(`sign-in cannot return to ${uri}`);
   }
   const config = JSON.parse(kits.frontend[CONFIG_FILE] ?? '{}') as RuntimeConfig;
   const target = config.apiUrl === '' ? m.frontendOrigins[0] : config.apiUrl;

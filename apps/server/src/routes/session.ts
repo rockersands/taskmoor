@@ -14,6 +14,7 @@ import {
 import type { Authorizer } from '../authz/authorizer';
 import { withEvent } from '../events/bus';
 import type { DirectoryGateway } from '../ldap/gateway';
+import { endFamilyAndParent } from '../oauth/tokens';
 import { emailDomain, providerForDomain } from '../sso/oidc';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 import {
@@ -226,7 +227,15 @@ export function registerSessionRoutes(
   app.delete('/api/v1/session', async (request, reply) => {
     const userId = request.user?.id ?? null;
     await withEvent(db, { workspaceId: request.workspaceId, actorId: userId }, async (trx) => {
-      const ended = await endSession(trx, request, reply);
+      // A frontend signed in through OAuth signs out its token family and the browser session
+      // at this backend that approved it (M1-107, ADR-080); a browser ends its cookie session.
+      const family = request.tokenFamily ? request.authSession?.id : undefined;
+      const ended =
+        family !== undefined
+          ? (await endFamilyAndParent(trx, family))
+            ? family
+            : null
+          : await endSession(trx, request, reply);
       // Only a live session's end is an event; a stale cookie just gets cleared.
       return {
         result: ended,

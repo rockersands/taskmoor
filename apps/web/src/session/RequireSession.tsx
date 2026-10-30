@@ -1,9 +1,14 @@
 import type { ReactNode } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { OAuthSignIn } from './OAuthSignIn';
+import { oauthClient } from './oauth';
 import { useSession } from './SessionProvider';
 import { SignInForm } from './SignInForm';
 
-/** Shows its children to signed-in users and a sign-in form to everyone else. */
+/**
+ * Shows its children to signed-in users and a sign-in form to everyone else; with a backend on
+ * another site, the way to its sign-in page (M1-107).
+ */
 export function RequireSession({ children }: { children: ReactNode }) {
   const { session } = useSession();
   const t = useT();
@@ -21,7 +26,7 @@ export function RequireSession({ children }: { children: ReactNode }) {
         {t('auth.signInRequired')}
       </h1>
       <p className="page-note">{t('auth.signInExplanation')}</p>
-      <SignInForm />
+      {oauthClient ? <OAuthSignIn auto /> : <SignInForm />}
     </section>
   );
 }

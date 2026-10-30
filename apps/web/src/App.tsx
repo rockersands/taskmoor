@@ -42,7 +42,7 @@ import { PermissionsPage } from './permissions/PermissionsPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
-import { navigate, useRoute } from './routing/router';
+import { currentRoute, navigate, useRoute } from './routing/router';
 import { runtimeConfig } from './runtime/config';
 import { queryFromHash, SearchPage } from './search/SearchPage';
 import { savedSearchFromHash } from './search/savedClient';
@@ -69,6 +69,7 @@ import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteC
 import { type Appearance, applyAppearance } from './skins/skins';
 import { BacklogPage } from './sprints/BacklogPage';
 import { SprintReportPage } from './sprints/SprintReportPage';
+import { continuation } from './sso/client';
 import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketDialog } from './tickets/CreateTicketDialog';
@@ -173,6 +174,16 @@ function decodedSegment(segment: string): string {
 
 const goHome = () => {
   navigate(HOME);
+};
+
+/**
+ * After signing in on this backend's page: back to the frontend on another site that sent the
+ * person here (its authorization, M1-107), or the start page.
+ */
+const afterSignIn = () => {
+  const next = continuation(currentRoute());
+  if (next) window.location.assign(next);
+  else goHome();
 };
 
 function Pages() {
@@ -569,7 +580,7 @@ function Pages() {
   } else if (isRoute(hash, SIGN_IN)) {
     active = '';
     guarded = false;
-    content = <SignInPage onSignedIn={goHome} />;
+    content = <SignInPage onSignedIn={afterSignIn} />;
   } else {
     active = routeFromHash(hash, 'home');
     const page = NAV_ITEMS.find((item) => item.id === active);

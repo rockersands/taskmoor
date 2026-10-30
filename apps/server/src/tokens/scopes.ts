@@ -52,6 +52,10 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   // A one-click unsubscribe link from a notification email (M1-057): its token is the proof.
   'GET /api/v1/unsubscribe',
   'POST /api/v1/unsubscribe',
+  // OAuth for frontends on another site (M1-107): the code, verifier or token is the proof.
+  'GET /api/v1/oauth/authorize',
+  'POST /api/v1/oauth/token',
+  'POST /api/v1/oauth/revoke',
 ]);
 
 export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([

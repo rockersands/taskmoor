@@ -112,6 +112,9 @@ const attachApps = [
     roles: ['api', 'realtime'],
     logLevel: 'warn',
     publicUrl: 'http://localhost:4174',
+    // The frontend kits on static hosts that pass /api here (kit-server.ts): their pages'
+    // origins, as an install lists a host that proxies to it (M1-107).
+    allowedOrigins: ['http://localhost:4178', 'http://localhost:4179'],
     attachments: storesOf(local, { others: [s3] }),
   }),
   await buildApp({

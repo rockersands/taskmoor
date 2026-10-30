@@ -55,6 +55,11 @@ declare module 'fastify' {
     authSession: CurrentSession | null;
     /** The API token of a request sent with `Authorization: Bearer` (IAM-007); then no session. */
     apiToken: CurrentApiToken | null;
+    /**
+     * Set when an OAuth access token signed the request in (M1-107, ADR-080): `authSession` is
+     * then the token family, and this names the browser session that approved it.
+     */
+    tokenFamily: { parentId: number | null } | null;
     /** Who the request acts as: the session's person or the token's owner. */
     user: SessionUser | null;
     /** Permission checks for this request's person (ADR-012). */
@@ -178,7 +183,11 @@ export async function endSession(
   return row?.id ?? null;
 }
 
-/** Ends every session of a user, except one when given (the browser that asked). */
+/**
+ * Ends every session of a user, except one when given (the browser that asked). A token
+ * family that asks keeps the browser session that approved it too, which it cannot live
+ * without (M1-107).
+ */
 export async function revokeUserSessions(
   db: Kysely<Database> | Transaction<Database>,
   workspaceId: number,
@@ -189,7 +198,21 @@ export async function revokeUserSessions(
     .deleteFrom('user_session')
     .where('workspace_id', '=', workspaceId)
     .where('user_id', '=', userId);
-  if (except !== undefined) query = query.where('id', '!=', except);
+  if (except !== undefined) {
+    query = query
+      .where('id', '!=', except)
+      .where((eb) =>
+        eb(
+          'id',
+          'not in',
+          eb
+            .selectFrom('user_session as kept')
+            .select('kept.parent_id')
+            .where('kept.id', '=', except)
+            .where('kept.parent_id', 'is not', null),
+        ),
+      );
+  }
   const result = await query.executeTakeFirst();
   return Number(result.numDeletedRows);
 }

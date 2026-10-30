@@ -12346,6 +12346,78 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/oauth/authorize": {
+      "get": {
+        "operationId": "internal-get-oauth-authorize",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "public",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/oauth/revoke": {
+      "post": {
+        "operationId": "internal-post-oauth-revoke",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "public",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/oauth/token": {
+      "post": {
+        "operationId": "internal-post-oauth-token",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "public",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/password-check": {
       "post": {
         "operationId": "internal-post-password-check",

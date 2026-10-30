@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
-import { type BuilderInputs, validateInputs } from './inputs';
+import { type BuilderInputs, sameSite, validateInputs } from './inputs';
 import { buildKits, CONFIG_FILE, checkKits, ENV_FILE, MANIFEST_FILE, zipKit } from './kits';
 import { verifyManifest } from './manifest';
 import { loadProject, ProjectError, saveProject } from './project';
@@ -195,6 +195,7 @@ describe('the kits (M1-109)', () => {
       routing: 'hash',
       instanceId: secrets.instanceId,
       instanceKey: secrets.instanceKey.publicKey,
+      auth: 'session',
     });
     // On the backend's own origin, the frontend calls its own origin.
     const same = await buildKits(
@@ -205,6 +206,47 @@ describe('the kits (M1-109)', () => {
     );
     expect(JSON.parse(same.frontend[CONFIG_FILE] ?? '').apiUrl).toBe('');
     expect(Object.keys(kits.backend).sort()).toEqual([ENV_FILE, MANIFEST_FILE]);
+  });
+
+  it('[IAM-024] signs in with the cookie on one site and through OAuth across sites', async () => {
+    const secrets = await generateSecrets(systemRandom);
+    const auth = async (raw: Record<string, unknown>) =>
+      JSON.parse((await buildKits(inputs(raw), secrets, {}, VERSIONS)).frontend[CONFIG_FILE] ?? '')
+        .auth;
+    // Sibling subdomains, and the backend's own origin: the cookie.
+    expect(await auth({})).toBe('session');
+    expect(await auth({ frontendUrl: 'https://example.com/' })).toBe('session');
+    // Another site, or a static host's subdomain: OAuth.
+    expect(await auth({ frontendUrl: 'https://tracker.example.org/' })).toBe('oauth');
+    expect(await auth({ frontendUrl: 'https://acme.netlify.app/' })).toBe('oauth');
+    // A person can say otherwise (ADR-032: the Builder picks, administrators may override).
+    expect(await auth({ signIn: 'oauth' })).toBe('oauth');
+    expect(sameSite('a.example.co.uk', 'b.example.co.uk')).toBe(true);
+    expect(sameSite('acme.co.uk', 'other.co.uk')).toBe(false);
+    expect(sameSite('127.0.0.1', 'localhost')).toBe(false);
+  });
+
+  it('[IAM-025] lets the backend allow the frontend and send sign-in back to it, and checks both', async () => {
+    const secrets = await generateSecrets(systemRandom);
+    const kits = await buildKits(
+      inputs({ frontendUrl: 'https://example.org/tracker/' }),
+      secrets,
+      {},
+      VERSIONS,
+    );
+    const env = kits.backend[ENV_FILE] ?? '';
+    expect(env).toContain('TASKMOOR_ALLOWED_ORIGINS=https://example.org\n');
+    expect(env).toContain('TASKMOOR_OAUTH_REDIRECT_URIS=https://example.org/tracker/\n');
+    const broken = {
+      ...kits,
+      backend: {
+        ...kits.backend,
+        [ENV_FILE]: env.replace(/TASKMOOR_OAUTH_REDIRECT_URIS=.*\n/, ''),
+      },
+    };
+    expect(await checkKits(broken, secrets)).toContain(
+      'sign-in cannot return to https://example.org/tracker/',
+    );
   });
 });
 

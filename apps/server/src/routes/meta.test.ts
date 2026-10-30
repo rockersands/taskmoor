@@ -70,7 +70,8 @@ describe('meta endpoint (M1-106)', () => {
   it('[API-017] [API-018] answers without signing in: versions, sign-in methods and the instance', async () => {
     const { res, body } = await meta();
     expect(res.statusCode).toBe(200);
-    expect(res.headers['access-control-allow-origin']).toBe('*');
+    // No Origin, no CORS answer: allowed frontends get theirs (origins.test.ts, M1-107).
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
     expect(res.headers['set-cookie']).toBeUndefined();
     expect(body).toMatchObject({
       product: 'taskmoor',
