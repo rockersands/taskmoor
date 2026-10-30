@@ -49,6 +49,7 @@ carried" below).
 manifest.json
 users.ndjson
 groups.ndjson
+teams.ndjson
 roles.ndjson
 statuses.ndjson
 priorities.ndjson
@@ -93,8 +94,8 @@ precedes its children; `field-options.ndjson` lists top-level options before cas
   {"id": "<user id>", "label": "..."}}`, or `"group:<group id>"` for a team.
 - **Values with ids inside** are written exactly as Taskmoor stores them and refer to records of
   the export by their ids:
-  - a ticket's `fields`: custom values keyed by field id; options, people, groups, releases and
-    areas by id (several in ascending order, a cascading choice as `[parent, child]`);
+  - a ticket's `fields`: custom values keyed by field id; options, people, groups, teams,
+    releases and areas by id (several in ascending order, a cascading choice as `[parent, child]`);
   - history values: see `history.ndjson` below;
   - workflow definitions: statuses by number, groups, roles and people by id as text;
   - formula fields: the expression names fields as `{cf[<field id>]}`.
@@ -135,6 +136,7 @@ and an import refuses it.
 |---|---|
 | users | `email`, `name`, `active` (false for deactivated people), `timeZone?`, `locale?` |
 | groups | `name`, `description`, `members` (user ids) |
+| teams | `name`, `description`, `lead?` (a user id), `members` (user ids); exports made before M1-123 have no such file |
 | roles | `name`, `description` |
 | statuses | `name`, `description`, `stage` (`new`, `active` or `closed`); in the workspace's order |
 | priorities | `name`, `description`, `icon?`, `color?`; in the workspace's order |
@@ -143,7 +145,7 @@ and an import refuses it.
 | link-types | `name`, `outward` (what the source ticket reads), `inward` |
 | tracks | `key`, `name`, `description`, `type` (`software`, `business`, `service`, `discovery`), `mode` (`shared` or `local`), `owner?`, `icon?`, `color?`, `lastNumber` (the last ticket number given out) |
 | releases | `track`, `name`, `description`, `startDate?`, `releaseDate?`, `shippedAt?`, `archivedAt?`; per track in the track's order |
-| areas | `track`, `name`, `description`, `owner?`, `defaultAssignee` (`area_owner`, `track_owner`, `unassigned`), `archivedAt?` |
+| areas | `track`, `name`, `description`, `owner?`, `ownerTeam` (the team that owns it; present only when one does, since M1-123), `defaultAssignee` (`area_owner`, `track_owner`, `unassigned`), `archivedAt?` |
 | fields | `name`, `description`, `type`, `multiple`, `config` (type settings; a formula's `expression` and `output`), `track?` (the track that owns a local field) |
 | field-contexts | `field`, `name`, `description`, `defaultValue?` (stored form; options are flagged on the options instead), `config`, `scopes` (`{track?, type?}` pairs; `null` means every track or type) |
 | field-options | `context`, `parent?`, `value`, `sortOrder`, `disabled`, `default` (part of its context's default value) |

@@ -196,6 +196,12 @@ const TRANSITIONS: { id: number; name: string; from: StatusName[] | 'any'; to: S
   { id: 4, name: 'Close', from: 'any', to: 'Closed' },
 ];
 
+/** The site's teams a board may belong to (M1-123). */
+export const TEAMS = [
+  { id: 21, name: 'Platform' },
+  { id: 22, name: 'Mobile' },
+];
+
 export interface FakeBoardClient extends BoardClient {
   moves: MoveRequest[];
   dataCalls: string[][];
@@ -274,11 +280,13 @@ export function fakeBoardClient(
         columns,
         swimlanes,
         boardFilters,
+        teamId,
         ...rest
       } = patch;
       board = {
         ...board,
         ...rest,
+        ...(teamId !== undefined ? { team: TEAMS.find((team) => team.id === teamId) ?? null } : {}),
         ...(source ? { source } : {}),
         ...(subFilter !== undefined ? { subFilter } : {}),
         ...(columns ? { columns: columns.map((c) => ({ ...c, id: c.id ?? `n${++n}` })) } : {}),
@@ -291,6 +299,7 @@ export function fakeBoardClient(
       return { ok: true, board };
     },
     numberFields: async () => numberFields,
+    teams: async () => TEAMS,
     data: async (_id, filters): Promise<BoardData> => {
       client.dataCalls.push([...filters]);
       const all = [...cards].sort((a, b) => (a.rank < b.rank ? -1 : 1));

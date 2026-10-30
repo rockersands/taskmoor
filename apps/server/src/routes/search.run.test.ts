@@ -876,9 +876,10 @@ describe('search (M1-037)', () => {
       expect(status, q).toBe(400);
       return body;
     };
+    // Teams since M1-123: an id that names no team is refused like an unknown group.
     expect(await refused('assignee IN membersOf("id:7c1d")')).toMatchObject({
-      error: 'unsupported_query',
-      message: 'membersOf("id:7c1d"): teams are not available in this version yet',
+      error: 'invalid_query',
+      message: 'No team "7c1d"',
     });
     expect(await refused('assignee IN membersOf(Nobody)')).toMatchObject({
       error: 'invalid_query',

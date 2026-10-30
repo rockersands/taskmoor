@@ -594,8 +594,8 @@ export function registerFieldRoutes(
         return o !== undefined && !o.disabled && o.parent_id === (parent ?? null);
       });
       if (!fits) return problem(400, 'invalid_default', { problem: 'not_found' });
-    } else if (ref === 'user' || ref === 'group') {
-      const table = ref === 'user' ? 'app_user' : 'user_group';
+    } else if (ref === 'user' || ref === 'group' || ref === 'team') {
+      const table = ref === 'user' ? 'app_user' : ref === 'group' ? 'user_group' : 'team';
       const rows = await trx
         .selectFrom(table)
         .select('id')

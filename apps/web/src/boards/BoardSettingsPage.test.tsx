@@ -46,6 +46,21 @@ describe('board settings (M1-043)', () => {
     ]);
   });
 
+  it('[CORE-027] gives the board a team, and takes it away', async () => {
+    const user = userEvent.setup();
+    const client = renderSettings(fakeBoardClient({ board: { team: { id: 22, name: 'Mobile' } } }));
+    await ready();
+    const team = screen.getByRole('combobox', { name: 'Team' });
+    expect(team).toHaveDisplayValue('Mobile');
+    await user.selectOptions(team, 'Platform');
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
+    expect(client.patches[0]?.teamId).toBe(21);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Team' }), 'No team');
+    await user.click(screen.getByRole('button', { name: 'Save settings' }));
+    await waitFor(() => expect(client.patches[1]?.teamId).toBeNull());
+  });
+
   it('[AGL-004] [AGL-005] sets the lanes and orders the board filters', async () => {
     const user = userEvent.setup();
     const client = renderSettings();

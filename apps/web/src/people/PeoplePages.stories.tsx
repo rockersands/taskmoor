@@ -2,8 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN, MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { fakePeopleClient } from './fixtures';
+import { fakePeopleClient, fakeTeamsClient } from './fixtures';
 import { GroupsPage } from './GroupsPage';
+import { TeamsPage } from './TeamsPage';
 import { UsersPage } from './UsersPage';
 
 const meta = {
@@ -62,5 +63,16 @@ export const Groups: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage Approvers' }));
     await expect(await canvas.findByText('Members of Approvers')).toBeVisible();
+  },
+};
+
+/** Teams (M1-123), one open: its name, description and lead, its members, and delete. */
+export const Teams: Story = {
+  render: () => <TeamsPage client={fakeTeamsClient()} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage Platform' }));
+    await expect(await canvas.findByText('Members of Platform')).toBeVisible();
+    await expect(canvas.getByRole('combobox', { name: 'Lead' })).toHaveValue('3');
   },
 };

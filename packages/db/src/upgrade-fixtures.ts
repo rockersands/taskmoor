@@ -1099,6 +1099,32 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM ticket k WHERE k.summary = 'Seed search'`.execute(db);
     },
   },
+  '0060_teams': {
+    tables: {
+      team: "name = 'Seed team' AND lead_id IS NOT NULL",
+      team_member: "team_id IN (SELECT id FROM team WHERE name = 'Seed team')",
+      board: "name = 'Seed board' AND team_id IS NOT NULL",
+      area: "name = 'Seed area' AND owner_team_id IS NOT NULL",
+      field: "name = 'Seed team field' AND type = 'team'",
+    },
+    seed: async (db) => {
+      // A team led by the seed person, who is its member; it has the seed board, owns the
+      // seed area, and a Team field exists.
+      await sql`INSERT INTO team (workspace_id, name, description, lead_id)
+        SELECT 1, 'Seed team', 'Seeds', id FROM app_user WHERE email = 'seed@example.com'`.execute(
+        db,
+      );
+      await sql`INSERT INTO team_member (workspace_id, team_id, user_id)
+        SELECT 1, t.id, u.id FROM team t, app_user u
+         WHERE t.name = 'Seed team' AND u.email = 'seed@example.com'`.execute(db);
+      const team = sql`(SELECT id FROM team WHERE name = 'Seed team')`;
+      await sql`UPDATE board SET team_id = ${team} WHERE name = 'Seed board'`.execute(db);
+      await sql`UPDATE area SET owner_team_id = ${team} WHERE name = 'Seed area'`.execute(db);
+      await sql`INSERT INTO field (workspace_id, name, type) VALUES (1, 'Seed team field', 'team')`.execute(
+        db,
+      );
+    },
+  },
 };
 
 /**

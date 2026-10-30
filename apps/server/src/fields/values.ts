@@ -174,9 +174,10 @@ export async function referenceProblem(
       const allowed = await allowedPeople(db, at, context);
       return allowed === 'all' || ids.every((id) => allowed.has(id)) ? null : 'not_allowed';
     }
-    case 'group': {
+    case 'group':
+    case 'team': {
       const rows = await db
-        .selectFrom('user_group')
+        .selectFrom(ref === 'group' ? 'user_group' : 'team')
         .select('id')
         .where('workspace_id', '=', at.workspaceId)
         .where('id', 'in', ids)
@@ -281,6 +282,14 @@ export async function loadResolver(
       .select(['id', 'name'])
       .where('workspace_id', '=', workspaceId)
       .where('id', 'in', ids('group'))
+      .execute(),
+  );
+  await read('team', () =>
+    db
+      .selectFrom('team')
+      .select(['id', 'name'])
+      .where('workspace_id', '=', workspaceId)
+      .where('id', 'in', ids('team'))
       .execute(),
   );
   await read('release', () =>

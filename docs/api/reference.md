@@ -30,6 +30,7 @@ it by hand. How to authenticate, page, read errors and what "stable" promises ar
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
 | `trackId` | query | integer | no |  |
+| `teamId` | query | integer | no |  |
 
 Responses:
 
@@ -59,6 +60,7 @@ Body:
 | `cardRules` | object | no |  |
 | `sprintSettings` | object | no |  |
 | `adminIds` | array of integer | no |  |
+| `teamId` | integer or null | no |  |
 
 Responses:
 
@@ -1142,6 +1144,7 @@ Responses:
 | `description` | string | yes |  |
 | `kind` | `"scrum"`, `"kanban"` | yes |  |
 | `location` | object or object | yes | Where the board lives: a track, or a person’s own space. |
+| `team` | object or null | yes | The team the board belongs to, by its current name. |
 | `columns` | array of object | yes |  |
 | `version` | integer | yes |  |
 
@@ -1163,6 +1166,7 @@ Responses:
 | `description` | string | yes |  |
 | `kind` | `"scrum"`, `"kanban"` | yes |  |
 | `location` | object or object | yes | Where the board lives: a track, or a person’s own space. |
+| `team` | object or null | yes | The team the board belongs to, by its current name. |
 
 ### Schema: BulkItem
 
@@ -1510,5 +1514,5 @@ A `"new"`, `"active"`, `"closed"`.
 
 ## Internal routes
 
-The document also lists 392 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 399 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

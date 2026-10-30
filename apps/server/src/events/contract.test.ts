@@ -406,6 +406,45 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'DELETE', url: `/api/v1/groups/${state.child}` }),
     },
     {
+      route: 'POST /api/v1/teams',
+      expect: 'team.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/teams',
+          payload: { name: 'Platform', leadId: state.bo },
+        });
+        state.team = res.json().team.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/teams/:id',
+      expect: 'team.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/teams/${state.team}`,
+          payload: { name: 'Platform crew', leadId: null },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/teams/:id/members/:userId',
+      expect: 'team.member_added',
+      run: () => admin({ method: 'PUT', url: `/api/v1/teams/${state.team}/members/${state.bo}` }),
+    },
+    {
+      route: 'DELETE /api/v1/teams/:id/members/:userId',
+      expect: 'team.member_removed',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/teams/${state.team}/members/${state.bo}` }),
+    },
+    {
+      route: 'DELETE /api/v1/teams/:id',
+      expect: 'team.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/teams/${state.team}` }),
+    },
+    {
       route: 'POST /api/v1/roles',
       expect: 'role.created',
       run: async () => {

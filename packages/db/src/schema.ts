@@ -70,6 +70,27 @@ export interface UserGroupTable {
   created_at: DefaultTimestamp;
 }
 
+/**
+ * A site-wide team (M1-123, CORE-027): who works together. It grants nothing; boards, areas
+ * and Team fields name it by id. Names are unique within a workspace, ignoring case.
+ */
+export interface TeamTable {
+  id: Generated<number>;
+  workspace_id: number;
+  name: string;
+  description: Generated<string>;
+  lead_id: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export interface TeamMemberTable {
+  workspace_id: number;
+  team_id: number;
+  user_id: number;
+  added_at: DefaultTimestamp;
+}
+
 export interface GroupMemberTable {
   workspace_id: number;
   group_id: number;
@@ -548,6 +569,8 @@ export interface AreaTable {
   name: string;
   description: Generated<string>;
   owner_id: number | null;
+  /** The team that owns the area (M1-123). */
+  owner_team_id: ColumnType<number | null, number | null | undefined, number | null>;
   default_assignee: ColumnType<
     AreaDefaultAssignee,
     AreaDefaultAssignee | undefined,
@@ -702,6 +725,8 @@ export interface BoardTable {
   card_rules: Json;
   /** Estimation statistic, time tracking and parallel sprints (M1-044, ADR-054). */
   sprint_settings: ColumnType<JsonValue, string | undefined, string>;
+  /** The team the board belongs to (M1-123). */
+  team_id: ColumnType<number | null, number | null | undefined, number | null>;
   version: Generated<number>;
   created_by: number | null;
   created_at: DefaultTimestamp;
@@ -1181,7 +1206,9 @@ export type CustomFieldType =
   | 'release'
   | 'area'
   /** Computed from other fields (M1-013, CORE-011); `config` holds the expression and output. */
-  | 'formula';
+  | 'formula'
+  /** A site team (M1-123, CORE-027); one value. */
+  | 'team';
 export interface FieldTable {
   id: Generated<number>;
   workspace_id: number;
@@ -2004,6 +2031,8 @@ export interface Database {
   app_user: AppUserTable;
   user_group: UserGroupTable;
   group_member: GroupMemberTable;
+  team: TeamTable;
+  team_member: TeamMemberTable;
   group_nesting: GroupNestingTable;
   user_session: UserSessionTable;
   sign_in_throttle: SignInThrottleTable;

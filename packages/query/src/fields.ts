@@ -42,7 +42,9 @@ export type CustomType =
   | 'cascade'
   | 'labels'
   | 'release'
-  | 'area';
+  | 'area'
+  /** A Team field (M1-123): a site team, by name or id. */
+  | 'team';
 
 export type FieldType = SystemType | CustomType;
 
@@ -99,6 +101,7 @@ export const OPERATORS_BY_TYPE: Readonly<Record<FieldType, readonly OperatorFami
   date: ORDERED,
   user: ALL,
   group: ALL,
+  team: ALL,
   labels: ALL,
   track: ALL,
   status: ALL,

@@ -95,11 +95,13 @@
       "default_assignee text not null default 'unassigned'::text",
       "archived_at timestamp with time zone",
       "created_at timestamp with time zone not null default now()",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "owner_team_id integer"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX area_name_idx ON public.area USING btree (track_id, lower(name))",
       "CREATE INDEX area_owner_idx ON public.area USING btree (owner_id) WHERE (owner_id IS NOT NULL)",
+      "CREATE INDEX area_owner_team_idx ON public.area USING btree (owner_team_id) WHERE (owner_team_id IS NOT NULL)",
       "CREATE UNIQUE INDEX area_pkey ON public.area USING btree (id)"
     ]
   },
@@ -231,11 +233,13 @@
       "created_at timestamp with time zone not null default now()",
       "updated_at timestamp with time zone not null default now()",
       "saved_search_id integer",
-      "sprint_settings jsonb not null default '{\"estimation\": {\"statistic\": \"originalEstimate\"}, \"timeTracking\": \"remainingEstimate\", \"parallelSprints\": false}'::jsonb"
+      "sprint_settings jsonb not null default '{\"estimation\": {\"statistic\": \"originalEstimate\"}, \"timeTracking\": \"remainingEstimate\", \"parallelSprints\": false}'::jsonb",
+      "team_id integer"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX board_pkey ON public.board USING btree (id)",
       "CREATE INDEX board_saved_search_idx ON public.board USING btree (saved_search_id) WHERE (saved_search_id IS NOT NULL)",
+      "CREATE INDEX board_team_idx ON public.board USING btree (team_id) WHERE (team_id IS NOT NULL)",
       "CREATE INDEX board_track_idx ON public.board USING btree (location_track_id) WHERE (location_track_id IS NOT NULL)",
       "CREATE INDEX board_user_idx ON public.board USING btree (location_user_id) WHERE (location_user_id IS NOT NULL)",
       "CREATE INDEX board_workspace_name_idx ON public.board USING btree (workspace_id, lower(name), id)"
@@ -1464,6 +1468,34 @@
       "CREATE INDEX storage_cleanup_due_idx ON public.storage_cleanup USING btree (not_before)",
       "CREATE UNIQUE INDEX storage_cleanup_key_unique ON public.storage_cleanup USING btree (storage, storage_key)",
       "CREATE UNIQUE INDEX storage_cleanup_pkey ON public.storage_cleanup USING btree (id)"
+    ]
+  },
+  "team": {
+    "columns": [
+      "id integer not null default nextval('team_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "lead_id integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX team_lead_idx ON public.team USING btree (lead_id) WHERE (lead_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX team_name_idx ON public.team USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX team_pkey ON public.team USING btree (id)"
+    ]
+  },
+  "team_member": {
+    "columns": [
+      "workspace_id integer not null",
+      "team_id integer not null",
+      "user_id integer not null",
+      "added_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX team_member_pkey ON public.team_member USING btree (team_id, user_id)",
+      "CREATE INDEX team_member_user_idx ON public.team_member USING btree (user_id)"
     ]
   },
   "ticket": {

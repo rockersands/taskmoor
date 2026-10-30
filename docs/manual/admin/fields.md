@@ -55,13 +55,15 @@ A field's type, and whether it holds several values, are fixed when the field is
 | Release | `release` | Releases of the ticket's own track; one or several |
 | Area | `area` | Areas of the ticket's own track; one or several |
 | Formula | `formula` | Computed; see [formula fields](#formula-fields) |
+| Team | `team` | One of the site's [teams](people-and-groups.md#teams); one value |
 
 Through the API, a field's `config` sets how some types behave: `maxChars` for a paragraph;
 `format` (`number`, `currency`, `percentage`), `decimals` (0 to 3) and `currency` (a code such
 as `EUR`) for a number; `display` (`dropdown`, `radio`, `checkboxes`) for a choice list.
 
-Taskmoor does not yet offer track pickers, teams, checklists or the other types of the full
-catalogue.
+Taskmoor does not yet offer track pickers, checklists or the other types of the full
+catalogue. The web page that makes a ticket does not yet offer people, group, team, release or
+area values; set them through the API, a CSV import or bulk changes.
 
 ### Adding and managing fields
 

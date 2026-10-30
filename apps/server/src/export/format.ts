@@ -27,6 +27,7 @@ export const ATTACHMENTS_DIR = 'attachments';
 export const EXPORT_FILES: readonly { kind: EntityKind; file: string }[] = [
   { kind: 'user', file: 'users.ndjson' },
   { kind: 'group', file: 'groups.ndjson' },
+  { kind: 'team', file: 'teams.ndjson' },
   { kind: 'role', file: 'roles.ndjson' },
   { kind: 'status', file: 'statuses.ndjson' },
   { kind: 'priority', file: 'priorities.ndjson' },

@@ -362,7 +362,7 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
   `tracksWhereUserHasRole()` 8.0 ms. `membersOf()` on a group of 50,000 people binds and
   returns its first page in 91 ms (QRY-004 (2), `search/functions.test.ts`). Not run at 1M:
   the 1M database of M1-037 belongs to another session and stops at migration 0043.
-- **Not built:** teams in `membersOf()`, `cascadeOption(parent, none)`, ticket functions on
+- **Not built:** `cascadeOption(parent, none)`, ticket functions on
   `ticketLink`, the site setting for the first day of the week, functions in history
   predicates (`WAS ... BY membersOf(x)`: M1-039 binds them; the resolver already types them).
 
@@ -549,3 +549,11 @@ contract, reviewed on every change.
   runs it again. Results come from `POST /api/v1/search`, a page at a time.
 - Results show as a table in the person's columns, edit in place and export as CSV or JSON
   (M1-042, ADR-052).
+
+## Teams (M1-123)
+
+- `membersOf("id:<teamId>")` binds to the team's members (`team_member`, ADR-076); an id no
+  team has is refused as an unknown value. A name still names a group.
+- The Team field (custom type `team`) is read from `v_option` like group fields: names (any
+  case) or ids, lists, emptiness and the history operators; it orders by the team's name
+  (`teamName`).

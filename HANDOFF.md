@@ -77,6 +77,34 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## Side session 2026-10-30: M1-123 teams
+
+Built on the branch `claude/gallant-bhaskara-72bcdc` in a side session; the main session merges
+it after its own gate. ADR-076; migration **0060** `0060_teams.ts` (0058 and 0059 belong to
+M1-125 and M1-066, ADR-075 to another branch).
+
+- **Data** (0060): `team` (name unique ignoring case, description, `lead_id`), `team_member`,
+  `board.team_id`, `area.owner_team_id`; field type `team`. 0060 extends `field_type_check`
+  from the definition the database holds, so 0058's new types survive; a later migration that
+  rewrites the check from a fixed list must keep `team`. Upgrade seed `0060_teams`.
+- **API** `routes/teams.ts` (lookups shared with search and import in `teams.ts`): reads for
+  everyone signed in, changes for site administrators; five `team.*` events, audited, in the
+  events contract. Boards take `teamId` (list filter `?teamId=`), areas `ownerTeamId`; both show
+  the team by its current name. OpenAPI and the reference regenerated (board `team`, `teamId`).
+- **Team field**: custom type `team`, one value, stored and searched like a group field
+  (`v_option`), ordered by team name (`teamName` in `search/compile.ts`).
+  `membersOf("id:<teamId>")` binds in `search/bind.ts`; a name still means a group.
+- **Export and import**: `teams.ndjson` after groups; an area's `ownerTeam` only when set, so
+  older exports keep their bytes. The fidelity report schema lists `team`.
+- **Web**: Settings > Teams (`people/TeamsPage.tsx`, `teamsClient.ts`, `fakeTeamsClient` in
+  `people/fixtures.ts`), Team on board settings, the Team type on the fields page.
+- **Manual**: `admin/people-and-groups.md` is now "People, groups and teams"; fields, tracks
+  (areas), boards, search and import-export pages updated; `docs/export-format.md`,
+  `docs/csv-import.md`.
+- **Not done**: velocity per team (AGL-011 (3)); choosing a Team value in the web ticket form
+  (the form has no reference pickers yet: people, groups, releases and areas are set through the
+  API, CSV or bulk changes too); teams in roadmaps and on-call (M2, M3).
+
 ## 2026-10-30: M1-130 async bulk API
 
 ADR-043 has a new section; no migration.

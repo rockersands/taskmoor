@@ -50,6 +50,7 @@ import * as m0054 from './0054_dashboards';
 import * as m0055 from './0055_contract_m0_session';
 import * as m0056 from './0056_history_search';
 import * as m0057 from './0057_full_text_search';
+import * as m0060 from './0060_teams';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -110,4 +111,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0055_contract_m0_session': m0055,
   '0056_history_search': m0056,
   '0057_full_text_search': m0057,
+  '0060_teams': m0060,
 };

@@ -16,6 +16,7 @@ export const FIELD_TYPES = [
   'read-only-text',
   'release',
   'area',
+  'team',
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number] | 'formula';
 

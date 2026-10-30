@@ -178,7 +178,8 @@ A ticket keeps a priority its track stops offering until someone changes it.
 
 There is no web page for areas yet. A track's administrators manage them through the API:
 
-- `GET` and `POST /api/v1/tracks/:id/areas`, with `name`, `description`, `ownerId` and
+- `GET` and `POST /api/v1/tracks/:id/areas`, with `name`, `description`, `ownerId`,
+  `ownerTeamId` (the [team](people-and-groups.md#teams) that owns the area) and
   `defaultAssignee`: `area_owner`, `track_owner` or `unassigned` (the default).
 - `PATCH /api/v1/areas/:id`, and `POST /api/v1/areas/:id/archive` or `/restore`.
 - `DELETE /api/v1/areas/:id`: an area tickets use needs `replacementId` or

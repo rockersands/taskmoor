@@ -37,6 +37,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
+import { findTeam } from '../teams';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
 import { registerBacklogPlanningRoutes } from './backlog-planning';
@@ -69,7 +70,11 @@ import { ticketRoutes } from './tickets';
 const MAX_INT = 2_147_483_647;
 const idParam = z.object({ id: z.coerce.number().int().positive().max(MAX_INT) }).strict();
 export const listQuery = z
-  .object({ trackId: z.coerce.number().int().positive().max(MAX_INT).optional() })
+  .object({
+    trackId: z.coerce.number().int().positive().max(MAX_INT).optional(),
+    /** Only the boards of a team (M1-123). */
+    teamId: z.coerce.number().int().positive().max(MAX_INT).optional(),
+  })
   .strict();
 export const dataQuery = z
   .object({
@@ -110,6 +115,7 @@ function boardQuery(db: Db, workspaceId: number) {
     .selectFrom('board as b')
     .leftJoin('track as t', 't.id', 'b.location_track_id')
     .leftJoin('app_user as u', 'u.id', 'b.location_user_id')
+    .leftJoin('team as tm', 'tm.id', 'b.team_id')
     .select([
       'b.id',
       'b.name',
@@ -130,6 +136,8 @@ function boardQuery(db: Db, workspaceId: number) {
       'b.board_filter_display',
       'b.card_rules',
       'b.sprint_settings',
+      'b.team_id',
+      'tm.name as team_name',
       'b.version',
       'b.created_at',
       'b.updated_at',
@@ -138,6 +146,10 @@ function boardQuery(db: Db, workspaceId: number) {
 }
 
 const record = (row: BoardRow): BoardRecord => boardRecord(row);
+
+/** The board's team (M1-123), shown by its current name. */
+const teamOf = (row: BoardRow) =>
+  row.team_id === null ? null : { id: row.team_id, name: row.team_name ?? '' };
 
 /** A board's source as the API shows it: its query, or the saved search it uses. */
 const sourceOf = (row: BoardRow) =>
@@ -159,6 +171,7 @@ const settings = (row: BoardRow, admins: number[]) => ({
   cardRules: row.card_rules,
   sprintSettings: readSprintSettings(row.sprint_settings),
   adminIds: admins,
+  teamId: row.team_id,
 });
 
 const invalidFields = (reply: FastifyReply, fields: Record<string, string>) =>
@@ -309,6 +322,7 @@ export function registerBoardRoutes(
               type: 'user' as const,
               user: { id: row.location_user_id, name: row.user_name },
             },
+      team: teamOf(row),
       source: sourceOf(row),
       subFilter: row.sub_filter_query === null ? null : { query: row.sub_filter_query },
       columns: row.columns,
@@ -457,6 +471,9 @@ export function registerBoardRoutes(
         .execute();
       if (people.length !== new Set(body.adminIds).size) fields.adminIds = 'not_found';
     }
+    if (body.teamId !== undefined && body.teamId !== null) {
+      if (!(await findTeam(db, request.workspaceId, body.teamId))) fields.teamId = 'not_found';
+    }
     return out;
   }
 
@@ -507,6 +524,9 @@ export function registerBoardRoutes(
     if (parsed.data.trackId !== undefined) {
       query = query.where('b.location_track_id', '=', parsed.data.trackId);
     }
+    if (parsed.data.teamId !== undefined) {
+      query = query.where('b.team_id', '=', parsed.data.teamId);
+    }
     const rows = await query
       .orderBy(({ fn }) => fn('lower', ['b.name']))
       .orderBy('b.id')
@@ -539,6 +559,7 @@ export function registerBoardRoutes(
                 track: { id: row.location_track_id, key: row.track_key, name: row.track_name },
               }
             : { type: 'user' as const, user: { id: row.location_user_id, name: row.user_name } },
+        team: teamOf(row),
       });
     }
     return { boards };
@@ -599,6 +620,7 @@ export function registerBoardRoutes(
           ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
           card_rules: JSON.stringify(cardRules),
           sprint_settings: JSON.stringify(body.sprintSettings ?? DEFAULT_SPRINT_SETTINGS),
+          team_id: body.teamId ?? null,
           created_by: user.id,
         })
         .returning('id')
@@ -715,6 +737,7 @@ export function registerBoardRoutes(
         ...(body.adminIds !== undefined
           ? { adminIds: [...new Set(body.adminIds)].sort((a, b) => a - b) }
           : {}),
+        ...(body.teamId !== undefined ? { teamId: body.teamId } : {}),
       };
       // Stored JSON comes back with its keys in another order: compare both sides sorted.
       const changes = diff(
@@ -750,6 +773,7 @@ export function registerBoardRoutes(
           ...(body.sprintSettings !== undefined
             ? { sprint_settings: JSON.stringify(body.sprintSettings) }
             : {}),
+          ...(body.teamId !== undefined ? { team_id: body.teamId } : {}),
           version: current.version + 1,
           updated_at: new Date(),
         })

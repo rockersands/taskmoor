@@ -1078,6 +1078,8 @@ export function orderExpr(
           return rows('min(r.sort_order)', ' JOIN release r ON r.id = o.value');
         case 'areaName':
           return rows('min(lower(a.name))', ' JOIN area a ON a.id = o.value');
+        case 'teamName':
+          return rows('min(lower(t.name))', ' JOIN team t ON t.id = o.value');
       }
     }
   }

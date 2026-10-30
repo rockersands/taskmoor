@@ -82,7 +82,7 @@ has these sections, saved together with **Save settings**:
 
 | Section | What you set |
 |---|---|
-| **Board** | **Name**, **Kind**, **Tickets (a query)** and **Sub-filter (optional)**, a second query that tickets must also match, for example to hide shipped work |
+| **Board** | **Name**, **Kind**, **Team** (the team whose board this is, or **No team**), **Tickets (a query)** and **Sub-filter (optional)**, a second query that tickets must also match, for example to hide shipped work |
 | **Columns** | Each column's name, **Minimum** and **Maximum**; **Add a column**; move or remove columns |
 | **Which column shows each status** | A column for each status, or **None (unmapped)** |
 | **Swimlanes** | **Group cards**: **Not at all**, **By queries**, **By assignee** or **By parent**; for assignee lanes, whether **Unassigned tickets** come **First** or **Last**; for query lanes, each lane's name and query and the name of the lane for everything else |
