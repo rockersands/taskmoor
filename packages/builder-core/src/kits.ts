@@ -48,7 +48,7 @@ function backendEnv(
 ): string {
   const lines = [
     '# Written by the Taskmoor Builder. Keep this file private: it holds the instance secrets.',
-    envLine('TASKMOOR_VERSION', manifest.backendVersion),
+    // No TASKMOOR_VERSION: the image stamps its own, and the backend kit pins the image tag.
     envLine('PUBLIC_URL', apiOrigin(inputs)),
     envLine('TASKMOOR_ALLOWED_ORIGINS', manifest.frontendOrigins.join(',')),
     envLine('TASKMOOR_WEB_ROUTING', inputs.routing),
@@ -152,7 +152,6 @@ export async function checkKits(
   const env = readEnv(kits.backend[ENV_FILE] ?? '');
   if (env.PUBLIC_URL !== m.apiUrl) problems.push('the backend address differs from the manifest');
   if (env.TASKMOOR_INSTANCE_ID !== m.instanceId) problems.push('the instance id differs');
-  if (env.TASKMOOR_VERSION !== m.backendVersion) problems.push('the pinned version differs');
   const key = env.TASKMOOR_INSTANCE_KEY;
   if (!key || (await instancePublicKey(key)).fingerprint !== m.keyFingerprint) {
     problems.push('the instance key does not match the manifest’s fingerprint');

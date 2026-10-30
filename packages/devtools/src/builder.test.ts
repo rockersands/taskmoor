@@ -61,7 +61,12 @@ describe('the Builder CLI (M1-111)', () => {
     });
     expect(Object.keys(readZip(readFileSync(out.backend))).sort()).toEqual([
       '.env',
+      'Caddyfile',
+      'README.md',
       'connection-manifest.json',
+      'docker-compose.yml',
+      'install.ps1',
+      'install.sh',
     ]);
     expect(Object.keys(readZip(readFileSync(out.frontend))).sort()).toEqual([
       '.htaccess',

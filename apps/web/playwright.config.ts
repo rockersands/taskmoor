@@ -36,6 +36,30 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    // Every supported browser (M1-132; NFR-007), with TASKMOOR_E2E_BROWSERS=all or
+    // `pnpm verify --e2e --browsers`: Firefox and Safari (WebKit) on a desktop, then Safari on an
+    // iPhone and Chrome on an Android phone, both at the narrowest supported width (360 px).
+    // Edge is Chromium, the desktop project.
+    ...(process.env.TASKMOOR_E2E_BROWSERS === 'all'
+      ? [
+          {
+            name: 'firefox',
+            use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } },
+          },
+          {
+            name: 'webkit',
+            use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } },
+          },
+          {
+            name: 'iphone',
+            use: { ...devices['iPhone 13'], viewport: { width: 360, height: 740 } },
+          },
+          {
+            name: 'narrow',
+            use: { ...devices['Pixel 7'], viewport: { width: 360, height: 740 } },
+          },
+        ]
+      : []),
   ],
   webServer: [
     {

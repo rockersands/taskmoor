@@ -132,3 +132,35 @@ module, so the web Builder and the CLI share every byte of it.
   - Uploads to real Apache, S3 with a CDN, Netlify and Cloudflare Pages hosts (OPS-013 (1))
     have not been tried from here.
 
+## Implementation (M1-110: the backend kit)
+
+`backendKit` (`builder-core/src/backend.ts`) wraps the shared `.env` for the chosen target.
+- **Compose** (default):
+  - `docker-compose.yml`: PostgreSQL 16, the backend with the `.env` (the image as
+    `TASKMOOR_IMAGE`, pinned to the manifest's version), and Caddy 2 on ports 80 and 443.
+  - The `Caddyfile` gets and renews the certificate. Local names (`localhost`, `*.localhost`,
+    `*.test`, addresses) use `tls internal`.
+  - `install.sh` and `install.ps1` run a preflight before anything starts, then start the stack,
+    wait for `/ready` from inside the container and print the setup link from the kit's own
+    setup token:
+    - Docker installed and running, Compose v2;
+    - ports 80 and 443 free (a connection attempt);
+    - the API name resolving (getent, Python, dig or nslookup).
+  - `--preflight` only checks.
+  - The README lists the DNS records the two URLs need.
+- **Helm:** `values.yaml` for `deploy/helm/taskmoor` (image tag, public URL, routing, the
+  instance from a Secret) and `secret.yaml` (the instance's secrets; the operator adds
+  `DATABASE_URL`).
+- The `.env` no longer carries `TASKMOOR_VERSION`. The image stamps its own and refuses a
+  frontend of another version, so the kit pins the image tag instead.
+- **Checks:**
+  - `backend.test.ts` checks the files per target.
+  - `packages/devtools/src/backend-kit.test.ts` runs `install.sh --preflight` with a stand-in
+    Docker for these cases: missing or stopped Docker, a port held by a real listener, and a
+    `.invalid` name.
+  - `tools/image/smoke-backend-kit.sh` makes a kit for `https://localhost:18443` with
+    `pnpm builder`, installs it against the locally built image, and checks health through
+    Caddy's HTTPS, the setup link, and that `/api/meta` serves the kit's instance.
+  - Not yet run: the fresh-VM install with real DNS (the nightly matrix) and `install.ps1` on
+    Windows.
+

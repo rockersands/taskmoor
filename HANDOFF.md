@@ -77,6 +77,38 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-130 async bulk API
+
+ADR-043 has a new section; no migration.
+- **Contract:** the five bulk routes are stable operations (tag "Bulk changes"); the OpenAPI
+  document, reference and SDK are regenerated, and `contract.test.ts` calls each.
+- **Limit:** the guardrail `tickets_per_bulk_operation` (default 10,000) caps ticket lists and
+  queries; 400 `too_many_tickets` carries `max` and the guardrail name.
+- **Retention:** `trimBulkOperations` in the housekeeping loop removes finished operations 14
+  days old; running ones are never removed.
+
+## 2026-10-30: M1-132 cross-browser end-to-end
+
+ADR-030 has a new section; no migration.
+- `pnpm verify --e2e --browsers` adds Firefox and WebKit on a desktop and Safari and Chrome
+  phones at 360 px to the routine Chromium projects. It is not in the routine gate (about three
+  times the e2e time); run it before a release and after input, focus or clipboard changes.
+- `setup.spec.ts` runs only on desktop Chromium (one setup per backend); the keyboard journey
+  skips WebKit (Tab skips links, as in Safari by default).
+- **Pending:** branded Edge (not installed here; same engine as Chromium) and real devices.
+
+## 2026-10-30: M1-110 backend kit
+
+ADR-031 has a third implementation section; no migration.
+- **Builder CLI:** `pnpm builder` writes the full backend kit: Compose with PostgreSQL, the
+  pinned backend and Caddy, `install.sh` and `install.ps1` with a preflight, and a DNS README.
+  Helm projects get `values.yaml` and `secret.yaml`.
+- **Smoke test:** `bash tools/image/smoke-backend-kit.sh` installs a kit for
+  `https://localhost:18443` against the local image. It needs Colima running and the image
+  from `tools/image/smoke.sh`.
+- **Pending:** the fresh-VM install with real DNS, and `install.ps1` (no PowerShell on this
+  Mac).
+
 ## Side session 2026-10-30: M1-040 full-text search
 
 Built on the branch `claude/gracious-meninsky-4dae8f` in a side session while the main session

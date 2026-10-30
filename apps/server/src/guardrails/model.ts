@@ -19,6 +19,9 @@ export const GUARDRAILS = [
   { name: 'statuses_per_workflow', default: 200 },
   { name: 'areas_per_track', default: 10_000 },
   { name: 'priorities_per_track', default: 100 },
+  // Tickets one bulk operation may change (M1-130; API-007): 10,000 by default, never above the
+  // 100,000 a single request carries (MAX_BULK_TICKETS).
+  { name: 'tickets_per_bulk_operation', default: 10_000 },
 ] as const;
 export type GuardrailName = (typeof GUARDRAILS)[number]['name'];
 /** No limit goes above this, whatever an administrator asks. */
@@ -130,74 +133,90 @@ export async function guardrailUsage(
       : { value: 0, where: null };
   };
   const ws = workspaceId;
-  const [fields, types, options, levels, grants, releases, maps, statuses, areas, priorities] =
-    await Promise.all([
-      top(
-        sql`SELECT t.id, t.key AS name, (
+  const [
+    fields,
+    types,
+    options,
+    levels,
+    grants,
+    releases,
+    maps,
+    statuses,
+    areas,
+    priorities,
+    bulk,
+  ] = await Promise.all([
+    top(
+      sql`SELECT t.id, t.key AS name, (
               SELECT count(DISTINCT s.field_id)::int FROM field_context_scope s
                WHERE s.workspace_id = ${ws} AND (s.track_id IS NULL OR s.track_id = t.id)) AS n
               FROM track t WHERE t.workspace_id = ${ws} ORDER BY n DESC, t.id LIMIT 1`,
-        'track',
-      ),
-      top(
-        sql`SELECT s.id, s.name, count(m.ticket_type_id)::int AS n
+      'track',
+    ),
+    top(
+      sql`SELECT s.id, s.name, count(m.ticket_type_id)::int AS n
               FROM type_set s JOIN type_set_member m ON m.type_set_id = s.id
              WHERE s.workspace_id = ${ws} GROUP BY s.id ORDER BY n DESC, s.id LIMIT 1`,
-        'type_set',
-      ),
-      top(
-        sql`SELECT f.id, f.name, count(o.id)::int AS n
+      'type_set',
+    ),
+    top(
+      sql`SELECT f.id, f.name, count(o.id)::int AS n
               FROM field f JOIN field_option o ON o.field_id = f.id
              WHERE f.workspace_id = ${ws} GROUP BY f.id ORDER BY n DESC, f.id LIMIT 1`,
-        'field',
-      ),
-      top(
-        sql`SELECT p.id, p.name, count(l.id)::int AS n
+      'field',
+    ),
+    top(
+      sql`SELECT p.id, p.name, count(l.id)::int AS n
               FROM visibility_policy p JOIN visibility_level l ON l.policy_id = p.id
              WHERE p.workspace_id = ${ws} GROUP BY p.id ORDER BY n DESC, p.id LIMIT 1`,
-        'visibility_policy',
-      ),
-      top(
-        sql`SELECT p.id, p.name || ': ' || g.permission AS name, count(*)::int AS n
+      'visibility_policy',
+    ),
+    top(
+      sql`SELECT p.id, p.name || ': ' || g.permission AS name, count(*)::int AS n
               FROM access_policy p JOIN access_grant g ON g.policy_id = p.id
              WHERE p.workspace_id = ${ws} GROUP BY p.id, g.permission
              ORDER BY n DESC, p.id LIMIT 1`,
-        'access_policy',
-      ),
-      top(
-        sql`SELECT t.id, t.key AS name, count(r.id)::int AS n
+      'access_policy',
+    ),
+    top(
+      sql`SELECT t.id, t.key AS name, count(r.id)::int AS n
               FROM track t JOIN release r ON r.track_id = t.id AND r.archived_at IS NULL
              WHERE t.workspace_id = ${ws} GROUP BY t.id ORDER BY n DESC, t.id LIMIT 1`,
-        'track',
-      ),
-      top(
-        sql`SELECT m.id, m.name, (
+      'track',
+    ),
+    top(
+      sql`SELECT m.id, m.name, (
               SELECT count(DISTINCT w)::int FROM (
                 SELECT m.default_workflow_id AS w
                 UNION SELECT e.workflow_id FROM workflow_map_entry e WHERE e.map_id = m.id) x) AS n
               FROM workflow_map m WHERE m.workspace_id = ${ws} ORDER BY n DESC, m.id LIMIT 1`,
-        'workflow_map',
-      ),
-      top(
-        sql`SELECT w.id, w.name, count(s.status_id)::int AS n
+      'workflow_map',
+    ),
+    top(
+      sql`SELECT w.id, w.name, count(s.status_id)::int AS n
               FROM workflow w JOIN workflow_version_status s
                 ON s.workflow_id = w.id AND s.version = w.published_version
              WHERE w.workspace_id = ${ws} GROUP BY w.id ORDER BY n DESC, w.id LIMIT 1`,
-        'workflow',
-      ),
-      top(
-        sql`SELECT t.id, t.key AS name, count(a.id)::int AS n
+      'workflow',
+    ),
+    top(
+      sql`SELECT t.id, t.key AS name, count(a.id)::int AS n
               FROM track t JOIN area a ON a.track_id = t.id AND a.archived_at IS NULL
              WHERE t.workspace_id = ${ws} GROUP BY t.id ORDER BY n DESC, t.id LIMIT 1`,
-        'track',
-      ),
-      top(
-        sql`SELECT s.id, s.name, count(m.priority_id)::int AS n
+      'track',
+    ),
+    top(
+      sql`SELECT s.id, s.name, count(m.priority_id)::int AS n
               FROM priority_set s JOIN priority_set_member m ON m.priority_set_id = s.id
              WHERE s.workspace_id = ${ws} GROUP BY s.id ORDER BY n DESC, s.id LIMIT 1`,
-        'priority_set',
-      ),
-    ]);
+      'priority_set',
+    ),
+    top(
+      sql`SELECT b.id, b.action AS name, b.total AS n
+              FROM bulk_operation b WHERE b.workspace_id = ${ws} ORDER BY n DESC, b.id LIMIT 1`,
+      'bulk_operation',
+    ),
+  ]);
   return {
     fields_per_track: fields,
     ticket_types_per_track: types,
@@ -209,5 +228,6 @@ export async function guardrailUsage(
     statuses_per_workflow: statuses,
     areas_per_track: areas,
     priorities_per_track: priorities,
+    tickets_per_bulk_operation: bulk,
   };
 }

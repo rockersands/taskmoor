@@ -7,6 +7,7 @@ it by hand. How to authenticate, page, read errors and what "stable" promises ar
 ## Contents
 
 - [Boards](#boards)
+- [Bulk changes](#bulk-changes)
 - [Comments](#comments)
 - [Instance](#instance)
 - [Links](#links)
@@ -236,6 +237,93 @@ Responses:
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 - 404: There is no such resource, or the caller may not see it.
 - 409: The resource changed or is in a state that refuses this; read it again.
+
+## Bulk changes
+
+### The caller’s latest bulk changes
+
+`GET /api/v1/bulk-operations`, operation `listBulkOperations`, access: read.
+
+Responses:
+
+- 200: The 50 most recent, newest first. Body: `bulkOperations` (array of [BulkOperation](#schema-bulkoperation)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+
+### Start a bulk change
+
+`POST /api/v1/bulk-operations`, operation `createBulkOperation`, access: write.
+
+Transitions, moves, edits or deletes many tickets as one task, given as ids or keys or as a query whose results are the tickets. Each ticket goes through the same checks as a change of its own. The workspace limits how many tickets one operation may change (10,000 by default, the `tickets_per_bulk_operation` guardrail).
+
+Body:
+
+A any.
+
+Responses:
+
+- 202: Started; poll the operation for its progress. Body: `bulkOperation` ([BulkOperation](#schema-bulkoperation)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### A bulk change’s progress
+
+`GET /api/v1/bulk-operations/{id}`, operation `getBulkOperation`, access: read.
+
+Readable for 14 days after it finishes.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The bulk operation. |
+
+Responses:
+
+- 200: The operation. Body: `bulkOperation` ([BulkOperation](#schema-bulkoperation)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Cancel the rest of a bulk change
+
+`POST /api/v1/bulk-operations/{id}/cancel`, operation `cancelBulkOperation`, access: write.
+
+Tickets already in hand finish; the ones not reached are skipped.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The bulk operation. |
+
+Responses:
+
+- 202: Cancelling. Body: `bulkOperation` ([BulkOperation](#schema-bulkoperation)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Each ticket’s result in a bulk change
+
+`GET /api/v1/bulk-operations/{id}/items`, operation `listBulkItems`, access: read.
+
+In the order the tickets were given, a page at a time: pass the answer’s `next` as `after`. Filter by `outcome` to read only the failures, say.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The bulk operation. |
+| `outcome` | query | `"done"`, `"failed"`, `"skipped"`, `"pending"` | no |  |
+| `after` | query | integer | no |  |
+| `limit` | query | integer | no |  |
+
+Responses:
+
+- 200: A page of results. Body: `items` (array of [BulkItem](#schema-bulkitem)), `next` (integer or null).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
 
 ## Comments
 
@@ -1076,6 +1164,36 @@ Responses:
 | `kind` | `"scrum"`, `"kanban"` | yes |  |
 | `location` | object or object | yes | Where the board lives: a track, or a person’s own space. |
 
+### Schema: BulkItem
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `position` | integer | yes |  |
+| `ref` | string | yes | The ticket as it was given: an id or a key. |
+| `key` | string or null | yes | The ticket key, when the reader may see the ticket now. |
+| `outcome` | `"done"`, `"failed"`, `"skipped"`, `"pending"` | yes |  |
+| `statusCode` | integer or null | yes |  |
+| `error` | any | yes |  |
+
+### Schema: BulkOperation
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | yes |  |
+| `action` | `"edit"`, `"move"`, `"transition"`, `"delete"` | yes |  |
+| `params` | any | yes | What the operation applies, as it was asked. |
+| `status` | string | yes | `queued`, `running`, `done` or `cancelled`. |
+| `cancelRequested` | boolean | yes |  |
+| `total` | integer | yes |  |
+| `succeeded` | integer | yes |  |
+| `failed` | integer | yes |  |
+| `skipped` | integer | yes |  |
+| `pending` | integer | yes |  |
+| `userId` | integer | yes |  |
+| `createdAt` | string | yes |  |
+| `startedAt` | string or null | yes |  |
+| `finishedAt` | string or null | yes |  |
+
 ### Schema: Change
 
 | Name | Type | Required | Meaning |
@@ -1392,5 +1510,5 @@ A `"new"`, `"active"`, `"closed"`.
 
 ## Internal routes
 
-The document also lists 394 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 389 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

@@ -1,6 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
+  backendKit,
   buildKits,
   frontendKit,
   generateSecrets,
@@ -29,6 +30,8 @@ export interface BuilderRun {
   /** The SMTP password and AI key, when the project keeps them encrypted or the run gives them. */
   user?: UserSecrets;
   versions: { backendVersion: string; kitVersion: string };
+  /** The image repository the backend kit pins, `ghcr.io/rockersands/taskmoor` by default. */
+  image?: string;
 }
 
 function readTree(dir: string, root = dir): Record<string, Uint8Array> {
@@ -60,7 +63,10 @@ export async function runBuilder(run: BuilderRun): Promise<Record<keyof typeof O
   const out = Object.fromEntries(
     Object.entries(OUTPUTS).map(([k, name]) => [k, join(run.outDir, name)]),
   ) as Record<keyof typeof OUTPUTS, string>;
-  writeFileSync(out.backend, writeZip(kits.backend));
+  writeFileSync(
+    out.backend,
+    writeZip(backendKit(kits, project.inputs, run.image ? { image: run.image } : {})),
+  );
   writeFileSync(out.frontend, writeZip(await frontendKit(kits, web)));
   const single = await frontendKit(kits, web, { singleFile: true });
   writeFileSync(out.single, single['index.html'] ?? '');
