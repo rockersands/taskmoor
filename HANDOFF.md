@@ -14,6 +14,50 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## M1-098 CSV import and full export (side session, 2026-10-30)
+
+Built in a side session on the branch `claude/m1-098-csv-export-553b10`; ADR-063 (and a
+"Changes (M1-098)" section in ADR-048); no migration. References: `docs/export-format.md`,
+`docs/csv-import.md`, `deploy/README.md` "Exports and imports".
+
+- **Full export** (`apps/server/src/export/`): `format.ts` (file list in load order, manifest
+  schema), `write.ts` (`exportWorkspace`: one keyset-paged query per kind, canonical JSON lines,
+  times as UTC text with microseconds from SQL, tickets by hierarchy level from the top, history
+  per page of tickets through its primary key; `translate` writes ids back as an import's source
+  knew them; `translationOf` builds that from `import_external_id`; `exportSystem` keeps one
+  name per instance and workspace in `instance_setting.export_system`), `sinks.ts` (folder, and a
+  ZIP streamed with yazl). `GET /api/v1/admin/export[?tracks=KEY,KEY]` (`routes/exports.ts`, site
+  administrators, audited as the new event `workspace.exported`) and `node cli.mjs export <dir>`.
+- **Import of an export** (`import/taskmoor.ts`, source `taskmoor`, verbatim): a folder or a ZIP
+  (unpacked once beside itself as `<zip>.unpacked`) read by byte offsets. New loaders in
+  `import/load-config.ts` (roles, priorities, close reasons, link types, releases, areas, fields,
+  contexts, options, workflows, workflow maps) and `import/load-files.ts` (attachments); `LOADERS`
+  moved to `import/loaders.ts`. Ids inside stored values go through `import/remap.ts` (custom
+  values, history values per field, mentions, workflow definitions, formula expressions), the
+  same walkers in both directions. `ENTITY_KINDS` grew and history now runs last.
+- **CSV import** (`import/csv.ts`, source `csv`): mapping of columns to system fields, custom
+  fields by id, labels, releases, areas and the parent (another row's id or key, or a key the
+  target has); rows ordered parents first; create or update by key, unmapped fields kept on
+  update; `mappingFrom` reuses an earlier run's mapping. Files by path only inside
+  `TASKMOOR_IMPORT_DIR` (default `TASKMOOR_DATA/imports`, `off` refuses). Each record's warnings
+  are kept (`import_record.error.warnings`) and listed by `GET /api/v1/admin/imports/:id/problems`.
+- **Tests**: `export/export.test.ts` (an API-built workspace with every kind round-trips with
+  identical per-file SHA-256; dry run writes nothing; a second import changes nothing; the ZIP
+  download reads as the folder; audit), `import/csv.test.ts` (reader property test against the
+  export's own quoting, dry-run problems per row, hierarchy, people, custom values, re-import
+  updates, by-key update keeps unmapped fields, reused mapping, path guard),
+  `routes/export-roundtrip.large.test.ts` with `TASKMOOR_LARGE_ROUNDTRIP=1` (100,000 tickets, and
+  100,000 CSV rows with a parent column), `tickets/rank.test.ts` (`sequenceValueOf`).
+- Measured (2026-10-30, load average 15 to 20 from other sessions' gates): 100,000 tickets
+  (395,271 records, 184.4 MB with 100 attachments) export in 8.0 s with no live heap growth,
+  import into a newly migrated database in 413.5 s (3,967 batches of 100), export again in
+  13.5 s; all 22 files and the attachments identical by SHA-256. CSVMEASURED
+- Not done / follow-ups: the import wizard and CLI for these sources (M1-097); a ZIP named by
+  path is unpacked inside the start request (a very large ZIP should be unpacked by the job);
+  set-based loading for faster imports (M1-091); the "Not carried in version 1" list of
+  `docs/export-format.md` (access, visibility and notification policies, boards, sprints,
+  saved searches, dashboards, local-mode ownership, custom levels, comment versions, key history).
+
 ## Last session: 2026-10-29 (Mac, afternoon)
 
 Back on the Mac after the overnight cloud run: `main` fast-forwarded 106 commits, the gate

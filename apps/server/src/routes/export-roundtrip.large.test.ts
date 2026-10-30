@@ -36,7 +36,7 @@ import { multipartFile } from '../testing/multipart';
  * while the export runs: it grows by far less than the files' size. Run with
  *   TASKMOOR_LARGE_ROUNDTRIP=1 pnpm verify --only=tests -- apps/server/src/routes/export-roundtrip.large.test.ts
  * (`TASKMOOR_LARGE_ROUNDTRIP_TICKETS` sets another size). Measured: see the progress row of
- * M1-098 and ADR-061.
+ * M1-098 and ADR-063.
  */
 const TICKETS = Number(process.env.TASKMOOR_LARGE_ROUNDTRIP_TICKETS ?? 100_000);
 const FILES = 100;

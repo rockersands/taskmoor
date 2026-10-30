@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { EntityKind } from '../import/model';
 
 /**
- * Taskmoor's full export format (M1-098; IMP-014; ADR-061), version 1. A workspace exports as
+ * Taskmoor's full export format (M1-098; IMP-014; ADR-063), version 1. A workspace exports as
  * a folder (or the same folder as a ZIP): `manifest.json`, one newline-delimited JSON file per
  * kind of record, and `attachments/` with one file per attachment. The reference for people
  * who read or write it is `docs/export-format.md`; this module is the contract the writer and

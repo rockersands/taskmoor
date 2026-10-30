@@ -124,7 +124,7 @@ the synthetic format and fixtures are written by us.
   with it (its JSON Schema golden changed).
 - A loader may `prepare` a batch before planning (the ids inside stored values, `remap.ts`);
   `LOADERS` moved to `import/loaders.ts`.
-- A format may be **verbatim** (Taskmoor's own export, ADR-061): no starting values or other
+- A format may be **verbatim** (Taskmoor's own export, ADR-063): no starting values or other
   history rows are made for it, and time spent, formulas, ranks and counters come from it.
 - Ticket commands may name the type as the track's default, take a number from the track's
   counter, match a ticket the target has by key and keep the properties a source does not give

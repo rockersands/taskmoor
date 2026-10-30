@@ -18,7 +18,7 @@ import type {
 } from './model';
 
 /**
- * Taskmoor's own export as an import source (M1-098; IMP-014 (1); ADR-061): a folder written by
+ * Taskmoor's own export as an import source (M1-098; IMP-014 (1); ADR-063): a folder written by
  * `export/write.ts`, or the same folder as a ZIP (unpacked once next to it, then read as a
  * folder). Each kind's file is read a page at a time from a byte offset, the offset after a
  * record being its cursor, so a run resumes in the middle of a large file without reading it

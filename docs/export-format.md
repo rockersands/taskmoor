@@ -1,7 +1,7 @@
 # Taskmoor export format, version 1
 
 Taskmoor can write a whole workspace, or chosen tracks, as a set of plain files that any tool can
-read and that another Taskmoor instance can import (IMP-014, ADR-061). This page describes those
+read and that another Taskmoor instance can import (IMP-014, ADR-063). This page describes those
 files. It is the contract: a change that breaks a reader gets a new version number.
 
 ## Getting an export

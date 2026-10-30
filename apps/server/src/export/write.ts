@@ -28,7 +28,7 @@ import {
 import type { ExportSink, LineFile } from './sinks';
 
 /**
- * Writes a workspace as Taskmoor's full export (M1-098; IMP-014; ADR-061): every kind of record
+ * Writes a workspace as Taskmoor's full export (M1-098; IMP-014; ADR-063): every kind of record
  * the format carries, read a keyset page at a time, written as canonical JSON lines to a sink
  * that waits when its reader is behind, so memory stays flat however large the workspace.
  * Attachments are copied from their store as they are, and the manifest goes last with every
@@ -724,7 +724,7 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
           areas: refs('area', k.areas),
           followers: refs('user', k.followers),
           voters: refs('user', k.voters),
-          // Visibility levels are not carried: the import refuses such a ticket (ADR-061).
+          // Visibility levels are not carried: the import refuses such a ticket (ADR-063).
           visibilityLevel: k.visibility_level_id === null ? null : String(k.visibility_level_id),
           deletedAt: k.deleted_at,
           deletedBy: ref('user', k.deleted_by),

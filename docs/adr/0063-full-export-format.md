@@ -1,4 +1,4 @@
-# ADR-061: Full export as canonical NDJSON with source ids, imported verbatim; checked by a translated re-export
+# ADR-063: Full export as canonical NDJSON with source ids, imported verbatim; checked by a translated re-export
 
 - Status: Accepted
 - Date: 2026-10-30

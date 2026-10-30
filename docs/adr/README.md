@@ -65,6 +65,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [058](0058-flow-reports.md) | Flow reports from status changes, cycle time over chosen columns | Accepted |
 | [059](0059-general-and-release-reports.md) | General reports counted in SQL; release and outcome burndowns from report events | Accepted |
 | [060](0060-dashboards.md) | Dashboards as owned pages of typed widgets, shared like saved searches | Accepted |
-| [061](0061-full-export-format.md) | Full export as canonical NDJSON with source ids, imported verbatim; checked by a translated re-export | Accepted |
+| [063](0063-full-export-format.md) | Full export as canonical NDJSON with source ids, imported verbatim; checked by a translated re-export | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
