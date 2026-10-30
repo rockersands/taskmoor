@@ -17,7 +17,7 @@ import { isTrackPermission, type TrackPermission } from '../authz/permissions';
 import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
 import type { SideTable } from '../fields/storage';
-import { masterTextSet } from './compile';
+import { masterTextSet, textSourceSet } from './compile';
 import { COUNT_CAP } from './count';
 import type {
   Bound,
@@ -388,10 +388,10 @@ const perRowRanked = (m: number, n: number) => m >= Math.max(5_000, n / 4);
  * own words (one EXPLAIN, a millisecond or two).
  */
 async function textForms(db: Db, workspaceId: number, where: Cond, ranked: boolean): Promise<void> {
-  const texts: Extract<Cond, { kind: 'text' }>[] = [];
+  const texts: Extract<Cond, { kind: 'text' | 'words' }>[] = [];
   const visit = (c: Cond) => {
     if (c.kind === 'and' || c.kind === 'or') c.items.forEach(visit);
-    else if (c.kind === 'text') texts.push(c);
+    else if (c.kind === 'text' || (c.kind === 'words' && !c.negated)) texts.push(c);
   };
   visit(where);
   if (texts.length === 0) return;
@@ -399,20 +399,66 @@ async function textForms(db: Db, workspaceId: number, where: Cond, ranked: boole
     SELECT greatest(reltuples, 0)::float8 AS n FROM pg_class
      WHERE oid = 'ticket'::regclass`.execute(db);
   const tickets = rows[0]?.n ?? 0;
+  const page = Math.ceil(Math.max(5_000, 0.003 * tickets));
   for (const c of texts) {
     // Expanded words always start from the word indexes (`expands`).
     if (expands(c.search)) continue;
+    const several = severalWords(c.search);
+    if (c.kind === 'words') {
+      // One word: the planner's statistics know it. Several: count them in the index.
+      if (!several) continue;
+      const set = textSourceSet(c.source, c.search, workspaceId);
+      if (set && (await countInIndex(db, set, page)) < page) c.fromIndex = true;
+      continue;
+    }
     const set = masterTextSet(c, workspaceId);
     if (!set) continue;
-    const plan = await sql<{
-      'QUERY PLAN': { Plan: { 'Plan Rows': number } }[];
-    }>`EXPLAIN (FORMAT JSON) ${set}`.execute(db);
-    const estimate = plan.rows[0]?.['QUERY PLAN'][0]?.Plan['Plan Rows'] ?? 0;
+    let estimate: number;
+    if (several && (await countInIndex(db, set, page)) < page) {
+      estimate = 0;
+    } else {
+      const plan = await sql<{
+        'QUERY PLAN': { Plan: { 'Plan Rows': number } }[];
+      }>`EXPLAIN (FORMAT JSON) ${set}`.execute(db);
+      estimate = plan.rows[0]?.['QUERY PLAN'][0]?.Plan['Plan Rows'] ?? 0;
+      // Counted in the index: at least a page's worth, whatever the planner thinks.
+      if (several) estimate = Math.max(estimate, page);
+    }
     c.perRow = {
       page: ranked ? perRowRanked(estimate, tickets) : perRowPage(estimate, tickets),
       count: perRowCount(estimate, tickets),
     };
   }
+}
+
+/**
+ * Whether a search needs several words together (two terms, or a phrase): the planner takes
+ * words for independent, so two that seldom meet look common, and a page walked for them can
+ * read the whole table (929 ms at 1M tickets for two words no summary holds together).
+ */
+function severalWords(search: TextSearch): boolean {
+  const words = search.terms.filter((t) => t.kind !== 'pattern');
+  return words.length > 1 || words.some((t) => t.kind === 'phrase' && /\s/u.test(t.text.trim()));
+}
+
+/**
+ * How many rows a set of matches has, up to `cap`, read from the word indexes only: table scans
+ * are turned off for the statement (the planner might otherwise expect an early hit and scan).
+ */
+async function countInIndex(db: Db, set: RawBuilder<unknown>, cap: number): Promise<number> {
+  const run = async (trx: Transaction<Database>) => {
+    const before = await sql<{ v: string }>`SELECT current_setting('enable_seqscan') AS v`.execute(
+      trx,
+    );
+    await sql`SELECT set_config('enable_seqscan', 'off', true)`.execute(trx);
+    const { rows } = await sql<{ n: number }>`
+      SELECT count(*)::int AS n FROM (${set} LIMIT ${cap}) x`.execute(trx);
+    await sql`SELECT set_config('enable_seqscan', ${before.rows[0]?.v ?? 'on'}, true)`.execute(trx);
+    return rows[0]?.n ?? 0;
+  };
+  return db.isTransaction
+    ? run(db as Transaction<Database>)
+    : (db as Kysely<Database>).transaction().execute(run);
 }
 
 /**

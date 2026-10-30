@@ -193,6 +193,11 @@ export type Cond =
       source: TextSource;
       search: TextSearch;
       negated: boolean;
+      /**
+       * Few tickets match (counted in the word index when the query was bound, M1-040): start
+       * from the index instead of testing each ticket as the order is walked.
+       */
+      fromIndex?: boolean;
     }
   | { kind: 'wordsEmpty'; source: 'description' | 'environment' | 'comment'; negated: boolean }
   /**

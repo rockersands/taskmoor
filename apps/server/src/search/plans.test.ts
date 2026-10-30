@@ -181,6 +181,10 @@ const TEXT_CASES: PlanCase[] = [
   { q: 'summary ~ "zebracron~" ORDER BY created DESC', uses: ['ticket_summary_words_idx'] },
   { q: 'summary ~ "\\"zebracorn ticket\\""', uses: ['ticket_summary_words_idx'] },
   { q: 'text ~ zebracorn ORDER BY relevance', uses: ['ticket_summary_words_idx'] },
+  // Two common words no summary holds together (login goes with export only): counted in the
+  // index when bound, so the page starts there instead of walking every ticket.
+  { q: 'summary ~ "login payment" ORDER BY created DESC', uses: ['ticket_summary_words_idx'] },
+  { q: 'text ~ "login payment" ORDER BY updated DESC', uses: ['ticket_summary_words_idx'] },
 ];
 
 /** A plan as node types, scan directions, indexes and relations, one line per node. */

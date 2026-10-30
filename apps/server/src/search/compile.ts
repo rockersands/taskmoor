@@ -796,7 +796,9 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
     case 'labelsEmpty':
       return sql<boolean>`cardinality(k.labels) ${raw(c.negated ? '>' : '=')} 0`;
     case 'words': {
-      if (!c.negated && !ctx.rows && expands(c.search)) return textSet(c.source, c.search, ctx);
+      if (!c.negated && !ctx.rows && (c.fromIndex || expands(c.search))) {
+        return textSet(c.source, c.search, ctx);
+      }
       if (c.source === 'summary') {
         const match = textMatch(raw('k.summary_words'), raw('k.summary'), c.search);
         return c.negated ? not(match) : match;
@@ -934,6 +936,26 @@ function textSetBranches(
     );
   }
   return branches;
+}
+
+/**
+ * The tickets whose summary, description, environment or comments match a search, without the
+ * viewer's filter, for counting in the word index when the query is bound (M1-040).
+ */
+export function textSourceSet(
+  source: Extract<Cond, { kind: 'words' }>['source'],
+  search: TextSearch,
+  workspaceId: number,
+): RawBuilder<unknown> | undefined {
+  const ws = param(workspaceId, 'int');
+  const match =
+    source === 'comment'
+      ? textMatch(raw('c.body_words'), null, search)
+      : textMatch(raw(`t.${source}_words`), source === 'summary' ? raw('t.summary') : null, search);
+  if (match === FALSE) return undefined;
+  return source === 'comment'
+    ? sql`SELECT c.ticket_id FROM ticket_comment c WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, sql<boolean>`c.deleted_at IS NULL`, match])}`
+    : sql`SELECT t.id FROM ticket t WHERE ${and([sql<boolean>`t.workspace_id = ${ws}`, sql<boolean>`t.deleted_at IS NULL`, match])}`;
 }
 
 /**
