@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { ApiUsagePage } from './admin/ApiUsagePage';
 import { McpPage } from './admin/McpPage';
 import { SecurityPage } from './admin/SecurityPage';
 import { SettingsPage } from './admin/SettingsPage';
@@ -113,6 +114,7 @@ const ADMIN_SECURITY = '#/admin/security';
 const ADMIN_IDENTITY_PROVIDERS = '#/admin/identity-providers';
 const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_MCP = '#/admin/mcp';
+const ADMIN_API_USAGE = '#/admin/api-usage';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
@@ -419,6 +421,8 @@ function Pages() {
     content = <TrashPage />;
   } else if (isRoute(hash, ADMIN_MCP)) {
     content = <McpPage />;
+  } else if (isRoute(hash, ADMIN_API_USAGE)) {
+    content = <ApiUsagePage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
   } else if (isRoute(hash, ADMIN_USERS)) {

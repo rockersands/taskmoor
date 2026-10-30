@@ -119,6 +119,7 @@ test('[NFR-005] every page passes axe at WCAG 2.1 AA', async ({ page }, testInfo
     ['admin identity providers', '#/admin/identity-providers'],
     ['admin trash', '#/admin/trash'],
     ['admin mcp', '#/admin/mcp'],
+    ['admin api usage', '#/admin/api-usage'],
     ['admin directories', '#/admin/directories'],
     ['admin workflows', '#/admin/workflows'],
     ['admin users', '#/admin/users'],

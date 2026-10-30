@@ -20,6 +20,8 @@ import { serveFrontend } from './frontend';
 import { GuardrailExceeded } from './guardrails/model';
 import { DirectoryGateway } from './ldap/gateway';
 import { instrumentApp, type Metrics } from './observability';
+import { RateLimiter, RateLimitPolicies } from './ratelimit/limiter';
+import { UsageRecorder } from './ratelimit/usage';
 import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
 import { registerActivityRoutes } from './routes/activity';
@@ -49,6 +51,7 @@ import { registerMetaRoutes } from './routes/meta';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
+import { registerRateLimitRoutes, registerRateLimits } from './routes/rate-limits';
 import { registerReleaseHubRoutes } from './routes/release-hub';
 import { registerReleaseRoutes } from './routes/releases';
 import { registerReportRoutes } from './routes/reports';
@@ -139,6 +142,11 @@ export interface AppDeps {
   collabDebounceMs?: number;
   /** How long a search statement may run, in milliseconds (QRY-010; default 30 s). */
   queryTimeoutMs?: number;
+  /**
+   * Rate limits and API usage (M1-066; ADR-075). The server turns them on; tests that make
+   * thousands of requests leave them out, and the rate limit tests pass their own clock.
+   */
+  rateLimits?: { limiter?: RateLimiter; now?: () => number };
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -214,6 +222,25 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       request.user = request.authSession?.user ?? null;
       request.authz = authorizer.context(request.workspaceId, { userId: request.user?.id ?? null });
     });
+    // Rate limits after authentication, so a token or a person is limited as itself (M1-066).
+    const usage = new UsageRecorder(db, deps.rateLimits?.now);
+    const policies = new RateLimitPolicies(db);
+    if (deps.rateLimits) {
+      registerRateLimits(app, {
+        limiter: deps.rateLimits.limiter ?? new RateLimiter(),
+        policies,
+        usage,
+      });
+      let usageTimer: NodeJS.Timeout | undefined;
+      app.addHook('onReady', async () => {
+        usageTimer = setInterval(() => void usage.flush(), 10_000);
+        usageTimer.unref();
+      });
+      app.addHook('onClose', async () => {
+        clearInterval(usageTimer);
+        await usage.flush();
+      });
+    }
     // Events emitted while handling a request record its client address.
     registerRequestScope(app);
     // Mutations an outbox sends with a client and mutation id run at most once (M1-032).
@@ -349,6 +376,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerAuditRoutes(app, db);
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);
+    registerRateLimitRoutes(app, db, {
+      policies,
+      usage,
+      ...(deps.rateLimits?.now ? { now: deps.rateLimits.now } : {}),
+    });
     registerServiceAccountRoutes(app, db);
     await registerScimRoutes(app, db, { publicUrl: deps.publicUrl ?? 'http://localhost:8080' });
     registerDirectoryRoutes(app, db, { peppers: deps.peppers });

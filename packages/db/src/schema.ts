@@ -1878,6 +1878,35 @@ export interface ApiTokenTable {
   replaced_by: number | null;
 }
 
+/**
+ * A workspace's rate limits (M1-066; API-010): requests a second and burst per API token,
+ * signed-in person, address without either, and per ticket for writes.
+ */
+export interface RateLimitPolicyTable {
+  workspace_id: number;
+  token_rate: Generated<number>;
+  token_burst: Generated<number>;
+  user_rate: Generated<number>;
+  user_burst: Generated<number>;
+  address_rate: Generated<number>;
+  address_burst: Generated<number>;
+  ticket_write_rate: Generated<number>;
+  ticket_write_burst: Generated<number>;
+  updated_at: DefaultTimestamp;
+}
+
+/** Requests, errors and refusals per API client and minute, for the usage dashboard. */
+export interface ApiUsageTable {
+  workspace_id: number;
+  client_kind: 'token' | 'user' | 'address';
+  /** The token or user id as text, or the address. */
+  client: string;
+  minute: Timestamp;
+  requests: Generated<number>;
+  errors: Generated<number>;
+  throttled: Generated<number>;
+}
+
 /** Per-workspace limits on tokens: the longest lifetime and the rotation reminder window. */
 export interface TokenPolicyTable {
   workspace_id: number;
@@ -2138,6 +2167,8 @@ export interface Database {
   audit_chain: AuditChainTable;
   api_token: ApiTokenTable;
   token_policy: TokenPolicyTable;
+  rate_limit_policy: RateLimitPolicyTable;
+  api_usage: ApiUsageTable;
   scim_user: ScimUserTable;
   scim_group: ScimGroupTable;
   ldap_directory: LdapDirectoryTable;

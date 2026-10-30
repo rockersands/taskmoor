@@ -77,5 +77,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [070](0070-meta-endpoint-and-version-window.md) | The meta endpoint, the instance identity and the frontend version window | Accepted |
 | [071](0071-speed-limits-in-the-benchmark-run.md) | Speed limits are measured in the gate and enforced in the benchmark run | Accepted |
 | [072](0072-synthetic-dc-backups.md) | Synthetic Data Center backups from a seeded streaming generator, with a manifest of exact counts | Accepted |
+| [075](0075-rate-limits.md) | Rate limits as in-process token buckets, with usage counted per minute | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

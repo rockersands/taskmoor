@@ -21,6 +21,7 @@ import { registerFieldValueJobs, scheduleFieldValueCheck } from './fields/jobs';
 import { registerImportJobs } from './import/jobs';
 import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
+import { trimApiUsage } from './ratelimit/usage';
 import { deliverSubscriptions } from './search/subscriptions';
 import { loadPeppers } from './secrets';
 import { issueSetupToken, setupLink } from './setup';
@@ -95,6 +96,7 @@ if (config.roles.includes('api') && !attachments.active) {
 }
 
 const app = await buildApp({
+  rateLimits: {},
   passwords: passwordHasher(peppers),
   ...(peppers ? { peppers } : {}),
   ...(db ? { db } : {}),
@@ -182,11 +184,12 @@ if (config.roles.includes('worker') && db) {
       scheduleFormulaRefresh(db, formulaCatalogs),
       trimWebhookDeliveries(db),
       trimBulkOperations(db),
+      trimApiUsage(db),
       defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
     ]).catch((error) =>
       app.log.warn(
         { error },
-        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery or bulk operation trim, or storage sweep not queued',
+        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery, bulk operation or API usage trim, or storage sweep not queued',
       ),
     );
   void scheduleHousekeeping();

@@ -63,6 +63,10 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.mcpHint')}</p>
             </li>
             <li>
+              <a href={routeHref('#/admin/api-usage')}>{t('settings.apiUsage')}</a>
+              <p className="page-note">{t('settings.apiUsageHint')}</p>
+            </li>
+            <li>
               <a href={routeHref('#/admin/identity-providers')}>{t('settings.singleSignOn')}</a>
               <p className="page-note">{t('settings.singleSignOnHint')}</p>
             </li>
