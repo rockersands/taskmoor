@@ -6,6 +6,7 @@ import type {
   TicketClient,
   TicketDetails,
   TicketEdit,
+  TicketInfo,
   TimeEntry,
   Transition,
 } from './client';
@@ -84,6 +85,19 @@ export const TIME: TimeEntry[] = [
     visibility: null,
   },
 ];
+
+/** SHOP-41's info fields: answered by Grace, in progress twice. */
+export const INFO: TicketInfo = {
+  firstResponse: '2026-10-20T09:30:00Z',
+  lastComment: '2026-10-21T16:05:00Z',
+  daysSinceLastComment: 1,
+  participants: [ADA, GRACE],
+  timeInStatus: [
+    { status: { id: 1, name: 'To do' }, seconds: 5400, visits: 1 },
+    { status: { id: 2, name: 'In progress' }, seconds: 2 * 86400 + 4 * 3600, visits: 2 },
+    { status: { id: 3, name: 'In review' }, seconds: 40, visits: 1 },
+  ],
+};
 
 export const PRIORITIES: Priority[] = [
   { id: 1, name: 'Highest' },
@@ -205,6 +219,7 @@ export function fakeTicketClient(
       ],
       webLinks: [],
     }),
+    info: async () => structuredClone(INFO),
     priorities: async () => structuredClone(PRIORITIES),
     closeReasons: async () => [
       { id: 1, name: 'Done' },

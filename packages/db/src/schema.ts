@@ -375,6 +375,12 @@ export interface TicketTable {
   summary_words: SearchWords;
   description_words: SearchWords;
   environment_words: SearchWords;
+  /**
+   * The first comment by someone other than the requester and the latest comment, counting
+   * comments everyone who sees the ticket may read; kept by triggers (M1-125, CORE-012).
+   */
+  first_response_at: ColumnType<Date | null, never, never>;
+  last_comment_at: ColumnType<Date | null, never, never>;
 }
 
 /**

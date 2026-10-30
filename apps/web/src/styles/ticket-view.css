@@ -73,13 +73,15 @@
   }
 }
 
-.ticket-main {
+.ticket-main,
+.ticket-side {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
 }
 
 .ticket-details,
+.ticket-info,
 .ticket-links,
 .ticket-activity {
   display: grid;
@@ -271,4 +273,28 @@
   .ticket-tab {
     min-height: var(--hit-target-touch);
   }
+}
+
+/* Time in status (M1-125): a compact table under the info facts. */
+.ticket-info-statuses {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-200);
+}
+
+.ticket-info-statuses caption {
+  margin-block-end: var(--space-2);
+  color: var(--color-text-muted);
+  text-align: start;
+}
+
+.ticket-info-statuses :is(th, td) {
+  padding-block: var(--space-1);
+  padding-inline: 0 var(--space-3);
+  text-align: start;
+  font-weight: normal;
+}
+
+.ticket-info-statuses thead th {
+  color: var(--color-text-muted);
 }

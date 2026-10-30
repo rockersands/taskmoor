@@ -80,6 +80,15 @@ export interface WebLink {
   title: string;
 }
 
+/** A ticket's read-only info fields, as `GET /api/v1/tickets/:id/info` answers (M1-125). */
+export interface TicketInfo {
+  firstResponse: string | null;
+  lastComment: string | null;
+  daysSinceLastComment: number | null;
+  participants: Person[];
+  timeInStatus: { status: { id: number; name: string }; seconds: number; visits: number }[];
+}
+
 export interface Priority {
   id: number;
   name: string;
@@ -117,6 +126,8 @@ export interface TicketClient {
   timeEntries: (id: number) => Promise<TimeEntry[]>;
   logTime: (id: number, entry: { duration: string; description: string }) => Promise<TimeEntry>;
   links: (id: number) => Promise<{ links: TicketLink[]; webLinks: WebLink[] }>;
+  /** The read-only info fields (M1-125); without it the panel is not shown. */
+  info?: (id: number) => Promise<TicketInfo>;
   priorities: () => Promise<Priority[]>;
   closeReasons: () => Promise<Priority[]>;
 }
@@ -161,6 +172,7 @@ export const ticketClient: TicketClient = {
       })
     ).timeEntry,
   links: (id) => api<{ links: TicketLink[]; webLinks: WebLink[] }>(`/tickets/${id}/links`),
+  info: async (id) => (await api<{ info: TicketInfo }>(`/tickets/${id}/info`)).info,
   priorities: async () => (await api<{ priorities: Priority[] }>('/priorities')).priorities,
   closeReasons: async () =>
     (await api<{ closeReasons: Priority[] }>('/close-reasons')).closeReasons,

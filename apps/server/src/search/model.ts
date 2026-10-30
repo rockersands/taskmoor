@@ -38,7 +38,9 @@ export type TicketColumn =
   | 'original_estimate'
   | 'remaining_estimate'
   | 'time_spent'
-  | 'visibility_level_id';
+  | 'visibility_level_id'
+  | 'first_response_at'
+  | 'last_comment_at';
 
 /** A value of one ticket: a column, or a figure computed from the ticket. */
 export type Scalarish =
@@ -46,7 +48,9 @@ export type Scalarish =
   /** Time spent against the original estimate in percent; empty without an estimate. */
   | { kind: 'effortRatio' }
   /** How many people follow or voted for the ticket. */
-  | { kind: 'count'; relation: 'follower' | 'voter' };
+  | { kind: 'count'; relation: 'follower' | 'voter' }
+  /** Whole days since the latest comment (M1-125); empty without one. */
+  | { kind: 'daysSinceLastComment' };
 
 /** A test on one value. */
 export type ValueTest =
@@ -69,7 +73,15 @@ export interface SideRef {
 /** Rows that belong to a ticket in another table. */
 export type Related =
   | {
-      relation: 'follower' | 'voter' | 'area' | 'targetRelease' | 'foundInRelease' | 'parentTrack';
+      relation:
+        | 'follower'
+        | 'voter'
+        | 'area'
+        | 'targetRelease'
+        | 'foundInRelease'
+        | 'parentTrack'
+        /** The requester, the assignee and the authors of counted comments (M1-125). */
+        | 'participant';
       ids: number[];
     }
   /** Tickets linked either way to one of `ids`. */

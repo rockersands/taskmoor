@@ -140,6 +140,7 @@ describe('API v1 contract (M1-065)', () => {
       position: 'top',
     });
     await call('GET', '/api/v1/tickets/:id/history', `/api/v1/tickets/${a.key}/history?limit=2`);
+    await call('GET', '/api/v1/tickets/:id/info', `/api/v1/tickets/${a.key}/info`);
     const comment = (
       await call(
         'POST',

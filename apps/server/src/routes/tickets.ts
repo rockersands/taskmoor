@@ -61,6 +61,7 @@ import {
 import { autoFollow } from '../tickets/followers';
 import { DEFAULT_PARENT_RULES, parentLevelAllowed, SUBTICKET_RANK } from '../tickets/hierarchy';
 import { changesOf, recordChanges, ticketChanges } from '../tickets/history';
+import { ticketInfo } from '../tickets/info';
 import { canonicalJson, isCalendarDay, SUMMARY_MAX, ticketKey } from '../tickets/model';
 import { keyBetween } from '../tickets/rank';
 import {
@@ -800,6 +801,26 @@ export function ticketRoutes(
       ...(found.asked !== null && found.asked !== ticket.key
         ? { redirect: { from: found.asked, to: ticket.key } }
         : {}),
+    };
+  });
+
+  // A ticket's read-only info fields (M1-125; CORE-012): first response, last comment,
+  // participants and time in each status.
+  route('GET', '/api/v1/tickets/:id/info', async (request, reply) => {
+    const p = params.safeParse(request.params);
+    if (!p.success) return invalid(reply);
+    const found = await findTicket(request, p.data.id);
+    if (!found) return notFound(reply);
+    if (found.row.deleted_at && !(await request.authz.canTicket('delete_tickets', found.row))) {
+      return notFound(reply);
+    }
+    const times = await db
+      .selectFrom('ticket')
+      .select(['first_response_at', 'last_comment_at'])
+      .where('id', '=', found.row.id)
+      .executeTakeFirstOrThrow();
+    return {
+      info: await ticketInfo(db, request.workspaceId, { ...found.row, ...times }),
     };
   });
 
