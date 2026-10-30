@@ -1,0 +1,64 @@
+{
+  "title": "Taskmoor documentation",
+  "sections": [
+    {
+      "title": "Start here",
+      "pages": ["index.md", "concepts.md"]
+    },
+    {
+      "title": "Using Taskmoor",
+      "pages": [
+        "use/tickets.md",
+        "use/boards.md",
+        "use/views.md",
+        "use/search.md",
+        "use/dashboards-and-reports.md",
+        "use/notifications.md",
+        "use/account.md"
+      ]
+    },
+    {
+      "title": "Installing",
+      "pages": [
+        "admin/install.md",
+        "admin/helm.md",
+        "admin/builder-kits.md",
+        "admin/first-run.md",
+        "admin/configuration.md"
+      ]
+    },
+    {
+      "title": "People and access",
+      "pages": [
+        "admin/people-and-groups.md",
+        "admin/permissions.md",
+        "admin/sso.md",
+        "admin/ldap.md",
+        "admin/scim.md"
+      ]
+    },
+    {
+      "title": "Configuring work",
+      "pages": [
+        "admin/tracks.md",
+        "admin/workflows.md",
+        "admin/fields.md",
+        "admin/notifications.md"
+      ]
+    },
+    {
+      "title": "Integrations",
+      "pages": ["admin/api-tokens.md", "admin/rest-api.md", "admin/mcp.md"]
+    },
+    {
+      "title": "Running a server",
+      "pages": [
+        "admin/backups.md",
+        "admin/upgrades.md",
+        "admin/monitoring.md",
+        "admin/cli.md",
+        "admin/import-export.md"
+      ]
+    }
+  ]
+}

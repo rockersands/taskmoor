@@ -1,4 +1,4 @@
-import { ApiError, api } from '../api/client';
+import { API_BASE, ApiError, api } from '../api/client';
 import type { Stage, Status, WorkflowDefinition } from './definition';
 
 /**
@@ -66,6 +66,34 @@ export interface Lookups {
   permissions: string[] | null;
 }
 
+/** How a status of an imported file came in (M1-127): matched by name, or created. */
+export interface ImportedStatus {
+  name: string;
+  stage: Stage;
+  statusId: number;
+  outcome: 'matched' | 'created';
+  /** The stage of the status the name matched, when the file has it in another. */
+  stageHere?: Stage;
+}
+
+/** Something an imported file names that this workspace has no match for, and what became of it. */
+export interface ImportProblem {
+  kind: string;
+  /** The file's name for it (a person's email), the field name or the permission key. */
+  name: string;
+  /** The guard, check, effect or rule type; `layout`; or a status lock's action. */
+  rule: string;
+  outcome: 'guard_never_passes' | 'narrowed' | 'removed' | 'transition_disabled' | 'kept';
+  transition?: { id: number; name: string };
+  onCreate?: true;
+  status?: string;
+}
+
+export interface Imported {
+  workflow: WorkflowView;
+  report: { statuses: ImportedStatus[]; problems: ImportProblem[] };
+}
+
 export interface StatusInput {
   name: string;
   description?: string;
@@ -94,6 +122,12 @@ export interface WorkflowsClient {
   deleteStatus: (id: number) => Promise<void>;
   orderStatuses: (ids: number[]) => Promise<Status[]>;
   lookups: () => Promise<Lookups>;
+  /** Where a workflow's published version downloads as a file (M1-127). */
+  exportHref: (id: number) => string;
+  /** A workflow file as a new workflow, named as the file names it unless `name` is given. */
+  importNew: (document: unknown, name?: string) => Promise<Imported>;
+  /** A workflow file as the next draft of a workflow. */
+  importDraft: (id: number, document: unknown) => Promise<Imported>;
 }
 
 /** A list the viewer may not read is null, not an error: the forms fall back to ids. */
@@ -170,4 +204,12 @@ export const workflowsClient: WorkflowsClient = {
     ]);
     return { roles, groups, permissions: catalogue };
   },
+  exportHref: (id) => `${API_BASE}/admin/workflows/${id}/export`,
+  importNew: (document, name) =>
+    api<Imported>('/admin/workflows/import', {
+      method: 'POST',
+      body: { document, ...(name ? { name } : {}) },
+    }),
+  importDraft: (id, document) =>
+    api<Imported>(`/admin/workflows/${id}/import`, { method: 'POST', body: { document } }),
 };

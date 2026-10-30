@@ -2188,6 +2188,50 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflows.form.nameRequired': 'Introduce un nombre.',
   'admin.workflows.form.nameTaken': 'Ya existe un flujo de trabajo con este nombre.',
   'admin.workflows.form.failed': 'No se pudo crear el flujo de trabajo. Inténtalo de nuevo.',
+  'admin.workflows.export': 'Descargar',
+  'admin.workflows.exportNamed': 'Descargar {name} como archivo de flujo de trabajo',
+  'admin.workflows.import': 'Importar un flujo de trabajo',
+  'admin.workflows.import.title': 'Importar un archivo de flujo de trabajo',
+  'admin.workflows.import.file': 'Archivo de flujo de trabajo',
+  'admin.workflows.import.fileHint':
+    'Un archivo de flujo de trabajo descargado de esta página, aquí o en otro servidor de Taskmoor. Los estados se buscan por nombre y se crean cuando este espacio de trabajo no tiene ninguno con ese nombre.',
+  'admin.workflows.import.into': 'Importar como',
+  'admin.workflows.import.asNew': 'Un flujo de trabajo nuevo',
+  'admin.workflows.import.asDraft': 'El siguiente borrador de {name}',
+  'admin.workflows.import.submit': 'Importar',
+  'admin.workflows.import.fileRequired': 'Elige un archivo de flujo de trabajo.',
+  'admin.workflows.import.unreadable':
+    'Este archivo no es JSON. Elige un archivo de flujo de trabajo descargado de Taskmoor.',
+  'admin.workflows.import.notWorkflow':
+    'Este archivo no es un archivo de flujo de trabajo de Taskmoor.',
+  'admin.workflows.import.unsupported':
+    'Este archivo de flujo de trabajo viene de una versión más reciente de Taskmoor. Actualiza este servidor para importarlo.',
+  'admin.workflows.import.invalidAt':
+    'El archivo de flujo de trabajo está dañado en {path}, así que no se importó nada.',
+  'admin.workflows.import.cannotSave':
+    'El flujo de trabajo de este archivo no se puede guardar aquí, así que no se importó nada. {reason}',
+  'admin.workflows.import.failed': 'No se pudo importar el flujo de trabajo. Inténtalo de nuevo.',
+  'admin.workflows.report.title': 'Se importó {name}',
+  'admin.workflows.report.newWorkflow':
+    'Es un flujo de trabajo nuevo, publicado como versión 1. Ningún track lo usa hasta que un mapa de flujos lo nombre.',
+  'admin.workflows.report.draft':
+    'Es el borrador, versión {version}: revísalo en el editor y publícalo cuando esté bien.',
+  'admin.workflows.report.open': 'Abrir {name}',
+  'admin.workflows.report.statuses': 'Estados',
+  'admin.workflows.report.statusMatched': '{name}: encontrado aquí por nombre',
+  'admin.workflows.report.statusCreated': '{name}: creado, en la etapa {stage}',
+  'admin.workflows.report.stageDiffers':
+    '{name}: encontrado aquí por nombre, pero aquí está en la etapa {here} y en el archivo en la etapa {file}',
+  'admin.workflows.report.problems': 'No encontrado aquí',
+  'admin.workflows.report.noProblems': 'Todo lo demás que nombra el archivo se encontró aquí.',
+  'admin.workflows.report.problemCount':
+    '{count, plural, one {# cosa que nombra el archivo no se encontró aquí. Lo que se hizo con ella no deja pasar a nadie más:} other {# cosas que nombra el archivo no se encontraron aquí. Lo que se hizo con ellas no deja pasar a nadie más:}}',
+  'admin.workflows.report.problem':
+    '{kind, select, status {Estado} group {Grupo} role {Rol} user {Persona} priority {Prioridad} closeReason {Motivo de cierre} ticketType {Tipo de ticket} release {Versión} area {Área} field {Campo} permission {Permiso} other {Elemento}} {name}, {where}: {outcome, select, guard_never_passes {la condición que lo nombra nunca se cumple} narrowed {quedó fuera de la lista} removed {se quitó la parte que lo nombra} transition_disabled {se quitó la parte que lo nombra y la transición queda desactivada hasta que lo corrijas} kept {se mantuvo tal cual; nadie lo tiene} other {quedó fuera}}.',
+  'admin.workflows.report.inTransition': 'en la transición {name}',
+  'admin.workflows.report.inStatus':
+    '{action, select, edit {en el bloqueo de edición del estado {name}} comment {en el bloqueo de comentarios del estado {name}} attach {en el bloqueo de adjuntos del estado {name}} assign {en el bloqueo de asignación del estado {name}} transition {en el bloqueo de transiciones del estado {name}} other {en los bloqueos del estado {name}}}',
+  'admin.workflows.report.onCreate': 'al crear un ticket',
   'admin.statuses.title': 'Estados',
   'admin.statuses.intro':
     'Los estados pertenecen a todo el espacio de trabajo, y cada flujo de trabajo usa algunos de ellos. La etapa da a un estado su color y su significado.',

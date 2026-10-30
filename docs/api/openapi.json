@@ -2644,6 +2644,104 @@
         ],
         "type": "object"
       },
+      "TicketInfo": {
+        "additionalProperties": {},
+        "description": "Read-only info fields, computed from comments and history. Only comments everyone who sees the ticket may read count.",
+        "properties": {
+          "daysSinceLastComment": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "firstResponse": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When someone other than the requester first commented."
+          },
+          "lastComment": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "participants": {
+            "description": "The requester, the assignee and everyone who wrote a comment.",
+            "items": {
+              "$ref": "#/components/schemas/PersonRef"
+            },
+            "type": "array"
+          },
+          "timeInStatus": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "seconds": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "status": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "id": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "visits": {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "status",
+                "seconds",
+                "visits"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "firstResponse",
+          "lastComment",
+          "daysSinceLastComment",
+          "participants",
+          "timeInStatus"
+        ],
+        "type": "object"
+      },
       "TicketType": {
         "additionalProperties": {},
         "properties": {
@@ -4725,6 +4823,125 @@
       },
       "put": {
         "operationId": "internal-put-admin-trash-policy",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/admin/workflows/import": {
+      "post": {
+        "operationId": "internal-post-admin-workflows-import",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/admin/workflows/{id}/export": {
+      "get": {
+        "operationId": "internal-get-admin-workflows-by-id-export",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/admin/workflows/{id}/import": {
+      "post": {
+        "operationId": "internal-post-admin-workflows-by-id-import",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "default": {
             "content": {
@@ -19490,6 +19707,89 @@
         ],
         "x-taskmoor-access": "read",
         "x-taskmoor-paging": "cursor",
+        "x-taskmoor-stability": "stable"
+      }
+    },
+    "/api/v1/tickets/{id}/info": {
+      "get": {
+        "operationId": "getTicketInfo",
+        "parameters": [
+          {
+            "description": "The ticket: its id or its key, such as `PAY-12`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "info": {
+                      "$ref": "#/components/schemas/TicketInfo"
+                    }
+                  },
+                  "required": [
+                    "info"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The info fields."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "A ticket’s read-only info: first response, participants, time in status",
+        "tags": [
+          "Tickets"
+        ],
+        "x-taskmoor-access": "read",
         "x-taskmoor-stability": "stable"
       }
     },

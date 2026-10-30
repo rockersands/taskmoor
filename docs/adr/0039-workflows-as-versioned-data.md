@@ -156,3 +156,8 @@ migration was added. Its code is in `apps/web/src/workflow/`.
   outside the closed stage with no transition to another status has no exit; a global
   transition is an exit from every status but its own target. Unsatisfiable guards are judged
   as the engine judges them. Statuses unmapped on boards join with boards (M1-043).
+
+## Workflow files (M1-127)
+
+A version downloads as a file in Taskmoor's own format and comes back as a new workflow or a
+new draft, in this workspace or another: ADR-073.

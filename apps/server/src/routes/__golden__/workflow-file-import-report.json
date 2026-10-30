@@ -1,0 +1,197 @@
+{
+  "problems": [
+    {
+      "kind": "group",
+      "name": "Reviewers",
+      "outcome": "guard_never_passes",
+      "rule": "user-in-group",
+      "transition": {
+        "id": 1,
+        "name": "Start"
+      }
+    },
+    {
+      "kind": "role",
+      "name": "Auditors",
+      "outcome": "narrowed",
+      "rule": "user-in-any-role",
+      "transition": {
+        "id": 1,
+        "name": "Start"
+      }
+    },
+    {
+      "kind": "field",
+      "name": "risk-score",
+      "outcome": "removed",
+      "rule": "layout",
+      "transition": {
+        "id": 2,
+        "name": "To QA"
+      }
+    },
+    {
+      "kind": "field",
+      "name": "risk-score",
+      "outcome": "transition_disabled",
+      "rule": "field-required",
+      "transition": {
+        "id": 2,
+        "name": "To QA"
+      }
+    },
+    {
+      "kind": "release",
+      "name": "1.0",
+      "outcome": "removed",
+      "rule": "update-field",
+      "transition": {
+        "id": 2,
+        "name": "To QA"
+      }
+    },
+    {
+      "kind": "area",
+      "name": "Backend",
+      "outcome": "removed",
+      "rule": "update-field",
+      "transition": {
+        "id": 2,
+        "name": "To QA"
+      }
+    },
+    {
+      "kind": "role",
+      "name": "Auditors",
+      "outcome": "narrowed",
+      "rule": "set-visibility-level-from-role",
+      "transition": {
+        "id": 3,
+        "name": "Verify"
+      }
+    },
+    {
+      "kind": "permission",
+      "name": "approve_budgets",
+      "outcome": "kept",
+      "rule": "permission",
+      "transition": {
+        "id": 5,
+        "name": "Reopen"
+      }
+    },
+    {
+      "kind": "user",
+      "name": "mira@example.com",
+      "onCreate": true,
+      "outcome": "removed",
+      "rule": "update-field"
+    },
+    {
+      "kind": "user",
+      "name": "mira@example.com",
+      "outcome": "removed",
+      "rule": "assign",
+      "transition": {
+        "id": 1,
+        "name": "Start"
+      }
+    },
+    {
+      "kind": "user",
+      "name": "mira@example.com",
+      "outcome": "narrowed",
+      "rule": "restrict-who",
+      "transition": {
+        "id": 1,
+        "name": "Start"
+      }
+    },
+    {
+      "kind": "group",
+      "name": "Reviewers",
+      "outcome": "narrowed",
+      "rule": "restrict-who",
+      "transition": {
+        "id": 1,
+        "name": "Start"
+      }
+    },
+    {
+      "kind": "role",
+      "name": "Auditors",
+      "outcome": "narrowed",
+      "rule": "restrict-who",
+      "transition": {
+        "id": 1,
+        "name": "Start"
+      }
+    },
+    {
+      "kind": "role",
+      "name": "Auditors",
+      "outcome": "narrowed",
+      "rule": "edit",
+      "status": "QA"
+    },
+    {
+      "kind": "group",
+      "name": "Reviewers",
+      "outcome": "narrowed",
+      "rule": "edit",
+      "status": "QA"
+    },
+    {
+      "kind": "group",
+      "name": "Reviewers",
+      "outcome": "narrowed",
+      "rule": "transition",
+      "status": "QA"
+    }
+  ],
+  "statuses": [
+    {
+      "name": "New",
+      "outcome": "matched",
+      "stage": "new",
+      "statusId": 2
+    },
+    {
+      "name": "Active",
+      "outcome": "matched",
+      "stage": "active",
+      "statusId": 5
+    },
+    {
+      "name": "QA",
+      "outcome": "created",
+      "stage": "active",
+      "statusId": 15
+    },
+    {
+      "name": "Verify",
+      "outcome": "matched",
+      "stage": "active",
+      "stageHere": "closed",
+      "statusId": 14
+    },
+    {
+      "name": "Closed",
+      "outcome": "matched",
+      "stage": "closed",
+      "statusId": 13
+    },
+    {
+      "name": "In Review",
+      "outcome": "matched",
+      "stage": "active",
+      "statusId": 6
+    },
+    {
+      "name": "Cancelled",
+      "outcome": "matched",
+      "stage": "closed",
+      "statusId": 10
+    }
+  ]
+}

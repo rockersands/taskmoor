@@ -771,3 +771,17 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* ---- Workflow files (M1-127) ---- */
+
+.workflow-import-report h3 {
+  margin-block-start: var(--space-3);
+}
+
+.workflow-import-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  overflow-wrap: anywhere;
+}

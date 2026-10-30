@@ -530,6 +530,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tickets/{id}/info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A ticket’s read-only info: first response, participants, time in status */
+        get: operations["getTicketInfo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tickets/{id}/links": {
         parameters: {
             query?: never;
@@ -1385,6 +1402,29 @@ export interface components {
                 [key: string]: unknown;
             }) | null;
             voteCount: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Read-only info fields, computed from comments and history. Only comments everyone who sees the ticket may read count. */
+        TicketInfo: {
+            daysSinceLastComment: number | null;
+            /** @description When someone other than the requester first commented. */
+            firstResponse: string | null;
+            lastComment: string | null;
+            /** @description The requester, the assignee and everyone who wrote a comment. */
+            participants: components["schemas"]["PersonRef"][];
+            timeInStatus: ({
+                seconds: number;
+                status: {
+                    id: number;
+                    name: string;
+                } & {
+                    [key: string]: unknown;
+                };
+                visits: number;
+            } & {
+                [key: string]: unknown;
+            })[];
         } & {
             [key: string]: unknown;
         };
@@ -4111,6 +4151,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getTicketInfo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ticket: its id or its key, such as `PAY-12`. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The info fields. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        info: components["schemas"]["TicketInfo"];
+                    };
                 };
             };
             /** @description No session or token, or an expired one. */

@@ -1501,7 +1501,9 @@
       "visibility_level_id integer",
       "summary_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, summary)) stored",
       "description_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(description), 200000))) stored",
-      "environment_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(environment), 200000))) stored"
+      "environment_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(environment), 200000))) stored",
+      "first_response_at timestamp with time zone",
+      "last_comment_at timestamp with time zone"
     ],
     "indexes": [
       "CREATE INDEX ticket_assignee_idx ON public.ticket USING btree (assignee_id) WHERE (assignee_id IS NOT NULL)",
@@ -1511,7 +1513,9 @@
       "CREATE INDEX ticket_description_words_idx ON public.ticket USING gin (description_words) WHERE (deleted_at IS NULL)",
       "CREATE INDEX ticket_due_idx ON public.ticket USING btree (due_date, id) WHERE ((due_date IS NOT NULL) AND (deleted_at IS NULL))",
       "CREATE INDEX ticket_environment_words_idx ON public.ticket USING gin (environment_words) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_first_response_idx ON public.ticket USING btree (first_response_at DESC, id DESC)",
       "CREATE INDEX ticket_labels_idx ON public.ticket USING gin (labels)",
+      "CREATE INDEX ticket_last_comment_idx ON public.ticket USING btree (last_comment_at DESC, id DESC)",
       "CREATE INDEX ticket_parent_idx ON public.ticket USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
       "CREATE UNIQUE INDEX ticket_pkey ON public.ticket USING btree (id)",
       "CREATE INDEX ticket_priority_created_idx ON public.ticket USING btree (priority_id, created_at DESC, id DESC) WHERE (priority_id IS NOT NULL)",

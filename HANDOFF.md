@@ -2,7 +2,38 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: what changed on 2026-10-30 (cloud session, with the user)
+## Start here: 2026-10-30, overnight and morning (Mac, main session)
+
+Everything below is on `main` and passed `pnpm verify --e2e` before each push. In order:
+M1-115 accessibility, M1-105 static frontend, M1-106 meta endpoint, M1-116 i18n and Spanish,
+M1-087 synthetic backups, M1-109, M1-111 and M1-110 (the Builder core and both kits), M1-134
+clean URLs, M1-132 cross-browser e2e, M1-130 async bulk API, M1-040 full-text search, M1-127
+workflow files, M1-114 the manual, M1-125 info fields. Each has its own section below.
+
+**Decisions waiting for the user**
+- M1-040: rank only the 10,000 most recently updated matches for `ORDER BY relevance` at 10M
+  tickets (about 10 s otherwise for a common word)? Keep pattern searches (`*Exception`,
+  beyond spec 1.8)? See "Side session 2026-10-30: M1-040 full-text search".
+- A native speaker's review of the Spanish draft (`messages.es.ts`, the manual is English only).
+- Still open from before: the AI provider key for M1-073 and M1-074's live tests, the release
+  signing key (M1-100), image publishing on ghcr.io and the repository rename.
+
+**Product gaps the manual found (M1-114)**: the setup form's mail fields are never used and
+name the wrong variable; Compose passes only 8 variables from `.env`; Helm runs no backup
+before migrating and its worker has nowhere to keep backups; `cli.mjs backup` ignores
+`TASKMOOR_BACKUP_DIR`; "Call a webhook" sends nothing; track feature switches hide nothing; five
+global permissions are never checked; the saved language is not applied; the server reads none
+of the Builder's `TASKMOOR_ALLOWED_ORIGINS`, `TOKEN_SIGNING_KEY`, `MASTER_KEY` and `AI_*`. The
+manual states each as "not yet". Fix them before 1.0 and update the page with each fix.
+
+**Not verified here**: a fresh-VM install with real DNS, `install.ps1` on Windows, real static
+hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
+real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
+
+**Numbering in flight**: migration 0059 and ADR-075 are M1-066 (rate limits); 0060 and ADR-076
+are reserved for M1-123 (teams), 0061 and ADR-077 for M1-124 (clone).
+
+## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
 The user worked with a cloud session while this Mac was busy. Pull first, then read the three
 sections below this one. See every change with `git log --stat 62b5a68..3182b16` (four commits:
@@ -273,6 +304,44 @@ ADR-070; no migration.
   wants to; the value is public either way. Key rotation needs a procedure when kits pin the
   key (ADR-070).
 
+## Side session 2026-10-30: M1-127 workflow files
+
+Built on the branch `claude/blissful-hawking-450e3f` in a side session; the main session merges
+it after its own gate. ADR-073 (and a pointer in ADR-039); no migration, no new dependency.
+
+- **Format** (`apps/server/src/workflows/transfer.ts`): `format: "taskmoor-workflow"`,
+  `version: 1`, the definition in its stored shape with **document ids** (1..n per kind, in the
+  order the definition first names them, the workflow's statuses first) and tables naming them:
+  statuses (stage, description), groups, roles, people (email), priorities, close reasons,
+  ticket types, releases and areas (track key). Exporting what an import made gives the same
+  bytes. `mapDefinition` is the one walker for both directions.
+- **What does not map never widens access**: guards become `always-false` (an empty `any`
+  would allow everyone, so emptied lists do too), lists lose members, checks and `restrict-*`
+  rules are removed and their transition gets an `always-false` guard first, effects, other
+  rules and layout fields are removed, status locks narrow; unknown permission keys stay.
+  Every case is a report entry (`kind`, the file's name, `rule`, `outcome`, where).
+- **Matching** (`transfer-store.ts`): statuses by name without case, created when missing
+  (under the status list lock); groups, roles, priorities, close reasons, ticket types by
+  name; people by email; releases and areas by track key and name. Only statuses are created.
+- **Routes** (`routes/workflows.ts`, admin token scope): `GET /api/v1/admin/workflows/:id/export
+  [?version=N]`, `POST /api/v1/admin/workflows/import` (new workflow, version 1 published;
+  `name`, `description`, `trackId`), `POST /api/v1/admin/workflows/:id/import` (next draft).
+  Events `workflow.exported` and `workflow.imported` (one per import, with the created status
+  ids), both audited. A result that fails `definitionProblem` rolls back whole (the created
+  statuses too). `saveDraft` was split: `writeDraft` writes without an event.
+- **Web**: "Import a workflow" and a Download link per workflow on `#/admin/workflows`
+  (`workflow/WorkflowImport.tsx`: the form and the report); 32 new messages in English and
+  Spanish. The file is read with `FileReader` (jsdom has no `Blob.text`).
+- **Tests**: `routes/workflow-transfer.test.ts` (two databases: goldens of three fixture files
+  byte for byte, `__golden__/workflow-file-*.json`; same-workspace import gives an identical
+  draft; import into a bare database with the report golden; byte-identical re-export once the
+  target has the named objects; refusals and rollback; events), `workflows/transfer.test.ts`
+  (property: never widens a guard; identity changes nothing), contract scenarios for both
+  imports (the export is in `EXPORT_EVENTS`), `WorkflowsPage.test.tsx`, stories with axe, and
+  two e2e tests in `setup.spec.ts` (download and import on desktop; the page on a phone).
+- **Not done**: custom fields and visibility levels are not workflow references yet (levels
+  are names already); the Jira-compatible mapping is M1-090 and can reuse `mapDefinition`.
+
 ## Side session 2026-10-30: M1-105 static frontend artefact
 
 Built on the branch `claude/nifty-hermann-b572d0` in a side session and merged into main after
@@ -465,6 +534,58 @@ Built in a side session on the branch `claude/m1-098-csv-export-553b10`; ADR-063
   set-based loading for faster imports (M1-091); the "Not carried in version 1" list of
   `docs/export-format.md` (access, visibility and notification policies, boards, sprints,
   saved searches, dashboards, local-mode ownership, custom levels, comment versions, key history).
+
+## Side session 2026-10-30: M1-114 the manual
+
+Built on the branch `claude/elegant-feistel-f32e66` in a side session; the main session merges
+it after its own gate. ADR-074; no migration; no new packages (devtools now depends on
+`micromark` 4.0.3 and four of its GFM extensions, MIT, already in the lockfile through
+`@taskmoor/richtext`, and on `@taskmoor/webconfig` for the version stamp).
+
+- **The manual** `docs/manual`: `index.md`, `concepts.md`, `use/` (7 pages for people using the
+  app) and `admin/` (22 pages: installing, people and access, configuring work, integrations,
+  running a server), ordered by `nav.json`. Written from the code, specs, ADRs and the existing
+  developer docs, in our own words; each page's `sources` lists what it was written from.
+  Product gaps the writing turned up are listed under "Follow-ups" below.
+- **Build** `pnpm run docs [--out <dir>]` (`packages/devtools/src/manual.ts`, `cli/docs.ts`):
+  checks, then writes `dist/docs` (one HTML page per Markdown page, the same folders, plus
+  `search.html`). Stylesheet and script are inlined (`manual-assets/`) under a CSP that allows
+  exactly them by hash, so nothing is fetched; search runs over a JSON index inside
+  `search.html`. Works from `file://` and any web server; same bytes for the same input;
+  `TASKMOOR_VERSION` stamps the footer.
+- **Checks** (`manual-check.ts`, `checkManualProvenance` in `provenance.ts`), all in
+  `manual.test.ts` and so in `pnpm verify`: provenance front matter (`title`, `audience`,
+  `sources` that exist and are not Atlassian sites, `accessed`, `attestation: own-words`, H1 =
+  title); Atlassian terms refused unless the page declares `jira-names: <reason>`
+  (`admin/import-export.md` does); one H1, unique anchors, a language on every code block; nav
+  lists every page once; links stay inside the manual and their anchors exist; no images.
+  External links are listed (golden `__golden__/manual-external-links.json`), never fetched. The
+  built bundle is checked as a browser sees it: CSP present, no element loads a resource, no
+  request API in the script, every relative link and anchor resolves.
+- **Frontend build guard** (`apps/web/build/artefact.ts`): devtools' direct micromark dependency
+  made the server-code guard flag micromark, which the app bundles through `@taskmoor/richtext`.
+  The guard now counts the browser side's dependencies transitively; only `micromark` and
+  `pngjs` changed (now browser code), and the artefact test says so.
+- **Writing a page**: copy any page's front matter, add the page to `nav.json`, run `pnpm run docs`.
+  CLAUDE.md now says a visible change updates its page in the same task. Bare `pnpm docs` is
+  pnpm's own command (it opens a package's home page), so the script runs with `pnpm run docs`.
+- **Follow-ups**: the writing turned up product gaps, each stated on its page as "not yet"; the
+  full list is in the side-session notes folder (`m1-114-manual-product-gaps.md`). The ones to
+  fix before 1.0:
+  - the setup form's mail fields are stored but unused, and its hint names `SMTP_PASSWORD`;
+  - the Compose files pass only 8 variables from `.env`, so mail, S3, `METRICS_PORT` and
+    `OTEL_*` need an override although `.env.example` lists the last two;
+  - `deploy/README.md` says Helm runs `cli.mjs upgrade`, but the chart only runs
+    `check-upgrade`;
+  - `cli.mjs backup` ignores `TASKMOOR_BACKUP_DIR`, and the Helm worker cannot mount a backup
+    volume;
+  - the workflow effect "Call a webhook" never sends a request;
+  - track feature toggles hide nothing;
+  - five global permissions are never checked;
+  - the saved language is not applied;
+  - the UI label "Change screens and layouts" uses the term "screens".
+  Also not done: serving the bundle from the image at `/docs` with a Help link in the app;
+  images in the manual; Spanish pages.
 
 ## Last session: 2026-10-29 (Mac, afternoon)
 

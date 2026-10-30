@@ -397,9 +397,27 @@ importers:
       '@taskmoor/query':
         specifier: workspace:*
         version: link:../query
+      '@taskmoor/webconfig':
+        specifier: workspace:*
+        version: link:../webconfig
       '@taskmoor/workflow':
         specifier: workspace:*
         version: link:../workflow
+      micromark:
+        specifier: 4.0.3
+        version: 4.0.3
+      micromark-extension-gfm-autolink-literal:
+        specifier: 2.1.0
+        version: 2.1.0
+      micromark-extension-gfm-strikethrough:
+        specifier: 2.1.0
+        version: 2.1.0
+      micromark-extension-gfm-table:
+        specifier: 2.1.1
+        version: 2.1.1
+      micromark-extension-gfm-task-list-item:
+        specifier: 2.1.0
+        version: 2.1.0
     devDependencies:
       '@taskmoor/testkit':
         specifier: workspace:*

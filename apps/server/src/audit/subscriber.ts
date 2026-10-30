@@ -165,6 +165,8 @@ export const AUDITED_EVENTS = [
   'workflow.draft_discarded',
   'workflow.published',
   'workflow.deleted',
+  'workflow.exported',
+  'workflow.imported',
   'workflow_map.created',
   'workflow_map.updated',
   'workflow_map.deleted',

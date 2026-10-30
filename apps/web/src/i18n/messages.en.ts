@@ -2120,6 +2120,49 @@ export const messagesEn = {
   'admin.workflows.form.nameRequired': 'Enter a name.',
   'admin.workflows.form.nameTaken': 'A workflow with this name exists already.',
   'admin.workflows.form.failed': 'The workflow could not be created. Try again.',
+  'admin.workflows.export': 'Download',
+  'admin.workflows.exportNamed': 'Download {name} as a workflow file',
+  'admin.workflows.import': 'Import a workflow',
+  'admin.workflows.import.title': 'Import a workflow file',
+  'admin.workflows.import.file': 'Workflow file',
+  'admin.workflows.import.fileHint':
+    'A workflow file downloaded from this page, here or on another Taskmoor server. Statuses are matched by name and created when this workspace has none of that name.',
+  'admin.workflows.import.into': 'Import as',
+  'admin.workflows.import.asNew': 'A new workflow',
+  'admin.workflows.import.asDraft': 'The next draft of {name}',
+  'admin.workflows.import.submit': 'Import',
+  'admin.workflows.import.fileRequired': 'Choose a workflow file.',
+  'admin.workflows.import.unreadable':
+    'This file is not JSON. Choose a workflow file downloaded from Taskmoor.',
+  'admin.workflows.import.notWorkflow': 'This file is not a Taskmoor workflow file.',
+  'admin.workflows.import.unsupported':
+    'This workflow file comes from a newer version of Taskmoor. Update this server to import it.',
+  'admin.workflows.import.invalidAt':
+    'The workflow file is damaged at {path}, so nothing was imported.',
+  'admin.workflows.import.cannotSave':
+    'The workflow in this file cannot be saved here, so nothing was imported. {reason}',
+  'admin.workflows.import.failed': 'The workflow could not be imported. Try again.',
+  'admin.workflows.report.title': 'Imported {name}',
+  'admin.workflows.report.newWorkflow':
+    'It is a new workflow, published as version 1. No track uses it until a workflow map names it.',
+  'admin.workflows.report.draft':
+    'It is the draft, version {version}: check it in the editor and publish it when it is right.',
+  'admin.workflows.report.open': 'Open {name}',
+  'admin.workflows.report.statuses': 'Statuses',
+  'admin.workflows.report.statusMatched': '{name}: found here by name',
+  'admin.workflows.report.statusCreated': '{name}: created, in the {stage} stage',
+  'admin.workflows.report.stageDiffers':
+    '{name}: found here by name, but it is in the {here} stage here and in the {file} stage in the file',
+  'admin.workflows.report.problems': 'Not found here',
+  'admin.workflows.report.noProblems': 'Everything else the file names was found here.',
+  'admin.workflows.report.problemCount':
+    '{count, plural, one {# thing the file names was not found here. What became of it lets nobody more through:} other {# things the file names were not found here. What became of them lets nobody more through:}}',
+  'admin.workflows.report.problem':
+    '{kind, select, status {Status} group {Group} role {Role} user {Person} priority {Priority} closeReason {Close reason} ticketType {Ticket type} release {Release} area {Area} field {Field} permission {Permission} other {Item}} {name}, {where}: {outcome, select, guard_never_passes {the guard that names it never passes} narrowed {left out of the list} removed {the part that names it was removed} transition_disabled {the part that names it was removed, and the transition is turned off until you fix it} kept {kept as written; nobody holds it} other {left out}}.',
+  'admin.workflows.report.inTransition': 'in the transition {name}',
+  'admin.workflows.report.inStatus':
+    '{action, select, edit {in the edit lock of the status {name}} comment {in the comment lock of the status {name}} attach {in the attach lock of the status {name}} assign {in the assign lock of the status {name}} transition {in the transition lock of the status {name}} other {in the locks of the status {name}}}',
+  'admin.workflows.report.onCreate': 'when a ticket is created',
   'admin.statuses.title': 'Statuses',
   'admin.statuses.intro':
     'Statuses belong to the whole workspace, and each workflow uses some of them. The stage gives a status its colour and meaning.',
