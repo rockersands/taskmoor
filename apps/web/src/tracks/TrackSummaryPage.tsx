@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { type SummaryItem, type TrackClient, type TrackSummary, trackClient } from './client';
 
 export interface TrackSummaryPageProps {
@@ -23,7 +24,8 @@ const STAGES: Record<string, MessageId> = {
 };
 
 /** The search page for a query. */
-const searchHref = (query: string) => `#/search?${new URLSearchParams({ q: query }).toString()}`;
+const searchHref = (query: string) =>
+  routeHref(`#/search?${new URLSearchParams({ q: query }).toString()}`);
 
 /**
  * A track's summary (M1-064; RPT-006): its open, new, closed, updated and soon-due tickets, and
@@ -101,14 +103,16 @@ export function TrackSummaryPage({ trackKey, client = trackClient }: TrackSummar
         <h1 id={`${id}-title`} className="page-title">
           {t('summary.title', { name: summary.track.name, key: summary.track.key })}
         </h1>
-        <a href={`#/tracks/${encodeURIComponent(summary.track.key)}/list`}>{t('summary.list')}</a>
-        <a href={`#/tracks/${encodeURIComponent(summary.track.key)}/calendar`}>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/list`)}>
+          {t('summary.list')}
+        </a>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/calendar`)}>
           {t('summary.calendar')}
         </a>
-        <a href={`#/tracks/${encodeURIComponent(summary.track.key)}/timeline`}>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/timeline`)}>
           {t('summary.timeline')}
         </a>
-        <a href={`#/tracks/${encodeURIComponent(summary.track.key)}/releases`}>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/releases`)}>
           {t('summary.releases')}
         </a>
       </div>

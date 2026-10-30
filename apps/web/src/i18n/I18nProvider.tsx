@@ -1,6 +1,6 @@
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useEffect, useMemo } from 'react';
 import { IntlProvider, type IntlShape, useIntl } from 'react-intl';
-import { type Locale, messagesFor } from './locale';
+import { formatLocale, isRtl, type Locale, messagesFor } from './locale';
 import type { MessageId } from './messages.en';
 
 export interface I18nProviderProps {
@@ -12,9 +12,15 @@ export interface I18nProviderProps {
 
 export function I18nProvider({ locale, children, onError }: I18nProviderProps) {
   const messages = useMemo(() => messagesFor(locale), [locale]);
+  // The page says its language and direction, for assistive technology and the mirrored layout.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.lang = locale;
+    root.dir = isRtl(locale) ? 'rtl' : 'ltr';
+  }, [locale]);
   return (
     <IntlProvider
-      locale={locale}
+      locale={formatLocale(locale)}
       defaultLocale="en"
       messages={messages}
       onError={onError ?? defaultOnError}

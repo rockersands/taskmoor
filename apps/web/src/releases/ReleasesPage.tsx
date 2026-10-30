@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import { type Release, type ReleaseClient, type ReleaseList, releaseClient } from './client';
 import { ReleaseState } from './ReleaseState';
 
@@ -89,7 +90,7 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
       {releases.map((r) => (
         <li key={r.id} className="release-row">
           <div className="release-row-head">
-            <a href={`#/releases/${r.id}`} className="release-name">
+            <a href={routeHref(`#/releases/${r.id}`)} className="release-name">
               {r.name}
             </a>
             <ReleaseState release={r} />
@@ -124,7 +125,9 @@ export function ReleasesPage({ trackKey, client = releaseClient }: ReleasesPageP
         <h1 id={`${id}-title`} className="page-title">
           {t('releases.title', { name: track.name })}
         </h1>
-        <a href={`#/tracks/${encodeURIComponent(track.key)}`}>{t('releases.toSummary')}</a>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}`)}>
+          {t('releases.toSummary')}
+        </a>
       </div>
       {list.mayManage && (
         <form

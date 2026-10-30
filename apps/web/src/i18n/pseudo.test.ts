@@ -2,7 +2,7 @@ import { createIntl } from 'react-intl';
 import { describe, expect, it } from 'vitest';
 import { messagesFor, resolveLocale, STORAGE_KEY } from './locale';
 import { messagesEn } from './messages.en';
-import { argumentNames, pseudoLocalize, pseudoText } from './pseudo';
+import { argumentNames, pseudoBidi, pseudoLocalize, pseudoText } from './pseudo';
 
 describe('pseudoLocalize', () => {
   it('accents, lengthens and brackets plain text', () => {
@@ -37,6 +37,26 @@ describe('pseudoLocalize', () => {
   });
 });
 
+describe('pseudoBidi (M1-116)', () => {
+  it('[NFR-006] forces each run of text right to left and leaves arguments alone', () => {
+    expect(pseudoBidi('Hello {name}!')).toBe('\u202EHello \u202C{name}\u202E!\u202C');
+    const plural = pseudoBidi('{count, plural, one {# item} other {# items}}');
+    expect(argumentNames(plural)).toEqual(['count']);
+    expect(plural).toContain('\u202E items\u202C');
+  });
+
+  it('[NFR-006] formats every catalogue message right to left with the same arguments', () => {
+    const bidi = messagesFor('ar-XB');
+    const xb = createIntl({ locale: 'en', messages: bidi });
+    for (const [id, source] of Object.entries(messagesEn)) {
+      const values = Object.fromEntries(argumentNames(source).map((name) => [name, 3]));
+      expect(argumentNames(bidi[id] ?? '')).toEqual(argumentNames(source));
+      const text = xb.formatMessage({ id }, values);
+      if (/\p{L}/u.test(text)) expect(text).toContain('\u202E');
+    }
+  });
+});
+
 describe('resolveLocale', () => {
   const win = (overrides: {
     search?: string;
@@ -56,6 +76,7 @@ describe('resolveLocale', () => {
     expect(resolveLocale(win({ hash: '#/boards?locale=en-XA' }))).toBe('en-XA');
     expect(resolveLocale(win({ saved: 'en-XA' }))).toBe('en-XA');
     expect(resolveLocale(win({ search: '?locale=en', saved: 'en-XA' }))).toBe('en');
+    expect(resolveLocale(win({ search: '?locale=ar-XB' }))).toBe('ar-XB');
   });
 
   it('ignores unknown values and falls back to English', () => {

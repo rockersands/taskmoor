@@ -1,5 +1,6 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
@@ -194,7 +195,7 @@ describe('mutations at most once and the realtime socket (M1-032)', () => {
     const pushed = nextMessage(socket);
     await call({ method: 'PATCH', url: `/api/v1/tickets/${key}`, payload: { summary: 'Pushed' } });
     const moved = await pushed;
-    expect(Date.now() - started).toBeLessThan(1000);
+    expectWithinBudget(Date.now() - started, 1000, 'sync position push (ms)');
     expect(BigInt(moved.position as string) > BigInt(first.position as string)).toBe(true);
     socket.send('ping');
     expect(await nextMessage(socket)).toEqual({ type: 'pong' });

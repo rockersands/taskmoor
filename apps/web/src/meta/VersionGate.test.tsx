@@ -1,0 +1,83 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it } from 'vitest';
+import { I18nProvider } from '../i18n/I18nProvider';
+import type { Locale } from '../i18n/locale';
+import { untranslated, visibleTexts } from '../test/backend';
+import { setViewportWidth } from '../test/viewport';
+import type { Meta, MetaClient } from './client';
+import { UpdateBanner, VersionGate } from './VersionGate';
+
+const backend = (version: string, minimum: string | null, recommended: string | null) =>
+  ({
+    meta: async (): Promise<Meta> => ({
+      version,
+      frontend: { minimum, recommended },
+      instance: { id: 'i-1', name: 'Acme' },
+    }),
+  }) satisfies MetaClient;
+
+function open(client: MetaClient, version: string, locale: Locale = 'en') {
+  const errors: Error[] = [];
+  const view = render(
+    <I18nProvider locale={locale} onError={(e) => errors.push(e)}>
+      <VersionGate client={client} version={version}>
+        <main>
+          <UpdateBanner />
+          <h1>The app</h1>
+        </main>
+      </VersionGate>
+    </I18nProvider>,
+  );
+  return { errors, container: view.container };
+}
+
+describe('frontend and backend versions (M1-106)', () => {
+  it('[OPS-017] (2) a frontend one release behind keeps working and shows the update notice', async () => {
+    open(backend('1.4.2', '1.3.0', '1.4.0'), '1.3.5');
+    const notice = await screen.findByRole('region', { name: 'A newer version is available.' });
+    expect(notice).toHaveTextContent('This app is version 1.3.5 and the server runs 1.4.2.');
+    expect(screen.getByRole('heading', { name: 'The app' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    expect(screen.queryByRole('region', { name: 'A newer version is available.' })).toBeNull();
+  });
+
+  it('[API-018] (2) a frontend older than the backend serves shows "update required" instead of the app', async () => {
+    open(backend('1.4.2', '1.3.0', '1.4.0'), '1.2.9');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Update required' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'The app' })).toBeNull();
+    expect(screen.getByRole('main')).toHaveTextContent(
+      'This version of the app (1.2.9) no longer works with the server, which runs 1.4.2.',
+    );
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeEnabled();
+  });
+
+  it('[API-018] says nothing when versions match, on a development backend, or when the backend cannot be asked', async () => {
+    const failing: MetaClient = { meta: () => Promise.reject(new Error('offline')) };
+    for (const [client, version] of [
+      [backend('1.4.2', '1.3.0', '1.4.0'), '1.4.0'],
+      [backend('0.0.0-dev', null, null), '0.0.0-dev'],
+      [failing, '1.0.0'],
+    ] as const) {
+      const { container } = open(client, version);
+      await screen.findByRole('heading', { name: 'The app' });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(screen.queryByRole('region')).toBeNull();
+      container.remove();
+    }
+  });
+
+  it('[OPS-017] the notice fits a phone without sideways scrolling', async () => {
+    setViewportWidth(375);
+    open(backend('1.4.2', '1.3.0', '1.4.0'), '1.3.5');
+    await screen.findByRole('region', { name: 'A newer version is available.' });
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+
+  it('[OPS-017] every text goes through the catalogue (en-XA)', async () => {
+    const { container, errors } = open(backend('1.4.2', '1.3.0', '1.4.0'), '1.2.9', 'en-XA');
+    await screen.findByRole('button');
+    expect(untranslated(visibleTexts(container).filter((t) => !/\d/.test(t)))).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+});

@@ -1,10 +1,9 @@
 import { type ZodType, z } from 'zod';
 import { SESSION_COOKIE } from '../auth';
 import { routeAccess } from '../tokens/scopes';
-import { errorBody, type Operation } from './operation';
+import { API_VERSION, errorBody, type Operation } from './operation';
 
-/** The contract's version: its major number changes only with a breaking change (ADR-067). */
-export const API_VERSION = '1.0.0';
+export { API_VERSION };
 
 type Json = Record<string, unknown>;
 

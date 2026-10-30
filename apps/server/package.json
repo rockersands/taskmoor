@@ -33,6 +33,7 @@
     "@taskmoor/query": "workspace:*",
     "@taskmoor/richtext": "workspace:*",
     "@taskmoor/storage": "workspace:*",
+    "@taskmoor/webconfig": "workspace:*",
     "@taskmoor/workflow": "workspace:*",
     "@xmldom/xmldom": "^0.8.15",
     "fastify": "^5.12.5",

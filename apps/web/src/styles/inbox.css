@@ -126,7 +126,7 @@
   display: inline-block;
   width: 8px;
   height: 8px;
-  margin-right: var(--space-2);
+  margin-inline-end: var(--space-2);
   border-radius: 50%;
   background: var(--color-accent);
   vertical-align: middle;
@@ -142,8 +142,8 @@
 
 .inbox-quote {
   margin: 0;
-  padding-left: var(--space-3);
-  border-left: 3px solid var(--color-border);
+  padding-inline-start: var(--space-3);
+  border-inline-start: 3px solid var(--color-border);
   color: var(--color-text-muted);
   white-space: pre-line;
   overflow-wrap: anywhere;

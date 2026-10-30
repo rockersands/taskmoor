@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import { stableJson } from '@taskmoor/testkit';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -562,7 +563,7 @@ describe('webhooks (M1-067)', () => {
       .sort((a, b) => a - b);
     expect(waits).toHaveLength(20);
     const p95 = waits[Math.ceil(0.95 * waits.length) - 1] as number;
-    expect(p95).toBeLessThan(5000);
+    expectWithinBudget(p95, 5000, 'webhook delivery p95 (ms)');
   });
 
   describe('bodies', () => {

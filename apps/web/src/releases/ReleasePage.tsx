@@ -2,6 +2,7 @@ import { type CSSProperties, useCallback, useEffect, useId, useState } from 'rea
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import {
   type Counted,
   notesFileHref,
@@ -107,7 +108,7 @@ export function ReleasePage({
           {t('release.title', { track: track.name, name: release.name })}
         </h1>
         <ReleaseState release={release} />
-        <a href={`#/tracks/${encodeURIComponent(track.key)}/releases`}>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}/releases`)}>
           {t('release.toReleases', { track: track.name })}
         </a>
       </div>
@@ -245,7 +246,7 @@ export function ReleasePage({
                 {overview.tickets.map((k) => (
                   <tr key={k.id} data-stage={k.stage}>
                     <td>
-                      <a href={`#/tickets/${encodeURIComponent(k.key)}`}>{k.key}</a>
+                      <a href={routeHref(`#/tickets/${encodeURIComponent(k.key)}`)}>{k.key}</a>
                     </td>
                     <td>{k.summary}</td>
                     <td>{k.type}</td>
@@ -496,7 +497,8 @@ function NotesView({
               <ul>
                 {s.tickets.map((k) => (
                   <li key={k.id}>
-                    <a href={`#/tickets/${encodeURIComponent(k.key)}`}>{k.key}</a> {k.summary}
+                    <a href={routeHref(`#/tickets/${encodeURIComponent(k.key)}`)}>{k.key}</a>{' '}
+                    {k.summary}
                   </li>
                 ))}
               </ul>

@@ -82,7 +82,7 @@ describe('the API document (M1-065)', () => {
     await expect(stableJson(doc)).toMatchFileSnapshot('../../../../docs/api/openapi.json');
   });
 
-  it('[API-001] changes no stable operation incompatibly since the v1 baseline', () => {
+  it('[API-001] [NFR-010] changes no stable operation incompatibly since the v1 baseline', () => {
     const baseline = JSON.parse(
       readFileSync(
         new URL('../../../../docs/api/baseline/openapi-v1.json', import.meta.url),

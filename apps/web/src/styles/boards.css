@@ -150,7 +150,7 @@
 
 .board-lane-title {
   position: sticky;
-  left: 0;
+  inset-inline-start: 0;
   width: fit-content;
   max-width: calc(100vw - var(--space-8));
   margin: var(--space-3) 0 var(--space-2);
@@ -191,9 +191,12 @@
 .board-card::before {
   content: "";
   position: absolute;
-  inset: var(--space-2) auto var(--space-2) 0;
+  inset-block: var(--space-2);
+  inset-inline: 0 auto;
   width: 4px;
-  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
+  border-radius: 0;
+  border-start-end-radius: var(--radius-pill);
+  border-end-end-radius: var(--radius-pill);
   background: var(--card-colour, transparent);
 }
 
@@ -516,7 +519,7 @@
 }
 
 .sprint-scope-change {
-  margin-left: var(--space-2);
+  margin-inline-start: var(--space-2);
   padding: 0 var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--color-warning-soft);

@@ -2,6 +2,52 @@
 
 Read this first in every session, then update it before you stop.
 
+## For the next session on the Mac: install Docker and run the image, kit and Helm checks
+
+Left by the cloud session on 2026-10-30 at the user's request. Do this before the next task:
+GitHub Actions is off until M1 is finished (below), so these checks have not run since M1-059.
+
+1. Install a local Docker with Colima (free, open source, command line only; recommended over
+   Docker Desktop, whose licence is paid for larger companies): `brew install colima docker docker-compose docker-buildx kind
+   helm`, then link the Compose and Buildx plugins into `~/.docker/cli-plugins` as Homebrew's
+   notes say. If Homebrew or macOS asks for the user's password, ask the user.
+2. `colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60` (Rosetta runs the amd64
+   image too); check with `docker run --rm hello-world`.
+3. Run `bash tools/image/smoke.sh`, `bash tools/image/smoke-kits.sh`,
+   `bash tools/image/drill-backup.sh` and `bash tools/helm/kind-test.sh`. Fix what they find (in a commit of its own per cause), then record the
+   results here and remove this section.
+4. Note in "Notes from the Mac" how to start and stop Colima (`colima start`, `colima stop`;
+   it holds about 8 GB of memory while running).
+
+## Backlog review applied (2026-10-30)
+
+A review of the backlog against the requirements (Drive: "Taskmoor backlog review, 30 October
+2026") was applied with the user's decisions (`docs/plan/decisions.csv`). 31 new tasks, 237 in
+all: M1-123 to M1-133 (teams, clone and deep clone, computed info fields, board-managed
+workflow, workflow export and import, Jira URL redirects, entity properties, async bulk API,
+agent budgets, cross-browser e2e, AI eval sets; the first ten gate M1-120), M2-022 to M2-036,
+M3-016 to M3-018, M4-014 and M4-015. Six M1 "Should" requirements (AGL-020, NTF-009, API-015,
+API-016, AI-010, RPT-009) moved to M2 in the specs. M1-085 keeps IP allowlists and a syslog
+audit export; continuous SIEM streaming is M2-018. M0-001, M0-008, M1-116 and M1-118 reworded.
+Also decided: release 1.0 ships English and Spanish (M1-116; the other five languages of NFR-006
+are M2-037), and the Compose, all-in-one and Helm kits default to clean URLs (M1-134, ADR-066).
+
+## No GitHub Actions until M1 is finished (2026-10-30)
+
+GitHub Actions stopped starting jobs on 2026-10-29 evening (the free private-repo minutes ran
+out: "recent account payments have failed or your spending limit needs to be increased"). The
+user decided not to pay for GitHub and not to use Actions at all, free minutes included, until
+the full M1 version can be tested.
+
+- **The gate is local:** the whole `pnpm verify --e2e` before every push to `main` (CLAUDE.md).
+  Pushing and pulling work as before.
+- **Every workflow is manual only** (`workflow_dispatch`): no runs on push, pull request or
+  schedule. Do not dispatch any.
+- **Not checked since M1-059** (29 October): Postgres 18, Windows, the Docker image for both
+  architectures, the Compose kits, Helm on kind, the install matrix, the security scan and the
+  nightly benchmarks. They are run once at the M1 gate; expect fixes then. With Docker on the
+  Mac, `bash tools/image/smoke.sh` and `smoke-kits.sh` cover the image and kits locally.
+
 ## Moved to a Mac (2026-10-15)
 
 Development resumed on a Mac (Apple silicon, macOS). The repository lives in
@@ -13,6 +59,94 @@ like `wip/m1-007-ticket-types`, can be deleted from GitHub. Migration numbers 00
 all on the branch now; a long-lived development database that ran 0013 or 0014 before 0012
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
+
+## 2026-10-30: M1-116 i18n completeness (in progress)
+
+ADR-024 has a new section; no migration.
+- **Done:**
+  - `pnpm i18n:check` reports zero hard-coded strings, and a test keeps it there.
+  - The `ar-XB` bidi pseudo-locale (`?locale=ar-XB`) mirrors the app through logical CSS
+    properties; the timeline, charts and workflow diagram stay left-to-right islands.
+  - `e2e/rtl.spec.ts` checks six pages on desktop and phone.
+- **Next:** the Spanish machine draft (`apps/web/src/i18n/messages.es.ts`, typed
+  `Record<MessageId, string>`, glossary in its header), then `es` in `SUPPORTED_LOCALES` and
+  `resolveLocale`. Later, the person's saved language (`user.locale`) could pick the
+  catalogue; today only the URL, the saved preference and the browser language do.
+
+## 2026-10-30: speed limits moved to the benchmark run (ADR-071)
+
+The user asked for this. Time budgets in tests now go through `expectWithinBudget`, from
+`@taskmoor/testkit/budget` (Vitest), `apps/web/e2e/budget.ts` (Playwright) or
+`apps/web/src/test/budget.ts` (stories).
+- `pnpm verify` measures them into `.verify/budgets.jsonl` and prints a note when this machine
+  missed some; it never fails on them.
+- `pnpm bench:check` runs the 14 files that hold them with `TASKMOOR_ENFORCE_BUDGETS=1`
+  (`--e2e` adds the e2e specs). Run it on a quiet machine before a release.
+- New tests with a time budget must use the helper (CLAUDE.md, Conventions).
+
+## 2026-10-30: M1-106 meta endpoint, instance identity and update banner
+
+ADR-070; no migration.
+- **Identity:** the instance's identity lives in `instance_setting` under `identity`
+  (`apps/server/src/meta/identity.ts`): an id and an Ed25519 key pair. The private key is
+  sealed with the pepper. A lost pepper refuses signing (503); it never makes a new identity.
+- **Meta endpoint:** `GET /api/meta` (`routes/meta.ts`) is a public route and the stable
+  operation `getMeta`; the SDK is regenerated.
+- **Shared rules:** `@taskmoor/webconfig` has `versions.ts` (the window and the skew) and
+  `identity.ts` (`verifyInstance`), for the backend and for the kits of M1-110/M1-111.
+- **Web:** the artefact plugin defines `__TASKMOOR_WEB_VERSION__` (`runtime/version.ts`).
+  `meta/VersionGate.tsx` wraps `Pages`, and the shell's `<main>` starts with `UpdateBanner`.
+- **Pending:** the previous release's kit running its core e2e against the new backend. It
+  needs two releases and the kits; the release steps are in `docs/api/README.md`.
+- **Next:** M1-107 can replace the `*` CORS of `/api/meta` with the allowed origins if it
+  wants to; the value is public either way. Key rotation needs a procedure when kits pin the
+  key (ADR-070).
+
+## Side session 2026-10-30: M1-105 static frontend artefact
+
+Built on the branch `claude/nifty-hermann-b572d0` in a side session and merged into main after
+M1-115 (the MCP admin link it did not know about now goes through `routeHref`); ADR-066; no
+migration; new package `packages/webconfig`. The default routing mode is an open decision in
+`docs/plan/decisions.csv`.
+
+- **Artefact:** `pnpm build` writes `apps/web/dist` with `version.json` (name
+  `taskmoor-web`, the version from `TASKMOOR_VERSION`, every file with size and SHA-256);
+  `tools/build/server.mjs` stamps the same version into `server.mjs`/`cli.mjs`
+  (`__TASKMOOR_BUILD_VERSION__`, now the default of `TASKMOOR_VERSION`) and stops when
+  `apps/web/dist` holds another version. The web role refuses a folder with no
+  `version.json`, another version or no config slot (`apps/server/src/frontend.ts`). The
+  Dockerfile's build stage takes `ARG TASKMOOR_VERSION` (after the install layer); the Helm
+  chart no longer sets `TASKMOOR_VERSION` from the image tag (it would now refuse to start).
+- **No server code:** the Vite plugin `apps/web/build/artefact.ts` fails the build on a module
+  of a server-side workspace package, a third-party package only they use (from the
+  manifests) or a Node built-in, then writes `version.json` and scans the output. It imports
+  `packages/webconfig` and `packages/devtools/src/secrets` **by relative path**: Vite loads
+  its config with plain Node, which cannot run workspace TypeScript (bare imports are left
+  external), and Storybook loads the same config. The boundary rules exempt `apps/web/build/`.
+- **Runtime config:** a JSON block in index.html
+  (`<script id="taskmoor-config" type="application/json">`), keys `apiUrl`, `routing`,
+  `basePath`, `instanceName` only (`@taskmoor/webconfig`: tolerant `parseRuntimeConfig`,
+  strict `fillRuntimeConfig` that also writes `<base href>` for clean URLs). The server fills
+  it per request: `TASKMOOR_WEB_ROUTING` (`hash` default, `path`), the base path from
+  `PUBLIC_URL`, the instance name from setup.
+- **Routing:** pages still use routes written `#/boards/7`; `apps/web/src/routing/router.ts`
+  maps them to the address. Use `navigate`, `currentRoute`, `replaceRoute`, `routeHref`
+  (links), `routeUrl` (copying) and `useRoute`; never `window.location.hash` or
+  `history.replaceState` with a route, which break clean URLs. Token routes (`?token=`) stay
+  in the fragment. Server fallback: clean URLs get the shell, hash mode redirects `/x` to `/#/x`.
+- **Tests:** `packages/webconfig`, `routing/router.test.ts`, `apps/server/src/frontend.test.ts`,
+  the new Vitest project `web-build` (`apps/web/vitest.build.config.ts`: a real build, about
+  10 s), and `e2e/routing.spec.ts` on `e2e/web-server.ts` (ports 4176 hash and 4177 clean URLs,
+  its own embedded cluster `e2e-web`).
+- **Gotcha:** the e2e build is unversioned (`0.0.0-dev`); after it, a `server.mjs` from a
+  versioned `pnpm build` refuses `apps/web/dist`. Rebuild both with the same
+  `TASKMOOR_VERSION`.
+- **Pending (not blocking):** `bash tools/image/smoke.sh` (now checks `/version.json` against
+  `/health` and both deep-link behaviours) was not run: no Docker on this Mac.
+- **Next:** clean URLs as the single-server default is a product call (the spec's default for
+  kits is clean URLs); credentials for a cross-origin `apiUrl` come with M1-107; M1-106 can
+  compare `version.json` with the meta endpoint; M1-111 fills the slot and adds the host
+  fallbacks (`.htaccess`, `_redirects`, nginx) with `fillRuntimeConfig`.
 
 ## Side session 2026-10-30: M1-087 synthetic Data Center backups
 

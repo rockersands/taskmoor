@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import {
@@ -233,7 +234,7 @@ export function WorkflowEditorPage({
     return (
       <section className="workflow-editor" aria-labelledby={`${id}-title`}>
         <p className="workflow-back">
-          <a href="#/admin/workflows">{t('admin.workflow.back')}</a>
+          <a href={routeHref('#/admin/workflows')}>{t('admin.workflow.back')}</a>
         </p>
         <h1 id={`${id}-title`} className="page-title">
           {t('admin.workflows.title')}
@@ -484,7 +485,7 @@ export function WorkflowEditorPage({
   return (
     <section className="workflow-editor" aria-labelledby={`${id}-title`}>
       <p className="workflow-back">
-        <a href="#/admin/workflows">{t('admin.workflow.back')}</a>
+        <a href={routeHref('#/admin/workflows')}>{t('admin.workflow.back')}</a>
       </p>
       <h1 id={`${id}-title`} className="page-title">
         {t('common.value', { value: workflow.name })}

@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 
 export interface NavItem {
   id: string;
@@ -28,7 +29,7 @@ export function NavList({ items, activeId, showLabels, onNavigate }: NavListProp
             <li key={id}>
               <a
                 className="nav-link"
-                href={href}
+                href={routeHref(href)}
                 aria-current={id === activeId ? 'page' : undefined}
                 aria-label={showLabels ? undefined : label}
                 title={showLabels ? undefined : label}

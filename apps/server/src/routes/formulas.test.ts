@@ -1,6 +1,7 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { dayOfDate, isoOfDay, workingDaysUntil, workingWeek } from '@taskmoor/formula';
 import { hashPassword } from '@taskmoor/iam';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -194,7 +195,7 @@ describe('formula fields (M1-013)', () => {
     const edited = await edit(t.id, { fields: { [points]: 7 } });
     const elapsed = performance.now() - started;
     expect(edited.fields[double]).toBe(14);
-    expect(elapsed).toBeLessThan(1000);
+    expectWithinBudget(elapsed, 1000, 'edit with a formula (ms)');
     // Cleared input clears the formula; the side table follows.
     expect((await edit(t.id, { fields: { [points]: null } })).fields[double]).toBeUndefined();
     await edit(t.id, { fields: { [points]: 2.5 } });
@@ -487,7 +488,7 @@ describe('formula fields (M1-013)', () => {
     await isLocked;
     const started = performance.now();
     await edit(child.id, { fields: { [weight]: 9 } });
-    expect(performance.now() - started).toBeLessThan(1000);
+    expectWithinBudget(performance.now() - started, 1000, 'edit beside a locked parent (ms)');
     expect(await pendingJobs(FORMULA_RECOMPUTE_TASK)).toBe(1);
     release();
     await holder;
@@ -505,8 +506,9 @@ describe('formula fields (M1-013)', () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     await loop.stop();
-    // Measured 0.1 to 0.6 s; the bound leaves room for a loaded machine.
-    expect(caughtUp).toBeLessThan(1500);
+    // Measured 0.1 to 0.6 s. Catching up at all is checked in every run; how fast, in the benchmark.
+    expect(Number.isFinite(caughtUp)).toBe(true);
+    expectWithinBudget(caughtUp, 1500, 'formula recompute catch-up (ms)');
     const { rows: left } = await sql<{ payload: unknown; last_error: string | null }>`
       SELECT payload, last_error FROM job
        WHERE task = ${FORMULA_RECOMPUTE_TASK} AND done_at IS NULL`.execute(database.db);
@@ -759,8 +761,7 @@ describe('formula fields (M1-013)', () => {
       await syncFieldValues(trx, catalog, ids, [units]);
       await refreshFormulas(trx, catalog, 1, ids);
     });
-    const elapsed = performance.now() - started;
-    expect(elapsed).toBeLessThan(1000);
+    expectWithinBudget(performance.now() - started, 1000, 'bulk recompute of 1,000 tickets (ms)');
     expect(await fieldValue(ids[0] as number, total)).toBe(10);
     expect(await fieldValue(parent.id, total)).toBe(1000);
     await sideRowsMatch();

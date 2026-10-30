@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { replaceRoute } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import {
@@ -136,7 +137,7 @@ export function SearchPage({
     setTooMuch(false);
     setMode(read ? 'basic' : 'advanced');
     if (saved.columns && saved.columns.length > 0) chooseColumns(saved.columns);
-    window.history.replaceState(null, '', `#/search?savedSearch=${saved.id}`);
+    replaceRoute(`#/search?savedSearch=${saved.id}`);
     void run(saved.query);
   };
 
@@ -152,7 +153,7 @@ export function SearchPage({
   }, []);
 
   const searchFor = (query: string) => {
-    window.history.replaceState(null, '', `#/search?q=${encodeURIComponent(query)}`);
+    replaceRoute(`#/search?q=${encodeURIComponent(query)}`);
     void run(query);
   };
 
@@ -228,7 +229,7 @@ export function SearchPage({
         onOpen={openSaved}
         onSaved={(saved) => {
           setOpened(saved);
-          window.history.replaceState(null, '', `#/search?savedSearch=${saved.id}`);
+          replaceRoute(`#/search?savedSearch=${saved.id}`);
         }}
       />
       <ResultList

@@ -1,5 +1,6 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { ENFORCE_BUDGETS, expectWithinBudget } from '@taskmoor/testkit/budget';
 import { fc } from '@taskmoor/testkit/property';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
@@ -435,9 +436,10 @@ describe('custom field side tables (M1-011)', () => {
       }
       times.sort((a, b) => a - b);
       rounds.push(times[Math.floor(times.length * 0.95)] as number);
-      if ((rounds[round] as number) < 50) break;
+      // Outside the benchmark run one round is enough: the budget is only measured there.
+      if (!ENFORCE_BUDGETS || (rounds[round] as number) < 50) break;
     }
-    expect(Math.min(...rounds)).toBeLessThan(50);
+    expectWithinBudget(Math.min(...rounds), 50, 'ticket edit with 1,500 fields p95 (ms)');
     expect((await verify()).mismatched).toEqual([]);
   }, 120_000);
 });

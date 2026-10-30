@@ -76,7 +76,7 @@ AGL-016,AGL,List view and format rules,M1,Must,Jira Free
 AGL-017,AGL,Calendar view,M1,Must,Jira Free; Vikunja (CalDAV-style feed)
 AGL-018,AGL,Navigation and command palette,M1,Must,Jira Free; Linear
 AGL-019,AGL,For you page,M1,Must,Jira Free
-AGL-020,AGL,Saved views,M1,Should,Plane
+AGL-020,AGL,Saved views,M2,Should,Plane
 AGL-021,AGL,Natural-language quick add,M2,Should,Vikunja
 AGL-022,AGL,Stale ticket auto-close,M2,Should,Fizzy
 AGL-023,AGL,Story maps and retrospectives,M4,Could,Easy Agile TeamRhythm app
@@ -88,7 +88,7 @@ RPT-005,RPT,Widget catalog,M1,Must,Jira Free
 RPT-006,RPT,Track insight dashboards,M1,Must,Jira Free; exceeds Jira (5 per space)
 RPT-007,RPT,Summary work pulse,M2,Should,Jira Free
 RPT-008,RPT,Analytics store and BI access,M2,Must,Azure DevOps Analytics; Power BI Connector app; exceeds Jira
-RPT-009,RPT,Report export and scheduling,M1,Should,Better Excel Exporter app
+RPT-009,RPT,Report export and scheduling,M2,Should,Better Excel Exporter app
 RPT-010,RPT,Wiki-based reports,M2,Could,Jira Free (Confluence reports)
 RPT-011,RPT,OLAP reporting,M4,Must,eazyBI app
 NTF-001,NTF,Notification policies,M1,Must,Jira Free
@@ -99,7 +99,7 @@ NTF-005,NTF,Mentions,M1,Must,Jira Free
 NTF-006,NTF,Rich text editor,M1,Must,Jira Free
 NTF-007,NTF,Rich text storage and conversion,M1,Must,Jira Free; exceeds Jira (no Markdown option)
 NTF-008,NTF,Real-time collaboration,M1,Must,Linear; Plane
-NTF-009,NTF,Share and reply by email,M1,Should,Jira Free
+NTF-009,NTF,Share and reply by email,M2,Should,Jira Free
 NTF-010,NTF,Chat integrations,M2,Must,"Jira Free (Slack, Teams apps)"
 NTF-011,NTF,Rich links and wiki pages,M2,Should,"Jira Free (Smart Links, Confluence links)"
 NTF-012,NTF,Whiteboards,M4,Should,YouTrack; ClickUp
@@ -117,8 +117,8 @@ API-011,API,Rich text formats on the API,M1,Must,exceeds Jira (no Markdown outpu
 API-012,API,MCP server,M1,Must,Rovo MCP server; Plane; exceeds OpenProject (paid MCP)
 API-013,API,Entity properties,M1,Must,Jira Free
 API-014,API,Compatibility matrix and contract tests,M1,Must,exceeds Jira
-API-015,API,Command-line client,M1,Should,Atlassian CLI; Kaneo
-API-016,API,Change feed,M1,Should,Linear sync engine
+API-015,API,Command-line client,M2,Should,Atlassian CLI; Kaneo
+API-016,API,Change feed,M2,Should,Linear sync engine
 API-017,API,Public meta endpoint,M1,Must,User requirement (Builder)
 API-018,API,Frontend compatibility window,M1,Must,User requirement (Builder)
 IMP-001,IMP,XML backup importer,M1,Must,Jira DC backup format
@@ -180,7 +180,7 @@ AI-006,AI,Default models and effort,M1,Must,User requirement
 AI-007,AI,"Streaming, structured outputs and tool calls",M1,Must,User requirement
 AI-008,AI,Prompt caching and batch,M1,Must,User requirement
 AI-009,AI,"Retries, refusals and fallback",M1,Must,User requirement
-AI-010,AI,Inference region,M1,Should,User requirement
+AI-010,AI,Inference region,M2,Should,User requirement
 AI-011,AI,Agent runs with budgets,M1,Must,User requirement
 AI-012,AI,Embeddings with a bundled local model,M1,Must,User requirement
 AI-013,AI,Summaries,M1,Must,Jira (Rovo); YouTrack

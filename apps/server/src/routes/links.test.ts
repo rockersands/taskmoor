@@ -1,5 +1,6 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -375,7 +376,7 @@ describe('ticket links, web links, followers and votes (M1-015)', () => {
         expect(links).toHaveLength(1000);
       }
       times.sort((x, y) => x - y);
-      expect(times[2]).toBeLessThan(300);
+      expectWithinBudget(times[2] as number, 300, 'ticket with 1,000 links, median (ms)');
     }, 60_000);
   });
 

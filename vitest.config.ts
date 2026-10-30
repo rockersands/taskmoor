@@ -42,6 +42,8 @@ export default defineConfig({
       'packages/*',
       'apps/server',
       'apps/web/vitest.config.ts',
+      // The frontend build as an artefact (M1-105): real builds, so a project of its own.
+      'apps/web/vitest.build.config.ts',
       // Stories run as browser tests with axe checks (M0-031).
       ...storiesProject,
     ],

@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 
 /** Settings: the person's own account for everyone, administration for site administrators. */
@@ -18,7 +19,7 @@ export function SettingsPage() {
         </h2>
         <ul className="link-list">
           <li>
-            <a href="#/account">{t('settings.account')}</a>
+            <a href={routeHref('#/account')}>{t('settings.account')}</a>
             <p className="page-note">{t('settings.accountHint')}</p>
           </li>
         </ul>
@@ -30,71 +31,71 @@ export function SettingsPage() {
           </h2>
           <ul className="link-list">
             <li>
-              <a href="#/admin/users">{t('settings.users')}</a>
+              <a href={routeHref('#/admin/users')}>{t('settings.users')}</a>
               <p className="page-note">{t('settings.usersHint')}</p>
             </li>
             <li>
-              <a href="#/admin/groups">{t('settings.groups')}</a>
+              <a href={routeHref('#/admin/groups')}>{t('settings.groups')}</a>
               <p className="page-note">{t('settings.groupsHint')}</p>
             </li>
             <li>
-              <a href="#/admin/system">{t('settings.systemStatus')}</a>
+              <a href={routeHref('#/admin/system')}>{t('settings.systemStatus')}</a>
               <p className="page-note">{t('settings.systemStatusHint')}</p>
             </li>
             <li>
-              <a href="#/admin/tokens">{t('settings.apiTokens')}</a>
+              <a href={routeHref('#/admin/tokens')}>{t('settings.apiTokens')}</a>
               <p className="page-note">{t('settings.apiTokensHint')}</p>
             </li>
             <li>
-              <a href="#/admin/service-accounts">{t('settings.serviceAccounts')}</a>
+              <a href={routeHref('#/admin/service-accounts')}>{t('settings.serviceAccounts')}</a>
               <p className="page-note">{t('settings.serviceAccountsHint')}</p>
             </li>
             <li>
-              <a href="#/admin/security">{t('settings.security')}</a>
+              <a href={routeHref('#/admin/security')}>{t('settings.security')}</a>
               <p className="page-note">{t('settings.securityHint')}</p>
             </li>
             <li>
-              <a href="#/admin/trash">{t('settings.trash')}</a>
+              <a href={routeHref('#/admin/trash')}>{t('settings.trash')}</a>
               <p className="page-note">{t('settings.trashHint')}</p>
             </li>
             <li>
-              <a href="#/admin/mcp">{t('settings.mcp')}</a>
+              <a href={routeHref('#/admin/mcp')}>{t('settings.mcp')}</a>
               <p className="page-note">{t('settings.mcpHint')}</p>
             </li>
             <li>
-              <a href="#/admin/identity-providers">{t('settings.singleSignOn')}</a>
+              <a href={routeHref('#/admin/identity-providers')}>{t('settings.singleSignOn')}</a>
               <p className="page-note">{t('settings.singleSignOnHint')}</p>
             </li>
             <li>
-              <a href="#/admin/directories">{t('settings.directories')}</a>
+              <a href={routeHref('#/admin/directories')}>{t('settings.directories')}</a>
               <p className="page-note">{t('settings.directoriesHint')}</p>
             </li>
             <li>
-              <a href="#/admin/workflows">{t('settings.workflows')}</a>
+              <a href={routeHref('#/admin/workflows')}>{t('settings.workflows')}</a>
               <p className="page-note">{t('settings.workflowsHint')}</p>
             </li>
             <li>
-              <a href="#/admin/workflow-maps">{t('settings.workflowMaps')}</a>
+              <a href={routeHref('#/admin/workflow-maps')}>{t('settings.workflowMaps')}</a>
               <p className="page-note">{t('settings.workflowMapsHint')}</p>
             </li>
             <li>
-              <a href="#/admin/tracks">{t('settings.tracks')}</a>
+              <a href={routeHref('#/admin/tracks')}>{t('settings.tracks')}</a>
               <p className="page-note">{t('settings.tracksHint')}</p>
             </li>
             <li>
-              <a href="#/admin/fields">{t('settings.fields')}</a>
+              <a href={routeHref('#/admin/fields')}>{t('settings.fields')}</a>
               <p className="page-note">{t('settings.fieldsHint')}</p>
             </li>
             <li>
-              <a href="#/admin/configuration-sets">{t('settings.sets')}</a>
+              <a href={routeHref('#/admin/configuration-sets')}>{t('settings.sets')}</a>
               <p className="page-note">{t('settings.setsHint')}</p>
             </li>
             <li>
-              <a href="#/admin/guardrails">{t('settings.guardrails')}</a>
+              <a href={routeHref('#/admin/guardrails')}>{t('settings.guardrails')}</a>
               <p className="page-note">{t('settings.guardrailsHint')}</p>
             </li>
             <li>
-              <a href="#/admin/permissions">{t('settings.permissions')}</a>
+              <a href={routeHref('#/admin/permissions')}>{t('settings.permissions')}</a>
               <p className="page-note">{t('settings.permissionsHint')}</p>
             </li>
           </ul>

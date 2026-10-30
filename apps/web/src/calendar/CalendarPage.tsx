@@ -1,6 +1,7 @@
 import { type DragEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import { dayNumber, isoDay } from '../timeline/client';
 import {
   type CalendarClient,
@@ -166,7 +167,9 @@ export function CalendarPage({
         <h1 id={`${id}-title`} className="page-title">
           {t('calendar.title', { name: data.track.name })}
         </h1>
-        <a href={`#/tracks/${encodeURIComponent(data.track.key)}`}>{t('releases.toSummary')}</a>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(data.track.key)}`)}>
+          {t('releases.toSummary')}
+        </a>
       </div>
       <div className="calendar-tools">
         <button

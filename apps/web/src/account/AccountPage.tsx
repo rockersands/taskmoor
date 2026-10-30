@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { type NotificationsClient, notificationsClient } from '../notifications/client';
 import { NotificationsSection } from '../notifications/NotificationsSection';
+import { currentRoute } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { type PersonalTokensClient, personalTokensClient } from '../tokens/client';
 import { TokensSection } from '../tokens/TokensSection';
@@ -36,7 +37,7 @@ export function AccountPage({
   const { session } = useSession();
   const signedIn = session.status === 'signed-in';
   useEffect(() => {
-    if (!signedIn || !window.location.hash.startsWith('#/account/notifications')) return;
+    if (!signedIn || !currentRoute().startsWith('#/account/notifications')) return;
     const section = document.getElementById('notifications');
     section?.scrollIntoView?.();
     section?.querySelector<HTMLElement>('h2')?.focus();

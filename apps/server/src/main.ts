@@ -103,7 +103,7 @@ const app = await buildApp({
   secureCookies: config.secureCookies,
   publicUrl: config.publicUrl,
   ...(config.trustedProxies ? { trustedProxies: config.trustedProxies } : {}),
-  ...(config.webDir ? { webDir: config.webDir } : {}),
+  ...(config.webDir ? { webDir: config.webDir, webRouting: config.webRouting } : {}),
   metrics,
   ...(tracing ? { tracer: tracing.tracer } : {}),
   ...(config.dataDir ? { dataDir: config.dataDir } : {}),

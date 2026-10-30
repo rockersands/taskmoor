@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { UpdateBanner } from '../meta/VersionGate';
 import { MenuIcon } from './icons';
 import { type NavItem, NavList } from './NavList';
 import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
@@ -138,6 +139,7 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
       )}
 
       <main id="main" className="shell-main" tabIndex={-1}>
+        <UpdateBanner />
         {children}
       </main>
     </div>

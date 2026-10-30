@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { expect, request, test } from '@playwright/test';
+import { expectWithinBudget } from './budget';
 
 /**
  * The inbox end to end (M1-058; NTF-003, NTF-005): with Bea's inbox open, Ada mentions her in
@@ -87,8 +88,7 @@ test('[NTF-003] [NTF-005] a mention reaches the open inbox within a second, exac
   expect((await comment.json()).mentionWarnings).toBeUndefined();
   await item.waitFor({ state: 'visible', timeout: 5000 });
   const elapsed = Date.now() - started;
-  testInfo.annotations.push({ type: 'inbox latency (ms)', description: String(elapsed) });
-  expect(elapsed).toBeLessThan(1000);
+  expectWithinBudget(testInfo, elapsed, 1000, 'inbox mention arrival (ms)');
   await expect(item).toContainText(key);
   await expect(item).toContainText('can you check the totals?');
 

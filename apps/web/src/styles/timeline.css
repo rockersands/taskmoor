@@ -32,6 +32,8 @@
 }
 
 .timeline-body {
+  /* A drawing in its own coordinates: left to right under every script (M1-116, ADR-024). */
+  direction: ltr;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;

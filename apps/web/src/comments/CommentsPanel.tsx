@@ -7,6 +7,7 @@ import { useLockText } from '../locks/useLockText';
 import type { MentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { RichTextView } from '../richtext/RichTextView';
+import { currentRoute, onRouteChange, routeUrl } from '../routing/router';
 import {
   type Audiences,
   type Comment,
@@ -45,7 +46,7 @@ const parseValue = (value: string): VisibilityChoice => {
 
 /** The comment the address points at (#/tickets/<key>?comment=<id>), if any. */
 function targetComment(): number | null {
-  const match = /[?&]comment=(\d+)/.exec(window.location.hash);
+  const match = /[?&]comment=(\d+)/.exec(currentRoute());
   return match ? Number(match[1]) : null;
 }
 
@@ -96,9 +97,7 @@ export function CommentsPanel({ ticket, ticketKey, client: given, mentions }: Co
 
   // A link to a comment brings it into view once it is there.
   useEffect(() => {
-    const onHash = () => setTarget(targetComment());
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    return onRouteChange(() => setTarget(targetComment()));
   }, []);
   useEffect(() => {
     if (target === null || !loaded) return;
@@ -486,9 +485,7 @@ function CommentItem({
     }
   };
   const copyLink = async () => {
-    const link = `${window.location.origin}${window.location.pathname}#/tickets/${encodeURIComponent(
-      ticketKey,
-    )}?comment=${comment.id}`;
+    const link = routeUrl(`#/tickets/${encodeURIComponent(ticketKey)}?comment=${comment.id}`);
     try {
       await navigator.clipboard.writeText(link);
       onMessage(t('comments.linkCopied'));

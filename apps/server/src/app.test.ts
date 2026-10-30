@@ -37,6 +37,13 @@ describe('probes with a working database', () => {
   });
 });
 
+/** The smallest frontend artefact: an index.html with the runtime-config slot, and a manifest. */
+const webShell =
+  '<!doctype html><head><script id="taskmoor-config" type="application/json">{}</script></head>' +
+  '<div id="root"></div>';
+const webManifest = (version: string) =>
+  JSON.stringify({ name: 'taskmoor-web', version, files: [] });
+
 describe('web role', () => {
   let dir: string;
   let app: FastifyInstance;
@@ -44,8 +51,9 @@ describe('web role', () => {
   beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), 'taskmoor-web-'));
     await mkdir(join(dir, 'assets'));
-    await writeFile(join(dir, 'index.html'), '<!doctype html><div id="root"></div>');
+    await writeFile(join(dir, 'index.html'), webShell);
     await writeFile(join(dir, 'assets', 'app.js'), 'console.log(1)');
+    await writeFile(join(dir, 'version.json'), webManifest('1.0.0-test'));
     app = await buildApp({ version: '1.0.0-test', roles: ['web'], webDir: dir });
   });
   afterAll(async () => {
@@ -53,7 +61,7 @@ describe('web role', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it('[OPS-013] serves the built files and the app shell for deep links', async () => {
+  it('[OPS-013] serves the built files and sends deep links to their hash route', async () => {
     const index = await app.inject({ method: 'GET', url: '/' });
     expect(index.statusCode).toBe(200);
     expect(index.body).toContain('id="root"');
@@ -65,8 +73,8 @@ describe('web role', () => {
       url: '/browse/ABC-1',
       headers: { accept: 'text/html,*/*' },
     });
-    expect(deep.statusCode).toBe(200);
-    expect(deep.body).toContain('id="root"');
+    expect(deep.statusCode).toBe(302);
+    expect(deep.headers.location).toBe('/#/browse/ABC-1');
   });
 
   it('keeps JSON 404s for API paths and non-HTML clients', async () => {

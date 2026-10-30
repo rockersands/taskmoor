@@ -59,6 +59,26 @@ machines on every change, which is how this project verifies work.
   start with it (2.5.3): track summary counts, release stages, the timeline's "No dates". The
   MCP connection snippet wraps instead of scrolling, which would need focus.
 
+## Completeness, right to left and a second language (M1-116)
+
+- **The string check** (`pnpm i18n:check`; `packages/devtools/src/i18n-check.ts`) parses every
+  component of the web app. It reports text between JSX tags that holds a letter, and literal
+  values of the attributes people read or hear (`aria-label`, `title`, `placeholder`, `alt`
+  and the like). It skips text in `<code>`, `<kbd>`, `<pre>` and `<samp>`, and lines marked
+  `i18n-ignore` with a reason, such as a query-language example in a placeholder. A test holds
+  the app at zero findings. It complements the `en-XA` tests, which only see what they render.
+- **Right to left**: `ar-XB` is a bidi pseudo-locale. Every run of catalogue text is forced right
+  to left (U+202E ... U+202C) while arguments stay as they are. It formats numbers and dates like
+  English, so only direction differs. `I18nProvider` sets `lang` and `dir` on the page. The
+  stylesheets use logical properties (`margin-inline-start`, `inset-inline-end`,
+  `border-start-end-radius`, `text-align: start`) wherever a side means the start or end of a
+  line, so `dir="rtl"` mirrors the shell, drawer, forms and lists. Drawings in their own
+  coordinates (the timeline body, chart plots, the workflow diagram) stay left to right as
+  islands, and so does a collaborator's caret drawn at a measured position.
+  `apps/web/e2e/rtl.spec.ts` opens six pages in `ar-XB` on a desktop and a phone. It checks the
+  direction, that nothing scrolls sideways and that the navigation and top bar start at the
+  right, and attaches a screenshot of each page to the report.
+
 ## Options considered
 
 | Option | For | Against |

@@ -101,6 +101,7 @@ describe('API v1 contract (M1-065)', () => {
       body: signIn.json(),
     });
     cookie = sessionCookie(signIn.headers['set-cookie']);
+    await call('GET', '/api/meta', '/api/meta?nonce=contract-test-nonce-0001');
     await call('GET', '/api/v1/session', '/api/v1/session');
     const track = (
       await call('POST', '/api/v1/tracks', '/api/v1/tracks', {

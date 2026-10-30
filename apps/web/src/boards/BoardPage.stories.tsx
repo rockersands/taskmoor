@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
 import { CARDS, fakeBoardClient, manyCards } from './fixtures';
 
@@ -94,6 +95,6 @@ export const FiveThousandCards: Story = {
       interval: 10,
     });
     const took = performance.now() - arrival.at;
-    await expect(took).toBeLessThan(1000);
+    await expectWithinBudget(took, 1000, '5,000 cards on screen (ms)');
   },
 };

@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import type { Board } from '../boards/client';
 import { useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import { estimateText } from '../sprints/client';
 import { ColumnChart } from './ColumnChart';
 import type { ReleaseReport, ReportClient, ScopeBurndown } from './client';
@@ -145,7 +146,9 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
       <>
         {b.outcome && (
           <p className="report-note">
-            <a href={`#/tickets/${encodeURIComponent(b.outcome.key)}`}>{b.outcome.key}</a>{' '}
+            <a href={routeHref(`#/tickets/${encodeURIComponent(b.outcome.key)}`)}>
+              {b.outcome.key}
+            </a>{' '}
             {b.outcome.summary}
           </p>
         )}
