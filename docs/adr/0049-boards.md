@@ -96,3 +96,19 @@ backlog column and estimation (AGL-007, AGL-014 (1)) and the full board UI with 
   search reference; M1-093 imports boards, their filters and board filters into this model.
 - Revisit the JSON configuration if boards need per-column policies that other features query
   (for example the "done" column for sprint reports: today it is the rightmost column).
+
+## Drag and drop (M1-046)
+
+- **The browser's own drag and drop**, no library: a card is draggable; a cell takes the drop
+  and shows where it would land (the cell outlined, a line above the card it would go before:
+  the pointer in a card's top half means before it, the bottom half after it). A drop sends the
+  same move as the keyboard and the Move menu: one request with the column and `before` or
+  `after`, so the transition, its checks, the "which transition" question and the rank all come
+  from the move route. A drop where the card already is sends nothing. Lanes do not change on a
+  drop (a lane by assignee or query is not a place to move to).
+- **Phones** move cards with the Move menu and the keyboard: touch dragging in browsers is
+  uneven and would fight scrolling the columns.
+- **Rendering**: the cards are grouped by cell once per render, with each card's place, instead
+  of filtering the list per card. 5,000 cards render in 455 to 458 ms after the data arrives
+  (Chromium, `FiveThousandCards` story, two runs in each skin; budget 1 s), so no virtualised
+  list was needed; revisit at the 50,000-card load of AGL-013 (2).

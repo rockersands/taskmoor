@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { BoardPage } from './BoardPage';
-import { CARDS, fakeBoardClient } from './fixtures';
+import { CARDS, fakeBoardClient, manyCards } from './fixtures';
 
 const meta = {
   title: 'Boards/BoardPage',
@@ -64,4 +64,36 @@ export const NoLanes: Story = {
 
 export const Empty: Story = {
   args: { client: fakeBoardClient({ cards: [] }) },
+};
+
+/** When the board's data arrived, for the render budget below. */
+const arrival = { at: 0 };
+
+/**
+ * 5,000 cards (M1-046: rendered in under a second from the data's arrival). Timing only: the
+ * same board passes axe in the stories above, and axe over 5,000 cards measures axe.
+ */
+export const FiveThousandCards: Story = {
+  args: {
+    client: (() => {
+      const inner = fakeBoardClient({ cards: manyCards(5000) });
+      return {
+        ...inner,
+        data: async (...args: Parameters<typeof inner.data>) => {
+          const data = await inner.data(...args);
+          arrival.at = performance.now();
+          return data;
+        },
+      };
+    })(),
+  },
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(canvasElement.querySelectorAll('.board-card')).toHaveLength(5000), {
+      timeout: 10_000,
+      interval: 10,
+    });
+    const took = performance.now() - arrival.at;
+    await expect(took).toBeLessThan(1000);
+  },
 };

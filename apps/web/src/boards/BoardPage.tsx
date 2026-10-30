@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type DragEvent,
   type KeyboardEvent,
   useCallback,
   useEffect,
@@ -77,9 +78,10 @@ function ColumnHead({ column, t }: { column: Column; t: Translate }) {
 /**
  * A board (M1-043; AGL-002 to AGL-006): its columns with counts and WIP limits, its lanes, and
  * the cards in rank order. The columns scroll sideways inside the board, never the page. A card
- * moves with Alt and the arrow keys (another column left or right, up or down in its column)
- * or with its Move menu; a move runs the ticket's transition on the server and asks which one
- * when several lead into the column. Board filters narrow the cards; counts stay whole.
+ * moves with Alt and the arrow keys (another column left or right, up or down in its column),
+ * with its Move menu, or by dragging it to a place in a column (M1-046); a move runs the
+ * ticket's transition on the server and asks which one when several lead into the column.
+ * Board filters narrow the cards; counts stay whole.
  */
 export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const t = useT();
@@ -95,6 +97,13 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const [choice, setChoice] = useState<Choice | null>(null);
   const [menuFor, setMenuFor] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The card being dragged, and where it would land: before a card, or at the cell's end. */
+  const [dragging, setDragging] = useState<number | null>(null);
+  const [dropAt, setDropAt] = useState<{
+    columnId: string;
+    laneId: string;
+    before: number | null;
+  } | null>(null);
   const focusAfter = useRef<number | null>(null);
   const links = useRef(new Map<number, HTMLAnchorElement>());
   const firstChoice = useRef<HTMLButtonElement | null>(null);
@@ -151,8 +160,21 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   }
 
   const columns = data.columns;
-  const cardsIn = (columnId: string, laneId: string) =>
-    data.cards.filter((c) => c.columnId === columnId && c.laneId === laneId);
+  // The cards by cell, their place in it and the lanes' counts, in one pass: a board of
+  // thousands of cards renders without searching the list per card (M1-046).
+  const cells = new Map<string, BoardCard[]>();
+  const placeOf = new Map<number, number>();
+  const laneCounts = new Map<string, number>();
+  const cellKey = (columnId: string, laneId: string) => `${columnId}\u0000${laneId}`;
+  for (const card of data.cards) {
+    const key = cellKey(card.columnId, card.laneId);
+    const list = cells.get(key);
+    placeOf.set(card.id, list?.length ?? 0);
+    if (list) list.push(card);
+    else cells.set(key, [card]);
+    laneCounts.set(card.laneId, (laneCounts.get(card.laneId) ?? 0) + 1);
+  }
+  const cardsIn = (columnId: string, laneId: string) => cells.get(cellKey(columnId, laneId)) ?? [];
   const columnById = (id: string) => columns.find((c) => c.id === id) as Column;
 
   async function move(card: BoardCard, request: MoveRequest, done: string) {
@@ -217,6 +239,58 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     );
   }
 
+  /** Where a drag over a cell would put the card: before the card under the pointer's half. */
+  function overCell(event: DragEvent, columnId: string, laneId: string) {
+    if (dragging === null) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const over = (event.target as HTMLElement).closest<HTMLElement>('[data-card-id]');
+    let before: number | null = null;
+    if (over) {
+      const id = Number(over.dataset.cardId);
+      const rect = over.getBoundingClientRect();
+      if (event.clientY < rect.top + rect.height / 2) before = id;
+      else {
+        const cell = cardsIn(columnId, laneId);
+        before = cell[cell.findIndex((c) => c.id === id) + 1]?.id ?? null;
+      }
+    }
+    if (dropAt?.columnId !== columnId || dropAt.laneId !== laneId || dropAt.before !== before) {
+      setDropAt({ columnId, laneId, before });
+    }
+  }
+
+  /** A drop: the same move as the keyboard's, to the column and the place shown. */
+  function drop(event: DragEvent, column: Column, laneId: string) {
+    event.preventDefault();
+    const card = data?.cards.find((c) => c.id === dragging);
+    const before = dropAt?.columnId === column.id ? dropAt.before : null;
+    setDragging(null);
+    setDropAt(null);
+    if (!card || busy || before === card.id) return;
+    const rest = cardsIn(column.id, laneId).filter((c) => c.id !== card.id);
+    const last = rest[rest.length - 1];
+    if (card.columnId === column.id) {
+      // Dropped where it already was: nothing to do.
+      const order = cardsIn(column.id, card.laneId).map((c) => c.id);
+      const at = before === null ? rest.length : rest.findIndex((c) => c.id === before);
+      if (order.indexOf(card.id) === at) return;
+    }
+    const request: MoveRequest =
+      before !== null
+        ? { ticket: card.id, columnId: column.id, before }
+        : last
+          ? { ticket: card.id, columnId: column.id, after: last.id }
+          : { ticket: card.id, columnId: column.id };
+    void move(
+      card,
+      request,
+      card.columnId === column.id
+        ? t('boards.dropped', { key: card.key, column: column.name })
+        : t('boards.moved', { key: card.key, column: column.name }),
+    );
+  }
+
   function onCardKey(event: KeyboardEvent, card: BoardCard) {
     if (!event.altKey || busy) return;
     const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 }[event.key];
@@ -254,12 +328,24 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     const column = columnById(card.columnId);
     const at = columns.indexOf(column);
     const cell = cardsIn(card.columnId, card.laneId);
-    const position = cell.findIndex((c) => c.id === card.id);
+    const position = placeOf.get(card.id) ?? 0;
     const menuOpen = menuFor === card.id;
     return (
       <li
         key={card.id}
-        className="board-card"
+        className={`board-card${dragging === card.id ? ' is-dragging' : ''}${dropAt?.before === card.id ? ' is-drop-before' : ''}`}
+        data-card-id={card.id}
+        draggable={!busy}
+        onDragStart={(event) => {
+          event.dataTransfer.setData('text/plain', card.key);
+          event.dataTransfer.effectAllowed = 'move';
+          setDragging(card.id);
+          setMenuFor(null);
+        }}
+        onDragEnd={() => {
+          setDragging(null);
+          setDropAt(null);
+        }}
         style={card.colour ? ({ '--card-colour': card.colour } as CSSProperties) : undefined}
         onKeyDown={(event) => onCardKey(event, card)}
       >
@@ -412,7 +498,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             // The unassigned lane is named here, in the reader's language.
             const lane =
               given.assignee === null ? { ...given, name: t('boards.card.unassigned') } : given;
-            const count = data.cards.filter((c) => c.laneId === lane.id).length;
+            const count = laneCounts.get(lane.id) ?? 0;
             if (showLanes && lane.catchAll && count === 0 && data.lanes.length > 1) return null;
             return (
               <section
@@ -429,7 +515,13 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
                   {columns.map((column) => (
                     <ul
                       key={column.id}
-                      className="board-cell"
+                      className={
+                        dropAt?.columnId === column.id && dropAt.laneId === lane.id
+                          ? 'board-cell is-drop-target'
+                          : 'board-cell'
+                      }
+                      onDragOver={(event) => overCell(event, column.id, lane.id)}
+                      onDrop={(event) => drop(event, column, lane.id)}
                       aria-label={
                         showLanes
                           ? t('boards.cell', { column: column.name, lane: lane.name })

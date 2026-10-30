@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
 import { BoardPage } from './BoardPage';
@@ -154,5 +154,67 @@ describe('the boards list (M1-043)', () => {
     await user.type(screen.getByLabelText('Tickets (a query)'), 'track = PAY');
     await user.click(screen.getByRole('button', { name: 'Create board' }));
     await waitFor(() => expect(made).toEqual([9]));
+  });
+});
+
+describe('dragging cards (M1-046)', () => {
+  // jsdom has no DragEvent: a mouse event stands in, so the pointer's position reaches the page.
+  beforeAll(() => {
+    if (!('DragEvent' in window)) {
+      Object.defineProperty(window, 'DragEvent', {
+        value: class extends MouseEvent {},
+        configurable: true,
+      });
+    }
+  });
+  // jsdom gives no layout: every card's box is empty, so its middle is at 0.
+  const dataTransfer = () => ({
+    setData: () => undefined,
+    getData: () => '',
+    effectAllowed: 'move',
+    dropEffect: 'move',
+  });
+  const cardOf = (key: string) =>
+    screen.getByRole('link', { name: new RegExp(`^${key} `) }).closest('li') as HTMLElement;
+  const drag = (key: string, to: HTMLElement, over: HTMLElement = to, clientY = 10) => {
+    const transfer = dataTransfer();
+    fireEvent.dragStart(cardOf(key), { dataTransfer: transfer });
+    fireEvent.dragOver(over, { dataTransfer: transfer, clientY });
+    fireEvent.drop(to, { dataTransfer: transfer });
+  };
+
+  it('[AGL-002] a card dropped on another column moves there through its transition', async () => {
+    const client = renderBoard();
+    await page();
+    drag('SHOP-19', screen.getByRole('list', { name: 'Doing in Everything else' }));
+    await waitFor(() =>
+      expect(keysIn('Doing in Everything else')).toEqual(['SHOP-23', 'SHOP-24', 'SHOP-19']),
+    );
+    // At the end of the cell: after its last card.
+    expect(client.moves.at(-1)).toEqual({ ticket: 119, columnId: 'doing', after: 124 });
+    expect(await screen.findByText('SHOP-19 moved to Doing.')).toBeInTheDocument();
+  });
+
+  it('[AGL-002] a drop where several transitions lead asks which one', async () => {
+    renderBoard();
+    await page();
+    drag('SHOP-23', screen.getByRole('list', { name: 'Review and done in Everything else' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'Move SHOP-23 to Review and done' }),
+    ).toBeVisible();
+  });
+
+  it('[AGL-009] a card dropped above another in its column takes that place', async () => {
+    const client = renderBoard();
+    await page();
+    const doing = screen.getByRole('list', { name: 'Doing in Everything else' });
+    // Above the middle of SHOP-23: before it.
+    drag('SHOP-24', doing, cardOf('SHOP-23'), -1);
+    await waitFor(() => expect(keysIn('Doing in Everything else')).toEqual(['SHOP-24', 'SHOP-23']));
+    expect(client.moves.at(-1)).toEqual({ ticket: 124, columnId: 'doing', before: 123 });
+    // Dropped where it already is: nothing is asked of the server.
+    const before = client.moves.length;
+    drag('SHOP-24', doing, cardOf('SHOP-23'), -1);
+    expect(client.moves).toHaveLength(before);
   });
 });

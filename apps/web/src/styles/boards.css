@@ -555,3 +555,22 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* Drag and drop (M1-046): the card in hand fades, the cell it would land in is outlined, and a
+   line shows the place before the card it would go above. */
+.board-card[draggable="true"] {
+  cursor: grab;
+}
+
+.board-card.is-dragging {
+  opacity: 0.5;
+}
+
+.board-cell.is-drop-target {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: 2px;
+}
+
+.board-card.is-drop-before {
+  box-shadow: 0 -3px 0 0 var(--color-accent);
+}

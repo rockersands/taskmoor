@@ -2493,6 +2493,7 @@ export const messagesEn = {
   'boards.card.moveUp': 'Up in {column}',
   'boards.card.moveDown': 'Down in {column}',
   'boards.moved': '{key} moved to {column}.',
+  'boards.dropped': '{key} moved within {column}.',
   'boards.ranked': '{key} moved {direction, select, up {up} other {down}} in {column}.',
   'boards.noTransition': 'No transition leads {key} into {column}.',
   'boards.refused': '{key} could not be moved ({code}). Open the ticket to see why.',

@@ -172,6 +172,23 @@ export const CARDS: FakeCard[] = [
   card(24, 'Apple Pay button misaligned on small screens', 'Active', 'other'),
 ];
 
+/**
+ * A large board (M1-046: "5,000-card board renders < 1 s"): `n` cards across the columns and
+ * both lanes, ranked in order.
+ */
+export function manyCards(n: number): FakeCard[] {
+  const statuses: StatusName[] = ['New', 'Active', 'In Review', 'Closed'];
+  return Array.from({ length: n }, (_, i) => ({
+    ...card(
+      i + 1,
+      `Generated ticket number ${i + 1}`,
+      statuses[i % 4] as StatusName,
+      i % 10 === 0 ? 'expedite' : 'other',
+    ),
+    rank: `a${String(i + 1).padStart(6, '0')}`,
+  }));
+}
+
 const TRANSITIONS: { id: number; name: string; from: StatusName[] | 'any'; to: StatusName }[] = [
   { id: 1, name: 'Start', from: ['New'], to: 'Active' },
   { id: 2, name: 'Send to review', from: ['Active'], to: 'In Review' },

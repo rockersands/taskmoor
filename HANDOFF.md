@@ -103,6 +103,11 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-046 board drag and drop** (ADR-049 "Drag and drop"): `boards/BoardPage.tsx` cards are
+  draggable, cells take drops (place by the pointer's half of a card), one move request with
+  `before`/`after`; cards grouped by cell once per render. `FiveThousandCards` story times the
+  render (455 to 458 ms, budget 1 s; axe off there only). e2e `board-drag.spec.ts` (desktop;
+  phones use the Move menu): Start runs, Close's close-reason check refuses, ranking by drop.
 - **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
   the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
   settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
@@ -127,8 +132,8 @@ stop (CI is the gate).
 
 1. The overnight list below without M1-045: M1-040 full-text search and M1-039 history
    operators (both measured at 10M tickets: this Mac has 33 GB free, the 137 GB dataset stayed
-   on Windows, so their timing criteria need another machine or CI), M1-046 board drag and
-   drop, M1-098 CSV, M1-105, M1-115, M1-116; RPT-002 (3) (general reports on 1M tickets in 3 s)
+   on Windows, so their timing criteria need another machine or CI), M1-098 CSV, M1-105,
+   M1-115, M1-116; RPT-002 (3) (general reports on 1M tickets in 3 s)
    is still to measure.
 2. Sprint editing in the web UI (name, goal and dates; API only since M1-044) and the rest of
    M1-044's "Left" list below. Sprint settings are in the web UI now (above). Webhooks have no
