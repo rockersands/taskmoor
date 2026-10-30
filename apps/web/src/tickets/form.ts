@@ -114,6 +114,9 @@ export function textDocument(text: string): unknown {
 
 const words = (text: string) => text.split(/\s+/).filter((w) => w !== '');
 
+/** Labels as typed: a label holds no spaces (CORE-016), so spaces and commas both separate. */
+export const splitLabels = (text: string) => text.split(/[\s,]+/).filter((w) => w !== '');
+
 /** The value a custom field takes from what was typed; undefined for nothing. */
 function customValue(
   field: CustomField,
@@ -142,7 +145,7 @@ function customValue(
       };
     }
     case 'labels':
-      return words(raw);
+      return splitLabels(raw);
     default:
       return raw;
   }
@@ -178,7 +181,7 @@ export function createBody(
     const raw = values[key.key];
     if (typeof raw !== 'string' || raw.trim() === '') continue;
     if (key.key === 'description' || key.key === 'environment') body[name] = textDocument(raw);
-    else if (key.key === 'labels') body[name] = words(raw);
+    else if (key.key === 'labels') body[name] = splitLabels(raw);
     else if (key.key === 'priority') body[name] = Number(raw);
     else body[name] = key.key === 'summary' ? raw : raw.trim();
   }

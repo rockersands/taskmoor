@@ -20,7 +20,13 @@ import { FieldsAdminPage } from './fields/FieldsAdminPage';
 import { GuardrailsPage } from './guardrails/GuardrailsPage';
 import { HomePage } from './home/HomePage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
-import { type Locale, resolveLocale } from './i18n/locale';
+import {
+  catalogueFor,
+  type Locale,
+  localeInUrl,
+  rememberLocale,
+  resolveLocale,
+} from './i18n/locale';
 import { InboxPage } from './inbox/InboxPage';
 import { ListPage } from './list/ListPage';
 import type { MetaClient } from './meta/client';
@@ -605,6 +611,28 @@ function Pages() {
   );
 }
 
+/**
+ * The language a person saved on their account applies once they are signed in, and is
+ * remembered in the browser so the next visit starts in it. `?locale=` still wins.
+ */
+function FollowAccountLocale({
+  current,
+  onLocale,
+}: {
+  current: Locale;
+  onLocale: (locale: Locale) => void;
+}) {
+  const { session } = useSession();
+  const saved = session.status === 'signed-in' ? session.user.locale : null;
+  useEffect(() => {
+    const wanted = catalogueFor(saved);
+    if (!wanted || localeInUrl()) return;
+    rememberLocale(wanted);
+    if (wanted !== current) onLocale(wanted);
+  }, [saved, current, onLocale]);
+  return null;
+}
+
 export interface AppProps {
   /** Overrides the locale detection; tests use it for the pseudo-locale. */
   locale?: Locale;
@@ -616,12 +644,11 @@ export interface AppProps {
 }
 
 export function App({ locale, session, onI18nError, metaClient }: AppProps) {
+  const [chosen, setChosen] = useState<Locale>(() => locale ?? resolveLocale());
   return (
-    <I18nProvider
-      locale={locale ?? resolveLocale()}
-      {...(onI18nError ? { onError: onI18nError } : {})}
-    >
+    <I18nProvider locale={chosen} {...(onI18nError ? { onError: onI18nError } : {})}>
       <SessionProvider {...(session ? { session } : {})}>
+        {locale === undefined && <FollowAccountLocale current={chosen} onLocale={setChosen} />}
         <SyncProvider>
           <PaletteCommandsProvider>
             <VersionGate {...(metaClient ? { client: metaClient } : {})}>

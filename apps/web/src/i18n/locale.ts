@@ -63,6 +63,34 @@ export function resolveLocale(
   return spoken && !DRAFT_LOCALES.includes(spoken) ? spoken : 'en';
 }
 
+/** Whether the address asks for a locale with `?locale=` (which then wins over everything). */
+export function localeInUrl(win: Pick<Window, 'location'> = window): boolean {
+  const query = (search: string) => new URLSearchParams(search).get('locale');
+  const hash = win.location.hash;
+  const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?')) : '';
+  return isLocale(query(win.location.search)) || isLocale(query(hashQuery));
+}
+
+/**
+ * The catalogue for the language a person saved on their account (a BCP 47 tag such as
+ * `es-MX`): by its language, English for languages without one. Null when nothing is saved,
+ * so the browser's language decides. Choosing a draft language there is opting in to it.
+ */
+export function catalogueFor(tag: string | null): Locale | null {
+  if (!tag) return null;
+  const language = tag.toLowerCase().split('-')[0] ?? '';
+  return SUPPORTED_LOCALES.find((l) => !l.includes('-') && l === language) ?? 'en';
+}
+
+/** Remembers the locale in this browser, so the next visit starts in it. */
+export function rememberLocale(locale: Locale, win: Pick<Window, 'localStorage'> = window): void {
+  try {
+    win.localStorage.setItem(STORAGE_KEY, locale);
+  } catch {
+    // Storage can be blocked; the account's choice still applies once signed in.
+  }
+}
+
 export function messagesFor(locale: Locale): Record<string, string> {
   if (locale === 'en-XA') {
     return Object.fromEntries(

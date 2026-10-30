@@ -157,7 +157,12 @@ try {
       break;
     case 'backup': {
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const out = values.out ?? join(dataDir ?? '.', 'backups', stamp);
+      // Where scheduled backups go (TASKMOOR_BACKUP_DIR), so the drill finds a backup taken by
+      // hand; the data directory's backups folder when that is off or unset without one.
+      const root =
+        backupDirectory({ backupDir: config.backupDir, dataDir }) ??
+        join(dataDir ?? '.', 'backups');
+      const out = values.out ?? join(root, stamp);
       const target = {
         databaseUrl,
         ...(dataDir ? { dataDir } : {}),

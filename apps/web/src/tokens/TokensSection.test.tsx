@@ -138,6 +138,16 @@ describe('API tokens on the Account page', () => {
     expect(section.queryByRole('checkbox', { name: 'SCIM provisioning' })).toBeNull();
   });
 
+  it('[IAM-007] offers the administration scope to whoever the server allows it', async () => {
+    // A configuration administrator is not a site administrator, and may still hold it.
+    const { section } = await openTokens({
+      'GET /account/tokens': () =>
+        jsonResponse(200, { tokens: personalTokens(), policy: POLICY, adminScopeAllowed: true }),
+    });
+    await section.findByRole('list');
+    expect(section.getByRole('checkbox', { name: 'Administration' })).not.toBeChecked();
+  });
+
   it('[IAM-007] offers lifetimes up to the policy maximum, also past a year', async () => {
     const short = await openTokens({
       'GET /account/tokens': tokensAnswer([], { maxLifetimeDays: 45, reminderDays: 7 }),

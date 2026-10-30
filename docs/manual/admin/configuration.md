@@ -1,7 +1,7 @@
 ---
 title: "Configuration reference"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -17,8 +17,8 @@ lists every one of them, grouped by topic, with its default and meaning.
   password). Taskmoor does not yet have a command that only checks the settings.
 - An empty value counts as not set, so a Compose file may pass `${NAME:-}` safely.
 - Some settings go in pairs and must be set both or neither; the tables say which.
-- How a setting reaches the server depends on the kit: the Compose kits pass a fixed list from
-  `.env` and take the rest from an override file ([installing Taskmoor](install.md#the-env-file)),
+- How a setting reaches the server depends on the kit: the Compose kits pass the settings of
+  this page from `.env` ([installing Taskmoor](install.md#the-env-file)),
   the Builder's backend kit passes its whole `.env`, the all-in-one image takes `docker run -e`,
   and Helm takes chart values and `extraEnv` ([Kubernetes with Helm](helm.md#secrets)).
 
@@ -120,8 +120,8 @@ Without `TASKMOOR_DATA`, `TASKMOOR_FILES_DIR` or a bucket, attachments are off.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `TASKMOOR_SMTP_URL` | none | `smtp://host:587` (STARTTLS when offered) or `smtps://host:465`, without credentials. Unset, notifications still reach the inbox and email waits unsent |
-| `TASKMOOR_SMTP_USER`, `TASKMOOR_SMTP_PASSWORD` | none | Pair. The SMTP sign-in |
+| `TASKMOOR_SMTP_URL` | none | `smtp://host:587` (STARTTLS when offered) or `smtps://host:465`, without credentials. Unset, the server of the setup form's mail fields is used; without either, notifications still reach the inbox and email waits unsent |
+| `TASKMOOR_SMTP_USER`, `TASKMOOR_SMTP_PASSWORD` | none | The SMTP sign-in, a pair with `TASKMOOR_SMTP_URL`. The password alone signs in the user the setup form saved |
 | `TASKMOOR_SMTP_FROM` | `Taskmoor <taskmoor@host>`, with the host of `PUBLIC_URL` | The From address of notification emails |
 
 The worker sends email; set `PUBLIC_URL` too, for the links inside. See

@@ -28,7 +28,7 @@ and offers **Account** and **Sign out**. You also reach the page from **Settings
 
 Press **Save profile**. Searches read dates on the time zone saved here, and digests and quiet
 hours follow it too; with **Automatic**, the server uses UTC for them. **Language and region**
-is kept with your account; the words of the web app do not change with it (see
+also chooses the language of the web app, on every device you sign in on (see
 [Language](#language)).
 
 ## Appearance
@@ -45,9 +45,11 @@ dark**.
 
 ## Language
 
-The web app is in English. A Spanish translation is included as a draft: to use it, add
-`?locale=es` to the address and load the page. Reloading without it brings English back.
-Taskmoor never picks the draft from your browser's language.
+The web app is in English. A Spanish translation is included as a draft: choose a Spanish
+**Language and region** on your account to use it, and the app switches as soon as you save,
+and on every device once you sign in there. Languages without a translation show English.
+To try it without changing your account, add `?locale=es` to the address; a `?locale=` in the
+address always wins. Taskmoor never picks the draft from your browser's language alone.
 
 ## Notifications
 

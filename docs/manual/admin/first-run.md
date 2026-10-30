@@ -1,7 +1,7 @@
 ---
 title: "First-run setup"
 audience: admins
-sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md
+sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -59,10 +59,10 @@ The link opens **Set up Taskmoor**. Fill in:
 setup as done, deletes the token, signs you in and opens **Home**. Taskmoor does not yet let you
 change the instance name after setup.
 
-The mail fields are stored with the instance, but the server sends email only when its
-environment names an SMTP server. Set `TASKMOOR_SMTP_URL` and the related variables
-([mail settings](configuration.md#mail)); the password always comes from the environment, as
-`TASKMOOR_SMTP_PASSWORD` (the form's hint calls it `SMTP_PASSWORD`).
+The mail fields are stored with the instance, and the server sends email through that server
+from then on, without a restart. The password always comes from the environment: when you
+give an SMTP user name, set `TASKMOOR_SMTP_PASSWORD` too. When the environment names a server
+with `TASKMOOR_SMTP_URL` ([mail settings](configuration.md#mail)), that one wins over the form.
 
 ### When the link does not work
 
@@ -110,7 +110,8 @@ administrators see.
 1. **Check the server.** **System status** shows the version and roles, the database, the data
    directory and free space, the last backup and the backup schedule. Scheduled backups are on
    by default once setup is done ([backups](backups.md)).
-2. **Turn on email.** Set the SMTP variables and restart. Until then, notifications reach each
+2. **Turn on email.** Fill in the mail fields of the setup form, or set the SMTP variables and
+   restart. Until then, notifications reach each
    person's inbox in the app and email waits unsent ([email and notification
    policies](notifications.md)).
 3. **Decide how people sign in.** **Security** sets who must use two-factor authentication.

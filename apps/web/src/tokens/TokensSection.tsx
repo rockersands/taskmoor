@@ -9,7 +9,10 @@ import { TokenSecret } from './TokenSecret';
 
 export interface TokensSectionProps {
   client: PersonalTokensClient;
-  /** Offer the administration scope: the person administers something. */
+  /**
+   * Offer the administration scope: the person administers something. The server's answer
+   * (`adminScopeAllowed`) wins once the list is loaded.
+   */
   allowAdmin: boolean;
   /** The person's time zone for dates; null follows the device. */
   timeZone: string | null;
@@ -17,7 +20,7 @@ export interface TokensSectionProps {
 
 type State =
   | { status: 'loading' }
-  | { status: 'loaded'; tokens: ApiToken[]; policy: TokenPolicy }
+  | { status: 'loaded'; tokens: ApiToken[]; policy: TokenPolicy; adminAllowed: boolean }
   | { status: 'failed' };
 
 /**
@@ -37,12 +40,17 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
 
   const load = useCallback(async () => {
     try {
-      const { tokens, policy } = await client.list();
-      setState({ status: 'loaded', tokens, policy });
+      const { tokens, policy, adminScopeAllowed } = await client.list();
+      setState({
+        status: 'loaded',
+        tokens,
+        policy,
+        adminAllowed: adminScopeAllowed ?? allowAdmin,
+      });
     } catch (e) {
       if (!expired(e)) setState({ status: 'failed' });
     }
-  }, [client, expired]);
+  }, [client, expired, allowAdmin]);
 
   useEffect(() => {
     void load();
@@ -141,7 +149,7 @@ export function TokensSection({ client, allowAdmin, timeZone }: TokensSectionPro
           <h3 className="token-form-title">{t('tokens.newTitle')}</h3>
           <TokenForm
             policy={state.policy}
-            allowAdmin={allowAdmin}
+            allowAdmin={state.adminAllowed}
             timeZone={timeZone}
             onCreate={create}
           />
