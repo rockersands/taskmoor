@@ -87,6 +87,8 @@ export interface Board extends BoardSummary {
   sprintSettings: SprintSettings;
   mayConfigure: boolean;
   version: number;
+  /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
+  managesWorkflow?: boolean;
 }
 
 /** A status a column may take: one of the board's workflows' (`GET /api/v1/boards/:id`). */
@@ -211,6 +213,11 @@ export interface BoardClient {
   /** `sprints: 'active'` shows a Scrum board's active sprints only (M1-044). */
   data(id: number, filters: readonly string[], sprints?: 'active'): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
+  /** Makes the columns the track's statuses, or stops (M1-126); a problem code when refused. */
+  manageWorkflow?(
+    id: number,
+    managed: boolean,
+  ): Promise<{ ok: true; board: Board } | { ok: false; problem: string }>;
 }
 
 /** The query string of a data request. */
@@ -245,6 +252,20 @@ export const boardClient: BoardClient = {
       const body = error.body as { fields?: Record<string, string> } | null;
       if (error.code === 'version_conflict') return { ok: false, fields: {}, conflict: true };
       if (error.code === 'invalid_fields') return { ok: false, fields: body?.fields ?? {} };
+      // A managed board's columns that cannot become its workflow (M1-126).
+      if (error.status === 409 && error.code) return { ok: false, fields: { columns: error.code } };
+      throw error;
+    }
+  },
+  manageWorkflow: async (id, managed) => {
+    try {
+      const { board } = await api<{ board: Board }>(`/boards/${id}/workflow`, {
+        method: 'PUT',
+        body: { managed },
+      });
+      return { ok: true, board };
+    } catch (error) {
+      if (error instanceof ApiError && error.code) return { ok: false, problem: error.code };
       throw error;
     }
   },

@@ -156,6 +156,16 @@ function moved<T>(list: readonly T[], at: number, step: -1 | 1): T[] {
   return out;
 }
 
+/** Why a board cannot manage its track's workflow (M1-126), as the server says it. */
+const MANAGE_PROBLEMS: Record<string, MessageId> = {
+  shared_mode_track: 'boards.settings.managed.sharedMode',
+  per_type_workflows: 'boards.settings.managed.perType',
+  shared_workflow: 'boards.settings.managed.sharedWorkflow',
+  another_board_manages: 'boards.settings.managed.another',
+  one_status_per_column: 'boards.settings.managed.oneStatus',
+  migration_running: 'boards.settings.managed.migration',
+};
+
 const FIELD_LABELS: Record<(typeof CARD_FIELDS)[number], MessageId> = {
   assignee: 'boards.settings.field.assignee',
   priority: 'boards.settings.field.priority',
@@ -196,6 +206,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   const [problems, setProblems] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<{ kind: 'saved' | 'failed' | 'conflict' } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [manageProblem, setManageProblem] = useState<string | null>(null);
   const noticeRef = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => {
@@ -271,6 +282,27 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     .flatMap((c) => c.statusIds)
     .filter((s) => !known.has(s))
     .map((s) => ({ id: s, name: String(s), stage: '', columnId: null }));
+
+  async function manage(managed: boolean) {
+    if (!board || !client.manageWorkflow) return;
+    setBusy(true);
+    setManageProblem(null);
+    setNotice(null);
+    try {
+      const outcome = await client.manageWorkflow(boardId, managed);
+      if (outcome.ok) {
+        setBoard(outcome.board);
+        setDraft(draftOf(outcome.board, timeZone));
+        setNotice({ kind: 'saved' });
+      } else {
+        setManageProblem(outcome.problem);
+      }
+    } catch {
+      setManageProblem('failed');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save() {
     if (!draft || !board) return;
@@ -410,6 +442,33 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
 
         <fieldset className="board-settings-section">
           <legend>{t('boards.settings.columns')}</legend>
+          {board.location.type === 'track' && client.manageWorkflow && (
+            <div className="board-settings-workflow">
+              <div className="form-field form-field-inline">
+                <input
+                  id={`${id}-managed`}
+                  type="checkbox"
+                  checked={board.managesWorkflow === true}
+                  disabled={busy}
+                  aria-describedby={`${id}-managed-hint`}
+                  onChange={(e) => void manage(e.target.checked)}
+                />
+                <label htmlFor={`${id}-managed`}>{t('boards.settings.managed')}</label>
+              </div>
+              <p id={`${id}-managed-hint`} className="form-hint">
+                {t(
+                  board.managesWorkflow
+                    ? 'boards.settings.managedOnHint'
+                    : 'boards.settings.managedHint',
+                )}
+              </p>
+              {manageProblem && (
+                <p role="alert" className="form-error">
+                  {t(MANAGE_PROBLEMS[manageProblem] ?? 'boards.settings.managedFailed')}
+                </p>
+              )}
+            </div>
+          )}
           <ol className="board-settings-list">
             {draft.columns.map((column, at) => {
               const label = column.name || t('boards.settings.columnN', { n: at + 1 });
@@ -487,37 +546,45 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
           >
             {t('boards.settings.addColumn')}
           </button>
-          {problemText('columns', `${id}-columns`)}
-          <table className="board-settings-statuses">
-            <caption>{t('boards.settings.statuses')}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('boards.settings.status')}</th>
-                <th scope="col">{t('boards.settings.column')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...statuses, ...extra].map((status) => (
-                <tr key={status.id}>
-                  <th scope="row">{status.name}</th>
-                  <td>
-                    <select
-                      aria-label={t('boards.settings.columnOf', { status: status.name })}
-                      value={columnOfStatus(status.id)}
-                      onChange={(e) => mapStatus(status.id, e.target.value)}
-                    >
-                      <option value="">{t('boards.settings.unmapped')}</option>
-                      {draft.columns.map((c, at) => (
-                        <option key={c.key} value={c.key}>
-                          {c.name || t('boards.settings.columnN', { n: at + 1 })}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+          {problem('columns') && MANAGE_PROBLEMS[problem('columns') as string] ? (
+            <p role="alert" className="form-error">
+              {t(MANAGE_PROBLEMS[problem('columns') as string] as MessageId)}
+            </p>
+          ) : (
+            problemText('columns', `${id}-columns`)
+          )}
+          {!board.managesWorkflow && (
+            <table className="board-settings-statuses">
+              <caption>{t('boards.settings.statuses')}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('boards.settings.status')}</th>
+                  <th scope="col">{t('boards.settings.column')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {[...statuses, ...extra].map((status) => (
+                  <tr key={status.id}>
+                    <th scope="row">{status.name}</th>
+                    <td>
+                      <select
+                        aria-label={t('boards.settings.columnOf', { status: status.name })}
+                        value={columnOfStatus(status.id)}
+                        onChange={(e) => mapStatus(status.id, e.target.value)}
+                      >
+                        <option value="">{t('boards.settings.unmapped')}</option>
+                        {draft.columns.map((c, at) => (
+                          <option key={c.key} value={c.key}>
+                            {c.name || t('boards.settings.columnN', { n: at + 1 })}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </fieldset>
 
         <fieldset className="board-settings-section">

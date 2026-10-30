@@ -113,6 +113,14 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-126 board-managed workflow
+
+ADR-079; migration **0063** (0060 to 0062 are M1-123, M1-124 and M1-085).
+- The managed workflow is an ordinary versioned workflow with `definition.board`; the board
+  rewrites and publishes it on every column change (`workflows/board-managed.ts`).
+- One `board.updated` event carries the workflow change (M1-005: one event per mutation).
+- `writeVersion` now lives in `workflows/store.ts`.
+
 ## 2026-10-30: M1-066 rate limits and API usage
 
 ADR-075; migration **0059** (`0059_rate_limits.ts`).

@@ -273,6 +273,14 @@ export const definitionSchema = z
     rules: z.record(idText, z.array(ruleDef).max(50)).optional(),
     /** Who may do what in a status (WF-007), by status id. */
     statusPermissions: z.record(idText, statusPermissions).optional(),
+    /**
+     * A board-managed workflow (M1-126; WF-010): the board whose columns are the statuses, in
+     * order; the rightmost closes a ticket as Completed.
+     */
+    board: z
+      .object({ boardId: id, columns: z.array(id).min(1).max(STATUSES_PER_WORKFLOW) })
+      .strict()
+      .optional(),
   })
   .strict();
 export type WorkflowDefinition = z.infer<typeof definitionSchema>;

@@ -1129,6 +1129,22 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 'address', '192.0.2.10', '2026-10-30T12:00:00Z', 3, 1)`.execute(db);
     },
   },
+  '0063_board_workflow': {
+    tables: {
+      board: "name = 'Seed managed board' AND manages_workflow",
+    },
+    seed: async (db) => {
+      // A board that manages its track's workflow.
+      await sql`INSERT INTO board (workspace_id, name, kind, location_track_id, filter_query,
+          columns, swimlanes, card_rules, manages_workflow)
+        SELECT 1, 'Seed managed board', 'kanban', t.id, 'track = SEED',
+               '[{"id": "c1", "name": "New", "statusIds": [], "min": null, "max": null}]'::jsonb,
+               '{"mode": "none", "lanes": [], "unassigned": "last", "otherName": "Everything else"}'::jsonb,
+               '{"colourBy": "type", "colours": [], "fields": [], "daysInColumn": true}'::jsonb,
+               true
+          FROM track t WHERE t.key = 'SEED'`.execute(db);
+    },
+  },
 };
 
 /**

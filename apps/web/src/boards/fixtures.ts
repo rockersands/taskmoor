@@ -324,6 +324,19 @@ export function fakeBoardClient(
         activeFilters: [...filters],
       };
     },
+    manageWorkflow: async (_id, managed) => {
+      if (board.location.type !== 'track') return { ok: false, problem: 'not_a_track_board' };
+      // One status per column, the first each column had, as the server makes them.
+      board = {
+        ...board,
+        managesWorkflow: managed,
+        version: board.version + 1,
+        columns: managed
+          ? board.columns.map((c, at) => ({ ...c, statusIds: [c.statusIds[0] ?? 100 + at] }))
+          : board.columns,
+      };
+      return { ok: true, board };
+    },
     move: async (_id, move): Promise<MoveOutcome> => {
       client.moves.push(move);
       const target = board.columns.find((c) => c.id === move.columnId);

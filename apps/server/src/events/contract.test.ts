@@ -2205,6 +2205,36 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/boards/:id/workflow',
+      expect: 'board.updated',
+      // A board of its own local-mode track; turning it on rewrites the track's workflow, told
+      // in the one event.
+      prepare: async () => {
+        const track = await admin({
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'BMW', name: 'Board managed', mode: 'local' },
+        });
+        const board = await admin({
+          method: 'POST',
+          url: '/api/v1/boards',
+          payload: {
+            name: 'Managing board',
+            kind: 'kanban',
+            trackId: track.json().track.id,
+            source: { query: 'track = BMW' },
+          },
+        });
+        state.managingBoard = board.json().board.id;
+      },
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/boards/${state.managingBoard}/workflow`,
+          payload: { managed: true },
+        }),
+    },
+    {
       route: 'POST /api/v1/boards/:id/moves',
       expect: 'ticket.transitioned',
       run: () =>

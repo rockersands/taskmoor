@@ -1,7 +1,7 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md
+sources: packages/workflow/src/model.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -236,6 +236,21 @@ nothing, statuses included.
 Through the API: `GET /api/v1/admin/workflows/:id/export`, `POST /api/v1/admin/workflows/import`
 and `POST /api/v1/admin/workflows/:id/import` (the next draft).
 
+## Board-managed workflows
+
+On a board of a local-mode track, **This board's columns are its track's statuses** in the
+board's settings (under **Columns**) hands the track's workflow to the board. Each column
+becomes one status: the column's first status, or one named after it. Any card can then move to
+any column, and the rightmost column closes a ticket with the close reason **Completed**;
+moving it out clears the close reason. A new column gets a status of its own when you save; the
+tickets of a removed column go to the first column. The track's administrators turn it on and
+off; a track whose types follow different workflows, or a shared-mode track, cannot.
+
+Behind the board it is an ordinary workflow, so the workflow editor shows it, with one
+transition per column from any status. The board rewrites it each time its columns change, so
+change the columns rather than the transitions. Turning it off keeps the workflow as it is.
+Through the API: `PUT /api/v1/boards/:id/workflow` with `{"managed": true}`.
+
 ## Workflow maps
 
 A workflow map says which workflow each ticket type follows in the tracks that use it. Types the
@@ -282,7 +297,6 @@ with `GET /api/v1/tracks/:id/workflow?ticketTypeId=`, and the track's map with
 
 ## Not available yet
 
-- Board-managed workflows, where a board's columns are the statuses.
 - Approvals and forms. Until they arrive, **Waits for an approval** never holds a transition
   back, and the two form checks always block.
 - **Call a webhook** does not send a request yet: the transition's event only counts the calls.

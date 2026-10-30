@@ -23,7 +23,13 @@ import {
   statusIdsOf,
   type WorkflowDefinition,
 } from '../workflows/model';
-import { holdWorkflow, loadDefinition, remapStatuses, ticketsInStatuses } from '../workflows/store';
+import {
+  holdWorkflow,
+  loadDefinition,
+  remapStatuses,
+  ticketsInStatuses,
+  writeVersion,
+} from '../workflows/store';
 import {
   documentRefusal,
   documentSchema,
@@ -148,44 +154,6 @@ async function knownStatuses(db: Db, workspaceId: number): Promise<Set<number>> 
 }
 
 /** Stores a version's definition and the statuses it uses. */
-async function writeVersion(
-  trx: Transaction<Database>,
-  workspaceId: number,
-  workflowId: number,
-  version: number,
-  definition: WorkflowDefinition,
-  actorId: number | null,
-  published: boolean,
-) {
-  await trx
-    .deleteFrom('workflow_version')
-    .where('workflow_id', '=', workflowId)
-    .where('version', '=', version)
-    .execute();
-  await trx
-    .insertInto('workflow_version')
-    .values({
-      workspace_id: workspaceId,
-      workflow_id: workflowId,
-      version,
-      definition: JSON.stringify(definition),
-      created_by: actorId,
-      ...(published ? { published_at: new Date(), published_by: actorId } : {}),
-    })
-    .execute();
-  await trx
-    .insertInto('workflow_version_status')
-    .values(
-      [...statusIdsOf(definition)].map((status_id) => ({
-        workspace_id: workspaceId,
-        workflow_id: workflowId,
-        version,
-        status_id,
-      })),
-    )
-    .execute();
-}
-
 export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database>): void {
   const by = (request: FastifyRequest) => ({
     workspaceId: request.workspaceId,

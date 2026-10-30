@@ -712,6 +712,8 @@ export interface BoardTable {
   created_by: number | null;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;
+  /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
+  manages_workflow: Generated<boolean>;
 }
 
 /** A board's sprint (M1-044; AGL-010, AGL-011; ADR-054). */

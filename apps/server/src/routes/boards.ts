@@ -34,11 +34,17 @@ import {
 } from '../boards/model';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { uniqueViolation } from '../scim/store';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
+import {
+  type BoardWorkflowChange,
+  BoardWorkflowError,
+  syncBoardWorkflow,
+} from '../workflows/board-managed';
 import { registerBacklogPlanningRoutes } from './backlog-planning';
 import { registerBoardReportRoutes } from './board-reports';
 import { registerScopeReportRoutes } from './scope-reports';
@@ -125,6 +131,7 @@ function boardQuery(db: Db, workspaceId: number) {
       'b.saved_search_id',
       'b.sub_filter_query',
       'b.columns',
+      'b.manages_workflow',
       'b.swimlanes',
       'b.board_filters',
       'b.board_filter_display',
@@ -312,6 +319,8 @@ export function registerBoardRoutes(
       source: sourceOf(row),
       subFilter: row.sub_filter_query === null ? null : { query: row.sub_filter_query },
       columns: row.columns,
+      /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
+      managesWorkflow: row.manages_workflow,
       swimlanes: row.swimlanes,
       boardFilters: row.board_filters,
       boardFilterDisplay: row.board_filter_display,
@@ -684,100 +693,130 @@ export function registerBoardRoutes(
     }
     const checked = await checkConfiguration(request, body);
     if (Object.keys(checked.fields).length > 0) return invalidFields(reply, checked.fields);
-    const outcome = await db.transaction().execute(async (trx) => {
-      const current = await trx
-        .selectFrom('board')
-        .select('version')
-        .where('id', '=', p.data.id)
-        .forUpdate()
-        .executeTakeFirst();
-      if (!current) return { missing: true as const };
-      if (body.version !== undefined && body.version !== current.version) {
-        return { conflict: current.version };
-      }
-      const before = settings(found.row, adminIdsBefore);
-      const after = {
-        ...(body.name !== undefined ? { name: body.name } : {}),
-        ...(body.description !== undefined ? { description: body.description } : {}),
-        ...(body.kind !== undefined ? { kind: body.kind } : {}),
-        ...(body.source !== undefined ? { source: body.source } : {}),
-        ...(body.subFilter !== undefined ? { subFilter: body.subFilter } : {}),
-        ...(checked.columns ? { columns: checked.columns as unknown as JsonValue } : {}),
-        ...(checked.swimlanes ? { swimlanes: checked.swimlanes as unknown as JsonValue } : {}),
-        ...(checked.boardFilters
-          ? { boardFilters: checked.boardFilters as unknown as JsonValue }
-          : {}),
-        ...(body.boardFilterDisplay !== undefined
-          ? { boardFilterDisplay: body.boardFilterDisplay }
-          : {}),
-        ...(checked.cardRules ? { cardRules: checked.cardRules as unknown as JsonValue } : {}),
-        ...(body.sprintSettings !== undefined ? { sprintSettings: body.sprintSettings } : {}),
-        ...(body.adminIds !== undefined
-          ? { adminIds: [...new Set(body.adminIds)].sort((a, b) => a - b) }
-          : {}),
-      };
-      // Stored JSON comes back with its keys in another order: compare both sides sorted.
-      const changes = diff(
-        sortKeys({ ...before, adminIds: [...adminIdsBefore].sort((a, b) => a - b) }) as Record<
-          string,
-          unknown
-        >,
-        sortKeys(after) as Record<string, unknown>,
-      );
-      if (Object.keys(changes).length === 0) return { unchanged: true as const };
-      await trx
-        .updateTable('board')
-        .set({
+    const outcome = await db
+      .transaction()
+      .execute(async (trx) => {
+        const current = await trx
+          .selectFrom('board')
+          .select('version')
+          .where('id', '=', p.data.id)
+          .forUpdate()
+          .executeTakeFirst();
+        if (!current) return { missing: true as const };
+        if (body.version !== undefined && body.version !== current.version) {
+          return { conflict: current.version };
+        }
+        // A board that manages its track's workflow rewrites it from its columns (M1-126).
+        let columns = checked.columns;
+        let workflowChange: BoardWorkflowChange | undefined;
+        if (columns && found.row.manages_workflow) {
+          const synced = await syncBoardWorkflow(
+            trx,
+            by(request),
+            { id: p.data.id, trackId: found.row.location_track_id },
+            columns as Column[],
+            {
+              mapping: new Map(
+                Object.entries(body.statusMapping ?? {}).map(([from, to]) => [Number(from), to]),
+              ),
+            },
+          );
+          columns = synced.columns as typeof columns;
+          workflowChange = synced.change;
+        }
+        const before = settings(found.row, adminIdsBefore);
+        const after = {
           ...(body.name !== undefined ? { name: body.name } : {}),
           ...(body.description !== undefined ? { description: body.description } : {}),
           ...(body.kind !== undefined ? { kind: body.kind } : {}),
-          ...(body.source !== undefined
-            ? {
-                filter_query: 'query' in body.source ? body.source.query : null,
-                saved_search_id: 'savedSearchId' in body.source ? body.source.savedSearchId : null,
-              }
+          ...(body.source !== undefined ? { source: body.source } : {}),
+          ...(body.subFilter !== undefined ? { subFilter: body.subFilter } : {}),
+          ...(columns ? { columns: columns as unknown as JsonValue } : {}),
+          ...(checked.swimlanes ? { swimlanes: checked.swimlanes as unknown as JsonValue } : {}),
+          ...(checked.boardFilters
+            ? { boardFilters: checked.boardFilters as unknown as JsonValue }
             : {}),
-          ...(body.subFilter !== undefined
-            ? { sub_filter_query: body.subFilter?.query ?? null }
-            : {}),
-          ...(checked.columns ? { columns: JSON.stringify(checked.columns) } : {}),
-          ...(checked.swimlanes ? { swimlanes: JSON.stringify(checked.swimlanes) } : {}),
-          ...(checked.boardFilters ? { board_filters: JSON.stringify(checked.boardFilters) } : {}),
           ...(body.boardFilterDisplay !== undefined
-            ? { board_filter_display: body.boardFilterDisplay }
+            ? { boardFilterDisplay: body.boardFilterDisplay }
             : {}),
-          ...(checked.cardRules ? { card_rules: JSON.stringify(checked.cardRules) } : {}),
-          ...(body.sprintSettings !== undefined
-            ? { sprint_settings: JSON.stringify(body.sprintSettings) }
+          ...(checked.cardRules ? { cardRules: checked.cardRules as unknown as JsonValue } : {}),
+          ...(body.sprintSettings !== undefined ? { sprintSettings: body.sprintSettings } : {}),
+          ...(body.adminIds !== undefined
+            ? { adminIds: [...new Set(body.adminIds)].sort((a, b) => a - b) }
             : {}),
-          version: current.version + 1,
-          updated_at: new Date(),
-        })
-        .where('id', '=', p.data.id)
-        .execute();
-      if (body.adminIds !== undefined) {
-        await trx.deleteFrom('board_admin').where('board_id', '=', p.data.id).execute();
-        const ids = [...new Set(body.adminIds)];
-        if (ids.length > 0) {
-          await trx
-            .insertInto('board_admin')
-            .values(
-              ids.map((userId) => ({
-                workspace_id: request.workspaceId,
-                board_id: p.data.id,
-                user_id: userId,
-              })),
-            )
-            .execute();
+        };
+        // Stored JSON comes back with its keys in another order: compare both sides sorted.
+        const changes = diff(
+          sortKeys({ ...before, adminIds: [...adminIdsBefore].sort((a, b) => a - b) }) as Record<
+            string,
+            unknown
+          >,
+          sortKeys(after) as Record<string, unknown>,
+        );
+        if (Object.keys(changes).length === 0) return { unchanged: true as const };
+        await trx
+          .updateTable('board')
+          .set({
+            ...(body.name !== undefined ? { name: body.name } : {}),
+            ...(body.description !== undefined ? { description: body.description } : {}),
+            ...(body.kind !== undefined ? { kind: body.kind } : {}),
+            ...(body.source !== undefined
+              ? {
+                  filter_query: 'query' in body.source ? body.source.query : null,
+                  saved_search_id:
+                    'savedSearchId' in body.source ? body.source.savedSearchId : null,
+                }
+              : {}),
+            ...(body.subFilter !== undefined
+              ? { sub_filter_query: body.subFilter?.query ?? null }
+              : {}),
+            ...(columns ? { columns: JSON.stringify(columns) } : {}),
+            ...(checked.swimlanes ? { swimlanes: JSON.stringify(checked.swimlanes) } : {}),
+            ...(checked.boardFilters
+              ? { board_filters: JSON.stringify(checked.boardFilters) }
+              : {}),
+            ...(body.boardFilterDisplay !== undefined
+              ? { board_filter_display: body.boardFilterDisplay }
+              : {}),
+            ...(checked.cardRules ? { card_rules: JSON.stringify(checked.cardRules) } : {}),
+            ...(body.sprintSettings !== undefined
+              ? { sprint_settings: JSON.stringify(body.sprintSettings) }
+              : {}),
+            version: current.version + 1,
+            updated_at: new Date(),
+          })
+          .where('id', '=', p.data.id)
+          .execute();
+        if (body.adminIds !== undefined) {
+          await trx.deleteFrom('board_admin').where('board_id', '=', p.data.id).execute();
+          const ids = [...new Set(body.adminIds)];
+          if (ids.length > 0) {
+            await trx
+              .insertInto('board_admin')
+              .values(
+                ids.map((userId) => ({
+                  workspace_id: request.workspaceId,
+                  board_id: p.data.id,
+                  user_id: userId,
+                })),
+              )
+              .execute();
+          }
         }
-      }
-      await emit(trx, by(request), {
-        type: 'board.updated',
-        subjectId: p.data.id,
-        payload: { changes },
+        await emit(trx, by(request), {
+          type: 'board.updated',
+          subjectId: p.data.id,
+          payload: { changes, ...(workflowChange ? { workflow: workflowChange } : {}) },
+        });
+        return { updated: true as const };
+      })
+      .catch((error: unknown) => {
+        if (error instanceof BoardWorkflowError) return { workflowProblem: error.problem };
+        throw error;
       });
-      return { updated: true as const };
-    });
+    if ('workflowProblem' in outcome) {
+      return reply.code(409).send({ error: outcome.workflowProblem });
+    }
     if ('missing' in outcome) return notFound(reply);
     if ('conflict' in outcome) {
       return reply.code(409).send({ error: 'version_conflict', version: outcome.conflict });
@@ -878,6 +917,81 @@ export function registerBoardRoutes(
     } catch (error) {
       return searchRefusal(reply, error, timeoutMs);
     }
+  });
+
+  // A board that manages its local-mode track's workflow (M1-126; WF-010): on, each column
+  // becomes one status and the workflow is rewritten from the columns; off, the workflow stays
+  // as it was and the board goes back to mapping statuses.
+  app.put('/api/v1/boards/:id/workflow', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const p = idParam.safeParse(request.params);
+    if (!p.success) return notFound(reply);
+    const parsed = z.object({ managed: z.boolean() }).strict().safeParse(request.body);
+    if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
+    const found = await visibleBoard(request, reply, p.data.id);
+    if (!found) return reply;
+    const row = found.row;
+    // Changing the track's workflow takes the right to administer the track.
+    const held =
+      row.location_track_id === null ? null : await request.authz.track(row.location_track_id);
+    if (!held?.has('administer_track') && !(await isConfigAdmin(request))) {
+      return reply.code(403).send({ error: 'forbidden', permission: 'administer_track' });
+    }
+    if (row.manages_workflow === parsed.data.managed) {
+      return { board: view(row, found.admins, true) };
+    }
+    try {
+      await db.transaction().execute(async (trx) => {
+        await trx.selectFrom('board').select('id').where('id', '=', row.id).forUpdate().execute();
+        let workflow: BoardWorkflowChange | undefined;
+        if (parsed.data.managed) {
+          const synced = await syncBoardWorkflow(
+            trx,
+            by(request),
+            { id: row.id, trackId: row.location_track_id },
+            record(row).columns,
+            { collapse: true },
+          );
+          workflow = synced.change;
+          await trx
+            .updateTable('board')
+            .set({
+              manages_workflow: true,
+              columns: JSON.stringify(synced.columns),
+              version: row.version + 1,
+              updated_at: new Date(),
+            })
+            .where('id', '=', row.id)
+            .execute();
+        } else {
+          await trx
+            .updateTable('board')
+            .set({ manages_workflow: false, version: row.version + 1, updated_at: new Date() })
+            .where('id', '=', row.id)
+            .execute();
+        }
+        await emit(trx, by(request), {
+          type: 'board.updated',
+          subjectId: row.id,
+          payload: {
+            changes: { managesWorkflow: { from: row.manages_workflow, to: parsed.data.managed } },
+            ...(workflow ? { workflow } : {}),
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof BoardWorkflowError) {
+        return reply.code(409).send({ error: error.problem });
+      }
+      if (uniqueViolation(error) === 'board_manages_workflow_idx') {
+        return reply.code(409).send({ error: 'another_board_manages' });
+      }
+      throw error;
+    }
+    const updated = await boardQuery(db, request.workspaceId)
+      .where('b.id', '=', row.id)
+      .executeTakeFirstOrThrow();
+    return { board: view(updated, found.admins, true) };
   });
 
   app.post('/api/v1/boards/:id/moves', async (request, reply) => {

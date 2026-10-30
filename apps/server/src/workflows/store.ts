@@ -1,7 +1,7 @@
 import type { Database, StatusStage } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { rewriteTickets } from '../tickets/fields';
-import { definitionSchema, type WorkflowDefinition } from './model';
+import { definitionSchema, statusIdsOf, type WorkflowDefinition } from './model';
 
 /**
  * Reading workflows and moving tickets between statuses (M1-023). Lock order, as for the
@@ -122,4 +122,43 @@ export async function remapStatuses(
          WHERE id = ANY(${ids}::int[]) AND status_id = ${from}`.execute(trx);
     }
   });
+}
+
+/** Writes a version of a workflow, with the statuses it holds; published when asked. */
+export async function writeVersion(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  workflowId: number,
+  version: number,
+  definition: WorkflowDefinition,
+  actorId: number | null,
+  published: boolean,
+) {
+  await trx
+    .deleteFrom('workflow_version')
+    .where('workflow_id', '=', workflowId)
+    .where('version', '=', version)
+    .execute();
+  await trx
+    .insertInto('workflow_version')
+    .values({
+      workspace_id: workspaceId,
+      workflow_id: workflowId,
+      version,
+      definition: JSON.stringify(definition),
+      created_by: actorId,
+      ...(published ? { published_at: new Date(), published_by: actorId } : {}),
+    })
+    .execute();
+  await trx
+    .insertInto('workflow_version_status')
+    .values(
+      [...statusIdsOf(definition)].map((status_id) => ({
+        workspace_id: workspaceId,
+        workflow_id: workflowId,
+        version,
+        status_id,
+      })),
+    )
+    .execute();
 }
