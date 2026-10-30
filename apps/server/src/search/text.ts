@@ -1,6 +1,4 @@
-import type { Database } from '@taskmoor/db';
 import type { TextSearch, TextTerm } from '@taskmoor/query';
-import { type Kysely, sql, type Transaction } from 'kysely';
 
 /**
  * Text search in SQL terms (M1-040; QRY-007; ADR-068): a search read by `parseTextSearch`
@@ -15,7 +13,8 @@ import { type Kysely, sql, type Transaction } from 'kysely';
  * - `?` and fuzzy words expand into the words they stand for, each an operand of one OR: a `?`
  *   by every letter and digit, a fuzzy word by every word one edit away. Each expansion is an
  *   exact lexeme the word index looks up, so neither reads text, and each goes through the
- *   stemmer like the indexed words did.
+ *   stemmer like the indexed words did. The planner cannot weigh an OR of hundreds of words, so
+ *   searches with them start from the word indexes (`expands`; `compile.ts`).
  * - Values are never written into SQL: the tsquery text is one parameter, its operands quoted
  *   and escaped here.
  */
@@ -109,15 +108,8 @@ function tsTerm(term: TextTerm): string | undefined {
       return operand(term.text);
     case 'wildcard':
     case 'fuzzy': {
-      const all = expansions(term);
-      // Only the words that occur, when the server looked them up (`pruneExpansions`); none
-      // left, and the first word stands in: it matches nothing, as the term does.
-      const words = term.words
-        ? term.words.length > 0
-          ? term.words
-          : all.words.slice(0, 1)
-        : all.words;
-      const suffix = all.prefix ? ':*' : '';
+      const { words, prefix } = expansions(term);
+      const suffix = prefix ? ':*' : '';
       return `(${words.map((w) => `${operand(w)}${suffix}`).join(' | ')})`;
     }
     case 'pattern':
@@ -126,51 +118,12 @@ function tsTerm(term: TextTerm): string | undefined {
 }
 
 /**
- * Keeps, for each wildcard and fuzzy term of `searches`, only the words it stands for that
- * occur in some searched text of the workspace: summaries, descriptions, environments,
- * comments and text fields, outside the trash. One lookup in the word indexes per word, all in
- * one statement; tens of words cost milliseconds. The planner then sees the few words that
- * exist, not dozens it cannot tell apart, and starts from the word indexes when they are rare.
- * Nothing about who may read what is decided here: the query's own filter still does that.
+ * Whether a search must match a `?` or fuzzy word, which expands into many words: the planner
+ * would think it matches nearly everything and walk the whole order, so it starts from the
+ * word indexes instead (the typical one is a typo or a rare word).
  */
-export async function pruneExpansions(
-  db: Kysely<Database> | Transaction<Database>,
-  workspaceId: number,
-  searches: readonly TextSearch[],
-): Promise<void> {
-  const terms = searches.flatMap((s) =>
-    [...s.terms, ...s.excluded].filter(
-      (t): t is Expanding => t.kind === 'wildcard' || t.kind === 'fuzzy',
-    ),
-  );
-  if (terms.length === 0) return;
-  const queries = new Map<string, string>();
-  for (const t of terms) {
-    const { words, prefix } = expansions(t);
-    for (const w of words) queries.set(`${operand(w)}${prefix ? ':*' : ''}`, w);
-  }
-  const list = [...queries.keys()];
-  const { rows } = await sql<{ q: string }>`
-    SELECT x.q FROM unnest(${list}::text[]) AS x (q),
-           LATERAL (SELECT to_tsquery('taskmoor_search'::regconfig, x.q) AS tq) q
-     WHERE numnode(q.tq) > 0 AND (
-       EXISTS (SELECT 1 FROM ticket t WHERE t.summary_words @@ q.tq AND t.deleted_at IS NULL
-                 AND t.workspace_id = ${workspaceId})
-       OR EXISTS (SELECT 1 FROM ticket t WHERE t.description_words @@ q.tq
-                    AND t.deleted_at IS NULL AND t.workspace_id = ${workspaceId})
-       OR EXISTS (SELECT 1 FROM ticket t WHERE t.environment_words @@ q.tq
-                    AND t.deleted_at IS NULL AND t.workspace_id = ${workspaceId})
-       OR EXISTS (SELECT 1 FROM ticket_comment c WHERE c.body_words @@ q.tq
-                    AND c.deleted_at IS NULL AND c.workspace_id = ${workspaceId})
-       OR EXISTS (SELECT 1 FROM v_text v
-                   WHERE to_tsvector('taskmoor_search'::regconfig, v.value) @@ q.tq
-                     AND v.workspace_id = ${workspaceId}))`.execute(db);
-  const found = new Set(rows.map((r) => r.q));
-  for (const t of terms) {
-    const { words, prefix } = expansions(t);
-    t.words = words.filter((w) => found.has(`${operand(w)}${prefix ? ':*' : ''}`));
-  }
-}
+export const expands = (search: TextSearch) =>
+  search.terms.some((t) => t.kind === 'wildcard' || t.kind === 'fuzzy');
 
 /** A pattern as `ILIKE` reads it: literal text escaped, `*` as `%`, `?` as `_`, anywhere. */
 export function likePattern(term: Extract<TextTerm, { kind: 'pattern' }>): string {

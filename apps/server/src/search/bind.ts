@@ -40,7 +40,7 @@ import type {
   ValueTest,
 } from './model';
 import { masterTextSet } from './compile';
-import { hasPattern, pruneExpansions } from './text';
+import { expands, hasPattern } from './text';
 
 /**
  * From a resolved query to one the compiler takes (M1-037; ADR-010): names become ids (statuses,
@@ -331,8 +331,6 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
   const where = plan.where
     ? await binder.cond(pushNot(plan.where))
     : { kind: 'const', value: true };
-  // `?` and fuzzy words down to the words that occur, so the planner can weigh them (M1-040).
-  await pruneExpansions(ctx.db, ctx.workspaceId, indexedSearches(where as Cond));
   await textForms(ctx.db, ctx.workspaceId, where as Cond);
   const orderBy: OrderKey[] = [];
   for (const o of plan.orderBy) {
@@ -380,6 +378,8 @@ async function textForms(db: Db, workspaceId: number, where: Cond): Promise<void
      WHERE oid = 'ticket'::regclass`.execute(db);
   const threshold = Math.max(COMMON_MATCHES.least, COMMON_MATCHES.share * (rows[0]?.n ?? 0));
   for (const c of texts) {
+    // Expanded words always start from the word indexes (`expands`).
+    if (expands(c.search)) continue;
     const set = masterTextSet(c, workspaceId);
     if (!set) continue;
     const plan = await sql<{
@@ -387,22 +387,6 @@ async function textForms(db: Db, workspaceId: number, where: Cond): Promise<void
     }>`EXPLAIN (FORMAT JSON) ${set}`.execute(db);
     const estimate = plan.rows[0]?.['QUERY PLAN'][0]?.Plan['Plan Rows'] ?? 0;
     if (estimate >= threshold) c.common = true;
-  }
-}
-
-/** The text searches of a query that the word indexes answer (not history's). */
-function indexedSearches(c: Cond): TextSearch[] {
-  switch (c.kind) {
-    case 'and':
-    case 'or':
-      return c.items.flatMap(indexedSearches);
-    case 'words':
-    case 'text':
-      return [c.search];
-    case 'side':
-      return c.test.kind === 'words' ? [c.test.search] : [];
-    default:
-      return [];
   }
 }
 

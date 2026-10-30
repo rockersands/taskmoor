@@ -21,7 +21,7 @@ import type {
   ValueTest,
 } from './model';
 import { nullableOrder, orderType } from './model';
-import { SEARCH_CONFIG, textQuery } from './text';
+import { expands, expansions, operand, SEARCH_CONFIG, textQuery } from './text';
 
 /**
  * The production query compiler (M1-037; QRY-008 to QRY-010; ADR-010 "Implementation
@@ -168,6 +168,30 @@ function textMatch(
       parts.push(sql<boolean>`${text} NOT ILIKE ${param(p, 'text')}`);
   }
   return and(parts);
+}
+
+/**
+ * FROM for reading the matches of `search` out of `table` (alias `alias`, word columns
+ * `words`). When the search must match a `?` or fuzzy word, the word index is probed with each
+ * word that term stands for, one at a time (`unnest(...) JOIN table ON words @@ to_tsquery(x.q)`):
+ * the planner sees a small lookup per word, where an OR of hundreds of words would look like
+ * most of the table and be read whole (`expands`). The full search still filters the rows found.
+ */
+function matchesFrom(
+  table: string,
+  alias: string,
+  words: RawBuilder<unknown>[],
+  search: TextSearch,
+): RawBuilder<unknown> {
+  const term = search.terms.find(
+    (t): t is Extract<typeof t, { kind: 'wildcard' | 'fuzzy' }> =>
+      t.kind === 'wildcard' || t.kind === 'fuzzy',
+  );
+  if (!term) return sql`${raw(table)} ${raw(alias)}`;
+  const { words: each, prefix } = expansions(term);
+  const probes = each.map((w) => `${operand(w)}${prefix ? ':*' : ''}`);
+  const on = or(words.map((w) => sql<boolean>`${w} @@ to_tsquery(${config}, x.q)`));
+  return sql`unnest(${array(probes, 'text')}) AS x (q) JOIN ${raw(table)} ${raw(alias)} ON ${on}`;
 }
 
 /** How much each place counts towards relevance. */
@@ -761,6 +785,7 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
     case 'labelsEmpty':
       return sql<boolean>`cardinality(k.labels) ${raw(c.negated ? '>' : '=')} 0`;
     case 'words': {
+      if (!c.negated && expands(c.search)) return textSet(c.source, c.search, ctx);
       if (c.source === 'summary') {
         const match = textMatch(raw('k.summary_words'), raw('k.summary'), c.search);
         return c.negated ? not(match) : match;
@@ -786,6 +811,10 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
     }
     case 'side': {
       const test = valueTest(raw('v.value'), c.test, c.side.type);
+      if (c.quantifier === 'some' && c.test.kind === 'words' && expands(c.test.search)) {
+        // Expanded words start from the word index (`expands`, `textSet`).
+        return sql<boolean>`k.id = ANY(ARRAY(SELECT v.ticket_id FROM ${matchesFrom(c.side.table, 'v', [wordsOf(raw('v.value'))], c.test.search)} WHERE ${and([sql<boolean>`v.field_id = ${param(c.side.fieldId, 'int')}`, test])}))`;
+      }
       if (c.quantifier === 'some') return sideRows(c.side, 'v', test);
       // One value per ticket: it is there and fails the test. Several: there are some and
       // none passes.
@@ -866,25 +895,26 @@ function textSetBranches(
   ]);
   if (own !== FALSE) {
     branches.push(
-      sql`SELECT t.id FROM ticket t WHERE ${and([sql<boolean>`t.workspace_id = ${ws}`, sql<boolean>`t.deleted_at IS NULL`, own])}`,
+      sql`SELECT t.id FROM ${matchesFrom('ticket', 't', [raw('t.summary_words'), raw('t.description_words'), raw('t.environment_words')], c.search)} WHERE ${and([sql<boolean>`t.workspace_id = ${ws}`, sql<boolean>`t.deleted_at IS NULL`, own])}`,
     );
   }
   const comment = textMatch(raw('c.body_words'), null, c.search);
+  const comments = matchesFrom('ticket_comment', 'c', [raw('c.body_words')], c.search);
   if (comment !== FALSE) {
     branches.push(
       ctx.commentsOf
         ? // The comment's track read per matching comment, so the branch is one table and the
           // planner can probe it per ticket.
-          sql`SELECT c.ticket_id FROM ticket_comment c WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, comment, ctx.commentsOf(sql`(SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)`)])}`
+          sql`SELECT c.ticket_id FROM ${comments} WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, comment, ctx.commentsOf(sql`(SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)`)])}`
         : // The comment's ticket as `k`, looked up per matching comment: `OFFSET 0` keeps the
           // planner from joining the whole ticket table instead.
-          sql`SELECT c.ticket_id FROM ticket_comment c CROSS JOIN LATERAL (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id OFFSET 0) k WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, comment, ctx.comments])}`,
+          sql`SELECT c.ticket_id FROM ${comments} CROSS JOIN LATERAL (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id OFFSET 0) k WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, comment, ctx.comments])}`,
     );
   }
   const value = textMatch(wordsOf(raw('v.value')), raw('v.value'), c.search);
   if (c.fieldIds.length > 0 && value !== FALSE) {
     branches.push(
-      sql`SELECT v.ticket_id FROM v_text v WHERE ${and([sql<boolean>`v.field_id = ANY(${array(c.fieldIds, 'int')})`, value])}`,
+      sql`SELECT v.ticket_id FROM ${matchesFrom('v_text', 'v', [wordsOf(raw('v.value'))], c.search)} WHERE ${and([sql<boolean>`v.field_id = ANY(${array(c.fieldIds, 'int')})`, value])}`,
     );
   }
   return branches;
@@ -905,6 +935,35 @@ export function masterTextSet(
     workspaceId,
   });
   return branches.length === 0 ? undefined : sql.join(branches, raw(' UNION ALL '));
+}
+
+/**
+ * Tickets whose summary, description, environment or a comment the viewer reads matches, read
+ * from the word index first: for searches with `?` or fuzzy words (`expands`), whose OR of
+ * hundreds of words the planner cannot weigh and would walk the whole order for. The ids are an
+ * array computed once (`= ANY(ARRAY(...))`), which the planner fetches by primary key whatever
+ * it expects; an `IN` would let it walk the order again.
+ */
+function textSet(
+  source: Extract<Cond, { kind: 'words' }>['source'],
+  search: TextSearch,
+  ctx: CondContext,
+): RawBuilder<boolean> {
+  const ws = param(ctx.workspaceId, 'int');
+  if (source === 'comment') {
+    const match = textMatch(raw('c.body_words'), null, search);
+    const readable = ctx.commentsOf
+      ? ctx.commentsOf(sql`(SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)`)
+      : sql<boolean>`EXISTS (SELECT 1 FROM ticket k WHERE k.id = c.ticket_id AND ${ctx.comments})`;
+    return sql<boolean>`k.id = ANY(ARRAY(SELECT c.ticket_id FROM ${matchesFrom('ticket_comment', 'c', [raw('c.body_words')], search)} WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, match, readable])}))`;
+  }
+  const match = textMatch(
+    raw(`t.${source}_words`),
+    source === 'summary' ? raw('t.summary') : null,
+    search,
+  );
+  if (match === FALSE) return FALSE;
+  return sql<boolean>`k.id = ANY(ARRAY(SELECT t.id FROM ${matchesFrom('ticket', 't', [raw(`t.${source}_words`)], search)} WHERE ${and([sql<boolean>`t.workspace_id = ${ws}`, sql<boolean>`t.deleted_at IS NULL`, match])}))`;
 }
 
 /** The expression a key orders by, on ticket `k`; `comments` are the ones the viewer reads. */
