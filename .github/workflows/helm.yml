@@ -4,16 +4,7 @@ name: Helm chart
 # under load with zero failed requests (tools/helm/kind-test.sh). Runs when the chart, the
 # server or the image change, weekly, and on demand.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "deploy/helm/**"
-      - "tools/helm/**"
-      - "apps/server/**"
-      - "Dockerfile"
-      - ".github/workflows/helm.yml"
-  schedule:
-    - cron: "0 5 * * 1"
+  # Manual only until M1 is finished (the user's decision, 2026-10-30; see HANDOFF).
   workflow_dispatch:
 
 permissions:

@@ -5,20 +5,7 @@ name: Single sign-on
 # apps/server/src/sso/keycloak.e2e.test.ts and keycloak-saml.e2e.test.ts. Runs when sign-in code
 # changes, weekly, and on demand.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/server/src/sso/**"
-      - "apps/server/src/routes/sso.ts"
-      - "apps/server/src/routes/saml.ts"
-      - "apps/server/src/routes/session.ts"
-      - "apps/server/src/auth.ts"
-      - "packages/iam/**"
-      - "tools/sso/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/sso.yml"
-  schedule:
-    - cron: "0 5 * * 2"
+  # Manual only until M1 is finished (the user's decision, 2026-10-30; see HANDOFF).
   workflow_dispatch:
 
 permissions:

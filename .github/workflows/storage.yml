@@ -6,17 +6,7 @@ name: Storage
 # signatures; this job checks the same store against a real implementation. Runs when the
 # storage code changes, weekly, and on demand.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "packages/storage/**"
-      - "apps/server/src/attachments/**"
-      - "apps/server/src/routes/attachments.ts"
-      - "tools/storage/**"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/storage.yml"
-  schedule:
-    - cron: "0 6 * * 4"
+  # Manual only until M1 is finished (the user's decision, 2026-10-30; see HANDOFF).
   workflow_dispatch:
 
 permissions:

@@ -2,6 +2,22 @@
 
 Read this first in every session, then update it before you stop.
 
+## No GitHub Actions until M1 is finished (2026-10-30)
+
+GitHub Actions stopped starting jobs on 2026-10-29 evening (the free private-repo minutes ran
+out: "recent account payments have failed or your spending limit needs to be increased"). The
+user decided not to pay for GitHub and not to use Actions at all, free minutes included, until
+the full M1 version can be tested.
+
+- **The gate is local:** the whole `pnpm verify --e2e` before every push to `main` (CLAUDE.md).
+  Pushing and pulling work as before.
+- **Every workflow is manual only** (`workflow_dispatch`): no runs on push, pull request or
+  schedule. Do not dispatch any.
+- **Not checked since M1-059** (29 October): Postgres 18, Windows, the Docker image for both
+  architectures, the Compose kits, Helm on kind, the install matrix, the security scan and the
+  nightly benchmarks. They are run once at the M1 gate; expect fixes then. With Docker on the
+  Mac, `bash tools/image/smoke.sh` and `smoke-kits.sh` cover the image and kits locally.
+
 ## Moved to a Mac (2026-10-15)
 
 Development resumed on a Mac (Apple silicon, macOS). The repository lives in

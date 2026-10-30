@@ -15,8 +15,12 @@ code; the user decides product questions. Start every session by reading `HANDOF
   hook in `.githooks/` adds it; enable it once per clone with `git config core.hooksPath .githooks`.
   The pre-push hook and CI run `pnpm dco`, and unsigned commits fail.
 - Remote: `https://github.com/Rockersands/tracksmith` (private; it keeps the codename until the
-  user renames the repository; free GitHub plan, so there is no branch protection and CI is the
-  gate).
+  user renames the repository; free GitHub plan, so there is no branch protection).
+- **The gate is local:** run the whole `pnpm verify --e2e` before every push to `main`. GitHub
+  Actions is not used until M1 is finished (the user's decision, 2026-10-30): every workflow
+  runs only by hand, and nobody runs them. Never dispatch a workflow or treat a red or missing
+  GitHub run as a blocker. The jobs with no local equivalent (Postgres 18, Windows, the image,
+  Helm, the install matrix) wait for the M1 gate.
 
 ## Commands
 

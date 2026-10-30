@@ -1,13 +1,9 @@
 name: CI
 
-# Sized for GitHub's free private-repo minutes: pull requests run one Linux job; pushes to main
-# add Postgres 18 and the security scan; the Windows check runs weekly or on demand.
+# The gate for every push is the local `pnpm verify --e2e` (CLAUDE.md). This workflow adds what
+# a laptop cannot run (Postgres 18, Windows, the security scan, the image) and runs only by hand.
 on:
-  push:
-    branches: [main]
-  pull_request:
-  schedule:
-    - cron: "0 6 * * 1"
+  # Manual only until M1 is finished (the user's decision, 2026-10-30; see HANDOFF).
   workflow_dispatch:
 
 permissions:
