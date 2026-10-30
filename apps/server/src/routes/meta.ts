@@ -86,6 +86,8 @@ export interface MetaRouteOptions {
   version: string;
   publicUrl: string;
   peppers?: PepperRing | undefined;
+  /** The identity a Builder kit gives the instance, used when none is stored yet. */
+  instance?: { id: string; seed: string };
 }
 
 export function registerMetaRoutes(
@@ -98,7 +100,7 @@ export function registerMetaRoutes(
   // Loaded once per process; a failure is tried again on the next call.
   let identity: Promise<InstanceIdentity> | null = null;
   const instanceIdentity = () => {
-    identity ??= loadIdentity(db, options.peppers).catch((error) => {
+    identity ??= loadIdentity(db, options.peppers, options.instance).catch((error) => {
       identity = null;
       throw error;
     });

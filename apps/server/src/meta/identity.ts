@@ -1,6 +1,7 @@
 import {
   createHash,
   createPrivateKey,
+  createPublicKey,
   generateKeyPairSync,
   type KeyObject,
   randomUUID,
@@ -44,10 +45,22 @@ export interface InstanceIdentity {
 export const keyFingerprint = (publicKey: string) =>
   `SHA256:${createHash('sha256').update(Buffer.from(publicKey, 'base64url')).digest('base64url')}`;
 
-function make(peppers: PepperRing | undefined): Stored {
-  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+/** PKCS #8 DER of an Ed25519 key around its 32-byte seed. */
+const PKCS8_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
+
+function make(peppers: PepperRing | undefined, preset?: { id: string; seed: string }): Stored {
+  const { publicKey, privateKey } = preset
+    ? (() => {
+        const key = createPrivateKey({
+          key: Buffer.concat([PKCS8_PREFIX, Buffer.from(preset.seed, 'base64url')]),
+          format: 'der',
+          type: 'pkcs8',
+        });
+        return { privateKey: key, publicKey: createPublicKey(key) };
+      })()
+    : generateKeyPairSync('ed25519');
   return {
-    id: randomUUID(),
+    id: preset?.id ?? randomUUID(),
     publicKey: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
     privateKey: sealSecret(
       privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64url'),
@@ -72,10 +85,14 @@ function openPrivateKey(sealed: string, peppers: PepperRing | undefined): KeyObj
   }
 }
 
-/** The instance's identity, made on first use; two processes racing keep the first one written. */
+/**
+ * The instance's identity, made on first use (from the Builder kit's id and key when given);
+ * two processes racing keep the first one written.
+ */
 export async function loadIdentity(
   db: Kysely<Database>,
   peppers: PepperRing | undefined,
+  preset?: { id: string; seed: string },
 ): Promise<InstanceIdentity> {
   const read = async () =>
     (
@@ -89,7 +106,7 @@ export async function loadIdentity(
   if (!stored) {
     await db
       .insertInto('instance_setting')
-      .values({ key: IDENTITY_KEY, value: JSON.stringify(make(peppers)) })
+      .values({ key: IDENTITY_KEY, value: JSON.stringify(make(peppers, preset)) })
       .onConflict((oc) => oc.column('key').doNothing())
       .execute();
     stored = await read();

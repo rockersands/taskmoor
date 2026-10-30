@@ -57,6 +57,7 @@
     "@apidevtools/openapi-schemas": "2.1.0",
     "@hocuspocus/provider": "4.7.0",
     "@modelcontextprotocol/sdk": "1.32.2",
+    "@taskmoor/builder-core": "workspace:*",
     "@taskmoor/sdk": "workspace:*",
     "@taskmoor/testkit": "workspace:*",
     "@types/nodemailer": "8.0.2",

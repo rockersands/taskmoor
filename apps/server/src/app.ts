@@ -108,6 +108,8 @@ export interface AppDeps {
   secureCookies?: boolean;
   /** Where browsers reach this instance; one-time links point here. */
   publicUrl?: string;
+  /** The instance identity a Builder kit gives it (M1-109); otherwise one is made on first use. */
+  instance?: { id: string; seed: string };
   /**
    * Proxies whose X-Forwarded-For is believed (Fastify's trustProxy: addresses, CIDRs or
    * "loopback", "linklocal", "uniquelocal"). Unset, the client is the socket's peer.
@@ -328,6 +330,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       version: deps.version,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       peppers: deps.peppers,
+      ...(deps.instance ? { instance: deps.instance } : {}),
     });
     // A track's list and calendar views (M1-049): format rules and dated tickets.
     registerListViewRoutes(app, db, {

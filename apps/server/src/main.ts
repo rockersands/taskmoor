@@ -102,6 +102,7 @@ const app = await buildApp({
   roles: config.roles,
   secureCookies: config.secureCookies,
   publicUrl: config.publicUrl,
+  ...(config.instance ? { instance: config.instance } : {}),
   ...(config.trustedProxies ? { trustedProxies: config.trustedProxies } : {}),
   ...(config.webDir ? { webDir: config.webDir, webRouting: config.webRouting } : {}),
   metrics,

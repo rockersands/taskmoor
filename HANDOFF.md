@@ -79,6 +79,19 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-109 Builder core library
+
+ADR-031 has an implementation section; no migration.
+- **Package:** `packages/builder-core` is browser-safe and uses Web Crypto only. Keep
+  `node:` imports out of it, because the web Builder runs it as is.
+- **Server:** `TASKMOOR_INSTANCE_ID` and `TASKMOOR_INSTANCE_KEY` from a backend kit seed the
+  instance identity of M1-106.
+- **Next:** M1-110 (backend kit) and M1-111 (frontend kit) wrap `buildKits` with the Compose,
+  Caddy and installer files and with the static app. The web Builder page and the CLI come
+  with them.
+- **Dockerfile:** it copies `packages/builder-core/package.json`, because the server depends on
+  it in its tests.
+
 ## 2026-10-30: M1-116 i18n completeness
 
 ADR-024 has a new section; no migration.

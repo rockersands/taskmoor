@@ -83,6 +83,7 @@ on another disk (for example while a benchmark saturates this one).
 | `packages/webconfig` | The frontend artefact's contract: the runtime-config slot in index.html and `version.json` (ADR-066) |
 | `packages/iam` | Identity and access: password hashing (scrypt), one-time and session tokens; the providers of ADR-019 join in M1 |
 | `deploy/` | Install kits: `compose/` (bundled or external Postgres) and `allinone/` (image with Postgres inside) |
+| `packages/builder-core` | The Builder's core (ADR-031): inputs, WebCrypto secrets, the signed connection manifest, the project file, deterministic kit zips; browser-safe |
 | `packages/richtext` | Document schema (Tiptap/ProseMirror) and lossless conversion to and from the Jira-compatible document format |
 | `packages/spikes` | Throwaway benchmarks for ADRs (`pnpm spike`); results in `docs/spikes` |
 | `packages/testkit` | Embedded Postgres harness, per-file databases, `stableJson`, fast-check defaults |

@@ -68,6 +68,16 @@ const envSchema = z.object({
    */
   TASKMOOR_PASSWORD_PEPPER: z.string().min(32).optional(),
   /**
+   * The instance's identity from the Builder's backend kit (M1-109, ADR-070): its id and its
+   * Ed25519 key's 32-byte seed in base64url. They seed the identity the meta endpoint serves the
+   * first time it is needed; an identity already stored (a restore) is kept.
+   */
+  TASKMOOR_INSTANCE_ID: z.string().uuid().optional(),
+  TASKMOOR_INSTANCE_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{43}$/, 'must be 32 bytes in base64url, as the Builder writes it')
+    .optional(),
+  /**
    * Attachments (M1-016, ADR-040): `local` (files under TASKMOOR_FILES_DIR, by default
    * TASKMOOR_DATA/files) or `s3` (a bucket). Defaults to s3 when a bucket is named.
    */
@@ -141,6 +151,8 @@ export interface ServerConfig {
   metricsHost: string;
   trustedProxies: string | undefined;
   passwordPepper: string | undefined;
+  /** The identity a Builder kit gives the instance (TASKMOOR_INSTANCE_ID and _KEY). */
+  instance: { id: string; seed: string } | undefined;
   /**
    * After SIGTERM, how long the server keeps answering (each answer closing its connection)
    * before it stops: keep-alive clients hang up cleanly instead of losing a request.
@@ -212,6 +224,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       'Invalid server configuration:\n- TASKMOOR_S3_ACCESS_KEY_ID and TASKMOOR_S3_SECRET_ACCESS_KEY go together',
     );
   }
+  if (Boolean(e.TASKMOOR_INSTANCE_ID) !== Boolean(e.TASKMOOR_INSTANCE_KEY)) {
+    throw new Error(
+      'Invalid server configuration:\n- TASKMOOR_INSTANCE_ID and TASKMOOR_INSTANCE_KEY go together',
+    );
+  }
   if (Boolean(e.TASKMOOR_SMTP_USER) !== Boolean(e.TASKMOOR_SMTP_PASSWORD)) {
     throw new Error(
       'Invalid server configuration:\n- TASKMOOR_SMTP_USER and TASKMOOR_SMTP_PASSWORD go together',
@@ -270,6 +287,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     metricsHost: e.METRICS_HOST ?? e.HOST,
     trustedProxies: e.TASKMOOR_TRUSTED_PROXIES,
     passwordPepper: e.TASKMOOR_PASSWORD_PEPPER,
+    instance:
+      e.TASKMOOR_INSTANCE_ID && e.TASKMOOR_INSTANCE_KEY
+        ? { id: e.TASKMOOR_INSTANCE_ID, seed: e.TASKMOOR_INSTANCE_KEY }
+        : undefined,
     shutdownDrainMs: e.TASKMOOR_SHUTDOWN_DRAIN_MS,
     queryTimeoutMs: e.TASKMOOR_QUERY_TIMEOUT_MS,
     storage: {

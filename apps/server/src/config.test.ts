@@ -103,6 +103,19 @@ describe('loadConfig', () => {
     });
   });
 
+  it('[API-017] takes the instance identity of a Builder kit, both parts or neither', () => {
+    const seed = 'A'.repeat(43);
+    const id = '00000000-0000-4000-8000-000000000042';
+    expect(
+      loadConfig({ DATABASE_URL: DB, TASKMOOR_INSTANCE_ID: id, TASKMOOR_INSTANCE_KEY: seed })
+        .instance,
+    ).toEqual({ id, seed });
+    expect(() => loadConfig({ DATABASE_URL: DB, TASKMOOR_INSTANCE_ID: id })).toThrow(/go together/);
+    expect(() =>
+      loadConfig({ DATABASE_URL: DB, TASKMOOR_INSTANCE_ID: id, TASKMOOR_INSTANCE_KEY: 'short' }),
+    ).toThrow(/base64url/);
+  });
+
   it('lists every problem and never echoes the database URL', () => {
     const run = () =>
       loadConfig({ DATABASE_URL: 'mysql://root:hunter2@db/x', PORT: '70000', LOG_LEVEL: 'loud' });
