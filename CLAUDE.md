@@ -41,7 +41,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
 | `pnpm conformance <workflow \| query>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`) |
 | `pnpm fuzz query [--minutes N] [--seed N]` | Fuzzes the query parser; report in `.verify/fuzz-query.json`, failing inputs in `.cache/fuzz/` |
-| `pnpm build` | Production build: the static frontend (`apps/web/dist`) and the bundled server (`apps/server/dist/server.mjs`) |
+| `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`) and the bundled server (`apps/server/dist/server.mjs`), both stamped with `TASKMOOR_VERSION` (ADR-066) |
 | `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
@@ -75,6 +75,7 @@ on another disk (for example while a benchmark saturates this one).
 | `packages/ai` | AI gateway: `AiGateway`, provider adapters (Anthropic API, Bedrock, Vertex, Foundry, OpenAI-compatible), feature registry |
 | `packages/db` | Kysely client, `Database` types, forward-only migrations, `useMigratedDatabase()` |
 | `packages/storage` | Attachment stores: local disk and S3-compatible behind one interface, `FakeS3` for tests |
+| `packages/webconfig` | The frontend artefact's contract: the runtime-config slot in index.html and `version.json` (ADR-066) |
 | `packages/iam` | Identity and access: password hashing (scrypt), one-time and session tokens; the providers of ADR-019 join in M1 |
 | `deploy/` | Install kits: `compose/` (bundled or external Postgres) and `allinone/` (image with Postgres inside) |
 | `packages/richtext` | Document schema (Tiptap/ProseMirror) and lossless conversion to and from the Jira-compatible document format |

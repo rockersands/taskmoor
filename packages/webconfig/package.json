@@ -1,0 +1,15 @@
+{
+  "name": "@taskmoor/webconfig",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The static frontend's contract with whoever deploys it: the public runtime-config slot in index.html and the version manifest (M1-105).",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@taskmoor/testkit": "workspace:*"
+  }
+}

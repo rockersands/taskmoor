@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
+import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import type { SearchClient, SearchTicket } from './client';
 import {
@@ -89,7 +90,9 @@ export function ResultTable({
             return (
               <tr key={ticket.id} data-tone={marks?.row ?? undefined}>
                 <th scope="row" className="search-key">
-                  <a href={`#/tickets/${encodeURIComponent(ticket.key)}`}>{ticket.key}</a>
+                  <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}>
+                    {ticket.key}
+                  </a>
                   {marks && marks.names.length > 0 && (
                     <span className="format-marks">
                       {marks.names.map((name) => (

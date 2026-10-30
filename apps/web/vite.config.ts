@@ -1,5 +1,7 @@
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { taskmoorArtefact } from './build/artefact';
 
 // Where /api goes during development and in the e2e preview; the built app calls its own
 // origin, which the backend's web role or a reverse proxy serves (ADR-021, ADR-032).
@@ -8,7 +10,8 @@ const apiProxy = process.env.VITE_API_PROXY ?? 'http://127.0.0.1:8080';
 const proxy = { '/api': { target: apiProxy, changeOrigin: false, ws: true } };
 
 export default defineConfig({
-  plugins: [react()],
+  // The build is the versioned artefact the backend image ships (M1-105, ADR-066).
+  plugins: [react(), taskmoorArtefact({ root: fileURLToPath(new URL('../../', import.meta.url)) })],
   // Relative asset URLs, so the built frontend works from any folder on any web host.
   base: './',
   server: { port: 5173, proxy },

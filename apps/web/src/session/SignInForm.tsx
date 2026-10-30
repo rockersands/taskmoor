@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { currentRoute, replaceRoute } from '../routing/router';
 import {
   type Discovery,
   hashParam,
@@ -51,7 +52,7 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
   const [password, setPassword] = useState('');
   // A failed single sign-on comes back as #/sign-in?sso_error=<code>.
   const [error, setError] = useState<string | null>(() => {
-    const code = hashParam(window.location.hash, 'sso_error');
+    const code = hashParam(currentRoute(), 'sso_error');
     return code ? ssoErrorMessage(t, code) : null;
   });
   const [busy, setBusy] = useState(false);
@@ -63,9 +64,9 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
 
   // The error is read once; the address loses it, so a reload does not show it again.
   useEffect(() => {
-    const hash = window.location.hash;
+    const hash = currentRoute();
     if (hashParam(hash, 'sso_error') === null) return;
-    window.history.replaceState(window.history.state, '', withoutHashParam(hash, 'sso_error'));
+    replaceRoute(withoutHashParam(hash, 'sso_error'));
   }, []);
 
   useEffect(() => {
@@ -121,13 +122,13 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
 
   const key = normalized(email);
   const known = discovery?.email === key ? discovery : null;
-  const breakGlass = hashParam(window.location.hash, 'method') === 'password';
+  const breakGlass = hashParam(currentRoute(), 'method') === 'password';
   const organisation = known?.provider ?? null;
   const enforced = organisation && known?.password === false && !breakGlass ? organisation : null;
   const others = providers.filter((p) => p.id !== organisation?.id);
 
   const start = (provider: SsoProviderSummary) =>
-    ssoClient.go(startUrl(provider, returnTo(window.location.hash)));
+    ssoClient.go(startUrl(provider, returnTo(currentRoute())));
 
   const promptFor = (provider: SsoProviderSummary) => {
     const answer: Discovery = { provider, password: false };

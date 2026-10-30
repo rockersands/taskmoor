@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { ColumnChart } from '../reports/ColumnChart';
 import { LineChart } from '../reports/LineChart';
+import { routeHref } from '../routing/router';
 import {
   estimateText,
   type ReportTicket,
@@ -178,7 +179,10 @@ export function SprintReportPage({
         <ul className="sprint-tickets">
           {list.map((ticket) => (
             <li key={ticket.id} className="sprint-ticket">
-              <a href={`#/tickets/${encodeURIComponent(ticket.key)}`} className="sprint-ticket-key">
+              <a
+                href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}
+                className="sprint-ticket-key"
+              >
                 {ticket.key}
               </a>
               <span className="sprint-ticket-summary">
@@ -211,7 +215,7 @@ export function SprintReportPage({
             ? t('sprints.report.title', { name: report.sprint.name })
             : t('sprints.report.link')}
         </h1>
-        <a href={`#/boards/${boardId}/backlog`}>{t('sprints.report.toBacklog')}</a>
+        <a href={routeHref(`#/boards/${boardId}/backlog`)}>{t('sprints.report.toBacklog')}</a>
       </div>
       {failed && (
         <p className="board-problem" role="alert">

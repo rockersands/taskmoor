@@ -5,7 +5,7 @@ import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import { useEffect, useMemo, useState } from 'react';
 import * as Y from 'yjs';
-import { API_BASE } from '../api/client';
+import { socketUrl } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MentionSource } from './mentions';
 import { RichTextEditor } from './RichTextEditor';
@@ -33,7 +33,7 @@ export type Connect = (name: string, onStatus: (status: CollabStatus) => void) =
 
 /** The server's realtime endpoint, on the origin the app talks to. */
 export function collabUrl(location: Pick<Location, 'protocol' | 'host'> = window.location): string {
-  return `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}${API_BASE}/collab`;
+  return socketUrl('/collab', location);
 }
 
 export const connectToServer: Connect = (name, onStatus) => {

@@ -1,5 +1,11 @@
 import type { S3StoreConfig } from '@taskmoor/storage';
+import { DEV_VERSION, ROUTING_MODES, type RoutingMode } from '@taskmoor/webconfig';
 import { z } from 'zod';
+
+/** Stamped into the bundle by `pnpm build` from TASKMOOR_VERSION, as the frontend artefact is. */
+declare const __TASKMOOR_BUILD_VERSION__: string | undefined;
+const BUILT_VERSION =
+  typeof __TASKMOOR_BUILD_VERSION__ === 'string' ? __TASKMOOR_BUILD_VERSION__ : DEV_VERSION;
 
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
 
@@ -19,10 +25,16 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(8080),
   HOST: z.string().min(1).default('0.0.0.0'),
   LOG_LEVEL: z.enum(LOG_LEVELS).default('info'),
-  TASKMOOR_VERSION: z.string().min(1).default('0.0.0-dev'),
+  /** Defaults to the version the bundle was built with; the frontend artefact must match it. */
+  TASKMOOR_VERSION: z.string().min(1).default(BUILT_VERSION),
   TASKMOOR_ROLE: z.string().min(1).default('all'),
   /** Directory with the built frontend, served by the web role; unset means no static files. */
   TASKMOOR_WEB_DIR: z.string().min(1).optional(),
+  /**
+   * How the served frontend writes its addresses (M1-105): `hash` (#/boards/7) or `path`
+   * (clean URLs, /boards/7); either way links of the other kind still open.
+   */
+  TASKMOOR_WEB_ROUTING: z.enum(ROUTING_MODES as [RoutingMode, ...RoutingMode[]]).default('hash'),
   /** Where browsers reach this instance; the setup link and cookie security follow it. */
   PUBLIC_URL: z.string().url().optional(),
   /** Fixed setup token for installers and tests; otherwise one is generated per start. */
@@ -115,6 +127,7 @@ export interface ServerConfig {
   version: string;
   roles: readonly Role[];
   webDir: string | undefined;
+  webRouting: RoutingMode;
   publicUrl: string;
   secureCookies: boolean;
   setupToken: string | undefined;
@@ -243,6 +256,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     version: e.TASKMOOR_VERSION,
     roles,
     webDir: e.TASKMOOR_WEB_DIR,
+    webRouting: e.TASKMOOR_WEB_ROUTING,
     publicUrl: e.PUBLIC_URL ?? `http://localhost:${e.PORT}`,
     secureCookies: (e.PUBLIC_URL ?? '').startsWith('https://'),
     setupToken: e.TASKMOOR_SETUP_TOKEN,

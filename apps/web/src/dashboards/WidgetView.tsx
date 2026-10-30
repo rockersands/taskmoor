@@ -5,6 +5,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { ColumnChart } from '../reports/ColumnChart';
 import { DonutChart, MAX_SLICES } from '../reports/DonutChart';
 import { LineChart } from '../reports/LineChart';
+import { routeHref } from '../routing/router';
 import { estimateText } from '../sprints/client';
 import type { DashboardClient, Widget } from './client';
 
@@ -154,7 +155,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
           <ul className="widget-tickets">
             {d.tickets.map((x) => (
               <li key={x.id}>
-                <a href={`#/tickets/${encodeURIComponent(x.key)}`}>{x.key}</a>
+                <a href={routeHref(`#/tickets/${encodeURIComponent(x.key)}`)}>{x.key}</a>
                 <span className="widget-ticket-summary">{x.summary}</span>
                 <span className="widget-ticket-status">{x.status}</span>
               </li>

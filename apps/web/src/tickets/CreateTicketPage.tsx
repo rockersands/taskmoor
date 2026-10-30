@@ -5,6 +5,7 @@ import { useT } from '../i18n/I18nProvider';
 import { lockOfField, useLockText } from '../locks/useLockText';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
+import { routeHref } from '../routing/router';
 import {
   type CustomField,
   createBody,
@@ -639,7 +640,7 @@ export function CreateTicketPage({
           </p>
           {created && (
             <p className="page-note">
-              <a href={`#/tickets/${encodeURIComponent(created)}`} onClick={onClose}>
+              <a href={routeHref(`#/tickets/${encodeURIComponent(created)}`)} onClick={onClose}>
                 {t('tickets.create.open', { key: created })}
               </a>
             </p>

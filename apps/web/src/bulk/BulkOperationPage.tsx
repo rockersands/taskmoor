@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { type LockAction, useLockText } from '../locks/useLockText';
+import { routeHref } from '../routing/router';
 import {
   type BulkClient,
   type BulkError,
@@ -240,7 +241,7 @@ export function BulkOperationPage({
               <li key={item.position} className="bulk-failure">
                 <p className="bulk-ticket">
                   {item.key ? (
-                    <a href={`#/tickets/${encodeURIComponent(item.key)}`}>{item.key}</a>
+                    <a href={routeHref(`#/tickets/${encodeURIComponent(item.key)}`)}>{item.key}</a>
                   ) : (
                     item.ref
                   )}

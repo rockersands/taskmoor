@@ -1,4 +1,5 @@
 import { ApiError, api } from '../api/client';
+import { routeHref } from '../routing/router';
 
 export interface Approver {
   user: { id: number; name: string };
@@ -158,7 +159,7 @@ export const releaseClient: ReleaseClient = {
 
 /** The search page for a query. */
 export const searchHref = (query: string) =>
-  `#/search?${new URLSearchParams({ q: query }).toString()}`;
+  routeHref(`#/search?${new URLSearchParams({ q: query }).toString()}`);
 
 /** The notes as a file, straight from the server. */
 export const notesFileHref = (releaseId: number) =>

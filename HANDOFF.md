@@ -14,6 +14,52 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## Side session 2026-10-30: M1-105 static frontend artefact
+
+Built on the branch `claude/nifty-hermann-b572d0` in a side session and merged into main after
+M1-115 (the MCP admin link it did not know about now goes through `routeHref`); ADR-066; no
+migration; new package `packages/webconfig`. The default routing mode is an open decision in
+`docs/plan/decisions.csv`.
+
+- **Artefact:** `pnpm build` writes `apps/web/dist` with `version.json` (name
+  `taskmoor-web`, the version from `TASKMOOR_VERSION`, every file with size and SHA-256);
+  `tools/build/server.mjs` stamps the same version into `server.mjs`/`cli.mjs`
+  (`__TASKMOOR_BUILD_VERSION__`, now the default of `TASKMOOR_VERSION`) and stops when
+  `apps/web/dist` holds another version. The web role refuses a folder with no
+  `version.json`, another version or no config slot (`apps/server/src/frontend.ts`). The
+  Dockerfile's build stage takes `ARG TASKMOOR_VERSION` (after the install layer); the Helm
+  chart no longer sets `TASKMOOR_VERSION` from the image tag (it would now refuse to start).
+- **No server code:** the Vite plugin `apps/web/build/artefact.ts` fails the build on a module
+  of a server-side workspace package, a third-party package only they use (from the
+  manifests) or a Node built-in, then writes `version.json` and scans the output. It imports
+  `packages/webconfig` and `packages/devtools/src/secrets` **by relative path**: Vite loads
+  its config with plain Node, which cannot run workspace TypeScript (bare imports are left
+  external), and Storybook loads the same config. The boundary rules exempt `apps/web/build/`.
+- **Runtime config:** a JSON block in index.html
+  (`<script id="taskmoor-config" type="application/json">`), keys `apiUrl`, `routing`,
+  `basePath`, `instanceName` only (`@taskmoor/webconfig`: tolerant `parseRuntimeConfig`,
+  strict `fillRuntimeConfig` that also writes `<base href>` for clean URLs). The server fills
+  it per request: `TASKMOOR_WEB_ROUTING` (`hash` default, `path`), the base path from
+  `PUBLIC_URL`, the instance name from setup.
+- **Routing:** pages still use routes written `#/boards/7`; `apps/web/src/routing/router.ts`
+  maps them to the address. Use `navigate`, `currentRoute`, `replaceRoute`, `routeHref`
+  (links), `routeUrl` (copying) and `useRoute`; never `window.location.hash` or
+  `history.replaceState` with a route, which break clean URLs. Token routes (`?token=`) stay
+  in the fragment. Server fallback: clean URLs get the shell, hash mode redirects `/x` to `/#/x`.
+- **Tests:** `packages/webconfig`, `routing/router.test.ts`, `apps/server/src/frontend.test.ts`,
+  the new Vitest project `web-build` (`apps/web/vitest.build.config.ts`: a real build, about
+  10 s), and `e2e/routing.spec.ts` on `e2e/web-server.ts` (ports 4176 hash and 4177 clean URLs,
+  its own embedded cluster `e2e-web`).
+- **Gotcha:** the e2e build is unversioned (`0.0.0-dev`); after it, a `server.mjs` from a
+  versioned `pnpm build` refuses `apps/web/dist`. Rebuild both with the same
+  `TASKMOOR_VERSION`.
+- **Pending (not blocking):** `bash tools/image/smoke.sh` (now checks `/version.json` against
+  `/health` and both deep-link behaviours) was not run: no Docker on this Mac.
+- **Next:** clean URLs as the single-server default is a product call (the spec's default for
+  kits is clean URLs); credentials for a cross-origin `apiUrl` come with M1-107; M1-106 can
+  compare `version.json` with the meta endpoint; M1-111 fills the slot and adds the host
+  fallbacks (`.htaccess`, `_redirects`, nginx) with `fillRuntimeConfig`.
+
 ## Side session 2026-10-30: M1-039 history operators
 
 Built on the branch `claude/m1-039-history-operators-d9010b` in a side session while the main

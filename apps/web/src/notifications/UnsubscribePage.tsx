@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { currentRoute, routeHref } from '../routing/router';
 import { passwordTokenFromHash } from '../session/PasswordLinkPage';
 import { type UnsubscribeClient, type UnsubscribeLink, unsubscribeClient } from './client';
 
@@ -25,7 +26,7 @@ type State =
  */
 export function UnsubscribePage({ client = unsubscribeClient }: UnsubscribePageProps) {
   const t = useT();
-  const token = passwordTokenFromHash(window.location.hash);
+  const token = passwordTokenFromHash(currentRoute());
   const [state, setState] = useState<State>(
     token ? { status: 'checking' } : { status: 'no-token' },
   );
@@ -79,7 +80,7 @@ export function UnsubscribePage({ client = unsubscribeClient }: UnsubscribePageP
           <p className="page-note" role="status">
             {t('unsubscribe.done', { what: what(state.link) })}
           </p>
-          <a className="button-primary setup-link" href="#/account/notifications">
+          <a className="button-primary setup-link" href={routeHref('#/account/notifications')}>
             {t('unsubscribe.settings')}
           </a>
         </>

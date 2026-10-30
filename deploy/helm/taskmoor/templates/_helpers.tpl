@@ -51,8 +51,6 @@ app.kubernetes.io/component: {{ .component }}
   value: {{ .Values.publicUrl | quote }}
 - name: LOG_LEVEL
   value: {{ .Values.logLevel | quote }}
-- name: TASKMOOR_VERSION
-  value: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
 - name: METRICS_PORT
   value: {{ .Values.metrics.port | quote }}
 - name: TASKMOOR_PASSWORD_PEPPER

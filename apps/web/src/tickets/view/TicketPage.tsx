@@ -7,6 +7,7 @@ import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
+import { routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { usePaletteCommands } from '../../shell/paletteCommands';
@@ -944,7 +945,7 @@ function Details({
           <dt>{t('workflow.field.parent')}</dt>
           <dd>
             {ticket.parent.key ? (
-              <a href={`#/tickets/${encodeURIComponent(ticket.parent.key)}`}>
+              <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.parent.key)}`)}>
                 {ticket.parent.key} {ticket.parent.summary}
               </a>
             ) : (
@@ -999,7 +1000,7 @@ function LinksPanel({
           <li key={`t${l.id}`}>
             <span className="ticket-link-phrase">{l.phrase}</span>{' '}
             <a
-              href={`#/tickets/${encodeURIComponent(l.ticket.key)}`}
+              href={routeHref(`#/tickets/${encodeURIComponent(l.ticket.key)}`)}
               className={l.ticket.closed ? 'ticket-link-closed' : undefined}
             >
               {l.ticket.key}

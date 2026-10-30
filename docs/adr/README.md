@@ -70,6 +70,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [063](0063-full-export-format.md) | Full export as canonical NDJSON with source ids, imported verbatim; checked by a translated re-export | Accepted |
 | [064](0064-timeline.md) | The timeline reads dates and roll-ups in one request and reschedules through tickets | Accepted |
 | [065](0065-list-and-calendar-views.md) | List and calendar views over search, format rules as query conditions | Accepted |
+| [066](0066-frontend-artefact-and-runtime-config.md) | The frontend as a versioned artefact with a runtime-config slot and two routing modes | Accepted |
 | [067](0067-rest-api-v1.md) | REST API v1 as a written contract of stable operations over the server's own schemas | Accepted |
 | [068](0068-mcp-server.md) | A built-in MCP tool server over the REST API, as the caller | Accepted |
 

@@ -13,6 +13,7 @@ describe('loadConfig', () => {
       version: '0.0.0-dev',
       roles: ['api', 'worker', 'realtime', 'web'],
       webDir: undefined,
+      webRouting: 'hash',
       publicUrl: 'http://localhost:8080',
       secureCookies: false,
       setupToken: undefined,
@@ -119,6 +120,15 @@ describe('loadConfig', () => {
       roles: ['web'],
       webDir: '/app/web',
     });
+  });
+
+  it('[OPS-017] serves the frontend with hash routing unless clean URLs are asked for', () => {
+    const web = { TASKMOOR_ROLE: 'web', TASKMOOR_WEB_DIR: '/app/web' };
+    expect(loadConfig(web).webRouting).toBe('hash');
+    expect(loadConfig({ ...web, TASKMOOR_WEB_ROUTING: 'path' }).webRouting).toBe('path');
+    expect(() => loadConfig({ ...web, TASKMOOR_WEB_ROUTING: 'pretty' })).toThrow(
+      /TASKMOOR_WEB_ROUTING/,
+    );
   });
 
   it('[OPS-003] derives the setup link base and cookie security from PUBLIC_URL', () => {
