@@ -200,6 +200,36 @@ ADR-010 has a new section; migration **0058** (`0058_info_fields.ts`).
 - Query fields `firstResponse`, `daysSinceLastComment` (ordering uses the column reversed) and
   `participants`. `GET /api/v1/tickets/:id/info` adds time in status from the history.
 - The ticket page has an Info panel under Details (a new `.ticket-side` column wrapper).
+## Side session 2026-10-30: M1-088 Data Center mapping, people and configuration
+
+Built on the branch `claude/kind-feistel-083114` in a side session; the main session merges it
+after its own gate. ADR-081; migration **0065** `0065_import_labels.ts` (0064 is the main
+session's; a database that ran 0065 before 0064 exists must be recreated). Upgrade seed
+`0065_import_labels`.
+
+- **Reader** `import/dc-backup/stage.ts`: one streaming pass (the validator's `parseXml`, now in
+  `parse.ts`) writes `<zip>.staged/<kind>.ndjson` and `stage.json`, reused for the same file.
+  Configuration only in memory; issues and the rest are counted. M1-089 onwards add their
+  elements to `Collector.row` and `resolve()`, their kinds to `STAGED_KINDS` and `CONSUMED`,
+  and stream large ones to files instead of memory.
+- **Source and mapper** `import/dc.ts` (format `dc-backup`, `system` default `dc`).
+- **Framework** (`model.ts`, `run.ts`, `report.ts`): `ImportSource.unsupported(kind)` counts a
+  kind at once with its reason, so a large backup is not read only to be counted;
+  `ImportSource.notes()` adds source warnings once (`removed_character`, kind `source`);
+  `SourceRecord.label` and `import_record.label` feed the report's new `mapping` section
+  (configuration kinds, 500 per kind); `TrackCommand.roleActors`. `run.unsupported` values may
+  now be `{count, reason}`; `runView` still shows numbers. JSON-lines reading is shared in
+  `import/lines.ts` (the export source uses it).
+- **Route** `GET /api/v1/admin/imports/:id/records` (OpenAPI regenerated); `POST` takes
+  `{"format": "dc-backup", "path", "system"}` and checks only the ZIP's directory.
+- **Goldens**: `import/__golden__/dc-10k-seed1.report.json` (new),
+  `fidelity-report.schema.json`, `packages/db/src/__golden__/schema.json`, `docs/api/openapi.json`.
+- **Manual** `admin/import-export.md`: "Data Center backups"; format notes 02d section 6.
+- **Not done**: nested groups (warned), earlier project keys (warned, M1-128), archived projects,
+  project avatars and user time zones (not in the generator), matching people by Data Center
+  user name (by address only), and a setting for the backup's time zone (M1-091 needs one for
+  issue times).
+
 ## Side session 2026-10-30: M1-123 teams
 
 Built on the branch `claude/gallant-bhaskara-72bcdc` in a side session; the main session merges

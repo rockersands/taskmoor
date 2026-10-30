@@ -214,6 +214,8 @@ async function snapshot(db: Kysely<Database>, runId: string) {
       run: { ...report.run, id: 0, startedAt: null, finishedAt: '' },
       // Checksums cover resolved target ids; whether they match is what counts here.
       samples: report.samples.map((s) => ({ kind: s.kind, sourceId: s.sourceId, match: s.match })),
+      // Target ids by the source record they came from: rolled-back batches use up ids.
+      mapping: report.mapping.map((m) => ({ ...m, targetId: as(m.kind, m.targetId) })),
     },
   };
 }

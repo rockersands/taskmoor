@@ -684,6 +684,43 @@ const ticketTypes: Loader<TicketTypeCommand> = {
   },
 };
 
+type TrackData = {
+  owner: number | null;
+  key: string;
+  actors: { role: number; user: number | null; group: number | null }[];
+};
+
+/** A track's role actors with their references resolved; one that does not resolve is left out. */
+function roleActors(ctx: LoadContext, cmd: TrackCommand): TrackData['actors'] {
+  const out: TrackData['actors'] = [];
+  for (const a of cmd.roleActors ?? []) {
+    const role = optional(ctx, a.role, 'roleActors.role');
+    const user = optional(ctx, a.user, 'roleActors.user');
+    const group = optional(ctx, a.group, 'roleActors.group');
+    if (role === null || (user === null && group === null)) continue;
+    out.push({ role, user, group });
+  }
+  return out;
+}
+
+/** Adds a track's role actors; the ones it has already stay. */
+async function addRoleActors(ctx: LoadContext, trackId: number, actors: TrackData['actors']) {
+  if (actors.length === 0) return;
+  await ctx.trx
+    .insertInto('track_role_actor')
+    .values(
+      actors.map((a) => ({
+        workspace_id: ctx.workspaceId,
+        track_id: trackId,
+        role_id: a.role,
+        user_id: a.user,
+        group_id: a.user === null ? a.group : null,
+      })),
+    )
+    .onConflict((oc) => oc.doNothing())
+    .execute();
+}
+
 const tracks: Loader<TrackCommand> = {
   table: { name: 'track', id: 'id' },
   async plan(ctx, cmd, existing) {
@@ -691,9 +728,10 @@ const tracks: Loader<TrackCommand> = {
     const key = checkKey(cmd.key, 'import');
     if (!key.ok) throw new PlanFailure(`invalid_key:${key.problem}`);
     const fingerprint = { key: key.key, name: cmd.name, owner: real(owner) };
+    const data: TrackData = { owner, key: key.key, actors: roleActors(ctx, cmd) };
     if (existing !== null) {
       await existingTarget(ctx, 'track', existing);
-      return { action: 'update', targetId: existing, fingerprint, data: { owner, key: key.key } };
+      return { action: 'update', targetId: existing, fingerprint, data };
     }
     const taken = await ctx.trx
       .selectFrom('track_key_history as h')
@@ -714,11 +752,11 @@ const tracks: Loader<TrackCommand> = {
     }
     if (cmd.match === 'key') throw new PlanFailure('unknown_track');
     if (taken) throw new PlanFailure('track_key_taken');
-    return { action: 'create', targetId: null, fingerprint, data: { owner, key: key.key } };
+    return { action: 'create', targetId: null, fingerprint, data };
   },
   async apply(ctx, cmd, plan) {
     if (plan.action === 'link') return plan.targetId as number;
-    const { owner, key } = plan.data as { owner: number | null; key: string };
+    const { owner, key, actors } = plan.data as TrackData;
     if (plan.action === 'update') {
       await ctx.trx
         .updateTable('track')
@@ -730,6 +768,7 @@ const tracks: Loader<TrackCommand> = {
         })
         .where('id', '=', plan.targetId as number)
         .execute();
+      await addRoleActors(ctx, plan.targetId as number, actors);
       return plan.targetId as number;
     }
     const policy = await ctx.trx
@@ -773,6 +812,7 @@ const tracks: Loader<TrackCommand> = {
         ctx.trx,
       );
     }
+    await addRoleActors(ctx, row.id, actors);
     return row.id;
   },
   async read(db, ws, ids) {

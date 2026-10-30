@@ -1,0 +1,906 @@
+{
+  "entities": [
+    {
+      "kind": "user",
+      "outcomes": {
+        "created": 51,
+        "failed": 0,
+        "linked": 1,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 52
+    },
+    {
+      "kind": "group",
+      "outcomes": {
+        "created": 3,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 3
+    },
+    {
+      "kind": "role",
+      "outcomes": {
+        "created": 3,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 3
+    },
+    {
+      "kind": "status",
+      "outcomes": {
+        "created": 4,
+        "failed": 0,
+        "linked": 2,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 6
+    },
+    {
+      "kind": "priority",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 3,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 5
+    },
+    {
+      "kind": "close_reason",
+      "outcomes": {
+        "created": 3,
+        "failed": 0,
+        "linked": 1,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 4
+    },
+    {
+      "kind": "ticket_type",
+      "outcomes": {
+        "created": 4,
+        "failed": 0,
+        "linked": 1,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 5
+    },
+    {
+      "kind": "track",
+      "outcomes": {
+        "created": 4,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 4
+    }
+  ],
+  "mapping": [
+    {
+      "kind": "user",
+      "label": "Anhin Gallin <Anhin.Gallin39@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "anhin.gallin39",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Corka Zelvelyor <Corka.Zelvelyor3@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "corka.zelvelyor3",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Cormi Deibri <Cormi.Deibri42@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "cormi.deibri42",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Darnal Tamquobri <Darnal.Tamquobri27@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "darnal.tamquobri27",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Fiasol Velcor <Fiasol.Velcor15@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "fiasol.velcor15",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Iseth Morhin <Iseth.Morhin21@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "iseth.morhin21",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Brivel Velivogor <Brivel.Velivogor1@example.test>",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "jirauser10001",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Miul Morwen <Miul.Morwen2@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10002",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Loul Fiaka <Loul.Fiaka4@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10004",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Miis Loivo <Miis.Loivo5@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10005",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Ethris Halvelgal <Ethris.Halvelgal7@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10007",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Kelnal Wenlin <Kelnal.Wenlin8@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10008",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Vinivo Kelbrijun <Vinivo.Kelbrijun10@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10010",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Gornal Nalquotam <Gornal.Nalquotam11@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10011",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Ivovel Galdeira <Ivovel.Galdeira13@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10013",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Corcor Velhinhal <Corcor.Velhinhal14@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10014",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Anbel Keltoris <Anbel.Keltoris16@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10016",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Zelbel Kellingal <Zelbel.Kellingal17@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10017",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Senjun Vintor <Senjun.Vintor19@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10019",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Corris Torrisivo <Corris.Torrisivo20@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10020",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Pirfen Brikel <Pirfen.Brikel22@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10022",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Mikel Vellomi <Mikel.Vellomi23@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10023",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Kelsen Ethveltam <Kelsen.Ethveltam25@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10025",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Rismi Deihinyor <Rismi.Deihinyor26@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10026",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Junwen Anivo <Junwen.Anivo28@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10028",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Velra Quowen <Velra.Quowen29@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10029",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Aneth Ivois <Aneth.Ivois31@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10031",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Yorbel Ivotorgal <Yorbel.Ivotorgal32@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10032",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Halhal Linethcor <Halhal.Linethcor34@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10034",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Torkel Risxangor <Torkel.Risxangor35@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10035",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Junyor Keliseth <Junyor.Keliseth37@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10037",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Xangal Quofia <Xangal.Quofia38@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10038",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Vinquo Linyorka <Vinquo.Linyorka40@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10040",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Brihal Wenjun <Brihal.Wenjun41@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10041",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Yoreth Senfen <Yoreth.Senfen43@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10043",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Oris Yorgal <Oris.Yorgal44@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10044",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Lozel Wengor <Lozel.Wengor46@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10046",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Ivovel Briwenzel <Ivovel.Briwenzel47@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10047",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Xantor Senka <Xantor.Senka49@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10049",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "jirauser10050",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "jirauser10050",
+      "warnings": [
+        "deleted_user",
+        "placeholder_email"
+      ]
+    },
+    {
+      "kind": "user",
+      "label": "Loyor Ivoan <Loyor.Ivoan45@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "loyor.ivoan45",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Ornal Tortor <Ornal.Tortor36@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "ornal.tortor36",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Pireth Halul <Pireth.Halul24@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "pireth.halul24",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Quocor Yormiivo <Quocor.Yormiivo30@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "quocor.yormiivo30",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Quojun Halkelvel <Quojun.Halkelvel9@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "quojun.halkelvel9",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Quosol Sentorlo <Quosol.Sentorlo33@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "quosol.sentorlo33",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Rishin Uleth <Rishin.Uleth0@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "rishin.uleth0",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "sennal.zelbri51",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "sennal.zelbri51",
+      "warnings": [
+        "deleted_user",
+        "placeholder_email"
+      ]
+    },
+    {
+      "kind": "user",
+      "label": "Sensen Zelivo <Sensen.Zelivo6@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "sensen.zelivo6",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Vinmor Lozelkel <Vinmor.Lozelkel48@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "vinmor.lozelkel48",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Xanwen Zelnal <Xanwen.Zelnal18@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "xanwen.zelnal18",
+      "warnings": []
+    },
+    {
+      "kind": "user",
+      "label": "Yorvin Linvelkel <Yorvin.Linvelkel12@example.test>",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "yorvin.linvelkel12",
+      "warnings": []
+    },
+    {
+      "kind": "group",
+      "label": "everyone",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "everyone",
+      "warnings": []
+    },
+    {
+      "kind": "group",
+      "label": "team-halhal-2",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "team-halhal-2",
+      "warnings": []
+    },
+    {
+      "kind": "group",
+      "label": "team-sennal-1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "team-sennal-1",
+      "warnings": []
+    },
+    {
+      "kind": "role",
+      "label": "Managers",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "role",
+      "label": "Contributors",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "role",
+      "label": "Observers",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "status",
+      "label": "Backlog",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "status",
+      "label": "Selected",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": [
+        "status_not_in_workflow: Selected"
+      ]
+    },
+    {
+      "kind": "status",
+      "label": "Working",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": [
+        "status_not_in_workflow: Working"
+      ]
+    },
+    {
+      "kind": "status",
+      "label": "In Review",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "status",
+      "label": "Finished",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": [
+        "status_not_in_workflow: Finished"
+      ]
+    },
+    {
+      "kind": "status",
+      "label": "Declined",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": [
+        "status_not_in_workflow: Declined"
+      ]
+    },
+    {
+      "kind": "priority",
+      "label": "Critical",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "priority",
+      "label": "High",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "priority",
+      "label": "Normal",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "priority",
+      "label": "Low",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "priority",
+      "label": "Trivial",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "close_reason",
+      "label": "Fixed",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "close_reason",
+      "label": "Won't fix",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "close_reason",
+      "label": "Duplicate",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "close_reason",
+      "label": "Cannot reproduce",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "ticket_type",
+      "label": "Feature request",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "ticket_type",
+      "label": "Defect",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "ticket_type",
+      "label": "Chore",
+      "outcome": "linked",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "ticket_type",
+      "label": "Milestone",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "ticket_type",
+      "label": "Step",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "track",
+      "label": "AX: Nalul Upload",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "track",
+      "label": "BX: Nalmor Session",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "track",
+      "label": "CX: Risnal Retry",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "track",
+      "label": "DX: Ivolo Copper",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    }
+  ],
+  "unsupported": [
+    {
+      "count": 12089,
+      "kind": "Action",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 4,
+      "kind": "AO_60DB71_RAPIDVIEW",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 15,
+      "kind": "AO_60DB71_SPRINT",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 28367,
+      "kind": "ChangeGroup",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 32448,
+      "kind": "ChangeItem",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 1042,
+      "kind": "data/attachments",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 1042,
+      "kind": "FileAttachment",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 10000,
+      "kind": "Issue",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 1933,
+      "kind": "IssueLink",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 5,
+      "kind": "IssueLinkType",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 4673,
+      "kind": "Label",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 4,
+      "kind": "SearchRequest",
+      "reason": "not_imported_yet"
+    },
+    {
+      "count": 22,
+      "kind": "SequenceValueItem",
+      "reason": "not_needed"
+    },
+    {
+      "count": 3750,
+      "kind": "Worklog",
+      "reason": "not_imported_yet"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "removed_character",
+      "count": 14,
+      "detail": "char_ref",
+      "kind": "source"
+    },
+    {
+      "code": "removed_character",
+      "count": 20,
+      "detail": "control",
+      "kind": "source"
+    },
+    {
+      "code": "removed_character",
+      "count": 13,
+      "detail": "noncharacter",
+      "kind": "source"
+    },
+    {
+      "code": "removed_character",
+      "count": 15,
+      "detail": "nul",
+      "kind": "source"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Declined",
+      "kind": "status"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Finished",
+      "kind": "status"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Selected",
+      "kind": "status"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Working",
+      "kind": "status"
+    },
+    {
+      "code": "deleted_user",
+      "count": 2,
+      "detail": null,
+      "kind": "user"
+    },
+    {
+      "code": "placeholder_email",
+      "count": 2,
+      "detail": null,
+      "kind": "user"
+    }
+  ]
+}

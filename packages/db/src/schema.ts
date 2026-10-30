@@ -1753,6 +1753,8 @@ export interface ImportRecordTable {
   checksum: string | null;
   sampled: Generated<boolean>;
   error: NullableJson;
+  /** How people know a configuration object in the source (M1-088); null for content. */
+  label: string | null;
 }
 
 /** An imported object by (import source, source system, entity kind, source id) (IMP-009). */

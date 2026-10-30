@@ -1233,6 +1233,21 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM user_session f WHERE f.client_id = 'taskmoor-web'`.execute(db);
     },
   },
+  '0065_import_labels': {
+    tables: {
+      import_record:
+        "entity_kind = 'status' AND source_id = 'seed-status' AND label = 'Seed status'",
+    },
+    seed: async (db) => {
+      // A configuration record of an earlier run, with the name the report's mapping shows.
+      await sql`INSERT INTO import_record (run_id, workspace_id, entity_kind, source_id, outcome,
+          target_id, label)
+        SELECT r.run_id, 1, 'status', 'seed-status', 'linked', s.id, 'Seed status'
+          FROM import_record r, status s
+         WHERE r.entity_kind = 'track' AND r.source_id = 'seed-track'
+         ORDER BY s.id LIMIT 1`.execute(db);
+    },
+  },
 };
 
 /**

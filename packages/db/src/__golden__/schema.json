@@ -737,7 +737,8 @@
       "target_id bigint",
       "checksum text",
       "sampled boolean not null default false",
-      "error jsonb"
+      "error jsonb",
+      "label text"
     ],
     "indexes": [
       "CREATE INDEX import_record_failed_idx ON public.import_record USING btree (run_id, entity_kind) WHERE (outcome = 'failed'::text)",

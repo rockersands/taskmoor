@@ -4,6 +4,7 @@ import type { AttachmentStores } from '../attachments/stores';
 import { enqueue, extendLock, type JobRunner } from '../events/queue';
 import type { FieldCatalogs } from '../fields/catalog';
 import { csvFormat } from './csv';
+import { dcBackupFormat } from './dc';
 import type { ImportFormat } from './model';
 import { finishRun, runImport } from './run';
 import { syntheticFormat } from './synthetic';
@@ -22,6 +23,7 @@ export const IMPORT_FORMATS: Readonly<Record<string, ImportFormat>> = {
   [syntheticFormat.importSource]: syntheticFormat,
   [csvFormat.importSource]: csvFormat,
   [exportFormat.importSource]: exportFormat,
+  [dcBackupFormat.importSource]: dcBackupFormat,
 };
 
 export const importJob = (workspaceId: number, runId: string, part = 0) => ({

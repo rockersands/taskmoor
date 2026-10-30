@@ -145,6 +145,100 @@
     "failuresTruncated": {
       "type": "boolean"
     },
+    "mapping": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "user",
+              "group",
+              "team",
+              "role",
+              "status",
+              "priority",
+              "close_reason",
+              "ticket_type",
+              "link_type",
+              "track",
+              "release",
+              "area",
+              "field",
+              "field_context",
+              "field_option",
+              "workflow",
+              "workflow_map",
+              "ticket",
+              "comment",
+              "link",
+              "time_entry",
+              "attachment",
+              "history"
+            ],
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "created",
+              "updated",
+              "unchanged",
+              "linked",
+              "failed",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceId": {
+            "type": "string"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "sourceId",
+          "label",
+          "outcome",
+          "targetId",
+          "reason",
+          "warnings"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "mappingTruncated": {
+      "type": "boolean"
+    },
     "run": {
       "additionalProperties": false,
       "properties": {
@@ -442,7 +536,9 @@
     "warnings",
     "unsupported",
     "failures",
-    "failuresTruncated"
+    "failuresTruncated",
+    "mapping",
+    "mappingTruncated"
   ],
   "type": "object"
 }

@@ -85,6 +85,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [078](0078-allowlists-and-syslog.md) | IP allowlists matched in each process, and the audit log forwarded to syslog by cursor | Accepted |
 | [079](0079-board-managed-workflows.md) | Board-managed workflows as ordinary workflows the board rewrites | Accepted |
 | [080](0080-cross-origin-auth.md) | Cross-origin sign-in with the backend's cookie on one site and OAuth across sites | Accepted |
+| [081](0081-dc-backup-mapping.md) | The Data Center backup import: a streaming stage of per-kind files, and a mapping report by name | Accepted |
 | [082](0082-load-tests.md) | Load tests with k6 against the real server, and a sizing table computed from them | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

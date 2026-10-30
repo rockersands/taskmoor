@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { Database, JsonValue } from '@taskmoor/db';
+import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { AttachmentStores } from '../attachments/stores';
 import { emit } from '../events/bus';
@@ -24,7 +24,16 @@ import {
   type Mapped,
   type Warning,
 } from './model';
-import { buildReport, emptyTally, type Tally, type WarningTally } from './report';
+import {
+  buildReport,
+  emptyTally,
+  labelOf,
+  MAPPED_KINDS,
+  type Tally,
+  type UnsupportedTally,
+  unsupportedCount,
+  type WarningTally,
+} from './report';
 
 /**
  * Runs an import (M1-086; IMP-009, ADR-048) a batch at a time. Each batch is one transaction:
@@ -152,12 +161,7 @@ async function step(
   if (run.status !== 'running') return 'stop';
   if (run.cancel_requested) return 'cancelled';
   const checkpoint = run.checkpoint as Checkpoint;
-  if (checkpoint.done || kinds.length === 0) return 'complete';
-  const index = checkpoint.kind === undefined ? 0 : kinds.indexOf(checkpoint.kind);
-  if (index < 0) throw new Error(`the source no longer has kind ${checkpoint.kind}`);
-  const kind = kinds[index] as string;
-  const after = checkpoint.after ?? null;
-  const items = await source.read(kind, after, options.batch ?? DEFAULT_BATCH);
+  if (checkpoint.done) return 'complete';
   const save = async (next: Checkpoint, changes: Record<string, unknown> = {}) => {
     await trx
       .updateTable('import_run')
@@ -165,18 +169,58 @@ async function step(
       .where('id', '=', runId)
       .execute();
   };
+  const warnings = run.warnings as unknown as Record<string, WarningTally>;
+  const unsupported = run.unsupported as Record<string, UnsupportedTally>;
+  const startOf = (k: string | undefined): Checkpoint =>
+    k === undefined ? { done: true } : { kind: k, after: null };
+
+  // The source's own notes (characters it removed, say) join the warnings once, first.
+  if (checkpoint.kind === undefined && source.notes) {
+    for (const note of await source.notes()) {
+      if (note.count <= 0) continue;
+      const key = `source|${note.code}|${note.detail ?? ''}`;
+      const entry = warnings[key] ?? {
+        kind: 'source',
+        code: note.code,
+        detail: note.detail ?? null,
+        count: 0,
+        examples: [],
+      };
+      warnings[key] = entry;
+      entry.count += note.count;
+      for (const e of note.examples) {
+        if (entry.examples.length < 5 && !entry.examples.includes(e)) entry.examples.push(e);
+      }
+    }
+    await save(startOf(kinds[0]), { warnings: JSON.stringify(warnings) });
+    return 'continue';
+  }
+  if (kinds.length === 0) return 'complete';
+  const index = checkpoint.kind === undefined ? 0 : kinds.indexOf(checkpoint.kind);
+  if (index < 0) throw new Error(`the source no longer has kind ${checkpoint.kind}`);
+  const kind = kinds[index] as string;
+  const after = checkpoint.after ?? null;
+
+  // Kinds without a loader are counted, never dropped silently: by the source when it can,
+  // with its reason, or else a page at a time below.
+  if (!isEntityKind(kind) && after === null && source.unsupported) {
+    const counted = await source.unsupported(kind);
+    if (counted !== null) {
+      if (counted.count > 0) unsupported[kind] = { count: counted.count, reason: counted.reason };
+      await save(startOf(kinds[index + 1]), { unsupported: JSON.stringify(unsupported) });
+      return 'continue';
+    }
+  }
+  const items = await source.read(kind, after, options.batch ?? DEFAULT_BATCH);
   if (items.length === 0) {
-    const next = kinds[index + 1];
-    await save(next === undefined ? { done: true } : { kind: next, after: null });
+    await save(startOf(kinds[index + 1]));
     return 'continue';
   }
   const last = (items[items.length - 1] as { cursor: string }).cursor;
   const batches = run.batches + 1;
 
-  // Kinds without a loader are counted, never dropped silently.
   if (!isEntityKind(kind)) {
-    const unsupported = run.unsupported as Record<string, number>;
-    unsupported[kind] = (unsupported[kind] ?? 0) + items.length;
+    unsupported[kind] = unsupportedCount(unsupported[kind] ?? 0) + items.length;
     await save({ kind, after: last }, { unsupported: JSON.stringify(unsupported), batches });
     return 'continue';
   }
@@ -184,7 +228,6 @@ async function step(
   const tallies = run.tallies as unknown as Record<string, Tally>;
   const tally = tallies[kind] ?? emptyTally();
   tallies[kind] = tally;
-  const warnings = run.warnings as unknown as Record<string, WarningTally>;
   let current = '';
   /** The current record's own warnings, kept with it: a dry run lists problems per record. */
   let mine: Warning[] = [];
@@ -269,7 +312,9 @@ async function step(
     checksum: string | null;
     sampled: boolean;
     error: string | null;
+    label: string | null;
   }[] = [];
+  const mappedKind = MAPPED_KINDS.includes(kind);
   const externals: { source_id: string; target_id: number; checksum: string }[] = [];
 
   for (const { item, result } of mapped) {
@@ -291,6 +336,7 @@ async function step(
           error: failed ? result.fail : result.skip,
           ...(mine.length > 0 ? { warnings: mine } : {}),
         }),
+        label: mappedKind ? labelOf(item, null) : null,
       });
       continue;
     }
@@ -334,6 +380,7 @@ async function step(
         checksum: inSample ? checksum(plan.fingerprint) : null,
         sampled: inSample,
         error: mine.length > 0 ? JSON.stringify({ warnings: mine }) : null,
+        label: mappedKind ? labelOf(item, command) : null,
       });
       await sql`RELEASE SAVEPOINT import_record`.execute(trx);
     } catch (error) {
@@ -349,6 +396,7 @@ async function step(
           error: errorText(error),
           ...(mine.length > 0 ? { warnings: mine } : {}),
         }),
+        label: mappedKind ? labelOf(item, command) : null,
       });
     }
   }
@@ -371,6 +419,7 @@ async function step(
         checksum: eb.ref('excluded.checksum'),
         sampled: eb.ref('excluded.sampled'),
         error: eb.ref('excluded.error'),
+        label: eb.ref('excluded.label'),
       })),
     )
     .execute();
@@ -527,7 +576,12 @@ export function runView(row: RunRow) {
         skipped: t.skipped,
       };
     }),
-    unsupported: row.unsupported as Record<string, JsonValue>,
+    unsupported: Object.fromEntries(
+      Object.entries(row.unsupported as Record<string, UnsupportedTally>).map(([k, t]) => [
+        k,
+        unsupportedCount(t),
+      ]),
+    ),
     warnings: Object.values(row.warnings as unknown as Record<string, WarningTally>).reduce(
       (n, w) => n + w.count,
       0,
