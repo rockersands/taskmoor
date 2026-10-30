@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assembleFrontendKit, type KitFiles, kitText } from '@taskmoor/builder-core';
 import { DEFAULT_RUNTIME_CONFIG, type RuntimeConfig } from '@taskmoor/webconfig';
+import { anyLoopback } from './loopback';
 
 export const E2E_KIT_ZIP_PORT = 4178;
 export const E2E_KIT_SINGLE_PORT = 4179;
@@ -118,7 +119,7 @@ function host(port: number, kit: KitFiles, fallback: boolean, proxy = true) {
     socket.on('error', () => upstream.destroy());
   });
   // Both loopback addresses: app.taskmoor.localhost may resolve to either.
-  server.listen(port, proxy ? '0.0.0.0' : '::');
+  server.listen(port, proxy ? '0.0.0.0' : anyLoopback());
 }
 
 const zip = await assembleFrontendKit(web, config(own, 'path'));

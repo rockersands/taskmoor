@@ -14,6 +14,7 @@ import { buildApp, issueSetupToken } from '@taskmoor/server';
 import { createDatabase } from '@taskmoor/testkit/pg';
 import { startEmbeddedPostgres } from '@taskmoor/testkit/server';
 import { buildVersion, type RoutingMode } from '@taskmoor/webconfig';
+import { anyLoopback } from './loopback';
 
 export const E2E_WEB_HASH_PORT = 4176;
 export const E2E_WEB_PATH_PORT = 4177;
@@ -85,7 +86,7 @@ async function instance(
     cookie,
   );
   // Names under localhost may resolve to either loopback address: listen on both.
-  await app.listen({ port, host: crossOrigin ? '::' : '127.0.0.1' });
+  await app.listen({ port, host: crossOrigin ? anyLoopback() : '127.0.0.1' });
   return { app, db, database };
 }
 
