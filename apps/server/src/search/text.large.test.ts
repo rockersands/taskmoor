@@ -102,7 +102,7 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_TEXT)('full-text search at size (M1-
              ${member} + (g * 31) % ${USERS}, ${member} + (g * 17) % ${USERS},
              ${member} + (g * 17) % ${USERS}, 'r' || lpad(g::text, 8, '0'),
              timestamptz '2024-01-01' + g * interval '2 minutes',
-             timestamptz '2024-01-01' + g * interval '2 minutes' + ((g * 7919) % 2000) * interval '1 hour'
+             timestamptz '2024-01-01' + g * interval '2 minutes' + ((g::bigint * 7919) % 2000) * interval '1 hour'
         FROM generate_series(0, ${TICKETS - 1}) AS g
         JOIN t ON t.n = g % ${TRACKS}
         JOIN s ON s.n = (g * 7) % 5`.execute(db);
