@@ -293,6 +293,9 @@ export const boardSummary = z
     description: z.string(),
     kind: z.enum(['scrum', 'kanban']),
     location,
+    team: nullable(z.object({ id, name: z.string() }).loose()).meta({
+      description: 'The team the board belongs to, by its current name.',
+    }),
   })
   .loose()
   .meta({ id: 'BoardSummary' });

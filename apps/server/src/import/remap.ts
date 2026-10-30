@@ -32,6 +32,7 @@ export const KIND_OF_REFERENCE: Readonly<Record<Reference, EntityKind>> = {
   group: 'group',
   release: 'release',
   area: 'area',
+  team: 'team',
 };
 
 const DIGITS = /^[1-9][0-9]{0,18}$/;

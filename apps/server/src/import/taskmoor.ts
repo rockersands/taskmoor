@@ -243,6 +243,14 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
       description: g.description,
       members: g.members.map((m) => r('user', m)),
     })),
+  team: (d) =>
+    parse(z.object({ name: text, description: text, lead: nullableId, members: ids }), d, (t) => ({
+      kind: 'team',
+      name: t.name,
+      description: t.description,
+      lead: nr('user', t.lead),
+      members: t.members.map((m) => r('user', m)),
+    })),
   role: (d) =>
     parse(z.object({ name: text, description: text }), d, (x) => ({ kind: 'role', ...x })),
   status: (d) =>
@@ -330,11 +338,19 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
         name: text,
         description: text,
         owner: nullableId,
+        // Since M1-123, only when a team owns the area.
+        ownerTeam: id.optional(),
         defaultAssignee: z.enum(['area_owner', 'track_owner', 'unassigned']),
         archivedAt: nullableText,
       }),
       d,
-      (x) => ({ kind: 'area', ...x, track: r('track', x.track), owner: nr('user', x.owner) }),
+      ({ ownerTeam, ...x }) => ({
+        kind: 'area',
+        ...x,
+        track: r('track', x.track),
+        owner: nr('user', x.owner),
+        ...(ownerTeam === undefined ? {} : { ownerTeam: r('team', ownerTeam) }),
+      }),
     ),
   field: (d) =>
     parse(
@@ -357,6 +373,7 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
           'release',
           'area',
           'formula',
+          'team',
         ]),
         multiple: z.boolean(),
         config: z.record(z.string(), json),

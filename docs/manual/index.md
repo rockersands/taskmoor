@@ -25,7 +25,7 @@ access, shape tracks and workflows, connect other systems, and keep the server h
 | Plan a sprint or run a board | [Boards, sprints and the backlog](use/boards.md) |
 | Find tickets with a query | [Search and the query language](use/search.md) |
 | Install a server | [Installing Taskmoor](admin/install.md), then [First-run setup](admin/first-run.md) |
-| Add people and decide who sees what | [People and groups](admin/people-and-groups.md) and [Permissions and access](admin/permissions.md) |
+| Add people and teams, and decide who sees what | [People, groups and teams](admin/people-and-groups.md) and [Permissions and access](admin/permissions.md) |
 | Sign people in with your identity provider | [Single sign-on](admin/sso.md), [LDAP directories](admin/ldap.md), [SCIM provisioning](admin/scim.md) |
 | Connect a script, a service or an AI agent | [API tokens and service accounts](admin/api-tokens.md), [The REST API](admin/rest-api.md), [The MCP server](admin/mcp.md) |
 | Back up, upgrade and watch the server | [Backups and restore](admin/backups.md), [Upgrades](admin/upgrades.md), [Monitoring and logs](admin/monitoring.md) |

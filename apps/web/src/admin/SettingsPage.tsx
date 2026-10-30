@@ -39,6 +39,10 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.groupsHint')}</p>
             </li>
             <li>
+              <a href={routeHref('#/admin/teams')}>{t('settings.teams')}</a>
+              <p className="page-note">{t('settings.teamsHint')}</p>
+            </li>
+            <li>
               <a href={routeHref('#/admin/system')}>{t('settings.systemStatus')}</a>
               <p className="page-note">{t('settings.systemStatusHint')}</p>
             </li>

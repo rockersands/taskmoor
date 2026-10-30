@@ -54,6 +54,12 @@ export const AUDITED_EVENTS = [
   'group.member_removed',
   'group.nested',
   'group.unnested',
+  // Teams grant nothing, but who keeps them and who is in them is site configuration (M1-123).
+  'team.created',
+  'team.updated',
+  'team.deleted',
+  'team.member_added',
+  'team.member_removed',
   'role.created',
   'role.updated',
   'role.deleted',

@@ -27,6 +27,7 @@ import type { FieldType } from '../fields/types';
 export const ENTITY_KINDS = [
   'user',
   'group',
+  'team',
   'role',
   'status',
   'priority',
@@ -124,6 +125,15 @@ export interface GroupCommand {
   members: Ref[];
 }
 
+/** A site team (M1-123): linked to the target's team of the same name, members added. */
+export interface TeamCommand {
+  kind: 'team';
+  name: string;
+  description: string;
+  lead: Ref | null;
+  members: Ref[];
+}
+
 /** A track role, linked to the target's role of the same name. */
 export interface RoleCommand {
   kind: 'role';
@@ -211,6 +221,8 @@ export interface AreaCommand {
   name: string;
   description: string;
   owner: Ref | null;
+  /** The team that owns it (M1-123); left as the target has it when the source has none. */
+  ownerTeam?: Ref | null;
   defaultAssignee: AreaDefaultAssignee;
   archivedAt: string | null;
 }
@@ -457,6 +469,7 @@ export interface AttachmentCommand {
 export type Command =
   | UserCommand
   | GroupCommand
+  | TeamCommand
   | RoleCommand
   | StatusCommand
   | PriorityCommand

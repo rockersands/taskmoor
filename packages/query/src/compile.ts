@@ -47,6 +47,7 @@ const SIDE_CAST: Record<CustomField['type'], string> = {
   labels: 'text',
   release: 'text',
   area: 'text',
+  team: 'text',
 };
 
 /** Types with at most one side row per item and field. */
@@ -71,6 +72,7 @@ const SIDE_TABLE: Record<CustomField['type'], string> = {
   labels: 'v_option',
   release: 'v_option',
   area: 'v_option',
+  team: 'v_option',
 };
 
 /**

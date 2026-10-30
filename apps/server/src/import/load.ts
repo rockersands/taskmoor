@@ -29,6 +29,7 @@ import {
   type Ref,
   type StatusCommand,
   type StoredHistoryItem,
+  type TeamCommand,
   type TicketCommand,
   type TicketProperty,
   type TicketTypeCommand,
@@ -475,6 +476,100 @@ const groups: Loader<GroupCommand> = {
   },
 };
 
+const teams: Loader<TeamCommand> = {
+  table: { name: 'team', id: 'id' },
+  async plan(ctx, cmd, existing) {
+    const members: number[] = [];
+    for (const m of cmd.members) {
+      const id = optional(ctx, m, 'members');
+      if (id !== null) members.push(id);
+    }
+    const lead = optional(ctx, cmd.lead, 'lead');
+    const fingerprint = {
+      name: lower(cmd.name),
+      lead: real(lead),
+      members: [...new Set(members.filter((m) => m !== PENDING))].sort((a, b) => a - b),
+    };
+    const data = { members, lead };
+    if (existing !== null) {
+      await existingTarget(ctx, 'team', existing);
+      return { action: 'update', targetId: existing, fingerprint, data };
+    }
+    const found = await ctx.trx
+      .selectFrom('team')
+      .select('id')
+      .where('workspace_id', '=', ctx.workspaceId)
+      .where(sql<string>`lower(name)`, '=', lower(cmd.name))
+      .executeTakeFirst();
+    if (found) return { action: 'link', targetId: found.id, fingerprint, data };
+    return { action: 'create', targetId: null, fingerprint, data };
+  },
+  async apply(ctx, cmd, plan) {
+    const { members, lead } = plan.data as { members: number[]; lead: number | null };
+    let id = plan.targetId;
+    if (plan.action === 'create') {
+      id = (
+        await ctx.trx
+          .insertInto('team')
+          .values({
+            workspace_id: ctx.workspaceId,
+            name: cmd.name,
+            description: cmd.description,
+            lead_id: real(lead),
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+    } else if (plan.action === 'update') {
+      await ctx.trx
+        .updateTable('team')
+        .set({
+          name: cmd.name,
+          description: cmd.description,
+          lead_id: real(lead),
+          updated_at: new Date(),
+        })
+        .where('id', '=', id as number)
+        .execute();
+    }
+    // Members are added, never removed: a team linked by name keeps the people it had.
+    if (members.length > 0) {
+      await ctx.trx
+        .insertInto('team_member')
+        .values(
+          members.map((user_id) => ({
+            workspace_id: ctx.workspaceId,
+            team_id: id as number,
+            user_id,
+          })),
+        )
+        .onConflict((oc) => oc.doNothing())
+        .execute();
+    }
+    return id as number;
+  },
+  async read(db, ws, ids) {
+    const rows = await db
+      .selectFrom('team as t')
+      .select([
+        't.id',
+        't.name',
+        't.lead_id',
+        sql<number[]>`coalesce((SELECT array_agg(m.user_id ORDER BY m.user_id) FROM team_member m
+          WHERE m.team_id = t.id), '{}')`.as('members'),
+      ])
+      .where('t.workspace_id', '=', ws)
+      .where('t.id', 'in', [...ids])
+      .execute();
+    return new Map(
+      rows.map((r) => [
+        r.id,
+        { name: lower(r.name), lead: r.lead_id, members: r.members.map(Number) },
+      ]),
+    );
+  },
+};
+
 const statuses: Loader<StatusCommand> = {
   table: { name: 'status', id: 'id' },
   async plan(ctx, cmd, existing) {
@@ -849,6 +944,15 @@ async function referenceByText(
           .where(sql<string>`lower(name)`, '=', lower(name))
           .executeTakeFirst(),
       );
+    case 'team':
+      return byName(ctx, `team:${lower(name)}`, () =>
+        ctx.trx
+          .selectFrom('team')
+          .select('id')
+          .where('workspace_id', '=', ctx.workspaceId)
+          .where(sql<string>`lower(name)`, '=', lower(name))
+          .executeTakeFirst(),
+      );
     case 'release':
     case 'area':
       return byName(ctx, `${reference}:${at.trackId}:${lower(name)}`, () =>
@@ -864,7 +968,7 @@ async function referenceByText(
 
 /**
  * Custom values given as text (CSV) read against the target's fields: names of options, people
- * (by email), groups, releases and areas become ids, then the values go through the same check
+ * (by email), groups, teams, releases and areas become ids, then the values go through the same check
  * as a REST edit (`checkCustomValues`). A value that does not read is left out with a warning.
  */
 async function customFromTexts(
@@ -2137,6 +2241,7 @@ const timeEntries: Loader<TimeEntryCommand> = {
 export const CORE_LOADERS = {
   user: users,
   group: groups,
+  team: teams,
   status: statuses,
   ticket_type: ticketTypes,
   track: tracks,

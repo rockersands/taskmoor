@@ -270,6 +270,32 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
     }
   });
 
+  await write('team', async (out) => {
+    const rows = await db
+      .selectFrom('team as t')
+      .leftJoin('app_user as l', (j) =>
+        j.onRef('l.id', '=', 't.lead_id').on('l.kind', '=', 'person'),
+      )
+      .select(['t.id', 't.name', 't.description', 'l.id as lead_id'])
+      .select(
+        sql<number[]>`coalesce((SELECT array_agg(m.user_id ORDER BY m.user_id) FROM team_member m
+          JOIN app_user u ON u.id = m.user_id AND u.kind = 'person'
+          WHERE m.team_id = t.id), '{}')`.as('members'),
+      )
+      .where('t.workspace_id', '=', ws)
+      .orderBy('t.id')
+      .execute();
+    for (const t of rows) {
+      await out.record({
+        id: idOf('team', t.id),
+        name: t.name,
+        description: t.description,
+        lead: ref('user', t.lead_id),
+        members: refs('user', t.members),
+      });
+    }
+  });
+
   await write('role', async (out) => {
     const rows = await db
       .selectFrom('role')
@@ -437,7 +463,15 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
   await write('area', async (out) => {
     const rows = await db
       .selectFrom('area')
-      .select(['id', 'track_id', 'name', 'description', 'owner_id', 'default_assignee'])
+      .select([
+        'id',
+        'track_id',
+        'name',
+        'description',
+        'owner_id',
+        'owner_team_id',
+        'default_assignee',
+      ])
       .select(ts('archived_at').as('archived_at'))
       .where('workspace_id', '=', ws)
       .where(inTracks('track_id'))
@@ -451,6 +485,8 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
         name: a.name,
         description: a.description,
         owner: ref('user', a.owner_id),
+        // Only when a team owns it, so exports without teams keep their bytes (M1-123).
+        ...(a.owner_team_id !== null ? { ownerTeam: idOf('team', a.owner_team_id) } : {}),
         defaultAssignee: a.default_assignee,
         archivedAt: a.archived_at,
       });

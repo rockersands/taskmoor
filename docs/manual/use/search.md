@@ -2,7 +2,7 @@
 title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
-sources: apps/web/src/search/SearchPage.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md
+sources: apps/web/src/search/SearchPage.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -140,6 +140,8 @@ to **Automatic**.
 
 Many fields also answer to their display names in quotes, such as `"Due date"` or `"Ticket type"`.
 Custom fields are named in quotes, `"Customer tier" = Gold`, or by number, `cf[10] = Gold`.
+A Team field takes a team's name or number: `Team = Platform`, `Team IN (Platform, Mobile)`,
+`Team IS EMPTY`; renaming a team changes the name your queries use.
 
 ### Functions
 
@@ -147,6 +149,7 @@ Custom fields are named in quotes, `"Customer tier" = Gold`, or by number, `cf[1
 |---|---|
 | `currentUser()` | You |
 | `membersOf("group")` | The group's members, nested groups included |
+| `membersOf("id:12")` | The members of team 12 (a team's number is in its address on the API, `GET /api/v1/teams`) |
 | `now()`, `startOfDay()`, `endOfDay()`, and the same for `Week`, `Month` and `Year` | A moment; each takes an increment such as `startOfMonth(-1M)` |
 | `currentLogin()`, `lastLogin()` | When you signed in this time, and the time before |
 | `followedTickets()`, `votedTickets()`, `ticketHistory()` | Tickets you follow, voted for, or opened lately |
@@ -213,8 +216,8 @@ to each other in a circle. When two saved searches you can see share a name, you
 ### Not available yet
 
 Fields and functions of service tracks and journeys (approvals, SLAs, customer groups, request
-forms), `lastViewed`, teams in `membersOf()` and `cascadeOption(parent, none)` are part of the
-language but refused with a message that says so.
+forms), `lastViewed` and `cascadeOption(parent, none)` are part of the language but refused
+with a message that says so.
 
 ## The Jira-compatible dialect
 

@@ -60,6 +60,8 @@ interface ColourDraft extends Keyed {
 interface Draft {
   name: string;
   kind: 'scrum' | 'kanban';
+  /** The team's id, or '' for none (M1-123). */
+  teamId: string;
   query: string;
   subFilter: string;
   columns: ColumnDraft[];
@@ -83,6 +85,7 @@ function draftOf(board: Board, timeZone: string): Draft {
   return {
     name: board.name,
     kind: board.kind,
+    teamId: board.team ? String(board.team.id) : '',
     query: sourceText(board.source),
     subFilter: board.subFilter?.query ?? '',
     columns: board.columns.map((c) => ({
@@ -119,6 +122,7 @@ function patchOf(draft: Draft, version: number): BoardPatch {
     version,
     name: draft.name.trim(),
     kind: draft.kind,
+    teamId: draft.teamId === '' ? null : Number(draft.teamId),
     source: sourceOf(draft.query),
     subFilter: draft.subFilter.trim() === '' ? null : { query: draft.subFilter.trim() },
     columns: draft.columns.map((c) => ({
@@ -190,6 +194,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   const timeZone = (session.status === 'signed-in' && session.user.timeZone) || 'UTC';
   const [board, setBoard] = useState<Board | null>(null);
   const [numberFields, setNumberFields] = useState<NumberField[]>([]);
+  const [teams, setTeams] = useState<{ id: number; name: string }[]>([]);
   const [statuses, setStatuses] = useState<BoardStatus[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
@@ -213,6 +218,8 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   useEffect(() => {
     // Without the list the picker still shows the board's field by its id.
     client.numberFields().then(setNumberFields, () => setNumberFields([]));
+    // Likewise the board's own team stays choosable without the list.
+    client.teams().then(setTeams, () => setTeams([]));
   }, [client]);
 
   useEffect(() => {
@@ -374,6 +381,32 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
               <option value="kanban">{t('boards.kind.kanban')}</option>
               <option value="scrum">{t('boards.kind.scrum')}</option>
             </select>
+          </div>
+          <div className="form-field">
+            <label htmlFor={`${id}-team`} className="form-label">
+              {t('boards.settings.team')}
+            </label>
+            <select
+              id={`${id}-team`}
+              value={draft.teamId}
+              aria-describedby={`${id}-team-hint`}
+              onChange={(e) => set({ teamId: e.target.value })}
+              {...invalid('teamId', `${id}-team`)}
+            >
+              <option value="">{t('boards.settings.noTeam')}</option>
+              {(board.team && !teams.some((x) => x.id === board.team?.id)
+                ? [...teams, board.team]
+                : teams
+              ).map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+            <p id={`${id}-team-hint`} className="form-hint">
+              {t('boards.settings.teamHint')}
+            </p>
+            {problemText('teamId', `${id}-team`)}
           </div>
           <div className="form-field">
             <label htmlFor={`${id}-query`} className="form-label">

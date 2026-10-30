@@ -119,8 +119,8 @@ export const SYSTEM_AXES = [
 ] as const;
 export type SystemAxis = (typeof SYSTEM_AXES)[number];
 
-/** How a custom field's values group: by option, person, group, release, area or label. */
-export type CustomAxisKind = 'option' | 'user' | 'group' | 'release' | 'area' | 'label';
+/** How a custom field's values group: by option, person, group, release, area, team or label. */
+export type CustomAxisKind = 'option' | 'user' | 'group' | 'release' | 'area' | 'team' | 'label';
 
 export type Axis =
   | { kind: 'system'; field: SystemAxis }
@@ -136,6 +136,7 @@ const CUSTOM_AXES: Readonly<Record<string, CustomAxisKind>> = {
   group: 'group',
   release: 'release',
   area: 'area',
+  team: 'team',
   labels: 'label',
 };
 
@@ -251,6 +252,8 @@ async function names(
         return rows(releases());
       case 'area':
         return rows(byName('area'));
+      case 'team':
+        return rows(byName('team'));
       case 'label':
         return labels();
     }

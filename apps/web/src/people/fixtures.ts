@@ -1,5 +1,6 @@
 import { ApiError } from '../api/client';
 import type { GroupDetail, GroupSummary, PeopleClient, User } from './client';
+import type { TeamDetail, TeamSummary, TeamsClient } from './teamsClient';
 
 const person = (id: number, name: string, email: string, extra: Partial<User> = {}): User => ({
   id,
@@ -171,6 +172,99 @@ export function fakePeopleClient(): FakePeopleClient {
       log('removeChild', id, childId);
       const g = group(id);
       g.children = g.children.filter((c) => c !== childId);
+    },
+  };
+}
+
+export interface FakeTeamsClient extends TeamsClient {
+  calls: { action: string; args: unknown[] }[];
+}
+
+/** Teams for stories and tests (M1-123): an in-memory backend that answers as the API would. */
+export function fakeTeamsClient(): FakeTeamsClient {
+  const people = structuredClone(PEOPLE);
+  let teams: {
+    id: number;
+    name: string;
+    description: string;
+    lead: number | null;
+    members: number[];
+  }[] = [
+    { id: 21, name: 'Platform', description: 'Runs the servers', lead: 3, members: [2, 3] },
+    { id: 22, name: 'Mobile', description: '', lead: null, members: [] },
+  ];
+  let next = 200;
+  const calls: FakeTeamsClient['calls'] = [];
+  const log = (action: string, ...args: unknown[]) => calls.push({ action, args });
+  const team = (id: number) => {
+    const t = teams.find((x) => x.id === id);
+    if (!t) throw new ApiError(404, { error: 'not_found' });
+    return t;
+  };
+  const summary = (t: (typeof teams)[number]): TeamSummary => {
+    const lead = people.find((p) => p.id === t.lead);
+    return {
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      lead: lead ? { id: lead.id, name: lead.name } : null,
+      memberCount: t.members.length,
+    };
+  };
+  const taken = (name: string, id?: number) =>
+    teams.some((t) => t.id !== id && t.name.toLowerCase() === name.toLowerCase());
+  return {
+    calls,
+    teams: async () =>
+      structuredClone(
+        [...teams].sort((a, b) => a.name.localeCompare(b.name)).map((t) => summary(t)),
+      ),
+    team: async (id): Promise<TeamDetail> => {
+      const t = team(id);
+      return structuredClone({
+        team: summary(t),
+        members: people
+          .filter((p) => t.members.includes(p.id))
+          .map((p) => ({ id: p.id, name: p.name, active: p.active })),
+      });
+    },
+    createTeam: async (body) => {
+      log('createTeam', body);
+      if (taken(body.name)) throw new ApiError(409, { error: 'name_taken' });
+      const made = { id: ++next, ...body, lead: null, members: [] };
+      teams = [...teams, made];
+      return summary(made);
+    },
+    updateTeam: async (id, change) => {
+      log('updateTeam', id, change);
+      const t = team(id);
+      if (change.name !== undefined && taken(change.name, id)) {
+        throw new ApiError(409, { error: 'name_taken' });
+      }
+      if (change.name !== undefined) t.name = change.name;
+      if (change.description !== undefined) t.description = change.description;
+      if (change.leadId !== undefined) t.lead = change.leadId;
+      return summary(t);
+    },
+    deleteTeam: async (id) => {
+      log('deleteTeam', id);
+      teams = teams.filter((t) => t.id !== id);
+    },
+    addTeamMember: async (id, userId) => {
+      log('addTeamMember', id, userId);
+      const t = team(id);
+      if (!t.members.includes(userId)) t.members.push(userId);
+    },
+    removeTeamMember: async (id, userId) => {
+      log('removeTeamMember', id, userId);
+      const t = team(id);
+      t.members = t.members.filter((m) => m !== userId);
+    },
+    people: async (query) => {
+      const q = query.toLowerCase();
+      return structuredClone(
+        people.filter((p) => p.active && (p.name.toLowerCase().includes(q) || p.email.includes(q))),
+      );
     },
   };
 }

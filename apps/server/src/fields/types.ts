@@ -15,6 +15,7 @@ import { canonicalJson, checkRichText, isCalendarDay } from '../tickets/model';
  * - number: a JSON number from -10^12 to 10^12, rounded half away from zero to 0.001
  * - date: YYYY-MM-DD; date-time: the instant in UTC as an ISO string
  * - select, user, group, release, area: an id, or ids in ascending order for a multiple field
+ * - team (M1-123): a team's id; one value
  * - cascading select: [parent option id] or [parent, child]
  * - labels: the labels in the order given, each once
  * - formula (M1-013): what its output stores (`@taskmoor/formula` `storedValue`): a number, whole
@@ -36,6 +37,7 @@ export const FIELD_TYPES = [
   'release',
   'area',
   'formula',
+  'team',
 ] as const;
 export type FieldType = (typeof FIELD_TYPES)[number];
 
@@ -49,7 +51,7 @@ export const MULTIPLE_TYPES: ReadonlySet<FieldType> = new Set([
 ]);
 
 /** Types whose values name other objects, and which objects. */
-export type Reference = 'option' | 'user' | 'group' | 'release' | 'area';
+export type Reference = 'option' | 'user' | 'group' | 'release' | 'area' | 'team';
 export const REFERENCE_OF: Readonly<Partial<Record<FieldType, Reference>>> = {
   select: 'option',
   'cascading-select': 'option',
@@ -57,6 +59,7 @@ export const REFERENCE_OF: Readonly<Partial<Record<FieldType, Reference>>> = {
   group: 'group',
   release: 'release',
   area: 'area',
+  team: 'team',
 };
 
 export type Storage = 'text' | 'number' | 'date' | 'time' | 'user' | 'option';
@@ -77,6 +80,7 @@ export const STORAGE_OF: Readonly<Record<Exclude<FieldType, 'formula'>, Storage>
   'read-only-text': 'text',
   release: 'option',
   area: 'option',
+  team: 'option',
 };
 
 /** Where a field's values are indexed: a formula's by its output (durations as seconds). */
@@ -335,6 +339,7 @@ export function parseValue(field: FieldShape, input: unknown): Parsed {
     case 'group':
     case 'release':
     case 'area':
+    case 'team':
       return references(input, field.multiple);
     case 'cascading-select':
       return cascade(input);
@@ -394,6 +399,7 @@ export function serialise(field: FieldShape, value: Stored): string {
     case 'group':
     case 'release':
     case 'area':
+    case 'team':
       return field.multiple ? (value as number[]).join(',') : String(value);
     default:
       return value as string;
@@ -418,6 +424,7 @@ export function deserialise(field: FieldShape, text: string): Parsed {
     case 'group':
     case 'release':
     case 'area':
+    case 'team':
       return parseValue(field, field.multiple ? text.split(',') : text);
     default:
       return parseValue(field, text);
@@ -426,7 +433,7 @@ export function deserialise(field: FieldShape, text: string): Parsed {
 
 /**
  * Where a referenced object sorts and what it is called: options in their order, people,
- * groups and areas by name, releases in their order. `name` is null for an object that is gone.
+ * groups, areas and teams by name, releases in their order. `name` is null for an object that is gone.
  */
 export interface Resolver {
   rank(ref: Reference, id: number): string | number;
@@ -492,7 +499,8 @@ export function sortKey(field: FieldShape, value: Stored, resolver: Resolver): K
     case 'user':
     case 'group':
     case 'release':
-    case 'area': {
+    case 'area':
+    case 'team': {
       const ref = REFERENCE_OF[field.type] as Reference;
       const pairs = (field.multiple ? (value as number[]) : [value as number]).map((id): Key[] => [
         resolver.rank(ref, id),

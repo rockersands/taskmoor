@@ -17,6 +17,7 @@ import { isTrackPermission, type TrackPermission } from '../authz/permissions';
 import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
 import type { SideTable } from '../fields/storage';
+import { findTeam, teamMemberIds } from '../teams';
 import { masterTextSet, textSourceSet } from './compile';
 import { COUNT_CAP } from './count';
 import type {
@@ -328,6 +329,7 @@ function sideOf(field: CustomField, catalog: Catalog): SideRef {
     case 'group':
     case 'release':
     case 'area':
+    case 'team':
       return ref('v_option', 'int', multiple);
   }
 }
@@ -555,7 +557,8 @@ type NamedKind =
   | 'group'
   | 'area'
   | 'release'
-  | 'role';
+  | 'role'
+  | 'team';
 
 class Binder {
   readonly warnings: string[] = [];
@@ -603,6 +606,7 @@ class Binder {
         cascade: 'optionOrder',
         release: 'releaseOrder',
         area: 'areaName',
+        team: 'teamName',
       };
       const keys = [key({ kind: 'side', side, by: by[field.type] })];
       if (field.type === 'cascade') keys.push(key({ kind: 'side', side, by: 'cascadeChildOrder' }));
@@ -900,6 +904,7 @@ class Binder {
         case 'group':
         case 'release':
         case 'area':
+        case 'team':
           return state(name, multiple ? many(',', named(field.type)) : one(named(field.type)));
       }
     }
@@ -1054,6 +1059,9 @@ class Binder {
         break;
       case 'area':
         scalars = await this.named('area', values, label(field));
+        break;
+      case 'team':
+        scalars = await this.named('team', values, label(field));
         break;
     }
     if (p.kind === 'compare') {
@@ -1621,15 +1629,19 @@ class Binder {
     }
   }
 
-  /** People a function names: `membersOf(group)`, nested groups' members included. */
+  /**
+   * People a function names: `membersOf(group)`, nested groups' members included, and
+   * `membersOf("id:<teamId>")`, a team's members (M1-123, CORE-027 (1)).
+   */
   private async userFunction(call: CallValue): Promise<number[]> {
     if (call.fn !== 'membersOf') throw later(call);
     const name = String(content(call.args[0] as Typed).value);
-    if (/^id:/i.test(name)) {
-      throw new SearchError(
-        `membersOf("${name}"): teams are not available in this version yet`,
-        'unsupported',
-      );
+    const team = /^id:\s*(.*)$/i.exec(name);
+    if (team) {
+      const id = /^[1-9][0-9]{0,9}$/.test(team[1] as string) ? Number(team[1]) : 0;
+      const found = id > 0 && id <= 2_147_483_647 && (await findTeam(this.db, this.ws, id));
+      if (!found) throw new SearchError(`No team "${team[1]}"`, 'unknown_value');
+      return teamMemberIds(this.db, this.ws, id);
     }
     const groups = await this.named('group', [{ type: 'text', value: name }], '"group"');
     const ids: number[] = [];
@@ -1813,6 +1825,12 @@ class Binder {
         case 'role':
           return (await this.db
             .selectFrom('role')
+            .select(['id', 'name'])
+            .where('workspace_id', '=', ws)
+            .execute()) as Named[];
+        case 'team':
+          return (await this.db
+            .selectFrom('team')
             .select(['id', 'name'])
             .where('workspace_id', '=', ws)
             .execute()) as Named[];

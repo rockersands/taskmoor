@@ -67,7 +67,7 @@ paged with `after`).
 | `startDate`, `dueDate` | A day (`2026-03-01`) or an instant. |
 | `createdAt`, `updatedAt`, `closedAt` | An instant in ISO 8601, a day, or `YYYY-MM-DD HH:MM[:SS]` in UTC. |
 | `originalEstimate`, `remainingEstimate` | Seconds, or hours and minutes (`2h 30m`). |
-| `field` (with `field: <id>`) | A custom field of the target by its id: option values by name (a cascading choice as `Parent / Child`), people by email, groups, releases and areas by name, numbers, days, text. The value goes through the same checks as an edit through the API. |
+| `field` (with `field: <id>`) | A custom field of the target by its id: option values by name (a cascading choice as `Parent / Child`), people by email, groups, teams, releases and areas by name, numbers, days, text. The value goes through the same checks as an edit through the API. |
 | `ignore` | Nothing: the column is read past. |
 
 A cell that does not read (an unknown option, a date that is not one) is left empty and listed as

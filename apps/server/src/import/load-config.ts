@@ -287,8 +287,10 @@ export const areas: Loader<AreaCommand> = {
   async plan(ctx, cmd, existing) {
     const track = required(ctx, cmd.track, 'track');
     const owner = optional(ctx, cmd.owner, 'owner');
+    const ownerTeam =
+      cmd.ownerTeam === undefined ? undefined : optional(ctx, cmd.ownerTeam, 'ownerTeam');
     const fingerprint = trackPrint(track, cmd.name);
-    const data = { track, owner };
+    const data = { track, owner, ownerTeam };
     if (existing !== null) {
       await existingTarget(ctx, 'area', existing);
       return { action: 'update', targetId: existing, fingerprint, data };
@@ -299,11 +301,16 @@ export const areas: Loader<AreaCommand> = {
   },
   async apply(ctx, cmd, plan) {
     if (plan.action === 'link') return plan.targetId as number;
-    const { track, owner } = plan.data as { track: number; owner: number | null };
+    const { track, owner, ownerTeam } = plan.data as {
+      track: number;
+      owner: number | null;
+      ownerTeam?: number | null;
+    };
     const values = {
       name: cmd.name,
       description: cmd.description,
       owner_id: owner,
+      ...(ownerTeam !== undefined ? { owner_team_id: ownerTeam } : {}),
       default_assignee: cmd.defaultAssignee,
       archived_at: cmd.archivedAt,
     };

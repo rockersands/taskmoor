@@ -186,6 +186,8 @@ export const createBoardBody = z
     /** Estimation statistic, time tracking and parallel sprints (M1-044, AGL-007). */
     sprintSettings: sprintSettingsInput.optional(),
     adminIds: z.array(id).max(50).optional(),
+    /** The team the board belongs to (M1-123, CORE-027), or none. */
+    teamId: id.nullable().optional(),
   })
   .strict();
 
@@ -205,6 +207,7 @@ export const updateBoardBody = z
     /** Estimation statistic, time tracking and parallel sprints (M1-044, AGL-007). */
     sprintSettings: sprintSettingsInput.optional(),
     adminIds: z.array(id).max(50).optional(),
+    teamId: id.nullable().optional(),
   })
   .strict();
 

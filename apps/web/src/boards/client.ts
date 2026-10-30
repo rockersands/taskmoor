@@ -10,6 +10,8 @@ export interface BoardSummary {
   location:
     | { type: 'track'; track: { id: number; key: string | null; name: string | null } }
     | { type: 'user'; user: { id: number | null; name: string | null } };
+  /** The team the board belongs to (M1-123), by its current name. */
+  team?: { id: number; name: string } | null;
 }
 
 export interface BoardColumn {
@@ -128,6 +130,7 @@ export interface BoardPatch {
   boardFilterDisplay?: 'buttons' | 'dropdown';
   cardRules?: CardRules;
   sprintSettings?: SprintSettings;
+  teamId?: number | null;
 }
 
 /** Saved, or refused with a problem per field (`columns`, `boardFilters.1.query`, ...). */
@@ -208,6 +211,8 @@ export interface BoardClient {
   update(id: number, patch: BoardPatch): Promise<UpdateOutcome>;
   /** The number fields the person sees, for the estimation statistic. */
   numberFields(): Promise<NumberField[]>;
+  /** The site's teams, for the board's team (M1-123). */
+  teams(): Promise<{ id: number; name: string }[]>;
   /** `sprints: 'active'` shows a Scrum board's active sprints only (M1-044). */
   data(id: number, filters: readonly string[], sprints?: 'active'): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
@@ -252,6 +257,11 @@ export const boardClient: BoardClient = {
     (await api<{ fields: (NumberField & { type: string })[] }>('/fields')).fields
       .filter((f) => f.type === 'number')
       .map((f) => ({ id: f.id, name: f.name })),
+  teams: async () =>
+    (await api<{ teams: { id: number; name: string }[] }>('/teams')).teams.map((t) => ({
+      id: t.id,
+      name: t.name,
+    })),
   data: (id, filters, sprints) => api<BoardData>(dataPath(id, filters, sprints)),
   move: async (id, move) => {
     try {

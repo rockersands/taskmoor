@@ -818,6 +818,13 @@ export interface components {
                 [key: string]: unknown;
             });
             name: string;
+            /** @description The team the board belongs to, by its current name. */
+            team: ({
+                id: number;
+                name: string;
+            } & {
+                [key: string]: unknown;
+            }) | null;
             version: number;
         } & {
             [key: string]: unknown;
@@ -882,6 +889,13 @@ export interface components {
                 [key: string]: unknown;
             });
             name: string;
+            /** @description The team the board belongs to, by its current name. */
+            team: ({
+                id: number;
+                name: string;
+            } & {
+                [key: string]: unknown;
+            }) | null;
         } & {
             [key: string]: unknown;
         };
@@ -1549,6 +1563,7 @@ export interface operations {
     listBoards: {
         parameters: {
             query?: {
+                teamId?: number;
                 trackId?: number;
             };
             header?: never;
@@ -1687,6 +1702,7 @@ export interface operations {
                          */
                         unassigned?: "first" | "last";
                     };
+                    teamId?: number | null;
                     trackId?: number | null;
                 };
             };

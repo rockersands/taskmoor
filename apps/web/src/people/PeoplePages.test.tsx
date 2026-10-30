@@ -7,8 +7,9 @@ import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { fakePeopleClient, PEOPLE } from './fixtures';
+import { fakePeopleClient, fakeTeamsClient, PEOPLE } from './fixtures';
 import { GroupsPage } from './GroupsPage';
+import { TeamsPage } from './TeamsPage';
 import { UsersPage } from './UsersPage';
 
 function renderPage(page: 'users' | 'groups', session: Session = ADMIN, locale: Locale = 'en') {
@@ -152,6 +153,108 @@ describe('people (M1-053, IAM-008)', () => {
     const data = new Set(PEOPLE.flatMap((p) => [p.name, p.email]));
     const texts = visibleTexts(main).filter(
       (t) => !data.has(t) && !/@example\.com/.test(t) && !/\d{4}/.test(t) && t !== '·',
+    );
+    expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+function renderTeams(session: Session = ADMIN, locale: Locale = 'en') {
+  const client = fakeTeamsClient();
+  render(
+    <I18nProvider locale={locale}>
+      <SessionProvider session={session}>
+        <main>
+          <TeamsPage client={client} />
+        </main>
+      </SessionProvider>
+    </I18nProvider>,
+  );
+  return client;
+}
+
+describe('teams (M1-123, CORE-027)', () => {
+  it('[CORE-027] lists teams with their members and lead', async () => {
+    renderTeams();
+    const items = await list();
+    expect(items.map((li) => li.querySelector('.people-name')?.textContent)).toEqual([
+      'Mobile',
+      'Platform',
+    ]);
+    expect(screen.getByText('2 members · led by Grace Hopper · Runs the servers')).toBeVisible();
+    expect(screen.getByText('0 members · No lead')).toBeVisible();
+  });
+
+  it('[CORE-027] makes a team, adds members, names a lead and renames it', async () => {
+    const user = userEvent.setup();
+    const client = renderTeams();
+    await list();
+    const form = screen.getByRole('form', { name: 'Add a team' });
+    await user.type(within(form).getByLabelText('Team name'), 'Payments');
+    await user.type(within(form).getByLabelText('Description (optional)'), 'Money in and out');
+    await user.click(within(form).getByRole('button', { name: 'Add a team' }));
+    expect(await screen.findByText('Payments was added.')).toBeInTheDocument();
+    // The new team opens: add Bo, make Bo the lead, then rename the team.
+    expect(await screen.findByText('Members of Payments')).toBeVisible();
+    await user.type(screen.getByRole('searchbox', { name: 'Add a person' }), 'bo');
+    await user.click(await screen.findByRole('button', { name: 'Add Bo Rivera to Payments' }));
+    expect(await screen.findByText('Bo Rivera is in Payments now.')).toBeInTheDocument();
+    const edit = screen.getByRole('form', { name: 'Change Payments' });
+    await user.selectOptions(within(edit).getByRole('combobox', { name: 'Lead' }), '2');
+    const name = within(edit).getByLabelText('Team name');
+    await user.clear(name);
+    await user.type(name, 'Billing');
+    await user.click(within(edit).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Billing was saved.')).toBeInTheDocument();
+    expect(await screen.findByText('1 member · led by Bo Rivera · Money in and out')).toBeVisible();
+    expect(client.calls.at(-1)).toEqual({
+      action: 'updateTeam',
+      args: [expect.any(Number), { name: 'Billing', description: 'Money in and out', leadId: 2 }],
+    });
+  });
+
+  it('[CORE-027] refuses a name that is taken, removes a member and deletes a team', async () => {
+    const user = userEvent.setup();
+    renderTeams();
+    await list();
+    const form = screen.getByRole('form', { name: 'Add a team' });
+    await user.type(within(form).getByLabelText('Team name'), 'platform');
+    await user.click(within(form).getByRole('button', { name: 'Add a team' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'There is a team with that name already.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Manage Platform' }));
+    await user.click(await screen.findByRole('button', { name: 'Remove Bo Rivera from Platform' }));
+    expect(await screen.findByText('Bo Rivera is no longer in Platform.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Delete team Platform' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    expect(await screen.findByText('Platform was deleted.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Manage Platform' })).toBeNull();
+  });
+
+  it('[CORE-027] says only administrators manage teams', () => {
+    renderTeams(MEMBER);
+    expect(screen.getByText('Only site administrators manage teams.')).toBeVisible();
+  });
+
+  it('fits a small phone', async () => {
+    const user = userEvent.setup();
+    setViewportWidth(360);
+    renderTeams();
+    await list();
+    await user.click(screen.getByRole('button', { name: 'Manage Platform' }));
+    expect(await screen.findByRole('button', { name: 'Delete team Platform' })).toBeVisible();
+  });
+
+  it('passes every string through the pseudo-locale', async () => {
+    const user = userEvent.setup();
+    renderTeams(ADMIN, 'en-XA');
+    const main = screen.getByRole('main');
+    const items = await within(main).findAllByRole('listitem');
+    await user.click(within(items[1] as HTMLElement).getByRole('button'));
+    await within(main).findByRole('combobox');
+    const data = new Set([...PEOPLE.map((p) => p.name), 'Platform', 'Mobile', 'Runs the servers']);
+    const texts = visibleTexts(main).filter(
+      (t) => !data.has(t) && t !== '·' && t !== '· Runs the servers',
     );
     expect(untranslated(texts)).toEqual([]);
   });

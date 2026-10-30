@@ -52,6 +52,7 @@ import * as m0056 from './0056_history_search';
 import * as m0057 from './0057_full_text_search';
 import * as m0058 from './0058_info_fields';
 import * as m0059 from './0059_rate_limits';
+import * as m0060 from './0060_teams';
 import * as m0062 from './0062_allowlists_syslog';
 
 /**
@@ -115,5 +116,6 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0057_full_text_search': m0057,
   '0058_info_fields': m0058,
   '0059_rate_limits': m0059,
+  '0060_teams': m0060,
   '0062_allowlists_syslog': m0062,
 };

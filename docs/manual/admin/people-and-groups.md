@@ -1,15 +1,15 @@
 ---
-title: "People and groups"
+title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
 accessed: 2026-10-30
 attestation: own-words
 ---
-# People and groups
+# People, groups and teams
 
-Site administrators manage the people who can sign in, the groups they belong to, and the rules
-for two-factor authentication. This page covers the people directory, password links,
-deactivation, sessions and groups. Permissions given to people and groups are on
+Site administrators manage the people who can sign in, the groups and teams they belong to, and
+the rules for two-factor authentication. This page covers the people directory, password links,
+deactivation, sessions, groups and teams. Permissions given to people and groups are on
 [Permissions and access](permissions.md).
 
 ## Where to find it
@@ -21,6 +21,7 @@ administrators.
 |---|---|---|
 | **People** | `#/admin/users` | Add people, make site administrators, deactivate and reactivate, password links |
 | **Groups** | `#/admin/groups` | Create and delete groups, members, groups inside groups |
+| **Teams** | `#/admin/teams` | Create, rename and delete teams, their members and lead |
 | **Security** | `#/admin/security` | Who must use two-factor authentication |
 | **Service accounts** | `#/admin/service-accounts` | Accounts for programs: see [API tokens and service accounts](api-tokens.md) |
 | **Single sign-on** | `#/admin/identity-providers` | See [Single sign-on](sso.md) |
@@ -192,11 +193,47 @@ included.
   groups at each sign-in.
 - [SCIM](scim.md) manages only the groups it created.
 
-Taskmoor has no separate team object; use groups.
+Groups are for access. To say who works together, use [teams](#teams).
+
+## Teams
+
+A team is a set of people who work together, with a name, a description and an optional lead.
+A team gives no permissions and hides nothing: that is what groups are for. Other parts of
+Taskmoor point at a team:
+
+- a board can belong to a team (**Team** in the board's settings, see
+  [Board settings](../use/boards.md#board-settings));
+- an area can be owned by a team (`ownerTeamId`, see [Areas](tracks.md#areas));
+- a [Team field](fields.md#field-types) names one team on a ticket;
+- a query finds the team's members with `membersOf("id:12")`, where 12 is the team's number
+  (see [Searching](../use/search.md#functions)).
+
+They all point at the team itself, not at its name, so renaming a team renames it everywhere at
+once: on tickets, boards, areas, and in the queries that name it (a query that used the old name
+must use the new one).
+
+On **Settings** > **Teams**:
+
+- **Add a team** asks for a **Team name** and a **Description (optional)**. Names are unique,
+  ignoring case: "There is a team with that name already."
+- Each team in the list shows how many members it has, who leads it and its description.
+  **Manage** opens it.
+- In an open team, change the **Team name**, the **Description (optional)** and the **Lead**,
+  then select **Save**. The lead is chosen among the members, or **No lead**.
+- Under **Members of** a team, **Add a person**: type two letters or more of a name or email,
+  then select **Add**. **Remove** takes a person out. Members are people: service accounts and
+  deactivated people cannot be added, and a deactivated member shows as deactivated.
+- **Delete team** asks to confirm. Boards and areas let go of the team, and Team fields that
+  named it become empty. The people stay.
+
+Everyone who is signed in can read teams and their members through the API, for pickers and
+the Team field; only site administrators change them. Teams travel in the
+[full export](import-export.md) with their members and lead.
 
 ## API reference
 
-Every route needs a site administrator (an API token needs the `admin` scope).
+Every route needs a site administrator (an API token needs the `admin` scope), except reading
+teams.
 
 | Method and path | What it does |
 |---|---|
@@ -214,3 +251,6 @@ Every route needs a site administrator (an API token needs the `admin` scope).
 | `GET`, `PATCH`, `DELETE /api/v1/groups/:id` | Read, rename or delete a group |
 | `PUT`, `DELETE /api/v1/groups/:id/members/:userId` | Add or remove a member |
 | `PUT`, `DELETE /api/v1/groups/:id/children/:childId` | Put a group inside, or take it out |
+| `GET`, `POST /api/v1/teams` | List (`?query=` finds by name) or create teams; anyone signed in lists |
+| `GET`, `PATCH`, `DELETE /api/v1/teams/:id` | Read (anyone signed in), change or delete a team; `PATCH` takes `name`, `description` and `leadId` |
+| `PUT`, `DELETE /api/v1/teams/:id/members/:userId` | Add or remove a member |

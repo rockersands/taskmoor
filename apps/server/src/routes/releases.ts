@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
+import { findTeam } from '../teams';
 import { rewriteTickets, writeOrder } from '../tickets/fields';
 import { isCalendarDay } from '../tickets/model';
 
@@ -74,6 +75,8 @@ const areaFields = {
   name,
   description,
   ownerId: id.nullable(),
+  /** The team that owns the area (M1-123, CORE-027). */
+  ownerTeamId: id.nullable(),
   defaultAssignee: z.enum(AREA_RULES),
 };
 const createAreaBody = z
@@ -81,6 +84,7 @@ const createAreaBody = z
     name,
     description: description.optional(),
     ownerId: areaFields.ownerId.optional(),
+    ownerTeamId: areaFields.ownerTeamId.optional(),
     defaultAssignee: areaFields.defaultAssignee.optional(),
   })
   .strict();
@@ -177,6 +181,7 @@ function areaQuery(db: Db, workspaceId: number) {
   return db
     .selectFrom('area as a')
     .leftJoin('app_user as u', 'u.id', 'a.owner_id')
+    .leftJoin('team as tm', 'tm.id', 'a.owner_team_id')
     .select([
       'a.id',
       'a.track_id',
@@ -184,6 +189,8 @@ function areaQuery(db: Db, workspaceId: number) {
       'a.description',
       'a.owner_id',
       'u.name as owner_name',
+      'a.owner_team_id',
+      'tm.name as owner_team_name',
       'a.default_assignee',
       'a.archived_at',
     ])
@@ -197,6 +204,8 @@ const areaView = (a: AreaRow) => ({
   name: a.name,
   description: a.description,
   owner: a.owner_id === null ? null : { id: a.owner_id, name: a.owner_name ?? '' },
+  ownerTeam:
+    a.owner_team_id === null ? null : { id: a.owner_team_id, name: a.owner_team_name ?? '' },
   defaultAssignee: a.default_assignee,
   archived: a.archived_at !== null,
   archivedAt: a.archived_at?.toISOString() ?? null,
@@ -938,6 +947,9 @@ export function registerReleaseRoutes(
     if (body.ownerId != null && !(await activeUser(ws, body.ownerId))) {
       return invalid(reply, 'ownerId');
     }
+    if (body.ownerTeamId != null && !(await findTeam(db, ws, body.ownerTeamId))) {
+      return invalid(reply, 'ownerTeamId');
+    }
     try {
       const row = await db.transaction().execute(async (trx) => {
         await trx
@@ -961,6 +973,7 @@ export function registerReleaseRoutes(
             name: body.name,
             description: body.description ?? '',
             owner_id: body.ownerId ?? null,
+            owner_team_id: body.ownerTeamId ?? null,
             default_assignee: body.defaultAssignee ?? 'unassigned',
           })
           .returning('id')
@@ -1007,11 +1020,14 @@ export function registerReleaseRoutes(
     if (body.ownerId != null && !(await activeUser(ws, body.ownerId))) {
       return invalid(reply, 'ownerId');
     }
+    if (body.ownerTeamId != null && !(await findTeam(db, ws, body.ownerTeamId))) {
+      return invalid(reply, 'ownerTeamId');
+    }
     try {
       const row = await db.transaction().execute(async (trx) => {
         const current = await trx
           .selectFrom('area')
-          .select(['name', 'description', 'owner_id', 'default_assignee'])
+          .select(['name', 'description', 'owner_id', 'owner_team_id', 'default_assignee'])
           .where('id', '=', target.areaId)
           .forNoKeyUpdate()
           .executeTakeFirst();
@@ -1021,6 +1037,7 @@ export function registerReleaseRoutes(
             name: current.name,
             description: current.description,
             ownerId: current.owner_id,
+            ownerTeamId: current.owner_team_id,
             defaultAssignee: current.default_assignee,
           },
           body,
@@ -1032,6 +1049,7 @@ export function registerReleaseRoutes(
               ...(body.name !== undefined ? { name: body.name } : {}),
               ...(body.description !== undefined ? { description: body.description } : {}),
               ...(body.ownerId !== undefined ? { owner_id: body.ownerId } : {}),
+              ...(body.ownerTeamId !== undefined ? { owner_team_id: body.ownerTeamId } : {}),
               ...(body.defaultAssignee !== undefined
                 ? { default_assignee: body.defaultAssignee }
                 : {}),

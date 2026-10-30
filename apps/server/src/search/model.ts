@@ -324,7 +324,8 @@ export type SideOrder =
   | 'personName'
   | 'groupName'
   | 'releaseOrder'
-  | 'areaName';
+  | 'areaName'
+  | 'teamName';
 
 export interface OrderKey {
   source: OrderSource;

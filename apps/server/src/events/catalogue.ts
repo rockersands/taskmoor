@@ -152,6 +152,12 @@ export const EVENT_TYPES = {
   'group.member_removed': { subject: 'group', payload: z.object({ userId: id }) },
   'group.nested': { subject: 'group', payload: z.object({ childId: id }) },
   'group.unnested': { subject: 'group', payload: z.object({ childId: id }) },
+  // Teams (M1-123, CORE-027)
+  'team.created': { subject: 'team', payload: z.object({ name: z.string() }) },
+  'team.updated': { subject: 'team', payload: z.object({ changes }) },
+  'team.deleted': { subject: 'team', payload: z.object({ name: z.string() }) },
+  'team.member_added': { subject: 'team', payload: z.object({ userId: id }) },
+  'team.member_removed': { subject: 'team', payload: z.object({ userId: id }) },
 
   // Roles, policies and grants
   'role.created': { subject: 'role', payload: z.object({ name: z.string() }) },

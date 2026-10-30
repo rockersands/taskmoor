@@ -196,7 +196,7 @@ Every export is recorded in the audit log.
 ### What is in it
 
 `manifest.json` and one `.ndjson` file per kind, in the order an import reads them: users,
-groups, roles, statuses, priorities, close reasons, ticket types, link types, tracks, releases,
+groups, teams, roles, statuses, priorities, close reasons, ticket types, link types, tracks, releases,
 areas, fields, field contexts, field options, workflows, workflow maps, tickets, comments, links,
 time entries, attachments and history, plus the files under `attachments/`.
 
@@ -220,7 +220,7 @@ Put the folder or the ZIP in the target's imports folder and start an import:
 ```
 
 A ZIP is unpacked once next to itself, so leave room for it. Objects the target already has are
-matched rather than created: people by email; groups, roles, statuses, priorities, close reasons,
+matched rather than created: people by email; groups, teams, roles, statuses, priorities, close reasons,
 ticket types, link types and workflows by name; fields, releases and areas by name within what
 they belong to. Importing the same export again changes nothing, and a later export of the same
 workspace updates what changed and adds what is new. People arrive without a password: they sign

@@ -68,6 +68,7 @@ import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSsoRoutes } from './routes/sso';
 import { registerSyncRoutes } from './routes/sync';
+import { registerTeamRoutes } from './routes/teams';
 import { registerTicketTypeRoutes } from './routes/ticket-types';
 import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
@@ -273,6 +274,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       directories,
     });
     registerGroupRoutes(app, db, { directories });
+    registerTeamRoutes(app, db);
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);

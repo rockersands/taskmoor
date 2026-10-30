@@ -36,6 +36,7 @@ import type { MetaClient } from './meta/client';
 import { VersionGate } from './meta/VersionGate';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { GroupsPage } from './people/GroupsPage';
+import { TeamsPage } from './people/TeamsPage';
 import { UsersPage } from './people/UsersPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
 import { ReleasePage } from './releases/ReleasePage';
@@ -130,6 +131,7 @@ const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ADMIN_USERS = '#/admin/users';
 const ADMIN_GROUPS = '#/admin/groups';
+const ADMIN_TEAMS = '#/admin/teams';
 const ADMIN_TRACKS = '#/admin/tracks';
 const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
 const ADMIN_FIELDS = '#/admin/fields';
@@ -395,9 +397,17 @@ function Pages() {
             {
               id: 'go-groups',
               labelId: 'admin.groups.title' as const,
-              keywords: ['group', 'team', 'members', 'nested'],
+              keywords: ['group', 'members', 'nested'],
               run: () => {
                 navigate(ADMIN_GROUPS);
+              },
+            },
+            {
+              id: 'go-teams',
+              labelId: 'admin.teams.title' as const,
+              keywords: ['team', 'squad', 'members', 'lead'],
+              run: () => {
+                navigate(ADMIN_TEAMS);
               },
             },
           ]
@@ -443,6 +453,8 @@ function Pages() {
     content = <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {
     content = <GroupsPage />;
+  } else if (isRoute(hash, ADMIN_TEAMS)) {
+    content = <TeamsPage />;
   } else if (isRoute(hash, ADMIN_TRACKS)) {
     content = <TracksAdminPage />;
   } else if (isRoute(hash, ADMIN_WORKFLOW_MAPS)) {
