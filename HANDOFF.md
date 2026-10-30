@@ -79,18 +79,20 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
-## 2026-10-30: M1-116 i18n completeness (in progress)
+## 2026-10-30: M1-116 i18n completeness
 
 ADR-024 has a new section; no migration.
-- **Done:**
-  - `pnpm i18n:check` reports zero hard-coded strings, and a test keeps it there.
-  - The `ar-XB` bidi pseudo-locale (`?locale=ar-XB`) mirrors the app through logical CSS
-    properties; the timeline, charts and workflow diagram stay left-to-right islands.
-  - `e2e/rtl.spec.ts` checks six pages on desktop and phone.
-- **Next:** the Spanish machine draft (`apps/web/src/i18n/messages.es.ts`, typed
-  `Record<MessageId, string>`, glossary in its header), then `es` in `SUPPORTED_LOCALES` and
-  `resolveLocale`. Later, the person's saved language (`user.locale`) could pick the
-  catalogue; today only the URL, the saved preference and the browser language do.
+- `pnpm i18n:check` reports zero hard-coded strings, and a test keeps it there. Mark a literal
+  that is not language with `i18n-ignore` and a reason.
+- `?locale=ar-XB` mirrors the app right to left. New CSS uses logical properties
+  (`margin-inline-start`, `inset-inline-end`, `text-align: start`). Drawings in their own
+  coordinates set `direction: ltr`.
+- **Spanish:** `apps/web/src/i18n/messages.es.ts` is a machine draft of every message, with
+  its glossary in the header. New English messages need a Spanish entry or the typecheck
+  fails. `DRAFT_LOCALES` keeps Spanish opt-in (`?locale=es`) until a native speaker reviews
+  it.
+- **Open:** that review is the user's to arrange. The person's saved language (`user.locale`)
+  does not choose the catalogue yet.
 
 ## 2026-10-30: speed limits moved to the benchmark run (ADR-071)
 

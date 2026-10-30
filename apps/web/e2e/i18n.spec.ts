@@ -23,3 +23,9 @@ test('the pseudo-locale reaches every string in the shell', async ({ page }) => 
   const untranslated = texts.filter((t) => !/^\[.+\]$/s.test(t));
   expect(untranslated).toEqual([]);
 });
+
+test('[NFR-006] the app speaks Spanish when Spanish is chosen', async ({ page }) => {
+  await page.goto('./?locale=es');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.getByRole('link', { name: 'Saltar al contenido' })).toBeAttached();
+});

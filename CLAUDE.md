@@ -113,7 +113,9 @@ on another disk (for example while a benchmark saturates this one).
 - Accessibility: semantic roles and names first; tests query by role and name. Every component
   gets a story (`*.stories.tsx`); stories run in a real browser with axe (ADR-024).
 - Strings: never literal UI text in components; add an ID to `apps/web/src/i18n/messages.en.ts`
-  and read it with `useT()`. The `en-XA` pseudo-locale test fails on strings that bypass it.
+  and read it with `useT()`, and give it a Spanish entry in `messages.es.ts` (a draft, typed
+  against the English IDs: a missing one fails the typecheck). The `en-XA` pseudo-locale test
+  and `pnpm i18n:check` fail on strings that bypass the catalogue.
 - Secrets never enter the repo or the frontend bundle.
 
 ## Clean room (ADR-003)

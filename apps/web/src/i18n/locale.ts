@@ -1,14 +1,23 @@
 import { messagesEn } from './messages.en';
+import { messagesEs } from './messages.es';
 import { pseudoBidi, pseudoLocalize } from './pseudo';
 
 /**
- * `en-XA` is the pseudo-locale: every string accented, lengthened and bracketed. `ar-XB` is
- * the bidi pseudo-locale (M1-116): every string right to left and the layout mirrored, which
- * is how the app is checked for right-to-left scripts before one ships.
+ * English, and Spanish as a machine draft awaiting review (M1-116). `en-XA` is the
+ * pseudo-locale: every string accented, lengthened and bracketed. `ar-XB` is the bidi
+ * pseudo-locale (M1-116): every string right to left and the layout mirrored, which is how the
+ * app is checked for right-to-left scripts before one ships.
  */
-export const SUPPORTED_LOCALES = ['en', 'en-XA', 'ar-XB'] as const;
+export const SUPPORTED_LOCALES = ['en', 'es', 'en-XA', 'ar-XB'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const STORAGE_KEY = 'taskmoor.locale';
+
+/**
+ * Catalogues still in draft (machine translations awaiting a native speaker's review). They
+ * are used only when chosen, with `?locale=` or a saved preference, never because of the
+ * browser's language. Taking a locale off this list is the review's sign-off.
+ */
+export const DRAFT_LOCALES: readonly Locale[] = ['es'];
 
 /** Locales written right to left: the page gets `dir="rtl"` and a mirrored layout. */
 const RTL_LOCALES: readonly Locale[] = ['ar-XB'];
@@ -46,8 +55,12 @@ export function resolveLocale(
     // Storage can be blocked; fall through to the browser language.
   }
   if (isLocale(saved)) return saved;
+  // The browser's language picks a reviewed catalogue; anything else is English.
   const language = win.navigator.language?.toLowerCase() ?? '';
-  return language.startsWith('en') || language === '' ? 'en' : 'en';
+  const spoken = SUPPORTED_LOCALES.find(
+    (l) => !l.includes('-') && (language === l || language.startsWith(`${l}-`)),
+  );
+  return spoken && !DRAFT_LOCALES.includes(spoken) ? spoken : 'en';
 }
 
 export function messagesFor(locale: Locale): Record<string, string> {
@@ -61,5 +74,6 @@ export function messagesFor(locale: Locale): Record<string, string> {
       Object.entries(messagesEn).map(([id, text]) => [id, pseudoBidi(text)]),
     );
   }
+  if (locale === 'es') return { ...messagesEs };
   return { ...messagesEn };
 }

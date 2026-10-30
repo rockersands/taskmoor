@@ -2,6 +2,7 @@ import { createIntl } from 'react-intl';
 import { describe, expect, it } from 'vitest';
 import { messagesFor, resolveLocale, STORAGE_KEY } from './locale';
 import { messagesEn } from './messages.en';
+import { messagesEs } from './messages.es';
 import { argumentNames, pseudoBidi, pseudoLocalize, pseudoText } from './pseudo';
 
 describe('pseudoLocalize', () => {
@@ -57,6 +58,45 @@ describe('pseudoBidi (M1-116)', () => {
   });
 });
 
+/**
+ * Words of an English message a translation must change: what is left once ICU arguments are
+ * taken out, less names, terms the Spanish glossary keeps and words spelled alike in Spanish.
+ */
+const KEPT = new Set(
+  'Taskmoor Track Tracks Ticket Tickets Token Tokens Sprint Sprints Backlog Burndown Burnup PostgreSQL Node OpenID Connect SAML Active Directory OpenLDAP Personal Roles Error Total Zoom'.split(
+    ' ',
+  ),
+);
+/** Examples written in the query language, which is not translated. */
+const QUERY_EXAMPLES = new Set(['list.filterPlaceholder']);
+function untranslatedWords(message: string): string[] {
+  let text = message;
+  for (let before = ''; before !== text; ) {
+    before = text;
+    text = text.replace(/\{[^{}]*\}/g, '');
+  }
+  return (text.match(/\p{L}{4,}/gu) ?? []).filter((word) => !KEPT.has(word));
+}
+
+describe('the Spanish catalogue (M1-116)', () => {
+  it('[NFR-006] holds every message with the same arguments, and formats each', () => {
+    const es = createIntl({ locale: 'es', messages: messagesFor('es') });
+    const same: string[] = [];
+    for (const [id, source] of Object.entries(messagesEn)) {
+      const spanish = messagesEs[id as keyof typeof messagesEs];
+      expect(argumentNames(spanish), id).toEqual(argumentNames(source));
+      const values = Object.fromEntries(argumentNames(source).map((name) => [name, 3]));
+      expect(() => es.formatMessage({ id }, values), id).not.toThrow();
+      if (spanish === source && !QUERY_EXAMPLES.has(id) && untranslatedWords(source).length > 0) {
+        same.push(id);
+      }
+    }
+    expect(same).toEqual([]);
+    expect(es.formatMessage({ id: 'search.count' }, { count: 2 })).toBe('2 tickets');
+    expect(es.formatMessage({ id: 'page.itemCount' }, { count: 0 })).toBe('Ningún elemento');
+  });
+});
+
 describe('resolveLocale', () => {
   const win = (overrides: {
     search?: string;
@@ -77,6 +117,13 @@ describe('resolveLocale', () => {
     expect(resolveLocale(win({ saved: 'en-XA' }))).toBe('en-XA');
     expect(resolveLocale(win({ search: '?locale=en', saved: 'en-XA' }))).toBe('en');
     expect(resolveLocale(win({ search: '?locale=ar-XB' }))).toBe('ar-XB');
+    expect(resolveLocale(win({ search: '?locale=es' }))).toBe('es');
+  });
+
+  it('[NFR-006] uses a draft catalogue only when chosen, never for the browser language alone', () => {
+    expect(resolveLocale(win({ language: 'es-MX' }))).toBe('en');
+    expect(resolveLocale(win({ language: 'es-MX', saved: 'es' }))).toBe('es');
+    expect(resolveLocale(win({ language: 'en-GB', search: '?locale=es' }))).toBe('es');
   });
 
   it('ignores unknown values and falls back to English', () => {

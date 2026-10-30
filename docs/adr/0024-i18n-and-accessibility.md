@@ -78,6 +78,14 @@ machines on every change, which is how this project verifies work.
   `apps/web/e2e/rtl.spec.ts` opens six pages in `ar-XB` on a desktop and a phone. It checks the
   direction, that nothing scrolls sideways and that the navigation and top bar start at the
   right, and attaches a screenshot of each page to the report.
+- **Spanish, as a machine draft** (`apps/web/src/i18n/messages.es.ts`): every message, typed
+  `Record<MessageId, string>`, so a missing or stray ID fails the typecheck. A test formats
+  every message with the English arguments and finds no English text left except names, the
+  glossary's kept terms and query examples. The header holds the glossary (ticket, track and
+  sprint stay; board is "tablero", release "versión") and uses the informal "tú". Spanish is
+  in `DRAFT_LOCALES`: it is used only when chosen (`?locale=es` or a saved preference), never
+  because of the browser's language, until a native speaker reviews it. Taking it off that
+  list is the sign-off.
 
 ## Options considered
 
