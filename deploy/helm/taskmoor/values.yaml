@@ -10,6 +10,8 @@ imagePullSecrets: []
 
 # Where people reach the instance; the setup link and secure cookies follow it.
 publicUrl: "http://taskmoor.local"
+# How the app writes its addresses (M1-134, ADR-066): clean URLs (path) or hash routing.
+webRouting: path
 
 database:
   # Name of an existing Secret holding the connection string (recommended).

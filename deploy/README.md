@@ -24,9 +24,11 @@ installer or a test does.
 
 The image serves the frontend it was built with (`/app/web`, `version.json` beside
 index.html names its version) and refuses to start the web role next to a frontend of another
-version. Addresses use hash routing (`/#/boards/7`) unless you set
-`TASKMOOR_WEB_ROUTING=path` for clean URLs (`/boards/7`); either way links of the other kind
-still open, so switching breaks no bookmark or email. Behind a reverse proxy that serves
+version. The Compose kits, the all-in-one image and the Helm chart use clean URLs
+(`/boards/7`; `TASKMOOR_WEB_ROUTING=path`, Helm `webRouting: path`). A bare server started
+without them uses hash routing (`/#/boards/7`). Set `TASKMOOR_WEB_ROUTING=hash` where something
+in front of Taskmoor cannot pass deep links through. Either way links of the other kind still
+open, so switching breaks no bookmark or email. Behind a reverse proxy that serves
 Taskmoor under a path, put that path in `PUBLIC_URL` (`https://example.com/tracker`).
 
 The same folder runs on any static host (ADR-066). Its index.html carries the public runtime

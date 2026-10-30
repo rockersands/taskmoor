@@ -8,6 +8,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env, for example postgres://user:pass@host:5432/taskmoor}
       TASKMOOR_ROLE: ${TASKMOOR_ROLE:-all}
+      # Clean URLs (M1-134, ADR-066); set hash where something in front cannot pass deep links.
+      TASKMOOR_WEB_ROUTING: ${TASKMOOR_WEB_ROUTING:-path}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PUBLIC_URL: ${PUBLIC_URL:-}
       TASKMOOR_SETUP_TOKEN: ${TASKMOOR_SETUP_TOKEN:-}

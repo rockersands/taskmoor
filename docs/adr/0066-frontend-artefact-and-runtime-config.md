@@ -88,7 +88,10 @@ was a constant.
   rebuild; hash links keep working after the switch. Decided by the user on 2026-10-30: the
   Compose, all-in-one and Helm kits turn clean URLs on (M1-134); a bare server and static hosts
   without rewrite rules keep hash routing; Builder kits write their own setting (M1-111 writes
-  `routing: "path"` and the host fallbacks).
+  `routing: "path"` and the host fallbacks). Done in M1-134: `TASKMOOR_WEB_ROUTING` defaults to
+  `path` in both Compose files and the all-in-one image, Helm has `webRouting: path`, and
+  `tools/image/smoke-kits.sh` and `helm test` open a deep link as a clean URL, reload it and open
+  the start page that old hash links land on.
 - `apiUrl` makes the client call another origin, but cross-origin sessions (CORS, credentials,
   PKCE) are M1-107; until then a split deployment needs a same-site layout or a proxy.
 - M1-106 can compare `version.json` with the meta endpoint's minimum frontend version, and

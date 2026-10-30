@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Proves M0-026 on this machine: the all-in-one image comes up with its own Postgres, keeps its
 # data across a restart, and both Compose kits reach /ready. Each kit's upgrade path (M1-102)
-# runs once with the same image, which has nothing to apply. Needs the main image (TAG) built,
+# runs once with the same image, which has nothing to apply. Every kit serves clean URLs (M1-134). Needs the main image (TAG) built,
 # for example by tools/image/smoke.sh. The fresh-VM timing (OPS-001) is the nightly matrix's job.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -23,6 +23,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Clean URLs (M1-134): a deep link answers the app itself, on a first visit and on a reload, and
+# the start page (where an old hash link such as /#/tickets/ABC-1 lands) does too.
+deep_links() { # base url
+  for url in "$1/tickets/ABC-1" "$1/tickets/ABC-1" "$1/"; do
+    code=$(curl -s -o /tmp/taskmoor-deep-$$.html -w '%{http_code}' -H 'Accept: text/html' "$url")
+    if [ "$code" != 200 ] || ! grep -q taskmoor-config /tmp/taskmoor-deep-$$.html; then
+      echo "$url answered $code, not the app"; return 1
+    fi
+  done
+  rm -f /tmp/taskmoor-deep-$$.html
+  echo "clean URLs: deep links open and reload"
+}
+
 wait_for() { # url, seconds, container-for-logs
   for _ in $(seq 1 "$2"); do
     if curl -fsS "$1" >/dev/null 2>&1; then return 0; fi
@@ -39,6 +52,7 @@ docker volume create "$VOL" >/dev/null
 docker run -d --name "$AIO_NAME" -v "$VOL:/data" -p 18090:8080 "$AIO" >/dev/null
 wait_for http://127.0.0.1:18090/ready 90 "$AIO_NAME"
 curl -fsS http://127.0.0.1:18090/ready; echo
+deep_links http://127.0.0.1:18090
 echo "restart with the same volume"
 docker restart "$AIO_NAME" >/dev/null
 wait_for http://127.0.0.1:18090/ready 60 "$AIO_NAME"
@@ -61,6 +75,7 @@ echo "== compose kit with bundled Postgres"
 app="ts-smoke-$ID-taskmoor-1"
 wait_for http://127.0.0.1:18091/ready 120 "$app"
 curl -fsS http://127.0.0.1:18091/ready; echo
+deep_links http://127.0.0.1:18091
 echo "upgrade.sh to the same image: stops the backend, nothing to apply, starts it again"
 out=$(
   cd deploy/compose
@@ -86,4 +101,5 @@ app="ts-smoke-ext-$ID-taskmoor-1"
 docker network connect "$NET" "$app"
 wait_for http://127.0.0.1:18092/ready 120 "$app"
 curl -fsS http://127.0.0.1:18092/ready; echo
+deep_links http://127.0.0.1:18092
 echo "== kits passed"

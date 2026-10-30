@@ -77,6 +77,12 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-134 clean URLs in the install kits
+
+ADR-066 has the note. The Compose kits, the all-in-one image and Helm (`webRouting`) default to
+`TASKMOOR_WEB_ROUTING=path`. `smoke-kits.sh` and `helm test` check deep links on every kit;
+both were run on the Mac with Colima and passed.
+
 ## 2026-10-30: M1-109 Builder core library
 
 ADR-031 has an implementation section; no migration.

@@ -24,6 +24,8 @@ services:
     environment:
       DATABASE_URL: postgres://taskmoor:${POSTGRES_PASSWORD}@postgres:5432/taskmoor # secret-scan: allow
       TASKMOOR_ROLE: ${TASKMOOR_ROLE:-all}
+      # Clean URLs (M1-134, ADR-066); set hash where something in front cannot pass deep links.
+      TASKMOOR_WEB_ROUTING: ${TASKMOOR_WEB_ROUTING:-path}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PUBLIC_URL: ${PUBLIC_URL:-}
       TASKMOOR_SETUP_TOKEN: ${TASKMOOR_SETUP_TOKEN:-}

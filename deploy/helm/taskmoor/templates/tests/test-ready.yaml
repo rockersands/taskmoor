@@ -41,6 +41,16 @@ spec:
             const setup = JSON.parse(await get(`${base}/api/v1/setup`));
             if (typeof setup.needed !== 'boolean') throw new Error(`setup: ${JSON.stringify(setup)}`);
             if (!(await get(metrics)).includes('taskmoor_build_info')) throw new Error('no build info');
+            {{- if eq (.Values.webRouting | default "path") "path" }}
+            // Clean URLs (M1-134): a deep link is the app itself, on the first visit and a reload.
+            for (const url of [`${base}/tickets/ABC-1`, `${base}/tickets/ABC-1`, `${base}/`]) {
+              const res = await fetch(url, { headers: { accept: 'text/html' }, redirect: 'manual' });
+              const page = await res.text();
+              if (res.status !== 200 || !page.includes('taskmoor-config')) {
+                throw new Error(`${url} answered ${res.status}, not the app`);
+              }
+            }
+            {{- end }}
             console.log(`ok: version ${health.version}, roles ${health.roles.join(',')}`);
           };
           // A fresh cluster can take a few seconds to route a new Service: try for a minute.
