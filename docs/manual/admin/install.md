@@ -118,21 +118,21 @@ The Compose files pass these settings from `.env` to the server:
 | `LOG_LEVEL` | `info` by default |
 
 `TASKMOOR_IMAGE`, `POSTGRES_IMAGE` and `TASKMOOR_PORT` choose the images and the host port.
-Other server settings, such as mail or S3 storage, do not reach the container from `.env`: add
-them in an override file next to the kit, for example `docker-compose.override.yml`:
+The Compose files also pass the mail settings (`TASKMOOR_SMTP_*`), S3 storage and the virus
+scanner (`TASKMOOR_STORAGE`, `TASKMOOR_S3_*`, `TASKMOOR_SCAN_CLAMD`), `TASKMOOR_BACKUP_DIR`,
+`TASKMOOR_IMPORT_DIR`, `TASKMOOR_QUERY_TIMEOUT_MS`, `METRICS_PORT` and the `OTEL_*` tracing
+variables from `.env`, for example:
 
-```yaml
-services:
-  taskmoor:
-    environment:
-      TASKMOOR_SMTP_URL: smtp://mail.example.com:587
-      TASKMOOR_SMTP_USER: taskmoor@example.com
-      TASKMOOR_SMTP_PASSWORD: ${TASKMOOR_SMTP_PASSWORD:?set it in .env}
-      TASKMOOR_SMTP_FROM: "Taskmoor <taskmoor@example.com>"
+```text
+TASKMOOR_SMTP_URL=smtp://mail.example.com:587
+TASKMOOR_SMTP_USER=taskmoor@example.com
+TASKMOOR_SMTP_PASSWORD=...
+TASKMOOR_SMTP_FROM="Taskmoor <taskmoor@example.com>"
 ```
 
-Then run `TASKMOOR_COMPOSE_OVERRIDE=docker-compose.override.yml bash install.sh` (and name it
-the same way for `upgrade.sh`). Every variable is in the
+Anything else, such as another volume, goes in an override file next to the kit, for example
+`docker-compose.override.yml`; run `TASKMOOR_COMPOSE_OVERRIDE=docker-compose.override.yml bash
+install.sh` (and name it the same way for `upgrade.sh`). Every variable is in the
 [configuration reference](configuration.md).
 
 ### Installer options

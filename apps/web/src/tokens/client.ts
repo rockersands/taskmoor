@@ -53,13 +53,16 @@ export interface RotatedToken extends CreatedToken {
 
 /** The signed-in person's own tokens (`/api/v1/account/tokens`). */
 export interface PersonalTokensClient {
-  list: () => Promise<{ tokens: ApiToken[]; policy: TokenPolicy }>;
+  list: () => Promise<{ tokens: ApiToken[]; policy: TokenPolicy; adminScopeAllowed?: boolean }>;
   create: (token: NewToken) => Promise<CreatedToken>;
   revoke: (id: number) => Promise<void>;
 }
 
 export const personalTokensClient: PersonalTokensClient = {
-  list: () => api<{ tokens: ApiToken[]; policy: TokenPolicy }>('/account/tokens'),
+  list: () =>
+    api<{ tokens: ApiToken[]; policy: TokenPolicy; adminScopeAllowed?: boolean }>(
+      '/account/tokens',
+    ),
   create: (token) => api<CreatedToken>('/account/tokens', { method: 'POST', body: token }),
   revoke: async (id) => {
     await api<null>(`/account/tokens/${id}`, { method: 'DELETE' });

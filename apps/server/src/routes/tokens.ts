@@ -114,9 +114,13 @@ export function registerTokenRoutes(app: FastifyInstance, db: Kysely<Database>):
       .orderBy('t.id', 'desc')
       .execute();
     const now = new Date();
+    // The administration scope is for people who administer something (the same rule as
+    // creating one below), so the form can offer it to them and only them.
+    const held = await request.authz.global();
     return {
       tokens: rows.map((row) => toTokenView(row, now)),
       policy: await tokenPolicy(db, request.workspaceId),
+      adminScopeAllowed: ADMIN_GLOBAL_PERMISSIONS.some((p) => held.has(p)),
     };
   });
 

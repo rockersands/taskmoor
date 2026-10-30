@@ -1,7 +1,7 @@
 ---
 title: "Email and notification policies"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/email/transport.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/routes/email.ts, apps/server/src/routes/setup.ts, apps/server/src/notifications/model.ts, apps/server/src/notifications/subscriber.ts, apps/server/src/routes/notifications.ts, apps/server/src/routes/tracks.ts, apps/server/src/audit/subscriber.ts, packages/db/src/migrations/0030_notifications.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/account/AccountPage.tsx, deploy/README.md, deploy/compose/docker-compose.yml, deploy/helm/taskmoor/values.yaml, docs/adr/0041-notification-recipients.md, docs/specs/01c-core-work-tracking.md
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/email/transport.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/routes/email.ts, apps/server/src/routes/setup.ts, apps/server/src/notifications/model.ts, apps/server/src/notifications/subscriber.ts, apps/server/src/routes/notifications.ts, apps/server/src/routes/tracks.ts, apps/server/src/audit/subscriber.ts, packages/db/src/migrations/0030_notifications.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/account/AccountPage.tsx, deploy/README.md, deploy/compose/docker-compose.yml, deploy/helm/taskmoor/values.yaml, docs/adr/0041-notification-recipients.md, docs/specs/01c-core-work-tracking.md, apps/server/src/email/smtp.ts
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -19,34 +19,35 @@ This page covers the first and the last.
 
 ## Configuring outgoing mail
 
-Taskmoor sends email through an SMTP server that you name with environment variables. The
-password comes only from the environment (or a secrets manager that fills it), never from a
-file in the kit or from the web app.
+Taskmoor sends email through an SMTP server that you name with environment variables, or in
+the mail fields of the [first-run setup form](first-run.md) when the environment names none.
+The password comes only from the environment (or a secrets manager that fills it), never from
+a file in the kit or from the web app.
 
 | Variable | Meaning |
 |---|---|
 | `TASKMOOR_SMTP_URL` | `smtp://host:port` or `smtps://host:port`, with no user name or password in it. `smtp://` upgrades with STARTTLS when the server offers it (port 587 unless given); `smtps://` speaks TLS from the start (port 465 unless given) |
-| `TASKMOOR_SMTP_USER`, `TASKMOOR_SMTP_PASSWORD` | The SMTP sign-in. Set both or neither; the server refuses to start with only one |
+| `TASKMOOR_SMTP_USER`, `TASKMOOR_SMTP_PASSWORD` | The SMTP sign-in. With `TASKMOOR_SMTP_URL`, set both or neither; the server refuses to start with only one. For the setup form's server, the form keeps the user name and `TASKMOOR_SMTP_PASSWORD` alone gives the password |
 | `TASKMOOR_SMTP_FROM` | The From address, for example `Taskmoor <taskmoor@example.com>`. Without it, Taskmoor uses `Taskmoor <taskmoor@host>`, where host is the host name of `PUBLIC_URL` |
 | `PUBLIC_URL` | Where people reach Taskmoor. Links in emails are built from it, so set it |
 
 Email goes out from processes that run the worker role, which the default role `all`
 includes. When you split roles, set the variables on the worker.
 
-- **Compose kits:** the Compose files do not pass these variables yet, so add them to the
-  `environment` list of the `taskmoor` service.
+- **Compose kits:** put them in `.env` next to the Compose file and run `install.sh` again.
 - **Helm:** add them to `extraEnv`, taking the password from a Kubernetes secret.
 
 See [Configuration reference](configuration.md) for the other variables.
 
-Without `TASKMOOR_SMTP_URL`, notifications still reach the inbox, and email waits unsent; the
-worker logs `email notifications wait unsent: set TASKMOOR_SMTP_URL` when it starts. Once you
+Without `TASKMOOR_SMTP_URL` or the setup form's mail fields, notifications still reach the
+inbox, and email waits unsent; the worker logs `email notifications wait unsent` when it starts. Once you
 set it, what is waiting goes out, except notifications the person has already read in the
 inbox.
 
 The first-run setup page also asks for outgoing mail settings under **Outgoing mail
-(optional)**. Taskmoor stores them, but sending uses only the environment variables above, so
-set those even if you filled in that form.
+(optional)**. When the environment names no server, the worker sends through that one, read
+again before every round of emails, so no restart is needed. If the form names an SMTP user,
+set `TASKMOOR_SMTP_PASSWORD` for it.
 
 ### Checking that mail works
 

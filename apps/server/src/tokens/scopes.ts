@@ -74,14 +74,16 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/account/two-factor/webauthn/options',
 ]);
 
-/** POST routes that change nothing: a read token reaches them. */
-export const READ_ONLY_POST_ROUTES: ReadonlySet<string> = new Set([
+/** Routes other than GET that change nothing anyone else sees: a read token reaches them. */
+export const READ_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/search',
   // Which shown tickets format rules match (M1-049): a read.
   'POST /api/v1/search/format-rules',
   // The MCP server (M1-072): its read tools need only read; its other tools call the REST API
   // with the same token, where write routes still need write.
   'POST /api/v1/mcp',
+  // Ending the caller's own MCP session, so a read-only client can close what it opened.
+  'DELETE /api/v1/mcp',
 ]);
 
 /** Paths under these (the path itself or below it) are administration. */
@@ -124,7 +126,7 @@ export function routeAccess(method: string, routeUrl: string): RouteAccess {
   if (ADMIN_ROUTE_PREFIXES.some((p) => routeUrl === p || routeUrl.startsWith(`${p}/`))) {
     return 'admin';
   }
-  if (READ_ONLY_POST_ROUTES.has(key)) return 'read';
+  if (READ_ONLY_ROUTES.has(key)) return 'read';
   return ['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase()) ? 'read' : 'write';
 }
 

@@ -35,7 +35,7 @@ administrators only. Configuration administrators do their work through the API 
   permission **Run the site** given to them or to one of their groups.
 - A **configuration administrator** holds **Change configuration**. They manage roles, access
   policies, visibility policies, workflows, workflow maps, ticket types, layouts and the other
-  shared configuration, and hold **Run the track**, **Change screens and layouts**,
+  shared configuration, and hold **Run the track**, **Change layouts**,
   **Edit workflows** and **See the workflow** in every track. They do not manage people,
   groups or global permissions.
 - Neither can go to **Anyone signed in**: "Administration cannot go to everyone."
@@ -121,7 +121,7 @@ site or configuration administrator.
 
 | Group | Permissions |
 |---|---|
-| Administration | **Run the track**, **Change screens and layouts**, **Edit workflows** |
+| Administration | **Run the track**, **Change layouts**, **Edit workflows** |
 | Track | **See the track**, **Manage sprints**, **Answer service requests**, **See reports**, **See development links**, **See the workflow** |
 | Tickets | **Archive tickets**, **Be given tickets**, **Give tickets to people**, **Close tickets**, **Create tickets**, **Delete tickets**, **Edit tickets**, **Link tickets**, **Change the requester**, **Move tickets**, **Set the close reason**, **Set due dates**, **Set visibility levels**, **Move tickets through the workflow**, **Restore archived tickets**, **Send tickets by email** |
 | Followers | **Manage followers**, **See voters and followers** |

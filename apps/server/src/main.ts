@@ -10,7 +10,8 @@ import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/
 import { registerBulkJobs } from './bulk/jobs';
 import { trimBulkOperations } from './bulk/model';
 import { loadConfig } from './config';
-import { deliverEmail } from './email/deliver';
+import { deliverEmail, type MailerOptions } from './email/deliver';
+import { effectiveSmtp } from './email/smtp';
 import { smtpTransport } from './email/transport';
 import { EventBus, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
@@ -115,6 +116,7 @@ const app = await buildApp({
   attachments,
   ...(config.importDir ? { importDir: config.importDir } : {}),
   smtpConfigured: config.smtp !== undefined,
+  ...(config.smtpPassword ? { smtpPassword: config.smtpPassword } : {}),
   queryTimeoutMs: config.queryTimeoutMs,
 });
 const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
@@ -208,30 +210,53 @@ if (config.roles.includes('worker') && db) {
   timers.push(setInterval(rollCycles, 60 * 1000));
   // Email notifications (M1-057): every 30 seconds, what is due goes out. Workers lock each
   // person's notifications while sending, so several can run.
-  if (config.smtp) {
-    const transport = smtpTransport(config.smtp);
-    const mailer = { transport, from: config.smtp.from, publicUrl: config.publicUrl };
-    const authorizer = new Authorizer(db);
-    const sendEmail = () =>
-      deliverEmail(db, authorizer, mailer)
-        .then((run) => {
-          if (run.sent > 0 || run.failed > 0) app.log.info({ run }, 'notification emails');
-        })
-        .catch((error) => app.log.warn({ error }, 'notification emails not sent'));
-    void sendEmail();
-    timers.push(setInterval(sendEmail, 30 * 1000));
-    // Search subscriptions (M1-063): each due one runs as each recipient; claimed per run.
-    const subscriptionCatalogs = new FieldCatalogs(db);
-    const sendSubscriptions = () =>
-      deliverSubscriptions(db, authorizer, subscriptionCatalogs, mailer)
-        .then((run) => {
-          if (run.due > 0) app.log.info({ run }, 'search subscription emails');
-        })
-        .catch((error) => app.log.warn({ error }, 'search subscription emails not sent'));
-    timers.push(setInterval(sendSubscriptions, 60 * 1000));
-  } else {
-    app.log.info('email notifications wait unsent: set TASKMOOR_SMTP_URL');
-  }
+  // The SMTP server from TASKMOOR_SMTP_URL, or else the one the setup form saved, read on every
+  // run so mail set up after the server started goes out without a restart.
+  let mailer: { key: string; options: MailerOptions } | null = null;
+  let mailMissing = false;
+  const currentMailer = async (): Promise<MailerOptions | null> => {
+    const smtp = await effectiveSmtp(db, config.smtp, config.smtpPassword);
+    if (!smtp) {
+      if (!mailMissing) {
+        app.log.info(
+          'email notifications wait unsent: set TASKMOOR_SMTP_URL, or the mail settings of the setup form with TASKMOOR_SMTP_PASSWORD when they name a user',
+        );
+      }
+      mailMissing = true;
+      return null;
+    }
+    mailMissing = false;
+    const key = JSON.stringify(smtp);
+    if (mailer?.key !== key) {
+      mailer = {
+        key,
+        options: { transport: smtpTransport(smtp), from: smtp.from, publicUrl: config.publicUrl },
+      };
+    }
+    return mailer.options;
+  };
+  const mailAuthorizer = new Authorizer(db);
+  const sendEmail = () =>
+    currentMailer()
+      .then((options) => (options ? deliverEmail(db, mailAuthorizer, options) : null))
+      .then((run) => {
+        if (run && (run.sent > 0 || run.failed > 0)) app.log.info({ run }, 'notification emails');
+      })
+      .catch((error) => app.log.warn({ error }, 'notification emails not sent'));
+  void sendEmail();
+  timers.push(setInterval(sendEmail, 30 * 1000));
+  // Search subscriptions (M1-063): each due one runs as each recipient; claimed per run.
+  const subscriptionCatalogs = new FieldCatalogs(db);
+  const sendSubscriptions = () =>
+    currentMailer()
+      .then((options) =>
+        options ? deliverSubscriptions(db, mailAuthorizer, subscriptionCatalogs, options) : null,
+      )
+      .then((run) => {
+        if (run && run.due > 0) app.log.info({ run }, 'search subscription emails');
+      })
+      .catch((error) => app.log.warn({ error }, 'search subscription emails not sent'));
+  timers.push(setInterval(sendSubscriptions, 60 * 1000));
   const events = startWorker({
     bus,
     runner,

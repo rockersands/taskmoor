@@ -162,6 +162,11 @@ export interface ServerConfig {
   storage: StorageConfig;
   /** Email notifications (M1-057); undefined when no SMTP server is configured. */
   smtp: SmtpConfig | undefined;
+  /**
+   * TASKMOOR_SMTP_PASSWORD, also when the server comes from the first-run setup form instead
+   * of TASKMOOR_SMTP_URL (the form never asks for the password).
+   */
+  smtpPassword: string | undefined;
   /** Milliseconds a search statement may run before it is stopped (QRY-010 (3)). */
   queryTimeoutMs: number;
 }
@@ -229,7 +234,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       'Invalid server configuration:\n- TASKMOOR_INSTANCE_ID and TASKMOOR_INSTANCE_KEY go together',
     );
   }
-  if (Boolean(e.TASKMOOR_SMTP_USER) !== Boolean(e.TASKMOOR_SMTP_PASSWORD)) {
+  // A password alone serves the user the setup form saved; with TASKMOOR_SMTP_URL both go here.
+  if (
+    (e.TASKMOOR_SMTP_USER && !e.TASKMOOR_SMTP_PASSWORD) ||
+    (e.TASKMOOR_SMTP_URL && e.TASKMOOR_SMTP_PASSWORD && !e.TASKMOOR_SMTP_USER)
+  ) {
     throw new Error(
       'Invalid server configuration:\n- TASKMOOR_SMTP_USER and TASKMOOR_SMTP_PASSWORD go together',
     );
@@ -310,5 +319,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
             `Taskmoor <taskmoor@${new URL(e.PUBLIC_URL ?? 'http://localhost').hostname}>`,
         }
       : undefined,
+    smtpPassword: e.TASKMOOR_SMTP_PASSWORD,
   };
 }
