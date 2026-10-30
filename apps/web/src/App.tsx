@@ -64,6 +64,7 @@ import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketDialog } from './tickets/CreateTicketDialog';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { TicketPage } from './tickets/view/TicketPage';
+import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
@@ -145,6 +146,8 @@ const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
+/** A track's timeline (M1-048). */
+const TRACK_TIMELINE = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/timeline(?:[/?]|$)/;
 /** Dashboards (M1-064): the list, one by id, and one as a wallboard turning to the next. */
 const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
@@ -482,6 +485,11 @@ function Pages() {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
     content = <BulkOperationPage key={id} id={id} />;
+  } else if (TRACK_TIMELINE.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_TIMELINE.exec(hash)?.[1] ?? '';
+    content = <TimelinePage key={key} trackKey={key} />;
   } else if (TRACK_RELEASES.test(hash)) {
     active = 'tracks';
     guarded = true;

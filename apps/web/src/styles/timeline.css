@@ -1,0 +1,385 @@
+/*
+ * A track's timeline (M1-048): a sticky column of tickets beside lanes that scroll together,
+ * bars in the chart blue (a texture for days that come from a sprint, an outline for spans
+ * rolled up from children, the closed share filled in), sprints as bands, releases as lines,
+ * today in the accent colour. Rows are 44px everywhere, so bars are touch targets on phones and
+ * dependency lines know where rows are.
+ */
+.timeline-page {
+  --timeline-label: 18rem;
+  --timeline-row: 44px;
+  --timeline-indent: 16px;
+
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.timeline-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.timeline-zoom {
+  display: flex;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.timeline-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.timeline-scroll {
+  position: relative;
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-surface-raised);
+}
+
+.timeline-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  width: max-content;
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline-corner {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--timeline-label);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-raised);
+  border-right: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.timeline-scale {
+  position: relative;
+  flex: none;
+  height: 3.25rem;
+}
+
+.timeline-month,
+.timeline-tick,
+.timeline-sprint-label,
+.timeline-release-label {
+  position: absolute;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: var(--font-size-200);
+}
+
+.timeline-month {
+  top: 2px;
+  padding-inline-start: 4px;
+  font-weight: 600;
+}
+
+.timeline-tick {
+  top: 1.25rem;
+  padding-inline-start: 4px;
+  color: var(--color-text-muted);
+}
+
+.timeline-tick.is-major {
+  color: inherit;
+  font-weight: 600;
+}
+
+.timeline-sprint-label {
+  bottom: 2px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--color-accent-soft);
+  text-overflow: ellipsis;
+}
+
+.timeline-release-label {
+  top: 1.25rem;
+  padding-inline-start: 4px;
+  color: var(--color-warning);
+  font-weight: 600;
+}
+
+.timeline-grid {
+  position: relative;
+  width: max-content;
+}
+
+/* Grid lines, bands, release lines and dependencies, behind the rows' lanes. */
+.timeline-lanes {
+  position: absolute;
+  top: 0;
+  left: var(--timeline-label);
+  pointer-events: none;
+}
+
+.timeline-gridline,
+.timeline-release-line,
+.timeline-today,
+.timeline-sprint-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.timeline-gridline {
+  border-left: 1px solid var(--color-border);
+  opacity: 0.6;
+}
+
+.timeline-gridline.is-major {
+  opacity: 1;
+}
+
+.timeline-sprint-band {
+  background: var(--color-accent-soft);
+  opacity: 0.45;
+}
+
+.timeline-release-line {
+  border-left: 2px dashed var(--color-warning);
+}
+
+.timeline-today {
+  border-left: 2px solid var(--color-accent);
+}
+
+.timeline-links {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+
+.timeline-link {
+  fill: none;
+  stroke: var(--color-chart-guide);
+  stroke-width: 1.5;
+}
+
+.timeline-link.is-late {
+  stroke: var(--color-danger);
+  stroke-dasharray: 4 3;
+}
+
+.timeline-rows {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-row {
+  display: flex;
+  height: var(--timeline-row);
+  border-bottom: 1px solid var(--color-border);
+  box-sizing: border-box;
+}
+
+.timeline-row.is-selected .timeline-label {
+  background: var(--color-accent-soft);
+}
+
+.timeline-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  width: var(--timeline-label);
+  padding-inline-end: var(--space-2);
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border-right: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.timeline-toggle,
+.timeline-toggle-space {
+  flex: none;
+  width: 1.5rem;
+}
+
+.timeline-toggle {
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.timeline-key {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.timeline-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-row[data-stage="closed"] .timeline-summary {
+  text-decoration: line-through;
+}
+
+.timeline-progress-text {
+  flex: none;
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+.timeline-lane {
+  position: relative;
+  flex: none;
+}
+
+.timeline-bar {
+  position: absolute;
+  top: 10px;
+  box-sizing: border-box;
+  min-width: 6px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: var(--color-flow-first);
+  cursor: grab;
+  touch-action: none;
+}
+
+button.timeline-bar:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.timeline-bar.is-sprint {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-flow-first) 0 6px,
+    color-mix(in oklab, var(--color-flow-first) 55%, var(--color-surface-raised)) 6px 10px
+  );
+}
+
+.timeline-bar.is-dragging {
+  opacity: 0.75;
+  cursor: grabbing;
+}
+
+.timeline-bar.is-rollup {
+  border: 2px solid var(--color-flow-last);
+  background: transparent;
+  cursor: default;
+}
+
+.timeline-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-flow-last);
+}
+
+.timeline-unscheduled {
+  position: absolute;
+  top: 10px;
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  white-space: nowrap;
+}
+
+.timeline-panel {
+  display: grid;
+  gap: var(--space-2);
+  width: 18rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-surface-raised);
+}
+
+.timeline-panel h2 {
+  margin: 0;
+  font-size: var(--font-size-400);
+}
+
+.timeline-panel-summary {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.timeline-panel-form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@media (max-width: 767px) {
+  .timeline-page {
+    --timeline-label: 9.5rem;
+    --timeline-indent: 8px;
+  }
+
+  .timeline-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .timeline-panel {
+    width: auto;
+  }
+
+  .timeline-summary,
+  .timeline-progress-text {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .timeline-bar,
+  .timeline-unscheduled {
+    top: 0;
+    height: var(--hit-target-touch);
+  }
+
+  .timeline-toggle,
+  .timeline-zoom button,
+  .timeline-tools button,
+  .timeline-panel input,
+  .timeline-panel button {
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+  }
+}

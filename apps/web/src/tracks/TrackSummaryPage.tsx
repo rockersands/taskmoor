@@ -101,6 +101,9 @@ export function TrackSummaryPage({ trackKey, client = trackClient }: TrackSummar
         <h1 id={`${id}-title`} className="page-title">
           {t('summary.title', { name: summary.track.name, key: summary.track.key })}
         </h1>
+        <a href={`#/tracks/${encodeURIComponent(summary.track.key)}/timeline`}>
+          {t('summary.timeline')}
+        </a>
         <a href={`#/tracks/${encodeURIComponent(summary.track.key)}/releases`}>
           {t('summary.releases')}
         </a>

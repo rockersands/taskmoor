@@ -25,6 +25,7 @@ import './styles/search.css';
 import './styles/charts.css';
 import './styles/dashboards.css';
 import './styles/releases.css';
+import './styles/timeline.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element in index.html');

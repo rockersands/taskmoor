@@ -103,6 +103,12 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-048 timeline** (ADR-064; no migration): `routes/timeline.ts` (one read with
+  recursive roll-ups over the whole track), `apps/web/src/timeline` (`TimelinePage` at
+  `#/tracks/<KEY>/timeline`, `styles/timeline.css`); rescheduling is the ticket PATCH.
+  Tests: `routes/timeline.test.ts`, `timeline.large.test.ts` (`TASKMOOR_LARGE_TIMELINE=1`),
+  `TimelinePage.test.tsx`, the `TwoThousandTickets` story (render budget), e2e
+  `timeline.spec.ts`.
 - **M1-121 contract step for M1-001** (ADR-022 "Contract step for M1-001"): migration
   `0055_contract_m0_session` drops the M0 `session` table and the `app_user.workspace_id`
   default. The user chose to land it before the first release (none is published). M1-039's

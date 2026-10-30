@@ -63,6 +63,7 @@ import { registerSyncRoutes } from './routes/sync';
 import { registerTicketTypeRoutes } from './routes/ticket-types';
 import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
+import { registerTimelineRoutes } from './routes/timeline';
 import { registerTokenRoutes } from './routes/tokens';
 import { registerTrackSummaryRoutes } from './routes/track-summary';
 import { registerTrackRoutes, type TrackRouteHooks } from './routes/tracks';
@@ -301,6 +302,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // A track's summary (M1-064): every number with the query it counts.
     registerTrackSummaryRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // A track's timeline (M1-048): dated tickets, roll-ups, dependencies and markers.
+    registerTimelineRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
