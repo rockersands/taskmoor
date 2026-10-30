@@ -44,6 +44,17 @@ Saved searches (ADR-053) already have the sharing model, and the general and agi
   (ADR-058). Windows are the viewer's last N days. A widget that cannot show anything says why
   (`unavailable`: board not found, not a Scrum board, no active sprint, a field that does not
   group); a bad query answers 400 `invalid_query` like a search.
+- **Web** (`apps/web/src/dashboards`): `#/dashboards` lists the person's own and shared
+  dashboards and makes new ones; `#/dashboards/<id>` shows the widgets in the layout's columns
+  (one column on phones), each loading its own data, and its owner edits it in place (name,
+  layout, widgets added, set up in a form per kind, moved and removed, saved together with the
+  version they were read at) and chooses who sees it (only them, everyone signed in, anyone; other
+  shares through the API). Pie charts use six categorical chart tokens validated for both skins,
+  with each value and share beside its swatch.
+- **Wallboard** (RPT-004 (2)): `#/dashboards/<id>/wallboard?rotate=<ids>&seconds=<n>` shows a
+  dashboard without the navigation, with a full-screen button, reads its widgets again every five
+  minutes and turns to the next dashboard of the rotation; the list page starts one with the
+  dashboards chosen.
 - **Copying** makes the person's own dashboard from one they see, without its shares.
 - **Events** `dashboard.created`, `.updated` (changes; widget settings only as changed),
   `.deleted` and `.default_set` (on the workspace) are audited.

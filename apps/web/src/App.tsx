@@ -18,6 +18,8 @@ import { BoardsPage } from './boards/BoardsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
+import { DashboardPage } from './dashboards/DashboardPage';
+import { DashboardsPage } from './dashboards/DashboardsPage';
 import { DirectoriesPage } from './directories/DirectoriesPage';
 import { FieldsAdminPage } from './fields/FieldsAdminPage';
 import { GuardrailsPage } from './guardrails/GuardrailsPage';
@@ -72,7 +74,13 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
   { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon },
   { id: 'boards', labelId: 'nav.boards', href: '#/boards', icon: BoardsIcon },
   { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon },
-  { id: 'dashboards', labelId: 'nav.dashboards', href: '#/dashboards', icon: DashboardsIcon },
+  {
+    id: 'dashboards',
+    labelId: 'nav.dashboards',
+    href: '#/dashboards',
+    icon: DashboardsIcon,
+    requiresSession: true,
+  },
   {
     id: 'settings',
     labelId: 'nav.settings',
@@ -129,6 +137,8 @@ const TICKET = '#/tickets';
 const BULK = '#/bulk';
 /** A board by id (#/boards/7), and the list of boards at #/boards (M1-043). */
 const BOARDS = '#/boards';
+/** Dashboards (M1-064): the list, one by id, and one as a wallboard turning to the next. */
+const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
 const UNSUBSCRIBE = '#/unsubscribe';
@@ -385,6 +395,7 @@ function Pages() {
   let active = 'settings';
   let guarded = true;
   let content: ReactNode;
+  let wallboard = false;
   if (hash.startsWith(ADMIN_SYSTEM)) {
     content = <SystemPage />;
   } else if (isRoute(hash, ADMIN_TOKENS)) {
@@ -463,6 +474,27 @@ function Pages() {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
     content = <BulkOperationPage key={id} id={id} />;
+  } else if (isRoute(hash, DASHBOARDS)) {
+    active = 'dashboards';
+    guarded = true;
+    const dashboardId = /^#\/dashboards\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    const wall = /^#\/dashboards\/\d{1,10}\/wallboard(?:\?(.*))?$/.exec(hash);
+    const params = new URLSearchParams(wall?.[1] ?? '');
+    const rotation = (params.get('rotate') ?? '')
+      .split(',')
+      .map(Number)
+      .filter((n) => Number.isInteger(n) && n > 0);
+    const seconds = Math.min(3600, Math.max(10, Number(params.get('seconds')) || 60));
+    wallboard = Boolean(dashboardId && wall);
+    content = !dashboardId ? (
+      <DashboardsPage />
+    ) : (
+      <DashboardPage
+        key={`${dashboardId}-${wallboard}`}
+        id={Number(dashboardId)}
+        wallboard={wallboard ? { rotation, seconds } : null}
+      />
+    );
   } else if (isRoute(hash, SIGN_IN)) {
     active = '';
     guarded = false;
@@ -490,6 +522,15 @@ function Pages() {
           <p className="page-note">{t('page.underConstruction')}</p>
         </>
       );
+  }
+
+  // A wallboard fills the window: no navigation, no top bar (RPT-004 (2)).
+  if (wallboard) {
+    return (
+      <main className="wallboard-shell">
+        <RequireSession>{content}</RequireSession>
+      </main>
+    );
   }
 
   return (

@@ -30,14 +30,11 @@ describe('desktop layout', () => {
   it('shows the page named in the URL hash', () => {
     render(<App />);
     act(() => {
-      window.location.hash = '#/dashboards';
+      window.location.hash = '#/tracks';
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     });
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dashboards');
-    expect(screen.getByRole('link', { name: 'Dashboards' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tracks');
+    expect(screen.getByRole('link', { name: 'Tracks' })).toHaveAttribute('aria-current', 'page');
   });
 });
 

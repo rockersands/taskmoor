@@ -396,3 +396,90 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* Shares of a whole (M1-064): a ring in the categorical hues' fixed order, parted by the
+   surface, the numbers beside each swatch. */
+.chart-donut {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.chart-donut .chart-plot {
+  flex: none;
+}
+
+.chart-donut-track {
+  fill: none;
+  stroke: var(--color-surface-sunken);
+  stroke-width: 28;
+}
+
+.chart-donut-slice {
+  fill: none;
+  stroke-width: 28;
+}
+
+.chart-donut-slice.is-raised {
+  stroke-width: 34;
+}
+
+.chart-donut-slice.chart-tone-1 {
+  stroke: var(--color-chart-1);
+}
+.chart-donut-slice.chart-tone-2 {
+  stroke: var(--color-chart-2);
+}
+.chart-donut-slice.chart-tone-3 {
+  stroke: var(--color-chart-3);
+}
+.chart-donut-slice.chart-tone-4 {
+  stroke: var(--color-chart-4);
+}
+.chart-donut-slice.chart-tone-5 {
+  stroke: var(--color-chart-5);
+}
+.chart-donut-slice.chart-tone-6 {
+  stroke: var(--color-chart-6);
+}
+.chart-swatch.chart-tone-1 {
+  background: var(--color-chart-1);
+}
+.chart-swatch.chart-tone-2 {
+  background: var(--color-chart-2);
+}
+.chart-swatch.chart-tone-3 {
+  background: var(--color-chart-3);
+}
+.chart-swatch.chart-tone-4 {
+  background: var(--color-chart-4);
+}
+.chart-swatch.chart-tone-5 {
+  background: var(--color-chart-5);
+}
+.chart-swatch.chart-tone-6 {
+  background: var(--color-chart-6);
+}
+
+.chart-donut-tip {
+  top: var(--space-2);
+  left: var(--space-2);
+}
+
+.chart-legend-list {
+  display: grid;
+  flex: 1 1 12rem;
+  gap: var(--space-1);
+}
+
+.chart-legend-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.chart-legend-value {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}

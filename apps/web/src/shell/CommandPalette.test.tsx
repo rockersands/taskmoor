@@ -110,8 +110,8 @@ describe('session guard', () => {
   });
 
   it('leaves public pages open to everyone', () => {
-    window.location.hash = '#/dashboards';
+    window.location.hash = '#/tracks';
     render(<App />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Dashboards' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Tracks' })).toBeInTheDocument();
   });
 });

@@ -95,6 +95,11 @@
      and a neutral for reference lines such as a burndown's guideline. */
   --color-chart-1: #2a78d6;
   --color-chart-2: #eb6834;
+  /* Categories 3 to 6 (M1-064), in this fixed order after 1 and 2: pie charts of up to six. */
+  --color-chart-3: #1baf7a;
+  --color-chart-4: #eda100;
+  --color-chart-5: #e87ba4;
+  --color-chart-6: #008300;
   --color-chart-guide: #8e8599;
   /* Ordered stages (M1-061): one blue from the first board column to the last, the steps between
      mixed in oklab; validated as an ordinal ramp against this surface. */
@@ -157,6 +162,11 @@
      and a neutral for reference lines such as a burndown's guideline. */
   --color-chart-1: #3987e5;
   --color-chart-2: #d95926;
+  /* Categories 3 to 6 (M1-064), in this fixed order after 1 and 2: pie charts of up to six. */
+  --color-chart-3: #199e70;
+  --color-chart-4: #c98500;
+  --color-chart-5: #d55181;
+  --color-chart-6: #008300;
   --color-chart-guide: #8a8096;
   /* Ordered stages (M1-061): one blue from the first board column to the last, the steps between
      mixed in oklab; validated as an ordinal ramp against this surface. */

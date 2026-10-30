@@ -25,9 +25,9 @@ test.describe('desktop', () => {
 
   test('navigation changes the page', async ({ page }) => {
     await page.goto('./');
-    await page.getByRole('link', { name: 'Dashboards' }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dashboards');
-    await expect(page).toHaveURL(/#\/dashboards$/);
+    await page.getByRole('link', { name: 'Tracks' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tracks');
+    await expect(page).toHaveURL(/#\/tracks$/);
   });
 });
 
@@ -42,9 +42,9 @@ test.describe('mobile', () => {
     const drawer = page.getByRole('dialog', { name: 'Navigation' });
     await expect(drawer).toBeVisible();
 
-    await drawer.getByRole('link', { name: 'Dashboards', exact: true }).tap();
+    await drawer.getByRole('link', { name: 'Tracks', exact: true }).tap();
     await expect(drawer).toBeHidden();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dashboards');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tracks');
   });
 
   test('touch targets are at least 44px tall', async ({ page }) => {

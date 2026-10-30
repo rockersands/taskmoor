@@ -93,8 +93,14 @@ stop (CI is the gate).
   `routes/boards.ts` and `sprintBurndown` in `routes/sprints.ts` are shared with it;
   `averageAge`, `timeToClose`, `oneDimensional` and `parseAxis` in `reports/general.ts`),
   golden-tested in `routes/dashboard-widgets.test.ts` (`__golden__/dashboard-widgets.json`,
-  dates as days before today). **Half-done**: part 3 the web page (layout editing, widget
-  settings, wallboard), part 4 the track summary pages.
+  dates as days before today). Part 3, the web: `#/dashboards` (`DashboardsPage`: list, create,
+  wallboard of the chosen), `#/dashboards/<id>` (`DashboardPage`: widgets by column, editing in
+  place with `WidgetSettings` per kind, who sees it, copy, everyone's home for site
+  administrators), `#/dashboards/<id>/wallboard?rotate=&seconds=` without the shell;
+  `WidgetView` draws each kind, `reports/DonutChart` the pie with chart tokens 3 to 6; e2e
+  `dashboards.spec.ts`. **Half-done**: part 4, the track summary pages (summary counts equal
+  query counts). Public dashboards open only signed in on the web for now (the API serves
+  anonymous visitors).
 - **Sprint settings in the web UI** (follow-up of M1-044 and M1-045; built in a side session on
   the branch `claude/sharp-agnesi-5b4a10`; no server change). A Sprints section in the board
   settings page of a Scrum board (`sprints/SprintSettingsSection.tsx`), shown only in the
@@ -145,6 +151,9 @@ stop (CI is the gate).
 - Watch list: `routes/fields.test.ts` "[CORE-009] renames, reorders and disables options"
   got 409 `in_use` deleting a field once in a full gate (load about 30) and passes alone. Its
   ticket change before the delete was not checked; it is now, so a repeat names the cause.
+- Watch list: `e2e/setup.spec.ts` "[NTF-008] a ticket opens from the local copy" failed its last
+  step (a change reaching the local copy through the socket within 1.5 s) in two gates at load 10
+  to 20 on 2026-10-29, and passes in a quiet run.
 
 - `apps/server/src/routes/search.run.test.ts` "[QRY-010] stops a query over the timeout" timed
   out at 60 s in a full gate here (load average 16 to 19: its 20,000-row insert waits); it
