@@ -902,6 +902,36 @@ Responses:
 - 404: There is no such resource, or the caller may not see it.
 - 409: The resource changed or is in a state that refuses this; read it again.
 
+### Copy a ticket, or a ticket and everything below it
+
+`POST /api/v1/tickets/{id}/clone`, operation `cloneTicket`, access: write.
+
+Starts a task that copies the ticket, by default into its own track with its subtickets, attachments and links; each copy gets a Copies link to its original. With `descendants`, every ticket below it at every level is copied too (a deep clone). Values the caller may not set, or the track does not take, are left out. Poll the bulk operation it answers; each item names the copy it made.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `track` | integer or string | no |  |
+| `summary` | string | no |  |
+| `subtickets` | boolean | no |  |
+| `descendants` | boolean | no |  |
+| `attachments` | boolean | no |  |
+| `links` | boolean | no |  |
+
+Responses:
+
+- 202: Started; poll the operation for its progress and the copies. Body: `bulkOperation` ([BulkOperation](#schema-bulkoperation)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
 ### A ticket’s changes, a page at a time
 
 `GET /api/v1/tickets/{id}/history`, operation `getTicketHistory`, access: read, paged by cursor.
@@ -1189,13 +1219,14 @@ Responses:
 | `outcome` | `"done"`, `"failed"`, `"skipped"`, `"pending"` | yes |  |
 | `statusCode` | integer or null | yes |  |
 | `error` | any | yes |  |
+| `result` | object or null | yes | For a clone, the copy the item made, while the reader may see it. |
 
 ### Schema: BulkOperation
 
 | Name | Type | Required | Meaning |
 | --- | --- | --- | --- |
 | `id` | integer | yes |  |
-| `action` | `"edit"`, `"move"`, `"transition"`, `"delete"` | yes |  |
+| `action` | `"edit"`, `"move"`, `"transition"`, `"delete"`, `"clone"` | yes |  |
 | `params` | any | yes | What the operation applies, as it was asked. |
 | `status` | string | yes | `queued`, `running`, `done` or `cancelled`. |
 | `cancelRequested` | boolean | yes |  |

@@ -11,7 +11,7 @@ export interface TicketDetails {
   id: number;
   key: string;
   track: { id: number; key: string; name: string };
-  ticketType: { id: number; name: string };
+  ticketType: { id: number; name: string; level?: { rank: number } };
   parent: { id: number; key: string | null; summary: string | null } | null;
   status: { id: number; name: string; stage: 'new' | 'active' | 'closed' };
   summary: string;

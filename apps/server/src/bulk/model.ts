@@ -75,3 +75,13 @@ export async function trimBulkOperations(db: Kysely<Database>, now = new Date())
     .executeTakeFirst();
   return Number(result.numDeletedRows);
 }
+
+const ERROR_BYTES = 4000;
+
+/** Trims an answer for storage with a failed item: the error and its details, a few KB at most. */
+export function storedError(payload: unknown): string {
+  const text = JSON.stringify(payload ?? null);
+  if (text.length <= ERROR_BYTES) return text;
+  const error = (payload as { error?: unknown } | null)?.error;
+  return JSON.stringify({ error: typeof error === 'string' ? error : 'failed', truncated: true });
+}

@@ -30,6 +30,7 @@ import { registerAuthzRoutes } from './routes/authz';
 import { registerBackupRoutes } from './routes/backups';
 import { registerBoardRoutes } from './routes/boards';
 import { registerBulkRoutes } from './routes/bulk';
+import { registerCloneRoutes } from './routes/clone';
 import { registerCommentRoutes } from './routes/comments';
 import { registerDashboardRoutes } from './routes/dashboards';
 import { registerDirectoryRoutes } from './routes/directories';
@@ -291,6 +292,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerBulkRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { queryTimeoutMs: deps.queryTimeoutMs } : {}),
     });
+    registerCloneRoutes(app, db);
     registerImportRoutes(app, db, {
       ...(deps.importDir !== undefined ? { importDir: deps.importDir } : {}),
     });

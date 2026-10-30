@@ -439,7 +439,7 @@ export const queryCheck = z
 export const bulkOperation = z
   .object({
     id,
-    action: z.enum(['edit', 'move', 'transition', 'delete']),
+    action: z.enum(['edit', 'move', 'transition', 'delete', 'clone']),
     params: z.unknown().meta({ description: 'What the operation applies, as it was asked.' }),
     status: z.string().meta({ description: '`queued`, `running`, `done` or `cancelled`.' }),
     cancelRequested: z.boolean(),
@@ -467,6 +467,23 @@ export const bulkItem = z
     outcome: z.enum(['done', 'failed', 'skipped', 'pending']),
     statusCode: nullable(z.number().int()),
     error: z.unknown(),
+    result: nullable(
+      z
+        .object({
+          ticket: z.object({ id, key: z.string() }).loose(),
+          key: z.string(),
+          attachments: z.number().int(),
+          links: z.number().int(),
+          webLinks: z.number().int(),
+          left: z.array(z.string()).meta({
+            description:
+              'What the copy does not have: values left out, as the create body names them, and `attachments` or `links` when the caller may not add those.',
+          }),
+        })
+        .loose(),
+    ).meta({
+      description: 'For a clone, the copy the item made, while the reader may see it.',
+    }),
   })
   .loose()
   .meta({ id: 'BulkItem' });

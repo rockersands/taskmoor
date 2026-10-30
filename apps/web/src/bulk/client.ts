@@ -4,7 +4,7 @@ import type { Lock } from '../locks/useLockText';
 /** A bulk operation as `GET /api/v1/bulk-operations/:id` shows it (M1-021; CORE-024). */
 export interface BulkOperation {
   id: number;
-  action: 'edit' | 'move' | 'transition' | 'delete';
+  action: 'edit' | 'move' | 'transition' | 'delete' | 'clone';
   status: 'queued' | 'running' | 'done' | 'cancelled';
   cancelRequested: boolean;
   total: number;
@@ -33,6 +33,14 @@ export interface BulkItem {
   outcome: 'done' | 'failed' | 'skipped' | 'pending';
   statusCode: number | null;
   error: BulkError | null;
+  /** For a clone (M1-124): the copy the item made, while the reader may see it. */
+  result?: {
+    ticket: { id: number; key: string };
+    attachments: number;
+    links: number;
+    webLinks: number;
+    left: string[];
+  } | null;
 }
 
 /** The endpoints the page uses; stories and tests pass their own. */

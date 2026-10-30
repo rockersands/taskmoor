@@ -639,6 +639,71 @@
             "description": "The ticket as it was given: an id or a key.",
             "type": "string"
           },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": {},
+                "properties": {
+                  "attachments": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "left": {
+                    "description": "What the copy does not have: values left out, as the create body names them, and `attachments` or `links` when the caller may not add those.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "links": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "ticket": {
+                    "additionalProperties": {},
+                    "properties": {
+                      "id": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      "key": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "key"
+                    ],
+                    "type": "object"
+                  },
+                  "webLinks": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "ticket",
+                  "key",
+                  "attachments",
+                  "links",
+                  "webLinks",
+                  "left"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a clone, the copy the item made, while the reader may see it."
+          },
           "statusCode": {
             "anyOf": [
               {
@@ -658,7 +723,8 @@
           "key",
           "outcome",
           "statusCode",
-          "error"
+          "error",
+          "result"
         ],
         "type": "object"
       },
@@ -670,7 +736,8 @@
               "edit",
               "move",
               "transition",
-              "delete"
+              "delete",
+              "clone"
             ],
             "type": "string"
           },
@@ -18571,6 +18638,156 @@
         ],
         "x-taskmoor-access": "read",
         "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/tickets/{id}/clone": {
+      "post": {
+        "description": "Starts a task that copies the ticket, by default into its own track with its subtickets, attachments and links; each copy gets a Copies link to its original. With `descendants`, every ticket below it at every level is copied too (a deep clone). Values the caller may not set, or the track does not take, are left out. Poll the bulk operation it answers; each item names the copy it made.",
+        "operationId": "cloneTicket",
+        "parameters": [
+          {
+            "description": "The ticket: its id or its key, such as `PAY-12`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "attachments": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "descendants": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "links": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "subtickets": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "track": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "maximum": 2147483647,
+                        "type": "integer"
+                      },
+                      {
+                        "maxLength": 300,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "bulkOperation": {
+                      "$ref": "#/components/schemas/BulkOperation"
+                    }
+                  },
+                  "required": [
+                    "bulkOperation"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Started; poll the operation for its progress and the copies."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Copy a ticket, or a ticket and everything below it",
+        "tags": [
+          "Tickets"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/tickets/{id}/comment-audiences": {

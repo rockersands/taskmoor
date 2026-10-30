@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { createBoardBody } from '../boards/model';
 import { bulkBody } from '../bulk/model';
+import { cloneBody } from '../clone/model';
 import { dataQuery as boardDataQuery, listQuery as boardListQuery } from '../routes/boards';
 import { itemsQuery as bulkItemsQuery } from '../routes/bulk';
 import {
@@ -263,6 +264,23 @@ export const OPERATIONS: readonly Operation[] = [
     body: rankBody,
     responses: {
       200: { description: 'The ticket with its new rank.', schema: one('ticket', s.ticket) },
+    },
+  }),
+  op({
+    method: 'POST',
+    path: '/api/v1/tickets/:id/clone',
+    id: 'cloneTicket',
+    tag: 'Tickets',
+    summary: 'Copy a ticket, or a ticket and everything below it',
+    description:
+      'Starts a task that copies the ticket, by default into its own track with its subtickets, attachments and links; each copy gets a Copies link to its original. With `descendants`, every ticket below it at every level is copied too (a deep clone). Values the caller may not set, or the track does not take, are left out. Poll the bulk operation it answers; each item names the copy it made.',
+    params: ticketParam,
+    body: cloneBody,
+    responses: {
+      202: {
+        description: 'Started; poll the operation for its progress and the copies.',
+        schema: z.object({ bulkOperation: s.bulkOperation }).loose(),
+      },
     },
   }),
   op({

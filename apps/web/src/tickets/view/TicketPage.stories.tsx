@@ -7,6 +7,7 @@ import { fakeAttachmentClient } from '../../attachments/fixtures';
 import { fakeCommentClient } from '../../comments/fixtures';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { SessionProvider } from '../../session/SessionProvider';
+import { fakeCloneClient } from '../clone/fixtures';
 import { fakeTicketClient, SHOP_41 } from './fixtures';
 import { TicketPage } from './TicketPage';
 
@@ -26,6 +27,7 @@ const meta = {
     client: fakeTicketClient(),
     comments: fakeCommentClient(),
     attachments: fakeAttachmentClient(),
+    clone: fakeCloneClient().client,
     connect: inPage,
     mentions: () => async () => [],
   },

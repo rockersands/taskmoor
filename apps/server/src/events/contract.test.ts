@@ -10,11 +10,14 @@ import { buildApp } from '../app';
 import { processAttachment } from '../attachments/jobs';
 import { type AttachmentStores, storesOf } from '../attachments/stores';
 import { SESSION_COOKIE } from '../auth';
+import { Authorizer } from '../authz/authorizer';
+import { runBulkOperation } from '../bulk/run';
 import { unsubscribeHash } from '../email/deliver';
 import { FieldCatalogs } from '../fields/catalog';
 import { IMPORT_FORMATS } from '../import/jobs';
 import { runImport } from '../import/run';
 import { queueRun, runSync } from '../ldap/sync';
+import { ticketRoutes } from '../routes/tickets';
 import { issueSetupToken } from '../setup';
 import { FakeIdp } from '../testing/fake-idp';
 import { FakeLdap } from '../testing/fake-ldap';
@@ -81,6 +84,8 @@ const JOB_EVENTS: readonly EventType[] = [
 const SCAN_JOB_EVENTS: readonly EventType[] = ['attachment.quarantined'];
 /** The end of an import (M1-086), emitted by its job: checked by its own test below. */
 const IMPORT_JOB_EVENTS: readonly EventType[] = ['import_run.finished'];
+/** A copy's links and files (M1-124), emitted by the clone's job: checked below. */
+const CLONE_JOB_EVENTS: readonly EventType[] = ['ticket.cloned'];
 /**
  * The full export (M1-098) is a read (`GET /api/v1/admin/export`, and the CLI) that is audited:
  * checked by `export/export.test.ts`.
@@ -808,6 +813,17 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         state.bulk = res.json().bulkOperation?.id;
         return res;
       },
+    },
+    {
+      route: 'POST /api/v1/tickets/:id/clone',
+      expect: 'bulk_operation.created',
+      // The copies are made later in a job: `ticket.created`, then `ticket.cloned` (below).
+      run: () =>
+        call(String(state.admin), {
+          method: 'POST',
+          url: `/api/v1/tickets/${state.ticket}/clone`,
+          payload: { subtickets: false },
+        }),
     },
     {
       route: 'POST /api/v1/bulk-operations/:id/cancel',
@@ -3150,6 +3166,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         !JOB_EVENTS.includes(t) &&
         !SCAN_JOB_EVENTS.includes(t) &&
         !IMPORT_JOB_EVENTS.includes(t) &&
+        !CLONE_JOB_EVENTS.includes(t) &&
         !EXPORT_EVENTS.includes(t),
     );
     expect(missing, 'event types no route produces').toEqual([]);
@@ -3255,6 +3272,43 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     expect(event?.subject_type).toBe(spec.subject);
     expect(() => spec.payload.parse(event?.payload)).not.toThrow();
     expect(event?.actor_id).toBeNull();
+  });
+
+  it('[CORE-023] a clone job emits each copy as created, then one valid cloned event, as the person', async () => {
+    const res = await admin({
+      method: 'POST',
+      url: `/api/v1/tickets/${state.ticket}/clone`,
+      payload: { subtickets: false, summary: 'Cloned for events' },
+    });
+    expect(res.statusCode, res.body).toBe(202);
+    const before = await database.db
+      .selectFrom('domain_event')
+      .select((eb) => eb.fn.max('id').as('max'))
+      .executeTakeFirstOrThrow();
+    const authorizer = new Authorizer(database.db);
+    const catalogs = new FieldCatalogs(database.db);
+    await runBulkOperation(
+      {
+        db: database.db,
+        authorizer,
+        routes: ticketRoutes(database.db, authorizer, catalogs),
+        catalogs,
+      },
+      String(res.json().bulkOperation.id),
+      { until: Number.POSITIVE_INFINITY },
+    );
+    const events = await database.db
+      .selectFrom('domain_event')
+      .select(['type', 'payload', 'subject_type', 'actor_id'])
+      .where('id', '>', String(before.max ?? 0))
+      .orderBy('id')
+      .execute();
+    expect(events.map((e) => e.type)).toEqual(['ticket.created', ...CLONE_JOB_EVENTS]);
+    const event = events[1];
+    const spec = EVENT_TYPES['ticket.cloned'];
+    expect(event?.subject_type).toBe(spec.subject);
+    expect(() => spec.payload.parse(event?.payload)).not.toThrow();
+    expect(event?.actor_id).not.toBeNull();
   });
 
   it('[IMP-009] an import emits one valid event when it ends, with no actor', async () => {

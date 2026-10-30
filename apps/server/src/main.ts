@@ -164,8 +164,11 @@ if (config.roles.includes('worker') && db) {
   // Formula fields (M1-013): roll-ups of parents a write could not take, recomputes after a
   // formula or what it reads changed, and the daily refresh of formulas that read the date.
   registerFormulaJobs(runner, db);
-  // Bulk operations (M1-021): each runs ticket by ticket through the ticket routes' checks.
-  registerBulkJobs(runner, db, new Authorizer(db), new FieldCatalogs(db));
+  // Bulk operations (M1-021): each runs ticket by ticket through the ticket routes' checks;
+  // clones (M1-124) copy attachments between this process's stores.
+  registerBulkJobs(runner, db, new Authorizer(db), new FieldCatalogs(db), {
+    stores: attachments,
+  });
   // Imports (M1-086): a batch per transaction, resumable from the run's checkpoint.
   registerImportJobs(runner, db, new FieldCatalogs(db), { stores: attachments });
   // Status migrations after a change of workflow map (M1-028), a batch at a time.

@@ -298,3 +298,55 @@
 .ticket-info-statuses thead th {
   color: var(--color-text-muted);
 }
+
+/* Clone (M1-124): the dialog's form, then its progress. */
+.clone-dialog {
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+}
+
+.clone-form,
+.clone-progress {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.clone-options {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.clone-options legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-size: var(--font-size-200);
+  font-weight: 600;
+}
+
+.clone-status {
+  margin: 0;
+}
+
+.clone-progress progress {
+  width: 100%;
+}
+
+.clone-form select {
+  width: 100%;
+}
+
+.clone-progress a:is(.button-primary, .button-secondary) {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+@media (pointer: coarse) {
+  .clone-progress a:is(.button-primary, .button-secondary) {
+    min-height: var(--hit-target-touch);
+  }
+}

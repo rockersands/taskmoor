@@ -12,6 +12,7 @@ import type { Connect } from '../../richtext/CollaborativeEditor';
 import { type Session, SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
+import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketDetails } from './client';
 import { fakeTicketClient, SHOP_41 } from './fixtures';
 import { TicketPage } from './TicketPage';
@@ -41,6 +42,7 @@ function renderPage(start: Parameters<typeof fakeTicketClient>[0] = {}, locale: 
             client={client}
             comments={comments}
             attachments={fakeAttachmentClient()}
+            clone={fakeCloneClient().client}
             connect={inPage}
             mentions={() => async () => []}
           />
@@ -186,6 +188,19 @@ describe('the ticket view (M1-051)', () => {
     (document.activeElement as HTMLElement).blur();
     await user.keyboard('e');
     expect(screen.getByRole('textbox', { name: 'Summary' })).toHaveFocus();
+  });
+
+  it('[CORE-023] opens the clone dialog from the Clone action, and Escape closes it', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await heading();
+    await user.click(await screen.findByRole('button', { name: 'Clone' }));
+    const box = await screen.findByRole('dialog', { name: 'Clone SHOP-41' });
+    expect(within(box).getByLabelText('Summary of the copy')).toHaveValue(
+      'Checkout fails for expired cards',
+    );
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Clone SHOP-41' })).toBeNull();
   });
 
   it('says so when the ticket is not there', async () => {

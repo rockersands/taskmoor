@@ -304,6 +304,46 @@ ADR-070; no migration.
   wants to; the value is public either way. Key rotation needs a procedure when kits pin the
   key (ADR-070).
 
+## Side session 2026-10-30: M1-124 clone and deep clone
+
+Built on the branch `claude/vigorous-curie-c18ac3` in a side session; the main session merges
+it after its own gate. ADR-077 (and a section in ADR-043); migration **0061** `0061_clone.ts`
+with upgrade seed `0061_clone`. No new dependency.
+
+- **API**: `POST /api/v1/tickets/:id/clone` (`routes/clone.ts`, stable operation `cloneTicket`)
+  answers 202 with a bulk operation of the new action `clone`. Body: `track` (default the
+  ticket's own), `summary` (the first copy's), `subtickets`, `attachments`, `links` (default
+  true), `descendants` (deep clone, default false). Needs browse and "Create tickets" in the
+  target track, not "Make bulk changes". A subticket only into its own track. Capped by the
+  `tickets_per_bulk_operation` guardrail.
+- **Job** (`clone/run.ts`, called from `bulk/run.ts`, one item at a time): each copy through
+  the create route as the person; refused values the person may not set are left out and
+  listed in `result.left`; type, parent, visibility level and required fields are never left
+  out (the item fails, its descendants fail with `parent_not_cloned`). Then one transaction:
+  Copies link (copy to original, while links are on), links (rejoined between two copies),
+  web links, attachments (bytes copied to the active store first, registered as uploads), one
+  `ticket.cloned` event (not audited, not a webhook event), the item's outcome.
+  `bulk_item.result_ticket_id` makes it resumable. `registerBulkJobs` now takes `stores`
+  (`main.ts` and the e2e API server pass them).
+- **Web**: Clone in the ticket header opens `tickets/clone/CloneDialog.tsx` (summary, track,
+  subtickets, deep clone for level 1 and up, attachments, links); it polls the operation and
+  opens the copy, or says what was left out with links to the copy and `#/bulk/<id>`. 34 new
+  messages in English and Spanish.
+- **Tests**: `clone/clone.test.ts` (CORE-023 (1) and (2): a level-2 Objective with an outcome,
+  features and subtickets deep-cloned into another track), API contract, events contract (the
+  route scenario and the job's `ticket.created` then `ticket.cloned`), dialog tests and
+  stories, `e2e/clone.spec.ts` (both criteria through the dialog).
+- **Reading of CORE-023 (2)**: with default levels an outcome has only two levels below it, so
+  the tests deep-clone an objective (a level an administrator adds) with its outcome, features
+  and subtickets: three levels below it. Outcome-rooted deep clones are tested too.
+- **Not built**: type mapping when the target track lacks a type (the item fails with
+  `ticketTypeId: not_in_track`), copying comments, followers, time or sprints.
+- **Merge notes**: likely conflicts in `events/catalogue.ts`, `audit/subscriber.ts`,
+  `events/contract.test.ts`, `api/operations.ts`, `api/schemas.ts`, `messages.*.ts`,
+  `migrations/index.ts`, `upgrade-fixtures.ts`, the schema golden and the generated OpenAPI,
+  reference and SDK (regenerate with `pnpm verify --update` after merging rather than
+  hand-merging).
+
 ## Side session 2026-10-30: M1-127 workflow files
 
 Built on the branch `claude/blissful-hawking-450e3f` in a side session; the main session merges

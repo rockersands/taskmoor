@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts
+sources: apps/web/src/App.tsx, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -71,8 +71,8 @@ in a column on the right; on a phone everything is in one column.
 
 The header holds the ticket's status, its transitions (see
 [Moving a ticket through its workflow](#moving-a-ticket-through-its-workflow)), **Follow** and
-**Vote** with their counts, and **Keyboard shortcuts**. **Edit summary** changes the summary:
-press Save, or Escape to cancel.
+**Vote** with their counts, **Clone** (see [Cloning a ticket](#cloning-a-ticket)) and
+**Keyboard shortcuts**. **Edit summary** changes the summary: press Save, or Escape to cancel.
 
 ### Details
 
@@ -179,6 +179,39 @@ If it needs other fields, the page names them and cannot run that transition yet
 workflow refuses, the page says **The workflow does not let this transition happen now.**
 
 Tickets also move by dragging their cards on a [board](boards.md).
+
+## Cloning a ticket
+
+**Clone** in a ticket's header makes a copy of it. The dialog asks for:
+
+- **Summary of the copy**: the original's, until you change it.
+- **Track**: where the copy goes, the ticket's own track by default. You need permission to
+  create tickets there. A subticket is always copied into its own track, under its parent.
+- **Copy with it**: **Subtickets**, **Attachments** and **Links and web links**, all ticked at
+  first. On an outcome, or a ticket at a level above it, **Everything below it, at every level
+  (deep clone)** also copies every ticket below it, with their subtickets unless you untick
+  **Subtickets**.
+
+Press **Clone**. The copies are made in the background, parents first, and the dialog shows how
+many are done. Each copy:
+
+- starts in the first status of its workflow, with the original's type, description, people,
+  dates, priority, labels, estimate and custom fields. In the same track it also keeps the
+  original's releases, areas and visibility level;
+- is linked to its original with the **copies** link (the original reads **is copied by**);
+- under a deep clone, sits under the copy of its parent, and two copied tickets that were linked
+  to each other are linked as copies too.
+
+Only the tickets you can see are copied, and none in the trash. When everything was copied, the
+page opens the copy. If something was left out, such as an assignee you may not set or a field
+the new track does not have, or a ticket could not be copied, the dialog says so and offers
+**Open PAY-43** and **See each ticket's result**, which shows every ticket that was not copied
+and why, as for [bulk changes](#bulk-changes). Comments, followers and logged time are not
+copied. A ticket whose type the other track does not offer is not copied, and neither is
+anything below it.
+
+The same is available through the [REST API](../admin/rest-api.md) as
+`POST /api/v1/tickets/{id}/clone`.
 
 ## Locked fields and statuses
 

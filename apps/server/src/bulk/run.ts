@@ -1,8 +1,12 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
+import { NO_STORAGE } from '../attachments/stores';
 import type { SessionUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
+import { type CloneDeps, cloneItem } from '../clone/run';
+import { FieldCatalogs } from '../fields/catalog';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
+import { storedError } from './model';
 
 /**
  * Runs a bulk operation (M1-021; CORE-024) for the person who asked: each pending ticket goes
@@ -16,11 +20,16 @@ import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
  *   between batches and skips what is left.
  * - A run stops at `until` and says there is more: the job queues the next part, so one
  *   operation never holds a worker for long.
+ * - A clone (M1-124) runs its tickets one at a time, parents before their children, through
+ *   `clone/run.ts`, which records each outcome itself.
  */
 export interface BulkDeps {
   db: Kysely<Database>;
   authorizer: Authorizer;
   routes: readonly TicketRoute[];
+  /** For clones: custom values to copy, and the stores attachments are copied in. */
+  catalogs?: FieldCatalogs;
+  stores?: CloneDeps['stores'];
 }
 
 export interface RunOptions {
@@ -30,8 +39,6 @@ export interface RunOptions {
   concurrency?: number;
   batch?: number;
 }
-
-const ERROR_BYTES = 4000;
 
 function routeOf(routes: readonly TicketRoute[], method: string, url: string): TicketRoute {
   const found = routes.find((r) => r.method === method && r.url === url);
@@ -105,14 +112,6 @@ async function finish(
     .execute();
 }
 
-/** Trims an answer for storage: the error and its details, never more than a few KB. */
-function storedError(payload: unknown): string {
-  const text = JSON.stringify(payload ?? null);
-  if (text.length <= ERROR_BYTES) return text;
-  const error = (payload as { error?: unknown } | null)?.error;
-  return JSON.stringify({ error: typeof error === 'string' ? error : 'failed', truncated: true });
-}
-
 export async function runBulkOperation(
   deps: BulkDeps,
   operationId: string,
@@ -152,7 +151,7 @@ export async function runBulkOperation(
     }
     const items = await db
       .selectFrom('bulk_item')
-      .select(['position', 'ticket_id'])
+      .select(['position', 'ticket_id', 'result_ticket_id', 'result'])
       .where('operation_id', '=', operationId)
       .where('outcome', 'is', null)
       .orderBy('position')
@@ -180,6 +179,37 @@ export async function runBulkOperation(
       return 'finished';
     }
     const authz = authorizer.context(op.workspace_id, { userId: user.id });
+    if (op.action === 'clone') {
+      const clone: CloneDeps = {
+        db,
+        create: routeOf(routes, 'POST', '/api/v1/tickets'),
+        catalogs: deps.catalogs ?? new FieldCatalogs(db),
+        stores: deps.stores ?? NO_STORAGE,
+      };
+      // One at a time: a child's copy goes under its parent's.
+      for (const item of items) {
+        try {
+          await cloneItem(clone, op, item, user, authz);
+        } catch {
+          await db
+            .updateTable('bulk_item')
+            .set({
+              outcome: 'failed',
+              status_code: 500,
+              error: JSON.stringify({ error: 'internal' }),
+              finished_at: new Date(),
+            })
+            .where('operation_id', '=', operationId)
+            .where('position', '=', item.position)
+            .where('outcome', 'is', null)
+            .execute();
+        }
+        if (Date.now() >= options.until) break;
+      }
+      await recount(db, operationId);
+      if (Date.now() >= options.until) return 'more';
+      continue;
+    }
     const call = (route: TicketRoute, ticketId: number, body: unknown) => {
       const caller: Caller = {
         workspaceId: op.workspace_id,
@@ -200,6 +230,8 @@ export async function runBulkOperation(
           return call(move, ticketId, params.move);
         case 'delete':
           return call(trash, ticketId, undefined);
+        case 'clone':
+          throw new Error('clones run above');
         case 'transition': {
           const wanted = params.transition as {
             transitionId?: number;

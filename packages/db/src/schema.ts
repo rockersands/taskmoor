@@ -1607,7 +1607,8 @@ export interface BulkOperationTable {
   id: Generated<string>;
   workspace_id: number;
   user_id: number;
-  action: 'edit' | 'move' | 'transition' | 'delete';
+  /** `clone` makes copies of tickets (M1-124, CORE-023). */
+  action: 'edit' | 'move' | 'transition' | 'delete' | 'clone';
   params: Json;
   status: ColumnType<
     'queued' | 'running' | 'done' | 'cancelled',
@@ -1636,6 +1637,10 @@ export interface BulkItemTable {
   status_code: number | null;
   error: NullableJson;
   finished_at: Timestamp | null;
+  /** The ticket the item made: a clone's copy (M1-124). */
+  result_ticket_id: number | null;
+  /** What a finished item made, as shown with its outcome. */
+  result: NullableJson;
 }
 
 export type ImportRunStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';

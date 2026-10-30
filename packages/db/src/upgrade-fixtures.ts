@@ -1115,6 +1115,26 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE k.summary = 'Seed search' AND u.email = 'seed-0055@example.com'`.execute(db);
     },
   },
+  '0061_clone': {
+    tables: {
+      bulk_operation: "action = 'clone' AND total = 1 AND params->>'descendants' = 'true'",
+      bulk_item: "ref = 'SEED-57' AND result_ticket_id IS NOT NULL AND result->>'key' = 'SEED-58'",
+    },
+    seed: async (db) => {
+      // A finished deep clone of the seed search ticket, which made SEED-58.
+      await sql`INSERT INTO bulk_operation (workspace_id, user_id, action, params, status, total,
+          succeeded, started_at, finished_at)
+        SELECT 1, id, 'clone', '{"ticket": 57, "descendants": true}'::jsonb, 'done', 1, 1,
+          now(), now()
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO bulk_item (operation_id, workspace_id, position, ref, ticket_id,
+          outcome, status_code, finished_at, result_ticket_id, result)
+        SELECT o.id, 1, 0, 'SEED-57', k.id, 'done', 201, now(), k.id + 1000,
+          '{"key": "SEED-58", "attachments": 0, "links": 1, "webLinks": 0, "left": []}'::jsonb
+          FROM bulk_operation o, ticket k
+         WHERE o.action = 'clone' AND k.summary = 'Seed search'`.execute(db);
+    },
+  },
 };
 
 /**

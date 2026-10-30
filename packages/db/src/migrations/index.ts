@@ -51,6 +51,7 @@ import * as m0055 from './0055_contract_m0_session';
 import * as m0056 from './0056_history_search';
 import * as m0057 from './0057_full_text_search';
 import * as m0058 from './0058_info_fields';
+import * as m0061 from './0061_clone';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -112,4 +113,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0056_history_search': m0056,
   '0057_full_text_search': m0057,
   '0058_info_fields': m0058,
+  '0061_clone': m0061,
 };
