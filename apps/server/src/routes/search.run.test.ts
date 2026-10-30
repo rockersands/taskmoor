@@ -940,7 +940,8 @@ describe('search (M1-037)', () => {
     // The archive is closed to this search, so the filter names the tracks it may read.
     expect(body.sql).toContain('k.track_id = ANY(');
     expect(body.sql).not.toContain('DROP');
-    expect(body.parameters).toContain('x; DROP TABLE ticket');
+    // A text search is one parameter: its words as tsquery operands (M1-040).
+    expect(body.parameters).toContain("'x;' & 'DROP' & 'TABLE' & 'ticket'");
     expect(JSON.stringify(body.plan)).toContain('Actual Rows');
   });
 

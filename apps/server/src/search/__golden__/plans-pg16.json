@@ -187,7 +187,7 @@
     "    Bitmap Heap Scan on ticket k",
     "      BitmapAnd",
     "        Bitmap Index Scan using ticket_description_words_idx",
-    "        Bitmap Index Scan using ticket_track_updated_idx",
+    "        Bitmap Index Scan using ticket_track_number_key",
     "      [SubPlan] Index Scan using track_role_actor_unique_idx on track_role_actor a"
   ],
   "due < \"2024-02-01\" ORDER BY due ASC": [

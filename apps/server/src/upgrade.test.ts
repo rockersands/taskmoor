@@ -61,10 +61,15 @@ interface ReleaseDb {
 async function releaseDatabase(start: string, set: MigrationSet = migrations): Promise<ReleaseDb> {
   const database = await createDatabase(testPgAdminUrl());
   const db = createDb({ connectionString: database.url, maxConnections: 4 });
-  await migrateTo(db, start, { migrations: set });
+  // Each seed right after its migration, as that release wrote it (a later migration can
+  // change what an earlier seed's statements need, as 0055 did for users' workspace).
   for (const name of knownMigrations(set).filter((n) => n <= start)) {
-    await UPGRADE_SEEDS[name]?.seed(db as never);
+    const seed = UPGRADE_SEEDS[name];
+    if (!seed) continue;
+    await migrateTo(db, name, { migrations: set });
+    await seed.seed(db as never);
   }
+  await migrateTo(db, start, { migrations: set });
   const dataDir = mkdtempSync(join(tmpdir(), 'taskmoor-upgrade-'));
   mkdirSync(join(dataDir, 'files'));
   writeFileSync(join(dataDir, 'files', 'attachment.txt'), 'kept\n');

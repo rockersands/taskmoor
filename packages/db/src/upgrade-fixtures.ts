@@ -1076,6 +1076,29 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM ticket WHERE summary = 'Seed ticket'`.execute(db);
     },
   },
+  '0057_full_text_search': {
+    tables: {
+      ticket:
+        "summary = 'Seed search' AND description_words @@ to_tsquery('taskmoor_search', 'freezing')",
+      ticket_comment: "body_words @@ to_tsquery('taskmoor_search', '''searchable notes''')",
+    },
+    seed: async (db) => {
+      // Words Postgres keeps with the ticket and its comment: stemmed, a split word whole.
+      await sql`INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary,
+          description, requester_id, creator_id, rank)
+        SELECT 1, t.id, 57, ty.id, 'Seed search',
+          '{"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "The form fre"}, {"type": "text", "text": "ezes", "marks": [{"type": "bold"}]}]}]}',
+          u.id, u.id, 'a57'
+          FROM track t, ticket_type ty, app_user u
+         WHERE t.key = 'SEED' AND ty.name = 'Seed type' AND u.email = 'seed@example.com'`.execute(
+        db,
+      );
+      await sql`INSERT INTO ticket_comment (workspace_id, ticket_id, author_id, body)
+        SELECT 1, k.id, k.creator_id,
+          '{"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Searchable notes"}]}]}'
+          FROM ticket k WHERE k.summary = 'Seed search'`.execute(db);
+    },
+  },
 };
 
 /**

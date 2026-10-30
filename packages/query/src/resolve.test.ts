@@ -148,9 +148,16 @@ describe('field and operator resolver (M1-036)', () => {
 
   it('[QRY-003] resolves every system field by its native, Jira-compatible and display names', () => {
     for (const field of SYSTEM_FIELDS) {
-      const op = takes(field, 'empty') ? 'IS EMPTY' : 'CHANGED';
       for (const name of [field.name, ...field.aliases, field.name.toUpperCase()]) {
-        const plan = resolve(`${printField({ name, span: { start: 0, end: 0 } })} ${op}`);
+        const printed = printField({ name, span: { start: 0, end: 0 } });
+        if (field.type === 'relevance') {
+          // Ordering only (M1-040).
+          const plan = resolve(`summary ~ login ORDER BY ${printed}`);
+          expect(plan.orderBy[0]?.field, name).toBe(field);
+          continue;
+        }
+        const op = takes(field, 'empty') ? 'IS EMPTY' : 'CHANGED';
+        const plan = resolve(`${printed} ${op}`);
         expect((plan.where as { field: Field }).field, name).toBe(field);
       }
     }

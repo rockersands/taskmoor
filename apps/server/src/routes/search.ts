@@ -28,7 +28,9 @@ import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
  *   why it is wrong, for the query editor (M1-041).
  * - `GET` and `POST /api/v1/search` run one (`q`, `limit`, `cursor`, `fields`, `count`,
  *   `archived`): a page of tickets as `GET /api/v1/tickets` shows them, the cursor of the next
- *   page, and on the first page a count (capped at 10,000). POST takes the same in its body,
+ *   page, and on the first page a count: `total: { count, exact }`, exact up to 10,000; beyond
+ *   it an estimate within 10% (`approximate: true`, M1-040), or when none can be made in time
+ *   a lower bound (both false). POST takes the same in its body,
  *   for queries too long for a URL; it changes nothing. Only tickets the person may see are
  *   ever read: the permission filter is part of the statement (QRY-008). A site administrator
  *   may search archived tracks too (`archived=true`).

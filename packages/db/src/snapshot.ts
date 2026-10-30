@@ -21,8 +21,9 @@ export async function snapshotSchema<DB>(db: Kysely<DB>): Promise<SchemaSnapshot
     data_type: string;
     is_nullable: string;
     column_default: string | null;
+    generation_expression: string | null;
   }>`
-    SELECT table_name, column_name, data_type, is_nullable, column_default
+    SELECT table_name, column_name, data_type, is_nullable, column_default, generation_expression
       FROM information_schema.columns
      WHERE table_schema = 'public'
        AND table_name::text NOT IN (${partitions})
@@ -42,7 +43,13 @@ export async function snapshotSchema<DB>(db: Kysely<DB>): Promise<SchemaSnapshot
   for (const c of columns.rows) {
     const nullable = c.is_nullable === 'YES' ? '' : ' not null';
     const fallback = c.column_default ? ` default ${c.column_default}` : '';
-    table(c.table_name).columns.push(`${c.column_name} ${c.data_type}${nullable}${fallback}`);
+    // A generated column shows what it is computed from (the word columns of M1-040).
+    const generated = c.generation_expression
+      ? ` generated always as (${c.generation_expression}) stored`
+      : '';
+    table(c.table_name).columns.push(
+      `${c.column_name} ${c.data_type}${nullable}${fallback}${generated}`,
+    );
   }
   for (const i of indexes.rows) table(i.tablename).indexes.push(i.indexdef);
   return tables;

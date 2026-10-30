@@ -30,6 +30,7 @@ export {
   type CustomField,
   type CustomType,
   type Field,
+  type FieldType,
   lookupField,
   makeCatalogue,
   SYSTEM_FIELDS,
@@ -69,3 +70,11 @@ export {
   type SprintToken,
   type Typed,
 } from './resolve';
+export {
+  MAX_WILDCARDS,
+  parseTextSearch,
+  printTextTerm,
+  type TextSearch,
+  TextSearchError,
+  type TextTerm,
+} from './text';

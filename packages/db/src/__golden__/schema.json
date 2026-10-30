@@ -1498,16 +1498,19 @@
       "time_spent integer not null default 0",
       "status_id integer not null",
       "fields jsonb not null default '{}'::jsonb",
-      "visibility_level_id integer"
+      "visibility_level_id integer",
+      "summary_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, summary)) stored",
+      "description_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(description), 200000))) stored",
+      "environment_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(environment), 200000))) stored"
     ],
     "indexes": [
       "CREATE INDEX ticket_assignee_idx ON public.ticket USING btree (assignee_id) WHERE (assignee_id IS NOT NULL)",
       "CREATE INDEX ticket_close_reason_idx ON public.ticket USING btree (close_reason_id) WHERE (close_reason_id IS NOT NULL)",
       "CREATE INDEX ticket_closed_idx ON public.ticket USING btree (closed_at DESC, id DESC) WHERE ((closed_at IS NOT NULL) AND (deleted_at IS NULL))",
       "CREATE INDEX ticket_created_idx ON public.ticket USING btree (created_at DESC, id DESC) WHERE (deleted_at IS NULL)",
-      "CREATE INDEX ticket_description_words_idx ON public.ticket USING gin (to_tsvector('simple'::regconfig, jsonb_path_query_array(description, 'strict $.**.\"text\"'::jsonpath, '{}'::jsonb, true))) WHERE (description IS NOT NULL)",
+      "CREATE INDEX ticket_description_words_idx ON public.ticket USING gin (description_words) WHERE (deleted_at IS NULL)",
       "CREATE INDEX ticket_due_idx ON public.ticket USING btree (due_date, id) WHERE ((due_date IS NOT NULL) AND (deleted_at IS NULL))",
-      "CREATE INDEX ticket_environment_words_idx ON public.ticket USING gin (to_tsvector('simple'::regconfig, jsonb_path_query_array(environment, 'strict $.**.\"text\"'::jsonpath, '{}'::jsonb, true))) WHERE (environment IS NOT NULL)",
+      "CREATE INDEX ticket_environment_words_idx ON public.ticket USING gin (environment_words) WHERE (deleted_at IS NULL)",
       "CREATE INDEX ticket_labels_idx ON public.ticket USING gin (labels)",
       "CREATE INDEX ticket_parent_idx ON public.ticket USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
       "CREATE UNIQUE INDEX ticket_pkey ON public.ticket USING btree (id)",
@@ -1515,7 +1518,8 @@
       "CREATE UNIQUE INDEX ticket_rank_key ON public.ticket USING btree (workspace_id, rank)",
       "CREATE INDEX ticket_requester_idx ON public.ticket USING btree (requester_id) WHERE (requester_id IS NOT NULL)",
       "CREATE INDEX ticket_status_idx ON public.ticket USING btree (status_id)",
-      "CREATE INDEX ticket_summary_words_idx ON public.ticket USING gin (to_tsvector('simple'::regconfig, summary))",
+      "CREATE INDEX ticket_summary_trigram_idx ON public.ticket USING gin (summary gin_trgm_ops) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_summary_words_idx ON public.ticket USING gin (summary_words) WHERE (deleted_at IS NULL)",
       "CREATE INDEX ticket_track_created_idx ON public.ticket USING btree (track_id, created_at DESC, id DESC) WHERE (deleted_at IS NULL)",
       "CREATE UNIQUE INDEX ticket_track_number_key ON public.ticket USING btree (track_id, number)",
       "CREATE INDEX ticket_track_rank_idx ON public.ticket USING btree (track_id, rank) WHERE (deleted_at IS NULL)",
@@ -1578,13 +1582,14 @@
       "edited_at timestamp with time zone",
       "edited_by integer",
       "deleted_at timestamp with time zone",
-      "deleted_by integer"
+      "deleted_by integer",
+      "body_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(body), 200000))) stored"
     ],
     "indexes": [
       "CREATE INDEX ticket_comment_author_idx ON public.ticket_comment USING btree (author_id, created_at)",
       "CREATE UNIQUE INDEX ticket_comment_pkey ON public.ticket_comment USING btree (id)",
       "CREATE INDEX ticket_comment_ticket_idx ON public.ticket_comment USING btree (ticket_id, id)",
-      "CREATE INDEX ticket_comment_words_idx ON public.ticket_comment USING gin (to_tsvector('simple'::regconfig, jsonb_path_query_array(body, 'strict $.**.\"text\"'::jsonpath, '{}'::jsonb, true))) WHERE (deleted_at IS NULL)"
+      "CREATE INDEX ticket_comment_words_idx ON public.ticket_comment USING gin (body_words) WHERE (deleted_at IS NULL)"
     ]
   },
   "ticket_comment_reaction": {
@@ -2147,7 +2152,9 @@
       "CREATE INDEX v_text_field_sort_idx ON public.v_text USING btree (field_id, sort_key, ticket_id)",
       "CREATE INDEX v_text_field_value_idx ON public.v_text USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
       "CREATE UNIQUE INDEX v_text_pkey ON public.v_text USING btree (ticket_id, field_id, value)",
-      "CREATE INDEX v_text_track_field_value_idx ON public.v_text USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+      "CREATE INDEX v_text_track_field_value_idx ON public.v_text USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE INDEX v_text_trigram_idx ON public.v_text USING gin (value gin_trgm_ops)",
+      "CREATE INDEX v_text_words_idx ON public.v_text USING gin (to_tsvector('taskmoor_search'::regconfig, value))"
     ]
   },
   "v_time": {

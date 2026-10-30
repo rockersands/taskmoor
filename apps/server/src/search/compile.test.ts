@@ -74,6 +74,11 @@ export const GOLDEN_QUERIES = [
   'ticketLink WAS ABC-1 OR ticketLinkType CHANGED FROM Blocks',
   'summary WAS login AND description CHANGED BEFORE 2026-10-01',
   'stage WAS closed AND creator WAS currentUser()',
+  // Text search (M1-040): stored words, patterns on short text, the master field as one set,
+  // relevance.
+  'summary ~ "*Exception" AND text ~ "\\"login failed\\" log* -password"',
+  'text ~ deploy AND Notes ~ "*draft*" ORDER BY relevance',
+  'comment ~ "release notes" ORDER BY priority DESC, relevance ASC',
 ] as const;
 
 describe('query compiler (M1-037)', () => {
@@ -252,6 +257,27 @@ describe('query compiler (M1-037)', () => {
       (v: string) => `summary WAS ${quote(v)} OR Notes CHANGED TO ${quote(v)}`,
       (v: string) => `labels WAS ${quote(v)} AND Topics CHANGED FROM ${quote(v)} BY currentUser()`,
     ];
+    // Text searches (M1-040) read the value's syntax: patterns add conditions, so the
+    // statement depends on its shape. Same shape, same statement: each letter or digit as `a`,
+    // every other character but the syntax's own (space, quote, `*`, `?`, `~`, `-`, `\`) as `+`.
+    const searches = new Set([0, 2, 4, 5, 7]);
+    const shape = (v: string) =>
+      [...v]
+        .map((c) => (/[\p{L}\p{N}]/u.test(c) ? 'a' : /[\s"*?~\-\\]/u.test(c) ? c : '+'))
+        .join('');
+    const sqlOf = async (q: string) => {
+      const { compiled } = await prepareSearch({
+        db,
+        workspaceId: 1,
+        catalog,
+        catalogue,
+        filter: FILTER,
+        q,
+        currentUserId: adminId,
+        now: NOW,
+      });
+      return compiled.page(51).compile(db);
+    };
     const reference = new Map<number, string>();
     await fc.assert(
       fc.asyncProperty(
@@ -259,26 +285,27 @@ describe('query compiler (M1-037)', () => {
         fc.string({ unit: 'binary', minLength: 1, maxLength: 40 }),
         async (i, value) => {
           if (value.includes('\u0000')) return;
-          const plan = resolveQuery(
-            parseQuery((templates[i] as (v: string) => string)(value)),
-            catalogue,
-            {
+          const template = templates[i] as (v: string) => string;
+          let out: Awaited<ReturnType<typeof sqlOf>>;
+          try {
+            resolveQuery(parseQuery(template(value)), catalogue, {
               currentUserId: adminId,
               now: NOW,
-            },
-          );
-          expect(plan).toBeDefined();
-          const { compiled } = await prepareSearch({
-            db,
-            workspaceId: 1,
-            catalog,
-            catalogue,
-            filter: FILTER,
-            q: (templates[i] as (v: string) => string)(value),
-            currentUserId: adminId,
-            now: NOW,
-          });
-          const out = compiled.page(51).compile(db);
+            });
+            out = await sqlOf(template(value));
+          } catch (error) {
+            // A search with nothing to look for, or a pattern where none is taken, is refused.
+            if (!searches.has(i)) throw error;
+            expect(error).toBeInstanceOf(Error);
+            expect((error as Error).name).toMatch(/QueryError|SearchError/);
+            return;
+          }
+          if (searches.has(i)) {
+            // The value never enters the statement's text: a value of the same shape and other
+            // characters compiles to the same statement.
+            expect(out.sql).toBe((await sqlOf(template(shape(value)))).sql);
+            return;
+          }
           // The statement's text does not depend on the value at all; the value is a parameter.
           const known = reference.get(i);
           if (known === undefined) reference.set(i, out.sql);

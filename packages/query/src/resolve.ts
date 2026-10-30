@@ -20,6 +20,7 @@ import {
   RESULT_NAMES,
 } from './functions';
 import { QueryError } from './lexer';
+import { parseTextSearch, TextSearchError } from './text';
 
 /** What the query needs from its surroundings. */
 export interface ResolveContext {
@@ -102,6 +103,7 @@ const DURATION = /^([+-]?)(\d+)([mhdwMy])$/;
 function refusal(field: Field, family: OperatorFamily, op: string): string {
   const name = field.kind === 'custom' ? `"${field.name}" (cf[${field.id}])` : `"${field.name}"`;
   if (field.type === 'attachments') return `${name} only takes IS EMPTY and IS NOT EMPTY`;
+  if (field.type === 'relevance') return `${name} only orders results: ORDER BY relevance`;
   switch (family) {
     case 'contains':
       return `${name} is not a text field; ${op} needs one`;
@@ -119,10 +121,32 @@ function refusal(field: Field, family: OperatorFamily, op: string): string {
 /** Checks every field and operator against the catalogue and types every value. */
 export function resolveQuery(query: Query, catalogue: Catalogue, ctx: ResolveContext): Plan {
   const r = new Resolver(catalogue, ctx);
-  return {
-    where: query.where ? r.expr(query.where) : null,
-    orderBy: query.orderBy.map((o) => ({ field: r.field(o.field), direction: o.direction })),
-  };
+  const where = query.where ? r.expr(query.where) : null;
+  const orderBy = query.orderBy.map((o) => {
+    const field = r.field(o.field);
+    // Relevance ranks the text searches that must match; without one there is nothing to rank.
+    if (field.type === 'relevance' && !searches(where, false)) {
+      throw fail('ORDER BY relevance needs a text search (~) in the query', o.span);
+    }
+    return { field, direction: o.direction };
+  });
+  return { where, orderBy };
+}
+
+/** Whether a predicate holds a text search (`~`) that is not negated. */
+function searches(p: Pred | null, negated: boolean): boolean {
+  if (!p) return false;
+  switch (p.kind) {
+    case 'and':
+    case 'or':
+      return p.items.some((i) => searches(i, negated));
+    case 'not':
+      return searches(p.pred, !negated);
+    case 'compare':
+      return (p.op === '~' && !negated) || (p.op === '!~' && negated);
+    default:
+      return false;
+  }
 }
 
 type Call = Extract<Value, { kind: 'function' }>;
@@ -188,6 +212,17 @@ class Resolver {
     throw fail(`Unknown field ${label}`, ref.span);
   }
 
+  /** Refuses a text search the syntax of spec 01b section 1.8 cannot read (M1-040). */
+  private search(value: Value): void {
+    if (value.kind !== 'string' && value.kind !== 'word' && value.kind !== 'number') return;
+    try {
+      parseTextSearch(String(value.value));
+    } catch (error) {
+      if (!(error instanceof TextSearchError)) throw error;
+      throw fail(error.message, value.span);
+    }
+  }
+
   /** Refuses an operator the field's type does not take. */
   private needs(field: Field, family: OperatorFamily, op: string, span: Span): void {
     if (!takes(field, family)) throw fail(refusal(field, family, op), span);
@@ -211,6 +246,7 @@ class Resolver {
               ? 'equality'
               : 'order';
         this.needs(field, family, c.op, c.span);
+        if (family === 'contains') this.search(c.value);
         if (c.value.kind === 'function' && this.spec(c.value).many) {
           throw fail(
             `${c.value.name}() returns several values: use IN or NOT IN, not ${c.op}`,

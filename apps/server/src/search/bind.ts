@@ -6,7 +6,10 @@ import {
   nativePermissionName,
   type Plan,
   type Pred,
+  parseTextSearch,
   type SystemField,
+  type TextSearch,
+  TextSearchError,
   type Typed,
 } from '@taskmoor/query';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
@@ -24,6 +27,7 @@ import type {
   OrderKey,
   OrderSource,
   Quantifier,
+  RankedSearch,
   Scalar,
   Scalarish,
   SideOrder,
@@ -35,6 +39,7 @@ import type {
   TimeEdge,
   ValueTest,
 } from './model';
+import { hasPattern } from './text';
 
 /**
  * From a resolved query to one the compiler takes (M1-037; ADR-010): names become ids (statuses,
@@ -326,7 +331,13 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
     ? await binder.cond(pushNot(plan.where))
     : { kind: 'const', value: true };
   const orderBy: OrderKey[] = [];
-  for (const o of plan.orderBy) orderBy.push(...binder.order(o.field, o.direction));
+  for (const o of plan.orderBy) {
+    if (o.field.type === 'relevance') {
+      orderBy.push({ source: relevance(where as Cond), direction: o.direction });
+    } else {
+      orderBy.push(...binder.order(o.field, o.direction));
+    }
+  }
   if (orderBy.length === 0) {
     orderBy.push({ source: COLUMNS.created as OrderSource, direction: 'desc' });
   }
@@ -337,6 +348,67 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
     ...(domain ? { domain } : {}),
     warnings: binder.warnings,
   };
+}
+
+/**
+ * Relevance (M1-040): the text searches a matching ticket must pass, which rank it. Negated
+ * ones (`!~`, `NOT ... ~`) rank nothing; the resolver refuses relevance without any other.
+ */
+function relevance(where: Cond): OrderSource {
+  const searches: RankedSearch[] = [];
+  const visit = (c: Cond) => {
+    switch (c.kind) {
+      case 'and':
+      case 'or':
+        for (const item of c.items) visit(item);
+        return;
+      case 'words':
+        if (!c.negated) searches.push({ on: c.source, search: c.search });
+        return;
+      case 'text':
+        if (!c.negated) searches.push({ on: 'text', search: c.search });
+        return;
+      case 'side':
+        if (c.test.kind === 'words' && c.quantifier === 'some') {
+          searches.push({ on: 'custom', fieldId: c.side.fieldId, search: c.test.search });
+        }
+        return;
+      default:
+        return;
+    }
+  };
+  visit(where);
+  if (searches.length === 0) {
+    throw new SearchError('ORDER BY relevance needs a text search (~) in the query', 'unsupported');
+  }
+  return { kind: 'relevance', searches };
+}
+
+/**
+ * Reads a `~` value (spec 01b section 1.8). Patterns need a short text the trigram indexes hold:
+ * `long` texts (descriptions, environments, comments) and `history` refuse them.
+ */
+function textSearch(
+  value: Typed,
+  field: string,
+  patterns: 'take' | 'long' | 'history' = 'take',
+): TextSearch {
+  let search: TextSearch;
+  try {
+    search = parseTextSearch(String(content(value).value));
+  } catch (error) {
+    if (!(error instanceof TextSearchError)) throw error;
+    throw new SearchError(`${field}: ${error.message}`, 'unsupported');
+  }
+  if (patterns !== 'take' && hasPattern(search)) {
+    throw new SearchError(
+      patterns === 'long'
+        ? `${field} is long text: a * inside or in front of a word searches summaries and text fields only`
+        : `${field}: WAS and CHANGED match words; a * inside or in front of a word is not taken`,
+      'unsupported',
+    );
+  }
+  return search;
 }
 
 /** Groups (id, value) rows by value: each order value with the ids that have it. */
@@ -660,11 +732,12 @@ class Binder {
       values: values.map((v) => String(ISO(v))),
       names: [],
     });
+    // Text matches by its words, as `~` does; history holds no index for patterns.
     const words =
       (document: boolean) =>
       async (values: Typed[]): Promise<HistoryTest> => ({
         kind: 'words',
-        texts: values.map((v) => String(content(v).value)),
+        searches: values.map((v) => textSearch(v, label(field), 'history')),
         document,
       });
     const labels = async (values: Typed[]): Promise<HistoryTest> => ({
@@ -863,7 +936,7 @@ class Binder {
         return {
           kind: 'side',
           side,
-          test: { kind: 'words', text: String(scalars[0]) },
+          test: { kind: 'words', search: textSearch(p.value, label(field)) },
           quantifier: p.op === '~' ? 'some' : 'none',
         };
       }
@@ -1056,7 +1129,7 @@ class Binder {
         return {
           kind: 'words',
           source: field.name,
-          text: String(content(c.value).value),
+          search: textSearch(c.value, label(field), field.name === 'summary' ? 'take' : 'long'),
           negated: c.op === '!~',
         };
       }
@@ -1066,9 +1139,15 @@ class Binder {
         const fieldIds = this.ctx.catalogue.customs
           .filter((f) => f.type === 'text')
           .map((f) => f.id);
+        const search = textSearch(c.value, label(field));
+        if (hasPattern(search)) {
+          this.warnings.push(
+            'A * inside or in front of a word searches summaries and text fields only, not descriptions, environments or comments',
+          );
+        }
         return {
           kind: 'text',
-          text: String(content(c.value).value),
+          search,
           fieldIds: idList(fieldIds),
           negated: c.op === '!~',
         };
@@ -1153,7 +1232,7 @@ class Binder {
           related: {
             relation: 'timeEntry',
             on: 'comment',
-            test: { kind: 'words', text: String(content(c.value).value) },
+            test: { kind: 'words', search: textSearch(c.value, label(field)) },
           },
           quantifier: c.op === '!~' ? 'none' : 'some',
         };

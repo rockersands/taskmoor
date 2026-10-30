@@ -6,7 +6,8 @@ import type { MailTransport } from '../email/transport';
 import type { FieldCatalogs } from '../fields/catalog';
 import { SearchError } from './bind';
 import { queryCatalogue } from './catalogue';
-import { DEFAULT_QUERY_TIMEOUT_MS, prepareSearch, runPage } from './run';
+import type { Total } from './count';
+import { DEFAULT_QUERY_TIMEOUT_MS, type PageResult, prepareSearch, runPage } from './run';
 import { savedSearchVisible } from './saved';
 import { nextRun } from './schedule';
 
@@ -164,10 +165,10 @@ export async function deliverSubscriptions(
           allowedTracks: (permission) => authorizer.allowedTracks(ws, principal, permission),
         });
         const nothing = filter.tracks !== 'all' && filter.tracks.length === 0;
-        const page = nothing
-          ? { ids: [] as number[], total: { count: 0, exact: true } }
+        const page: PageResult = nothing
+          ? { ids: [], next: null, total: { count: 0, exact: true } }
           : await runPage(db, compiled, { limit, count: true, timeoutMs });
-        const total = page.total ?? { count: page.ids.length, exact: true };
+        const total: Total = page.total ?? { count: page.ids.length, exact: true };
         if (total.count === 0 && sub.only_if_results) {
           run.skipped += 1;
           continue;
@@ -194,7 +195,11 @@ export async function deliverSubscriptions(
           return r ? [r] : [];
         });
         const link = `${base}/#/search?savedSearch=${sub.search_id}`;
-        const count = `${total.count}${total.exact ? '' : '+'}`;
+        const count = total.exact
+          ? `${total.count}`
+          : total.approximate
+            ? `about ${total.count}`
+            : `${total.count}+`;
         const subject = `[Taskmoor] ${sub.name}: ${count} ticket${total.count === 1 ? '' : 's'}`;
         const lines = tickets.map((t) => `${t.key}  ${t.summary}  (${t.status})`);
         const more =
