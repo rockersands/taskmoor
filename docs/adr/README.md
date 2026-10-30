@@ -71,6 +71,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [064](0064-timeline.md) | The timeline reads dates and roll-ups in one request and reschedules through tickets | Accepted |
 | [065](0065-list-and-calendar-views.md) | List and calendar views over search, format rules as query conditions | Accepted |
 | [067](0067-rest-api-v1.md) | REST API v1 as a written contract of stable operations over the server's own schemas | Accepted |
-| [068](0068-full-text-search.md) | Full-text search: stemmed word columns, the search syntax as tsquery, relevance, and counts estimated from block samples | Accepted |
+| [069](0069-full-text-search.md) | Full-text search: stemmed word columns, the search syntax as tsquery, relevance, and counts estimated from block samples | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

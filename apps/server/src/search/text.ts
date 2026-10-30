@@ -1,7 +1,7 @@
 import type { TextSearch, TextTerm } from '@taskmoor/query';
 
 /**
- * Text search in SQL terms (M1-040; QRY-007; ADR-068): a search read by `parseTextSearch`
+ * Text search in SQL terms (M1-040; QRY-007; ADR-069): a search read by `parseTextSearch`
  * (spec 01b section 1.8) becomes the input of `to_tsquery` over the `taskmoor_search`
  * configuration of migration 0057 (English stemming, no stop words), and patterns become
  * `ILIKE` patterns the trigram indexes serve.

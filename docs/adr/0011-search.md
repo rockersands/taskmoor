@@ -43,7 +43,7 @@ query benchmark. The adapter boundary is set now so the M2 work changes one pack
 
 ## Changes (M1-040)
 
-Built as ADR-068 describes, with three departures: the words are kept per text in stored
+Built as ADR-069 describes, with three departures: the words are kept per text in stored
 columns (summary, description, environment, each comment), not one weighted vector per ticket,
 so a field's search is exact in the index and a phrase stays inside its field; comments cannot
 share the ticket's vector because some are restricted to a role or group; and the configuration

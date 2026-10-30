@@ -4,7 +4,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import type { CompiledSearch } from './compile';
 
 /**
- * How many tickets a query matches (M1-040; QRY-009 (3); ADR-068 "Counts"): exact up to
+ * How many tickets a query matches (M1-040; QRY-009 (3); ADR-069 "Counts"): exact up to
  * `COUNT_CAP`, an estimate beyond it, and the estimates kept for a short while.
  *
  * - **Exact first.** The count reads matches until one past the cap, as before: small results

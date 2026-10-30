@@ -15,7 +15,7 @@ Check: `curl http://localhost:8080/ready` returns `{"status":"ready"}` once migr
 An external server needs the `pg_trgm` extension, which ships with PostgreSQL (the `contrib`
 package on some distributions) and every managed service. The migrations create it; it is a
 trusted extension, so the database's owner may, and a role without the `CREATE` privilege on
-the database needs an administrator to run `CREATE EXTENSION pg_trgm` first (ADR-068).
+the database needs an administrator to run `CREATE EXTENSION pg_trgm` first (ADR-069).
 
 Upgrade: `bash upgrade.sh <image>` (for example `ghcr.io/rockersands/taskmoor:1.4.0`; add
 `--dry-run` to see the checks and the plan first). It stops the backend, runs the new image's

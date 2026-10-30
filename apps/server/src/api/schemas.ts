@@ -103,7 +103,7 @@ export const next = nullable(z.string()).meta({
   description: 'The cursor of the next page; null on the last one.',
 });
 
-/** How many tickets a query finds (M1-040, ADR-068). */
+/** How many tickets a query finds (M1-040, ADR-069). */
 export const searchTotal = z
   .object({
     count: z.number().int(),

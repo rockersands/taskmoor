@@ -205,7 +205,7 @@ added (absolute since 2026-10-12, `docs/plan/decisions.csv`).
   order (base64url JSON), refused for any other order. One direction and no empty values: a
   row comparison `(k.created_at, k.id) < ($1, $2)` the index serves; otherwise the expanded
   form. Instants travel as Postgres text, so microseconds survive. The first page also counts
-  matches up to 10,000 (`total: { count, exact }`); beyond it an estimate since M1-040 (ADR-068).
+  matches up to 10,000 (`total: { count, exact }`); beyond it an estimate since M1-040 (ADR-069).
 - **Driving from a side table** works as the spike found (created order, or the value order of
   a number, date or date-time field the query also filters), with two production details: one
   value is an equality, not `= ANY(array)`, so `(field_id, value, created_at)` still yields
@@ -502,7 +502,7 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
 
 ## Text search (M1-040)
 
-Decided in ADR-068; what changed here: `~` and `!~` read the search syntax of spec 01b section
+Decided in ADR-069; what changed here: `~` and `!~` read the search syntax of spec 01b section
 1.8 (`packages/query/src/text.ts`; the resolver refuses a search that cannot run at the value's
 position), and compile to `@@ to_tsquery('taskmoor_search', $n)` over stored word columns
 (`summary_words`, `description_words`, `environment_words`, `body_words`; migration 0057) and an

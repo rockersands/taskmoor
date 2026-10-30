@@ -17,8 +17,8 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 ## Side session 2026-10-30: M1-040 full-text search
 
 Built on the branch `claude/gracious-meninsky-4dae8f` in a side session while the main session
-did M1-049 and M1-065 (merged in); the main session merges it after its own gate. ADR-068
-(065 to 067 were taken), sections in ADR-010 ("Text search (M1-040)") and ADR-011 ("Changes");
+did M1-049 and M1-065 (merged in); the main session merges it after its own gate. ADR-069
+(065 to 068 were taken), sections in ADR-010 ("Text search (M1-040)") and ADR-011 ("Changes");
 migration **0057** `0057_full_text_search.ts`.
 
 - **Words** (migration 0057): `taskmoor_search` text search configuration (English Snowball,
