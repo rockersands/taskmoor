@@ -14,7 +14,10 @@ const SAFARI_ON_IPHONE =
 // after the first needs the administrator it creates, so they all live in this serial file
 // (the config runs files in parallel, so their order across files is not guaranteed).
 test.describe.configure({ mode: 'serial' });
-test.skip(({ isMobile }) => isMobile, 'one setup per backend; desktop runs it');
+test.skip(
+  ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+  'one setup per backend; desktop Chromium runs it',
+);
 
 async function signInThroughApi(
   request: APIRequestContext,
@@ -624,7 +627,11 @@ test('[IAM-001] a person turns on an authenticator app and signs in with a code,
   await expect(heading(page)).toHaveText('Home');
 });
 
-test('[IAM-001] a person registers a security key and signs in with it', async ({ page }) => {
+test('[IAM-001] a person registers a security key and signs in with it', async ({
+  page,
+  browserName,
+}) => {
+  test.skip(browserName !== 'chromium', 'the virtual authenticator is a Chromium tool');
   // Chromium's virtual authenticator stands in for a USB key that is touched at once.
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('WebAuthn.enable');

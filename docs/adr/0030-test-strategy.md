@@ -49,6 +49,27 @@ can run in parallel; the template is rebuilt only when migrations change.
 - No network calls in tests; AI providers are tested against recorded contracts.
 - A flaky test is a failing test: fix it or delete it, never retry it into passing locally.
 
+### Every supported browser (M1-132; NFR-007)
+
+The routine gate runs Playwright on two projects: desktop Chromium (1440x900) and a phone
+(Pixel 7). `pnpm verify --e2e --browsers` (or `TASKMOOR_E2E_BROWSERS=all`) adds four more:
+desktop Firefox and desktop Safari (WebKit) at 1440x900, Safari on an iPhone and Chrome on an
+Android phone, both at 360 px, the narrowest width the UI supports (ADR-033). Chrome and Edge
+share the Chromium engine of the desktop project. The extra projects are not in the routine
+gate because they triple its e2e time; run them before a release and after any change to
+input handling, focus or clipboard code.
+
+- **Once per backend.** First-run setup can happen once per database, so its spec runs only on
+  desktop Chromium; every other spec runs on every project.
+- **Engine differences the specs allow for.** WebKit, like Safari until "Press Tab to highlight
+  each item" is on, skips links on Tab, so the keyboard-only journey skips WebKit. Security
+  keys (WebAuthn's virtual authenticator) exist only in Chromium. Synthetic paste builds a
+  plain `Event` with `clipboardData` defined, since Firefox does not let a script construct a
+  `ClipboardEvent` with data.
+- **What the extra browsers found.** Escape did not close the attachment preview in WebKit (the
+  dialog now listens on the document), and the workflow map's Add button could be pressed
+  before the default workflow loaded (now disabled until it has).
+
 ## Consequences
 
 Running every suite on each change stays fast while the suite is small; `--changed` limits the

@@ -127,9 +127,10 @@ test('[NTF-006] the create form writes rich text with Markdown shortcuts and the
   await description.evaluate((element) => {
     const transfer = new DataTransfer();
     transfer.setData('text/plain', '| Card | Result |\n| - | - |\n| expired | refused |\n');
-    element.dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }),
-    );
+    // A plain event carrying the data: Firefox drops the clipboardData given to new ClipboardEvent.
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', { value: transfer });
+    element.dispatchEvent(paste);
   });
   await expect(description.getByRole('table')).toBeVisible();
   await page.getByRole('button', { name: 'Create', exact: true }).click();

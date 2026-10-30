@@ -31,6 +31,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm install` | Install dependencies (lockfile is committed) |
 | `pnpm verify` | **The gate.** Lint, typecheck and every Vitest suite; prints one summary line and only the failures |
 | `pnpm verify --e2e` | Also runs Playwright on a desktop and a mobile viewport |
+| `pnpm verify --e2e --browsers` | Also Firefox, WebKit, and Safari and Chrome phones at 360 px (ADR-030); before a release |
 | `pnpm verify --changed` | Only tests affected by uncommitted changes (`--changed=<ref>` for a branch) |
 | `pnpm verify --only=tests -- <filter>` | A subset; anything after `--` goes to Vitest (`--project=db`, a file path) |
 | `pnpm verify --update` | Rewrite golden files after an intended change; review the diff |
