@@ -1,0 +1,102 @@
+{
+  "label": "100k",
+  "at": "2026-10-30T20:57:46.763Z",
+  "items": 100000,
+  "hold": "2m",
+  "ramp": "30s",
+  "machine": {
+    "cpus": 11,
+    "cpuModel": "Apple M3 Pro",
+    "memoryGb": 36,
+    "platform": "darwin/arm64"
+  },
+  "tiers": [
+    {
+      "users": 50,
+      "seconds": 160,
+      "k6Exit": 0,
+      "requests": 709,
+      "requestsPerSecond": 4.4,
+      "errorRate": 0,
+      "p95": {
+        "open_ticket": 14.4,
+        "search": 40.3,
+        "board": 110.1,
+        "history": 14.2,
+        "edit": 30,
+        "comment": 26.7,
+        "create": 40.8
+      },
+      "p50": {
+        "open_ticket": 8.3,
+        "search": 25.3,
+        "board": 82.6,
+        "history": 6.9,
+        "edit": 18.9,
+        "comment": 14.6,
+        "create": 25.7
+      },
+      "serverCpuSeconds": 12.5,
+      "postgresCpuSeconds": 5.7,
+      "serverPeakRssMb": 258
+    },
+    {
+      "users": 500,
+      "seconds": 165,
+      "k6Exit": 0,
+      "requests": 7009,
+      "requestsPerSecond": 42.6,
+      "errorRate": 0,
+      "p95": {
+        "open_ticket": 11.8,
+        "search": 30.6,
+        "board": 88.2,
+        "history": 11.8,
+        "edit": 25.7,
+        "comment": 21.5,
+        "create": 31.3
+      },
+      "p50": {
+        "open_ticket": 5,
+        "search": 17.7,
+        "board": 69.5,
+        "history": 4.3,
+        "edit": 12.4,
+        "comment": 9.4,
+        "create": 14
+      },
+      "serverCpuSeconds": 42.1,
+      "postgresCpuSeconds": -3.7,
+      "serverPeakRssMb": 239
+    },
+    {
+      "users": 2000,
+      "seconds": 167,
+      "k6Exit": 0,
+      "requests": 27887,
+      "requestsPerSecond": 169.1,
+      "errorRate": 0,
+      "p95": {
+        "open_ticket": 106.2,
+        "search": 191.6,
+        "board": 306.2,
+        "history": 96.7,
+        "edit": 170.1,
+        "comment": 166.5,
+        "create": 235.8
+      },
+      "p50": {
+        "open_ticket": 19.3,
+        "search": 49.2,
+        "board": 117.9,
+        "history": 17.5,
+        "edit": 44.3,
+        "comment": 37,
+        "create": 62.7
+      },
+      "serverCpuSeconds": 146.2,
+      "postgresCpuSeconds": 29.7,
+      "serverPeakRssMb": 250
+    }
+  ]
+}

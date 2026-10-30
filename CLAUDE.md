@@ -42,6 +42,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm gen:dc-backup --issues N --seed N --out x.zip` | Write and validate a synthetic Data Center backup ZIP with its manifest (`--validate x.zip` checks one) |
 | `pnpm spike <name> ...` | Run a benchmark spike (`field-storage`, `query`, `authz`, `authz-overhead`, `sync`, `queue`, `xml`); writes `docs/spikes/<name>.md` and `data/<name>.json` |
 | `pnpm bench:search` | The search spike: the 50-query perf set against a generated dataset (`docs/spikes/search-1m.md`) |
+| `pnpm load [--items 100000] [--tiers 50,500,2000]` | Load tests with k6 against the real server; writes `docs/ops/load-tests.md` with the sizing table (needs k6; ADR-082) |
 | `pnpm bench:check [--size 1m] [--e2e]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression), then the tests' speed limits, enforced (ADR-071) |
 | `pnpm status-report [--date D]` | Weekly status report to `docs/status/<date>.md`; copy it to the user's Drive folder |
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |

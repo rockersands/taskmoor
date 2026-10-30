@@ -10,8 +10,21 @@ M1-087 synthetic backups, M1-109, M1-111 and M1-110 (the Builder core and both k
 clean URLs, M1-132 cross-browser e2e, M1-130 async bulk API, M1-040 full-text search, M1-127
 workflow files, M1-114 the manual, M1-125 info fields, M1-066 rate limits, eight fixes for
 gaps the manual found, then together M1-085 (IP allowlists, the audit log page, syslog,
-external people), M1-123 teams, M1-124 clone and M1-126 board-managed workflows. Each has its
-own section below. Migrations now run to 0063 and ADRs to 079.
+external people), M1-123 teams, M1-124 clone and M1-126 board-managed workflows, and last
+M1-104 load tests. Each has its own section below. Migrations run to 0063 and ADRs to 082.
+
+**In flight when this session stopped (side sessions, their own branches, not merged)**
+- M1-107 cross-origin sign-in, OAuth 2.1 and CORS: migration 0064, ADR-080 reserved.
+- M1-088 Data Center import, people and configuration: migration 0065, ADR-081 reserved.
+Merge each after its own gate: resolve the appended rows (progress, STATUS, HANDOFF, the ADR
+index, migration index, upgrade seeds) by keeping both sides, then `pnpm verify --update`,
+`npx vitest run --project sdk -u packages/sdk/src/generate.test.ts`, and the full gate. The
+upgrade seeds file is an object: when two branches append to it, rebuild the tail from each
+branch's own block rather than keeping both conflict sides line by line.
+
+**Gate under load**: several sessions share this Mac and one lock (`/tmp/taskmoor-gate.lock`).
+Write gate logs outside `.verify/`, which verify clears. Do not run other tests while a gate
+runs: a query-timeout test and the spike tests' pools were flaky under load (both fixed today).
 
 **Decisions waiting for the user**
 - M1-040: rank only the 10,000 most recently updated matches for `ORDER BY relevance` at 10M
@@ -38,7 +51,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Next free numbers**: migration 0064, ADR-080.
+**Next free numbers**: migration 0066 and ADR-083 (0064, 0065, 080 and 081 are reserved above).
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
@@ -114,6 +127,14 @@ like `wip/m1-007-ticket-types`, can be deleted from GitHub. Migration numbers 00
 all on the branch now; a long-lived development database that ran 0013 or 0014 before 0012
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
+
+## 2026-10-30: M1-104 load tests and sizing
+
+ADR-082; no migration. `pnpm load` (needs k6: `brew install k6`) makes a dataset in the bench
+cluster, 2,000 people with tokens, starts the server as in production and runs k6 per tier;
+it writes `docs/ops/load-tests.md` and `docs/ops/data/load-<label>.json`. First run on the M3
+Pro, 100,000 tickets: one API process met every target up to 500 people; at 2,000 only ticket
+creation was over (236 ms against 200). The reference-hardware and 10M runs are M1-117.
 
 ## 2026-10-30: M1-085 IP allowlists, audit log page, syslog
 

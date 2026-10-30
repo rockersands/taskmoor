@@ -22,7 +22,10 @@ This page covers the ready-made kits; [Kubernetes with Helm](helm.md) and
 | Node.js 22.12 or later and pnpm | Building from source and running the Builder; not needed to run the image |
 
 Taskmoor is designed to run a team of up to 50 active people on 2 vCPU and 4 GB of memory
-with the all-in-one image, and up to about 500 on 2 to 4 vCPU and 4 to 8 GB.
+with the all-in-one image, and up to about 500 on 2 to 4 vCPU and 4 to 8 GB. In the load
+tests (`docs/ops/load-tests.md` in the source, made by `pnpm load`), one API process served
+500 active people well within every target; for about 2,000, plan two API processes and a
+database on its own machine.
 
 ## Getting the image
 
