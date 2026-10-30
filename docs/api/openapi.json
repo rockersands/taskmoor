@@ -11561,7 +11561,7 @@
           },
           {
             "token": [
-              "write"
+              "read"
             ]
           }
         ],
@@ -11569,7 +11569,7 @@
         "tags": [
           "Internal"
         ],
-        "x-taskmoor-access": "write",
+        "x-taskmoor-access": "read",
         "x-taskmoor-stability": "internal"
       },
       "get": {
