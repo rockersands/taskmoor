@@ -65,7 +65,7 @@ import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
 import { registerTokenRoutes } from './routes/tokens';
 import { registerTrackSummaryRoutes } from './routes/track-summary';
-import { registerTrackRoutes } from './routes/tracks';
+import { registerTrackRoutes, type TrackRouteHooks } from './routes/tracks';
 import { registerTrashRoutes } from './routes/trash';
 import { registerTwoFactorRoutes } from './routes/two-factor';
 import { registerUserRoutes } from './routes/users';
@@ -247,7 +247,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       secureCookies: cookieOptions.secureCookies,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     });
-    registerTrackRoutes(app, db, fieldCatalogs);
+    // Filled in once the boards are registered: the board a track template makes (M1-054).
+    const trackHooks: TrackRouteHooks = {};
+    registerTrackRoutes(app, db, fieldCatalogs, trackHooks);
     registerTicketTypeRoutes(app, db);
     registerTicketRoutes(app, db, authorizer, fieldCatalogs);
     registerRichTextRoutes(app, db, authorizer);
@@ -283,9 +285,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerHomeRoutes(app, db, fieldCatalogs);
     registerGuardrailRoutes(app, db);
     // Boards (M1-043): reads go through the search compiler, moves through the ticket routes.
-    registerBoardRoutes(app, db, authorizer, fieldCatalogs, {
+    const boardRoutes = registerBoardRoutes(app, db, authorizer, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
+    trackHooks.createBoard = boardRoutes.createBoard;
     // General reports over any query (M1-062): created vs closed, two-dimensional statistics.
     registerReportRoutes(app, db, {
       catalogs: fieldCatalogs,

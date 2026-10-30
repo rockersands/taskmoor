@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import {
@@ -8,8 +9,11 @@ import {
   configurationClient,
   type MappingNeeded,
   type Named,
+  type NewTrack,
   type RoleActors,
+  TRACK_TEMPLATES,
   type Track,
+  type TrackTemplate,
   type WorkflowMapSummary,
 } from './client';
 
@@ -38,6 +42,8 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
   const [open, setOpen] = useState<number | null>(null);
   const [message, setMessage] = useState('');
+  /** The board the last template made, to open from here (M1-054). */
+  const [board, setBoard] = useState<{ id: number; key: string } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -93,8 +99,14 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
           <p className="page-note">{t('admin.tracks.intro')}</p>
           <AddTrack
             client={client}
-            onAdded={(track) => {
-              said(t('admin.tracks.added', { key: track.key }));
+            tracks={state.status === 'loaded' ? state.tracks : []}
+            onAdded={(track, board) => {
+              said(
+                t(board ? 'admin.tracks.addedWithBoard' : 'admin.tracks.added', {
+                  key: track.key,
+                }),
+              );
+              setBoard(board ? { id: board.id, key: track.key } : null);
               setOpen(track.id);
             }}
             onProblem={(error) => setProblem(refusal(error))}
@@ -102,6 +114,11 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
           <p role="status" className="form-status">
             {message}
           </p>
+          {board && (
+            <p className="page-note">
+              <a href={`#/boards/${board.id}`}>{t('admin.tracks.openBoard', { key: board.key })}</a>
+            </p>
+          )}
           {problem && (
             <p role="alert" className="form-error">
               {problem}
@@ -157,13 +174,24 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
   );
 }
 
+const TEMPLATE_LABELS: Record<TrackTemplate, MessageId> = {
+  scrum: 'admin.tracks.template.scrum',
+  kanban: 'admin.tracks.template.kanban',
+  'bug-tracking': 'admin.tracks.template.bugTracking',
+  business: 'admin.tracks.template.business',
+  blank: 'admin.tracks.template.blank',
+};
+
 function AddTrack({
   client,
+  tracks,
   onAdded,
   onProblem,
 }: {
   client: ConfigurationClient;
-  onAdded: (track: Track) => void;
+  /** The tracks whose configuration a new one may copy: the shared ones (M1-054). */
+  tracks: Track[];
+  onAdded: (track: Track, board?: Named) => void;
   onProblem: (error: unknown) => void;
 }) {
   const t = useT();
@@ -171,6 +199,14 @@ function AddTrack({
   const [key, setKey] = useState('');
   const [name, setName] = useState('');
   const [mode, setMode] = useState<'shared' | 'local'>('shared');
+  /** `template:<id>` or `track:<id>`. */
+  const [start, setStart] = useState('template:blank');
+  const copyable = tracks.filter((x) => x.mode === 'shared' && !x.archived);
+  const origin = (): Pick<NewTrack, 'template' | 'copyFrom'> => {
+    const [kind, value] = start.split(':');
+    if (kind === 'track' && mode === 'shared') return { copyFrom: Number(value) };
+    return { template: (kind === 'template' ? value : 'blank') as TrackTemplate };
+  };
   return (
     <form
       className="people-form"
@@ -178,9 +214,9 @@ function AddTrack({
       onSubmit={(event) => {
         event.preventDefault();
         client
-          .createTrack({ key: key.trim().toUpperCase(), name: name.trim(), mode })
-          .then((track) => {
-            onAdded(track);
+          .createTrack({ key: key.trim().toUpperCase(), name: name.trim(), mode, ...origin() })
+          .then(({ track, board }) => {
+            onAdded(track, board);
             setKey('');
             setName('');
           }, onProblem);
@@ -227,6 +263,37 @@ function AddTrack({
           <option value="shared">{t('admin.tracks.shared')}</option>
           <option value="local">{t('admin.tracks.local')}</option>
         </select>
+      </div>
+      <div className="form-field">
+        <label htmlFor={`${id}-start`} className="form-label">
+          {t('admin.tracks.startFrom')}
+        </label>
+        <select
+          id={`${id}-start`}
+          value={mode === 'local' && start.startsWith('track:') ? 'template:blank' : start}
+          aria-describedby={`${id}-start-hint`}
+          onChange={(event) => setStart(event.target.value)}
+        >
+          <optgroup label={t('admin.tracks.templates')}>
+            {TRACK_TEMPLATES.map((template) => (
+              <option key={template} value={`template:${template}`}>
+                {t(TEMPLATE_LABELS[template])}
+              </option>
+            ))}
+          </optgroup>
+          {mode === 'shared' && copyable.length > 0 && (
+            <optgroup label={t('admin.tracks.copyGroup')}>
+              {copyable.map((x) => (
+                <option key={x.id} value={`track:${x.id}`}>
+                  {t('admin.tracks.copyOf', { key: x.key, name: x.name })}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+        <p id={`${id}-start-hint`} className="form-hint">
+          {t('admin.tracks.startFromHint')}
+        </p>
       </div>
       <div className="form-actions">
         <button type="submit" className="button-primary">

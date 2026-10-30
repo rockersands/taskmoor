@@ -103,6 +103,13 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-054 track templates** (ADR-062; no migration): `tracks/templates.ts` recipes;
+  `POST /api/v1/tracks` takes `template` (then makes the board through
+  `BoardRoutes.createBoard`, which `registerBoardRoutes` now returns; the track routes get it
+  through `TrackRouteHooks`, filled in `buildApp` after the boards register) and `copyFrom`
+  (shared sources only, sets by reference). Web: "Start from" in the tracks admin page's add
+  form. Tests: `routes/track-templates.test.ts`, `ConfigurationPages.test.tsx`, e2e
+  `track-templates.spec.ts`.
 - **M1-050 releases hub** (ADR-061; no migration): `routes/release-hub.ts` serves
   `GET /releases/:id/overview` (stage counts and warnings as search-runner counts with their
   queries, approvers, the viewer's rights) and `GET /releases/:id/notes` (closed tickets by

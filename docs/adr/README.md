@@ -66,5 +66,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [059](0059-general-and-release-reports.md) | General reports counted in SQL; release and outcome burndowns from report events | Accepted |
 | [060](0060-dashboards.md) | Dashboards as owned pages of typed widgets, shared like saved searches | Accepted |
 | [061](0061-releases-hub.md) | The releases hub reads releases through the search runner and generates notes | Accepted |
+| [062](0062-track-templates.md) | Track templates as recipes over the create route, and configuration copied by reference | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

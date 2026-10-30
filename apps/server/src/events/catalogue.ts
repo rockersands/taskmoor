@@ -212,6 +212,10 @@ export const EVENT_TYPES = {
       typeSetId: id,
       /** A local-mode track's own workflow map, made with it (M1-028). */
       workflowMapId: id.optional(),
+      /** The template it was made from (M1-054); its board has its own event. */
+      template: z.enum(['scrum', 'kanban', 'bug-tracking', 'business', 'blank']).optional(),
+      /** The track whose configuration it took (M1-054). */
+      copiedFrom: id.optional(),
     }),
   },
   /**

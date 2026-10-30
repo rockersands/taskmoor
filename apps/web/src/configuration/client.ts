@@ -51,10 +51,24 @@ export interface MappingNeeded {
   workflowId: number;
 }
 
+/** Track templates (M1-054): each makes a track of its type with its features and board. */
+export const TRACK_TEMPLATES = ['scrum', 'kanban', 'bug-tracking', 'business', 'blank'] as const;
+export type TrackTemplate = (typeof TRACK_TEMPLATES)[number];
+
+/** A new track: from a template, or with another shared track's configuration (M1-054). */
+export interface NewTrack {
+  key: string;
+  name: string;
+  mode: 'shared' | 'local';
+  template?: TrackTemplate;
+  copyFrom?: number;
+}
+
 /** The endpoints the configuration pages use. Stories and tests pass their own. */
 export interface ConfigurationClient {
   tracks: () => Promise<Track[]>;
-  createTrack: (body: { key: string; name: string; mode: 'shared' | 'local' }) => Promise<Track>;
+  /** The track made, and the board its template made in it, if any. */
+  createTrack: (body: NewTrack) => Promise<{ track: Track; board?: Named }>;
   updateTrack: (
     id: number,
     change: { name?: string; description?: string; workflowMapId?: number | null },
@@ -89,8 +103,7 @@ export interface ConfigurationClient {
 
 export const configurationClient: ConfigurationClient = {
   tracks: async () => (await api<{ tracks: Track[] }>('/tracks?archived=include&limit=200')).tracks,
-  createTrack: async (body) =>
-    (await api<{ track: Track }>('/tracks', { method: 'POST', body })).track,
+  createTrack: (body) => api<{ track: Track; board?: Named }>('/tracks', { method: 'POST', body }),
   updateTrack: async (id, change) =>
     (await api<{ track: Track }>(`/tracks/${id}`, { method: 'PATCH', body: change })).track,
   archiveTrack: async (id, archive) => {

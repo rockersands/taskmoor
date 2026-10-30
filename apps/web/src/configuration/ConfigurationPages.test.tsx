@@ -58,6 +58,47 @@ describe('track and workflow map administration (M1-053)', () => {
     ]);
   });
 
+  it('[CORE-002] adds a track from the Scrum template and opens the board it made', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks');
+    await screen.findByText('SHOP · Shop');
+    const form = within(screen.getByRole('form', { name: 'Add a track' }));
+    await user.type(form.getByLabelText('Key'), 'pay');
+    await user.type(form.getByLabelText('Track name'), 'Payments');
+    await user.selectOptions(
+      form.getByRole('combobox', { name: 'Start from' }),
+      'Scrum: a board with a backlog and sprints',
+    );
+    await user.click(form.getByRole('button', { name: 'Add a track' }));
+    expect(await screen.findByText('Track PAY was added, with its board.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open the board of PAY' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/^#\/boards\/\d+$/),
+    );
+    expect(client.calls.at(-1)?.args[0]).toEqual({
+      key: 'PAY',
+      name: 'Payments',
+      mode: 'shared',
+      template: 'scrum',
+    });
+  });
+
+  it('[CORE-002] adds a track with the configuration of another shared track', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks');
+    await screen.findByText('SHOP · Shop');
+    const form = within(screen.getByRole('form', { name: 'Add a track' }));
+    await user.type(form.getByLabelText('Key'), 'web');
+    await user.type(form.getByLabelText('Track name'), 'Web shop');
+    await user.selectOptions(form.getByRole('combobox', { name: 'Start from' }), 'Shop (SHOP)');
+    await user.click(form.getByRole('button', { name: 'Add a track' }));
+    expect(await screen.findByText('Track WEB was added.')).toBeInTheDocument();
+    expect(client.calls.at(-1)?.args[0]).toMatchObject({ key: 'WEB', copyFrom: 3 });
+    // A local-mode track cannot copy: only templates are offered.
+    await user.selectOptions(form.getByRole('combobox', { name: 'Configuration' }), 'local');
+    expect(form.queryByRole('option', { name: 'Shop (SHOP)' })).toBeNull();
+  });
+
   it('[IAM-002] gives a role to a person and a group, and takes it back', async () => {
     const user = userEvent.setup();
     const client = renderPage('tracks');
