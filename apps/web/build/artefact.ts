@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { existsSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import type { Plugin } from 'vite';
 // By path, not by package name: Vite loads its config with Node, which cannot run a workspace
 // package's TypeScript, and bundles only relative imports (the boundary rules allow it here).
@@ -44,7 +44,7 @@ const TEXT = /\.(html|js|css|json|svg|txt)$/;
 export interface ServerCode {
   /** Folders of server-side packages, absolute, with forward slashes and a trailing one. */
   dirs: string[];
-  /** Third-party packages only server-side packages depend on. */
+  /** Third-party packages only server-side packages depend on, directly or not. */
   packages: Set<string>;
 }
 
@@ -62,7 +62,7 @@ export function serverCode(root: string): ServerCode {
   const serverSide = workspace.filter((d) => SERVER_SIDE.includes(d));
   const browserSide = workspace.filter((d) => !SERVER_SIDE.includes(d));
   const own = new Set(workspace.map((d) => manifest(d).name));
-  const allowed = new Set(browserSide.flatMap((d) => Object.keys(manifest(d).dependencies ?? {})));
+  const allowed = browserPackages(root, browserSide, own);
   const packages = new Set(
     serverSide
       .flatMap((d) => {
@@ -73,6 +73,38 @@ export function serverCode(root: string): ServerCode {
   );
   const dirs = serverSide.map((d) => `${resolve(root, d).replaceAll('\\', '/')}/`);
   return { dirs, packages };
+}
+
+/**
+ * Every third-party package the browser side can load: what the browser-side workspace packages
+ * depend on, and what those depend on in turn, found through node_modules as Node finds them. A
+ * package a server-side package also names (the docs build's micromark, which the app reaches
+ * through @taskmoor/richtext) is browser code then, not server code.
+ */
+function browserPackages(root: string, browserSide: string[], own: Set<string>): Set<string> {
+  const seen = new Set<string>();
+  const visit = (name: string, from: string) => {
+    if (seen.has(name) || own.has(name)) return;
+    seen.add(name);
+    const dir = packageDir(name, from);
+    if (!dir) return;
+    const m: Manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    for (const dep of Object.keys(m.dependencies ?? {})) visit(dep, dir);
+  };
+  for (const d of browserSide) {
+    const m: Manifest = JSON.parse(readFileSync(join(root, d, 'package.json'), 'utf8'));
+    for (const dep of Object.keys(m.dependencies ?? {})) visit(dep, join(root, d));
+  }
+  return seen;
+}
+
+/** A package's real folder, looked up in node_modules from `from` upwards. */
+function packageDir(name: string, from: string): string | null {
+  for (let dir = from; ; dir = dirname(dir)) {
+    const candidate = join(dir, 'node_modules', name);
+    if (existsSync(join(candidate, 'package.json'))) return realpathSync(candidate);
+    if (dirname(dir) === dir) return null;
+  }
 }
 
 /** The package a module id belongs to, by its last node_modules segment. */

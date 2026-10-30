@@ -504,6 +504,58 @@ Built in a side session on the branch `claude/m1-098-csv-export-553b10`; ADR-063
   `docs/export-format.md` (access, visibility and notification policies, boards, sprints,
   saved searches, dashboards, local-mode ownership, custom levels, comment versions, key history).
 
+## Side session 2026-10-30: M1-114 the manual
+
+Built on the branch `claude/elegant-feistel-f32e66` in a side session; the main session merges
+it after its own gate. ADR-074; no migration; no new packages (devtools now depends on
+`micromark` 4.0.3 and four of its GFM extensions, MIT, already in the lockfile through
+`@taskmoor/richtext`, and on `@taskmoor/webconfig` for the version stamp).
+
+- **The manual** `docs/manual`: `index.md`, `concepts.md`, `use/` (7 pages for people using the
+  app) and `admin/` (22 pages: installing, people and access, configuring work, integrations,
+  running a server), ordered by `nav.json`. Written from the code, specs, ADRs and the existing
+  developer docs, in our own words; each page's `sources` lists what it was written from.
+  Product gaps the writing turned up are listed under "Follow-ups" below.
+- **Build** `pnpm run docs [--out <dir>]` (`packages/devtools/src/manual.ts`, `cli/docs.ts`):
+  checks, then writes `dist/docs` (one HTML page per Markdown page, the same folders, plus
+  `search.html`). Stylesheet and script are inlined (`manual-assets/`) under a CSP that allows
+  exactly them by hash, so nothing is fetched; search runs over a JSON index inside
+  `search.html`. Works from `file://` and any web server; same bytes for the same input;
+  `TASKMOOR_VERSION` stamps the footer.
+- **Checks** (`manual-check.ts`, `checkManualProvenance` in `provenance.ts`), all in
+  `manual.test.ts` and so in `pnpm verify`: provenance front matter (`title`, `audience`,
+  `sources` that exist and are not Atlassian sites, `accessed`, `attestation: own-words`, H1 =
+  title); Atlassian terms refused unless the page declares `jira-names: <reason>`
+  (`admin/import-export.md` does); one H1, unique anchors, a language on every code block; nav
+  lists every page once; links stay inside the manual and their anchors exist; no images.
+  External links are listed (golden `__golden__/manual-external-links.json`), never fetched. The
+  built bundle is checked as a browser sees it: CSP present, no element loads a resource, no
+  request API in the script, every relative link and anchor resolves.
+- **Frontend build guard** (`apps/web/build/artefact.ts`): devtools' direct micromark dependency
+  made the server-code guard flag micromark, which the app bundles through `@taskmoor/richtext`.
+  The guard now counts the browser side's dependencies transitively; only `micromark` and
+  `pngjs` changed (now browser code), and the artefact test says so.
+- **Writing a page**: copy any page's front matter, add the page to `nav.json`, run `pnpm run docs`.
+  CLAUDE.md now says a visible change updates its page in the same task. Bare `pnpm docs` is
+  pnpm's own command (it opens a package's home page), so the script runs with `pnpm run docs`.
+- **Follow-ups**: the writing turned up product gaps, each stated on its page as "not yet"; the
+  full list is in the side-session notes folder (`m1-114-manual-product-gaps.md`). The ones to
+  fix before 1.0:
+  - the setup form's mail fields are stored but unused, and its hint names `SMTP_PASSWORD`;
+  - the Compose files pass only 8 variables from `.env`, so mail, S3, `METRICS_PORT` and
+    `OTEL_*` need an override although `.env.example` lists the last two;
+  - `deploy/README.md` says Helm runs `cli.mjs upgrade`, but the chart only runs
+    `check-upgrade`;
+  - `cli.mjs backup` ignores `TASKMOOR_BACKUP_DIR`, and the Helm worker cannot mount a backup
+    volume;
+  - the workflow effect "Call a webhook" never sends a request;
+  - track feature toggles hide nothing;
+  - five global permissions are never checked;
+  - the saved language is not applied;
+  - the UI label "Change screens and layouts" uses the term "screens".
+  Also not done: serving the bundle from the image at `/docs` with a Help link in the app;
+  images in the manual; Spanish pages.
+
 ## Last session: 2026-10-29 (Mac, afternoon)
 
 Back on the Mac after the overnight cloud run: `main` fast-forwarded 106 commits, the gate

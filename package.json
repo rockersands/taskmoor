@@ -34,7 +34,8 @@
     "conformance": "tsx packages/devtools/src/cli/conformance.ts",
     "fuzz": "tsx packages/devtools/src/cli/fuzz.ts",
     "build": "pnpm --filter @taskmoor/web build && node tools/build/server.mjs",
-    "build:server": "node tools/build/server.mjs"
+    "build:server": "node tools/build/server.mjs",
+    "docs": "tsx packages/devtools/src/cli/docs.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
