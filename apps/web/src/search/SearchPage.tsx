@@ -1,4 +1,12 @@
-import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -373,6 +381,18 @@ function AdvancedForm({
   const [offer, setOffer] = useState<Suggestions | null>(null);
   const [active, setActive] = useState(0);
   const [check, setCheck] = useState<CheckResult | null>(null);
+  /** Where the caret goes once an accepted suggestion is in the box. */
+  const caretAfter = useRef<number | null>(null);
+
+  // Placed as soon as the new text is committed, before the next key press: a deferred move
+  // could land after keys typed straight after the accepting Tab and put the caret back.
+  useLayoutEffect(() => {
+    const caret = caretAfter.current;
+    if (caret === null || !box.current) return;
+    caretAfter.current = null;
+    box.current.setSelectionRange(caret, caret);
+    box.current.focus();
+  });
 
   // The backend checks the query as it is typed: fields, operators, values (QRY-001 (2)).
   useEffect(() => {
@@ -397,12 +417,9 @@ function AdvancedForm({
     if (!offer) return;
     const next = `${text.slice(0, offer.from)}${item} ${text.slice(offer.to)}`;
     const caret = offer.from + item.length + 1;
+    caretAfter.current = caret;
     onChange(next);
     setOffer(null);
-    window.setTimeout(() => {
-      box.current?.setSelectionRange(caret, caret);
-      box.current?.focus();
-    }, 0);
   };
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
