@@ -516,6 +516,32 @@ for few, an OR tested per row for many. `ORDER BY relevance` is a key like any o
 `float8` rank, so cursors carry it); counts beyond 10,000 are estimated from block samples
 (`search/count.ts`). Plan goldens: `search/__golden__/plans-text-pg16.json`.
 
+## Read-only info fields (M1-125)
+
+CORE-012's computed fields are searchable and sortable, which Jira's are not. Three join the
+system fields:
+
+- `firstResponse` ("Date of first response"): a datetime, the first comment by someone other
+  than the requester.
+- `daysSinceLastComment` ("Days since last comment"): whole days since the latest comment,
+  empty without one.
+- `participants` ("Participants"): a person field matching the requester, the assignee and
+  the authors of comments.
+
+Only comments everyone who sees the ticket may read count (not restricted to a role or group,
+not in the trash), so neither a value nor a match tells anyone of a comment they cannot read.
+The two times are ticket columns (`first_response_at`, `last_comment_at`; migration 0058)
+that triggers keep from `ticket_comment` and from requester changes, so filtering and ordering
+read a column like `created` and use its index. `daysSinceLastComment` compares
+`floor(epoch of now() - last_comment_at / 1 day)`; ordering by it orders by the column the
+other way round (more days is an earlier comment), empties last either way, so the order
+stays stable while time passes and the index serves it. Participants compile to an OR of the
+two columns and an `EXISTS` over counted comments.
+
+Time in status is not a query field: it is a list per ticket, answered by
+`GET /api/v1/tickets/:id/info` (`tickets/info.ts`) from the status changes in the history,
+each status's intervals from creation to now summed.
+
 ## Options considered
 
 | Option | For | Against |

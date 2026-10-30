@@ -225,6 +225,11 @@ describe('the ticket view (M1-051)', () => {
       'is blocked by',
       'Send to review',
       'Close',
+      // The info panel's participants and statuses (M1-125).
+      'Ada Lovelace and Grace Hopper',
+      'To do',
+      'In progress',
+      'In review',
     ]);
     for (const element of main.querySelectorAll(
       '.comment-body, .comment-author, .comment-date, .rt-content, .attachment-name, .attachment-meta, option[value*=":"], .ticket-feed-date',

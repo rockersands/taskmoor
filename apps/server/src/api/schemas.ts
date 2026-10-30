@@ -182,6 +182,33 @@ export const change = z
   .loose()
   .meta({ id: 'Change' });
 
+export const ticketInfo = z
+  .object({
+    firstResponse: nullable(instant).meta({
+      description: 'When someone other than the requester first commented.',
+    }),
+    lastComment: nullable(instant),
+    daysSinceLastComment: nullable(z.number().int()),
+    participants: z.array(person).meta({
+      description: 'The requester, the assignee and everyone who wrote a comment.',
+    }),
+    timeInStatus: z.array(
+      z
+        .object({
+          status: z.object({ id, name: z.string() }).loose(),
+          seconds: z.number().int(),
+          visits: z.number().int(),
+        })
+        .loose(),
+    ),
+  })
+  .loose()
+  .meta({
+    id: 'TicketInfo',
+    description:
+      'Read-only info fields, computed from comments and history. Only comments everyone who sees the ticket may read count.',
+  });
+
 export const comment = z
   .object({
     id,

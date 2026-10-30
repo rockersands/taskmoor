@@ -275,6 +275,12 @@ const COLUMNS: Record<string, Extract<Scalarish, { kind: 'column' }>> = {
   created: { kind: 'column', column: 'created_at', type: 'timestamptz', nullable: false },
   updated: { kind: 'column', column: 'updated_at', type: 'timestamptz', nullable: false },
   closed: { kind: 'column', column: 'closed_at', type: 'timestamptz', nullable: true },
+  firstResponse: {
+    kind: 'column',
+    column: 'first_response_at',
+    type: 'timestamptz',
+    nullable: true,
+  },
   due: { kind: 'column', column: 'due_date', type: 'date', nullable: true },
   start: { kind: 'column', column: 'start_date', type: 'date', nullable: true },
   originalEstimate: { kind: 'column', column: 'original_estimate', type: 'int', nullable: true },
@@ -641,6 +647,14 @@ class Binder {
         return [key({ kind: 'releaseOrder', role: 'found' })];
       case 'effortRatio':
         return [key({ kind: 'effortRatio' })];
+      // More days since the last comment is an earlier comment; without one, last either way.
+      case 'daysSinceLastComment':
+        return [
+          {
+            source: column('last_comment_at', 'timestamptz', true),
+            direction: direction === 'asc' ? 'desc' : 'asc',
+          },
+        ];
       case 'sprint':
         return [key({ kind: 'sprintOrder' })];
       default:
@@ -1290,6 +1304,17 @@ class Binder {
           { kind: 'effortRatio' },
           p.kind === 'empty' ? [] : this.typed(p).map(ISO),
         );
+      case 'daysSinceLastComment':
+        return this.onScalar(
+          p,
+          { kind: 'daysSinceLastComment' },
+          p.kind === 'empty' ? [] : this.typed(p).map(ISO),
+        );
+      case 'participants':
+        if (p.kind === 'empty') {
+          return { kind: 'relatedEmpty', relation: 'participant', negated: p.negated };
+        }
+        return this.related(p, { relation: 'participant', ids: await this.people(this.typed(p)) });
       case 'labels': {
         if (p.kind === 'empty') return { kind: 'labelsEmpty', negated: p.negated };
         const values = this.typed(p).map((t) => String(content(t).value));

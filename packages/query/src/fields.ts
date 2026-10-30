@@ -277,6 +277,25 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     nullable: true,
     sortable: true,
   }),
+  // Read-only info fields (M1-125; CORE-012), computed from comments: only comments everyone
+  // who sees the ticket may read count.
+  system({
+    name: 'firstResponse',
+    aliases: ['firstResponseDate', 'Date of first response'],
+    type: 'datetime',
+    history: null,
+    nullable: true,
+    sortable: true,
+  }),
+  system({
+    name: 'daysSinceLastComment',
+    aliases: ['Days since last comment'],
+    type: 'number',
+    history: null,
+    nullable: true,
+    sortable: true,
+  }),
+  system({ name: 'participants', aliases: ['Participants'], type: 'user', history: null }),
   system({
     name: 'lastViewed',
     aliases: ['Last viewed'],

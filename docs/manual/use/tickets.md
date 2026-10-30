@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md
+sources: apps/web/src/App.tsx, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -95,6 +95,22 @@ The **Details** section lists the ticket's fields. Some can be changed in place:
 Each change saves at once and the page says **Saved.** If someone changed the ticket since you
 opened it, the page says so: read it again and retry. The ticket view does not yet show custom
 fields; they can be shown as columns in [search results](search.md#search-results).
+
+### Info
+
+The **Info** section under **Details** shows what Taskmoor works out from the ticket's comments
+and history:
+
+- **Date of first response**: when someone other than the requester first commented;
+- **Days since last comment**;
+- **Participants**: the requester, the assignee and everyone who commented;
+- **Time in status**: how long the ticket has spent in each status since it was created, and
+  how many times it entered each one.
+
+Only comments everyone who can see the ticket may read count, so a comment restricted to a role
+or a group changes none of these. The first three are also [search fields](search.md):
+`daysSinceLastComment > 7`, `firstResponse IS EMPTY`, `participants = currentUser()`, and
+`ORDER BY firstResponse` or `ORDER BY daysSinceLastComment`.
 
 ### Descriptions and rich text
 

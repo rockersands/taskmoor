@@ -1099,6 +1099,22 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM ticket k WHERE k.summary = 'Seed search'`.execute(db);
     },
   },
+  '0058_info_fields': {
+    tables: {
+      ticket:
+        "summary = 'Seed search' AND first_response_at IS NOT NULL AND last_comment_at >= first_response_at",
+    },
+    seed: async (db) => {
+      // An answer from someone other than the requester: the triggers record the first
+      // response; the requester's comment of 0057 was backfilled as the last comment.
+      await sql`INSERT INTO ticket_comment (workspace_id, ticket_id, author_id, body, created_at)
+        SELECT 1, k.id, u.id,
+          '{"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "An answer"}]}]}',
+          now() + interval '1 minute'
+          FROM ticket k, app_user u
+         WHERE k.summary = 'Seed search' AND u.email = 'seed-0055@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

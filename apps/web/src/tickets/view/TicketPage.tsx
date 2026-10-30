@@ -23,6 +23,7 @@ import {
   ticketClient,
   type WebLink,
 } from './client';
+import { InfoPanel } from './InfoPanel';
 
 export interface TicketPageProps {
   /** The ticket key or id from the address (#/tickets/<key>). */
@@ -551,19 +552,22 @@ export function TicketPage({
           />
         </div>
         {loaded && (
-          <section aria-labelledby={detailsId} className="ticket-details">
-            <h2 id={detailsId} className="ticket-section-title">
-              {t('ticketView.details')}
-            </h2>
-            <Details
-              ticket={loaded}
-              me={me}
-              client={client}
-              when={when}
-              onEdit={edit}
-              onAssignToMe={assignToMe}
-            />
-          </section>
+          <div className="ticket-side">
+            <section aria-labelledby={detailsId} className="ticket-details">
+              <h2 id={detailsId} className="ticket-section-title">
+                {t('ticketView.details')}
+              </h2>
+              <Details
+                ticket={loaded}
+                me={me}
+                client={client}
+                when={when}
+                onEdit={edit}
+                onAssignToMe={assignToMe}
+              />
+            </section>
+            <InfoPanel ticketId={loaded.id} client={client} revision={revision} />
+          </div>
         )}
       </div>
       {helping && (

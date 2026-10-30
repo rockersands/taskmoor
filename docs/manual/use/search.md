@@ -124,6 +124,7 @@ to **Automatic**.
 | `status`, `stage` | The status; its stage: `new`, `active` or `closed` |
 | `priority`, `closeReason` | Priority and close reason |
 | `summary`, `description`, `environment`, `comment`, `text` | Text (use `~`) |
+| `firstResponse`, `daysSinceLastComment`, `participants` | Worked out from comments: when someone other than the requester first answered (a date), whole days since the latest comment (a number), and the requester, the assignee and everyone who commented (people). Only comments everyone who sees the ticket may read count |
 | `assignee`, `requester`, `creator`, `follower`, `voter` | People |
 | `followers`, `votes` | How many follow or voted |
 | `labels`, `area`, `targetRelease`, `foundInRelease` | Labels, areas and releases |

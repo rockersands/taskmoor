@@ -286,13 +286,17 @@ function scalarExpr(on: Scalarish): RawBuilder<unknown> {
       return sql`(CASE WHEN k.original_estimate > 0 THEN k.time_spent * 100.0 / k.original_estimate END)`;
     case 'count':
       return sql`(SELECT count(*) FROM ${raw(on.relation === 'follower' ? 'ticket_follower' : 'ticket_vote')} r WHERE r.ticket_id = k.id)`;
+    case 'daysSinceLastComment':
+      return sql`floor(extract(epoch FROM (now() - k.last_comment_at)) / 86400)`;
   }
 }
 
 const scalarType = (on: Scalarish): SqlType =>
   on.kind === 'column' ? on.type : on.kind === 'count' ? 'bigint' : 'numeric';
 const scalarNullable = (on: Scalarish) =>
-  on.kind === 'column' ? on.nullable : on.kind === 'effortRatio';
+  on.kind === 'column'
+    ? on.nullable
+    : on.kind === 'effortRatio' || on.kind === 'daysSinceLastComment';
 
 function sideRows(side: SideRef, alias: string, condition?: RawBuilder<boolean>) {
   const head = sql`SELECT 1 FROM ${raw(side.table)} ${raw(alias)} WHERE ${raw(alias)}.ticket_id = k.id AND ${raw(alias)}.field_id = ${param(side.fieldId, 'int')}`;
@@ -326,6 +330,36 @@ function relatedRows(relation: RelationName, related?: Related): RawBuilder<bool
         'ticket_release r',
         and([sql<boolean>`r.ticket_id = k.id`, sql<boolean>`r.role = ${role}`, match]),
       );
+    }
+    case 'participant': {
+      // Comments that count for the info fields (migration 0058): readable by everyone who
+      // sees the ticket.
+      const comments = (match: RawBuilder<boolean>) =>
+        exists(
+          'ticket_comment r',
+          and([
+            sql<boolean>`r.ticket_id = k.id AND r.deleted_at IS NULL`,
+            sql<boolean>`r.visible_role_id IS NULL AND r.visible_group_id IS NULL`,
+            match,
+          ]),
+        );
+      if (!related || !('ids' in related)) {
+        return or([
+          sql<boolean>`k.requester_id IS NOT NULL`,
+          sql<boolean>`k.assignee_id IS NOT NULL`,
+          comments(sql<boolean>`r.author_id IS NOT NULL`),
+        ]);
+      }
+      // An empty requester or assignee is no match, not an unknown one, so NOT stays false.
+      const person = (column: string) =>
+        related.ids.length === 0
+          ? FALSE
+          : sql<boolean>`coalesce(${raw(column)} = ANY(${array(related.ids, 'int')}), false)`;
+      return or([
+        person('k.requester_id'),
+        person('k.assignee_id'),
+        comments(ids('r.author_id', related.ids)),
+      ]);
     }
     case 'parentTrack':
       return related && 'ids' in related

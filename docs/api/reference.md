@@ -921,6 +921,21 @@ Responses:
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 - 404: There is no such resource, or the caller may not see it.
 
+### A ticket’s read-only info: first response, participants, time in status
+
+`GET /api/v1/tickets/{id}/info`, operation `getTicketInfo`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+
+Responses:
+
+- 200: The info fields. Body: `info` ([TicketInfo](#schema-ticketinfo)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
 ### Rank a ticket before or after another, or at an end
 
 `PUT /api/v1/tickets/{id}/rank`, operation `rankTicket`, access: write.
@@ -1458,6 +1473,18 @@ A `"new"`, `"active"`, `"closed"`.
 | `createdAt` | string | yes |  |
 | `updatedAt` | string | yes |  |
 | `trash` | object or null | yes | Set while the ticket is in the trash. |
+
+### Schema: TicketInfo
+
+Read-only info fields, computed from comments and history. Only comments everyone who sees the ticket may read count.
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `firstResponse` | string or null | yes | When someone other than the requester first commented. |
+| `lastComment` | string or null | yes |  |
+| `daysSinceLastComment` | integer or null | yes |  |
+| `participants` | array of [PersonRef](#schema-personref) | yes | The requester, the assignee and everyone who wrote a comment. |
+| `timeInStatus` | array of object | yes |  |
 
 ### Schema: TicketType
 

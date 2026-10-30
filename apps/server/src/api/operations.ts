@@ -267,6 +267,17 @@ export const OPERATIONS: readonly Operation[] = [
   }),
   op({
     method: 'GET',
+    path: '/api/v1/tickets/:id/info',
+    id: 'getTicketInfo',
+    tag: 'Tickets',
+    summary: 'A ticket’s read-only info: first response, participants, time in status',
+    params: ticketParam,
+    responses: {
+      200: { description: 'The info fields.', schema: one('info', s.ticketInfo) },
+    },
+  }),
+  op({
+    method: 'GET',
     path: '/api/v1/tickets/:id/history',
     id: 'getTicketHistory',
     tag: 'Tickets',

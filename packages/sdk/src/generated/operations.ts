@@ -26,6 +26,7 @@ export const OPERATIONS = {
   getSession: { method: 'GET', path: '/api/v1/session', paged: false },
   getTicket: { method: 'GET', path: '/api/v1/tickets/{id}', paged: false },
   getTicketHistory: { method: 'GET', path: '/api/v1/tickets/{id}/history', paged: true },
+  getTicketInfo: { method: 'GET', path: '/api/v1/tickets/{id}/info', paged: false },
   getTrack: { method: 'GET', path: '/api/v1/tracks/{id}', paged: false },
   listBoards: { method: 'GET', path: '/api/v1/boards', paged: false },
   listBulkItems: { method: 'GET', path: '/api/v1/bulk-operations/{id}/items', paged: false },

@@ -2,7 +2,38 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: what changed on 2026-10-30 (cloud session, with the user)
+## Start here: 2026-10-30, overnight and morning (Mac, main session)
+
+Everything below is on `main` and passed `pnpm verify --e2e` before each push. In order:
+M1-115 accessibility, M1-105 static frontend, M1-106 meta endpoint, M1-116 i18n and Spanish,
+M1-087 synthetic backups, M1-109, M1-111 and M1-110 (the Builder core and both kits), M1-134
+clean URLs, M1-132 cross-browser e2e, M1-130 async bulk API, M1-040 full-text search, M1-127
+workflow files, M1-114 the manual, M1-125 info fields. Each has its own section below.
+
+**Decisions waiting for the user**
+- M1-040: rank only the 10,000 most recently updated matches for `ORDER BY relevance` at 10M
+  tickets (about 10 s otherwise for a common word)? Keep pattern searches (`*Exception`,
+  beyond spec 1.8)? See "Side session 2026-10-30: M1-040 full-text search".
+- A native speaker's review of the Spanish draft (`messages.es.ts`, the manual is English only).
+- Still open from before: the AI provider key for M1-073 and M1-074's live tests, the release
+  signing key (M1-100), image publishing on ghcr.io and the repository rename.
+
+**Product gaps the manual found (M1-114)**: the setup form's mail fields are never used and
+name the wrong variable; Compose passes only 8 variables from `.env`; Helm runs no backup
+before migrating and its worker has nowhere to keep backups; `cli.mjs backup` ignores
+`TASKMOOR_BACKUP_DIR`; "Call a webhook" sends nothing; track feature switches hide nothing; five
+global permissions are never checked; the saved language is not applied; the server reads none
+of the Builder's `TASKMOOR_ALLOWED_ORIGINS`, `TOKEN_SIGNING_KEY`, `MASTER_KEY` and `AI_*`. The
+manual states each as "not yet". Fix them before 1.0 and update the page with each fix.
+
+**Not verified here**: a fresh-VM install with real DNS, `install.ps1` on Windows, real static
+hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
+real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
+
+**Numbering in flight**: migration 0059 and ADR-075 are M1-066 (rate limits); 0060 and ADR-076
+are reserved for M1-123 (teams), 0061 and ADR-077 for M1-124 (clone).
+
+## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
 The user worked with a cloud session while this Mac was busy. Pull first, then read the three
 sections below this one. See every change with `git log --stat 62b5a68..3182b16` (four commits:
