@@ -577,9 +577,14 @@ function ResultList({
           <div className="search-results-bar">
             <p role="status" className="page-note">
               {results.page.total
-                ? t(results.page.total.exact ? 'search.count' : 'search.countAtLeast', {
-                    count: results.page.total.count,
-                  })
+                ? t(
+                    results.page.total.exact
+                      ? 'search.count'
+                      : results.page.total.approximate
+                        ? 'search.countAbout'
+                        : 'search.countAtLeast',
+                    { count: results.page.total.count },
+                  )
                 : t('search.shown', { count: results.page.tickets.length })}
             </p>
             <ColumnPicker columns={columns} fields={fields} onChange={onColumns} />

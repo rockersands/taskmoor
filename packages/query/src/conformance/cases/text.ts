@@ -108,4 +108,70 @@ export const TEXT_CASES: QueryCase[] = [
     catalogue: CATALOGUE,
     expect: { ok: false, message: 'EMPTY' },
   }),
+  // M1-040: the search syntax's own refusals, and ordering by relevance.
+  ...(
+    [
+      ['only-excluded', '"-password"', 'cannot only exclude words', 'Only excluded terms'],
+      ['no-words', '"+ - *"', 'no words to look for', 'A search without a letter or digit'],
+      ['fuzzy-wildcard', '"lo?in~"', 'both fuzzy (~) and a wildcard', 'A fuzzy wildcard'],
+      ['three-wildcards', '"a?b?c?d"', 'at most 2 ? wildcards', 'Three ? in a word'],
+      ['short-pattern', '"*ab"', 'three letters or digits in a row', 'A pattern of two letters'],
+    ] as const
+  ).map(([s, value, message, title]) =>
+    c(`refused-${s}`, {
+      kind: 'resolve',
+      title: `${title} is refused`,
+      text: `text ~ ${value}`,
+      catalogue: CATALOGUE,
+      expect: { ok: false, message },
+    }),
+  ),
+  c('pattern-resolves', {
+    kind: 'resolve',
+    title: 'A * in front of a word makes a pattern',
+    text: 'summary ~ "*Exception"',
+    catalogue: CATALOGUE,
+    expect: { ok: true },
+  }),
+  c('relevance-order', {
+    kind: 'resolve',
+    title: 'Results order by relevance when the query searches text',
+    text: 'text ~ login AND status = Open ORDER BY relevance',
+    catalogue: CATALOGUE,
+    expect: { ok: true },
+  }),
+  c('relevance-order-print', {
+    kind: 'parse',
+    title: 'ORDER BY relevance prints with its direction',
+    text: 'summary ~ login order by relevance',
+    expect: { canonical: 'summary ~ login ORDER BY relevance ASC' },
+  }),
+  c('relevance-needs-search', {
+    kind: 'resolve',
+    title: 'ORDER BY relevance without a text search is refused',
+    text: 'status = Open ORDER BY relevance',
+    catalogue: CATALOGUE,
+    expect: { ok: false, message: 'needs a text search' },
+  }),
+  c('relevance-negated-search', {
+    kind: 'resolve',
+    title: 'A negated text search ranks nothing',
+    text: 'NOT summary ~ login ORDER BY relevance',
+    catalogue: CATALOGUE,
+    expect: { ok: false, message: 'needs a text search' },
+  }),
+  c('relevance-double-negation', {
+    kind: 'resolve',
+    title: 'NOT ... !~ is a search relevance ranks',
+    text: 'NOT summary !~ login ORDER BY relevance DESC',
+    catalogue: CATALOGUE,
+    expect: { ok: true },
+  }),
+  c('relevance-not-a-condition', {
+    kind: 'resolve',
+    title: 'relevance takes no operator',
+    text: 'relevance > 1',
+    catalogue: CATALOGUE,
+    expect: { ok: false, message: 'only orders results' },
+  }),
 ];

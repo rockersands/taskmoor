@@ -1,3 +1,4 @@
+import type { TextSearch } from '@taskmoor/query';
 import type { SideTable } from '../fields/storage';
 
 /**
@@ -9,7 +10,7 @@ import type { SideTable } from '../fields/storage';
  */
 
 /** The SQL type of a value, which the compiler casts parameters to so indexes apply. */
-export type SqlType = 'int' | 'bigint' | 'numeric' | 'text' | 'date' | 'timestamptz';
+export type SqlType = 'int' | 'bigint' | 'numeric' | 'float8' | 'text' | 'date' | 'timestamptz';
 
 export type Op = '=' | '<>' | '<' | '<=' | '>' | '>=';
 
@@ -51,8 +52,8 @@ export type Scalarish =
 export type ValueTest =
   | { kind: 'cmp'; op: Op; value: Scalar }
   | { kind: 'in'; values: Scalar[] }
-  /** Every word of the text occurs (spec 01b section 1.8, the M1-037 subset). */
-  | { kind: 'words'; text: string };
+  /** The text matches a search (spec 01b section 1.8; M1-040). */
+  | { kind: 'words'; search: TextSearch };
 
 /** A custom field's side table (ADR-008) and the SQL type of its value column. */
 export interface SideRef {
@@ -147,8 +148,8 @@ export type HistoryTest =
       values: string[];
       names: string[];
     }
-  /** Every word of one of `texts` occurs; `document`: the value is a rich-text document. */
-  | { kind: 'words'; texts: string[]; document: boolean }
+  /** The text matches one of `searches`; `document`: the value is a rich-text document. */
+  | { kind: 'words'; searches: TextSearch[]; document: boolean }
   /** A link to one of `tickets`. */
   | { kind: 'linkTo'; tickets: number[] }
   /** A link of a type: either way (`both`), as its source (`outward`) or target (`inward`). */
@@ -183,22 +184,38 @@ export type Cond =
   | { kind: 'labels'; values: string[]; quantifier: Quantifier }
   | { kind: 'labelsEmpty'; negated: boolean }
   /**
-   * Word search in the summary, description, environment or comments. Comments count only
-   * where the viewer reads them (`commentReadableSql`, M1-018): a hidden comment never matches
-   * and never makes `comment IS NOT EMPTY` true.
+   * Text search in the summary, description, environment or comments (spec 01b section 1.8;
+   * M1-040). Comments count only where the viewer reads them (`commentReadableSql`, M1-018): a
+   * hidden comment never matches and never makes `comment IS NOT EMPTY` true.
    */
   | {
       kind: 'words';
-      source: 'summary' | 'description' | 'environment' | 'comment';
-      text: string;
+      source: TextSource;
+      search: TextSearch;
       negated: boolean;
+      /**
+       * Few tickets match (counted in the word index when the query was bound, M1-040): start
+       * from the index instead of testing each ticket as the order is walked.
+       */
+      fromIndex?: boolean;
     }
   | { kind: 'wordsEmpty'; source: 'description' | 'environment' | 'comment'; negated: boolean }
   /**
    * The master text field: summary, description, environment, the comments the viewer reads
    * and the text custom fields.
    */
-  | { kind: 'text'; text: string; fieldIds: number[]; negated: boolean }
+  | {
+      kind: 'text';
+      search: TextSearch;
+      fieldIds: number[];
+      negated: boolean;
+      /**
+       * The planner expects so many tickets to match (M1-040) that a page (`page`) or a count
+       * (`count`) is better served by testing each ticket as the order is walked than by
+       * starting from the word indexes (`compile.ts`, `masterText`; `bind.ts`, `textForms`).
+       */
+      perRow?: { page: boolean; count: boolean };
+    }
   | { kind: 'side'; side: SideRef; test: ValueTest; quantifier: Quantifier }
   | { kind: 'sideEmpty'; side: SideRef; negated: boolean }
   | { kind: 'related'; related: Related; quantifier: Quantifier }
@@ -249,6 +266,18 @@ export type Cond =
       negated: boolean;
     };
 
+/** Where a text search looks, besides custom text fields. */
+export type TextSource = 'summary' | 'description' | 'environment' | 'comment';
+
+/**
+ * A text search that must match, which relevance ranks (M1-040): one source, a custom text
+ * field, or the master text field (summary, description and environment; comments and text
+ * fields make a ticket match `text ~` but do not raise its rank).
+ */
+export type RankedSearch =
+  | { on: TextSource | 'text'; search: TextSearch }
+  | { on: 'custom'; fieldId: number; search: TextSearch };
+
 /** A value results are ordered by. */
 export type OrderSource =
   | { kind: 'column'; column: TicketColumn; type: SqlType; nullable: boolean }
@@ -267,6 +296,11 @@ export type OrderSource =
   /** The ticket's latest sprint in its board's order (M1-045); without one, last. */
   | { kind: 'sprintOrder' }
   | { kind: 'effortRatio' }
+  /**
+   * The place in the ranking by how well the ticket matches `searches` (M1-040): the best match
+   * comes first in ascending order, as rank does on a board.
+   */
+  | { kind: 'relevance'; searches: RankedSearch[] }
   /** A custom field: its value, sort key, option order, person, group, release or area. */
   | { kind: 'side'; side: SideRef; by: SideOrder };
 
@@ -320,6 +354,7 @@ export function nullableOrder(source: OrderSource): boolean {
     case 'levelRank':
     case 'statusOrder':
     case 'count':
+    case 'relevance':
       return false;
     default:
       return true;
@@ -341,6 +376,8 @@ export function orderType(source: OrderSource): SqlType {
       return 'bigint';
     case 'effortRatio':
       return 'numeric';
+    case 'relevance':
+      return 'float8';
     case 'side':
       switch (source.by) {
         case 'value':

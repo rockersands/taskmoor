@@ -6,7 +6,10 @@ import {
   nativePermissionName,
   type Plan,
   type Pred,
+  parseTextSearch,
   type SystemField,
+  type TextSearch,
+  TextSearchError,
   type Typed,
 } from '@taskmoor/query';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
@@ -14,6 +17,8 @@ import { isTrackPermission, type TrackPermission } from '../authz/permissions';
 import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
 import type { SideTable } from '../fields/storage';
+import { masterTextSet, textSourceSet } from './compile';
+import { COUNT_CAP } from './count';
 import type {
   Bound,
   Cond,
@@ -24,6 +29,7 @@ import type {
   OrderKey,
   OrderSource,
   Quantifier,
+  RankedSearch,
   Scalar,
   Scalarish,
   SideOrder,
@@ -35,6 +41,7 @@ import type {
   TimeEdge,
   ValueTest,
 } from './model';
+import { expands, hasPattern } from './text';
 
 /**
  * From a resolved query to one the compiler takes (M1-037; ADR-010): names become ids (statuses,
@@ -325,8 +332,20 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
   const where = plan.where
     ? await binder.cond(pushNot(plan.where))
     : { kind: 'const', value: true };
+  await textForms(
+    ctx.db,
+    ctx.workspaceId,
+    where as Cond,
+    plan.orderBy.some((o) => o.field.type === 'relevance'),
+  );
   const orderBy: OrderKey[] = [];
-  for (const o of plan.orderBy) orderBy.push(...binder.order(o.field, o.direction));
+  for (const o of plan.orderBy) {
+    if (o.field.type === 'relevance') {
+      orderBy.push({ source: relevance(where as Cond), direction: o.direction });
+    } else {
+      orderBy.push(...binder.order(o.field, o.direction));
+    }
+  }
   if (orderBy.length === 0) {
     orderBy.push({ source: COLUMNS.created as OrderSource, direction: 'desc' });
   }
@@ -337,6 +356,170 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
     ...(domain ? { domain } : {}),
     warnings: binder.warnings,
   };
+}
+
+/**
+ * When testing each ticket while walking the order beats starting from the word indexes for a
+ * master text search, by the planner's estimate `m` of its matches among `n` tickets (M1-040).
+ * Reading a match out of the set (the word indexes, a hash of the ids, a fetch by primary key)
+ * costs about four times testing a row in the walk, which stops once it has what it needs:
+ *
+ * - a page needs 51 matches: from 5,000 matches and 0.3% of the tickets (at 10M a word in 0.3%
+ *   of them fills a page within about 17,000 tickets walked; its 30,000 matches sort in about as
+ *   long);
+ * - a count needs one past its cap (10,000): from twice the cap and `sqrt(cap · n / 4)` matches,
+ *   where walking to 10,001 of them costs less than reading all from the set (at 200,000 tickets
+ *   22,000; at 10M 158,000). Below the cap walking would read the whole table;
+ * - relevance ranks every match: walking reads every ticket, the set every match four times
+ *   over, so from 5,000 matches and a quarter of the tickets.
+ *
+ * Measured at 200,000 tickets: a prefix with 28,000 matches counted in 917 ms from the set and
+ * 101 ms walking; a word in 84,000 tickets ordered by relevance took 1,007 ms from the set and
+ * 185 ms walking.
+ */
+const perRowPage = (m: number, n: number) => m >= Math.max(5_000, 0.003 * n);
+const perRowCount = (m: number, n: number) =>
+  m >= Math.max(2 * COUNT_CAP, Math.sqrt((COUNT_CAP * n) / 4));
+const perRowRanked = (m: number, n: number) => m >= Math.max(5_000, n / 4);
+
+/**
+ * Chooses the form of each master text search (`compile.ts`, `masterText`) from the planner's
+ * estimate of how many tickets it matches: the rows of the set form, planned with the search's
+ * own words (one EXPLAIN, a millisecond or two).
+ */
+async function textForms(db: Db, workspaceId: number, where: Cond, ranked: boolean): Promise<void> {
+  const texts: Extract<Cond, { kind: 'text' | 'words' }>[] = [];
+  const visit = (c: Cond) => {
+    if (c.kind === 'and' || c.kind === 'or') c.items.forEach(visit);
+    else if (c.kind === 'text' || (c.kind === 'words' && !c.negated)) texts.push(c);
+  };
+  visit(where);
+  if (texts.length === 0) return;
+  const { rows } = await sql<{ n: number }>`
+    SELECT greatest(reltuples, 0)::float8 AS n FROM pg_class
+     WHERE oid = 'ticket'::regclass`.execute(db);
+  const tickets = rows[0]?.n ?? 0;
+  const page = Math.ceil(Math.max(5_000, 0.003 * tickets));
+  for (const c of texts) {
+    // Expanded words always start from the word indexes (`expands`).
+    if (expands(c.search)) continue;
+    const several = severalWords(c.search);
+    if (c.kind === 'words') {
+      // One word: the planner's statistics know it. Several: count them in the index.
+      if (!several) continue;
+      const set = textSourceSet(c.source, c.search, workspaceId);
+      if (set && (await countInIndex(db, set, page)) < page) c.fromIndex = true;
+      continue;
+    }
+    const set = masterTextSet(c, workspaceId);
+    if (!set) continue;
+    let estimate: number;
+    if (several && (await countInIndex(db, set, page)) < page) {
+      estimate = 0;
+    } else {
+      const plan = await sql<{
+        'QUERY PLAN': { Plan: { 'Plan Rows': number } }[];
+      }>`EXPLAIN (FORMAT JSON) ${set}`.execute(db);
+      estimate = plan.rows[0]?.['QUERY PLAN'][0]?.Plan['Plan Rows'] ?? 0;
+      // Counted in the index: at least a page's worth, whatever the planner thinks.
+      if (several) estimate = Math.max(estimate, page);
+    }
+    c.perRow = {
+      page: ranked ? perRowRanked(estimate, tickets) : perRowPage(estimate, tickets),
+      count: perRowCount(estimate, tickets),
+    };
+  }
+}
+
+/**
+ * Whether a search needs several words together (two terms, or a phrase): the planner takes
+ * words for independent, so two that seldom meet look common, and a page walked for them can
+ * read the whole table (929 ms at 1M tickets for two words no summary holds together).
+ */
+function severalWords(search: TextSearch): boolean {
+  const words = search.terms.filter((t) => t.kind !== 'pattern');
+  return words.length > 1 || words.some((t) => t.kind === 'phrase' && /\s/u.test(t.text.trim()));
+}
+
+/**
+ * How many rows a set of matches has, up to `cap`, read from the word indexes only: table scans
+ * are turned off for the statement (the planner might otherwise expect an early hit and scan).
+ */
+async function countInIndex(db: Db, set: RawBuilder<unknown>, cap: number): Promise<number> {
+  const run = async (trx: Transaction<Database>) => {
+    const before = await sql<{ v: string }>`SELECT current_setting('enable_seqscan') AS v`.execute(
+      trx,
+    );
+    await sql`SELECT set_config('enable_seqscan', 'off', true)`.execute(trx);
+    const { rows } = await sql<{ n: number }>`
+      SELECT count(*)::int AS n FROM (${set} LIMIT ${cap}) x`.execute(trx);
+    await sql`SELECT set_config('enable_seqscan', ${before.rows[0]?.v ?? 'on'}, true)`.execute(trx);
+    return rows[0]?.n ?? 0;
+  };
+  return db.isTransaction
+    ? run(db as Transaction<Database>)
+    : (db as Kysely<Database>).transaction().execute(run);
+}
+
+/**
+ * Relevance (M1-040): the text searches a matching ticket must pass, which rank it. Negated
+ * ones (`!~`, `NOT ... ~`) rank nothing; the resolver refuses relevance without any other.
+ */
+function relevance(where: Cond): OrderSource {
+  const searches: RankedSearch[] = [];
+  const visit = (c: Cond) => {
+    switch (c.kind) {
+      case 'and':
+      case 'or':
+        for (const item of c.items) visit(item);
+        return;
+      case 'words':
+        if (!c.negated) searches.push({ on: c.source, search: c.search });
+        return;
+      case 'text':
+        if (!c.negated) searches.push({ on: 'text', search: c.search });
+        return;
+      case 'side':
+        if (c.test.kind === 'words' && c.quantifier === 'some') {
+          searches.push({ on: 'custom', fieldId: c.side.fieldId, search: c.test.search });
+        }
+        return;
+      default:
+        return;
+    }
+  };
+  visit(where);
+  if (searches.length === 0) {
+    throw new SearchError('ORDER BY relevance needs a text search (~) in the query', 'unsupported');
+  }
+  return { kind: 'relevance', searches };
+}
+
+/**
+ * Reads a `~` value (spec 01b section 1.8). Patterns need a short text the trigram indexes hold:
+ * `long` texts (descriptions, environments, comments) and `history` refuse them.
+ */
+function textSearch(
+  value: Typed,
+  field: string,
+  patterns: 'take' | 'long' | 'history' = 'take',
+): TextSearch {
+  let search: TextSearch;
+  try {
+    search = parseTextSearch(String(content(value).value));
+  } catch (error) {
+    if (!(error instanceof TextSearchError)) throw error;
+    throw new SearchError(`${field}: ${error.message}`, 'unsupported');
+  }
+  if (patterns !== 'take' && hasPattern(search)) {
+    throw new SearchError(
+      patterns === 'long'
+        ? `${field} is long text: a * inside or in front of a word searches summaries and text fields only`
+        : `${field}: WAS and CHANGED match words; a * inside or in front of a word is not taken`,
+      'unsupported',
+    );
+  }
+  return search;
 }
 
 /** Groups (id, value) rows by value: each order value with the ids that have it. */
@@ -660,11 +843,12 @@ class Binder {
       values: values.map((v) => String(ISO(v))),
       names: [],
     });
+    // Text matches by its words, as `~` does; history holds no index for patterns.
     const words =
       (document: boolean) =>
       async (values: Typed[]): Promise<HistoryTest> => ({
         kind: 'words',
-        texts: values.map((v) => String(content(v).value)),
+        searches: values.map((v) => textSearch(v, label(field), 'history')),
         document,
       });
     const labels = async (values: Typed[]): Promise<HistoryTest> => ({
@@ -863,7 +1047,7 @@ class Binder {
         return {
           kind: 'side',
           side,
-          test: { kind: 'words', text: String(scalars[0]) },
+          test: { kind: 'words', search: textSearch(p.value, label(field)) },
           quantifier: p.op === '~' ? 'some' : 'none',
         };
       }
@@ -1056,7 +1240,7 @@ class Binder {
         return {
           kind: 'words',
           source: field.name,
-          text: String(content(c.value).value),
+          search: textSearch(c.value, label(field), field.name === 'summary' ? 'take' : 'long'),
           negated: c.op === '!~',
         };
       }
@@ -1066,9 +1250,15 @@ class Binder {
         const fieldIds = this.ctx.catalogue.customs
           .filter((f) => f.type === 'text')
           .map((f) => f.id);
+        const search = textSearch(c.value, label(field));
+        if (hasPattern(search)) {
+          this.warnings.push(
+            'A * inside or in front of a word searches summaries and text fields only, not descriptions, environments or comments',
+          );
+        }
         return {
           kind: 'text',
-          text: String(content(c.value).value),
+          search,
           fieldIds: idList(fieldIds),
           negated: c.op === '!~',
         };
@@ -1153,7 +1343,7 @@ class Binder {
           related: {
             relation: 'timeEntry',
             on: 'comment',
-            test: { kind: 'words', text: String(content(c.value).value) },
+            test: { kind: 'words', search: textSearch(c.value, label(field)) },
           },
           quantifier: c.op === '!~' ? 'none' : 'some',
         };

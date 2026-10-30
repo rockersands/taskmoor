@@ -419,7 +419,7 @@ export const OPERATIONS: readonly Operation[] = [
     tag: 'Search',
     summary: 'Run a query, a page at a time',
     description:
-      'The query language of the search page. Pages follow `next`; the first page carries a count (capped) unless asked not to.',
+      'The query language of the search page. Pages follow `next`; the first page carries a count unless asked not to: exact up to 10,000, then an estimate within 10% (`approximate`) or a lower bound.',
     query: searchInput,
     paged: true,
     responses: {
@@ -429,7 +429,7 @@ export const OPERATIONS: readonly Operation[] = [
           .object({
             tickets: z.array(s.searchTicket),
             next: s.next,
-            total: z.object({ count: z.number().int(), exact: z.boolean() }).loose().optional(),
+            total: s.searchTotal.optional(),
           })
           .loose(),
       },
@@ -448,7 +448,13 @@ export const OPERATIONS: readonly Operation[] = [
     responses: {
       200: {
         description: 'A page of tickets.',
-        schema: z.object({ tickets: z.array(s.searchTicket), next: s.next }).loose(),
+        schema: z
+          .object({
+            tickets: z.array(s.searchTicket),
+            next: s.next,
+            total: s.searchTotal.optional(),
+          })
+          .loose(),
       },
     },
   }),

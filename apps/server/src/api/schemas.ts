@@ -103,6 +103,23 @@ export const next = nullable(z.string()).meta({
   description: 'The cursor of the next page; null on the last one.',
 });
 
+/** How many tickets a query finds (M1-040, ADR-069). */
+export const searchTotal = z
+  .object({
+    count: z.number().int(),
+    exact: z.boolean().meta({ description: 'The count is exact.' }),
+    approximate: z.boolean().optional().meta({
+      description:
+        'The count is an estimate, within 10% of the true count 99 times in 100. With neither flag, the count is a lower bound: there are more.',
+    }),
+  })
+  .loose()
+  .meta({
+    id: 'SearchTotal',
+    description:
+      'Exact up to 10,000; beyond, an estimate from a sample, or "more than 10,000" when no sample is precise enough.',
+  });
+
 /** The cursor of lists that page by id (comments, time entries): the last id of the page. */
 export const nextId = nullable(z.number().int()).meta({
   description: 'The cursor of the next page (an id); null on the last one.',

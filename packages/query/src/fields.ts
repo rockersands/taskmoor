@@ -26,7 +26,9 @@ export type SystemType =
   | 'option'
   | 'sprint'
   | 'attachments'
-  | 'savedSearch';
+  | 'savedSearch'
+  /** How well a ticket matches the query's text searches (M1-040): only ORDER BY takes it. */
+  | 'relevance';
 
 export type CustomType =
   | 'text'
@@ -111,6 +113,7 @@ export const OPERATORS_BY_TYPE: Readonly<Record<FieldType, readonly OperatorFami
   sprint: ALL,
   attachments: ['empty'],
   savedSearch: ALL,
+  relevance: [],
 };
 
 export const takes = (field: Field, family: OperatorFamily): boolean =>
@@ -184,6 +187,8 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
   system({ name: 'comment', type: 'text', history: null }),
   // The master text field: summary, description, environment, comments, text custom fields.
   system({ name: 'text', type: 'text', history: null }),
+  // Ordering only: the best matches of the query's text searches first (M1-040; QRY-007).
+  system({ name: 'relevance', type: 'relevance', history: null, sortable: true }),
   system({
     name: 'assignee',
     type: 'user',

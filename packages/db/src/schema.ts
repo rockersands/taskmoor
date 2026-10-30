@@ -371,7 +371,17 @@ export interface TicketTable {
   fields: ColumnType<Record<string, JsonValue>, string | undefined, string>;
   /** Who besides track browsing may see it (M1-020); null for everyone who browses the track. */
   visibility_level_id: ColumnType<number | null, number | null | undefined, number | null>;
+  /** The stemmed words of the summary, description and environment, kept by Postgres (M1-040). */
+  summary_words: SearchWords;
+  description_words: SearchWords;
+  environment_words: SearchWords;
 }
+
+/**
+ * A text's words as Postgres indexes them (`tsvector` in the `taskmoor_search` configuration,
+ * M1-040): a generated column, never written.
+ */
+export type SearchWords = ColumnType<string | null, never, never>;
 
 /** A rich text field's text as last written in another format (M1-017, IMP-008). */
 export interface TicketTextOriginalTable {
@@ -964,6 +974,8 @@ export interface TicketCommentTable {
   edited_by: number | null;
   deleted_at: Timestamp | null;
   deleted_by: number | null;
+  /** The stemmed words of the body (M1-040). */
+  body_words: SearchWords;
 }
 
 /** An earlier state of a comment, kept when it was edited (CORE-020 (3)). */

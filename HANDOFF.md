@@ -109,6 +109,92 @@ ADR-031 has a third implementation section; no migration.
 - **Pending:** the fresh-VM install with real DNS, and `install.ps1` (no PowerShell on this
   Mac).
 
+## Side session 2026-10-30: M1-040 full-text search
+
+Built on the branch `claude/gracious-meninsky-4dae8f` in a side session while the main session
+did M1-049 and M1-065 (merged in); the main session merges it after its own gate. ADR-069
+(065 to 068 were taken), sections in ADR-010 ("Text search (M1-040)") and ADR-011 ("Changes");
+migration **0057** `0057_full_text_search.ts`.
+
+- **Words** (migration 0057): `taskmoor_search` text search configuration (English Snowball,
+  no stop words), `taskmoor_document_text(jsonb)` (a document's text, marks joined, blocks
+  apart), stored generated columns `ticket.summary_words`, `description_words`,
+  `environment_words`, `ticket_comment.body_words` with GIN indexes over live rows (they replace
+  0043's `simple` expression indexes of the same names), `v_text_words_idx` on custom text
+  values, `pg_trgm` with trigram indexes on summaries and `v_text`. Schema type `SearchWords`
+  (never written). The schema snapshot now shows generated columns' expressions. Upgrade seed
+  `0057_full_text_search` checks the words of a ticket and a comment.
+- **Syntax** (`packages/query/src/text.ts`, `parseTextSearch`; spec 01b 1.8): words ANDed,
+  phrases, trailing `*`, `?` (at most two a word), `term~` (one edit), `-term`, backslash
+  escapes, and patterns (`*` anywhere but the end: `*Exception`) on summaries and text fields
+  (refused on description, environment, comment and history; `text ~` applies them to summaries
+  and text fields with a warning). The resolver refuses what cannot run at the value's
+  position. **Patterns are an extension beyond spec 1.8** (ADR-011 planned `pg_trgm` for
+  substring search on short text): the user may want to confirm or drop them.
+- **Compile** (`search/text.ts`, `search/compile.ts`): one `to_tsquery('taskmoor_search', $n)`
+  parameter per search with quoted operands; `?` and fuzzy words expand into the words they
+  stand for and are read by probing the word index once per word (`matchesFrom`, a fenced `LATERAL`
+  subquery per word) into an id
+  array (`k.id = ANY(ARRAY(...))`), because the planner takes an OR of hundreds of unknown
+  words for most of the table. `text ~` has two forms chosen in `bind.ts` `textForms` from an
+  `EXPLAIN` of the set form (`perRow`): a set of ids (`k.id IN (... UNION ALL ...)`), or an OR
+  tested per row for a page from max(5,000, 0.3% of tickets) expected matches, for a count from
+  max(20,000, sqrt(10,000 · tickets / 4)), and when ordering by relevance from max(5,000, a
+  quarter of the tickets) (Postgres estimates a UNION ALL's distinct ids at 200, so the set form
+  always reads every match first). The count and sample statements are compiled with
+  `purpose: 'count'`.
+  Searches of several words or a phrase are counted in the word index when bound
+  (`countInIndex`, table scans off for that statement, up to the page threshold); few matches
+  start from the index (`fromIndex` on `words` conditions, the set form of `text ~`), because the
+  planner takes words for independent. The comment branch reads each comment's track by key (`commentReadableSql` takes a `track`
+  expression now; `CompileOptions.commentsOf`, passed by search, boards and webhooks). A
+  condition tested on a few known tickets passes `rows: true` (webhooks do), which keeps every
+  text search a test of the row instead of a set of all matches in the workspace.
+- **`ORDER BY relevance`**: a system field of type `relevance` (no operators; refused without a
+  text search that must match). Weighted `ts_rank` (summary 1, description 0.4, environment
+  0.2, custom 0.4, best readable comment 0.2), negated `float8`: ascending (the default) puts the
+  best first. Keyset cursors carry it.
+- **Counts** (`search/count.ts`): exact to 10,000, then an estimate from a `TABLESAMPLE SYSTEM`
+  block sample (mean matches per block times the table's current blocks; given only when its
+  standard error is at most 3.5%, so within 10% 99 times in 100; the sample grows once, to at
+  most 500,000 rows), else "more than 10,000". `total: { count, exact, approximate? }` in the
+  search route, the REST API contract (`SearchTotal`, both search operations; OpenAPI document,
+  reference and SDK regenerated), the web ("About 123,456 tickets") and subscription emails
+  ("about"). Estimates are cached per process for `TASKMOOR_COUNT_CACHE_SECONDS` (60) per
+  statement and parameters, dropped when more tickets changed than 2% of the count.
+- **Tests**: `packages/query/src/text.test.ts` (forms, escapes, refusals, a print/parse
+  property), 12 new conformance Text cases (text 152 of 152), `search/text.test.ts`
+  (expansions, quoting, patterns), `search/text.run.test.ts` (QRY-007 (1), (2), (3) through the
+  API, every form on every text, comments by readability, relevance and paging, a property that
+  every search the syntax reads runs in Postgres, every Text conformance case on the server),
+  `search/count.test.ts` (estimates within 10%, the error judged and the sample grown, the
+  cache and what drops it), text plans in `plans.test.ts` (`__golden__/plans-text-pg16.json`),
+  3 golden statements in `compile.test.ts` (its fuzz property compares a text search with one
+  of the same shape), `search/text.large.test.ts` (`TASKMOOR_LARGE_TEXT=1`, size from
+  `TASKMOOR_LARGE_TEXT_TICKETS`), web tests for the estimated total.
+- **Fixed on the way:** `apps/server/src/upgrade.test.ts` seeded every release's rows after
+  migrating straight to the third-newest migration; with 0057 that start passed 0055 (no
+  default workspace) and the 0002 seed failed. It now seeds each migration's rows right after
+  it, as `packages/db` does.
+- **Measured** (`text.large.test.ts`, 2026-10-30, load average 5 to 21 from other sessions;
+  ADR-069 "Measurements"): at 200,000 tickets every first page under 300 ms (slowest:
+  relevance over a word in 42% of tickets, 205 ms) and every estimate within 3.8%; at
+  **1,000,000 tickets** every first page under 300 ms (fuzzy word 179 ms, comment search 78 ms,
+  the rest under 27 ms) except `ORDER BY relevance` on common words (821 ms over 424,000
+  matches, 1,541 ms over 48,000), every estimate within 5.4%, counts 1 to 902 ms (a text search
+  with another condition walks to 10,001 matches before sampling).
+- **Decision for the user:** `ORDER BY relevance` ranks every match, so a common word costs in
+  proportion (about 10 s at 10M for a word in 40% of tickets). Proposed: rank only the 10,000
+  most recently updated matches when there are more, and say so in the answer. Not built.
+- **Pending (not blocking):** the done-when "p95 < 300 ms at 10M tickets" (no 10M dataset on
+  this Mac, which held 1M; M1-117 should load text as `text.large.test.ts` does and run its
+  queries; relevance over common words is already over budget at 1M, see above). Backup
+  and restore of the new function, configuration and generated columns are untested here (no
+  `pg_dump` on this Mac; the backup tests skip). Not built: changing the site language (alter
+  `taskmoor_search`, rewrite the word columns), relevance from comments and text fields under
+  `text ~`, full paragraph text (text fields still index a paragraph's first 255 characters),
+  `pg_trgm` for autocomplete.
+
 ## 2026-10-30: M1-111 frontend kit
 
 ADR-031 has a second implementation section; no migration.

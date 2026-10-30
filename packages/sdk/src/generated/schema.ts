@@ -300,7 +300,7 @@ export interface paths {
         };
         /**
          * Run a query, a page at a time
-         * @description The query language of the search page. Pages follow `next`; the first page carries a count (capped) unless asked not to.
+         * @description The query language of the search page. Pages follow `next`; the first page carries a count unless asked not to: exact up to 10,000, then an estimate within 10% (`approximate`) or a lower bound.
          */
         get: operations["search"];
         put?: never;
@@ -1227,6 +1227,16 @@ export interface components {
                 [key: string]: unknown;
             }) | null;
             voteCount?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Exact up to 10,000; beyond, an estimate from a sample, or "more than 10,000" when no sample is precise enough. */
+        SearchTotal: {
+            /** @description The count is an estimate, within 10% of the true count 99 times in 100. With neither flag, the count is a lower bound: there are more. */
+            approximate?: boolean;
+            count: number;
+            /** @description The count is exact. */
+            exact: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -2774,12 +2784,7 @@ export interface operations {
                         /** @description The cursor of the next page; null on the last one. */
                         next: string | null;
                         tickets: components["schemas"]["SearchTicket"][];
-                        total?: {
-                            count: number;
-                            exact: boolean;
-                        } & {
-                            [key: string]: unknown;
-                        };
+                        total?: components["schemas"]["SearchTotal"];
                     } & {
                         [key: string]: unknown;
                     };
@@ -2846,6 +2851,7 @@ export interface operations {
                         /** @description The cursor of the next page; null on the last one. */
                         next: string | null;
                         tickets: components["schemas"]["SearchTicket"][];
+                        total?: components["schemas"]["SearchTotal"];
                     } & {
                         [key: string]: unknown;
                     };

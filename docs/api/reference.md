@@ -656,7 +656,7 @@ Responses:
 
 `GET /api/v1/search`, operation `search`, access: read, paged by cursor.
 
-The query language of the search page. Pages follow `next`; the first page carries a count (capped) unless asked not to.
+The query language of the search page. Pages follow `next`; the first page carries a count unless asked not to: exact up to 10,000, then an estimate within 10% (`approximate`) or a lower bound.
 
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
@@ -669,7 +669,7 @@ The query language of the search page. Pages follow `next`; the first page carri
 
 Responses:
 
-- 200: A page of the tickets the query finds, as the caller may see them. Body: `tickets` (array of [SearchTicket](#schema-searchticket)), `next` (string or null), `total` (object).
+- 200: A page of the tickets the query finds, as the caller may see them. Body: `tickets` (array of [SearchTicket](#schema-searchticket)), `next` (string or null), `total` ([SearchTotal](#schema-searchtotal)).
 - 400: The request is not valid: see `error` and, for fields, `fields`.
 - 401: No session or token, or an expired one.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
@@ -693,7 +693,7 @@ Body:
 
 Responses:
 
-- 200: A page of tickets. Body: `tickets` (array of [SearchTicket](#schema-searchticket)), `next` (string or null).
+- 200: A page of tickets. Body: `tickets` (array of [SearchTicket](#schema-searchticket)), `next` (string or null), `total` ([SearchTotal](#schema-searchtotal)).
 - 400: The request is not valid: see `error` and, for fields, `fields`.
 - 401: No session or token, or an expired one.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
@@ -1368,6 +1368,16 @@ A object or object.
 | `createdAt` | string | no |  |
 | `updatedAt` | string | no |  |
 | `trash` | object or null | no | Set while the ticket is in the trash. |
+
+### Schema: SearchTotal
+
+Exact up to 10,000; beyond, an estimate from a sample, or "more than 10,000" when no sample is precise enough.
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `count` | integer | yes |  |
+| `exact` | boolean | yes | The count is exact. |
+| `approximate` | boolean | no | The count is an estimate, within 10% of the true count 99 times in 100. With neither flag, the count is a lower bound: there are more. |
 
 ### Schema: SignedInUser
 

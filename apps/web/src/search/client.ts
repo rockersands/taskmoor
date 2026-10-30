@@ -28,7 +28,11 @@ export interface SearchTicket {
 export interface SearchPage {
   tickets: SearchTicket[];
   next: string | null;
-  total?: { count: number; exact: boolean };
+  /**
+   * Exact up to 10,000; beyond, an estimate within 10% (`approximate`), or a lower bound when
+   * neither is set.
+   */
+  total?: { count: number; exact: boolean; approximate?: boolean };
 }
 
 /** What the backend says of a query before it runs (`GET /api/v1/search/check`). */

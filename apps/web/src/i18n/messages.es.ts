@@ -78,6 +78,7 @@ export const messagesEs: Record<MessageId, string> = {
   'search.failed': 'La búsqueda no funcionó. Inténtalo de nuevo en un momento.',
   'search.count': '{count, plural, one {# ticket} other {# tickets}}',
   'search.countAtLeast': 'Más de {count, plural, one {# ticket} other {# tickets}}',
+  'search.countAbout': 'Unos {count, plural, one {# ticket} other {# tickets}}',
   'search.shown': '{count, plural, one {# ticket mostrado} other {# tickets mostrados}}',
   'search.more': 'Más resultados',
   'search.table': 'Tabla de resultados',

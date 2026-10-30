@@ -66,6 +66,7 @@ export const messagesEn = {
   'search.failed': 'The search did not work. Try again in a moment.',
   'search.count': '{count, plural, one {# ticket} other {# tickets}}',
   'search.countAtLeast': 'More than {count, plural, one {# ticket} other {# tickets}}',
+  'search.countAbout': 'About {count, plural, one {# ticket} other {# tickets}}',
   'search.shown': '{count, plural, one {# ticket} other {# tickets}} shown',
   'search.more': 'More results',
   'search.table': 'Result table',

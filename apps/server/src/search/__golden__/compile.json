@@ -255,10 +255,10 @@
       5,
       3,
       7,
-      "draft",
+      "'draft'",
       51
     ],
-    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND ((EXISTS (SELECT 1 FROM v_option v WHERE v.ticket_id = k.id AND v.field_id = $3::int) AND NOT (EXISTS (SELECT 1 FROM v_option v WHERE v.ticket_id = k.id AND v.field_id = $4::int AND v.value = $5::int))) AND EXISTS (SELECT 1 FROM v_text v WHERE v.ticket_id = k.id AND v.field_id = $6::int AND NOT (to_tsvector('simple'::regconfig, v.value) @@ plainto_tsquery('simple'::regconfig, $7)))) ORDER BY k.created_at DESC, k.id DESC LIMIT $8::int"
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND ((EXISTS (SELECT 1 FROM v_option v WHERE v.ticket_id = k.id AND v.field_id = $3::int) AND NOT (EXISTS (SELECT 1 FROM v_option v WHERE v.ticket_id = k.id AND v.field_id = $4::int AND v.value = $5::int))) AND EXISTS (SELECT 1 FROM v_text v WHERE v.ticket_id = k.id AND v.field_id = $6::int AND NOT (to_tsvector('taskmoor_search'::regconfig, v.value) @@ to_tsquery('taskmoor_search'::regconfig, $7::text)))) ORDER BY k.created_at DESC, k.id DESC LIMIT $8::int"
   },
   "Tags IN (A, B) AND status != Closed ORDER BY created DESC": {
     "anchored": true,
@@ -488,6 +488,7 @@
         3
       ],
       1,
+      "'deploy' & 'notes'",
       1,
       1,
       1,
@@ -495,7 +496,7 @@
       1,
       1,
       1,
-      "deploy notes",
+      1,
       1,
       1,
       1,
@@ -506,7 +507,152 @@
       1,
       51
     ],
-    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_comment c WHERE (c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $3\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $4 AND user_id = $5\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $6)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $7 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $8 AND user_id = $9\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $10)\n    SELECT id FROM g))))) AND to_tsvector('simple'::regconfig, jsonb_path_query_array(c.body, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $11))) OR NOT (EXISTS (SELECT 1 FROM ticket_comment c WHERE (c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $12\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $13 AND user_id = $14\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $15)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $16 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $17 AND user_id = $18\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $19)\n    SELECT id FROM g))))))))) ORDER BY k.created_at DESC, k.id DESC LIMIT $20::int"
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.id = ANY(ARRAY(SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $3::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $4::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $5\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $6 AND user_id = $7\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $8)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $9 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $10 AND user_id = $11\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $12)\n    SELECT id FROM g)))))))) OR NOT (EXISTS (SELECT 1 FROM ticket_comment c WHERE (c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $13\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $14 AND user_id = $15\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $16)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $17 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $18 AND user_id = $19\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $20)\n    SELECT id FROM g))))))))) ORDER BY k.created_at DESC, k.id DESC LIMIT $21::int"
+  },
+  "comment ~ \"release notes\" ORDER BY priority DESC, relevance ASC": {
+    "anchored": false,
+    "parameters": [
+      -1,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      51,
+      -2,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      51,
+      -3,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      3,
+      51,
+      -4,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      4,
+      51,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      "'release' & 'notes'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      51,
+      51
+    ],
+    "sql": "SELECT id, c0, c1 FROM ((SELECT k.id AS id, $1::int AS c0, (-(0.2 * coalesce((SELECT max(coalesce(ts_rank(c.body_words, to_tsquery('taskmoor_search'::regconfig, $2::text), 1), 0)) FROM ticket_comment c WHERE c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $3\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $4 AND user_id = $5\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $6)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $7 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $8 AND user_id = $9\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $10)\n    SELECT id FROM g)))))), 0)))::float8 AS c1 FROM ticket k WHERE k.workspace_id = $11::int AND k.deleted_at IS NULL AND k.track_id = ANY($12::int[]) AND k.id = ANY(ARRAY(SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $13::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $14::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $15\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $16 AND user_id = $17\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $18)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $19 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $20 AND user_id = $21\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $22)\n    SELECT id FROM g)))))))) AND k.priority_id = $23::int ORDER BY c1 ASC, k.id ASC LIMIT $24::int) UNION ALL (SELECT k.id AS id, $25::int AS c0, (-(0.2 * coalesce((SELECT max(coalesce(ts_rank(c.body_words, to_tsquery('taskmoor_search'::regconfig, $26::text), 1), 0)) FROM ticket_comment c WHERE c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $27\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $28 AND user_id = $29\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $30)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $31 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $32 AND user_id = $33\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $34)\n    SELECT id FROM g)))))), 0)))::float8 AS c1 FROM ticket k WHERE k.workspace_id = $35::int AND k.deleted_at IS NULL AND k.track_id = ANY($36::int[]) AND k.id = ANY(ARRAY(SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $37::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $38::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $39\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $40 AND user_id = $41\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $42)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $43 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $44 AND user_id = $45\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $46)\n    SELECT id FROM g)))))))) AND k.priority_id = $47::int ORDER BY c1 ASC, k.id ASC LIMIT $48::int) UNION ALL (SELECT k.id AS id, $49::int AS c0, (-(0.2 * coalesce((SELECT max(coalesce(ts_rank(c.body_words, to_tsquery('taskmoor_search'::regconfig, $50::text), 1), 0)) FROM ticket_comment c WHERE c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $51\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $52 AND user_id = $53\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $54)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $55 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $56 AND user_id = $57\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $58)\n    SELECT id FROM g)))))), 0)))::float8 AS c1 FROM ticket k WHERE k.workspace_id = $59::int AND k.deleted_at IS NULL AND k.track_id = ANY($60::int[]) AND k.id = ANY(ARRAY(SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $61::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $62::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $63\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $64 AND user_id = $65\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $66)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $67 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $68 AND user_id = $69\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $70)\n    SELECT id FROM g)))))))) AND k.priority_id = $71::int ORDER BY c1 ASC, k.id ASC LIMIT $72::int) UNION ALL (SELECT k.id AS id, $73::int AS c0, (-(0.2 * coalesce((SELECT max(coalesce(ts_rank(c.body_words, to_tsquery('taskmoor_search'::regconfig, $74::text), 1), 0)) FROM ticket_comment c WHERE c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $75\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $76 AND user_id = $77\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $78)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $79 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $80 AND user_id = $81\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $82)\n    SELECT id FROM g)))))), 0)))::float8 AS c1 FROM ticket k WHERE k.workspace_id = $83::int AND k.deleted_at IS NULL AND k.track_id = ANY($84::int[]) AND k.id = ANY(ARRAY(SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $85::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $86::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $87\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $88 AND user_id = $89\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $90)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $91 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $92 AND user_id = $93\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $94)\n    SELECT id FROM g)))))))) AND k.priority_id = $95::int ORDER BY c1 ASC, k.id ASC LIMIT $96::int) UNION ALL (SELECT k.id AS id, NULL::int AS c0, (-(0.2 * coalesce((SELECT max(coalesce(ts_rank(c.body_words, to_tsquery('taskmoor_search'::regconfig, $97::text), 1), 0)) FROM ticket_comment c WHERE c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $98\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $99 AND user_id = $100\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $101)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $102 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $103 AND user_id = $104\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $105)\n    SELECT id FROM g)))))), 0)))::float8 AS c1 FROM ticket k WHERE k.workspace_id = $106::int AND k.deleted_at IS NULL AND k.track_id = ANY($107::int[]) AND k.id = ANY(ARRAY(SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $108::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $109::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $110\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $111 AND user_id = $112\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $113)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $114 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $115 AND user_id = $116\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $117)\n    SELECT id FROM g)))))))) AND k.priority_id IS NULL ORDER BY c1 ASC, k.id ASC LIMIT $118::int)) s ORDER BY c0 DESC NULLS LAST, c1 ASC, id ASC LIMIT $119::int"
   },
   "component = Backend ORDER BY Team ASC, Reviewer DESC": {
     "anchored": false,
@@ -550,10 +696,10 @@
         2,
         3
       ],
-      "freeze",
+      "'freeze'",
       51
     ],
-    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND ((k.description IS NOT NULL AND to_tsvector('simple'::regconfig, jsonb_path_query_array(k.description, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $3)) AND k.environment IS NULL) ORDER BY k.created_at DESC, k.id DESC LIMIT $4::int"
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND ((k.description IS NOT NULL AND k.description_words @@ to_tsquery('taskmoor_search'::regconfig, $3::text)) AND k.environment IS NULL) ORDER BY k.created_at DESC, k.id DESC LIMIT $4::int"
   },
   "due <= 2026-10-31 ORDER BY due ASC": {
     "anchored": false,
@@ -892,12 +1038,44 @@
         3
       ],
       "summary",
-      "login",
+      "'login'",
       "description",
       "2026-10-01T00:00:00.000Z",
       51
     ],
-    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND to_tsvector('simple'::regconfig, h.to_value) @@ plainto_tsquery('simple'::regconfig, $4))) AND EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $5::text AND (h.from_value IS NOT NULL OR h.at > k.created_at) AND h.at < $6::timestamptz))) ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int"
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND to_tsvector('taskmoor_search'::regconfig, h.to_value) @@ to_tsquery('taskmoor_search'::regconfig, $4::text))) AND EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $5::text AND (h.from_value IS NOT NULL OR h.at > k.created_at) AND h.at < $6::timestamptz))) ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int"
+  },
+  "summary ~ \"*Exception\" AND text ~ \"\\\"login failed\\\" log* -password\"": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "%Exception%",
+      1,
+      "'login failed' & 'log':* & !'password'",
+      "'login failed' & 'log':* & !'password'",
+      "'login failed' & 'log':* & !'password'",
+      1,
+      "'login failed' & 'log':* & !'password'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      [
+        7
+      ],
+      "'login failed' & 'log':* & !'password'",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.summary ILIKE $3::text AND k.id IN (SELECT t.id FROM ticket t WHERE (t.workspace_id = $4::int AND t.deleted_at IS NULL AND (t.summary_words @@ to_tsquery('taskmoor_search'::regconfig, $5::text) OR t.description_words @@ to_tsquery('taskmoor_search'::regconfig, $6::text) OR t.environment_words @@ to_tsquery('taskmoor_search'::regconfig, $7::text))) UNION ALL SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $8::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $9::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $10\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $11 AND user_id = $12\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $13)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $14 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $15 AND user_id = $16\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $17)\n    SELECT id FROM g)))))) UNION ALL SELECT v.ticket_id FROM v_text v WHERE (v.field_id = ANY($18::int[]) AND to_tsvector('taskmoor_search'::regconfig, v.value) @@ to_tsquery('taskmoor_search'::regconfig, $19::text)))) ORDER BY k.created_at DESC, k.id DESC LIMIT $20::int"
   },
   "summary ~ \"login form\" ORDER BY created DESC": {
     "anchored": false,
@@ -908,10 +1086,11 @@
         2,
         3
       ],
-      "login form",
+      1,
+      "'login' & 'form'",
       51
     ],
-    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND to_tsvector('simple'::regconfig, k.summary) @@ plainto_tsquery('simple'::regconfig, $3) ORDER BY k.created_at DESC, k.id DESC LIMIT $4::int"
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND k.id = ANY(ARRAY(SELECT t.id FROM ticket t WHERE (t.workspace_id = $3::int AND t.deleted_at IS NULL AND t.summary_words @@ to_tsquery('taskmoor_search'::regconfig, $4::text)))) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
   },
   "text ~ cookies": {
     "anchored": false,
@@ -922,9 +1101,12 @@
         2,
         3
       ],
-      "cookies",
-      "cookies",
-      "cookies",
+      1,
+      "'cookies'",
+      "'cookies'",
+      "'cookies'",
+      1,
+      "'cookies'",
       1,
       1,
       1,
@@ -933,14 +1115,49 @@
       1,
       1,
       1,
-      "cookies",
       [
         7
       ],
-      "cookies",
+      "'cookies'",
       51
     ],
-    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (to_tsvector('simple'::regconfig, k.summary) @@ plainto_tsquery('simple'::regconfig, $3) OR to_tsvector('simple'::regconfig, jsonb_path_query_array(k.description, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $4) OR to_tsvector('simple'::regconfig, jsonb_path_query_array(k.environment, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $5) OR EXISTS (SELECT 1 FROM ticket_comment c WHERE (c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $6\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $7 AND user_id = $8\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $9)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $10 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $11 AND user_id = $12\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $13)\n    SELECT id FROM g))))) AND to_tsvector('simple'::regconfig, jsonb_path_query_array(c.body, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $14))) OR EXISTS (SELECT 1 FROM v_text v WHERE v.ticket_id = k.id AND v.field_id = ANY($15::int[]) AND to_tsvector('simple'::regconfig, v.value) @@ plainto_tsquery('simple'::regconfig, $16))) ORDER BY k.created_at DESC, k.id DESC LIMIT $17::int"
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND k.id IN (SELECT t.id FROM ticket t WHERE (t.workspace_id = $3::int AND t.deleted_at IS NULL AND (t.summary_words @@ to_tsquery('taskmoor_search'::regconfig, $4::text) OR t.description_words @@ to_tsquery('taskmoor_search'::regconfig, $5::text) OR t.environment_words @@ to_tsquery('taskmoor_search'::regconfig, $6::text))) UNION ALL SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $7::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $8::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $9\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $10 AND user_id = $11\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $12)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $13 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $14 AND user_id = $15\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $16)\n    SELECT id FROM g)))))) UNION ALL SELECT v.ticket_id FROM v_text v WHERE (v.field_id = ANY($17::int[]) AND to_tsvector('taskmoor_search'::regconfig, v.value) @@ to_tsquery('taskmoor_search'::regconfig, $18::text))) ORDER BY k.created_at DESC, k.id DESC LIMIT $19::int"
+  },
+  "text ~ deploy AND Notes ~ \"*draft*\" ORDER BY relevance": {
+    "anchored": false,
+    "parameters": [
+      "'deploy'",
+      "'deploy'",
+      "'deploy'",
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      1,
+      "'deploy'",
+      "'deploy'",
+      "'deploy'",
+      1,
+      "'deploy'",
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      [
+        7
+      ],
+      "'deploy'",
+      7,
+      "%draft%",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (-(1 * coalesce(ts_rank(k.summary_words, to_tsquery('taskmoor_search'::regconfig, $1::text), 1), 0) + 0.4 * coalesce(ts_rank(k.description_words, to_tsquery('taskmoor_search'::regconfig, $2::text), 1), 0) + 0.2 * coalesce(ts_rank(k.environment_words, to_tsquery('taskmoor_search'::regconfig, $3::text), 1), 0)))::float8 AS c0 FROM ticket k WHERE k.workspace_id = $4::int AND k.deleted_at IS NULL AND k.track_id = ANY($5::int[]) AND (k.id IN (SELECT t.id FROM ticket t WHERE (t.workspace_id = $6::int AND t.deleted_at IS NULL AND (t.summary_words @@ to_tsquery('taskmoor_search'::regconfig, $7::text) OR t.description_words @@ to_tsquery('taskmoor_search'::regconfig, $8::text) OR t.environment_words @@ to_tsquery('taskmoor_search'::regconfig, $9::text))) UNION ALL SELECT c.ticket_id FROM ticket_comment c WHERE (c.workspace_id = $10::int AND c.body_words @@ to_tsquery('taskmoor_search'::regconfig, $11::text) AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $12\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $13 AND user_id = $14\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $15)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)\n             AND (a.user_id = $16 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $17 AND user_id = $18\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $19)\n    SELECT id FROM g)))))) UNION ALL SELECT v.ticket_id FROM v_text v WHERE (v.field_id = ANY($20::int[]) AND to_tsvector('taskmoor_search'::regconfig, v.value) @@ to_tsquery('taskmoor_search'::regconfig, $21::text))) AND EXISTS (SELECT 1 FROM v_text v WHERE v.ticket_id = k.id AND v.field_id = $22::int AND v.value ILIKE $23::text)) ORDER BY c0 ASC, k.id ASC LIMIT $24::int"
   },
   "ticketLink WAS ABC-1 OR ticketLinkType CHANGED FROM Blocks": {
     "anchored": false,
@@ -1078,10 +1295,10 @@
         2,
         3
       ],
-      "deploy",
+      "'deploy'",
       "2026-10-01",
       51
     ],
-    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM time_entry r WHERE (r.ticket_id = k.id AND r.visible_role_id IS NULL AND r.visible_group_id IS NULL AND to_tsvector('simple'::regconfig, r.description) @@ plainto_tsquery('simple'::regconfig, $3))) OR EXISTS (SELECT 1 FROM time_entry r WHERE (r.ticket_id = k.id AND r.visible_role_id IS NULL AND r.visible_group_id IS NULL AND (r.started_at AT TIME ZONE 'UTC')::date = $4::date))) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM time_entry r WHERE (r.ticket_id = k.id AND r.visible_role_id IS NULL AND r.visible_group_id IS NULL AND to_tsvector('taskmoor_search'::regconfig, r.description) @@ to_tsquery('taskmoor_search'::regconfig, $3::text))) OR EXISTS (SELECT 1 FROM time_entry r WHERE (r.ticket_id = k.id AND r.visible_role_id IS NULL AND r.visible_group_id IS NULL AND (r.started_at AT TIME ZONE 'UTC')::date = $4::date))) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
   }
 }

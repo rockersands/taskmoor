@@ -183,12 +183,11 @@ added (absolute since 2026-10-12, `docs/plan/decisions.csv`).
   `In Progress`, `Done`. Ordering comparisons on priorities mean "more urgent" (`priority >
   High`), on releases the track's release order; `hierarchyLevel` compares level numbers.
   Formula fields (M1-013) search as their output, through the side table it is kept in.
-- **Text (`~`, `!~`) until M1-040:** every word of the value must occur, in any order, case
-  folded, without stemming (`simple` configuration): the summary, the text of description and
-  environment documents and comment bodies through word indexes (GIN on the compiler's own
-  expressions, so the planner matches them), custom text fields through their side rows;
-  `text ~` covers all of those. Phrases, wildcards, stemming, ranking and an index on custom
-  text values are M1-040.
+- **Text (`~`, `!~`) until M1-040** (replaced since, see "Text search (M1-040)"): every word
+  of the value must occur, in any order, case folded, without stemming (`simple`
+  configuration): the summary, the text of description and environment documents and comment
+  bodies through word indexes (GIN on the compiler's own expressions, so the planner matches
+  them), custom text fields through their side rows; `text ~` covers all of those.
 - **Refused for now, with a message that says why:** `WAS` and `CHANGED` (M1-039; built since, see "History operators (M1-039)"),
   `lastViewed` (not recorded yet), fields of modules not built (boards and sprints, service
   tracks, journeys, saved searches), functions other than `currentUser()` and the date
@@ -206,7 +205,7 @@ added (absolute since 2026-10-12, `docs/plan/decisions.csv`).
   order (base64url JSON), refused for any other order. One direction and no empty values: a
   row comparison `(k.created_at, k.id) < ($1, $2)` the index serves; otherwise the expanded
   form. Instants travel as Postgres text, so microseconds survive. The first page also counts
-  matches up to 10,000 (`total: { count, exact }`); approximate counts are M1-040.
+  matches up to 10,000 (`total: { count, exact }`); beyond it an estimate since M1-040 (ADR-069).
 - **Driving from a side table** works as the spike found (created order, or the value order of
   a number, date or date-time field the query also filters), with two production details: one
   value is an equality, not `= ANY(array)`, so `(field_id, value, created_at)` still yields
@@ -500,6 +499,22 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
 - **Conformance:** history 239 to 254 cases, all passing (new: `FROM`/`TO EMPTY`, `BY
   membersOf()`, the refusals above); the parser and resolver suite 2,409 of 2,423. On the
   server every history case runs except the ten on `sprint` and `savedSearch`.
+
+## Text search (M1-040)
+
+Decided in ADR-069; what changed here: `~` and `!~` read the search syntax of spec 01b section
+1.8 (`packages/query/src/text.ts`; the resolver refuses a search that cannot run at the value's
+position), and compile to `@@ to_tsquery('taskmoor_search', $n)` over stored word columns
+(`summary_words`, `description_words`, `environment_words`, `body_words`; migration 0057) and an
+expression index on custom text values, with `ILIKE` for patterns on summaries and text fields
+(trigram indexes). The tsquery is one parameter whose operands the server quotes; the fuzz
+property now compares a text search's statement with that of a value of the same shape (its
+letters and digits changed), since patterns add conditions. `?` and fuzzy words expand into the
+words they stand for, pruned at bind time to the words that occur. `text ~` takes one of two
+forms by the planner's estimate of its matches: a set of ids (`k.id IN (... UNION ALL ...)`)
+for few, an OR tested per row for many. `ORDER BY relevance` is a key like any other (a negated
+`float8` rank, so cursors carry it); counts beyond 10,000 are estimated from block samples
+(`search/count.ts`). Plan goldens: `search/__golden__/plans-text-pg16.json`.
 
 ## Options considered
 

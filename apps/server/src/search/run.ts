@@ -14,6 +14,7 @@ import type { Catalog } from '../fields/catalog';
 import { commentReadableSql } from '../tickets/comments';
 import { bindPlan } from './bind';
 import { type CompiledSearch, type Cursor, compileSearch, type PageRow } from './compile';
+import { COUNT_CAP, countMatches, type Total } from './count';
 import type { Bound, Scalar } from './model';
 import { type ExpandOptions, expandSavedSearches } from './saved';
 
@@ -28,8 +29,7 @@ type Db = Kysely<Database> | Transaction<Database>;
 /** The default search timeout (QRY-010: 30 s unless the operator sets another). */
 export const DEFAULT_QUERY_TIMEOUT_MS = 30_000;
 
-/** Counts stop here: the total reads "at least 10,000" beyond (approximate counts: M1-040). */
-export const COUNT_CAP = 10_000;
+export { COUNT_CAP } from './count';
 
 export interface PrepareInput {
   db: Db;
@@ -95,6 +95,7 @@ export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
     filter: input.filter.sql,
     tracks: input.filter.tracks,
     comments: commentReadableSql(input.workspaceId, input.currentUserId),
+    commentsOf: (track) => commentReadableSql(input.workspaceId, input.currentUserId, track),
     ...(input.anchor === undefined ? {} : { anchor: input.anchor }),
     ...(input.branches === undefined ? {} : { branches: input.branches }),
   });
@@ -216,10 +217,13 @@ export async function readOnly<T>(
 export interface PageResult {
   ids: number[];
   next: string | null;
-  total?: { count: number; exact: boolean };
+  total?: Total;
 }
 
-/** One page of ids after `after`, and the total when asked. */
+/**
+ * One page of ids after `after`, and the total when asked: exact up to the cap, beyond it an
+ * estimate within 10% (`count.ts`).
+ */
 export async function runPage(
   db: Kysely<Database>,
   compiled: CompiledSearch,
@@ -240,10 +244,7 @@ export async function runPage(
       next: rows.length > options.limit && last ? encodeCursor(compiled, last) : null,
     };
     if (options.count) {
-      const cap = options.countCap ?? COUNT_CAP;
-      const counted = await compiled.count(cap + 1).execute(trx);
-      const n = counted.rows[0]?.n ?? 0;
-      result.total = { count: Math.min(n, cap), exact: n <= cap };
+      result.total = await countMatches(trx, compiled, options.countCap ?? COUNT_CAP);
     }
     return result;
   });
