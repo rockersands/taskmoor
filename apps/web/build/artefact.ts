@@ -15,7 +15,7 @@ import {
 } from '../../../packages/webconfig/src/index';
 
 /**
- * The frontend build as a versioned artefact (M1-105, ADR-065). Every production build of the
+ * The frontend build as a versioned artefact (M1-105, ADR-066). Every production build of the
  * app goes through this plugin, which
  * - refuses to bundle server code: no module from a server-side workspace package, none of the
  *   third-party packages only they depend on, no Node built-in;

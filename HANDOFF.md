@@ -16,8 +16,8 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 
 ## Side session 2026-10-30: M1-105 static frontend artefact
 
-Built on the branch `claude/nifty-hermann-b572d0` in a side session; ADR-065 (renumber at merge
-if another branch took 065); no migration; new package `packages/webconfig`.
+Built on the branch `claude/nifty-hermann-b572d0` in a side session; ADR-066 (065 went to M1-049 on main; renumber
+at merge if another branch took 066); no migration; new package `packages/webconfig`.
 
 - **Artefact:** `pnpm build` writes `apps/web/dist` with `version.json` (name
   `taskmoor-web`, the version from `TASKMOOR_VERSION`, every file with size and SHA-256);
@@ -245,6 +245,12 @@ stop (CI is the gate).
   every number is its query's search count; e2e `track-summary.spec.ts`). `#/tracks` itself is
   still the placeholder the shell tests use. Public dashboards open only signed in on the web for
   now (the API serves anonymous visitors).
+- **M1-049 list and calendar views** (ADR-065; no migration): `routes/list-views.ts`
+  (`POST /search/format-rules`, `GET /tracks/:keyOrId/calendar`), `tracks/lookup.ts`
+  (shared track lookup); web `apps/web/src/list` (`ListPage`, groups from the
+  two-dimensional report with `y=track`; rules and columns in localStorage) and
+  `apps/web/src/calendar` (`CalendarPage`), `styles/views.css`; `ResultTable` takes a
+  `format` callback. e2e `list-calendar.spec.ts`.
 - **M1-048 timeline** (ADR-064; no migration): `routes/timeline.ts` (one read with
   recursive roll-ups over the whole track), `apps/web/src/timeline` (`TimelinePage` at
   `#/tracks/<KEY>/timeline`, `styles/timeline.css`); rescheduling is the ticket PATCH.

@@ -10,7 +10,7 @@ const apiProxy = process.env.VITE_API_PROXY ?? 'http://127.0.0.1:8080';
 const proxy = { '/api': { target: apiProxy, changeOrigin: false, ws: true } };
 
 export default defineConfig({
-  // The build is the versioned artefact the backend image ships (M1-105, ADR-065).
+  // The build is the versioned artefact the backend image ships (M1-105, ADR-066).
   plugins: [react(), taskmoorArtefact({ root: fileURLToPath(new URL('../../', import.meta.url)) })],
   // Relative asset URLs, so the built frontend works from any folder on any web host.
   base: './',

@@ -1,5 +1,5 @@
 /**
- * The frontend artefact's manifest (M1-105, ADR-065): `version.json` next to index.html names
+ * The frontend artefact's manifest (M1-105, ADR-066): `version.json` next to index.html names
  * the artefact, its version, which is the backend's version it was built with, and every file
  * with its size and SHA-256. index.html is listed as built, before its slot is filled.
  */

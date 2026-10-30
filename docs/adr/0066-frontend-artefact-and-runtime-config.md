@@ -1,4 +1,4 @@
-# ADR-065: The frontend as a versioned artefact with a runtime-config slot and two routing modes
+# ADR-066: The frontend as a versioned artefact with a runtime-config slot and two routing modes
 
 - Status: Accepted
 - Date: 2026-10-30

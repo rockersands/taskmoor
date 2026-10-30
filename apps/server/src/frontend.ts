@@ -32,7 +32,7 @@ export function basePathOf(publicUrl: string): string {
 
 /**
  * Reads the artefact in a web directory and checks it can run with this backend: an index.html
- * with the runtime-config slot, and a manifest of this very version (M1-105, ADR-065).
+ * with the runtime-config slot, and a manifest of this very version (M1-105, ADR-066).
  */
 export function checkArtefact(webDir: string, version: string): { template: string } {
   const root = resolve(webDir);

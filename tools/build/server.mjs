@@ -5,7 +5,7 @@
 // Only pg's optional native binding stays external; everything else is inlined.
 //
 // The bundle carries the version from TASKMOOR_VERSION, as the frontend artefact does
-// (M1-105, ADR-065); `pnpm build` runs this after the frontend build and stops when the two
+// (M1-105, ADR-066); `pnpm build` runs this after the frontend build and stops when the two
 // disagree, so a server never ships next to a frontend of another version.
 
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';

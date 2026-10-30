@@ -1,5 +1,5 @@
 /**
- * The public runtime configuration of the static frontend (M1-105, ADR-065). It lives in a slot
+ * The public runtime configuration of the static frontend (M1-105, ADR-066). It lives in a slot
  * in the built index.html, a JSON data block the page reads before anything else runs, and is
  * filled where the frontend is deployed without rebuilding it: by the backend when it serves the
  * frontend itself, by the Builder's frontend kit (M1-111), or by hand on a static host.

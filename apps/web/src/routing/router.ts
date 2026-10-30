@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { runtimeConfig } from '../runtime/config';
 
 /**
- * Addresses inside the app (M1-105, ADR-065). Pages speak in routes written the way hash
+ * Addresses inside the app (M1-105, ADR-066). Pages speak in routes written the way hash
  * routing writes them, `#/boards/7?x=1` ('' is the start page), whatever the deployment uses.
  * Hash routing keeps them in the fragment and works on any host. Clean URLs write them as paths
  * below the base path (`/boards/7?x=1`); the host sends deep links to index.html, and a hash

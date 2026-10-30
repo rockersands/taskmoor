@@ -29,7 +29,7 @@ version. Addresses use hash routing (`/#/boards/7`) unless you set
 still open, so switching breaks no bookmark or email. Behind a reverse proxy that serves
 Taskmoor under a path, put that path in `PUBLIC_URL` (`https://example.com/tracker`).
 
-The same folder runs on any static host (ADR-065). Its index.html carries the public runtime
+The same folder runs on any static host (ADR-066). Its index.html carries the public runtime
 configuration in a JSON block you fill without rebuilding; only these keys are accepted:
 
 ```html

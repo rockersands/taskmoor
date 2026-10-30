@@ -9,6 +9,7 @@ import { BoardPage } from './boards/BoardPage';
 import { BoardSettingsPage } from './boards/BoardSettingsPage';
 import { BoardsPage } from './boards/BoardsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
+import { CalendarPage } from './calendar/CalendarPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
 import { DashboardPage } from './dashboards/DashboardPage';
@@ -20,6 +21,7 @@ import { HomePage } from './home/HomePage';
 import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { InboxPage } from './inbox/InboxPage';
+import { ListPage } from './list/ListPage';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { GroupsPage } from './people/GroupsPage';
 import { UsersPage } from './people/UsersPage';
@@ -129,6 +131,10 @@ const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
+/** A track's calendar (M1-049). */
+const TRACK_CALENDAR = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/calendar(?:[/?]|$)/;
+/** A track's list (M1-049). */
+const TRACK_LIST = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/list(?:[/?]|$)/;
 /** A track's timeline (M1-048). */
 const TRACK_TIMELINE = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/timeline(?:[/?]|$)/;
 /** Dashboards (M1-064): the list, one by id, and one as a wallboard turning to the next. */
@@ -473,6 +479,16 @@ function Pages() {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
     content = <BulkOperationPage key={id} id={id} />;
+  } else if (TRACK_CALENDAR.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_CALENDAR.exec(hash)?.[1] ?? '';
+    content = <CalendarPage key={key} trackKey={key} />;
+  } else if (TRACK_LIST.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_LIST.exec(hash)?.[1] ?? '';
+    content = <ListPage key={key} trackKey={key} />;
   } else if (TRACK_TIMELINE.test(hash)) {
     active = 'tracks';
     guarded = true;

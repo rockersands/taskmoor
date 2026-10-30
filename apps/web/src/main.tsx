@@ -27,6 +27,7 @@ import './styles/charts.css';
 import './styles/dashboards.css';
 import './styles/releases.css';
 import './styles/timeline.css';
+import './styles/views.css';
 
 // Clean URLs (M1-105): a hash link becomes its path and links stay in the page.
 router.start();
