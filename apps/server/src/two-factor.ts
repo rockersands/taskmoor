@@ -67,10 +67,29 @@ export const hasSecondFactor = (status: TwoFactorStatus) => status.totp || statu
 export interface TwoFactorPolicy {
   required: 'none' | 'site_admins' | 'everyone';
   groupIds: number[];
+  /**
+   * The organization's email domains (M1-085; IAM-004): once there is one, people whose email
+   * is at another domain are external and must use a second factor.
+   */
+  organizationDomains: string[];
+}
+
+/** The domain of an email address, lower case. */
+const domainOf = (email: string) => email.slice(email.lastIndexOf('@') + 1).toLowerCase();
+
+/**
+ * Whether a person is external: the workspace names its domains and theirs is not one of them.
+ * Service accounts (addresses under the reserved `.invalid`) never are; they do not sign in.
+ */
+export function isExternal(email: string, organizationDomains: readonly string[]): boolean {
+  if (organizationDomains.length === 0) return false;
+  const domain = domainOf(email);
+  if (domain.endsWith('.invalid')) return false;
+  return !organizationDomains.includes(domain);
 }
 
 export async function readPolicy(db: Db, workspaceId: number): Promise<TwoFactorPolicy> {
-  const [row, groups] = await Promise.all([
+  const [row, groups, domains] = await Promise.all([
     db
       .selectFrom('two_factor_policy')
       .select('required')
@@ -82,8 +101,18 @@ export async function readPolicy(db: Db, workspaceId: number): Promise<TwoFactor
       .where('workspace_id', '=', workspaceId)
       .orderBy('group_id')
       .execute(),
+    db
+      .selectFrom('organization_domain')
+      .select('domain')
+      .where('workspace_id', '=', workspaceId)
+      .orderBy('domain')
+      .execute(),
   ]);
-  return { required: row?.required ?? 'none', groupIds: groups.map((g) => g.group_id) };
+  return {
+    required: row?.required ?? 'none',
+    groupIds: groups.map((g) => g.group_id),
+    organizationDomains: domains.map((d) => d.domain),
+  };
 }
 
 /** Whether the policy requires this person to sign in with a second factor. */
@@ -95,6 +124,14 @@ export async function secondFactorRequired(
 ): Promise<boolean> {
   const policy = await readPolicy(db, workspaceId);
   if (policy.required === 'everyone') return true;
+  if (policy.organizationDomains.length > 0) {
+    const person = await db
+      .selectFrom('app_user')
+      .select('email')
+      .where('id', '=', userId)
+      .executeTakeFirst();
+    if (person && isExternal(person.email, policy.organizationDomains)) return true;
+  }
   if (policy.required === 'site_admins') {
     const global = await authorizer.globalPermissions(workspaceId, userId);
     if (global.has('site_admin')) return true;

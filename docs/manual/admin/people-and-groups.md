@@ -132,7 +132,12 @@ On **Settings** > **Security**, under **Two-factor authentication**, choose who 
 | **Everyone** | Every person |
 
 **Also required for members of these groups** adds groups (nested members included) to the
-choice above. Select **Save policy**.
+choice above.
+
+**Your organization's email domains** marks everyone else as external: list your domains, one
+per line (`example.com`), and a person whose email is at any other domain must use a second
+factor, whatever the choice above. Leave the list empty to treat everyone alike. Service
+accounts are never external. Select **Save policy**.
 
 - A person the policy covers who has no second factor sets one up the next time they sign in.
   Sessions that are already open stay open.

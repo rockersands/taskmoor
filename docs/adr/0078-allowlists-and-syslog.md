@@ -47,6 +47,11 @@ for the administrator applying a rule; ADR-006 keeps Postgres the only store.
   the newest record; the downloads have the past. Delivery is at least once: a run that fails
   after the receiver took part of a batch sends that part again.
 
+- **External people** (IAM-004): `organization_domain` lists the organization's email domains,
+  saved with the two-factor policy (`PUT /api/v1/security/two-factor`, `organizationDomains`).
+  With at least one listed, `secondFactorRequired` also covers anyone whose email domain is not
+  listed (service accounts under `.invalid` excepted).
+
 ## Options considered
 
 | Option | For | Against |
@@ -65,5 +70,8 @@ for the administrator applying a rule; ADR-006 keeps Postgres the only store.
   (`NODE_EXTRA_CA_CERTS`).
 - M2-018 (continuous SIEM streaming) can reuse the cursor and the message format, and add CEF,
   HTTPS and OpenTelemetry senders beside `sendSyslog`.
-- External-user policies by email domain (IAM-004), named in M1-085's title, are not built here:
-  they need a decision on what an external person may not do (see HANDOFF).
+- External people (IAM-004), as the user decided on 2026-10-30: a site administrator lists the
+  organization's email domains with the two-factor policy (`organization_domain`); once there
+  is one, a person whose email is at any other domain is external and must sign in with a
+  second factor. Nothing else changes for them yet; DNS verification of the domains, shorter
+  sessions and narrower access are left for later.

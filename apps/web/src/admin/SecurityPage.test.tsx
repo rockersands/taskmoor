@@ -52,10 +52,34 @@ describe('security settings: two-factor policy', () => {
     expect(calls.find((c) => c.method === 'PUT')).toEqual({
       method: 'PUT',
       path: '/security/two-factor',
-      body: { required: 'everyone', groupIds: [3] },
+      body: { required: 'everyone', groupIds: [3], organizationDomains: [] },
     });
     // Settings stays highlighted in the navigation.
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('[IAM-004] names the organization’s domains, so people at others are external', async () => {
+    const user = userEvent.setup();
+    const calls = openSecurity({
+      'GET /security/two-factor': () =>
+        jsonResponse(200, { required: 'none', groupIds: [], organizationDomains: ['example.com'] }),
+      'PUT /security/two-factor': (body) => jsonResponse(200, body),
+    });
+    const domains = await screen.findByRole('textbox', {
+      name: 'Your organization’s email domains',
+    });
+    expect(domains).toHaveValue('example.com');
+    expect(domains).toHaveAccessibleDescription(
+      /people whose email is at any other domain are external/,
+    );
+    await user.type(domains, '\n@Example.ORG, example.com');
+    await user.click(screen.getByRole('button', { name: 'Save policy' }));
+    await screen.findByText('Policy saved.');
+    expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({
+      required: 'none',
+      groupIds: [],
+      organizationDomains: ['example.com', 'example.org'],
+    });
   });
 
   it('[IAM-001] is linked from Settings for site administrators only', async () => {

@@ -99,6 +99,8 @@ export const EVENT_TYPES = {
     payload: z.object({
       required: z.enum(['none', 'site_admins', 'everyone']),
       groupIds: z.array(id),
+      /** People at other domains are external and must use two-factor (M1-085, IAM-004). */
+      organizationDomains: z.array(z.string()).optional(),
     }),
   },
 

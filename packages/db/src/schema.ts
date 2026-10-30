@@ -1895,6 +1895,15 @@ export interface IpAllowlistEntryTable {
   created_at: DefaultTimestamp;
 }
 
+/**
+ * An email domain of the organization (M1-085; IAM-004): people at any other domain are
+ * external once a workspace names one.
+ */
+export interface OrganizationDomainTable {
+  workspace_id: number;
+  domain: string;
+}
+
 /** Where audit records are forwarded over syslog, and how far it has got (M1-085). */
 export interface AuditSyslogTable {
   workspace_id: number;
@@ -2200,6 +2209,7 @@ export interface Database {
   rate_limit_policy: RateLimitPolicyTable;
   ip_allowlist: IpAllowlistTable;
   ip_allowlist_entry: IpAllowlistEntryTable;
+  organization_domain: OrganizationDomainTable;
   audit_syslog: AuditSyslogTable;
   api_usage: ApiUsageTable;
   scim_user: ScimUserTable;

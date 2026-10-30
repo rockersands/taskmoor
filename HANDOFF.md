@@ -119,9 +119,8 @@ ADR-078; migration **0062** (0060 and 0061 are reserved for M1-123 and M1-124, w
 after it: fresh databases do not mind; a long-lived one that ran 0062 first must be recreated).
 - The allowlist hook runs after authentication; `cli.mjs allowlist-off` is the way back in.
 - Syslog forwarding runs in the worker by cursor (`audit_syslog.last_seq`), at least once.
-- **Decision for the user:** external-user policies by email domain (IAM-004) are in M1-085's
-  title but not built: which domains are internal, and what may an external person not do
-  (two-factor required, shorter sessions, no admin groups)?
+- External people (IAM-004), decided by the user on 2026-10-30: anyone whose email is not at one
+  of the organization's domains (Security page) must use two-factor; nothing else differs.
 
 ## 2026-10-30: M1-066 rate limits and API usage
 

@@ -7,6 +7,9 @@ import { type Kysely, sql } from 'kysely';
  *   connect from anywhere. Off until a site administrator turns it on.
  * - `ip_allowlist_entry`: the addresses and ranges (IPv4 or IPv6, a single address or a CIDR
  *   range), with a note. No cap on entries.
+ * - `organization_domain`: the email domains of the organization (IAM-004). Once a workspace
+ *   names one, a person whose email is at any other domain is external and must sign in with a
+ *   second factor (the user's decision of 2026-10-30).
  * - `audit_syslog`: where audit records are forwarded (host, port, transport) and how far the
  *   forwarding has got (`last_seq`), so a receiver that was down gets what it missed.
  */
@@ -26,6 +29,12 @@ export async function up(db: Kysely<unknown>): Promise<void> {
       note text NOT NULL DEFAULT '' CHECK (length(note) <= 200),
       created_at timestamptz NOT NULL DEFAULT now(),
       UNIQUE (workspace_id, range)
+    )`.execute(db);
+  await sql`
+    CREATE TABLE organization_domain (
+      workspace_id integer NOT NULL REFERENCES workspace (id),
+      domain text NOT NULL CHECK (domain = lower(domain) AND length(domain) BETWEEN 3 AND 253),
+      PRIMARY KEY (workspace_id, domain)
     )`.execute(db);
   await sql`
     CREATE TABLE audit_syslog (

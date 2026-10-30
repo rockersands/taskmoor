@@ -9,6 +9,23 @@ export interface TwoFactorPolicy {
   required: 'none' | 'site_admins' | 'everyone';
   /** Members of these groups need a second factor too, whatever `required` says. */
   groupIds: number[];
+  /**
+   * The organization's email domains (M1-085; IAM-004): people at any other domain are
+   * external and need a second factor. Older servers leave it out.
+   */
+  organizationDomains?: string[];
+}
+
+/** Domains as typed: separated by spaces, commas or lines, lower case, each once. */
+export function parseDomains(text: string): string[] {
+  return [
+    ...new Set(
+      text
+        .split(/[\s,]+/)
+        .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
+        .filter((d) => d !== ''),
+    ),
+  ];
 }
 
 export interface GroupSummary {
@@ -67,6 +84,7 @@ export function SecurityPage({ client = securityClient }: SecurityPageProps) {
   );
   const [required, setRequired] = useState<TwoFactorPolicy['required']>('none');
   const [groupIds, setGroupIds] = useState<number[]>([]);
+  const [domains, setDomains] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState('');
@@ -79,6 +97,7 @@ export function SecurityPage({ client = securityClient }: SecurityPageProps) {
         if (cancelled) return;
         setRequired(policy.required);
         setGroupIds(policy.groupIds);
+        setDomains((policy.organizationDomains ?? []).join('\n'));
         setState({ status: 'loaded', policy, groups });
       },
       (e: unknown) => {
@@ -103,9 +122,14 @@ export function SecurityPage({ client = securityClient }: SecurityPageProps) {
     setError(null);
     setSaved('');
     try {
-      const policy = await client.savePolicy({ required, groupIds });
+      const policy = await client.savePolicy({
+        required,
+        groupIds,
+        organizationDomains: parseDomains(domains),
+      });
       setRequired(policy.required);
       setGroupIds(policy.groupIds);
+      setDomains((policy.organizationDomains ?? []).join('\n'));
       setSaved(t('admin.security.saved'));
     } catch {
       setError(t('admin.security.saveFailed'));
@@ -174,6 +198,20 @@ export function SecurityPage({ client = securityClient }: SecurityPageProps) {
               ))
             )}
           </fieldset>
+          <div className="form-field">
+            <label htmlFor={`${id}-domains`}>{t('admin.security.domains')}</label>
+            <textarea
+              id={`${id}-domains`}
+              rows={3}
+              value={domains}
+              spellCheck={false}
+              aria-describedby={`${id}-domains-hint`}
+              onChange={(event) => setDomains(event.target.value)}
+            />
+            <p id={`${id}-domains-hint`} className="form-hint">
+              {t('admin.security.domainsHint')}
+            </p>
+          </div>
           {error && (
             <p role="alert" className="form-error">
               {error}

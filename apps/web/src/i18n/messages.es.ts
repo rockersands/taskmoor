@@ -977,6 +977,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.security.noGroups': 'Aún no hay grupos.',
   'admin.security.groupsFailed':
     'No se pudieron leer los grupos. Inténtalo de nuevo en un momento.',
+  'admin.security.domains': 'Los dominios de correo de tu organización',
+  'admin.security.domainsHint':
+    'Uno por línea, como example.com. En cuanto indicas uno, las personas cuyo correo es de cualquier otro dominio son externas y deben usar la verificación en dos pasos. Déjalo vacío para tratar a todos por igual.',
   'admin.security.save': 'Guardar la política',
   'admin.security.saved': 'Política guardada.',
   'admin.security.saveFailed': 'No se pudo guardar la política. Inténtalo de nuevo en un momento.',

@@ -69,6 +69,17 @@ const policyBody = z
   .object({
     required: z.enum(['none', 'site_admins', 'everyone']),
     groupIds: z.array(id).max(1000).default([]),
+    /** The organization's email domains; people at others are external (IAM-004). */
+    organizationDomains: z
+      .array(
+        z
+          .string()
+          .trim()
+          .toLowerCase()
+          .regex(/^(?=.{3,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/),
+      )
+      .max(1000)
+      .optional(),
   })
   .strict();
 
@@ -694,7 +705,18 @@ export function registerTwoFactorRoutes(
         .execute();
       if (found.length !== groupIds.length) return reply.code(404).send({ error: 'not_found' });
     }
+    const before = await readPolicy(db, ws);
+    const domains = parsed.data.organizationDomains
+      ? [...new Set(parsed.data.organizationDomains)].sort()
+      : before.organizationDomains;
     await db.transaction().execute(async (trx) => {
+      await trx.deleteFrom('organization_domain').where('workspace_id', '=', ws).execute();
+      if (domains.length > 0) {
+        await trx
+          .insertInto('organization_domain')
+          .values(domains.map((domain) => ({ workspace_id: ws, domain })))
+          .execute();
+      }
       await trx
         .insertInto('two_factor_policy')
         .values({ workspace_id: ws, required: parsed.data.required, updated_at: new Date() })
@@ -717,11 +739,11 @@ export function registerTwoFactorRoutes(
         {
           type: 'two_factor_policy.updated',
           subjectId: ws,
-          payload: { required: parsed.data.required, groupIds },
+          payload: { required: parsed.data.required, groupIds, organizationDomains: domains },
         },
       );
     });
-    return { required: parsed.data.required, groupIds };
+    return { required: parsed.data.required, groupIds, organizationDomains: domains };
   });
 }
 

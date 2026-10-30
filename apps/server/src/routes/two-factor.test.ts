@@ -317,7 +317,7 @@ describe('two-factor sign-in (M1-084)', () => {
       url: '/api/v1/security/two-factor',
       payload: { required: 'everyone' },
     });
-    expect(policy.json()).toEqual({ required: 'everyone', groupIds: [] });
+    expect(policy.json()).toEqual({ required: 'everyone', groupIds: [], organizationDomains: [] });
     const first = await signIn('required@example.com');
     expect(first.json()).toMatchObject({ status: 'enrollment_required' });
     expect(sessionCookie(first)).toBe('');
@@ -389,6 +389,43 @@ describe('two-factor sign-in (M1-084)', () => {
       url: '/api/v1/security/two-factor',
       payload: { required: 'none' },
     });
+  });
+
+  it('[IAM-004] requires a second factor of external people, those outside the organization’s domains', async () => {
+    await addUser('inside@example.com');
+    await addUser('guest@partner.test');
+    const saved = await call(adminCookie, {
+      method: 'PUT',
+      url: '/api/v1/security/two-factor',
+      payload: { required: 'none', organizationDomains: [' Example.COM ', 'example.com'] },
+    });
+    expect(saved.json()).toEqual({
+      required: 'none',
+      groupIds: [],
+      organizationDomains: ['example.com'],
+    });
+    expect((await signIn('inside@example.com')).json().status).toBe('signed_in');
+    expect((await signIn('guest@partner.test')).json().status).toBe('enrollment_required');
+    // Saving the policy without domains keeps the list; an empty list clears it.
+    await call(adminCookie, {
+      method: 'PUT',
+      url: '/api/v1/security/two-factor',
+      payload: { required: 'none' },
+    });
+    expect((await signIn('guest@partner.test')).json().status).toBe('enrollment_required');
+    const cleared = await call(adminCookie, {
+      method: 'PUT',
+      url: '/api/v1/security/two-factor',
+      payload: { required: 'none', organizationDomains: [] },
+    });
+    expect(cleared.json().organizationDomains).toEqual([]);
+    expect((await signIn('guest@partner.test')).json().status).toBe('signed_in');
+    const invalid = await call(adminCookie, {
+      method: 'PUT',
+      url: '/api/v1/security/two-factor',
+      payload: { required: 'none', organizationDomains: ['not a domain'] },
+    });
+    expect(invalid.statusCode).toBe(400);
   });
 
   it('[IAM-001] needs the password to switch a factor off or renew recovery codes', async () => {

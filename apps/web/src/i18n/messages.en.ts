@@ -938,6 +938,9 @@ export const messagesEn = {
   'admin.security.groups': 'Also required for members of these groups',
   'admin.security.noGroups': 'There are no groups yet.',
   'admin.security.groupsFailed': 'The groups could not be read. Try again in a moment.',
+  'admin.security.domains': 'Your organization’s email domains',
+  'admin.security.domainsHint':
+    'One per line, such as example.com. Once you name one, people whose email is at any other domain are external and must use two-factor authentication. Leave it empty to treat everyone alike.',
   'admin.security.save': 'Save policy',
   'admin.security.saved': 'Policy saved.',
   'admin.security.saveFailed': 'The policy could not be saved. Try again in a moment.',

@@ -1134,6 +1134,7 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       ip_allowlist: "enabled AND exempt_group_ids = '{}'",
       ip_allowlist_entry: "range = '2001:db8::/32'::inet AND note = 'Office'",
       audit_syslog: "transport = 'tls' AND last_seq = 0",
+      organization_domain: "domain = 'example.com'",
     },
     seed: async (db) => {
       // An office range in IPv6 and a syslog receiver not yet sent to.
@@ -1142,6 +1143,8 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, '2001:db8::/32', 'Office')`.execute(db);
       await sql`INSERT INTO audit_syslog (workspace_id, host, port, transport)
         VALUES (1, 'siem.example.com', 6514, 'tls')`.execute(db);
+      await sql`INSERT INTO organization_domain (workspace_id, domain)
+        VALUES (1, 'example.com')`.execute(db);
     },
   },
 };
