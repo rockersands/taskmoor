@@ -11,7 +11,7 @@ sections below this one. See every change with `git log --stat 62b5a68..3182b16`
 | What | Where |
 |---|---|
 | GitHub Actions off until M1 is finished; the local `pnpm verify --e2e` is the gate | `CLAUDE.md` (Identity), `.github/workflows/*.yml` (all `workflow_dispatch` only), section "No GitHub Actions" below |
-| Install Docker (Colima) and run the image, kit and Helm checks before the next task | Section "For the next session on the Mac" below |
+| Docker (Colima) installed; the image, kit, backup-drill and Helm checks pass | Section "Docker checks on the Mac" below |
 | 33 new tasks (239 in all), reworded tasks, new dependencies | `docs/plan/backlog.csv` (M1-123 to M1-134, M2-022 to M2-037, M3-016 to M3-018, M4-014, M4-015); section "Backlog review applied" below; `pnpm next-task` |
 | The user's decisions (IP allowlists in 1.0, SIEM split, "Should" items to 2.0, English and Spanish in 1.0, clean URLs in the kits, no Actions until M1) | `docs/plan/decisions.csv` (rows dated 2026-10-30) |
 | Requirements moved or changed | `docs/specs/01b`, `01c`, `02a`, `02c` (six requirements now M2), `05b` (NFR-006 languages), `docs/specs/requirements-index.csv` |
@@ -21,22 +21,20 @@ sections below this one. See every change with `git log --stat 62b5a68..3182b16`
 What changes for the next task: M1-116 is now a Spanish translation (not "a second language");
 M1-085 keeps only a syslog audit export; M1-120 also waits for M1-123 to M1-132 and M1-134.
 
-## For the next session on the Mac: install Docker and run the image, kit and Helm checks
+## Docker checks on the Mac (2026-10-30): done
 
-Left by the cloud session on 2026-10-30 at the user's request. Do this before the next task:
-GitHub Actions is off until M1 is finished (below), so these checks have not run since M1-059.
+Asked for by the cloud session with the user. Colima, Docker (with the Compose and Buildx
+plugins), kind, Helm and kubectl (`kubernetes-cli`; Colima ships no kubectl) are installed with
+Homebrew. `~/.docker/config.json` names `/opt/homebrew/lib/docker/cli-plugins`. The VM runs with
+`colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60`, and `hello-world` ran.
+Results at 15d2659, from a clean worktree of main:
 
-1. Install a local Docker with Colima (free, open source, command line only; recommended over
-   Docker Desktop, whose licence is paid for larger companies): `brew install colima docker docker-compose docker-buildx kind
-   helm`, then link the Compose and Buildx plugins into `~/.docker/cli-plugins` as Homebrew's
-   notes say. If Homebrew or macOS asks for the user's password, ask the user.
-2. `colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60` (Rosetta runs the amd64
-   image too); check with `docker run --rm hello-world`.
-3. Run `bash tools/image/smoke.sh`, `bash tools/image/smoke-kits.sh`,
-   `bash tools/image/drill-backup.sh` and `bash tools/helm/kind-test.sh`. Fix what they find (in a commit of its own per cause), then record the
-   results here and remove this section.
-4. Note in "Notes from the Mac" how to start and stop Colima (`colima start`, `colima stop`;
-   it holds about 8 GB of memory while running).
+| Check | Result |
+|---|---|
+| `tools/image/smoke.sh` | Passed in 37 s. Image 77 MB; web-only with hash routing and clean URLs, all roles next to Postgres 16, arm64. This Mac is arm64, so amd64 was not exercised |
+| `tools/image/smoke-kits.sh` | Passed in 27 s: the bundled-Postgres and external-Postgres Compose kits reach `/ready` |
+| `tools/image/drill-backup.sh` | Passed in 21 s: backup, restore, table checksums equal, the restored administrator signs in |
+| `tools/helm/kind-test.sh` | Failed first: `helm test` ran two seconds after the pods started, before the new cluster routed the Service ("fetch failed"). Fixed in 63c7e79 (the probe retries for a minute). Then passed in 224 s: `helm test` ok, a rolling upgrade under load with 47,733 requests and none failed |
 
 ## Backlog review applied (2026-10-30)
 
@@ -518,6 +516,11 @@ stop (CI is the gate).
 
 ### Notes from the Mac
 
+- **Docker on this Mac is Colima** (free, command line). `colima start` brings it up with the
+  settings it was created with; `colima stop` frees its 8 GB of memory, and `colima status`
+  says whether it runs. The image, kit, drill and Helm scripts under `tools/` need it running.
+  Run them from a clean worktree (`git worktree add --detach <dir> origin/main`), because they
+  build from the working tree.
 - **GitHub Actions did not run** for the pushes of M1-059 and M1-060 (2026-10-29 evening): every
   job ended in seconds with "The job was not started because recent account payments have
   failed or your spending limit needs to be increased". Only the account owner can fix that
