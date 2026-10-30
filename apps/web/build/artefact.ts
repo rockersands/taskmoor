@@ -152,6 +152,9 @@ export function taskmoorArtefact(options: { root: string; env?: NodeJS.ProcessEn
   let code: ServerCode = { dirs: [], packages: new Set() };
   return {
     name: 'taskmoor-artefact',
+    // The bundle knows its own version, the one version.json names, to compare with the
+    // backend's (M1-106): every command, so development and tests see the same constant.
+    config: () => ({ define: { __TASKMOOR_WEB_VERSION__: JSON.stringify(buildVersion(env)) } }),
     configResolved(config) {
       // The app's own build only: Storybook's build names its own entry page.
       enabled = config.command === 'build' && config.build.rollupOptions.input === undefined;

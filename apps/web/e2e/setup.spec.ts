@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, devices, expect, type Page, test } from '@playwright/test';
+import { ENFORCE_BUDGETS, expectWithinBudget } from './budget';
 
 const TOKEN = 'e2e-setup-token-0123456789';
 const ADMIN = { name: 'Kalo', email: 'kalo@example.com', password: 'a long enough passphrase' };
@@ -1384,7 +1385,7 @@ async function openTicket(page: Page, key: string): Promise<number> {
 
 test('[NTF-008] a ticket opens from the local copy in under 100 ms and from the server in under 300 ms', async ({
   browser,
-}) => {
+}, testInfo) => {
   const context = await browser.newContext();
   const page = await context.newPage();
   await signInThroughApi(page.request, ADMIN);
@@ -1403,7 +1404,7 @@ test('[NTF-008] a ticket opens from the local copy in under 100 ms and from the 
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   const cold = [];
   for (let i = 0; i < 3; i++) cold.push(await openTicket(page, 'SYNC-1'));
-  expect(Math.min(...cold)).toBeLessThan(300);
+  expectWithinBudget(testInfo, Math.min(...cold), 300, 'ticket open from the server (ms)');
 
   // Warm: the local copy has it; the page shows it before the server answers.
   await page.unroute('**/api/v1/sync/**');
@@ -1415,9 +1416,10 @@ test('[NTF-008] a ticket opens from the local copy in under 100 ms and from the 
     .not.toBe('');
   const warm = [];
   for (let i = 0; i < 3; i++) warm.push(await openTicket(page, 'SYNC-1'));
-  expect(Math.min(...warm)).toBeLessThan(100);
+  expectWithinBudget(testInfo, Math.min(...warm), 100, 'ticket open from the local copy (ms)');
 
-  // A change made elsewhere reaches the local copy through the socket, within a second.
+  // A change made elsewhere reaches the local copy through the socket: within a second in the
+  // benchmark run, at all in every run.
   const edited = await page.request.patch('/api/v1/tickets/SYNC-1', {
     data: { summary: 'Opens fast, renamed' },
   });
@@ -1426,7 +1428,7 @@ test('[NTF-008] a ticket opens from the local copy in under 100 ms and from the 
   const before = await page.evaluate(() => document.documentElement.dataset.syncPosition);
   await expect
     .poll(() => page.evaluate(() => document.documentElement.dataset.syncPosition), {
-      timeout: 1500,
+      timeout: ENFORCE_BUDGETS ? 1500 : 10_000,
     })
     .not.toBe(before);
   await context.close();

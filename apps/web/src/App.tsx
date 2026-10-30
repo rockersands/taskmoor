@@ -23,6 +23,8 @@ import { I18nProvider, useT } from './i18n/I18nProvider';
 import { type Locale, resolveLocale } from './i18n/locale';
 import { InboxPage } from './inbox/InboxPage';
 import { ListPage } from './list/ListPage';
+import type { MetaClient } from './meta/client';
+import { VersionGate } from './meta/VersionGate';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { GroupsPage } from './people/GroupsPage';
 import { UsersPage } from './people/UsersPage';
@@ -609,9 +611,11 @@ export interface AppProps {
   /** A fixed session skips the backend check; tests and stories start where they need to. */
   session?: Session;
   onI18nError?: (error: Error) => void;
+  /** Where the backend's versions come from (M1-106); tests give a fixed answer. */
+  metaClient?: MetaClient;
 }
 
-export function App({ locale, session, onI18nError }: AppProps) {
+export function App({ locale, session, onI18nError, metaClient }: AppProps) {
   return (
     <I18nProvider
       locale={locale ?? resolveLocale()}
@@ -620,7 +624,9 @@ export function App({ locale, session, onI18nError }: AppProps) {
       <SessionProvider {...(session ? { session } : {})}>
         <SyncProvider>
           <PaletteCommandsProvider>
-            <Pages />
+            <VersionGate {...(metaClient ? { client: metaClient } : {})}>
+              <Pages />
+            </VersionGate>
           </PaletteCommandsProvider>
         </SyncProvider>
       </SessionProvider>

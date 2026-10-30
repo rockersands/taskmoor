@@ -122,6 +122,26 @@ as the token's owner, so they never do more than the token may; administrators c
 profile and the allowed clients on the MCP settings page, and every call is in the audit log.
 See [ADR-068](../adr/0068-mcp-server.md).
 
+## The instance and its versions
+
+`GET /api/meta` needs no sign-in. A client reads it before anything else. It gives:
+- the backend and API versions;
+- the frontend versions the backend serves (`minimum` and `recommended`);
+- how people sign in;
+- the instance's id and Ed25519 public key.
+
+Send `?nonce=` with 16 to 128 base64url characters and the instance signs it. The signature
+covers the lines `taskmoor-meta-v1`, the instance id and the nonce. `verifyInstance` in
+`@taskmoor/webconfig` checks it. A backend of release x.y serves frontends of x.y and x.(y-1).
+An older one shows "Update required", and one release behind shows an update notice. See
+[ADR-070](../adr/0070-meta-endpoint-and-version-window.md).
+
+At each release:
+1. Copy the released `openapi.json` over the baseline, so the next release is checked against
+   it.
+2. Run the previous release's frontend kit and its core end-to-end tests against the candidate
+   backend.
+
 ## Changing the API
 
 - The contract is written first, in `apps/server/src/api/operations.ts`.

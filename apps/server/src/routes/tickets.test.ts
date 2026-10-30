@@ -1,5 +1,6 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -1095,7 +1096,7 @@ describe('tickets (M1-008)', () => {
       expect(deep.body.changes).toHaveLength(100);
       const oldest = await timed('order=asc&limit=1000');
       expect(oldest.body.changes).toHaveLength(1000);
-      for (const { ms } of [first, deep, oldest]) expect(ms).toBeLessThan(300);
+      for (const { ms } of [first, deep, oldest]) expectWithinBudget(ms, 300, 'history page (ms)');
       // And the whole history, a thousand at a time.
       let pages = 0;
       let cursor = '';
@@ -1109,7 +1110,7 @@ describe('tickets (M1-008)', () => {
         cursor = `&cursor=${page.next}`;
       }
       expect(pages).toBe(21);
-      expect((performance.now() - started) / pages).toBeLessThan(300);
+      expectWithinBudget((performance.now() - started) / pages, 300, 'history page of 1,000 (ms)');
     }, 60_000);
 
     it('[CORE-022] shows the history only to those who see the ticket', async () => {

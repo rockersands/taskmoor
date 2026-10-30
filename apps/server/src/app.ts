@@ -45,6 +45,7 @@ import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerListViewRoutes } from './routes/list-views';
 import { registerMcpRoutes } from './routes/mcp';
+import { registerMetaRoutes } from './routes/meta';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -322,6 +323,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // The built-in MCP server (M1-072): tools over the REST API, as the caller.
     registerMcpRoutes(app, db, { version: deps.version });
+    // The public meta endpoint (M1-106): versions, sign-in methods and the instance's identity.
+    registerMetaRoutes(app, db, {
+      version: deps.version,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      peppers: deps.peppers,
+    });
     // A track's list and calendar views (M1-049): format rules and dated tickets.
     registerListViewRoutes(app, db, {
       catalogs: fieldCatalogs,

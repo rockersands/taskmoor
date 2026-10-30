@@ -40,6 +40,8 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/session/enroll/totp',
   'POST /api/v1/session/enroll/totp/confirm',
   'GET /api/v1/auth/providers',
+  // What a frontend reads before it shows anything (M1-106): versions, sign-in, identity.
+  'GET /api/meta',
   'POST /api/v1/auth/discover',
   'GET /api/v1/auth/oidc/:id/start',
   'GET /api/v1/auth/oidc/callback',

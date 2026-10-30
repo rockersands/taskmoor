@@ -12,9 +12,13 @@
 //   pnpm verify --update        rewrite golden files (vitest -u)
 //   pnpm verify --coverage      collect coverage into .verify/coverage
 //   pnpm verify -- <args>       pass the remaining args to vitest (a file filter, --project=db, ...)
+//
+// Speed limits (time budgets) are measured but not enforced here: tests write them to
+// .verify/budgets.jsonl and the summary says how many this machine missed. `pnpm bench:check`
+// runs the same tests with TASKMOOR_ENFORCE_BUDGETS=1, which fails on a miss.
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -94,6 +98,8 @@ const steps = [
 
 mkdirSync(OUT, { recursive: true });
 rmSync(join(OUT, 'tests.json'), { force: true });
+const BUDGETS = join(OUT, 'budgets.jsonl');
+rmSync(BUDGETS, { force: true });
 
 const started = Date.now();
 // Lint, types and unit tests are independent, so they run side by side; e2e runs after them.
@@ -108,6 +114,12 @@ const total = seconds(Date.now() - started);
 console.log(
   `verify: ${results.map((r) => `${r.id} ${r.ok ? 'ok' : 'FAIL'} ${r.headline}`).join(' | ')}`,
 );
+const missed = missedBudgets();
+if (missed.length > 0) {
+  console.log(
+    `note: ${missed.length} speed limit(s) missed on this machine, not enforced here (pnpm bench:check enforces them): ${missed.slice(0, 3).join('; ')}`,
+  );
+}
 for (const r of results.filter((r) => !r.ok)) {
   console.log(`\n--- ${r.id} (${relative(ROOT, r.log)}) ---`);
   console.log(r.details.trimEnd());
@@ -132,6 +144,23 @@ writeFileSync(
 process.exit(ok ? 0 : 1);
 
 // ---------------------------------------------------------------------------------------------
+
+/** The speed limits this run measured over their budget, as "what: measured/budget". */
+function missedBudgets() {
+  if (!existsSync(BUDGETS)) return [];
+  return readFileSync(BUDGETS, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter((b) => b?.over)
+    .map((b) => `${b.what}: ${b.measured}/${b.budget}`);
+}
 
 function runStep(step) {
   const log = join(OUT, `${step.id}.log`);

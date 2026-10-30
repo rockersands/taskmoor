@@ -5,6 +5,16 @@
 export const messagesEn = {
   'app.name': 'Taskmoor',
   'app.instanceTitle': '{instance} · Taskmoor',
+  'update.availableTitle': 'A newer version is available.',
+  'update.available':
+    'This app is version {version} and the server runs {server}. Reload the page to update it.',
+  'update.reload': 'Reload',
+  'update.later': 'Not now',
+  'update.requiredTitle': 'Update required',
+  'update.required':
+    'This version of the app ({version}) no longer works with the server, which runs {server}. Reload the page to get the current version.',
+  'update.askAdmin':
+    'If this page comes back after reloading, the app itself needs updating: ask your administrator.',
   'shell.skipToContent': 'Skip to content',
   'shell.openNavigation': 'Open navigation',
   'shell.closeNavigation': 'Close navigation',

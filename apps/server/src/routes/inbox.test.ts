@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -581,8 +582,7 @@ describe('inbox, mentions and activity (M1-058)', () => {
     await comment('alice', t, doc('Ping ', mention('erin')));
     await drain();
     const pushed = await inboxMessage(seen);
-    const elapsed = Date.now() - started;
-    expect(elapsed).toBeLessThan(1000);
+    expectWithinBudget(Date.now() - started, 1000, 'inbox push (ms)');
     expect(BigInt(pushed.version as string) > BigInt(initial.version as string)).toBe(true);
     // Reading elsewhere moves it too, so other open inboxes follow.
     const item = (await inbox('erin')).items[0] as Item;

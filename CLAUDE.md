@@ -36,7 +36,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm gen --items N` | Generate and load a synthetic dataset into the `bench` cluster (`--force` reloads) |
 | `pnpm spike <name> ...` | Run a benchmark spike (`field-storage`, `query`, `authz`, `authz-overhead`, `sync`, `queue`, `xml`); writes `docs/spikes/<name>.md` and `data/<name>.json` |
 | `pnpm bench:search` | The search spike: the 50-query perf set against a generated dataset (`docs/spikes/search-1m.md`) |
-| `pnpm bench:check [--size 1m]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression) |
+| `pnpm bench:check [--size 1m] [--e2e]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression), then the tests' speed limits, enforced (ADR-071) |
 | `pnpm status-report [--date D]` | Weekly status report to `docs/status/<date>.md`; copy it to the user's Drive folder |
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
 | `pnpm conformance <workflow \| query>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`) |
@@ -100,6 +100,9 @@ on another disk (for example while a benchmark saturates this one).
   template). Never share state between test files; never call the network.
 - Golden files: `expect(stableJson(x)).toMatchFileSnapshot('./__golden__/name.json')`.
 - Property tests: `import { fc } from '@taskmoor/testkit/property'`.
+- Speed limits: `expectWithinBudget(measured, budget, what)` from `@taskmoor/testkit/budget`
+  (e2e: `./budget`), never a bare `toBeLessThan` on a duration. `pnpm verify` measures them;
+  `pnpm bench:check` enforces them (ADR-071).
 - UI: desktop first, and it must still work on phones (ADR-033). Use design tokens from
   `apps/web/src/styles/tokens.css`; touch targets of at least 44px under `(pointer: coarse)`; no
   sideways scrolling. Component tests use `setViewportWidth()` for compact layouts.

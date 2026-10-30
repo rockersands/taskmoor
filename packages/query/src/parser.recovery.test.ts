@@ -1,3 +1,4 @@
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import { lineIndex, locate, QueryError } from './lexer';
@@ -222,7 +223,7 @@ describe('limits', () => {
     const started = performance.now();
     const { errors } = parseWithDiagnostics(text);
     expect(errors.length).toBeGreaterThan(1_000);
-    expect(performance.now() - started).toBeLessThan(2_000);
+    expectWithinBudget(performance.now() - started, 2_000, 'parsing 5,000 mistakes (ms)');
   });
 });
 

@@ -56,6 +56,8 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
       path: '^(apps|packages)/[^/]+/src/',
       pathNot: [
         '\\.test\\.tsx?$',
+        // Stories run as browser tests (ADR-024) and may use the web app's test helpers.
+        '\\.stories\\.tsx$',
         '^packages/testkit/',
         '^packages/devtools/',
         '^packages/spikes/',

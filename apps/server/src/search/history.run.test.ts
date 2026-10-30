@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import { QUERY_CASES, QueryError } from '@taskmoor/query';
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -329,7 +330,11 @@ describe('history operators through the search API (M1-039)', () => {
     expect(await scoped('status WAS Closed ON 2025-01-03')).toEqual([]);
     expect(await scoped('status WAS NOT Closed')).toEqual(K('b2'));
     // Seven queries on a ticket with 12,001 status changes; each walks the ticket's own index.
-    expect(performance.now() - started).toBeLessThan(10_000);
+    expectWithinBudget(
+      performance.now() - started,
+      10_000,
+      'seven history queries on 12,001 changes (ms)',
+    );
   });
 
   it('[QRY-005] reads history on every kind of field, under both vocabularies', async () => {

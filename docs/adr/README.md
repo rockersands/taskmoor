@@ -73,5 +73,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [066](0066-frontend-artefact-and-runtime-config.md) | The frontend as a versioned artefact with a runtime-config slot and two routing modes | Accepted |
 | [067](0067-rest-api-v1.md) | REST API v1 as a written contract of stable operations over the server's own schemas | Accepted |
 | [068](0068-mcp-server.md) | A built-in MCP tool server over the REST API, as the caller | Accepted |
+| [070](0070-meta-endpoint-and-version-window.md) | The meta endpoint, the instance identity and the frontend version window | Accepted |
+| [071](0071-speed-limits-in-the-benchmark-run.md) | Speed limits are measured in the gate and enforced in the benchmark run | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

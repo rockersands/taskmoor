@@ -10,6 +10,7 @@
     "./pg": "./src/pg/index.ts",
     "./golden": "./src/golden.ts",
     "./property": "./src/property.ts",
+    "./budget": "./src/budget.ts",
     "./gen": "./src/gen/index.ts",
     "./server": "./src/pg/bench.ts"
   },

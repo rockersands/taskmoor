@@ -14,6 +14,35 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: speed limits moved to the benchmark run (ADR-071)
+
+The user asked for this. Time budgets in tests now go through `expectWithinBudget`, from
+`@taskmoor/testkit/budget` (Vitest), `apps/web/e2e/budget.ts` (Playwright) or
+`apps/web/src/test/budget.ts` (stories).
+- `pnpm verify` measures them into `.verify/budgets.jsonl` and prints a note when this machine
+  missed some; it never fails on them.
+- `pnpm bench:check` runs the 14 files that hold them with `TASKMOOR_ENFORCE_BUDGETS=1`
+  (`--e2e` adds the e2e specs). Run it on a quiet machine before a release.
+- New tests with a time budget must use the helper (CLAUDE.md, Conventions).
+
+## 2026-10-30: M1-106 meta endpoint, instance identity and update banner
+
+ADR-070; no migration.
+- **Identity:** the instance's identity lives in `instance_setting` under `identity`
+  (`apps/server/src/meta/identity.ts`): an id and an Ed25519 key pair. The private key is
+  sealed with the pepper. A lost pepper refuses signing (503); it never makes a new identity.
+- **Meta endpoint:** `GET /api/meta` (`routes/meta.ts`) is a public route and the stable
+  operation `getMeta`; the SDK is regenerated.
+- **Shared rules:** `@taskmoor/webconfig` has `versions.ts` (the window and the skew) and
+  `identity.ts` (`verifyInstance`), for the backend and for the kits of M1-110/M1-111.
+- **Web:** the artefact plugin defines `__TASKMOOR_WEB_VERSION__` (`runtime/version.ts`).
+  `meta/VersionGate.tsx` wraps `Pages`, and the shell's `<main>` starts with `UpdateBanner`.
+- **Pending:** the previous release's kit running its core e2e against the new backend. It
+  needs two releases and the kits; the release steps are in `docs/api/README.md`.
+- **Next:** M1-107 can replace the `*` CORS of `/api/meta` with the allowed origins if it
+  wants to; the value is public either way. Key rotation needs a procedure when kits pin the
+  key (ADR-070).
+
 ## Side session 2026-10-30: M1-105 static frontend artefact
 
 Built on the branch `claude/nifty-hermann-b572d0` in a side session and merged into main after

@@ -7,6 +7,7 @@ import {
   updateBody as commentUpdateBody,
 } from '../routes/comments';
 import { createLinkBody } from '../routes/links';
+import { metaAnswer, metaQuery } from '../routes/meta';
 import { createReleaseBody, archivedQuery as releaseListQuery } from '../routes/releases';
 import {
   createBody as savedSearchCreateBody,
@@ -53,6 +54,19 @@ const one = <K extends string>(key: K, schema: z.ZodType) =>
   z.object({ [key]: schema } as Record<K, z.ZodType>);
 
 export const OPERATIONS: readonly Operation[] = [
+  // The instance (M1-106): what a frontend or a client reads before anything else.
+  op({
+    method: 'GET',
+    path: '/api/meta',
+    id: 'getMeta',
+    tag: 'Instance',
+    summary: 'What this instance is and which clients it works with',
+    description:
+      'Needs no sign-in and holds no secret: the backend and API versions, the frontend versions it serves, how people sign in, and the instance’s id and public key. With a nonce, the instance signs it, so a client can check it reached the instance it expects.',
+    query: metaQuery,
+    responses: { 200: { description: 'The instance.', schema: metaAnswer } },
+  }),
+
   // Session.
   op({
     method: 'POST',

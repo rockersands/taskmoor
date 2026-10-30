@@ -9,6 +9,9 @@ import { type ZodType, z } from 'zod';
  */
 export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+/** The contract's version: its major number changes only with a breaking change (ADR-067). */
+export const API_VERSION = '1.0.0';
+
 export interface Response {
   description: string;
   /** The body; none for 204 and for the error responses, which share one shape. */

@@ -1,3 +1,4 @@
+import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import {
@@ -303,7 +304,7 @@ describe('formula evaluator (M1-013)', () => {
     const many = Array.from({ length: 200_000 }, (_, i) => i % 7);
     const started = performance.now();
     expect(run(program, {}, many)).toBe(many.reduce((a, b) => (a as number) + (b as number), 0));
-    expect(performance.now() - started).toBeLessThan(1000);
+    expectWithinBudget(performance.now() - started, 1000, 'roll-up over 200,000 children (ms)');
     const result = evaluate(program, input({}, many), { maxSteps: 1000 });
     expect(result).toEqual({ ok: false, reason: 'steps' });
   });

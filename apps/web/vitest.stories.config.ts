@@ -21,6 +21,10 @@ export default defineProject({
     },
     setupFiles: ['./.storybook/vitest.setup.ts'],
     // The skin the stories render in; vitest.stories-dark.config.ts runs them again in dark.
-    env: { STORY_SKIN: 'light' },
+    // Speed limits are enforced only in the benchmark run (pnpm bench:check).
+    env: {
+      STORY_SKIN: 'light',
+      TASKMOOR_ENFORCE_BUDGETS: process.env.TASKMOOR_ENFORCE_BUDGETS ?? '',
+    },
   },
 });
