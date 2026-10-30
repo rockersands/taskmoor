@@ -42,6 +42,8 @@ const REDIRECT_MUTATIONS = [
   'GET /api/v1/auth/saml/continue',
 ];
 const EXEMPT: Record<string, string> = {
+  'POST /api/v1/audit/syslog/test':
+    'sends one test message to a syslog receiver; stores nothing and moves no position',
   'POST /api/v1/password-check': 'reads only: checks a candidate password, stores nothing',
   'POST /api/v1/password-links/inspect': 'reads only: shows who a link is for',
   'POST /api/v1/account/two-factor/totp': 'reads only: proposes a secret, stored at confirmation',

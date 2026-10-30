@@ -27,7 +27,7 @@ test('[IAM-013] finds a refused sign-in on the audit page and downloads it', asy
   await page.goto(`${BASE}/#/admin/audit`);
   await expect(page.getByRole('heading', { level: 1, name: 'Audit log' })).toBeVisible();
   await page.getByLabel('Action').fill('session.sign_in_failed');
-  await page.getByRole('button', { name: 'Show' }).click();
+  await page.getByRole('button', { name: 'Show', exact: true }).click();
   const table = page.getByRole('table', { name: 'Audit records, newest first' });
   await expect(table.getByRole('row').nth(1)).toContainText('session.sign_in_failed');
 
