@@ -77,6 +77,18 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## 2026-10-30: M1-110 backend kit
+
+ADR-031 has a third implementation section; no migration.
+- **Builder CLI:** `pnpm builder` writes the full backend kit: Compose with PostgreSQL, the
+  pinned backend and Caddy, `install.sh` and `install.ps1` with a preflight, and a DNS README.
+  Helm projects get `values.yaml` and `secret.yaml`.
+- **Smoke test:** `bash tools/image/smoke-backend-kit.sh` installs a kit for
+  `https://localhost:18443` against the local image. It needs Colima running and the image
+  from `tools/image/smoke.sh`.
+- **Pending:** the fresh-VM install with real DNS, and `install.ps1` (no PowerShell on this
+  Mac).
+
 ## 2026-10-30: M1-111 frontend kit
 
 ADR-031 has a second implementation section; no migration.

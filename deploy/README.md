@@ -20,6 +20,18 @@ The token works once and expires after 24 hours; restarting the backend prints a
 match the address people use, and `TASKMOOR_SETUP_TOKEN` to choose the token yourself, as an
 installer or a test does.
 
+## The Builder's kits
+
+`pnpm builder --project <file>` (or `--backend-url` and `--frontend-url`) writes three files:
+- `taskmoor-backend-kit.zip`, which installs on a server with Docker: PostgreSQL, the backend
+  at its exact version and Caddy for HTTPS. Its `install.sh` (or `install.ps1`) checks Docker,
+  ports 80 and 443 and the DNS record first. Its README lists the records to create.
+- `taskmoor-frontend-kit.zip`, for a static host.
+- `taskmoor-frontend-single.html`, for a host that takes one file.
+
+The kits share one signed connection manifest, so the frontend refuses any backend but its
+own. A Helm project gets `values.yaml` and `secret.yaml` instead of the Compose files.
+
 ## The web frontend
 
 The image serves the frontend it was built with (`/app/web`, `version.json` beside

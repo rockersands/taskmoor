@@ -51,6 +51,9 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |
 | `node apps/server/dist/cli.mjs check-upgrade` | Operator CLI from `pnpm build` (also `upgrade [--dry-run]`, `migrate`, `status`, `backup`, `restore`, `checksum`, `drill`, `purge-trash`, `field-values [--repair]`, `password-link <email>`, `audit-verify`, `report-verify`); in the image: `docker compose exec taskmoor node cli.mjs check-upgrade` |
+| `pnpm builder --project <file>` | The Builder CLI (ADR-031): backend kit, frontend kit zip and single file from a project file (or `--backend-url` and `--frontend-url`); `--seed` for byte-identical rebuilds |
+| `pnpm i18n:check` | Hard-coded user-facing strings in the web app's components (must be none) |
+| `bash tools/image/smoke-backend-kit.sh` | Makes a backend kit for https://localhost:18443 and installs it against the local image: health through Caddy, the setup link, the kit's instance at `/api/meta` |
 | `pnpm dco [range]` | Checks commit sign-offs (default: commits not yet on `origin/main`) |
 | `pnpm format` | Biome format and safe fixes |
 | `pnpm dev:web` / `pnpm dev:server` | Dev servers (`dev:server` needs `DATABASE_URL`) |
