@@ -1,5 +1,14 @@
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -62,11 +71,31 @@ function fakeDocker(kind: 'working' | 'absent' | 'stopped'): string {
   return bin;
 }
 
+/**
+ * The machine's own tools without any Docker: a machine that has a real `docker` in /usr/bin
+ * (a Linux CI runner or container) must not answer for the fake one.
+ */
+let systemTools: string | undefined;
+function toolsWithoutDocker(): string {
+  if (systemTools) return systemTools;
+  const dir = mkdtempSync(join(tmpdir(), 'taskmoor-tools-'));
+  for (const from of ['/usr/bin', '/bin']) {
+    if (!existsSync(from)) continue;
+    for (const name of readdirSync(from)) {
+      if (name.startsWith('docker') || existsSync(join(dir, name))) continue;
+      symlinkSync(join(from, name), join(dir, name));
+    }
+  }
+  systemTools = dir;
+  dirs.push(dir);
+  return dir;
+}
+
 function preflight(dir: string, bin: string): { code: number; out: string } {
   try {
     const out = execFileSync('bash', ['install.sh', '--preflight'], {
       cwd: dir,
-      env: { PATH: `${bin}:/usr/bin:/bin`, HOME: dir },
+      env: { PATH: `${bin}:${toolsWithoutDocker()}`, HOME: dir },
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
