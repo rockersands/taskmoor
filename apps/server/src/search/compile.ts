@@ -2,6 +2,8 @@ import { type RawBuilder, sql } from 'kysely';
 import type {
   Bound,
   Cond,
+  HistorySide,
+  HistoryTest,
   KeyDomain,
   OrderKey,
   OrderSource,
@@ -298,6 +300,225 @@ function sprintMatch(m: SprintMatch): RawBuilder<boolean> {
   }
 }
 
+// --- history (M1-039) ---------------------------------------------------------------------
+
+/**
+ * A change row `h`'s value on one side (`to_value` or `from_value`, with the name it had then
+ * in `*_display`) passes a history test. Single values compare through `left(value, 200)`,
+ * the expression the history indexes hold (migration 0056), since a whole value can be longer
+ * than an index entry; the values a test names are ids, numbers, days, instants and keys, all
+ * shorter, so the comparison is exact. Names at the time compare likewise
+ * (`lower(left(display, 200))`; names are shorter too).
+ */
+function historyTest(t: HistoryTest, side: 'to' | 'from'): RawBuilder<boolean> {
+  const value = raw(`h.${side}_value`);
+  const display = raw(`h.${side}_display`);
+  const anyOf = (expr: RawBuilder<unknown>, values: readonly string[]) =>
+    values.length === 0
+      ? FALSE
+      : values.length === 1
+        ? sql<boolean>`${expr} = ${param(values[0] as string, 'text')}`
+        : sql<boolean>`${expr} = ANY(${array(values, 'text')})`;
+  switch (t.kind) {
+    case 'values':
+      return or([
+        anyOf(raw(`left(h.${side}_value, 200)`), t.values),
+        anyOf(raw(`lower(left(h.${side}_display, 200))`), t.names),
+      ]);
+    case 'items':
+      return or([
+        overlaps(sql`string_to_array(${value}, ${param(t.separator, 'text')})`, t.values),
+        overlaps(
+          sql`string_to_array(lower(${display}), ${param(t.nameSeparator, 'text')})`,
+          t.names,
+        ),
+      ]);
+    case 'words': {
+      const text = t.document
+        ? sql`jsonb_path_query_array(${value}::jsonb, 'strict $.**.text', '{}', true)`
+        : value;
+      return or(t.texts.map((x) => words(text, x)));
+    }
+    case 'linkTo':
+      return anyOf(
+        sql`split_part(${value}, ':', 3)`,
+        t.tickets.map((id) => String(id)),
+      );
+    case 'linkType': {
+      const type = sql`split_part(${value}, ':', 1)`;
+      const way = (direction: 'outward' | 'inward', ids: readonly number[]) =>
+        ids.length === 0
+          ? FALSE
+          : and([
+              anyOf(
+                type,
+                ids.map((id) => String(id)),
+              ),
+              sql<boolean>`split_part(${value}, ':', 2) = ${param(direction, 'text')}`,
+            ]);
+      return or([
+        anyOf(
+          type,
+          t.both.map((id) => String(id)),
+        ),
+        way('outward', t.outward),
+        way('inward', t.inward),
+      ]);
+    }
+  }
+}
+
+const overlaps = (items: RawBuilder<unknown>, values: readonly string[]) =>
+  values.length === 0 ? FALSE : sql<boolean>`${items} && ${array(values, 'text')}`;
+
+/**
+ * A list item one of `values` names that a change brought (it is in `into`'s list and was not
+ * in `out`'s): `labels CHANGED TO x` is a change that added x, `FROM x` one that took it away.
+ */
+function itemsMoved(
+  t: Extract<HistoryTest, { kind: 'items' }>,
+  into: 'to' | 'from',
+  out: 'to' | 'from',
+): RawBuilder<boolean> {
+  const moved = (values: readonly string[], list: (side: 'to' | 'from') => RawBuilder<unknown>) =>
+    values.length === 0
+      ? FALSE
+      : sql<boolean>`EXISTS (SELECT 1 FROM unnest(${array(values, 'text')}) x (v) WHERE x.v = ANY(${list(into)}) AND x.v <> ALL(coalesce(${list(out)}, '{}')))`;
+  return or([
+    moved(
+      t.values,
+      (side) => sql`string_to_array(h.${raw(side)}_value, ${param(t.separator, 'text')})`,
+    ),
+    moved(
+      t.names,
+      (side) =>
+        sql`string_to_array(lower(h.${raw(side)}_display), ${param(t.nameSeparator, 'text')})`,
+    ),
+  ]);
+}
+
+/** The values a clause names on one side of a change row `h`; `other` makes lists compare by what moved. */
+function historySide(s: HistorySide, side: 'to' | 'from', other?: 'to' | 'from') {
+  // As the value indexes hold it, so `WAS EMPTY` and `CHANGED TO EMPTY` can start from them.
+  const empty = s.empty ? sql<boolean>`left(h.${raw(side)}_value, 200) IS NULL` : FALSE;
+  if (!s.test) return empty;
+  const test =
+    s.test.kind === 'items' && other ? itemsMoved(s.test, side, other) : historyTest(s.test, side);
+  return or([test, empty]);
+}
+
+const at = (column: string, op: string, edge: { at: string }) =>
+  sql<boolean>`${raw(column)} ${raw(op)} ${param(edge.at, 'timestamptz')}`;
+
+/**
+ * WAS and CHANGED on ticket `k` (QRY-005; ADR-010 "History operators (M1-039)"). One `EXISTS`
+ * over `ticket_change`, so the planner can start from the history indexes (a value, a field and
+ * time, an actor) when they are rarer than the tickets, or probe each ticket's own rows
+ * (`ticket_change_ticket_field_idx`) as it walks the order.
+ *
+ * - A ticket's first values are history rows too (`from_value` empty, written with the
+ *   ticket), so WAS sees them; CHANGED leaves them out.
+ * - WAS with AFTER, ON or DURING needs the stretch to last past the window's start: no later
+ *   row of the field (`state`), or none removing the value (`delta`), at or before it.
+ * - WAS EMPTY on a `state` field also counts the stretch from the ticket's creation up to the
+ *   field's first value, when it started without one (set by the creator); not on the fields
+ *   every ticket starts with, so there it stays one `EXISTS`.
+ */
+function historyCond(c: Extract<Cond, { kind: 'history' }>): RawBuilder<boolean> {
+  const field = param(c.field, 'text');
+  const rows = (where: RawBuilder<boolean>[]) => {
+    const all = and(where);
+    return all === FALSE
+      ? FALSE
+      : sql<boolean>`EXISTS (SELECT 1 FROM ticket_change h WHERE ${all})`;
+  };
+  const own = [sql<boolean>`h.ticket_id = k.id`, sql<boolean>`h.field = ${field}`];
+  const by = (column: string) => (c.by ? anyId(column, c.by) : TRUE);
+  if (c.op === 'changed') {
+    const match = rows([
+      ...own,
+      // Not one of the ticket's first values.
+      sql<boolean>`(h.from_value IS NOT NULL OR h.at > k.created_at)`,
+      c.from ? historySide(c.from, 'from', 'to') : TRUE,
+      c.to ? historySide(c.to, 'to', 'from') : TRUE,
+      by('h.actor_id'),
+      c.after ? at('h.at', c.after.inclusive ? '>=' : '>', c.after) : TRUE,
+      c.before ? at('h.at', c.before.inclusive ? '<=' : '<', c.before) : TRUE,
+    ]);
+    return c.negated ? not(match) : match;
+  }
+  const held = c.held ?? { test: null, empty: false };
+  const lasts = c.after
+    ? not(
+        sql<boolean>`EXISTS (SELECT 1 FROM ticket_change n WHERE ${and([
+          sql<boolean>`n.ticket_id = h.ticket_id`,
+          sql<boolean>`n.field = h.field`,
+          ...(c.rows === 'delta' ? [sql<boolean>`n.from_value = h.to_value`] : []),
+          at('n.at', '<=', c.after),
+          sql<boolean>`(n.at, n.id) > (h.at, h.id)`,
+        ])})`,
+      )
+    : TRUE;
+  const stretch = rows([
+    ...own,
+    historySide(held, 'to'),
+    by('h.actor_id'),
+    c.before ? at('h.at', c.before.inclusive ? '<=' : '<', c.before) : TRUE,
+    lasts,
+  ]);
+  let match = stretch;
+  if (held.empty && c.rows === 'state' && !c.startsSet) {
+    // Empty from the ticket's creation until the field's first row, when it started empty.
+    const until = c.after
+      ? sql`greatest(k.created_at, ${param(c.after.at, 'timestamptz')})`
+      : raw('k.created_at');
+    // Beside another branch the stretches are one set of tickets, uncorrelated, which the
+    // planner can read once and hash instead of probing each ticket's rows a second time.
+    const stretches = and([
+      sql<boolean>`h.field = ${field}`,
+      historySide(held, 'to'),
+      by('h.actor_id'),
+      c.before ? at('h.at', c.before.inclusive ? '<=' : '<', c.before) : TRUE,
+      lasts,
+    ]);
+    match = or([
+      stretches === FALSE
+        ? FALSE
+        : sql<boolean>`k.id IN (SELECT h.ticket_id FROM ticket_change h WHERE ${stretches})`,
+      and([
+        not(
+          sql<boolean>`EXISTS (SELECT 1 FROM ticket_change r WHERE r.ticket_id = k.id AND r.field = ${field} AND r.at <= ${until})`,
+        ),
+        by('k.creator_id'),
+        c.before ? at('k.created_at', c.before.inclusive ? '<=' : '<', c.before) : TRUE,
+      ]),
+    ]);
+  }
+  return c.negated ? not(match) : match;
+}
+
+/** WAS on creator and created: the ticket's own value, held since its creation. */
+function heldCond(c: Extract<Cond, { kind: 'held' }>): RawBuilder<boolean> {
+  const column = raw(`k.${c.on}`);
+  const match = and([
+    or([
+      c.test ? valueTest(column, c.test, c.on === 'created_at' ? 'timestamptz' : 'int') : FALSE,
+      c.empty ? sql<boolean>`${column} IS NULL` : FALSE,
+    ]),
+    c.by ? anyId('k.creator_id', c.by) : TRUE,
+    c.before ? at('k.created_at', c.before.inclusive ? '<=' : '<', c.before) : TRUE,
+  ]);
+  return c.negated ? not(match) : match;
+}
+
+/** A column holds one of these ids; none: never. */
+const anyId = (column: string, values: readonly number[]) =>
+  values.length === 0
+    ? FALSE
+    : values.length === 1
+      ? sql<boolean>`${raw(column)} = ${param(values[0] as number, 'int')}`
+      : sql<boolean>`${raw(column)} = ANY(${array(values, 'int')})`;
+
 /** What a condition needs from the viewer beyond the ticket filter. */
 interface CondContext {
   comments: RawBuilder<boolean>;
@@ -494,6 +715,10 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
     }
     case 'ticketSet':
       return ticketSetCond(c, ctx);
+    case 'history':
+      return historyCond(c);
+    case 'held':
+      return heldCond(c);
   }
 }
 

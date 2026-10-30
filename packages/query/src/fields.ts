@@ -136,10 +136,12 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     sortable: true,
   }),
   system({ name: 'track', aliases: ['project', 'space'], type: 'track', column: 'space_id' }),
+  // The track of the ticket's parent: history keeps the parent, not its track then.
   system({
     name: 'parentTrack',
     aliases: ['parentProject', 'parentSpace', 'Parent track'],
     type: 'track',
+    history: null,
   }),
   system({ name: 'trackCategory', aliases: ['category', 'Track category'], type: 'option' }),
   system({
@@ -235,11 +237,13 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     column: 'created_at',
     sortable: true,
   }),
+  // Moves with every change; history records the changes, not this time.
   system({
     name: 'updated',
     aliases: ['updatedDate'],
     type: 'datetime',
     column: 'updated_at',
+    history: null,
     sortable: true,
   }),
   system({
@@ -258,11 +262,13 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
     nullable: true,
     sortable: true,
   }),
+  // Set with the close reason, whose history answers when a ticket was closed.
   system({
     name: 'closed',
     aliases: ['resolutionDate', 'resolved'],
     type: 'datetime',
     column: 'resolved_at',
+    history: null,
     nullable: true,
     sortable: true,
   }),

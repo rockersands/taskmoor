@@ -65,6 +65,15 @@ export const GOLDEN_QUERIES = [
   'key IN (ABC-1, ticketsWithWebLinksByGlobalId("ci-1", "ci-2"))',
   'assignee IN membersOf(Support) AND track IN tracksOwnedByUser()',
   'type IN subticketTypes() AND created >= startOfWeek(-1w)',
+  // History (M1-039): one EXISTS over ticket_change per clause.
+  'status WAS "In Review" ORDER BY updated DESC',
+  'status WAS NOT IN (New, Gone) BY currentUser() DURING ("2026-01-01", "2026-02-01")',
+  'assignee WAS EMPTY AFTER -1w',
+  'Points CHANGED FROM 3 TO 5 BY currentUser() ON 2026-01-15',
+  'labels CHANGED TO security AND Tags WAS IN (A, B)',
+  'ticketLink WAS ABC-1 OR ticketLinkType CHANGED FROM Blocks',
+  'summary WAS login AND description CHANGED BEFORE 2026-10-01',
+  'stage WAS closed AND creator WAS currentUser()',
 ] as const;
 
 describe('query compiler (M1-037)', () => {
@@ -239,6 +248,9 @@ describe('query compiler (M1-037)', () => {
       (v: string) => `comment ~ ${quote(v)} OR comment !~ ${quote(v)}`,
       // Value branches repeat the conditions in every branch.
       (v: string) => `labels = ${quote(v)} ORDER BY priority DESC, key ASC`,
+      // History values (M1-039): words, list items and items that moved.
+      (v: string) => `summary WAS ${quote(v)} OR Notes CHANGED TO ${quote(v)}`,
+      (v: string) => `labels WAS ${quote(v)} AND Topics CHANGED FROM ${quote(v)} BY currentUser()`,
     ];
     const reference = new Map<number, string>();
     await fc.assert(

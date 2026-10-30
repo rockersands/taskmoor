@@ -14,6 +14,58 @@ all on the branch now; a long-lived development database that ran 0013 or 0014 b
 existed refuses it ("corrupted migrations", Kysely applies migrations in name order): recreate
 it. The local demo is such a database (`docker compose down -v`, then `bash install.sh`).
 
+## Side session 2026-10-30: M1-039 history operators
+
+Built on the branch `claude/m1-039-history-operators-d9010b` in a side session while the main
+session did M1-047 and another M1-098; the main session merges it after its own gate.
+
+- **M1-039 WAS and CHANGED** (ADR-010 "History operators (M1-039)"; migration **0056**
+  `0056_history_search.ts`, five indexes on `ticket_change`, each partition's under a plain
+  name such as `ticket_change_p03_to_idx`). `WAS`, `WAS NOT`, `WAS IN`, `WAS NOT IN` and
+  `CHANGED` with `FROM`, `TO`, `BY`, `AFTER`, `BEFORE`, `ON`, `DURING` run on every field the
+  change history records, custom fields included, through search, boards, saved searches,
+  webhooks and reports alike (all go through `bindPlan`/`compileCond`).
+  - `packages/query`: the resolver takes `FROM`/`TO EMPTY` (`HistoryPredicate.empty`), turns
+    `ON d` into the day's two instants on the person's calendar, and refuses `FROM`/`TO` with
+    `WAS`, a predicate twice, `AFTER`/`BEFORE`/`ON` without exactly one date, `DURING` without
+    two or ending first. `updated`, `closed` and `parentTrack` now have `history: null`
+    ("keeps no change history"). 15 new conformance cases.
+  - `search/bind.ts` `history()`: values become what history stores (ids as text, `String(n)`,
+    ISO days and instants, keys; lists by item; text by words); a name no value has now is
+    matched by the name it had when written (`*_display`), so renamed statuses, options and
+    people match by their old names. `findNamed`, `findPeople`, `findOptions` return the names
+    they did not find instead of refusing (the old `named`, `people`, `options` wrap them).
+    Stage, hierarchy level, track type and category read their source field's history;
+    creator and created are fixed (`held` condition). Refused with a message: sprint (sprint
+    changes are in `sprint_change`), EMPTY on links, ticket functions as values, saved searches.
+  - `search/model.ts` conditions `history` and `held`; `search/compile.ts` `historyCond` (one
+    `EXISTS` per clause; see the ADR for the SQL and which index each form uses).
+  - Tests: `search/history.test.ts` (model of history, 15 random worlds by default,
+    `SEARCH_HISTORY_RUNS` for more; passed 300; three mutations of the SQL caught),
+    `search/history.run.test.ts` (QRY-005 (1), (2), (3) through `/api/v1/search`, every kind of
+    field, refusals, every history conformance case on the server), 8 golden statements and 2
+    fuzz templates in `compile.test.ts`, history plans in `plans.test.ts`
+    (`__golden__/plans-history-pg16.json`; the other plan goldens did not change),
+    `search/history.large.test.ts` (`TASKMOOR_LARGE_HISTORY=1`, size from
+    `TASKMOOR_LARGE_HISTORY_TICKETS`). `routes/search.run.test.ts` no longer expects WAS to be
+    refused.
+  - Conformance: history 239 to 254 cases, all passing; parser and resolver 2,409 of 2,423 (the
+    14 SLA function cases of M2-013 as before).
+  - **Gotcha for migrations:** the migrated test template is keyed by each migration's
+    `up.toString()` (`migrationsFingerprint`). A constant outside `up` that a migration reads
+    (0056's index list was one) does not change it, so the cached template kept the old
+    schema until the list moved inside `up`.
+  - **Measured** (`history.large.test.ts`, 200,000 tickets, 1,159,066 history rows, the member's
+    filter, p95 of 20, load average 8 to 16 from other sessions, 2026-10-30): first page 1.3 to
+    78 ms (slowest `status WAS "In Review" AFTER .. BEFORE ..`), page plus capped count 1.9 to
+    264 ms (slowest `assignee WAS EMPTY AFTER ..`, 2.8 s before its stretches became a hashed
+    set); a name no value has now 1.9 ms with its index (70 ms reading the field's rows); the
+    ticket with 12,000 changes 4.1 ms.
+  - **Pending (not blocking):** the done-when "p95 < 800 ms at 10M tickets". This Mac has no
+    10M dataset (it stayed on Windows) and the bench loader writes no history; M1-117 (10M
+    nightly) should load history (about 9 rows a ticket, as `history.large.test.ts` does) and
+    run the same 14 queries.
+
 ## Last session: 2026-10-29 (Mac, afternoon)
 
 Back on the Mac after the overnight cloud run: `main` fast-forwarded 106 commits, the gate
@@ -106,7 +158,7 @@ stop (CI is the gate).
 - **M1-121 contract step for M1-001** (ADR-022 "Contract step for M1-001"): migration
   `0055_contract_m0_session` drops the M0 `session` table and the `app_user.workspace_id`
   default. The user chose to land it before the first release (none is published). M1-039's
-  branch also made a 0055 (`0055_history_search`): renumber it to 0056 when merging.
+  history indexes, first written as a 0055, are `0056_history_search` (renumbered on its branch).
 - **M1-054 track templates** (ADR-062; no migration): `tracks/templates.ts` recipes;
   `POST /api/v1/tracks` takes `template` (then makes the board through
   `BoardRoutes.createBoard`, which `registerBoardRoutes` now returns; the track routes get it

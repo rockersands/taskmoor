@@ -189,6 +189,25 @@
     ],
     "sql": "SELECT a.ticket_id AS id, a.value AS c0 FROM v_number a JOIN ticket k ON k.id = a.ticket_id WHERE a.field_id = $1::int AND a.value > $2::numeric AND a.track_id = $3::int AND a.track_id = ANY($4::int[]) AND k.workspace_id = $5::int AND k.deleted_at IS NULL AND k.track_id = ANY($6::int[]) ORDER BY c0 DESC, a.ticket_id DESC LIMIT $7::int"
   },
+  "Points CHANGED FROM 3 TO 5 BY currentUser() ON 2026-01-15": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "cf[1]",
+      "3",
+      "5",
+      1,
+      "2026-01-15T00:00:00.000Z",
+      "2026-01-16T00:00:00.000Z",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND (h.from_value IS NOT NULL OR h.at > k.created_at) AND left(h.from_value, 200) = $4::text AND left(h.to_value, 200) = $5::text AND h.actor_id = $6::int AND h.at >= $7::timestamptz AND h.at < $8::timestamptz)) ORDER BY k.created_at DESC, k.id DESC LIMIT $9::int"
+  },
   "Points IS EMPTY AND type IN (Bug, Feature) AND track = ABC ORDER BY created DESC": {
     "anchored": false,
     "parameters": [
@@ -427,6 +446,23 @@
       51
     ],
     "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.assignee_id = $3::int AND k.track_id = ANY($4::int[])) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
+  },
+  "assignee WAS EMPTY AFTER -1w": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "assignee",
+      "2026-10-21T12:00:00.000Z",
+      "assignee",
+      "2026-10-21T12:00:00.000Z",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.id IN (SELECT h.ticket_id FROM ticket_change h WHERE (h.field = $3::text AND left(h.to_value, 200) IS NULL AND NOT (EXISTS (SELECT 1 FROM ticket_change n WHERE (n.ticket_id = h.ticket_id AND n.field = h.field AND n.at <= $4::timestamptz AND (n.at, n.id) > (h.at, h.id)))))) OR NOT (EXISTS (SELECT 1 FROM ticket_change r WHERE r.ticket_id = k.id AND r.field = $5::text AND r.at <= greatest(k.created_at, $6::timestamptz)))) ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int"
   },
   "closed IS EMPTY AND updated < -90d ORDER BY updated ASC": {
     "anchored": false,
@@ -675,6 +711,31 @@
     ],
     "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND k.id IN (SELECT r.ticket_id FROM ticket_change r WHERE (r.actor_id = $3::int AND r.at >= $4::timestamptz AND r.at <= $5::timestamptz) UNION ALL SELECT c.ticket_id FROM ticket_comment c JOIN ticket k ON k.id = c.ticket_id WHERE (c.author_id = $6::int AND c.created_at >= $7::timestamptz AND c.created_at <= $8::timestamptz AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $9\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $10 AND user_id = $11\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $12)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $13 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $14 AND user_id = $15\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $16)\n    SELECT id FROM g))))))) ORDER BY k.created_at DESC, k.id DESC LIMIT $17::int"
   },
+  "labels CHANGED TO security AND Tags WAS IN (A, B)": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "labels",
+      [
+        "security"
+      ],
+      " ",
+      " ",
+      "cf[5]",
+      ",",
+      [
+        "3",
+        "4"
+      ],
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND (h.from_value IS NOT NULL OR h.at > k.created_at) AND EXISTS (SELECT 1 FROM unnest($4::text[]) x (v) WHERE x.v = ANY(string_to_array(h.to_value, $5::text)) AND x.v <> ALL(coalesce(string_to_array(h.from_value, $6::text), '{}'))))) AND EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $7::text AND string_to_array(h.to_value, $8::text) && $9::text[]))) ORDER BY k.created_at DESC, k.id DESC LIMIT $10::int"
+  },
   "labels IN (security, regression)": {
     "anchored": false,
     "parameters": [
@@ -744,6 +805,28 @@
     ],
     "sql": "SELECT id, c0, c1 FROM ((SELECT k.id AS id, $1::int AS c0, (k.updated_at)::text AS c1, k.updated_at AS o1 FROM ticket k WHERE k.workspace_id = $2::int AND k.deleted_at IS NULL AND k.track_id = ANY($3::int[]) AND k.track_id = $4::int AND k.priority_id = $5::int ORDER BY k.updated_at DESC, k.id DESC LIMIT $6::int) UNION ALL (SELECT k.id AS id, $7::int AS c0, (k.updated_at)::text AS c1, k.updated_at AS o1 FROM ticket k WHERE k.workspace_id = $8::int AND k.deleted_at IS NULL AND k.track_id = ANY($9::int[]) AND k.track_id = $10::int AND k.priority_id = $11::int ORDER BY k.updated_at DESC, k.id DESC LIMIT $12::int)) s ORDER BY c0 DESC, o1 DESC, id DESC LIMIT $13::int"
   },
+  "stage WAS closed AND creator WAS currentUser()": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "status",
+      [
+        "8",
+        "9",
+        "10",
+        "12",
+        "13"
+      ],
+      1,
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND left(h.to_value, 200) = ANY($4::text[]))) AND k.creator_id = $5::int) ORDER BY k.created_at DESC, k.id DESC LIMIT $6::int"
+  },
   "status IN (New, Active) AND priority IN (High, Urgent) ORDER BY created DESC": {
     "anchored": false,
     "parameters": [
@@ -764,6 +847,57 @@
       51
     ],
     "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (k.status_id = ANY($3::int[]) AND k.priority_id = ANY($4::int[])) ORDER BY k.created_at DESC, k.id DESC LIMIT $5::int"
+  },
+  "status WAS \"In Review\" ORDER BY updated DESC": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "status",
+      "6",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.updated_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND left(h.to_value, 200) = $4::text)) ORDER BY k.updated_at DESC, k.id DESC LIMIT $5::int"
+  },
+  "status WAS NOT IN (New, Gone) BY currentUser() DURING (\"2026-01-01\", \"2026-02-01\")": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "status",
+      "2",
+      "gone",
+      1,
+      "2026-02-01T00:00:00.000Z",
+      "2026-01-01T00:00:00.000Z",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND NOT (EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND (left(h.to_value, 200) = $4::text OR lower(left(h.to_display, 200)) = $5::text) AND h.actor_id = $6::int AND h.at <= $7::timestamptz AND NOT (EXISTS (SELECT 1 FROM ticket_change n WHERE (n.ticket_id = h.ticket_id AND n.field = h.field AND n.at <= $8::timestamptz AND (n.at, n.id) > (h.at, h.id))))))) ORDER BY k.created_at DESC, k.id DESC LIMIT $9::int"
+  },
+  "summary WAS login AND description CHANGED BEFORE 2026-10-01": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "summary",
+      "login",
+      "description",
+      "2026-10-01T00:00:00.000Z",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND to_tsvector('simple'::regconfig, h.to_value) @@ plainto_tsquery('simple'::regconfig, $4))) AND EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $5::text AND (h.from_value IS NOT NULL OR h.at > k.created_at) AND h.at < $6::timestamptz))) ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int"
   },
   "summary ~ \"login form\" ORDER BY created DESC": {
     "anchored": false,
@@ -807,6 +941,23 @@
       51
     ],
     "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (to_tsvector('simple'::regconfig, k.summary) @@ plainto_tsquery('simple'::regconfig, $3) OR to_tsvector('simple'::regconfig, jsonb_path_query_array(k.description, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $4) OR to_tsvector('simple'::regconfig, jsonb_path_query_array(k.environment, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $5) OR EXISTS (SELECT 1 FROM ticket_comment c WHERE (c.ticket_id = k.id AND (c.deleted_at IS NULL AND ((c.visible_role_id IS NULL AND c.visible_group_id IS NULL)\n      OR c.author_id = $6\n      OR c.visible_group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $7 AND user_id = $8\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $9)\n    SELECT id FROM g)\n      OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a\n           WHERE a.track_id = k.track_id\n             AND (a.user_id = $10 OR a.group_id IN (WITH RECURSIVE g(id) AS (\n      SELECT group_id FROM group_member WHERE workspace_id = $11 AND user_id = $12\n      UNION\n      SELECT n.parent_id FROM group_nesting n JOIN g ON n.child_id = g.id\n       WHERE n.workspace_id = $13)\n    SELECT id FROM g))))) AND to_tsvector('simple'::regconfig, jsonb_path_query_array(c.body, 'strict $.**.text', '{}', true)) @@ plainto_tsquery('simple'::regconfig, $14))) OR EXISTS (SELECT 1 FROM v_text v WHERE v.ticket_id = k.id AND v.field_id = ANY($15::int[]) AND to_tsvector('simple'::regconfig, v.value) @@ plainto_tsquery('simple'::regconfig, $16))) ORDER BY k.created_at DESC, k.id DESC LIMIT $17::int"
+  },
+  "ticketLink WAS ABC-1 OR ticketLinkType CHANGED FROM Blocks": {
+    "anchored": false,
+    "parameters": [
+      1,
+      [
+        1,
+        2,
+        3
+      ],
+      "link",
+      "1",
+      "link",
+      "3",
+      51
+    ],
+    "sql": "SELECT k.id AS id, (k.created_at)::text AS c0 FROM ticket k WHERE k.workspace_id = $1::int AND k.deleted_at IS NULL AND k.track_id = ANY($2::int[]) AND (EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $3::text AND split_part(h.to_value, ':', 3) = $4::text)) OR EXISTS (SELECT 1 FROM ticket_change h WHERE (h.ticket_id = k.id AND h.field = $5::text AND (h.from_value IS NOT NULL OR h.at > k.created_at) AND split_part(h.from_value, ':', 1) = $6::text))) ORDER BY k.created_at DESC, k.id DESC LIMIT $7::int"
   },
   "ticketLinkType = Blocks AND attachments IS NOT EMPTY": {
     "anchored": false,

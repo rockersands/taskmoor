@@ -17,6 +17,8 @@ import type { SideTable } from '../fields/storage';
 import type {
   Bound,
   Cond,
+  HistorySide,
+  HistoryTest,
   KeyDomain,
   Op,
   OrderKey,
@@ -30,6 +32,7 @@ import type {
   SqlType,
   TicketColumn,
   TicketSet,
+  TimeEdge,
   ValueTest,
 } from './model';
 
@@ -116,6 +119,75 @@ const label = (field: Field) =>
   field.kind === 'custom' ? `"${field.name}" (cf[${field.id}])` : `"${field.name}"`;
 
 type Leaf = Exclude<Pred, { kind: 'and' | 'or' | 'not' }>;
+type HistoryLeaf = Extract<Leaf, { kind: 'history' }>;
+
+/**
+ * A field's history as WAS and CHANGED read it (M1-039): its name in `ticket_change`, whether
+ * each row holds the whole new value (`state`) or adds or removes one (`delta`: links), and the
+ * test for the values a clause names.
+ */
+interface HistoryShape {
+  name: string;
+  rows: 'state' | 'delta';
+  /** Every ticket is created with a value (track, key, type, status, summary). */
+  startsSet?: boolean;
+  test(values: Typed[]): Promise<HistoryTest>;
+}
+
+/** History fields every ticket is created with a value of (their columns are never empty). */
+const SET_AT_CREATION = new Set(['track', 'key', 'type', 'status', 'summary']);
+
+/** Names to match against the names values had when written: lower case, distinct, sorted. */
+const names = (missing: readonly string[]) =>
+  [...new Set(missing.map((n) => n.toLowerCase()))].sort();
+
+/**
+ * The window of a history clause's time predicates (spec 01b 1.3): AFTER a is after `a`,
+ * BEFORE b before `b`, ON the day from its first instant up to the next day's, DURING (a, b)
+ * from `a` to `b` inclusive. Several narrow it to their overlap; 'never' when that is empty.
+ */
+function timeWindow(
+  predicates: readonly { kind: string; values: Typed[] }[],
+): { after?: TimeEdge; before?: TimeEdge } | 'never' {
+  let after: TimeEdge | undefined;
+  let before: TimeEdge | undefined;
+  // ISO instants compare as text; at the same instant an open edge is the narrower one.
+  const later = (a: TimeEdge, b: TimeEdge | undefined) =>
+    !b || a.at > b.at || (a.at === b.at && !a.inclusive) ? a : b;
+  const earlier = (a: TimeEdge, b: TimeEdge | undefined) =>
+    !b || a.at < b.at || (a.at === b.at && !a.inclusive) ? a : b;
+  for (const p of predicates) {
+    const at = (i: number) => {
+      const v = p.values[i];
+      if (v?.type !== 'datetime') throw new Error(`${p.kind} needs a date`);
+      return v.value.toISOString();
+    };
+    switch (p.kind) {
+      case 'after':
+        after = later({ at: at(0), inclusive: false }, after);
+        break;
+      case 'before':
+        before = earlier({ at: at(0), inclusive: false }, before);
+        break;
+      case 'on':
+        after = later({ at: at(0), inclusive: true }, after);
+        before = earlier({ at: at(1), inclusive: false }, before);
+        break;
+      case 'during':
+        after = later({ at: at(0), inclusive: true }, after);
+        before = earlier({ at: at(1), inclusive: true }, before);
+        break;
+    }
+  }
+  if (
+    after &&
+    before &&
+    (after.at > before.at || (after.at === before.at && !(after.inclusive && before.inclusive)))
+  ) {
+    return 'never';
+  }
+  return { ...(after ? { after } : {}), ...(before ? { before } : {}) };
+}
 type Comparison = Extract<Pred, { kind: 'compare' }>['op'];
 
 const NEGATE: Record<Comparison, Comparison> = {
@@ -279,6 +351,12 @@ interface Named {
   name: string;
 }
 
+/** Ids found by name, and the names (as written) that matched nothing. */
+interface Found {
+  ids: number[];
+  missing: string[];
+}
+
 type NamedKind =
   | 'status'
   | 'priority'
@@ -401,13 +479,7 @@ class Binder {
   }
 
   private async leaf(p: Leaf): Promise<Cond> {
-    if (p.kind === 'history') {
-      const op = p.op === 'was' ? (p.negated ? 'WAS NOT' : 'WAS') : 'CHANGED';
-      throw new SearchError(
-        `${label(p.field)} ${op}: searching the change history is not available yet`,
-        'unsupported',
-      );
-    }
+    if (p.kind === 'history') return this.history(p);
     if (p.field.kind === 'custom') return this.custom(p, p.field);
     this.supported(p.field);
     return this.system(p, p.field);
@@ -477,6 +549,270 @@ class Binder {
       default:
         return undefined;
     }
+  }
+
+  // --- history (M1-039) -------------------------------------------------------------------
+
+  /**
+   * WAS and CHANGED (QRY-005; spec 01b 1.3) over `ticket_change`, which records every field a
+   * mutation changes and every value a ticket starts with. Values become what history stores
+   * (ids, numbers, days and instants as text); a name no value has now is matched against the
+   * names values had when each change was written, so a renamed status or a removed option
+   * still matches by its old name. Fields derived from another (stage, hierarchy level, track
+   * type and category) read that field's history; creator and created never change.
+   */
+  private async history(p: HistoryLeaf): Promise<Cond> {
+    const field = p.field;
+    if (field.kind === 'system') {
+      this.supported(field);
+      if (field.name === 'created' || field.name === 'creator') return this.held(p, field.name);
+    }
+    const shape = this.historyShape(field);
+    const predicate = (kind: HistoryLeaf['predicates'][number]['kind']) =>
+      p.predicates.find((x) => x.kind === kind);
+    const from = predicate('from');
+    const to = predicate('to');
+    if (shape.rows === 'delta' && (p.empty || from?.empty || to?.empty)) {
+      throw new SearchError(
+        `${label(field)}: EMPTY in WAS and CHANGED is not available for links yet`,
+        'unsupported',
+      );
+    }
+    const window = timeWindow(p.predicates);
+    if (window === 'never') return { kind: 'const', value: p.negated };
+    const side = async (values: Typed[], empty: boolean | undefined): Promise<HistorySide> => ({
+      test: values.length > 0 ? await shape.test(values) : null,
+      empty: empty === true,
+    });
+    const by = predicate('by');
+    return {
+      kind: 'history',
+      field: shape.name,
+      op: p.op,
+      negated: p.negated,
+      rows: shape.rows,
+      ...(shape.startsSet ? { startsSet: true } : {}),
+      ...(p.op === 'was' ? { held: await side(p.values, p.empty) } : {}),
+      ...(from ? { from: await side(from.values, from.empty) } : {}),
+      ...(to ? { to: await side(to.values, to.empty) } : {}),
+      ...(by ? { by: await this.people(by.values) } : {}),
+      ...window,
+    };
+  }
+
+  /**
+   * WAS on creator and created: set once, when the ticket is created, so held from then on and
+   * set by the creator. Neither ever CHANGED.
+   */
+  private async held(p: HistoryLeaf, name: 'created' | 'creator'): Promise<Cond> {
+    const window = timeWindow(p.predicates);
+    if (p.op === 'changed' || window === 'never') return { kind: 'const', value: p.negated };
+    const values = name === 'creator' ? await this.people(p.values) : p.values.map(ISO);
+    const by = p.predicates.find((x) => x.kind === 'by');
+    return {
+      kind: 'held',
+      on: name === 'creator' ? 'creator_id' : 'created_at',
+      test: values.length > 0 ? { kind: 'in', values } : null,
+      empty: p.empty === true,
+      ...(by ? { by: await this.people(by.values) } : {}),
+      ...(window.before ? { before: window.before } : {}),
+      negated: p.negated,
+    };
+  }
+
+  /** Where a field's history is and how its values read. */
+  private historyShape(field: Field): HistoryShape {
+    const state = (name: string, test: HistoryShape['test']): HistoryShape => ({
+      name,
+      rows: 'state',
+      ...(SET_AT_CREATION.has(name) ? { startsSet: true } : {}),
+      test,
+    });
+    // Ids, with the names nothing has now matched as the values were called then.
+    const one =
+      (find: (values: Typed[]) => Promise<Found>) =>
+      async (values: Typed[]): Promise<HistoryTest> => {
+        const { ids, missing } = await find(values);
+        return { kind: 'values', values: ids.map(String), names: names(missing) };
+      };
+    const many =
+      (
+        separator: ' ' | ',' | ':',
+        find: (values: Typed[]) => Promise<Found>,
+        nameSeparator: ', ' | ' / ' = ', ',
+      ) =>
+      async (values: Typed[]): Promise<HistoryTest> => {
+        const { ids, missing } = await find(values);
+        return {
+          kind: 'items',
+          separator,
+          nameSeparator,
+          values: ids.map(String),
+          names: names(missing),
+        };
+      };
+    const ids =
+      (find: (values: Typed[]) => Promise<number[]>) =>
+      async (values: Typed[]): Promise<Found> => ({ ids: await find(values), missing: [] });
+    // Numbers, days and instants as history writes them (`String(n)`, ISO).
+    const exact = async (values: Typed[]): Promise<HistoryTest> => ({
+      kind: 'values',
+      values: values.map((v) => String(ISO(v))),
+      names: [],
+    });
+    const words =
+      (document: boolean) =>
+      async (values: Typed[]): Promise<HistoryTest> => ({
+        kind: 'words',
+        texts: values.map((v) => String(content(v).value)),
+        document,
+      });
+    const labels = async (values: Typed[]): Promise<HistoryTest> => ({
+      kind: 'items',
+      separator: ' ',
+      nameSeparator: ', ',
+      values: values.map((v) => String(content(v).value)),
+      names: [],
+    });
+    if (field.kind === 'custom') {
+      const def = this.ctx.catalog.fields.get(field.id);
+      const name = `cf[${field.id}]`;
+      const multiple = def?.multiple === true;
+      const named = (kind: NamedKind) => (values: Typed[]) => this.findNamed(kind, values);
+      const options = async (values: Typed[]) => this.findOptions(field, values);
+      switch (field.type) {
+        case 'text':
+          return state(name, words(def?.type === 'paragraph'));
+        case 'number':
+        case 'date':
+        case 'datetime':
+          return state(name, exact);
+        case 'labels':
+          return state(name, labels);
+        case 'option':
+          return state(name, one(options));
+        case 'multi':
+          return state(name, many(',', options));
+        case 'cascade':
+          return state(name, many(':', options, ' / '));
+        case 'user': {
+          const people = (values: Typed[]) => this.findPeople(values);
+          return state(name, multiple ? many(',', people) : one(people));
+        }
+        case 'group':
+        case 'release':
+        case 'area':
+          return state(name, multiple ? many(',', named(field.type)) : one(named(field.type)));
+      }
+    }
+    const kinds: Partial<Record<string, NamedKind>> = {
+      status: 'status',
+      priority: 'priority',
+      closeReason: 'closeReason',
+      visibilityLevel: 'level',
+      type: 'type',
+    };
+    const kind = kinds[field.name];
+    if (kind)
+      return state(
+        field.name,
+        one((values) => this.findNamed(kind, values)),
+      );
+    switch (field.name) {
+      case 'track':
+        return state('track', one(ids((values) => this.trackIds(values))));
+      case 'assignee':
+      case 'requester':
+        return state(
+          field.name,
+          one((values) => this.findPeople(values)),
+        );
+      case 'parent':
+        // Tickets the viewer sees only, as `parent = KEY` (a hidden one reads as unknown).
+        return state('parent', one(ids((values) => this.keys(this.noTicketSets(field, values)))));
+      case 'key':
+        return state('key', async (values) => ({
+          kind: 'values',
+          values: this.noTicketSets(field, values).map((v) => String(v.value).toUpperCase()),
+          names: [],
+        }));
+      case 'summary':
+        return state('summary', words(false));
+      case 'description':
+      case 'environment':
+        return state(field.name, words(true));
+      case 'labels':
+        return state('labels', labels);
+      case 'area':
+        return state(
+          'area',
+          many(',', (values) => this.findNamed('area', values)),
+        );
+      case 'targetRelease':
+      case 'foundInRelease':
+        return state(
+          field.name,
+          many(',', (values) => this.findNamed('release', values)),
+        );
+      case 'due':
+        return state('dueDate', exact);
+      case 'start':
+        return state('startDate', exact);
+      case 'originalEstimate':
+      case 'remainingEstimate':
+      case 'timeSpent':
+        return state(field.name, exact);
+      case 'stage':
+        return state('status', one(ids((values) => this.statusesOf(values))));
+      case 'hierarchyLevel':
+        return state('type', one(ids((values) => this.derivedIds(field, values))));
+      case 'trackType':
+      case 'trackCategory':
+        return state('track', one(ids((values) => this.derivedIds(field, values))));
+      case 'ticketLink':
+        return {
+          name: 'link',
+          rows: 'delta',
+          test: async (values) => ({
+            kind: 'linkTo',
+            tickets: await this.keys(this.noTicketSets(field, values)),
+          }),
+        };
+      case 'ticketLinkType':
+        return {
+          name: 'link',
+          rows: 'delta',
+          test: async (values) => ({ kind: 'linkType', ...(await this.linkTypes(values)) }),
+        };
+      case 'sprint':
+        throw new SearchError(
+          `${label(field)}: WAS and CHANGED do not read sprint changes yet; sprint = <sprint> matches every sprint a ticket is or was in`,
+          'unsupported',
+        );
+      default:
+        throw new SearchError(`${label(field)} keeps no change history`, 'unsupported');
+    }
+  }
+
+  /** Key values without ticket functions, which history clauses cannot take yet. */
+  private noTicketSets(field: Field, values: Typed[]): Exclude<Typed, CallValue>[] {
+    for (const v of values) {
+      if (isCall(v)) {
+        throw new SearchError(
+          `${v.fn}() cannot be used in WAS or CHANGED on ${label(field)} yet`,
+          'unsupported',
+        );
+      }
+    }
+    return values as Exclude<Typed, CallValue>[];
+  }
+
+  /** The ids an `IN` on a derived field names: ticket types by level, tracks by type or category. */
+  private async derivedIds(field: SystemField, values: Typed[]): Promise<number[]> {
+    const p: Leaf = { kind: 'in', field, negated: false, values };
+    const cond =
+      field.name === 'hierarchyLevel' ? await this.hierarchy(p) : await this.trackSet(p, field);
+    return cond.kind === 'scalar' && cond.test.kind === 'in' ? (cond.test.values as number[]) : [];
   }
 
   // --- custom fields ---------------------------------------------------------------------
@@ -559,7 +895,17 @@ class Binder {
 
   /** Options of a select, multiple select or cascade by value (either level of a cascade). */
   private options(field: CustomField, values: Typed[]): number[] {
+    const { ids, missing } = this.findOptions(field, values);
+    if (missing[0] !== undefined) {
+      throw new SearchError(`${label(field)} has no option "${missing[0]}"`, 'unknown_value');
+    }
+    return ids;
+  }
+
+  /** Options by value or id, and the values no option has. */
+  private findOptions(field: CustomField, values: Typed[]): Found {
     const ids: number[] = [];
+    const missing: string[] = [];
     for (const v of values) {
       if (isCall(v)) {
         ids.push(...this.optionFunction(field, v));
@@ -569,15 +915,10 @@ class Binder {
       const found = [...this.ctx.catalog.options.values()].filter(
         (o) => o.fieldId === field.id && (lower(o.value) === wanted || String(o.id) === wanted),
       );
-      if (found.length === 0) {
-        throw new SearchError(
-          `${label(field)} has no option "${String(v.value)}"`,
-          'unknown_value',
-        );
-      }
+      if (found.length === 0) missing.push(String(v.value));
       ids.push(...found.map((o) => o.id));
     }
-    return idList(ids);
+    return { ids: idList(ids), missing };
   }
 
   /**
@@ -1266,8 +1607,18 @@ class Binder {
 
   /** Ids by name (any case) or by id; a name nobody uses is refused. */
   private async named(kind: NamedKind, values: Typed[], field: string): Promise<number[]> {
+    const { ids, missing } = await this.findNamed(kind, values);
+    if (missing[0] !== undefined) {
+      throw new SearchError(`${field} has no value "${missing[0]}"`, 'unknown_value');
+    }
+    return ids;
+  }
+
+  /** Ids by name (any case) or by id, and the names nothing is called now. */
+  private async findNamed(kind: NamedKind, values: Typed[]): Promise<Found> {
     const rows = await this.table(kind);
     const ids: number[] = [];
+    const missing: string[] = [];
     for (const v of values) {
       if (isCall(v)) {
         ids.push(...(await this.namedFunction(kind, v)));
@@ -1277,18 +1628,20 @@ class Binder {
       let found = rows.filter((r) => lower(r.name) === wanted);
       if (found.length === 0 && /^\d+$/.test(wanted))
         found = rows.filter((r) => String(r.id) === wanted);
-      if (found.length === 0) {
-        throw new SearchError(`${field} has no value "${String(v.value)}"`, 'unknown_value');
-      }
+      if (found.length === 0) missing.push(String(v.value));
       ids.push(...found.map((r) => r.id));
     }
-    return idList(ids);
+    return { ids: idList(ids), missing };
   }
 
   /** Statuses in the stages named. */
   private async stages(p: Leaf): Promise<number[]> {
+    return this.statusesOf(this.typed(p));
+  }
+
+  private async statusesOf(values: Typed[]): Promise<number[]> {
     const stages = new Set<'new' | 'active' | 'closed'>();
-    for (const v of this.typed(p).map(content)) {
+    for (const v of values.map(content)) {
       const stage = STAGES[lower(String(v.value))];
       if (!stage) {
         throw new SearchError(
@@ -1430,29 +1783,42 @@ class Binder {
 
   /** People by id, `currentUser()` (already an id), email or name (any case). */
   private async people(values: Typed[]): Promise<number[]> {
+    const { ids, missing } = await this.findPeople(values);
+    if (missing[0] !== undefined) {
+      throw new SearchError(`No person "${lower(missing[0])}"`, 'unknown_value');
+    }
+    return ids;
+  }
+
+  /** People by id, `currentUser()`, email or name, and the names nobody has now. */
+  private async findPeople(values: Typed[]): Promise<Found> {
     const ids: number[] = [];
     const names: string[] = [];
     for (const v of values) {
       if (isCall(v)) ids.push(...(await this.userFunction(v)));
       else if (v.type === 'number') ids.push(v.value);
-      else names.push(lower(String(v.value)));
+      else names.push(String(v.value));
     }
+    const missing: string[] = [];
     if (names.length > 0) {
+      const wanted = names.map(lower);
       const rows = await this.db
         .selectFrom('app_user')
         .select(['id', 'email', 'name'])
         .where('workspace_id', '=', this.ws)
         .where((eb) =>
-          eb.or([eb(sql`lower(email)`, 'in', names), eb(sql`lower(name)`, 'in', names)]),
+          eb.or([eb(sql`lower(email)`, 'in', wanted), eb(sql`lower(name)`, 'in', wanted)]),
         )
         .execute();
       for (const name of names) {
-        const found = rows.filter((r) => lower(r.email) === name || lower(r.name) === name);
-        if (found.length === 0) throw new SearchError(`No person "${name}"`, 'unknown_value');
+        const found = rows.filter(
+          (r) => lower(r.email) === lower(name) || lower(r.name) === lower(name),
+        );
+        if (found.length === 0) missing.push(name);
         ids.push(...found.map((r) => r.id));
       }
     }
-    return idList(ids);
+    return { ids: idList(ids), missing };
   }
 
   /** Tickets by id or key (old keys too); keys of tickets the viewer cannot see match nothing. */

@@ -129,6 +129,44 @@ export type TicketSet =
   | { kind: 'webLinks'; globalIds: string[] };
 
 /**
+ * Which values of a field's history a clause names (M1-039). History keeps every value as text
+ * (`tickets/history.ts`): ids, numbers, ISO days and instants and keys as they are; lists in one
+ * row (labels by spaces, ids by commas, a cascade's levels by colons); plain text; rich-text
+ * documents as JSON; links as `type:direction:ticket`. Names are the ones a value had when it
+ * was written (`*_display`), lower case, for values renamed or removed since (spec 01b 1.3).
+ */
+export type HistoryTest =
+  /** The value is one of `values`, or was called one of `names` then. */
+  | { kind: 'values'; values: string[]; names: string[] }
+  /** One of the list's items is one of `values`, or was called one of `names` then. */
+  | {
+      kind: 'items';
+      separator: ' ' | ',' | ':';
+      /** How the names of the items are joined: ", ", or " / " for a cascade. */
+      nameSeparator: ', ' | ' / ';
+      values: string[];
+      names: string[];
+    }
+  /** Every word of one of `texts` occurs; `document`: the value is a rich-text document. */
+  | { kind: 'words'; texts: string[]; document: boolean }
+  /** A link to one of `tickets`. */
+  | { kind: 'linkTo'; tickets: number[] }
+  /** A link of a type: either way (`both`), as its source (`outward`) or target (`inward`). */
+  | { kind: 'linkType'; both: number[]; outward: number[]; inward: number[] };
+
+/** The values a history clause names on one side of a change: some, EMPTY, or both. */
+export interface HistorySide {
+  test: HistoryTest | null;
+  empty: boolean;
+}
+
+/** One end of a history clause's time window, as ISO text, and whether it is inside. */
+export interface TimeEdge {
+  at: string;
+  inclusive: boolean;
+}
+
+/**
  * A condition on ticket `k`. `some` matches tickets with a matching value; `none` matches
  * tickets that have values and none of them matches, so a negated clause never brings back
  * tickets whose field is empty (spec 01b section 1.1: only IS EMPTY matches those).
@@ -170,7 +208,46 @@ export type Cond =
    * not (and a ticket without a parent never matches, spec 01b section 1.1). A parent counts
    * only when the viewer may see it.
    */
-  | { kind: 'ticketSet'; on: 'id' | 'parent_id'; set: TicketSet; negated: boolean };
+  | { kind: 'ticketSet'; on: 'id' | 'parent_id'; set: TicketSet; negated: boolean }
+  /**
+   * WAS and CHANGED over `ticket_change` (M1-039; QRY-005). WAS: some stretch of time in which
+   * the field held one of `held`'s values (EMPTY: none), begun by a change by one of `by`, that
+   * overlaps the window from `after` to `before`; negated (WAS NOT), no such stretch. CHANGED: a
+   * change after the ticket's creation (its first values are history too, not changes) that
+   * took away one of `from`'s values and brought one of `to`'s, by one of `by`, within the window.
+   * `state` rows hold the field's whole new value, so a stretch lasts until the field's next
+   * row; `delta` rows add (to) or remove (from) one value (links), whose stretch lasts until a
+   * row removes it.
+   */
+  | {
+      kind: 'history';
+      /** The field's name in `ticket_change` (`status`, `dueDate`, `cf[12]`, `link`). */
+      field: string;
+      op: 'was' | 'changed';
+      negated: boolean;
+      rows: 'state' | 'delta';
+      /** Every ticket starts with a value (status, type, track): never empty before its first row. */
+      startsSet?: boolean;
+      held?: HistorySide;
+      from?: HistorySide;
+      to?: HistorySide;
+      by?: number[];
+      after?: TimeEdge;
+      before?: TimeEdge;
+    }
+  /**
+   * WAS on a field set once, when the ticket is created (creator, created): the ticket's value,
+   * held from its creation on and set by its creator (`by`); `before` bounds the creation time.
+   */
+  | {
+      kind: 'held';
+      on: 'creator_id' | 'created_at';
+      test: ValueTest | null;
+      empty: boolean;
+      by?: number[];
+      before?: TimeEdge;
+      negated: boolean;
+    };
 
 /** A value results are ordered by. */
 export type OrderSource =

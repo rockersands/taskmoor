@@ -195,6 +195,44 @@ describe('field and operator resolver (M1-036)', () => {
     );
   });
 
+  it('[QRY-005] [QRY-006] reads ON as the whole day on the person’s calendar, and FROM EMPTY', () => {
+    const on = (q: string, timeZone: string) => {
+      const plan = resolveQuery(parseQuery(q), makeCatalogue(), {
+        currentUserId: 7,
+        now: new Date('2026-10-12T12:00:00Z'),
+        timeZone,
+      });
+      const where = plan.where as { predicates: { kind: string; values: { value: Date }[] }[] };
+      return where.predicates
+        .find((p) => p.kind === 'on')
+        ?.values.map((v) => v.value.toISOString());
+    };
+    expect(on('status CHANGED ON 2026-01-15', 'UTC')).toEqual([
+      '2026-01-15T00:00:00.000Z',
+      '2026-01-16T00:00:00.000Z',
+    ]);
+    // Madrid moves its clocks forward on 29 March 2026: that day has 23 hours.
+    expect(on('status WAS Done ON 2026-03-29', 'Europe/Madrid')).toEqual([
+      '2026-03-28T23:00:00.000Z',
+      '2026-03-29T22:00:00.000Z',
+    ]);
+    // A relative date names the day it falls on.
+    expect(on('status CHANGED ON -1d', 'UTC')).toEqual([
+      '2026-10-11T00:00:00.000Z',
+      '2026-10-12T00:00:00.000Z',
+    ]);
+    expect(resolve('assignee CHANGED FROM (EMPTY, 7) TO EMPTY').where).toMatchObject({
+      predicates: [
+        { kind: 'from', empty: true, values: [{ type: 'number', value: 7 }] },
+        { kind: 'to', empty: true, values: [] },
+      ],
+    });
+    expect(refusal('status WAS Done FROM New')).toBe(
+      'FROM goes with CHANGED; WAS takes AFTER, BEFORE, BY, DURING and ON',
+    );
+    expect(refusal('updated CHANGED')).toBe('"updated" keeps no change history');
+  });
+
   it('[QRY-006] reads dates with dashes or slashes, with or without a time', () => {
     expect(resolve('created >= 2026/01/31')).toEqual(resolve('created >= 2026-01-31'));
     expect(resolve('created >= "2026/01/31 14:05"')).toEqual(

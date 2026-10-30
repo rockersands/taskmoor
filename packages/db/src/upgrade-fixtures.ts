@@ -1063,6 +1063,19 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 'seed-0055@example.com', 'Seed 0055')`.execute(db);
     },
   },
+  '0056_history_search': {
+    tables: {
+      ticket_change: "field = 'description' AND length(to_value) = 5000",
+    },
+    seed: async (db) => {
+      // A change to the seed ticket longer than an index entry holds: the history indexes keep
+      // its first 200 characters, so writing it still works.
+      await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, actor_id, field,
+          to_value, at)
+        SELECT 1, id, 55, NULL, 'description', repeat('x', 5000), '2026-10-30T09:00:00Z'
+          FROM ticket WHERE summary = 'Seed ticket'`.execute(db);
+    },
+  },
 };
 
 /**

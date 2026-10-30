@@ -119,6 +119,46 @@ const CASES: PlanCase[] = [
   { q: 'comment ~ export ORDER BY created DESC', uses: ['ticket_comment_words_idx'] },
 ];
 
+/**
+ * History (M1-039): each ticket's first status, a change for one ticket in four, a review for
+ * one in 997, an assignment for one in twenty (26,000 rows, under ANALYZE's sample). A rare
+ * value, a recent change or a person starts from the history indexes; a common value walks the
+ * order and probes each ticket's own rows.
+ */
+const HISTORY_CASES: PlanCase[] = [
+  { q: 'status WAS "In Review" ORDER BY updated DESC', uses: ['ticket_change_to_idx'] },
+  {
+    q: 'status CHANGED TO Closed AFTER "2024-11-01" ORDER BY updated DESC',
+    uses: ['ticket_change_to_idx'],
+  },
+  {
+    q: 'status CHANGED AFTER "2024-12-01" ORDER BY created DESC',
+    uses: ['ticket_change_field_at_idx'],
+  },
+  {
+    q: 'assignee CHANGED BY {other} ORDER BY created DESC',
+    uses: ['ticket_change_actor_id_at_idx'],
+  },
+  { q: 'status CHANGED FROM "In Review"', uses: ['ticket_change_from_idx'] },
+  // A name no status has now: matched by the name the value had when written.
+  {
+    q: 'status WAS "Name before a rename" ORDER BY updated DESC',
+    uses: ['ticket_change_to_name_idx'],
+  },
+  {
+    q: 'status WAS Active ORDER BY created DESC',
+    uses: ['ticket_change_to_idx|ticket_change_ticket_field_idx|ticket_change_pkey'],
+  },
+  {
+    q: 'status WAS Closed AFTER "2024-06-01" BEFORE "2024-07-01" ORDER BY created DESC',
+    uses: ['ticket_change_to_idx'],
+  },
+  {
+    q: 'status WAS NOT New ORDER BY created DESC',
+    uses: ['ticket_created_idx', 'ticket_change_ticket_field_idx|ticket_change_pkey'],
+  },
+];
+
 /** A plan as node types, scan directions, indexes and relations, one line per node. */
 function shape(node: Record<string, unknown>, depth = 0, out: string[] = []): string[] {
   const parts = [node['Node Type'] as string];
@@ -329,6 +369,28 @@ describe('query plans (M1-037)', () => {
       `${fieldIds.Reviewer}, ${member} + (k.id * 13) % ${USERS}`,
       'k.id % 3 = 0',
     );
+    // History (M1-039): first statuses, changes, reviews and assignments, as HISTORY_CASES says.
+    await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, at, actor_id, field,
+        to_value, to_display)
+      SELECT 1, k.id, k.id, k.created_at, k.creator_id, 'status', s.id::text, s.name
+        FROM ticket k, status s WHERE s.name = 'New'`.execute(db);
+    await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, at, actor_id, field,
+        from_value, to_value, from_display, to_display)
+      SELECT 1, k.id, 100000 + k.id, k.created_at + interval '1 day', k.requester_id, 'status',
+             n.id::text, s.id::text, n.name, s.name
+        FROM ticket k JOIN status s ON s.id = k.status_id, status n
+       WHERE n.name = 'New' AND s.name <> 'New' AND k.id % 4 = 0`.execute(db);
+    await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, at, actor_id, field,
+        from_value, to_value, from_display, to_display)
+      SELECT 1, k.id, 200000 + k.id, k.created_at + interval '12 hours', k.requester_id, 'status',
+             n.id::text, r.id::text, n.name, r.name
+        FROM ticket k, status n, status r
+       WHERE n.name = 'New' AND r.name = 'In Review' AND k.id % 997 = 0`.execute(db);
+    await sql`INSERT INTO ticket_change (workspace_id, ticket_id, change_set, at, actor_id, field,
+        to_value)
+      SELECT 1, k.id, 300000 + k.id, k.created_at + interval '2 hours',
+             ${member} + (k.id * 13) % ${USERS}, 'assignee', k.assignee_id::text
+        FROM ticket k WHERE k.id % 20 = 0 AND k.assignee_id IS NOT NULL`.execute(db);
     // A visibility level on the first track: one ticket in a hundred, for Administrators only.
     await sql`INSERT INTO visibility_policy (workspace_id, name) VALUES (1, 'Plans')`.execute(db);
     await sql`INSERT INTO visibility_level (workspace_id, policy_id, name, position)
@@ -348,6 +410,7 @@ describe('query plans (M1-037)', () => {
       'v_user',
       'ticket_follower',
       'ticket_comment',
+      'ticket_change',
       'app_user',
       'track',
       'status',
@@ -407,6 +470,34 @@ describe('query plans (M1-037)', () => {
     }
     if (major === 16) {
       await expect(stableJson(plans)).toMatchFileSnapshot('./__golden__/plans-pg16.json');
+    }
+  });
+
+  it('[QRY-005] [QRY-010] plans history clauses on the history indexes (M1-039)', async () => {
+    const version = await sql<{
+      v: string;
+    }>`SELECT current_setting('server_version_num') AS v`.execute(db);
+    const major = Math.floor(Number(version.rows[0]?.v ?? 0) / 10_000);
+    const plans: Record<string, string[]> = {};
+    for (const c of HISTORY_CASES) {
+      const lines = await explain(c.q);
+      plans[c.q] = lines;
+      // Each partition's index stands for the table's (`ticket_change_p03_to_idx`).
+      const used = new Set(
+        [...indexesOf(lines)].map((i) => i.replace(/^ticket_change_p\d\d_/, 'ticket_change_')),
+      );
+      for (const index of c.uses) {
+        expect(
+          index.split('|').some((i) => used.has(i)),
+          `${c.q} uses ${index}: ${[...used].join(', ')}`,
+        ).toBe(true);
+      }
+      expect(lines.join('\n'), c.q).not.toMatch(/Seq Scan on ticket k$/m);
+      // The history is never read whole either.
+      expect(lines.join('\n'), c.q).not.toMatch(/Seq Scan on ticket_change_p\d+/m);
+    }
+    if (major === 16) {
+      await expect(stableJson(plans)).toMatchFileSnapshot('./__golden__/plans-history-pg16.json');
     }
   });
 

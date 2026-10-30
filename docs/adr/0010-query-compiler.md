@@ -189,7 +189,7 @@ added (absolute since 2026-10-12, `docs/plan/decisions.csv`).
   expressions, so the planner matches them), custom text fields through their side rows;
   `text ~` covers all of those. Phrases, wildcards, stemming, ranking and an index on custom
   text values are M1-040.
-- **Refused for now, with a message that says why:** `WAS` and `CHANGED` (M1-039),
+- **Refused for now, with a message that says why:** `WAS` and `CHANGED` (M1-039; built since, see "History operators (M1-039)"),
   `lastViewed` (not recorded yet), fields of modules not built (boards and sprints, service
   tracks, journeys, saved searches), functions other than `currentUser()` and the date
   functions (the resolver already refuses those; M1-038), and ordering by a field the catalogue
@@ -393,6 +393,113 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
   never dates). Their Jira-compatible names are the same functions.
 - **Still waiting**: the SLA functions (`breached()` and the rest) come with SLAs in M2-013;
   they are the 14 cases the conformance suite's function section still fails.
+
+## History operators (M1-039)
+
+- **Scope:** `WAS`, `WAS NOT`, `WAS IN`, `WAS NOT IN` and `CHANGED` with `FROM`, `TO`, `BY`,
+  `AFTER`, `BEFORE`, `ON` and `DURING` on every field the change history records
+  (`ticket_change`, M1-009: system fields under their history names, custom fields as
+  `cf[<id>]`, links as `link`), over the whole history (no 10,000-change window), inside the
+  same statement as the rest of the query: the viewer's filter stays in it (QRY-008) and values
+  are parameters (the fuzz property now has history templates).
+- **Stretches.** A value is held from the row that set it until the field's next row (`state`
+  fields: each row holds the whole new value) or, for links, until the row that removes that
+  link (`delta`). A ticket's first values are history rows too (no `from`, written with the
+  ticket, by its creator); a field without one was empty from the ticket's creation until its
+  first row, as its creator left it.
+- **WAS** asks for a stretch with one of the values (`EMPTY`: none), begun `BY` one of the
+  people, that overlaps the window: `AFTER a` lasts past `a`; `BEFORE b` began before `b`; `ON d`
+  overlaps the day from `d`'s first instant to the next day's on the person's calendar
+  (QRY-006, the resolver turns the day into those two instants); `DURING (a, b)` overlaps `a` to
+  `b`, both ends included. Several time predicates narrow to their overlap (`AFTER a BEFORE b`).
+  `WAS NOT` and `WAS NOT IN` are the negation, so a ticket that never had a value matches them
+  (they are not `!=`), and `NOT x WAS v` is `x WAS NOT v`.
+- **CHANGED** asks for a row after the ticket's creation (its first values are history, not
+  changes): `FROM` the value it took away, `TO` the value it brought (on lists, an item that
+  left or arrived: `labels CHANGED TO urgent` is a change that added it), `BY`, and the change's
+  instant in the window. `FROM EMPTY` and `TO EMPTY` name changes from and to no value. A
+  creation row is one without `from` at or before the ticket's `created_at`; creates write both
+  in one transaction (the same `now()`), the importer at the source's creation time.
+- **Values** become what history stores: ids as text for references, `String(n)` for numbers,
+  ISO days and instants, keys; labels, releases, areas and multiple custom values are lists in
+  one row (by spaces, commas, a cascade's levels by colons) and match by item. Text fields take
+  no `=`, so `WAS` and `FROM`/`TO` on them match words as `~` does (summary and text fields by
+  their words, description, environment and paragraph fields by the words of the document).
+- **Names at the time (QRY-005 (2)):** a name no value has now (a status renamed, an option
+  removed, a person renamed) is matched against the name the value had when each row was
+  written (`to_display`, `from_display`, lower case), so `status WAS "In Review"` still matches
+  after the status is renamed; under its new name it matches by id. A name nothing ever had
+  matches nothing and is not refused (it may be an old name). Keys and tickets are ids of
+  tickets the viewer sees, as in `parent = KEY`, so history never confirms a hidden ticket.
+- **Derived and fixed fields:** `stage` reads the status history (the statuses in the stage
+  now), `hierarchyLevel` the type history, `trackType` and `trackCategory` the track history.
+  `creator` and `created` never change: `WAS` is the ticket's own value, held from its creation
+  and set by its creator; `CHANGED` never matches. The resolver now refuses history on
+  `updated`, `closed` and `parentTrack`, which have none of their own ("keeps no change
+  history"), and refuses `FROM`/`TO` with `WAS`, a predicate given twice, `AFTER`, `BEFORE` or
+  `ON` with other than one date, `DURING` with other than two or ending before it starts.
+- **Not built:** sprint history (its changes live in `sprint_change`, M1-044; `sprint = X`
+  already matches every sprint a ticket is or was in), `WAS EMPTY` and `FROM`/`TO EMPTY` on
+  links, ticket functions as history values (`parent WAS IN watchedIssues()`), saved searches
+  (no history). Each is refused with a message that says so.
+- **SQL** (`compile.ts` `historyCond`; goldens in `search/__golden__/compile.json`): one
+  `EXISTS (SELECT 1 FROM ticket_change h WHERE h.ticket_id = k.id AND h.field = $f AND ...)`
+  per clause, so the planner can turn it into a semi-join started from whichever side is
+  rarer. Single values compare as `left(h.to_value, 200) = $v`, the expression the value
+  indexes hold (a whole value, a rich-text document, can be longer than an index entry; the
+  values a query names there are shorter, so it is exact). `AFTER`, `ON` and `DURING` add
+  "no later row of the field (or none removing the link) at or before the window's start"
+  (`NOT EXISTS ... (n.at, n.id) > (h.at, h.id)`); `WAS EMPTY` adds the stretch before the
+  field's first row (`NOT EXISTS` a row at or before `greatest(k.created_at, start)`), except on
+  the fields every ticket is created with (track, key, type, status, summary and what derives
+  from them), where it stays one `EXISTS` (elsewhere the stretches become a set of tickets,
+  below); names at the time compare as
+  `lower(left(h.to_display, 200))`; `CHANGED`
+  adds `(h.from_value IS NOT NULL OR h.at > k.created_at)`. Lists use `string_to_array`; what a
+  change brought or took away is an `EXISTS` over `unnest` of the values.
+- **Indexes (migration 0056; five),** each built per partition under a plain name
+  (`ticket_change_p03_to_idx`) so plans can be read:
+  `ticket_change_to_idx (field, left(to_value, 200), at)` for `WAS v`, `CHANGED TO v` and
+  `TO v AFTER d`; `ticket_change_from_idx (field, left(from_value, 200), at)` for `CHANGED FROM
+  v`; `ticket_change_to_name_idx (field, lower(left(to_display, 200)), at)` for a value named by
+  a name it no longer has; `ticket_change_field_at_idx (field, at)` for `CHANGED AFTER d` and the
+  end of a stretch across tickets; `ticket_change_ticket_field_idx (ticket_id, field, at, id)`
+  for the probe per ticket and the next row after one (a ticket with 12,000 status changes
+  answers in milliseconds, QRY-005 (3)); `BY` uses `ticket_change_actor_idx (actor_id, at)` from
+  0015. Plan goldens (`search/__golden__/plans-history-pg16.json`, `search/plans.test.ts`): a
+  rare value, an old name, a recent change, a person and `FROM` start from these indexes and
+  join tickets by primary key; a common value and `WAS NOT` walk the order and probe each
+  ticket's rows; the history table is never read whole. Lists, words and links have no value
+  index: they are checked per ticket (or across the field's rows by time), so they are best
+  combined with another condition at size. `WAS EMPTY` on a field a ticket can start without
+  has two branches: the stretches without a value are one uncorrelated set of tickets
+  (`k.id IN (SELECT h.ticket_id ...)`, read once and hashed; as a correlated `EXISTS` beside
+  the other branch it was probed per ticket, and its capped count took 2.8 s at 200,000 tickets
+  instead of 0.28 s), the empty start a probe per ticket. The test template's fingerprint is the
+  text of each migration's `up`, so the index list lives inside it (a list outside `up` changes
+  nothing the fingerprint sees, and the cached template keeps the old indexes).
+- **Tests:** a model of history (`search/history.test.ts`: random worlds of six tickets whose
+  status, assignee, labels and links change at random instants, some at the same instant, by
+  three people; 44 queries for two people with different tracks, compared with the model
+  within `ticketPermissions`; dropping the stretch end, the creation rule or the empty start
+  makes it fail, checked), the API (`search/history.run.test.ts`: QRY-005 (1) on a custom
+  field with history written by the routes and moved back in time, (2) after renaming a
+  status, (3) on a ticket with 12,001 status changes, every kind of field, the refusals), and
+  every history case of the conformance suite run on the server.
+- **Measured** (`search/history.large.test.ts`, `TASKMOOR_LARGE_HISTORY=1`; 200,000 tickets
+  over 20 tracks, 1,159,066 history rows, a member who sees half the tracks; binding, the first
+  page of 50 and the count to 10,001 as the search route runs them, p95 of 20, on this Mac with
+  other sessions' tests running, load average 8 to 16): first page 1.3 to 78 ms, page and count
+  1.9 to 264 ms over fourteen queries (rare and common values, `WAS NOT`, `DURING`, `AFTER ..
+  BEFORE ..`, `CHANGED TO .. AFTER`, `BY`, `FROM .. TO`, `WAS EMPTY AFTER`, a custom field, an
+  old name, the ticket with 12,000 changes). **10M is not measured** (done-when: p95 under 800
+  ms at 10M): the 10M dataset is not on this machine and the bench loader writes no history;
+  M1-117 should load about nine history rows a ticket, as the large test does, and run the same
+  queries. The forms that read per ticket (lists, words, links, `WAS EMPTY`'s empty start) are
+  the ones to watch there.
+- **Conformance:** history 239 to 254 cases, all passing (new: `FROM`/`TO EMPTY`, `BY
+  membersOf()`, the refusals above); the parser and resolver suite 2,409 of 2,423. On the
+  server every history case runs except the ten on `sprint` and `savedSearch`.
 
 ## Options considered
 
