@@ -8,7 +8,7 @@ attestation: own-words
 # 02d Data Center backup format
 
 These notes describe the backup ZIP that the Data Center importer reads (IMP-001, IMP-004;
-ADR-025, ADR-070): the entities file, the active-objects file and the attachment files. They
+ADR-025, ADR-072): the entities file, the active-objects file and the attachment files. They
 are written in our own words from public pages only (ADR-003). Nothing here is copied from a
 product, a backup or a vendor document, and no vendor product was used to write them.
 

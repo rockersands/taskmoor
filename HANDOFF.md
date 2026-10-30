@@ -17,7 +17,7 @@ it. The local demo is such a database (`docker compose down -v`, then `bash inst
 ## Side session 2026-10-30: M1-087 synthetic Data Center backups
 
 Built on the branch `claude/vigilant-ramanujan-625cc8` in a side session; the main session
-merges it after its own gate. ADR-070; no migration; one new server dependency (`saxes` 6.0.0,
+merges it after its own gate. ADR-072; no migration; one new server dependency (`saxes` 6.0.0,
 ISC, already in the lockfile through the spikes).
 
 - **Format notes** `docs/specs/02d-dc-backup-format.md`: the backup ZIP, the entities file, the

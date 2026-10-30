@@ -1,4 +1,4 @@
-# ADR-070: Synthetic Data Center backups: one seeded, streaming generator with a manifest of exact counts
+# ADR-072: Synthetic Data Center backups: one seeded, streaming generator with a manifest of exact counts
 
 - Status: Accepted
 - Date: 2026-10-30
