@@ -184,3 +184,20 @@ export function sequenceKey(n: bigint | number | string): string {
   }
   throw new RangeError(`sequence value too large for a rank key: ${n}`);
 }
+
+/**
+ * The sequence value whose key is the integer part of `key` (the inverse of `sequenceKey` on
+ * it), for moving the rank sequence past keys written from elsewhere (an import keeps the
+ * source's ranks, M1-098): a later sequence key then sorts after all of them.
+ */
+export function sequenceValueOf(key: string): bigint {
+  check(key);
+  const length = key.charCodeAt(0) - 96;
+  const base = BigInt(BASE);
+  let value = 0n;
+  for (let l = 1; l < length; l++) value += base ** BigInt(l);
+  for (const digit of key.slice(1, 1 + length)) {
+    value = value * base + BigInt(RANK_DIGITS.indexOf(digit));
+  }
+  return value;
+}

@@ -1,7 +1,8 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
-import { checksum, LOADERS } from './load';
+import { checksum } from './load';
+import { LOADERS } from './loaders';
 import { ENTITY_KINDS } from './model';
 
 /**

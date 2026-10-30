@@ -1,3 +1,5 @@
+import { realpath, stat } from 'node:fs/promises';
+import { isAbsolute, relative, resolve } from 'node:path';
 import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
@@ -5,6 +7,7 @@ import { z } from 'zod';
 import { requireUser } from '../auth';
 import { emit } from '../events/bus';
 import { enqueue } from '../events/queue';
+import { CSV_SOURCE, CsvFormatError, CsvSource, csvMapping, csvSource } from '../import/csv';
 import { importJob } from '../import/jobs';
 import { type FidelityReport, reportHtml } from '../import/report';
 import { createRun, runView } from '../import/run';
@@ -14,27 +17,86 @@ import {
   SyntheticFormatError,
   syntheticSource,
 } from '../import/synthetic';
+import { EXPORT_SOURCE, ExportFormatError, exportManifest, exportSource } from '../import/taskmoor';
 
 /**
- * Imports (M1-086; IMP-009, IMP-010, IMP-013): a site administrator starts one from an uploaded
- * file or a configured source, as a real run or a dry run; a background job runs it
- * (`import/jobs.ts`); these routes show its progress and its fidelity report (JSON, or HTML to
- * download) and take a cancel. They sit under `/api/v1/admin`, so API tokens need the admin
- * scope. Starting, cancelling and finishing are audited.
+ * Imports (M1-086; IMP-009, IMP-010, IMP-012, IMP-013, IMP-014): a site administrator starts one
+ * from an uploaded file or a file on the server, as a real run or a dry run; a background job
+ * runs it (`import/jobs.ts`); these routes show its progress, its fidelity report (JSON, or
+ * HTML to download) and every record's problems, and take a cancel. They sit under
+ * `/api/v1/admin`, so API tokens need the admin scope. Starting, cancelling and finishing are
+ * audited.
+ *
+ * Sources: the synthetic format (M1-086), CSV with a column mapping (M1-098; the mapping can be
+ * copied from an earlier run, a saved template in effect) and Taskmoor's own export (M1-098).
+ * A file named by path must be inside the imports folder (`TASKMOOR_IMPORT_DIR`, by default
+ * `TASKMOOR_DATA/imports`), so an administrator's request never reads anything else on the
+ * server.
  */
 const MAX_UPLOAD = 17 * 1024 * 1024;
+
+const csvInput = z
+  .object({
+    format: z.literal(CSV_SOURCE),
+    data: z.string().min(1).max(16_000_000).optional(),
+    path: z.string().min(1).max(4096).optional(),
+    system: z.string().min(1).max(200).optional(),
+    mapping: csvMapping.optional(),
+    /** Takes the mapping of an earlier CSV run instead (a mapping kept as a template). */
+    mappingFrom: z.number().int().positive().optional(),
+  })
+  .strict();
 
 const createBody = z
   .object({
     name: z.string().max(200).optional(),
     dryRun: z.boolean().optional(),
-    source: syntheticSource,
+    source: z.union([syntheticSource, csvInput, exportSource]),
   })
   .strict();
 const idParam = z.object({ id: z.string().regex(/^[1-9][0-9]{0,17}$/) });
 const reportQuery = z.object({ format: z.enum(['json', 'html']).optional() }).strict();
+const problemsQuery = z
+  .object({
+    kind: z.string().max(40).optional(),
+    after: z.string().max(400).optional(),
+    limit: z.coerce.number().int().min(1).max(1000).optional(),
+    outcome: z.enum(['failed', 'skipped', 'warned']).optional(),
+  })
+  .strict();
 
-export function registerImportRoutes(app: FastifyInstance, db: Kysely<Database>): void {
+class SourceRefused extends Error {
+  constructor(
+    readonly code: string,
+    readonly detail: Record<string, unknown> = {},
+  ) {
+    super(code);
+  }
+}
+
+/** A path inside the imports folder, resolved through links, or a refusal. */
+async function insideImports(importDir: string | undefined, path: string): Promise<string> {
+  if (!importDir) throw new SourceRefused('no_import_folder');
+  let root: string;
+  let target: string;
+  try {
+    root = await realpath(importDir);
+    target = await realpath(resolve(root, path));
+  } catch {
+    throw new SourceRefused('not_found');
+  }
+  const rel = relative(root, target);
+  if (rel === '' || rel.startsWith('..') || isAbsolute(rel))
+    throw new SourceRefused('outside_import_folder');
+  await stat(target);
+  return target;
+}
+
+export function registerImportRoutes(
+  app: FastifyInstance,
+  db: Kysely<Database>,
+  options: { importDir?: string } = {},
+): void {
   /** The signed-in site administrator, or the refusal already sent. */
   async function admin(request: FastifyRequest, reply: FastifyReply) {
     const user = requireUser(request, reply);
@@ -76,26 +138,87 @@ export function registerImportRoutes(app: FastifyInstance, db: Kysely<Database>)
       });
     }
     const body = parsed.data;
-    let system: string;
-    if ('data' in body.source) {
-      try {
-        system = parseSynthetic(body.source.data).system;
-      } catch (error) {
-        const line = error instanceof SyntheticFormatError ? error.line : null;
-        return reply.code(400).send({ error: 'invalid_source', line });
-      }
-    } else {
-      system = body.source.generate.system ?? `synthetic-${body.source.generate.seed}`;
-    }
     const ws = request.workspaceId;
+    let system: string;
+    let importSource: string;
+    let source: unknown = body.source;
+    try {
+      if (body.source.format === SYNTHETIC_SOURCE) {
+        importSource = SYNTHETIC_SOURCE;
+        if ('data' in body.source) {
+          try {
+            system = parseSynthetic(body.source.data).system;
+          } catch (error) {
+            const line = error instanceof SyntheticFormatError ? error.line : null;
+            throw new SourceRefused('invalid_source', { line });
+          }
+        } else {
+          system = body.source.generate.system ?? `synthetic-${body.source.generate.seed}`;
+        }
+      } else if (body.source.format === CSV_SOURCE) {
+        importSource = CSV_SOURCE;
+        const input = body.source;
+        let mapping = input.mapping;
+        if (mapping === undefined && input.mappingFrom !== undefined) {
+          const earlier = await db
+            .selectFrom('import_run')
+            .select('source')
+            .where('workspace_id', '=', ws)
+            .where('id', '=', String(input.mappingFrom))
+            .where('import_source', '=', CSV_SOURCE)
+            .executeTakeFirst();
+          if (!earlier) throw new SourceRefused('unknown_mapping_run');
+          mapping = (earlier.source as { mapping: z.infer<typeof csvMapping> }).mapping;
+        }
+        if (mapping === undefined) throw new SourceRefused('mapping_required');
+        const settings = csvSource.safeParse({
+          format: CSV_SOURCE,
+          ...(input.data !== undefined ? { data: input.data } : {}),
+          ...(input.path !== undefined
+            ? { path: await insideImports(options.importDir, input.path) }
+            : {}),
+          ...(input.system !== undefined ? { system: input.system } : {}),
+          mapping,
+        });
+        if (!settings.success) throw new SourceRefused('invalid_source');
+        try {
+          // The header against the mapping, before anything is queued.
+          new CsvSource(settings.data).check();
+        } catch (error) {
+          if (error instanceof CsvFormatError) {
+            throw new SourceRefused('invalid_source', { line: error.line, message: error.message });
+          }
+          throw error;
+        }
+        system = settings.data.system;
+        source = settings.data;
+      } else {
+        importSource = EXPORT_SOURCE;
+        const path = await insideImports(options.importDir, body.source.path);
+        try {
+          system = (await exportManifest(path)).system;
+        } catch (error) {
+          if (error instanceof ExportFormatError || error instanceof SyntaxError) {
+            throw new SourceRefused('invalid_source', { message: error.message });
+          }
+          throw error;
+        }
+        source = { format: EXPORT_SOURCE, path };
+      }
+    } catch (error) {
+      if (error instanceof SourceRefused) {
+        return reply.code(400).send({ error: error.code, ...error.detail });
+      }
+      throw error;
+    }
     const row = await db.transaction().execute(async (trx) => {
       const created = await createRun(trx, {
         workspaceId: ws,
         userId: user.id,
-        importSource: SYNTHETIC_SOURCE,
+        importSource,
         system,
         name: body.name ?? '',
-        source: body.source,
+        source,
         dryRun: body.dryRun ?? false,
       });
       await emit(
@@ -155,6 +278,56 @@ export function registerImportRoutes(app: FastifyInstance, db: Kysely<Database>)
         .send(reportHtml(report));
     }
     return { report };
+  });
+
+  // Every record's problems (M1-098): failures and warnings, a page at a time, by kind and id.
+  app.get('/api/v1/admin/imports/:id/problems', async (request, reply) => {
+    if (!(await admin(request, reply))) return reply;
+    const q = problemsQuery.safeParse(request.query);
+    if (!q.success) return reply.code(400).send({ error: 'invalid_request' });
+    const row = await find(request, reply);
+    if (!row) return reply;
+    const limit = q.data.limit ?? 100;
+    // The cursor is `<kind>|<source id>` of the last record of the previous page.
+    const cut = (q.data.after ?? '|').indexOf('|');
+    const afterKind = (q.data.after ?? '|').slice(0, Math.max(cut, 0));
+    const afterId = cut < 0 ? '' : (q.data.after ?? '|').slice(cut + 1);
+    const rows = await db
+      .selectFrom('import_record')
+      .select(['entity_kind', 'source_id', 'outcome', 'target_id', 'error'])
+      .where('run_id', '=', row.id)
+      .where('error', 'is not', null)
+      .$if(q.data.kind !== undefined, (b) => b.where('entity_kind', '=', q.data.kind as string))
+      .$if(q.data.outcome === 'warned', (b) => b.where('outcome', 'not in', ['failed', 'skipped']))
+      .$if(q.data.outcome === 'failed' || q.data.outcome === 'skipped', (b) =>
+        b.where('outcome', '=', q.data.outcome as 'failed' | 'skipped'),
+      )
+      .where((eb) =>
+        eb.or([
+          eb('entity_kind', '>', afterKind),
+          eb.and([eb('entity_kind', '=', afterKind), eb('source_id', '>', afterId)]),
+        ]),
+      )
+      .orderBy('entity_kind')
+      .orderBy('source_id')
+      .limit(limit + 1)
+      .execute();
+    const page = rows.slice(0, limit);
+    const last = page[page.length - 1];
+    return {
+      problems: page.map((r) => {
+        const e = (r.error ?? {}) as { error?: string; warnings?: unknown[] };
+        return {
+          kind: r.entity_kind,
+          sourceId: r.source_id,
+          outcome: r.outcome,
+          targetId: r.target_id === null ? null : Number(r.target_id),
+          error: e.error ?? null,
+          warnings: e.warnings ?? [],
+        };
+      }),
+      next: rows.length > limit && last ? `${last.entity_kind}|${last.source_id}` : null,
+    };
   });
 
   app.post('/api/v1/admin/imports/:id/cancel', async (request, reply) => {

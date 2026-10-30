@@ -1178,6 +1178,11 @@ export const EVENT_TYPES = {
       fidelity: z.number().min(0).max(1).nullable(),
     }),
   },
+  // The full export (M1-098): a site administrator took the workspace (or some tracks) out.
+  'workspace.exported': {
+    subject: 'workspace',
+    payload: z.object({ tracks: z.array(z.string()).nullable() }),
+  },
   // Configuration guardrails (M1-055): an administrator changed a limit.
   'guardrail.changed': {
     subject: 'workspace',

@@ -35,6 +35,7 @@ import { registerCommentRoutes } from './routes/comments';
 import { registerDashboardRoutes } from './routes/dashboards';
 import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
+import { registerExportRoutes } from './routes/exports';
 import { registerFieldRoutes } from './routes/fields';
 import { registerGroupRoutes } from './routes/groups';
 import { registerGuardrailRoutes } from './routes/guardrails';
@@ -118,6 +119,8 @@ export interface AppDeps {
   tracer?: Tracer;
   /** Instance data directory, for the admin status page. */
   dataDir?: string;
+  /** Where imports read files named by path (M1-098); none refuses paths. */
+  importDir?: string;
   /** When the process started; defaults to when the app was built. */
   startedAt?: Date;
   /** Where attachments are stored (ADR-040); without one, uploads answer 503. */
@@ -278,7 +281,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerBulkRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { queryTimeoutMs: deps.queryTimeoutMs } : {}),
     });
-    registerImportRoutes(app, db);
+    registerImportRoutes(app, db, {
+      ...(deps.importDir !== undefined ? { importDir: deps.importDir } : {}),
+    });
+    // The full export (M1-098): the workspace as NDJSON and files, a streamed ZIP.
+    registerExportRoutes(app, db, fieldCatalogs, deps.attachments ?? NO_STORAGE);
     registerHomeRoutes(app, db, fieldCatalogs);
     registerGuardrailRoutes(app, db);
     // Boards (M1-043): reads go through the search compiler, moves through the ticket routes.

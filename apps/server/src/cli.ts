@@ -19,6 +19,9 @@
 //   node cli.mjs field-values [--repair] checks the custom field side tables against the
 //                                       tickets' values (M1-011); --repair rewrites the ones
 //                                       that differ; exit 1 when some differ and are not repaired
+//   node cli.mjs export <dir>           the workspace in Taskmoor's export format (M1-098,
+//        [--tracks KEY,KEY]             docs/export-format.md) into a new folder <dir>; the
+//                                       last line is the manifest's summary as JSON
 //   node cli.mjs checksum [--wait]      one checksum per table, for restore drills; --wait first
 //                                       lets the worker finish relaying events and running jobs
 //   node cli.mjs password-link <email>  a one-time link to set a password (an administrator who
@@ -29,9 +32,11 @@
 //                                       and compares them with the tickets; exit 1 when one
 //                                       differs. Tickets older than the change history
 //                                       (migration 0015) report as without history
+import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
+import { attachmentStores } from './attachments/stores';
 import { verifyChain } from './audit/chain';
 import { backupSize, redactSecrets, restore, tableChecksums, waitForIdleQueue } from './backup';
 import { latestBackup, recordedDrill } from './backups/drill';
@@ -40,6 +45,8 @@ import { backupDirectory, recordedBackup } from './backups/schedule';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
 import { emit } from './events/bus';
+import { folderSink } from './export/sinks';
+import { exportWorkspace } from './export/write';
 import { FieldCatalogs } from './fields/catalog';
 import { checkFieldValues } from './fields/jobs';
 import { replayCheck } from './reports/events';
@@ -57,13 +64,14 @@ const { positionals, values } = parseArgs({
     keep: { type: 'boolean', default: false },
     repair: { type: 'boolean', default: false },
     'dry-run': { type: 'boolean', default: false },
+    tracks: { type: 'string' },
     'no-backup': { type: 'boolean', default: false },
     unattended: { type: 'boolean', default: false },
   },
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | checksum | password-link <email> | audit-verify | report-verify>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | report-verify>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -229,6 +237,61 @@ try {
         log: say,
       });
       say(`restored a backup from ${manifest.createdAt} (version ${manifest.version})`);
+      break;
+    }
+    case 'export': {
+      const dir = positionals[1];
+      if (!dir) {
+        process.stderr.write('Usage: node cli.mjs export <dir> [--tracks KEY,KEY]\n');
+        process.exitCode = 2;
+        break;
+      }
+      // A new folder (or an empty one): an export never mixes with other files.
+      await mkdir(dir, { recursive: true });
+      if ((await readdir(dir)).length > 0) {
+        process.stderr.write(`${dir} is not empty\n`);
+        process.exitCode = 2;
+        break;
+      }
+      const ws = await defaultWorkspaceId(db);
+      let tracks: number[] | null = null;
+      if (values.tracks) {
+        const keys = values.tracks.split(',').map((k) => k.trim().toUpperCase());
+        const rows = await db
+          .selectFrom('track')
+          .select(['id', 'key'])
+          .where('workspace_id', '=', ws)
+          .where('key', 'in', keys)
+          .where('deleted_at', 'is', null)
+          .execute();
+        const unknown = keys.filter((k) => !rows.some((r) => r.key === k));
+        if (unknown.length > 0) {
+          process.stderr.write(`unknown tracks: ${unknown.join(', ')}\n`);
+          process.exitCode = 2;
+          break;
+        }
+        tracks = rows.map((r) => r.id);
+      }
+      const { manifest, ms } = await exportWorkspace(db, {
+        workspaceId: ws,
+        sink: folderSink(dir),
+        stores: await attachmentStores(config),
+        catalogs: new FieldCatalogs(db),
+        tracks,
+      });
+      await emit(
+        db,
+        { workspaceId: ws, actorId: null },
+        { type: 'workspace.exported', subjectId: ws, payload: { tracks: manifest.tracks } },
+      );
+      say(
+        JSON.stringify({
+          dir,
+          seconds: Math.round(ms / 100) / 10,
+          records: Object.fromEntries(manifest.files.map((f) => [f.kind, f.records])),
+          attachments: manifest.attachments.files,
+        }),
+      );
       break;
     }
     case 'checksum':

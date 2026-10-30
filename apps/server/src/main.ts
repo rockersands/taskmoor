@@ -109,6 +109,7 @@ const app = await buildApp({
   ...(config.dataDir ? { dataDir: config.dataDir } : {}),
   startedAt,
   attachments,
+  ...(config.importDir ? { importDir: config.importDir } : {}),
   smtpConfigured: config.smtp !== undefined,
   queryTimeoutMs: config.queryTimeoutMs,
 });
@@ -164,7 +165,7 @@ if (config.roles.includes('worker') && db) {
   // Bulk operations (M1-021): each runs ticket by ticket through the ticket routes' checks.
   registerBulkJobs(runner, db, new Authorizer(db), new FieldCatalogs(db));
   // Imports (M1-086): a batch per transaction, resumable from the run's checkpoint.
-  registerImportJobs(runner, db, new FieldCatalogs(db));
+  registerImportJobs(runner, db, new FieldCatalogs(db), { stores: attachments });
   // Status migrations after a change of workflow map (M1-028), a batch at a time.
   registerWorkflowMigrationJobs(runner, db, new FieldCatalogs(db));
   // Webhook deliveries (M1-067): one job per sending, retried with backoff.
