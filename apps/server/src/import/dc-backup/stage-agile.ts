@@ -303,7 +303,7 @@ export class AgileCollector {
         const field = rankFields.find((f) => ranks.some((r) => r.field === f)) ?? ranks[0]?.field;
         const chosen = ranks.find((r) => r.field === field);
         agile.rank = chosen?.rank ?? null;
-        this.leaveOut('AO_60DB71_LEXORANK', ranks.length - 1);
+        if (ranks.length > 1) this.leaveOut('AO_60DB71_LEXORANK', ranks.length - 1);
       }
       // Sprint values become membership of the sprints; the field itself is not a field here.
       if (issue.values.some((v) => sprintFields.has(v.field) || rankFields.includes(v.field))) {
@@ -326,7 +326,8 @@ export class AgileCollector {
             }
             const list = this.members.get(id) ?? [];
             this.members.set(id, list);
-            if (!list.includes(issue.id)) list.push(issue.id);
+            // Issues come one at a time: a repeat of the same sprint is the last entry.
+            if (list[list.length - 1] !== issue.id) list.push(issue.id);
           }
         }
         issue.values = kept;
