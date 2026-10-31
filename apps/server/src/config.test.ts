@@ -24,6 +24,7 @@ describe('loadConfig', () => {
       metricsHost: '0.0.0.0',
       shutdownDrainMs: 2000,
       queryTimeoutMs: 30_000,
+      jiraCompat: true,
       storage: { urlTtl: 300 },
     });
   });
