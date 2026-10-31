@@ -2,7 +2,7 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068, M1-069 and three fixes
+## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 to M1-071, M1-108, M1-112, M1-089, M1-092 and three fixes
 
 All on `main`, each push after a green `pnpm verify --e2e`:
 
@@ -94,8 +94,8 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - `TASKMOOR_JIRA_COMPAT=off` turns it off.
   - On a loaded machine, `search/plans.test.ts` once chose an equivalent index. It passes alone:
     rerun it before treating it as real.
-- **Next free numbers:** migration 0071 and ADR-091 (0068 to 0070 and ADR-087 to ADR-090 are
-  held by the side agents: M1-108, M1-112, M1-089, M1-092).
+- **Next free numbers:** migration 0069 and ADR-092 (M1-108 used 0068; M1-089 and M1-092
+  needed none; ADR-085 to ADR-091 are used).
 - **M1-112 Builder page** (2026-10-31; ADR-088, no migration): M1-112 is done.
   - The page is a second entry of the web app (`apps/web/src/builder`,
     `vite.builder.config.ts`). It is built into one file, `apps/web/dist-builder/index.html`,
@@ -134,7 +134,6 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     and removes it again (desktop project only, since the list is shared).
   - Not done: versions of environment-only origins (register them too), closing open sockets
     and ending OAuth families when a frontend is removed.
-- **Next free numbers:** migration 0068 and ADR-085.
 - **M1-089 Data Center custom fields and forms** (branch `work/m1-089-dc-fields`, side session
   2026-10-31; ADR-089, no migration; M1-089 is done):
   - The generator now writes custom fields, contexts, options, defaults, field configurations,
@@ -163,8 +162,6 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - `SYSTEM_ADMIN` becomes `site_admin`, so those people browse every track (warned). The parity
     golden `import/__golden__/dc-access-seed92.parity.json` expects that for them, and the
     source's model for everyone else.
-  - Next free numbers on this branch: no migration was used (0069 and 0070 stay free), ADRs 089
-    and 090 are taken.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 
@@ -221,7 +218,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Next free numbers**: migration 0066 and ADR-083 (now 0071 and ADR-091: see the cloud session above).
+**Next free numbers**: migration 0066 and ADR-083 (now 0069 and ADR-092: see the cloud session above).
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
