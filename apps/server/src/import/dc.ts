@@ -4,6 +4,15 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { createInflateRaw } from 'node:zlib';
 import { z } from 'zod';
+import {
+  agileField,
+  agileTableLeftOut,
+  agileTicket,
+  mapArea,
+  mapBoard,
+  mapRelease,
+  mapSprint,
+} from './dc-agile';
 import { ATTACHMENTS_DIR } from './dc-backup/format';
 import {
   CONSUMED,
@@ -21,6 +30,12 @@ import {
   stageDcBackup,
   TICKET_CONTENT_ELEMENTS,
 } from './dc-backup/stage';
+import type {
+  StagedBoard,
+  StagedComponent,
+  StagedSprint,
+  StagedVersion,
+} from './dc-backup/stage-agile';
 import type {
   StagedContext,
   StagedField,
@@ -151,7 +166,10 @@ export class DcBackupSource implements ImportSource {
 
   /** Whether the run's scope leaves out a staged kind. */
   private leavesOut(kind: string): boolean {
-    if (this.settings.scope === 'configuration') return CONTENT_STAGED_KINDS.has(kind);
+    if (this.settings.scope === 'configuration') {
+      // Sprints hold tickets (M1-093).
+      return CONTENT_STAGED_KINDS.has(kind) || kind === 'sprint';
+    }
     if (this.settings.scope === 'tickets')
       return CONTENT_STAGED_KINDS.has(kind) && kind !== 'ticket';
     return false;
@@ -184,7 +202,24 @@ export class DcBackupSource implements ImportSource {
       out.set(name, { count, reason: NOT_NEEDED.has(name) ? NOT_NEEDED_REASON : NOT_IMPORTED_YET });
     }
     for (const [table, count] of Object.entries(summary.activeObjects)) {
-      out.set(table, { count, reason: NOT_IMPORTED_YET });
+      // The agile plugin's tables (M1-093).
+      const agile = agileTableLeftOut(
+        table,
+        count,
+        summary.partial[table] ?? 0,
+        this.settings.scope,
+      );
+      if (agile === null) continue;
+      out.set(table, agile ?? { count, reason: NOT_IMPORTED_YET });
+    }
+    // An issue's versions and components are tickets' (M1-093).
+    const associations = summary.agile?.issueAssociations ?? 0;
+    if (configurationOnly && associations > 0) {
+      const partial = summary.partial.NodeAssociation ?? 0;
+      out.set('NodeAssociation', {
+        count: associations + partial,
+        reason: partial > 0 ? NOT_IMPORTED_YET : CONFIGURATION_ONLY,
+      });
     }
     for (const [folder, count] of Object.entries(summary.files)) {
       out.set(folder, {
@@ -431,6 +466,8 @@ function mapTicket(i: StagedIssue): Mapped {
       followers: (i.followers ?? []).map((p) => ref('user', p)),
       voters: (i.voters ?? []).map((p) => ref('user', p)),
       formerKeys: formerKeys(i, warnings),
+      // Releases, areas and rank (M1-093).
+      ...agileTicket(i, warnings),
     },
     warnings,
   };
@@ -501,7 +538,7 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
     };
   },
   track: (d) => mapTrack(d as unknown as StagedProject),
-  field: (d) => mapField(d as unknown as StagedField),
+  field: (d) => agileField(d as unknown as StagedField) ?? mapField(d as unknown as StagedField),
   field_context: (d) => mapContext(d as unknown as StagedContext),
   field_option: (d) => mapOption(d as unknown as StagedOption),
   field_rule_set: (d) => mapRuleSet(d as unknown as StagedRuleSet),
@@ -520,6 +557,10 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
   link: (d) => mapLink(d as unknown as StagedLink),
   web_link: (d) => mapWebLink(d as unknown as StagedWebLink),
   attachment: (d) => mapAttachment(d as unknown as StagedAttachment),
+  release: (d) => mapRelease(d as unknown as StagedVersion),
+  area: (d) => mapArea(d as unknown as StagedComponent),
+  board: (d) => mapBoard(d as unknown as StagedBoard),
+  sprint: (d) => mapSprint(d as unknown as StagedSprint),
 };
 
 /** Kinds whose records carry no name of their own. */

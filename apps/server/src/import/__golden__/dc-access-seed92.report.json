@@ -265,16 +265,6 @@
       "reason": "tickets_only"
     },
     {
-      "count": 5,
-      "kind": "AO_60DB71_RAPIDVIEW",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 14,
-      "kind": "AO_60DB71_SPRINT",
-      "reason": "not_imported_yet"
-    },
-    {
       "count": 8511,
       "kind": "ChangeGroup",
       "reason": "tickets_only"
@@ -305,12 +295,12 @@
       "reason": "tickets_only"
     },
     {
-      "count": 5,
+      "count": 8,
       "kind": "SearchRequest",
       "reason": "not_imported_yet"
     },
     {
-      "count": 55,
+      "count": 57,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },

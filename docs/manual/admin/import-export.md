@@ -1,7 +1,7 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md
 accessed: 2026-10-31
 attestation: own-words
 jira-names: import sources and field mapping
@@ -21,8 +21,10 @@ issue types, statuses, priorities, resolutions, custom fields with their context
 field configurations and screens, permission, issue security and notification schemes, global
 permissions, workflows and workflow schemes, and its issues as tickets with their own fields, custom values, security levels,
 watchers, voters and earlier keys, with their comments, change history, time entries, links,
-web links and attachments; see [Data Center backups](#data-center-backups). Boards and filters
-are not imported yet: the report counts each of them under "Not imported". A Jira Cloud site imports its projects, issues with their changelog, comments and worklogs,
+web links and attachments, its versions (as releases) and components (as areas), its boards with
+their columns, quick filters and sprints, and the issues' rank; see
+[Data Center backups](#data-center-backups). Saved filters are not imported yet: the report
+counts them under "Not imported". A Jira Cloud site imports its projects, issues with their changelog, comments and worklogs,
 custom fields, boards and sprints over its REST API, with your own API token; see
 [Jira Cloud sites](#jira-cloud-sites). Any CSV file can be imported with
 a mapping of its columns, including one exported from another tracker; see
@@ -129,7 +131,9 @@ Content-Type: application/json
 
 Add `"scope": "configuration"` to import everything but the issues first. The report then
 counts the issues and their values under "Not imported" with the reason `configuration_only`,
-and a later run without it adds them. `"scope": "tickets"` imports the tickets too, but not
+and a later run without it adds them. Boards come with the configuration, but their sprints and the
+issues' rank are counted as `configuration_only` until the tickets come. `"scope": "tickets"`
+imports the tickets too, but not
 their comments, history, time entries, links, web links and attachments, which are counted with
 the reason `tickets_only`.
 
@@ -188,6 +192,17 @@ What the import makes of the backup:
 | Links between issues, of any link type | Ticket links of the link type of the same name, made when you have none | By link type name |
 | Remote links | Web links with the address, title, summary, icon, relationship and global id | |
 | Attachments in the ZIP's `data/attachments` folder | Attachments with their name, type, size, author and time; the file goes to the attachment store, and its hash is checked | |
+| Versions | Releases of the track, in the same order, with start and release dates. Released and archived versions are shipped or archived on their release date (the backup keeps no other time) | By name within the track |
+| Components | Areas of the track, with the lead as owner and the default assignee (the component lead, the project lead, or unassigned) | By name within the track |
+| An issue's fix versions, affected versions and components | Its target releases, found-in releases and areas | |
+| Boards | Boards of the first track their filter names: Scrum when sprints are on, Kanban otherwise. The filter's query becomes the board's own query, so a board across several projects shows the same tickets here | By name within the track |
+| Board columns | Columns with the same statuses, in the same order, with their minimum and maximum | |
+| Quick filters | Board filters with the same name and query | |
+| A Kanban board's sub-filter | The board's sub-filter | |
+| Sprints | Sprints of the board with their state (future, active or closed), start, end and completion dates, goal and order | By the import's own record on a later run |
+| The sprint field's values | The tickets in each sprint. A closed sprint keeps its tickets in its history; a ticket is in one open sprint at most | |
+| Rank | Every ticket's rank, so boards and backlogs show tickets in the same order as the backup | |
+| The agile plugin's sprint and rank fields | Not fields here: they are skipped with the reasons `sprint_field_as_sprints` and `rank_field_as_rank`, since sprints and rank carry them | |
 
 The report's mapping names each of these objects with its outcome. The warnings to look for:
 
@@ -230,6 +245,14 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `web_link_application_not_kept`, `web_link_text_cut`, `web_link_icon_dropped` | A web link's application name, an over-long text or an icon that is not a web address was left out |
 | `attachment_size_differs`, `attachment_folder_key_differs` | An attachment's file has another size than its row says (the file's is kept), or sits in another issue's folder |
 | `link_type_created` | A link type you did not have was made for the backup's links |
+| `board_filter_not_imported` (kind `board`) | A quick filter whose query does not translate: it names an app's field or function, a saved filter or a sprint by id, or something the import left out. The detail names the filter and what it uses, for example `Commented (app): Unknown field "issueFunction"`. Add it again by hand if you need it |
+| `board_query_not_imported`, `board_sub_query_not_imported` | The board's filter or a Kanban board's sub-filter did not translate: the board shows its whole track instead, or has no sub-filter |
+| `board_filter_missing`, `board_project_unknown` | The board's saved filter is not in the backup, or names a project the backup does not have. A board whose filter names no project at all fails, since it has no track to live in |
+| `column_status_unknown`, `column_minimum_above_maximum` | A column names a status the backup does not have, or a minimum above its maximum (the minimum is dropped) |
+| `release_date_unknown` | A released or archived version has no date: it arrives as not shipped |
+| `rank_not_kept`, `rank_changed` | An issue's rank could not be read, or another ticket already holds it: the ticket goes to the bottom of the order |
+| `ticket_in_another_open_sprint` | A ticket was in more than one sprint that is not closed: it stays in the first |
+| `closed_sprint_never_started` | A sprint that is closed without having started |
 
 Records that fail rather than arrive changed, each with its reason in the report: a comment or
 time entry restricted to a group or role that did not import (`visibility_group_missing`,
@@ -252,12 +275,19 @@ two tickets' creation time, and a web link the time of the import. Followers and
 keep when they started following or voted.
 
 Under "Not imported", the report counts each part of the backup the importer does not handle
-yet: filters, boards and sprints, other kinds of associations, and attachment files
+yet: saved filters, other kinds of associations, rows of the agile plugin that name a board,
+column or issue the backup does not hold, and attachment files
 no attachment row names (`no_attachment_row`), by their names in the backup, with the reason
 `not_imported_yet`. The id counters of the backup, and each issue's workflow state (its status
 is what counts), are listed as `not_needed`, because Taskmoor gives its own ids.
 
 Projects without a workflow scheme keep your default workflow map. Draft workflows are not read.
+
+Boards keep their columns, filters and sprints, but not yet their swimlanes, card colours, card
+layout, estimation field, working days or administrators: they take the defaults a new board gets,
+and you can change them on the board. A board's quick filters replace the default board filters.
+Queries name releases and areas by name, so a quick filter for version `1.2` on a board across
+two tracks finds the `1.2` of both, as in the backup.
 
 Times in a backup carry no time zone. They are read as UTC, so history, comments and time
 entries from a server in another zone are shifted by its offset; a setting for the source's

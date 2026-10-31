@@ -467,6 +467,19 @@ export interface BoardCommand {
   track: Ref;
   query: string | null;
   columns: { name: string; statuses: Ref[]; min: number | null; max: number | null }[];
+  /** A sub-filter narrowing the query (M1-093: a Kanban board's sub-query). */
+  subQuery?: string | null;
+  /**
+   * Board filters (M1-093: quick filters); left out, a new board takes the defaults and an
+   * update keeps its own. Each query is checked against the target and left out with a warning
+   * when it does not resolve there.
+   */
+  boardFilters?: { name: string; query: string; description: string }[];
+  /**
+   * The custom fields the queries name as `cf[<source id>]`: the loader writes the target's
+   * ids in their place (M1-093).
+   */
+  fields?: Ref[];
 }
 
 /**

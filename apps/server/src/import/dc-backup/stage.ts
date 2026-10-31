@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import yauzl from 'yauzl';
 import { sniff } from '../../attachments/sniff';
+import { AGILE_ELEMENTS } from './agile-format';
 import type { CleanStats } from './clean';
 import {
   ACTIVE_OBJECTS_FILE,
@@ -16,6 +17,7 @@ import {
 } from './format';
 import { parseXml, type XmlHandlers } from './parse';
 import { readLines as readLinesOf } from './spill';
+import { AGILE_STAGED_KINDS, AgileCollector } from './stage-agile';
 import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
 import { CONTENT_KINDS, ISSUE_ELEMENTS, IssueCollector, type StagedFile } from './stage-issues';
 import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
@@ -36,7 +38,7 @@ import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 4;
+export const STAGE_VERSION = 5;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -66,6 +68,8 @@ export const STAGED_KINDS = {
   workflow_map: 'WorkflowScheme',
   ticket: 'Issue',
   ...CONTENT_KINDS,
+  // Releases, areas, boards and sprints (M1-093).
+  ...AGILE_STAGED_KINDS,
 } as const;
 
 /** The schemes a project's `NodeAssociation` rows may name that the mapping reads. */
@@ -98,6 +102,7 @@ export const CONSUMED = new Set<string>([
   ...ISSUE_ELEMENTS,
   ...SCHEME_ELEMENTS,
   ...WORKFLOW_ELEMENTS,
+  ...AGILE_ELEMENTS,
 ]);
 
 /** Elements only tickets consume: a configuration-only import leaves them out (M1-089). */
@@ -211,6 +216,8 @@ export interface StageSummary {
   partial: Record<string, number>;
   /** Characters XML forbids that the cleaner removed, with the first places of each kind. */
   removed: Record<keyof CleanStats['offsets'], { count: number; examples: string[] }>;
+  /** Issue rows of the agile part that only tickets use (M1-093): associations, rank rows. */
+  agile?: { issueAssociations: number; rankRows: number };
 }
 
 /** Reads the ZIP's central directory and streams its entries in order. */
@@ -282,6 +289,8 @@ class Collector {
   readonly fieldPart = new FieldCollector();
   readonly schemePart = new SchemeCollector();
   readonly workflowPart = new WorkflowCollector();
+  /** Versions, components, boards, sprints and rank (M1-093). */
+  readonly agilePart = new AgileCollector();
   readonly issuePart: IssueCollector;
   /** Link types by id (sub-task links make parents). */
   readonly linkTypes = new Map<
@@ -342,6 +351,7 @@ class Collector {
       this.workflowPart.row(name, v);
       return;
     }
+    if (this.agilePart.row(name, v, (issue, r) => this.issuePart.extra(issue, r))) return;
     switch (name) {
       case 'IssueLinkType':
         this.linkTypes.set(id, {
@@ -452,6 +462,12 @@ class Collector {
     }
   }
 
+  /** A row of the active-objects file, values by column (null: `xsi:nil`). */
+  aoRow(table: string, v: Record<string, string | null>): void {
+    this.activeObjects[table] = (this.activeObjects[table] ?? 0) + 1;
+    this.agilePart.aoRow(table, v, (issue, r) => this.issuePart.extra(issue, r));
+  }
+
   /** Directory rank: active before inactive, then by position (lowest wins), then row id. */
   private rank(directory: string): [number, number] {
     const d = this.directories.get(directory);
@@ -480,7 +496,10 @@ class Collector {
   /** The staged records of every configuration kind, with references resolved. */
   resolve(): {
     records: {
-      [K in Exclude<StagedKind, 'ticket' | keyof typeof CONTENT_KINDS>]: {
+      [K in Exclude<
+        StagedKind,
+        'ticket' | keyof typeof CONTENT_KINDS | keyof typeof AGILE_STAGED_KINDS
+      >]: {
         id: string;
         label: string;
         data: unknown;
@@ -716,16 +735,37 @@ function entitiesHandlers(collector: Collector): XmlHandlers & { rootSeen: () =>
 
 function aoHandlers(collector: Collector): XmlHandlers {
   let table: string | null = null;
+  let columns: string[] = [];
+  let row: Record<string, string | null> | null = null;
+  let value: string | null = null;
+  let at = 0;
   return {
     open(tag, depth) {
-      if (depth === 2) table = tag.name === 'data' ? (tag.attributes.tableName ?? null) : null;
-      else if (depth === 3 && table && tag.name === 'row') {
-        collector.activeObjects[table] = (collector.activeObjects[table] ?? 0) + 1;
+      if (depth === 2) {
+        table = tag.name === 'data' ? (tag.attributes.tableName ?? null) : null;
+        columns = [];
+      } else if (depth === 3 && table && tag.name === 'column') {
+        columns.push(tag.attributes.name ?? '');
+      } else if (depth === 3 && table && tag.name === 'row') {
+        row = {};
+        at = 0;
+      } else if (depth === 4 && row) {
+        value = tag.attributes['xsi:nil'] === 'true' ? null : '';
       }
     },
-    text() {},
+    text(t, depth) {
+      if (depth === 4 && row && value !== null) value += t;
+    },
     close(_name, depth) {
-      if (depth === 2) table = null;
+      if (depth === 4 && row) {
+        // Values come in the order of the data section's columns (M1-093).
+        const name = columns[at++];
+        if (name !== undefined) row[name] = value;
+        value = null;
+      } else if (depth === 3 && row && table) {
+        collector.aoRow(table, row);
+        row = null;
+      } else if (depth === 2) table = null;
     },
   };
 }
@@ -856,6 +896,21 @@ async function stageWith(
     kinds[kind] = records[kind].length;
     await writeLines(join(dir, `${kind}.ndjson`), records[kind]);
   }
+  // Releases, areas and boards (M1-093); sprints follow the tickets, which name their sprints.
+  const agileResolve = {
+    person,
+    project: projectLookup(collector.projects),
+    projectKey: (id: string) => collector.projects.find((p) => p.id === id)?.key ?? null,
+    statuses: new Set(collector.statuses.map((x) => x.id)),
+  };
+  const agileRecords = {
+    ...collector.agilePart.configuration(agileResolve),
+    board: collector.agilePart.boardRecords(agileResolve),
+  };
+  for (const kind of Object.keys(agileRecords) as (keyof typeof agileRecords)[]) {
+    kinds[kind] = agileRecords[kind].length;
+    await writeLines(join(dir, `${kind}.ndjson`), agileRecords[kind]);
+  }
   const projects = new Map(collector.projects.map((p) => [p.id, { key: p.key }]));
   const projectByKey = new Map<string, string>();
   for (const p of [...collector.projects].sort((a, b) => Number(a.id) - Number(b.id))) {
@@ -872,9 +927,16 @@ async function stageWith(
     projects,
     projectByKey,
     files: collector.files,
+    extend: collector.agilePart.extender(collector.fieldPart.fields),
   });
   Object.assign(kinds, content);
   Object.assign(collector.partial, collector.issuePart.partial);
+  const sprints = collector.agilePart.sprintRecords();
+  kinds.sprint = sprints.length;
+  await writeLines(join(dir, 'sprint.ndjson'), sprints);
+  for (const [name, n] of Object.entries(collector.agilePart.partial)) {
+    collector.partial[name] = (collector.partial[name] ?? 0) + n;
+  }
   // Files no attachment row names are counted as not imported.
   const named = new Set<string>();
   for await (const line of readLinesOf(join(dir, 'attachment.ndjson'))) {
@@ -895,10 +957,36 @@ async function stageWith(
     kinds,
     partial: sortedRecord(collector.partial),
     removed,
+    agile: {
+      issueAssociations: collector.agilePart.issueAssociations,
+      rankRows: collector.agilePart.rankRows,
+    },
   };
   // Written last: a folder with a summary is complete.
   await writeFile(join(dir, SUMMARY), `${JSON.stringify(summary, null, 2)}\n`);
   return summary;
+}
+
+/** Projects by id, by any key they had (any case) or by name (any case), the lowest id first. */
+function projectLookup(
+  projects: readonly { id: string; key: string; originalKey: string | null; name: string }[],
+): (named: string) => string | null {
+  const by = new Map<string, string>();
+  const sorted = [...projects].sort((a, b) => Number(a.id) - Number(b.id));
+  for (const p of sorted) by.set(`id:${p.id}`, p.id);
+  for (const p of sorted) {
+    for (const key of [p.key, p.originalKey]) {
+      if (key && !by.has(`key:${key.toUpperCase()}`)) by.set(`key:${key.toUpperCase()}`, p.id);
+    }
+  }
+  for (const p of sorted) {
+    if (!by.has(`name:${p.name.toLowerCase()}`)) by.set(`name:${p.name.toLowerCase()}`, p.id);
+  }
+  return (named) =>
+    by.get(`key:${named.toUpperCase()}`) ??
+    by.get(`name:${named.toLowerCase()}`) ??
+    by.get(`id:${named}`) ??
+    null;
 }
 
 function sortedRecord(record: Record<string, number>): Record<string, number> {

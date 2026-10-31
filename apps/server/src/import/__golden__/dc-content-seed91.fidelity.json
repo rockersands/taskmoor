@@ -97,16 +97,40 @@
       "source": 6
     },
     {
-      "kind": "field",
+      "kind": "release",
       "outcomes": {
-        "created": 18,
+        "created": 21,
         "failed": 0,
         "linked": 0,
         "skipped": 0,
         "unchanged": 0,
         "updated": 0
       },
-      "source": 18
+      "source": 21
+    },
+    {
+      "kind": "area",
+      "outcomes": {
+        "created": 17,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 17
+    },
+    {
+      "kind": "field",
+      "outcomes": {
+        "created": 18,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 2,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 20
     },
     {
       "kind": "field_context",
@@ -241,6 +265,18 @@
       "source": 3
     },
     {
+      "kind": "board",
+      "outcomes": {
+        "created": 8,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 8
+    },
+    {
       "kind": "ticket",
       "outcomes": {
         "created": 3000,
@@ -251,6 +287,18 @@
         "updated": 0
       },
       "source": 3000
+    },
+    {
+      "kind": "sprint",
+      "outcomes": {
+        "created": 21,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 21
     },
     {
       "kind": "comment",
@@ -406,22 +454,12 @@
   ],
   "unsupported": [
     {
-      "count": 5,
-      "kind": "AO_60DB71_RAPIDVIEW",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 17,
-      "kind": "AO_60DB71_SPRINT",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 5,
+      "count": 8,
       "kind": "SearchRequest",
       "reason": "not_imported_yet"
     },
     {
-      "count": 55,
+      "count": 57,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     }
@@ -438,6 +476,12 @@
       "count": 3,
       "detail": "com.example.reviews:APPROVE",
       "kind": "access_policy"
+    },
+    {
+      "code": "board_filter_not_imported",
+      "count": 4,
+      "detail": "Commented (app): Unknown field \"issueFunction\"",
+      "kind": "board"
     },
     {
       "code": "app_field_as_read_only_text",

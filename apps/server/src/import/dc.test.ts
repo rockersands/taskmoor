@@ -14,6 +14,7 @@ import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { JobRunner } from '../events/queue';
 import { FieldCatalogs } from '../fields/catalog';
+import { AGILE_CONFIGURATION_TABLES } from './dc-backup/agile-format';
 import { defaultOptions, generateDcBackup } from './dc-backup/generate';
 import type { Manifest } from './dc-backup/manifest';
 import { CONSUMED, CONTENT_ELEMENTS, STAGED } from './dc-backup/stage';
@@ -26,6 +27,8 @@ import { type FidelityReport, fidelityReport } from './report';
 const PASSWORD = randomBytes(18).toString('base64url');
 let address = 0;
 const nextAddress = () => `100.76.${Math.floor(++address / 250)}.${(address % 250) + 1}`;
+/** The agile plugin's sprint and rank fields, which are not imported as fields (M1-093). */
+const AGILE_FIELDS = 2;
 
 const OPTIONS = defaultOptions(10_000, 1);
 /** People and configuration only: the tickets are M1-089's test (`dc-fields.test.ts`). */
@@ -127,12 +130,19 @@ describe('Data Center backup import (M1-088)', () => {
     ticket_type: manifest.entities.IssueType,
     track: manifest.entities.Project,
     // M1-089: fields and forms (the second project keeps the default field rules: one more).
-    field: manifest.entities.CustomField,
+    // The agile plugin's sprint and rank fields are skipped: sprints and rank carry them.
+    field: (manifest.entities.CustomField ?? 0) - AGILE_FIELDS,
     field_context: manifest.entities.FieldConfigScheme,
     field_option: manifest.entities.CustomFieldOption,
     field_rule_set: (manifest.entities.FieldLayoutScheme ?? 0) + 1,
     layout_set: manifest.entities.IssueTypeScreenScheme,
+    // M1-093: releases, areas and boards are configuration; sprints hold tickets.
+    release: manifest.entities.Version,
+    area: manifest.entities.Component,
+    board: manifest.activeObjects.AO_60DB71_RAPIDVIEW,
   });
+  /** Records of a kind read and skipped on purpose: the agile plugin's two fields (M1-093). */
+  const skippedOf = (kind: string) => (kind === 'field' ? AGILE_FIELDS : 0);
   /** Source names per kind, to tell which link to the target's objects of the same name. */
   const sourceNames = () => ({
     role: world.roles.map((r) => r.name),
@@ -199,7 +209,7 @@ describe('Data Center backup import (M1-088)', () => {
     expect(await Promise.all(tables.map(countRows))).toEqual(counts);
     for (const [kind, n] of Object.entries(expected())) {
       const e = entity(dryReport, kind);
-      expect(e?.source, kind).toBe(n);
+      expect(e?.source, kind).toBe((n ?? 0) + skippedOf(kind));
       expect((e?.outcomes.created ?? 0) + (e?.outcomes.linked ?? 0), kind).toBe(n);
       expect(e?.target, kind).toBeNull();
     }
@@ -217,9 +227,9 @@ describe('Data Center backup import (M1-088)', () => {
     // Every kind: all records read, none failed or skipped, each with its target (100%).
     for (const [kind, n] of Object.entries(expected())) {
       const e = entity(r, kind);
-      expect(e?.source, kind).toBe(n);
+      expect(e?.source, kind).toBe((n ?? 0) + skippedOf(kind));
       expect(e?.outcomes.failed, kind).toBe(0);
-      expect(e?.outcomes.skipped, kind).toBe(0);
+      expect(e?.outcomes.skipped, kind).toBe(skippedOf(kind));
       expect((e?.outcomes.created ?? 0) + (e?.outcomes.linked ?? 0), kind).toBe(n);
       expect(e?.fidelity, kind).toBe(1);
     }
@@ -313,11 +323,15 @@ describe('Data Center backup import (M1-088)', () => {
             ? 'not_needed'
             : 'not_imported_yet',
       }));
-    const tables = Object.entries(manifest.activeObjects).map(([kind, count]) => ({
-      kind,
-      count,
-      reason: 'not_imported_yet',
-    }));
+    // Boards are read in full; their sprints and the issues' rank are tickets' (M1-093).
+    const tables = Object.entries(manifest.activeObjects)
+      .filter(([kind]) => !AGILE_CONFIGURATION_TABLES.has(kind))
+      .map(([kind, count]) => ({ kind, count, reason: 'configuration_only' }));
+    const associations = ['issueFixVersions', 'issueAffectedVersions', 'issueComponents'].reduce(
+      (n, k) => n + (manifest.cases[k] ?? 0),
+      0,
+    );
+    leftOut.push({ kind: 'NodeAssociation', count: associations, reason: 'configuration_only' });
     const files = { kind: 'data/attachments', count: manifest.attachments.files };
     expect(r.unsupported).toEqual(
       // Attachment files are content too (M1-091).
@@ -402,7 +416,7 @@ describe('Data Center backup import (M1-088)', () => {
         unchanged: n,
         linked: 0,
         failed: 0,
-        skipped: 0,
+        skipped: skippedOf(kind),
       });
     }
     expect((await stat(summary)).mtimeMs).toBe(staged);

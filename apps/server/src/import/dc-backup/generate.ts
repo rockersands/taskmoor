@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import yazl from 'yazl';
+import { addedFilters, agileCases, agileRows, agileWorldOf, writeAgileEntity } from './agile';
 import { customValues, fieldWorldOf } from './fields';
 import {
   ACTIVE_OBJECTS_FILE,
@@ -330,6 +331,15 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           request: { text: `project = ${b.project.key} ORDER BY Rank ASC` },
         });
       }
+      // The filters of the boards M1-093 adds.
+      for (const f of addedFilters(world)) {
+        await w.row(name, {
+          id: f.id,
+          name: f.name,
+          author: w.user(f.author),
+          request: { text: f.request },
+        });
+      }
       return;
     case 'Issue':
       for (const issue of walkIssues(world)) {
@@ -569,6 +579,7 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
       await writeFieldEntity(world, w, name);
       await writeSchemeEntity(world, w, name);
       await writeWorkflowEntity(world, w, name);
+      await writeAgileEntity(world, w, name);
       return;
   }
 }
@@ -982,21 +993,8 @@ async function writeActiveObjects(world: World, out: TextOut): Promise<Record<st
     }
     out.push('    </table>\n');
   }
-  const rows: Record<string, (string | number | boolean | null)[][]> = {
-    AO_60DB71_RAPIDVIEW: world.boards.map((b) => [b.id, b.name, b.owner.key, b.filterId, true]),
-    AO_60DB71_SPRINT: world.sprints.map((s) => [
-      s.id,
-      s.name,
-      s.board.id,
-      s.started,
-      s.closed,
-      s.start,
-      s.end,
-      s.complete,
-      s.goal,
-      s.sequence,
-    ]),
-  };
+  // Boards, sprints, columns, quick filters, sub-queries and rank (M1-093, `agile.ts`).
+  const rows = agileRows(world);
   const counts: Record<string, number> = {};
   for (const [table, columns] of Object.entries(AO_TABLES)) {
     out.push(`    <data tableName="${table}">\n`);
@@ -1086,7 +1084,7 @@ export async function generateDcBackup(
     if (failure) throw failure;
     await rename(part, zipPath);
 
-    const sprintState = (s: World['sprints'][number]) =>
+    const sprintState = (s: { closed: boolean; started: boolean }) =>
       s.closed ? 'sprintsClosed' : s.started ? 'sprintsActive' : 'sprintsFuture';
     const cases: Record<string, number> = {
       usersPresent: world.users.length,
@@ -1100,7 +1098,9 @@ export async function generateDcBackup(
       sprintsFuture: 0,
       ...w.cases,
     };
-    for (const s of world.sprints) cases[sprintState(s)] = (cases[sprintState(s)] ?? 0) + 1;
+    Object.assign(cases, agileCases(world));
+    for (const s of agileWorldOf(world).sprints)
+      cases[sprintState(s)] = (cases[sprintState(s)] ?? 0) + 1;
     const manifest: Manifest = {
       format: MANIFEST_FORMAT,
       version: 1,

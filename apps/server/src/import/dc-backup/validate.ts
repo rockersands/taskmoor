@@ -20,6 +20,7 @@ import {
 } from './format';
 import { type Manifest, manifestSchema } from './manifest';
 import { parseXml, type XmlHandlers } from './parse';
+import { AgileChecks } from './validate-agile';
 import { WorkflowChecks } from './validate-workflows';
 import type { Written } from './xml';
 
@@ -148,6 +149,8 @@ class EntitiesState {
   readonly associations: { entity: string; id: number; project: number }[] = [];
   /** Workflows, their schemes and events, and each issue's status in its workflow (M1-090). */
   readonly workflows = new WorkflowChecks();
+  /** Boards, sprints, rank, versions and components (M1-093). */
+  readonly agile = new AgileChecks();
   readonly cases: Record<string, number> = {};
   rootSeen = false;
 
@@ -184,6 +187,7 @@ export async function validateDcBackup(
     boards: new IdSet(),
     boardFilters: [] as number[],
     sprintBoards: [] as number[],
+    agile: state.agile,
   };
   const forbidden = { nul: 0, control: 0, noncharacter: 0, charRef: 0 };
   const files: ValidationReport['files'] = { entities: null, activeObjects: null };
@@ -457,6 +461,7 @@ function checkValue(
 function record(state: EntitiesState, name: string, v: Record<string, string>): void {
   const id = Number(v.id);
   state.workflows.row(name, v, (key, by) => state.note(key, by));
+  state.agile.row(name, v, (key, by) => state.note(key, by));
   switch (name) {
     case 'User':
       state.userNames.add(v.lowerUserName ?? '');
@@ -573,6 +578,7 @@ interface AoState {
   boards: IdSet;
   boardFilters: number[];
   sprintBoards: number[];
+  agile: AgileChecks;
 }
 
 function aoHandlers(ao: AoState, problem: Problem, problemOnce: ProblemOnce): XmlHandlers {
@@ -702,6 +708,7 @@ function checkAoRow(
     }
     byName[columns[k] as string] = v.value;
   }
+  ao.agile.aoRow(table, byName, problem);
   const pk = defined.find((c) => c.name === 'ID') ? Number(byName.ID) : null;
   if (table === 'AO_60DB71_RAPIDVIEW' && pk !== null) {
     if (!ao.boards.add(pk)) problem(`${where}: duplicate ID`);
@@ -864,6 +871,13 @@ function crossCheck(
       groupNames: state.groupNames,
       associations: state.associations,
     },
+    problem,
+  );
+
+  // Boards, sprints, rank, versions and components (M1-093).
+  state.agile.check(
+    { ids: (entity) => state.ids.get(entity), issueProject: (id) => state.issueProject.get(id) },
+    (key, by) => state.note(key, by),
     problem,
   );
 

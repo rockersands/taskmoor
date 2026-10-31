@@ -1,0 +1,310 @@
+[
+  {
+    "board": "BX board",
+    "completedAt": null,
+    "endAt": "2025-12-17T00:00:00.000Z",
+    "goal": "",
+    "name": "BX sprint 1",
+    "open": [
+      true
+    ],
+    "startAt": "2025-12-03T00:00:00.000Z",
+    "startedAt": "2025-12-03T00:00:00.000Z",
+    "state": "active",
+    "tickets": 27
+  },
+  {
+    "board": "BX board",
+    "completedAt": null,
+    "endAt": null,
+    "goal": "",
+    "name": "BX sprint 2",
+    "open": [
+      true
+    ],
+    "startAt": null,
+    "startedAt": null,
+    "state": "future",
+    "tickets": 22
+  },
+  {
+    "board": "CX board",
+    "completedAt": "2025-11-19T00:00:00.000Z",
+    "endAt": "2025-11-19T00:00:00.000Z",
+    "goal": "Improve filter export export export",
+    "name": "CX sprint 1",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-05T00:00:00.000Z",
+    "startedAt": "2025-11-05T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 38
+  },
+  {
+    "board": "CX board",
+    "completedAt": "2025-12-03T00:00:00.000Z",
+    "endAt": "2025-12-03T00:00:00.000Z",
+    "goal": "",
+    "name": "CX sprint 2",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-19T00:00:00.000Z",
+    "startedAt": "2025-11-19T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 55
+  },
+  {
+    "board": "CX board",
+    "completedAt": null,
+    "endAt": "2025-12-17T00:00:00.000Z",
+    "goal": "",
+    "name": "CX sprint 3",
+    "open": [
+      true
+    ],
+    "startAt": "2025-12-03T00:00:00.000Z",
+    "startedAt": "2025-12-03T00:00:00.000Z",
+    "state": "active",
+    "tickets": 37
+  },
+  {
+    "board": "CX board",
+    "completedAt": null,
+    "endAt": null,
+    "goal": "",
+    "name": "CX sprint 4",
+    "open": [
+      true
+    ],
+    "startAt": null,
+    "startedAt": null,
+    "state": "future",
+    "tickets": 36
+  },
+  {
+    "board": "DX board",
+    "completedAt": "2025-10-22T00:00:00.000Z",
+    "endAt": "2025-10-22T00:00:00.000Z",
+    "goal": "",
+    "name": "DX sprint 1",
+    "open": [
+      false
+    ],
+    "startAt": "2025-10-08T00:00:00.000Z",
+    "startedAt": "2025-10-08T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 13
+  },
+  {
+    "board": "DX board",
+    "completedAt": "2025-11-05T00:00:00.000Z",
+    "endAt": "2025-11-05T00:00:00.000Z",
+    "goal": "Split planner ñandú cache planner größe widget",
+    "name": "DX sprint 2",
+    "open": [
+      false
+    ],
+    "startAt": "2025-10-22T00:00:00.000Z",
+    "startedAt": "2025-10-22T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 21
+  },
+  {
+    "board": "DX board",
+    "completedAt": "2025-11-19T00:00:00.000Z",
+    "endAt": "2025-11-19T00:00:00.000Z",
+    "goal": "Improve beacon widget queue invoice archive",
+    "name": "DX sprint 3",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-05T00:00:00.000Z",
+    "startedAt": "2025-11-05T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 30
+  },
+  {
+    "board": "DX board",
+    "completedAt": "2025-12-03T00:00:00.000Z",
+    "endAt": "2025-12-03T00:00:00.000Z",
+    "goal": "",
+    "name": "DX sprint 4",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-19T00:00:00.000Z",
+    "startedAt": "2025-11-19T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 24
+  },
+  {
+    "board": "DX board",
+    "completedAt": null,
+    "endAt": "2025-12-17T00:00:00.000Z",
+    "goal": "",
+    "name": "DX sprint 5",
+    "open": [
+      true
+    ],
+    "startAt": "2025-12-03T00:00:00.000Z",
+    "startedAt": "2025-12-03T00:00:00.000Z",
+    "state": "active",
+    "tickets": 28
+  },
+  {
+    "board": "DX board",
+    "completedAt": null,
+    "endAt": null,
+    "goal": "Add größe cache search meadow harbour ñandú meadow",
+    "name": "DX sprint 6",
+    "open": [
+      true
+    ],
+    "startAt": null,
+    "startedAt": null,
+    "state": "future",
+    "tickets": 33
+  },
+  {
+    "board": "FX board",
+    "completedAt": "2025-10-22T00:00:00.000Z",
+    "endAt": "2025-10-22T00:00:00.000Z",
+    "goal": "",
+    "name": "FX sprint 1",
+    "open": [
+      false
+    ],
+    "startAt": "2025-10-08T00:00:00.000Z",
+    "startedAt": "2025-10-08T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 18
+  },
+  {
+    "board": "FX board",
+    "completedAt": "2025-11-05T00:00:00.000Z",
+    "endAt": "2025-11-05T00:00:00.000Z",
+    "goal": "",
+    "name": "FX sprint 2",
+    "open": [
+      false
+    ],
+    "startAt": "2025-10-22T00:00:00.000Z",
+    "startedAt": "2025-10-22T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 17
+  },
+  {
+    "board": "FX board",
+    "completedAt": "2025-11-19T00:00:00.000Z",
+    "endAt": "2025-11-19T00:00:00.000Z",
+    "goal": "Merge signal archive timber",
+    "name": "FX sprint 3",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-05T00:00:00.000Z",
+    "startedAt": "2025-11-05T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 16
+  },
+  {
+    "board": "FX board",
+    "completedAt": "2025-12-03T00:00:00.000Z",
+    "endAt": "2025-12-03T00:00:00.000Z",
+    "goal": "Audit session banner cache session lantern café",
+    "name": "FX sprint 4",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-19T00:00:00.000Z",
+    "startedAt": "2025-11-19T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 16
+  },
+  {
+    "board": "FX board",
+    "completedAt": null,
+    "endAt": "2025-12-17T00:00:00.000Z",
+    "goal": "Support session willow session orchard",
+    "name": "FX sprint 5",
+    "open": [
+      true
+    ],
+    "startAt": "2025-12-03T00:00:00.000Z",
+    "startedAt": "2025-12-03T00:00:00.000Z",
+    "state": "active",
+    "tickets": 19
+  },
+  {
+    "board": "FX board",
+    "completedAt": null,
+    "endAt": null,
+    "goal": "",
+    "name": "FX sprint 6",
+    "open": [
+      true
+    ],
+    "startAt": null,
+    "startedAt": null,
+    "state": "future",
+    "tickets": 19
+  },
+  {
+    "board": "AX and BX delivery",
+    "completedAt": "2025-11-19T00:35:28.466Z",
+    "endAt": "2025-11-19T00:00:00.000Z",
+    "goal": "Ñandú café meadow profile",
+    "name": "Delivery 1",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-05T00:00:00.000Z",
+    "startedAt": "2025-11-05T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 111
+  },
+  {
+    "board": "AX and BX delivery",
+    "completedAt": "2025-12-03T00:24:01.651Z",
+    "endAt": "2025-12-03T00:00:00.000Z",
+    "goal": "",
+    "name": "Delivery 2",
+    "open": [
+      false
+    ],
+    "startAt": "2025-11-19T00:00:00.000Z",
+    "startedAt": "2025-11-19T00:00:00.000Z",
+    "state": "closed",
+    "tickets": 163
+  },
+  {
+    "board": "AX and BX delivery",
+    "completedAt": null,
+    "endAt": "2025-12-17T00:00:00.000Z",
+    "goal": "Session banner copper payment café",
+    "name": "Delivery 3",
+    "open": [
+      true
+    ],
+    "startAt": "2025-12-03T00:00:00.000Z",
+    "startedAt": "2025-12-03T00:00:00.000Z",
+    "state": "active",
+    "tickets": 106
+  },
+  {
+    "board": "AX and BX delivery",
+    "completedAt": null,
+    "endAt": null,
+    "goal": "Payment session session 日本 café データ",
+    "name": "Delivery 4",
+    "open": [
+      true
+    ],
+    "startAt": null,
+    "startedAt": null,
+    "state": "future",
+    "tickets": 104
+  }
+]
