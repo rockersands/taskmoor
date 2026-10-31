@@ -1534,13 +1534,14 @@ test('[NTF-008] a ticket opens from the local copy in under 100 ms and from the 
   expectWithinBudget(testInfo, Math.min(...warm), 100, 'ticket open from the local copy (ms)');
 
   // A change made elsewhere reaches the local copy through the socket: within a second in the
-  // benchmark run, at all in every run.
+  // benchmark run, at all in every run. The position is read before the change is made: on a
+  // quiet machine the delta can land before a read made after it, which then waits forever.
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('SYNC-1');
+  const before = await page.evaluate(() => document.documentElement.dataset.syncPosition);
   const edited = await page.request.patch('/api/v1/tickets/SYNC-1', {
     data: { summary: 'Opens fast, renamed' },
   });
   expect(edited.status()).toBe(200);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('SYNC-1');
-  const before = await page.evaluate(() => document.documentElement.dataset.syncPosition);
   await expect
     .poll(() => page.evaluate(() => document.documentElement.dataset.syncPosition), {
       timeout: ENFORCE_BUDGETS ? 1500 : 10_000,
