@@ -48,5 +48,7 @@ columns (summary, description, environment, each comment), not one weighted vect
 so a field's search is exact in the index and a phrase stays inside its field; comments cannot
 share the ticket's vector because some are restricted to a role or group; and the configuration
 is English stemming without stop words (`taskmoor_search`), the only language the product
-ships. `pg_trgm` serves patterns (`*Exception`) on summaries and custom text values; autocomplete
-does not use it yet.
+ships. `pg_trgm` served patterns (`*Exception`) on summaries and custom text values until the
+user dropped them on 2026-10-31: searches match words only. Its indexes stay until a later
+migration removes them; autocomplete does not use it yet. `ORDER BY relevance` ranks the 10,000
+most recently updated matches.

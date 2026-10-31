@@ -1,6 +1,6 @@
 # ADR-069: Full-text search: stemmed word columns, the search syntax as tsquery, relevance, and counts estimated from block samples
 
-- Status: Accepted
+- Status: Accepted (amended 2026-10-31: patterns dropped, relevance capped; see Changes)
 - Date: 2026-10-30
 - Backlog: M1-040
 
@@ -39,7 +39,8 @@ weights, and one configuration per instance.
   expression would extract and parse the document again each time. Each column has a GIN index
   over rows outside the trash. Custom text values (`v_text`, short: a paragraph's first 255
   characters) keep an expression GIN index.
-- **`pg_trgm`** with trigram GIN indexes on summaries and custom text values, for patterns. The
+- **`pg_trgm`** with trigram GIN indexes on summaries and custom text values, for patterns
+  (dropped on 2026-10-31; the indexes stay until a later migration removes them). The
   extension is trusted (PostgreSQL 13 and later): the database's owner creates it; the compose
   README says so for external servers.
 - The schema snapshot now records each generated column's expression, so the golden file shows
@@ -49,7 +50,7 @@ weights, and one configuration per instance.
 
 `parseTextSearch` (`packages/query/src/text.ts`) reads a `~` value into terms; the resolver
 refuses what cannot run (a search that only excludes, one with no letter or digit, a fuzzy
-wildcard, more than two `?` in a word, a pattern without three letters or digits together) at
+wildcard, more than two `?` in a word, a `*` anywhere but the end of a word) at
 the value's position, so the query editor shows it. The server (`search/text.ts`) turns terms
 into the input of `to_tsquery` over `taskmoor_search`, one parameter per search, operands
 quoted and escaped, so the database's own parser splits and stems them exactly as it did the
@@ -63,7 +64,7 @@ indexed text:
 | `lo?in` | one character for `?` (at most two) | an OR of the words it stands for |
 | `login~` | the word or one edit away (Damerau: a character removed, added, changed, two neighbours swapped) | an OR of the words it stands for |
 | `-password` | must not occur | `!'password'` |
-| `*Exception`, `Null*Exc?ption` | a pattern: `*` anywhere but the end, `*` any characters and `?` one | `ILIKE '%Exception%'` on summaries and text fields |
+| `*Exception`, `Null*Exc?ption` | refused: searches match words, never text inside them (patterns were dropped on 2026-10-31) | none |
 | `C\+\+` | the backslash makes the next character literal | `'C++'` |
 
 - **Expansions instead of rechecks.** `?` and fuzzy words become the words they stand for
@@ -80,9 +81,9 @@ indexed text:
   (`k.id = ANY(ARRAY(...))`), fetched by primary key whatever the planner expects. Pruning the
   words first with one `EXISTS` per word was tried: inside `EXISTS` the planner expects an early
   hit and scans the table per missing word (33 s at 200,000 tickets for one fuzzy word).
-- **Patterns** need the trigram indexes, which only short texts have: summaries and text fields
-  take them; description, environment, comment and history (`WAS`, `CHANGED`) refuse them with
-  a message; `text ~` applies them to summaries and text fields and says so in a warning.
+- **Patterns** (`*` inside or in front of a word, matched with `ILIKE` on the trigram indexes of
+  summaries and text fields) shipped first and were dropped on 2026-10-31 by the user's decision:
+  they went beyond spec 1.8, matched only short texts, and are now refused everywhere.
 - Phrases do not cross a block boundary as one word would (blocks are joined with a space), but
   a phrase may span the end of one paragraph and the start of the next.
 
@@ -107,8 +108,9 @@ by the planner's estimate `m` of the matches among `n` tickets: a page (51 rows)
 from 5,000 matches and 0.3% of the tickets (at 10M a word in 0.3% fills a page within about
 17,000 tickets walked, and its 30,000 matches sort in about as long); a count (one past its cap
 of 10,000) from twice the cap and `sqrt(cap · n / 4)` matches (22,000 at 200,000 tickets,
-158,000 at 10M; below the cap a walk reads the whole table); relevance, which ranks every
-match, from 5,000 and a quarter of the tickets. The page and the count (with its sample) are
+158,000 at 10M; below the cap a walk reads the whole table); relevance, which ranks the 10,000
+most recently updated matches (below), like a count: from twice that and `sqrt(10,000 · n / 4)`
+matches, walking the tickets by their update. The page and the count (with its sample) are
 compiled separately for that reason.
 
 **Several words.** The planner takes words for independent, so two that seldom meet look common
@@ -132,6 +134,14 @@ and environment (comments and text fields make it match but do not raise its ran
 ranking every match cheap). Relevance is a place in a ranking, as rank is on a board:
 ascending, the default, puts the best match first. The value is negated `float8`, so keyset
 cursors carry it exactly and ties fall back to the ticket id.
+
+**Only the 10,000 most recently updated matches are ranked** (`RANKED_CAP`, the user's
+decision of 2026-10-31). Ranking reads every match's words; for a common word at 10M tickets
+that is about 10 s. The page statement reads from `(SELECT k.* FROM ticket k WHERE ... ORDER BY
+k.updated_at DESC, k.id DESC LIMIT 10000) k` and ranks, orders and pages those rows; it never
+walks a side table or merges value branches. Counts still count every match, and when there are
+more than 10,000 the search route warns: "Ordered by relevance among the 10,000 most recently
+updated matches".
 
 ### Counts
 
@@ -176,8 +186,9 @@ cursors carry it exactly and ties fall back to the ticket id.
   word columns.
 - Fuzzy matching is one edit, and `?`, prefixes and fuzzy words match the indexed (stemmed)
   words: `runn*` does not find "running", whose stem is "run" (as in Lucene-based search).
-- `text ~` relevance ignores comments; ordering a very common word by relevance ranks all its
-  matches, which is the cost to watch at 10M.
+- `text ~` relevance ignores comments. Ordering by relevance ranks at most 10,000 matches: an
+  older ticket that would rank best is left out when newer ones fill the set, and the warning
+  says so.
 - Clustered results (the newest 15%, one track's last months) seldom get an estimate: their
   matches sit in few blocks, so they report "more than 10,000".
 - Revisit when a second site language ships, when the 10M runs (M1-117) show the common-word
@@ -259,3 +270,11 @@ words just under 10,000 matches (the set of matches, read whole), the count's sa
 check runs per matching comment. What does not: pages that walk an index, rare words and `?`
 and fuzzy words (index probes), and patterns on summaries. M1-117 (the 10M nightly) should load
 text as this test does and run its queries.
+
+## Changes
+
+- **2026-10-31, the user's decisions on the two questions this ADR left open.** Patterns (`*`
+  anywhere but the end of a word) are dropped: the parser refuses them with "A * can only end a
+  word", the `ILIKE` compilation and its warnings are gone, and the conformance cases now expect
+  the refusal. `ORDER BY relevance` ranks only the 10,000 most recently updated matches (section
+  Relevance). The measurements above predate both changes.

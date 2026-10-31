@@ -9,6 +9,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { customFieldViews } from '../fields/values';
 import { SearchError } from '../search/bind';
 import { queryCatalogue } from '../search/catalogue';
+import type { Total } from '../search/count';
 import {
   CursorError,
   DEFAULT_QUERY_TIMEOUT_MS,
@@ -86,6 +87,17 @@ function queryErrorBody(error: QueryError) {
 }
 
 /** Answers a refused query (also for bulk changes by query); rethrows anything else. */
+/**
+ * Said when relevance ranked only the most recently updated matches (`RANKED_CAP`, M1-040):
+ * the first page counts every match and knows whether some were left unranked.
+ */
+export function rankedWarning(cap: number | undefined, total: Total | undefined): string[] {
+  if (cap === undefined || !total || (total.exact && total.count <= cap)) return [];
+  return [
+    `Ordered by relevance among the ${cap.toLocaleString('en-US')} most recently updated matches`,
+  ];
+}
+
 export function searchRefusal(reply: FastifyReply, error: unknown, timeoutMs: number) {
   if (error instanceof QueryError) {
     return reply.code(400).send({ error: 'invalid_query', ...queryErrorBody(error) });
@@ -342,11 +354,12 @@ export function registerSearchRoutes(
             timeoutMs,
           });
       const tickets = await views(request, page.ids, filter.sql);
+      const warnings = [...bound.warnings, ...rankedWarning(compiled.rankedAmong, page.total)];
       return {
         tickets: tickets.map((t) => project(t, shape)),
         next: page.next,
         ...(page.total ? { total: page.total } : {}),
-        ...(bound.warnings.length > 0 ? { warnings: bound.warnings } : {}),
+        ...(warnings.length > 0 ? { warnings } : {}),
       };
     } catch (error) {
       return searchRefusal(reply, error, timeoutMs);

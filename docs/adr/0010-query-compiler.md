@@ -506,14 +506,14 @@ Decided in ADR-069; what changed here: `~` and `!~` read the search syntax of sp
 1.8 (`packages/query/src/text.ts`; the resolver refuses a search that cannot run at the value's
 position), and compile to `@@ to_tsquery('taskmoor_search', $n)` over stored word columns
 (`summary_words`, `description_words`, `environment_words`, `body_words`; migration 0057) and an
-expression index on custom text values, with `ILIKE` for patterns on summaries and text fields
-(trigram indexes). The tsquery is one parameter whose operands the server quotes; the fuzz
+expression index on custom text values (the `ILIKE` patterns of the first version were dropped
+on 2026-10-31). The tsquery is one parameter whose operands the server quotes; the fuzz
 property now compares a text search's statement with that of a value of the same shape (its
-letters and digits changed), since patterns add conditions. `?` and fuzzy words expand into the
+letters and digits changed), since `?` and fuzzy words probe the index word by word. `?` and fuzzy words expand into the
 words they stand for, pruned at bind time to the words that occur. `text ~` takes one of two
 forms by the planner's estimate of its matches: a set of ids (`k.id IN (... UNION ALL ...)`)
 for few, an OR tested per row for many. `ORDER BY relevance` is a key like any other (a negated
-`float8` rank, so cursors carry it); counts beyond 10,000 are estimated from block samples
+`float8` rank, so cursors carry it) over the 10,000 most recently updated matches; counts beyond 10,000 are estimated from block samples
 (`search/count.ts`). Plan goldens: `search/__golden__/plans-text-pg16.json`.
 
 ## Read-only info fields (M1-125)

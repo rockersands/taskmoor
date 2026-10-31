@@ -163,7 +163,7 @@ const HISTORY_CASES: PlanCase[] = [
  * Text search (M1-040): one ticket in 4,999 says "zebracorn" in its summary, one in 2,500 in a
  * comment and one in 3,000 in its Notes; every ticket says one of WORDS twice. A rare word
  * starts from the word indexes, across all five places of the master text field; a common one
- * walks the order and probes each ticket; patterns use the trigram indexes.
+ * walks the order and probes each ticket.
  */
 const TEXT_CASES: PlanCase[] = [
   {
@@ -174,9 +174,7 @@ const TEXT_CASES: PlanCase[] = [
     q: 'text ~ payment ORDER BY updated DESC',
     uses: ['ticket_updated_idx|ticket_summary_words_idx'],
   },
-  { q: 'summary ~ "*ebracor*" ORDER BY created DESC', uses: ['ticket_summary_trigram_idx'] },
   { q: 'Notes ~ zebracorn ORDER BY created DESC', uses: ['v_text_words_idx'] },
-  { q: 'Notes ~ "*ebracor*"', uses: ['v_text_trigram_idx'] },
   { q: 'summary ~ "zebr?corn" ORDER BY created DESC', uses: ['ticket_summary_words_idx'] },
   { q: 'summary ~ "zebracron~" ORDER BY created DESC', uses: ['ticket_summary_words_idx'] },
   { q: 'summary ~ "\\"zebracorn ticket\\""', uses: ['ticket_summary_words_idx'] },
@@ -546,7 +544,7 @@ describe('query plans (M1-037)', () => {
     }
   });
 
-  it('[QRY-007] [QRY-010] plans text searches on the word and trigram indexes (M1-040)', async () => {
+  it('[QRY-007] [QRY-010] plans text searches on the word indexes (M1-040)', async () => {
     const version = await sql<{
       v: string;
     }>`SELECT current_setting('server_version_num') AS v`.execute(db);

@@ -115,7 +115,7 @@ export const TEXT_CASES: QueryCase[] = [
       ['no-words', '"+ - *"', 'no words to look for', 'A search without a letter or digit'],
       ['fuzzy-wildcard', '"lo?in~"', 'both fuzzy (~) and a wildcard', 'A fuzzy wildcard'],
       ['three-wildcards', '"a?b?c?d"', 'at most 2 ? wildcards', 'Three ? in a word'],
-      ['short-pattern', '"*ab"', 'three letters or digits in a row', 'A pattern of two letters'],
+      ['leading-star', '"*Exception"', 'can only end a word', 'A * in front of a word'],
     ] as const
   ).map(([s, value, message, title]) =>
     c(`refused-${s}`, {
@@ -126,12 +126,12 @@ export const TEXT_CASES: QueryCase[] = [
       expect: { ok: false, message },
     }),
   ),
-  c('pattern-resolves', {
+  c('refused-inner-star', {
     kind: 'resolve',
-    title: 'A * in front of a word makes a pattern',
-    text: 'summary ~ "*Exception"',
+    title: 'A * inside a word is refused: searches match words',
+    text: 'summary ~ "Null*Pointer"',
     catalogue: CATALOGUE,
-    expect: { ok: true },
+    expect: { ok: false, message: 'can only end a word' },
   }),
   c('relevance-order', {
     kind: 'resolve',

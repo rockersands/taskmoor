@@ -3,7 +3,7 @@ title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
 sources: apps/web/src/search/SearchPage.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md
-accessed: 2026-10-30
+accessed: 2026-10-31
 attestation: own-words
 ---
 # Search and the query language
@@ -55,10 +55,14 @@ Inside the quotes of a `~` value:
 | `lo?in` | `?` stands for one character (at most two in a word) |
 | `login~` | the word, or one typing mistake away from it |
 | `-password` | tickets without the word (with at least one other word to find) |
-| `*Exception` | a `*` at the start or inside a word finds that text anywhere in summaries and text fields |
 | `C\\+\\+` | a backslash makes the next character part of the word |
 
+A `*` only ends a word: searches match whole words and their beginnings, never text inside a
+word, so `*Exception` is refused.
+
 Order the results by how well they match with `ORDER BY relevance`: the best match comes first.
+Only the 10,000 most recently updated matches are ranked; when there are more, the page says
+so, and the count still covers every match.
 
 ```text
 text ~ "checkout timeout" ORDER BY relevance

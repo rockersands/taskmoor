@@ -35,18 +35,13 @@ describe('text search syntax (M1-040)', () => {
     expect(terms('e-mail')).toEqual([{ kind: 'word', text: 'e-mail' }]);
   });
 
-  it('[QRY-007] reads * inside or in front of a word as a pattern', () => {
-    expect(terms('*Exception')).toEqual([
-      { kind: 'pattern', parts: ['', 'Exception'], gaps: ['many'] },
-    ]);
-    expect(terms('**Null*Pointer?x*')).toEqual([
-      {
-        kind: 'pattern',
-        parts: ['', 'Null', 'Pointer', 'x', ''],
-        gaps: ['many', 'many', 'one', 'many'],
-      },
-    ]);
-    expect(() => parseTextSearch('*ab')).toThrow('three letters or digits in a row');
+  it('[QRY-007] refuses * inside or in front of a word: searches match words', () => {
+    for (const value of ['*Exception', 'Null*Pointer', '**Null*Pointer?x*', 'login *ab']) {
+      expect(() => parseTextSearch(value), value).toThrow('A * can only end a word');
+    }
+    // Escaped, a star is a character of the word; with no letter or digit the term is left out.
+    expect(terms('\\*Exception')).toEqual([{ kind: 'word', text: '*Exception' }]);
+    expect(terms('login *-*')).toEqual([{ kind: 'word', text: 'login' }]);
   });
 
   it('[QRY-007] makes escaped and quoted characters literal', () => {

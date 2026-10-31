@@ -11,10 +11,8 @@
  * - A trailing `~` makes a word fuzzy: words one edit away (a letter added, removed, changed, or
  *   two neighbours swapped) match too, `login~` finds "logon" and "loign".
  * - A leading `-` excludes a word or phrase: `login -password`. A search cannot only exclude.
- * - A `*` anywhere but at the end makes the term a pattern, matched inside the text with `*`
- *   for any characters and `?` for one: `*Exception` finds "NullPointerException". Patterns
- *   need three letters or digits in a row, and only short texts (summaries and text fields)
- *   take them.
+ * - A `*` anywhere but at the end of a word is refused: searches match words, never text inside
+ *   them (the user's decision of 2026-10-31; `*Exception` cannot run).
  * - A backslash makes the next character literal: `C\+\+`, `\-1`, `what\?`.
  * - Case does not matter, and words match their other forms (stemming): `logging` finds "logs".
  */
@@ -26,9 +24,7 @@ export type TextTerm =
   /** A word with `?` wildcards: the text between them; `prefix` with a trailing `*` too. */
   | { kind: 'wildcard'; parts: string[]; prefix?: true }
   /** A word or one edit away from it. */
-  | { kind: 'fuzzy'; text: string }
-  /** Text inside the field: literal `parts` with `gaps` between them (`*` many, `?` one). */
-  | { kind: 'pattern'; parts: string[]; gaps: ('many' | 'one')[] };
+  | { kind: 'fuzzy'; text: string };
 
 export interface TextSearch {
   /** Every one must match. */
@@ -130,7 +126,13 @@ function termOf(typed: Char[], at: number): TextTerm | undefined {
     return hasWord(body) ? { kind: 'fuzzy', text: body.map((x) => x.c).join('') } : undefined;
   }
   const stars = word.flatMap((x, i) => (is(x, '*') ? [i] : []));
-  if (stars.some((i) => i !== word.length - 1)) return pattern(word, at);
+  if (stars.some((i) => i !== word.length - 1)) {
+    if (!hasWord(word)) return undefined;
+    throw new TextSearchError(
+      'A * can only end a word (log*): searches match words, not text inside them',
+      at,
+    );
+  }
   const prefix = stars.length === 1;
   const body = prefix ? word.slice(0, -1) : word;
   if (!hasWord(body)) return undefined;
@@ -148,32 +150,6 @@ function termOf(typed: Char[], at: number): TextTerm | undefined {
   return { kind: 'wildcard', parts, ...(prefix ? { prefix } : {}) };
 }
 
-function pattern(word: Char[], at: number): TextTerm | undefined {
-  const parts = [''];
-  const gaps: ('many' | 'one')[] = [];
-  for (const x of word) {
-    if (x.special && (x.c === '*' || x.c === '?')) {
-      // Stars side by side are one gap.
-      if (x.c === '*' && parts[parts.length - 1] === '' && gaps[gaps.length - 1] === 'many') {
-        continue;
-      }
-      gaps.push(x.c === '*' ? 'many' : 'one');
-      parts.push('');
-    } else {
-      parts[parts.length - 1] += x.c;
-    }
-  }
-  if (!hasWord(word)) return undefined;
-  // The trigram index needs three characters together to narrow the search.
-  if (!parts.some((p) => [...p].filter((c) => searchable.test(c)).length >= 3)) {
-    throw new TextSearchError(
-      'A search with * inside or in front needs three letters or digits in a row',
-      at,
-    );
-  }
-  return { kind: 'pattern', parts, gaps };
-}
-
 /** The search's text with its own syntax, for messages and warnings. */
 export function printTextTerm(term: TextTerm): string {
   const literal = (s: string) => s.replace(/[\\"*?~\-\s]/gu, (c) => `\\${c}`);
@@ -186,12 +162,5 @@ export function printTextTerm(term: TextTerm): string {
       return `${term.parts.map(literal).join('?')}${term.prefix ? '*' : ''}`;
     case 'fuzzy':
       return `${literal(term.text)}~`;
-    case 'pattern':
-      return term.parts
-        .map(
-          (p, i) =>
-            `${literal(p)}${i < term.gaps.length ? (term.gaps[i] === 'many' ? '*' : '?') : ''}`,
-        )
-        .join('');
   }
 }

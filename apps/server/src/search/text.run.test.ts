@@ -9,8 +9,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { FieldCatalogs } from '../fields/catalog';
+import { rankedWarning } from '../routes/search';
 import { SearchError } from './bind';
 import { queryCatalogue } from './catalogue';
+import { RANKED_CAP } from './compile';
 import { prepareSearch } from './run';
 import { textQuery } from './text';
 
@@ -276,24 +278,26 @@ describe('full-text search through the search API (M1-040)', () => {
     expect(await found('summary ~ "C\\\\+\\\\+ parser"')).toEqual(K('code'));
   });
 
-  it('[QRY-007] matches patterns inside summaries and text fields, and refuses them in long text', async () => {
-    expect(await found('summary ~ "*PointerExc*"')).toEqual(K('code'));
-    expect(await found('summary ~ "*ointer?xception"')).toEqual(K('code'));
-    expect(await found('Notes ~ "*draft*"')).toEqual(K('notes'));
-    expect(await found('Notes ~ "ready -*board"')).toEqual([]);
-    expect(await refused('description ~ "*eeze"')).toContain('long text');
-    expect(await refused('comment ~ "*ogin"')).toContain('long text');
-    // The master text field searches summaries and text fields for it, and says so.
-    const { body } = await search('track = TXT AND text ~ "*ointerExc"');
-    expect((body.tickets as { key: string }[]).map((t) => t.key)).toEqual(K('code'));
-    expect(body.warnings).toEqual([expect.stringContaining('summaries and text fields only')]);
+  it('[QRY-007] refuses a * inside or in front of a word on every text: searches match words', async () => {
+    for (const q of [
+      'summary ~ "*PointerExc*"',
+      'summary ~ "Null*Exception"',
+      'Notes ~ "*draft*"',
+      'description ~ "*eeze"',
+      'comment ~ "*ogin"',
+      'text ~ "*ointerExc"',
+      'summary WAS "*ogin"',
+    ]) {
+      expect(await refused(q), q).toContain('A * can only end a word');
+    }
+    // A trailing * still finds words that start with the term.
+    expect(await found('summary ~ "NullPointer*"')).toEqual(K('code'));
   });
 
   it('[QRY-007] refuses searches the syntax cannot run, naming the field', async () => {
     expect(await refused('summary ~ "-login"')).toContain('cannot only exclude words');
     expect(await refused('summary ~ "+++"')).toContain('no words to look for');
     expect(await refused('summary ~ "a?b?c?d"')).toContain('at most 2 ? wildcards');
-    expect(await refused('summary WAS "*ogin"')).toContain('WAS and CHANGED match words');
   });
 
   it('[QRY-007] !~ never matches an empty text, and NOT pushes down', async () => {
@@ -344,6 +348,50 @@ describe('full-text search through the search API (M1-040)', () => {
     expect(await refused('track = TXT ORDER BY relevance')).toContain('needs a text search');
   });
 
+  it('[QRY-007] ranks only the most recently updated matches by relevance, and says so', async () => {
+    await ticket('c1', 'Capped capped capped');
+    await ticket('c2', 'Capped twice capped');
+    await ticket('c3', 'Capped once');
+    // c1 ranks best but was updated first: with room for two, only c2 and c3 are ranked.
+    await edit('c2', { fields: { [String(fields.Notes)]: 'touched' } });
+    await edit('c3', { fields: { [String(fields.Notes)]: 'touched' } });
+    const db = database.db;
+    const catalog = await new FieldCatalogs(db).get(1);
+    const catalogue = await queryCatalogue(db, 1, catalog, 'all');
+    const page = async (rankedCap?: number) => {
+      const { compiled } = await prepareSearch({
+        db,
+        workspaceId: 1,
+        catalog,
+        catalogue,
+        filter: { sql: sql<boolean>`true`, tracks: 'all' },
+        q: 'track = TXT AND summary ~ capped ORDER BY relevance',
+        currentUserId: users.alice?.id as number,
+        ...(rankedCap === undefined ? {} : { rankedCap }),
+      });
+      const rows = await compiled.page(51).execute(db);
+      return { ids: rows.rows.map((r) => r.id), cap: compiled.rankedAmong };
+    };
+    const every = await page();
+    expect(every.cap).toBe(RANKED_CAP);
+    expect(every.ids[0]).toBe(T('c1').id);
+    expect([...every.ids].sort()).toEqual([T('c1').id, T('c2').id, T('c3').id].sort());
+    const two = await page(2);
+    expect(two.cap).toBe(2);
+    expect([...two.ids].sort()).toEqual([T('c2').id, T('c3').id].sort());
+    // The route warns only when some matches were left unranked.
+    expect(rankedWarning(RANKED_CAP, { count: 3, exact: true })).toEqual([]);
+    expect(rankedWarning(2, { count: 3, exact: true })).toEqual([
+      'Ordered by relevance among the 2 most recently updated matches',
+    ]);
+    expect(rankedWarning(RANKED_CAP, { count: 12_000, exact: false, approximate: true })).toEqual([
+      'Ordered by relevance among the 10,000 most recently updated matches',
+    ]);
+    expect(rankedWarning(undefined, { count: 12_000, exact: false })).toEqual([]);
+    const { body } = await search('track = TXT AND summary ~ capped ORDER BY relevance');
+    expect(body.warnings).toBeUndefined();
+  });
+
   it('[QRY-007] runs every text search the syntax reads without a database error', async () => {
     const db = database.db;
     const word = fc.stringMatching(/^[a-zA-Z0-9éß'.+\-*?~"\\:&|!()<> ]{1,14}$/u);
@@ -356,14 +404,9 @@ describe('full-text search through the search API (M1-040)', () => {
           return;
         }
         const q = textQuery(search);
-        if (q.tsquery !== null) {
-          await sql`SELECT to_tsvector('taskmoor_search', 'probe') @@ to_tsquery('taskmoor_search', ${q.tsquery})`.execute(
-            db,
-          );
-        }
-        for (const p of [...q.patterns, ...q.excludedPatterns]) {
-          await sql`SELECT 'probe' ILIKE ${p}`.execute(db);
-        }
+        await sql`SELECT to_tsvector('taskmoor_search', 'probe') @@ to_tsquery('taskmoor_search', ${q.tsquery})`.execute(
+          db,
+        );
       }),
       { numRuns: 300 },
     );
