@@ -16,7 +16,7 @@ import { JobRunner } from '../events/queue';
 import { FieldCatalogs } from '../fields/catalog';
 import { defaultOptions, generateDcBackup } from './dc-backup/generate';
 import type { Manifest } from './dc-backup/manifest';
-import { CONSUMED, STAGED } from './dc-backup/stage';
+import { CONSUMED, CONTENT_ELEMENTS, STAGED } from './dc-backup/stage';
 import { buildWorld, type World } from './dc-backup/world';
 import { registerImportJobs } from './jobs';
 import { placeholderEmail } from './load';
@@ -28,6 +28,8 @@ let address = 0;
 const nextAddress = () => `100.76.${Math.floor(++address / 250)}.${(address % 250) + 1}`;
 
 const OPTIONS = defaultOptions(10_000, 1);
+/** People and configuration only: the tickets are M1-089's test (`dc-fields.test.ts`). */
+const SOURCE = { format: 'dc-backup', path: 'dc-10k.zip', scope: 'configuration' } as const;
 
 /** The configuration tables a mapped kind lands in, with their name column. */
 const TARGETS = {
@@ -124,6 +126,12 @@ describe('Data Center backup import (M1-088)', () => {
     close_reason: manifest.entities.Resolution,
     ticket_type: manifest.entities.IssueType,
     track: manifest.entities.Project,
+    // M1-089: fields and forms (the second project keeps the default field rules: one more).
+    field: manifest.entities.CustomField,
+    field_context: manifest.entities.FieldConfigScheme,
+    field_option: manifest.entities.CustomFieldOption,
+    field_rule_set: (manifest.entities.FieldLayoutScheme ?? 0) + 1,
+    layout_set: manifest.entities.IssueTypeScreenScheme,
   });
   /** Source names per kind, to tell which link to the target's objects of the same name. */
   const sourceNames = () => ({
@@ -186,7 +194,7 @@ describe('Data Center backup import (M1-088)', () => {
   it('[IMP-004] [IMP-009] a dry run plans every configuration object and writes nothing', async () => {
     const tables = ['app_user', 'user_group', 'group_member', 'track', 'track_role_actor'] as const;
     const counts = await Promise.all(tables.map(countRows));
-    const run = await start({ format: 'dc-backup', path: 'dc-10k.zip' }, true);
+    const run = await start(SOURCE, true);
     dryReport = await finish(run.id);
     expect(await Promise.all(tables.map(countRows))).toEqual(counts);
     for (const [kind, n] of Object.entries(expected())) {
@@ -200,7 +208,7 @@ describe('Data Center backup import (M1-088)', () => {
   });
 
   it('[IMP-004] [IMP-001] imports the configuration with every count equal to the golden manifest', async () => {
-    const run = await start({ format: 'dc-backup', path: 'dc-10k.zip' });
+    const run = await start(SOURCE);
     realRun = run.id;
     realReport = await finish(run.id);
     const r = realReport;
@@ -294,11 +302,15 @@ describe('Data Center backup import (M1-088)', () => {
 
     // Everything else is reported, with its count and why (IMP-004: never dropped silently).
     const leftOut = Object.entries(manifest.entities)
-      .filter(([name]) => !CONSUMED.has(name))
+      .filter(([name]) => !CONSUMED.has(name) || CONTENT_ELEMENTS.has(name))
       .map(([kind, count]) => ({
         kind,
         count,
-        reason: kind === 'SequenceValueItem' ? 'not_needed' : 'not_imported_yet',
+        reason: CONTENT_ELEMENTS.has(kind)
+          ? 'configuration_only'
+          : kind === 'SequenceValueItem'
+            ? 'not_needed'
+            : 'not_imported_yet',
       }));
     const tables = Object.entries(manifest.activeObjects).map(([kind, count]) => ({
       kind,
@@ -378,7 +390,7 @@ describe('Data Center backup import (M1-088)', () => {
   it('[IMP-009] importing the same backup again changes nothing and reuses the stage', async () => {
     const summary = join(importDir, `dc-10k.zip${STAGED}`, 'stage.json');
     const staged = (await stat(summary)).mtimeMs;
-    const run = await start({ format: 'dc-backup', path: 'dc-10k.zip' });
+    const run = await start(SOURCE);
     const again = await finish(run.id);
     for (const [kind, n] of Object.entries(expected())) {
       expect(entity(again, kind)?.outcomes, kind).toEqual({
@@ -456,7 +468,7 @@ describe('Data Center backup import (M1-088)', () => {
   <ApplicationUser id="1" userKey="ana" lowerUserName="ana"/>
   <ApplicationUser id="2" userKey="JIRAUSER2" lowerUserName="gone"/>
   <ApplicationUser id="3" userKey="JIRAUSER3" lowerUserName="forgotten"/>
-  <CustomField id="1" name="Team size"/>
+  <CustomField id="1" cfname="Team size" customfieldtypekey="com.example.plugin:team-size"/>
   <Directory id="1" directoryName="Remote" active="1" directoryPosition="1"/>
   <Directory id="2" directoryName="Local" active="1" directoryPosition="0"/>
   <Group id="1" groupName="Edge-Team" lowerGroupName="edge-team" active="1" local="0" directoryId="1"/>
@@ -480,7 +492,12 @@ and a ]]]]><![CDATA[> in the middle.]]></description>
 </entity-engine-xml>
 `;
     await zipOf({ 'entities.xml': entities }, join(importDir, 'edge.zip'));
-    const run = await start({ format: 'dc-backup', path: 'edge.zip', system: 'edge' });
+    const run = await start({
+      format: 'dc-backup',
+      path: 'edge.zip',
+      system: 'edge',
+      scope: 'configuration',
+    });
     const r = await finish(run.id);
     const map = (kind: string) =>
       r.mapping
@@ -583,10 +600,18 @@ and a ]]]]><![CDATA[> in the middle.]]></description>
       .where('g.name', '=', 'Edge-Team')
       .execute();
     expect(team).toEqual([{ email: 'ana@edge.test' }]);
-    // Elements the importer does not map yet are counted; there is no active-objects file.
-    expect(r.unsupported).toEqual([
-      { kind: 'CustomField', count: 1, reason: 'not_imported_yet' },
-      { kind: 'Issue', count: 1, reason: 'not_imported_yet' },
+    // An app's field type: a read-only text field for its raw values (M1-089, spec 02a).
+    expect(map('field')).toEqual([
+      {
+        kind: 'field',
+        sourceId: '1',
+        label: 'Team size',
+        outcome: 'created',
+        reason: null,
+        warnings: ['app_field_as_read_only_text: com.example.plugin:team-size'],
+      },
     ]);
+    // Issues are left out of a configuration-only run; there is no active-objects file.
+    expect(r.unsupported).toEqual([{ kind: 'Issue', count: 1, reason: 'configuration_only' }]);
   });
 });

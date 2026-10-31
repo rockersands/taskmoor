@@ -12,6 +12,7 @@ import {
   PRODUCT_EVENTS,
   RECIPIENTS,
 } from '../notifications/model';
+import { replaceNotificationRules, ruleKey } from '../notifications/rules';
 
 /**
  * Notification policies and personal preferences (M1-056; NTF-001, NTF-004; spec 01c
@@ -95,8 +96,6 @@ const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_fou
 const zodDetail = (error: z.ZodError) =>
   error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; ');
 const uniqueViolation = (error: unknown) => (error as { code?: string }).code === '23505';
-const ruleKey = (r: Rule) =>
-  [r.event, r.recipient, r.userId ?? 0, r.groupId ?? 0, r.roleId ?? 0, r.fieldKey ?? ''].join(':');
 
 export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Database>): void {
   const by = (request: FastifyRequest) => ({
@@ -226,31 +225,7 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
     return null;
   }
 
-  async function writeRules(
-    trx: Transaction<Database>,
-    ws: number,
-    policyId: number,
-    rules: readonly Rule[],
-  ) {
-    await trx.deleteFrom('notification_rule').where('policy_id', '=', policyId).execute();
-    const unique = new Map(rules.map((r) => [ruleKey(r), r]));
-    if (unique.size === 0) return;
-    await trx
-      .insertInto('notification_rule')
-      .values(
-        [...unique.values()].map((r) => ({
-          workspace_id: ws,
-          policy_id: policyId,
-          event: r.event,
-          recipient: r.recipient,
-          user_id: r.userId ?? null,
-          group_id: r.groupId ?? null,
-          role_id: r.roleId ?? null,
-          field_key: r.fieldKey ?? null,
-        })),
-      )
-      .execute();
-  }
+  const writeRules = replaceNotificationRules;
 
   /** A policy by the route's id, with the rights to change it checked; null after answering. */
   async function managedPolicy(request: FastifyRequest, reply: FastifyReply) {

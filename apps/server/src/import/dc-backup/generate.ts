@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { PassThrough, Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import yazl from 'yazl';
+import { customValues, fieldWorldOf } from './fields';
 import {
   ACTIVE_OBJECTS_FILE,
   AO_NAMESPACE,
@@ -12,10 +13,14 @@ import {
   AO_TABLES,
   ATTRIBUTE_TEXT_MAX,
   attachmentPath,
+  CASCADE_CHILD_KEY,
+  customFieldKey,
   ENTITIES_FILE,
   ENTITIES_ROOT,
   ENTITY_ORDER,
   type EntityName,
+  PROJECT_SCHEME,
+  SCREEN_OPERATIONS,
   STATUS_CATEGORIES,
   timestamp,
   XSI_NAMESPACE,
@@ -28,6 +33,7 @@ import {
 } from './manifest';
 import * as parts from './parts';
 import { Random } from './random';
+import { roleActors, schemeWorldOf, securityOf } from './schemes';
 import { buildWorld, FIRST_ID, type Person, type World, walkIssues } from './world';
 import { escapeAttr, TextOut } from './xml';
 
@@ -246,29 +252,15 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
       return;
     case 'ProjectRoleActor': {
       let id = FIRST_ID;
-      const [managers, contributors, observers] = world.roles.map((r) => r.id) as [
-        number,
-        number,
-        number,
-      ];
       for (const project of world.projects) {
-        const r = Random.derive(seed, 'role-actors', project.index);
-        const actor = async (role: number, type: 'user' | 'group', parameter: string) =>
-          w.row(name, {
+        for (const a of roleActors(world, project)) {
+          await w.row(name, {
             id: id++,
             pid: project.id,
-            projectroleid: role,
-            roletype: `atlassian-${type}-role-actor`,
-            roletypeparameter: parameter,
+            projectroleid: a.role,
+            roletype: `atlassian-${a.user ? 'user' : 'group'}-role-actor`,
+            roletypeparameter: a.user ? a.user.key : (a.group as string),
           });
-        await actor(managers, 'user', project.lead.key);
-        await actor(contributors, 'group', r.pick(world.groups).name);
-        const seen = new Set<string>([project.lead.key]);
-        for (let n = r.int(0, 2); n > 0; n--) {
-          const p = world.users[r.int(0, world.users.length - 1)] as Person;
-          if (seen.has(p.key)) continue;
-          seen.add(p.key);
-          await actor(observers, 'user', p.key);
         }
       }
       return;
@@ -367,7 +359,9 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           timeoriginalestimate: issue.estimate,
           timeestimate: issue.estimate === null ? null : Math.max(0, issue.estimate - spent),
           timespent: spent === 0 ? null : spent,
+          security: securityOf(world, issue),
         });
+        if (securityOf(world, issue) !== null) w.note('issuesWithSecurity');
       }
       return;
     case 'Action': {
@@ -449,6 +443,14 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
         for (const label of parts.labels(world, issue)) {
           await w.row(name, { id: id++, issue: issue.id, label });
         }
+        // A labels custom field keeps its values here too, under its field (M1-089).
+        for (const v of customValues(world, issue)) {
+          if (v.kind !== 'labels') continue;
+          for (const label of v.labels) {
+            w.note('customLabels');
+            await w.row(name, { id: id++, issue: issue.id, fieldid: v.field.id, label });
+          }
+        }
       }
       return;
     }
@@ -499,6 +501,387 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
         await w.row(name, { seqName: entity, seqId: Math.ceil((max + 1) / 10) * 10 });
       }
       return;
+    default:
+      await writeFieldEntity(world, w, name);
+      await writeSchemeEntity(world, w, name);
+      return;
+  }
+}
+
+/** A double as the entities file writes it: with a decimal point (Verify). */
+const double = (n: number) => (Number.isInteger(n) ? `${n}.0` : String(n));
+
+/** The custom field and form configuration elements (M1-089, `fields.ts`). */
+async function writeFieldEntity(world: World, w: EntityWriter, name: EntityName): Promise<void> {
+  const fw = fieldWorldOf(world);
+  const contexts = fw.fields.flatMap((f) => f.contexts.map((c) => ({ f, c })));
+  switch (name) {
+    case 'CustomField':
+      for (const f of fw.fields) {
+        await w.row(name, {
+          id: f.id,
+          customfieldtypekey: f.typeKey,
+          customfieldsearcherkey: f.searcherKey,
+          cfname: f.name,
+          description: { text: f.description },
+        });
+      }
+      return;
+    case 'FieldConfigScheme':
+    case 'FieldConfiguration':
+      for (const { f, c } of contexts) {
+        await w.row(name, {
+          id: name === 'FieldConfigScheme' ? c.id : c.configId,
+          name: name === 'FieldConfigScheme' ? c.name : `Settings of ${c.name.toLowerCase()}`,
+          description: c.description,
+          fieldid: customFieldKey(f.id),
+        });
+      }
+      return;
+    case 'ConfigurationContext': {
+      let id = FIRST_ID;
+      for (const { f, c } of contexts) {
+        for (const project of c.projects ?? [null]) {
+          await w.row(name, {
+            id: id++,
+            project,
+            key: customFieldKey(f.id),
+            fieldconfigscheme: c.id,
+          });
+        }
+      }
+      return;
+    }
+    case 'FieldConfigSchemeIssueType': {
+      let id = FIRST_ID;
+      for (const { c } of contexts) {
+        for (const type of c.types ?? [null]) {
+          await w.row(name, {
+            id: id++,
+            issuetype: type,
+            fieldconfigscheme: c.id,
+            fieldconfiguration: c.configId,
+          });
+        }
+      }
+      return;
+    }
+    case 'CustomFieldOption':
+      for (const { f, c } of contexts) {
+        for (const o of c.options) {
+          if (o.disabled) w.note('optionsDisabled');
+          if (o.parent !== null) w.note('optionsCascadeChildren');
+          await w.row(name, {
+            id: o.id,
+            customfield: f.id,
+            customfieldconfig: c.configId,
+            parentoptionid: o.parent,
+            sequence: o.sequence,
+            customvalue: o.value,
+            disabled: o.disabled ? 'Y' : 'N',
+          });
+        }
+      }
+      return;
+    case 'GenericConfiguration': {
+      let id = FIRST_ID;
+      for (const { c } of contexts) {
+        const xml =
+          c.defaultOption !== null
+            ? `<string>${c.defaultOption}</string>`
+            : c.defaultNumber !== null
+              ? `<double>${double(c.defaultNumber)}</double>`
+              : null;
+        if (xml === null) continue;
+        await w.row(name, {
+          id: id++,
+          datatype: 'DefaultValue',
+          datakey: String(c.configId),
+          xmlvalue: { text: xml },
+        });
+      }
+      return;
+    }
+    case 'CustomFieldValue': {
+      let id = FIRST_ID;
+      const row = async (
+        issue: number,
+        field: number,
+        values: Record<string, string | { text: string } | undefined>,
+      ) => {
+        w.note('customFieldValues');
+        if (values.parentkey !== undefined) w.note('cascadeChildValues');
+        await w.row(name, { id: id++, issue, customfield: field, ...values });
+      };
+      for (const issue of walkIssues(world)) {
+        for (const v of customValues(world, issue)) {
+          const field = v.field.id;
+          switch (v.kind) {
+            case 'string':
+              for (const s of v.values) await row(issue.id, field, { stringvalue: s });
+              break;
+            case 'text':
+              await row(issue.id, field, { textvalue: { text: v.text } });
+              break;
+            case 'number':
+              await row(issue.id, field, { numbervalue: double(v.number) });
+              break;
+            case 'date':
+              await row(issue.id, field, { datevalue: timestamp(v.at) });
+              break;
+            case 'options':
+              for (const o of v.options) await row(issue.id, field, { stringvalue: String(o) });
+              break;
+            case 'cascade':
+              await row(issue.id, field, { stringvalue: String(v.parent) });
+              if (v.child !== null) {
+                await row(issue.id, field, {
+                  parentkey: CASCADE_CHILD_KEY,
+                  stringvalue: String(v.child),
+                });
+              }
+              break;
+            case 'people':
+              for (const p of v.people) await row(issue.id, field, { stringvalue: p.key });
+              break;
+            case 'groups':
+              for (const g of v.groups) await row(issue.id, field, { stringvalue: g });
+              break;
+            case 'labels':
+              break;
+          }
+        }
+      }
+      return;
+    }
+    case 'FieldLayout':
+      for (const l of fw.layouts) {
+        await w.row(name, {
+          id: l.id,
+          name: l.name,
+          description: l.description,
+          type: l.isDefault ? 'default' : null,
+        });
+      }
+      return;
+    case 'FieldLayoutItem': {
+      let id = FIRST_ID;
+      for (const l of fw.layouts) {
+        for (const [k, item] of l.items.entries()) {
+          if (item.required) w.note('fieldRulesRequired');
+          if (item.hidden) w.note('fieldRulesHidden');
+          await w.row(name, {
+            id: id++,
+            fieldlayout: l.id,
+            fieldidentifier: item.field,
+            description: item.description === null ? null : { text: item.description },
+            verticalposition: k,
+            ishidden: String(item.hidden),
+            isrequired: String(item.required),
+          });
+        }
+      }
+      return;
+    }
+    case 'FieldLayoutScheme':
+    case 'FieldScreen':
+    case 'FieldScreenScheme':
+    case 'IssueTypeScreenScheme': {
+      const rows =
+        name === 'FieldLayoutScheme'
+          ? fw.layoutSchemes
+          : name === 'FieldScreen'
+            ? fw.screens
+            : name === 'FieldScreenScheme'
+              ? fw.screenSchemes
+              : fw.typeScreenSchemes;
+      for (const x of rows) {
+        await w.row(name, { id: x.id, name: x.name, description: x.description });
+      }
+      return;
+    }
+    case 'FieldLayoutSchemeEntity': {
+      let id = FIRST_ID;
+      for (const scheme of fw.layoutSchemes) {
+        for (const e of scheme.entities) {
+          await w.row(name, {
+            id: id++,
+            scheme: scheme.id,
+            issuetype: e.type,
+            fieldlayout: e.layout,
+          });
+        }
+      }
+      return;
+    }
+    case 'FieldScreenTab':
+    case 'FieldScreenLayoutItem': {
+      let tab = FIRST_ID;
+      let item = FIRST_ID;
+      for (const screen of fw.screens) {
+        for (const [k, t] of screen.tabs.entries()) {
+          if (name === 'FieldScreenTab') {
+            await w.row(name, {
+              id: tab,
+              name: t.name,
+              description: null,
+              sequence: k,
+              fieldscreen: screen.id,
+            });
+          } else {
+            for (const [j, field] of t.fields.entries()) {
+              await w.row(name, {
+                id: item++,
+                fieldidentifier: field,
+                sequence: j,
+                fieldscreentab: tab,
+              });
+            }
+          }
+          tab++;
+        }
+      }
+      return;
+    }
+    case 'FieldScreenSchemeItem': {
+      let id = FIRST_ID;
+      for (const scheme of fw.screenSchemes) {
+        for (const item of scheme.items) {
+          await w.row(name, {
+            id: id++,
+            operation: item.operation === null ? null : SCREEN_OPERATIONS[item.operation],
+            fieldscreen: item.screen,
+            fieldscreenscheme: scheme.id,
+          });
+        }
+      }
+      return;
+    }
+    case 'IssueTypeScreenSchemeEntity': {
+      let id = FIRST_ID;
+      for (const scheme of fw.typeScreenSchemes) {
+        for (const e of scheme.entities) {
+          await w.row(name, {
+            id: id++,
+            issuetype: e.type,
+            scheme: scheme.id,
+            fieldscreenscheme: e.screenScheme,
+          });
+        }
+      }
+      return;
+    }
+    case 'NodeAssociation':
+      for (const project of world.projects) {
+        const sw = schemeWorldOf(world);
+        const schemes: [string, number | undefined][] = [
+          ['FieldLayoutScheme', fw.layoutSchemeOf.get(project.id)],
+          ['IssueTypeScreenScheme', fw.typeScreenSchemeOf.get(project.id)],
+          ['PermissionScheme', sw.permissionSchemeOf.get(project.id)],
+          ['IssueSecurityScheme', sw.securitySchemeOf.get(project.id)],
+          ['NotificationScheme', sw.notificationSchemeOf.get(project.id)],
+        ];
+        for (const [entity, sink] of schemes) {
+          if (sink === undefined) continue;
+          await w.row(name, {
+            sourceNodeId: project.id,
+            sourceNodeEntity: 'Project',
+            sinkNodeId: sink,
+            sinkNodeEntity: entity,
+            associationType: PROJECT_SCHEME,
+          });
+        }
+      }
+      return;
+  }
+}
+
+/** The access, visibility and notification elements (M1-092, `schemes.ts`). */
+async function writeSchemeEntity(world: World, w: EntityWriter, name: EntityName): Promise<void> {
+  const sw = schemeWorldOf(world);
+  switch (name) {
+    case 'PermissionScheme':
+    case 'NotificationScheme':
+      for (const x of name === 'PermissionScheme' ? sw.permissionSchemes : sw.notificationSchemes) {
+        await w.row(name, { id: x.id, name: x.name, description: x.description });
+      }
+      return;
+    case 'SchemePermissions': {
+      let id = FIRST_ID;
+      for (const scheme of sw.permissionSchemes) {
+        for (const g of scheme.grants) {
+          await w.row(name, {
+            id: id++,
+            scheme: scheme.id,
+            permissionKey: g.permission,
+            type: g.grantee.type,
+            parameter: g.grantee.parameter,
+          });
+        }
+      }
+      return;
+    }
+    case 'IssueSecurityScheme':
+      for (const x of sw.securitySchemes) {
+        await w.row(name, {
+          id: x.id,
+          name: x.name,
+          description: x.description,
+          defaultlevel: x.defaultLevel,
+        });
+      }
+      return;
+    case 'SchemeIssueSecurityLevels':
+      for (const scheme of sw.securitySchemes) {
+        for (const l of scheme.levels) {
+          await w.row(name, {
+            id: l.id,
+            name: l.name,
+            description: l.description,
+            scheme: scheme.id,
+          });
+        }
+      }
+      return;
+    case 'SchemeIssueSecurities': {
+      let id = FIRST_ID;
+      for (const scheme of sw.securitySchemes) {
+        for (const l of scheme.levels) {
+          for (const m of l.members) {
+            await w.row(name, {
+              id: id++,
+              scheme: scheme.id,
+              security: l.id,
+              type: m.type,
+              parameter: m.parameter,
+            });
+          }
+        }
+      }
+      return;
+    }
+    case 'Notification': {
+      let id = FIRST_ID;
+      for (const scheme of sw.notificationSchemes) {
+        for (const n of scheme.notifications) {
+          await w.row(name, {
+            id: id++,
+            scheme: scheme.id,
+            eventTypeId: n.event,
+            type: n.type,
+            parameter: n.parameter,
+          });
+        }
+      }
+      return;
+    }
+    case 'GlobalPermissionEntry': {
+      let id = FIRST_ID;
+      for (const g of sw.globalPermissions) {
+        await w.row(name, { id: id++, permission: g.permission, group_id: g.group });
+      }
+      return;
+    }
   }
 }
 

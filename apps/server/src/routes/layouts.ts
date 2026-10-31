@@ -4,10 +4,9 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
-import type { Catalog, FieldCatalogs } from '../fields/catalog';
+import type { FieldCatalogs } from '../fields/catalog';
 import {
   customFieldId,
-  FIXED_FIELDS,
   type FormPlacement,
   fieldLocks,
   holderList,
@@ -18,6 +17,7 @@ import {
   OPERATIONS,
   resolveLayout,
 } from '../fields/layouts';
+import { writeLayouts, writeRules } from '../fields/sets';
 import { describeFields } from '../fields/values';
 import { loadTicket, resolveTicket, resolveTrack, type TicketRow } from '../tickets/store';
 import {
@@ -106,8 +106,6 @@ const ticketLayoutQuery = z
   .object({ operation: z.enum(['edit', 'view']).default('view') })
   .strict();
 
-type Rule = z.infer<typeof ruleBody>;
-type Layout = z.infer<typeof layoutBody>;
 type Kind = 'field_rule_set' | 'layout_set';
 type Problem = { status: number; body: Record<string, unknown> };
 const problem = (status: number, error: string, extra: Record<string, unknown> = {}): Problem => ({
@@ -204,163 +202,6 @@ export function registerLayoutRoutes(
       .where('deleted_at', 'is', null)
       .orderBy('key')
       .execute();
-  }
-
-  /** Fields a set names must exist; a local set's custom fields are shared or its track's. */
-  function fieldProblem(catalog: Catalog, ownerTrackId: number | null, key: string): string | null {
-    const fieldId = customFieldId(key);
-    if (fieldId === null) return null;
-    const field = catalog.fields.get(fieldId);
-    if (!field) return `unknown field ${key}`;
-    if (field.trackId !== null && field.trackId !== ownerTrackId)
-      return `${key} belongs to another track`;
-    return null;
-  }
-
-  async function typeProblem(trx: Transaction<Database>, ws: number, typeIds: (number | null)[]) {
-    const ids = [...new Set(typeIds.filter((t): t is number => t !== null))];
-    if (ids.length === 0) return null;
-    const rows = await trx
-      .selectFrom('ticket_type')
-      .select('id')
-      .where('workspace_id', '=', ws)
-      .where('id', 'in', ids)
-      .execute();
-    return rows.length === ids.length ? null : problem(400, 'unknown_ticket_type');
-  }
-
-  /** Roles and groups a rule names must exist in the workspace. */
-  async function holderProblem(
-    trx: Transaction<Database>,
-    ws: number,
-    holders: readonly ({ roleId: number } | { groupId: number })[],
-  ) {
-    const roleIds = [...new Set(holders.flatMap((h) => ('roleId' in h ? [h.roleId] : [])))];
-    const groupIds = [...new Set(holders.flatMap((h) => ('groupId' in h ? [h.groupId] : [])))];
-    if (roleIds.length > 0) {
-      const rows = await trx
-        .selectFrom('role')
-        .select('id')
-        .where('workspace_id', '=', ws)
-        .where('id', 'in', roleIds)
-        .execute();
-      if (rows.length !== roleIds.length) return problem(400, 'unknown_role');
-    }
-    if (groupIds.length > 0) {
-      const rows = await trx
-        .selectFrom('user_group')
-        .select('id')
-        .where('workspace_id', '=', ws)
-        .where('id', 'in', groupIds)
-        .execute();
-      if (rows.length !== groupIds.length) return problem(400, 'unknown_group');
-    }
-    return null;
-  }
-
-  async function writeRules(
-    trx: Transaction<Database>,
-    ws: number,
-    catalog: Catalog,
-    setId: number,
-    ownerTrackId: number | null,
-    rules: readonly Rule[],
-  ): Promise<Problem | null> {
-    const seen = new Set<string>();
-    for (const r of rules) {
-      if (FIXED_FIELDS.has(r.field)) {
-        return problem(400, 'invalid_request', {
-          detail: `${r.field} is always required and shown`,
-        });
-      }
-      const issue = fieldProblem(catalog, ownerTrackId, r.field);
-      if (issue) return problem(400, 'invalid_request', { detail: issue });
-      const fieldId = customFieldId(r.field);
-      if (r.required && fieldId !== null && catalog.fields.get(fieldId)?.type === 'formula') {
-        // A formula's value is computed (M1-013): no one could fill it in.
-        return problem(400, 'invalid_request', { detail: `${r.field} is computed` });
-      }
-      const key = `${r.ticketTypeId ?? 0}|${r.field}`;
-      if (seen.has(key)) return problem(400, 'invalid_request', { detail: `${r.field} twice` });
-      seen.add(key);
-    }
-    const types = await typeProblem(
-      trx,
-      ws,
-      rules.map((r) => r.ticketTypeId),
-    );
-    if (types) return types;
-    const holders = await holderProblem(
-      trx,
-      ws,
-      rules.flatMap((r) => r.editableBy ?? []),
-    );
-    if (holders) return holders;
-    await trx.deleteFrom('field_rule').where('rule_set_id', '=', setId).execute();
-    for (let i = 0; i < rules.length; i += 2000) {
-      await trx
-        .insertInto('field_rule')
-        .values(
-          rules.slice(i, i + 2000).map((r) => ({
-            workspace_id: ws,
-            rule_set_id: setId,
-            ticket_type_id: r.ticketTypeId,
-            field: r.field,
-            required: r.required,
-            hidden: r.hidden,
-            description: r.description,
-            editable_by: r.editableBy ? JSON.stringify(r.editableBy) : null,
-          })),
-        )
-        .execute();
-    }
-    return null;
-  }
-
-  async function writeLayouts(
-    trx: Transaction<Database>,
-    ws: number,
-    catalog: Catalog,
-    setId: number,
-    ownerTrackId: number | null,
-    layouts: readonly Layout[],
-  ): Promise<Problem | null> {
-    const seen = new Set<string>();
-    for (const l of layouts) {
-      const key = `${l.ticketTypeId ?? 0}|${l.operation}`;
-      if (seen.has(key)) {
-        return problem(400, 'invalid_request', {
-          detail: `two ${l.operation} layouts for one type`,
-        });
-      }
-      seen.add(key);
-      for (const f of l.definition.tabs.flatMap((t) => t.sections.flatMap((s) => s.fields))) {
-        const issue = fieldProblem(catalog, ownerTrackId, f);
-        if (issue) return problem(400, 'invalid_request', { detail: issue });
-      }
-    }
-    const types = await typeProblem(
-      trx,
-      ws,
-      layouts.map((l) => l.ticketTypeId),
-    );
-    if (types) return types;
-    await trx.deleteFrom('layout').where('layout_set_id', '=', setId).execute();
-    if (layouts.length > 0) {
-      await trx
-        .insertInto('layout')
-        .values(
-          layouts.map((l) => ({
-            workspace_id: ws,
-            layout_set_id: setId,
-            ticket_type_id: l.ticketTypeId,
-            operation: l.operation,
-            definition: JSON.stringify(l.definition),
-          })),
-        )
-        .execute();
-    }
-    return null;
   }
 
   async function view(kind: Kind, setId: number, ws: number) {

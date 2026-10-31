@@ -93,6 +93,8 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [086](0086-jira-compat-shim.md) | The Jira-compatible API as routes that call the native API in-process, with token sign-in only | Accepted |
 | [087](0087-registered-frontend-origins.md) | Registered frontend origins in the database, read by the origin policy with a short cache, and versions the frontends report | Accepted |
 | [088](0088-builder-page.md) | The Builder page as a second entry of the web app, built into one offline file | Accepted |
+| [089](0089-dc-fields-and-forms.md) | The Data Center import of custom fields and forms, and tickets carrying their values | Accepted |
+| [090](0090-dc-access-and-visibility.md) | The Data Center import of permissions, issue security, notifications and global permissions | Accepted |
 | [091](0091-wiki-markup-converter.md) | Wiki markup as a rich-text format of its own, with a reader and writer that agree | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

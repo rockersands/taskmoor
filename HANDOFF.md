@@ -135,6 +135,36 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - Not done: versions of environment-only origins (register them too), closing open sockets
     and ending OAuth families when a frontend is removed.
 - **Next free numbers:** migration 0068 and ADR-085.
+- **M1-089 Data Center custom fields and forms** (branch `work/m1-089-dc-fields`, side session
+  2026-10-31; ADR-089, no migration; M1-089 is done):
+  - The generator now writes custom fields, contexts, options, defaults, field configurations,
+    screens and scheme associations (`dc-backup/fields.ts`; format notes 02d, all **Verify** or
+    **Our choice**). The golden manifest and M1-088's golden report changed with it.
+  - **Tickets arrive now**, with their own fields, custom values, labels and parent
+    (`dc-backup/stage-issues.ts`, `mapTicket` in `import/dc.ts`). M1-091 adds history,
+    comments, time, links, attachments, followers and votes to the same `ticket` kind. The
+    stage keeps each issue's custom values and labels in memory until the end of the file;
+    check that at a million issues. Descriptions and paragraph values are plain text paragraphs
+    until wiki markup is converted.
+  - New framework kinds `field_rule_set` and `layout_set` (`import/load-forms.ts`). Rules and
+    layouts are checked and written by `fields/sets.ts`, which `routes/layouts.ts` uses too.
+  - `"scope": "configuration"` on a `dc-backup` source leaves the issues out. M1-088's test
+    (`dc.test.ts`) uses it. M1-089's golden is `dc-fields.test.ts`: 4,000 issues, seed 89,
+    18,464 of 18,464 values match.
+  - Open: issue type schemes are not mapped, so tickets warn `type_not_offered`. Identical
+    schemes are not merged (IMP-005).
+- **M1-092 Data Center access, visibility and notifications** (same branch, second commit;
+  ADR-090, no migration; M1-092 is done):
+  - Generator `dc-backup/schemes.ts` (permission, issue security and notification schemes, global
+    permissions, each issue's level); mapper `import/dc-schemes.ts`; loaders
+    `import/load-access.ts`; five new kinds; tickets carry `visibilityLevel`.
+  - Identical permission schemes merge (IMP-005 (1)). Notification rules are written by
+    `notifications/rules.ts`, which `routes/notifications.ts` now uses.
+  - `SYSTEM_ADMIN` becomes `site_admin`, so those people browse every track (warned). The parity
+    golden `import/__golden__/dc-access-seed92.parity.json` expects that for them, and the
+    source's model for everyone else.
+  - Next free numbers on this branch: no migration was used (0069 and 0070 stay free), ADRs 089
+    and 090 are taken.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

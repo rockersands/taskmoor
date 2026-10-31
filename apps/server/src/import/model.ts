@@ -1,4 +1,10 @@
-import type { AreaDefaultAssignee, JsonValue, TrackType } from '@taskmoor/db';
+import type {
+  AreaDefaultAssignee,
+  GranteeKind,
+  JsonValue,
+  NotificationRecipient,
+  TrackType,
+} from '@taskmoor/db';
 import type { FieldType } from '../fields/types';
 
 /**
@@ -40,6 +46,13 @@ export const ENTITY_KINDS = [
   'field',
   'field_context',
   'field_option',
+  'field_rule_set',
+  'layout_set',
+  'access_policy',
+  'visibility_policy',
+  'visibility_level',
+  'notification_policy',
+  'global_grant',
   'workflow',
   'workflow_map',
   'ticket',
@@ -291,6 +304,108 @@ export interface FieldOptionCommand {
   default?: boolean;
 }
 
+/** A field a rule or a layout names: a system field by its key, or a custom field. */
+export type FormField = { key: string } | { custom: Ref };
+
+/**
+ * A field rule set (M1-089): required, hidden and help text per field, for every ticket type
+ * (`type` null) or one, and the tracks that use it. Linked by name to the target's shared set
+ * (whose rules then stay as they are), or created.
+ */
+export interface FieldRuleSetCommand {
+  kind: 'field_rule_set';
+  name: string;
+  description: string;
+  rules: {
+    type: Ref | null;
+    field: FormField;
+    required: boolean;
+    hidden: boolean;
+    description: string | null;
+  }[];
+  tracks: Ref[];
+}
+
+/** A layout set (M1-089): per ticket type (or every type) and operation, tabs of fields. */
+export interface LayoutSetCommand {
+  kind: 'layout_set';
+  name: string;
+  description: string;
+  layouts: {
+    type: Ref | null;
+    operation: 'create' | 'edit' | 'view';
+    tabs: { name: string; fields: FormField[] }[];
+    /** Whether fields the layout does not place appear after it. */
+    others: 'show' | 'omit';
+  }[];
+  tracks: Ref[];
+}
+
+/** Who a grant or a visibility level names: the grantee and the one reference it needs. */
+export interface GrantTo {
+  grantee: GranteeKind;
+  role: Ref | null;
+  group: Ref | null;
+  user: Ref | null;
+  /** A user or group custom field. */
+  field: Ref | null;
+}
+
+/**
+ * An access policy (M1-092): track permissions per grantee, and the tracks that use it. Linked
+ * by name to the target's shared policy (whose grants then stay as they are), or created.
+ */
+export interface AccessPolicyCommand {
+  kind: 'access_policy';
+  name: string;
+  description: string;
+  grants: { permission: string; to: GrantTo }[];
+  tracks: Ref[];
+}
+
+/** A visibility policy and the tracks that use it; its levels follow as their own records. */
+export interface VisibilityPolicyCommand {
+  kind: 'visibility_policy';
+  name: string;
+  description: string;
+  tracks: Ref[];
+}
+
+/** A visibility level of a policy, with who sees tickets at it. */
+export interface VisibilityLevelCommand {
+  kind: 'visibility_level';
+  policy: Ref;
+  name: string;
+  description: string;
+  position: number;
+  /** The level a new ticket of the policy's tracks takes. */
+  isDefault: boolean;
+  members: GrantTo[];
+}
+
+/** A notification policy: who hears of each event, and the tracks that use it. */
+export interface NotificationPolicyCommand {
+  kind: 'notification_policy';
+  name: string;
+  description: string;
+  rules: {
+    event: string;
+    recipient: NotificationRecipient;
+    user: Ref | null;
+    group: Ref | null;
+    role: Ref | null;
+    field: Ref | null;
+  }[];
+  tracks: Ref[];
+}
+
+/** A global permission for a group, or for everyone signed in (`group` null). */
+export interface GlobalGrantCommand {
+  kind: 'global_grant';
+  permission: string;
+  group: Ref | null;
+}
+
 /**
  * A workflow's published definition as the source stores it (statuses, groups, roles, people
  * and fields by source id), mapped on load. The default workflow links to the target's.
@@ -361,6 +476,8 @@ export interface TicketCommand {
   priorityRef?: Ref | null;
   /** A ticket in the source's trash: it stays in the target's. */
   trash?: { deletedAt: string; deletedBy: Ref | null; trashedWith: Ref | null } | null;
+  /** The ticket's visibility level (M1-092); left out, an update keeps the current one. */
+  visibilityLevel?: Ref | null;
   /** The source's rank key, kept when the target has no ticket at it. */
   rank?: string;
   /** Seconds; a verbatim import keeps it instead of summing time entries. */
@@ -509,6 +626,13 @@ export type Command =
   | FieldCommand
   | FieldContextCommand
   | FieldOptionCommand
+  | FieldRuleSetCommand
+  | LayoutSetCommand
+  | AccessPolicyCommand
+  | VisibilityPolicyCommand
+  | VisibilityLevelCommand
+  | NotificationPolicyCommand
+  | GlobalGrantCommand
   | WorkflowCommand
   | WorkflowMapCommand
   | TicketCommand

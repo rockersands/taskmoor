@@ -1,0 +1,77 @@
+[
+  {
+    "grants": [
+      "add_comments any_user",
+      "administer_track role role:Managers",
+      "assign_tickets role role:Managers",
+      "assignable_user role role:Contributors",
+      "browse_track anyone",
+      "browse_track group group:everyone",
+      "create_tickets group group:everyone",
+      "edit_own_comments any_user",
+      "edit_tickets group group:everyone",
+      "manage_followers track_owner",
+      "record_time group group:everyone",
+      "set_visibility_level role role:Managers",
+      "transition_tickets group group:everyone",
+      "view_voters_followers any_user"
+    ],
+    "name": "Open permissions",
+    "tracks": [
+      "AX",
+      "BX",
+      "EX",
+      "FX"
+    ]
+  },
+  {
+    "grants": [
+      "add_comments any_user",
+      "administer_track role role:Managers",
+      "assign_tickets role role:Managers",
+      "assignable_user role role:Contributors",
+      "browse_track assignee",
+      "browse_track group_field field:Owning group",
+      "browse_track role role:Observers",
+      "browse_track track_owner",
+      "browse_track user user:darnal.tamnalvel0@example.test",
+      "create_tickets role role:Observers",
+      "edit_own_comments any_user",
+      "edit_tickets role role:Observers",
+      "manage_followers track_owner",
+      "record_time role role:Observers",
+      "set_visibility_level role role:Managers",
+      "transition_tickets role role:Observers",
+      "view_voters_followers any_user"
+    ],
+    "name": "Restricted permissions",
+    "tracks": [
+      "DX"
+    ]
+  },
+  {
+    "grants": [
+      "add_comments any_user",
+      "administer_track role role:Managers",
+      "assign_tickets role role:Managers",
+      "assignable_user role role:Contributors",
+      "browse_track requester",
+      "browse_track role role:Contributors",
+      "browse_track role role:Managers",
+      "browse_track user_field field:Reviewer",
+      "create_tickets role role:Contributors",
+      "edit_own_comments any_user",
+      "edit_tickets assignee",
+      "edit_tickets role role:Contributors",
+      "manage_followers track_owner",
+      "record_time role role:Contributors",
+      "set_visibility_level role role:Managers",
+      "transition_tickets role role:Contributors",
+      "view_voters_followers any_user"
+    ],
+    "name": "Team permissions",
+    "tracks": [
+      "CX"
+    ]
+  }
+]

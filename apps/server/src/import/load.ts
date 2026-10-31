@@ -869,6 +869,8 @@ interface TicketValues {
   voters: number[] | null;
   /** In the trash; null leaves it as it is (out of the trash for a new ticket). */
   trash: { deleted_at: string; deleted_by: number | null; trashed_with: number | null } | null;
+  /** Its visibility level (M1-092); undefined leaves it as it is (none for a new ticket). */
+  visibility_level_id: number | null | undefined;
 }
 
 const sortedIds = (ids: readonly number[] | null) =>
@@ -1321,6 +1323,13 @@ const tickets: Loader<TicketCommand> = {
       areas: keep.has('areas') || !cmd.areas ? null : refList(ctx, cmd.areas, 'area'),
       followers: cmd.followers ? refList(ctx, cmd.followers, 'followers') : null,
       voters: cmd.voters ? refList(ctx, cmd.voters, 'voters') : null,
+      // A level that did not map fails the ticket: leaving it out would show it more widely.
+      visibility_level_id:
+        cmd.visibilityLevel === undefined
+          ? undefined
+          : cmd.visibilityLevel === null
+            ? null
+            : required(ctx, cmd.visibilityLevel, 'visibilityLevel'),
       trash: cmd.trash
         ? {
             deleted_at: cmd.trash.deletedAt,
@@ -1410,6 +1419,9 @@ const tickets: Loader<TicketCommand> = {
       remaining_estimate: v.remaining_estimate,
       ...(v.time_spent === null ? {} : { time_spent: v.time_spent }),
       ...(v.trash === null ? {} : v.trash),
+      ...(v.visibility_level_id === undefined
+        ? {}
+        : { visibility_level_id: v.visibility_level_id }),
     };
     let id: number;
     let number: number;
