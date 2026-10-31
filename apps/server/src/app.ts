@@ -440,6 +440,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerCloneRoutes(app, db);
     registerImportRoutes(app, db, {
+      peppers: deps.peppers,
       ...(deps.importDir !== undefined ? { importDir: deps.importDir } : {}),
     });
     // The full export (M1-098): the workspace as NDJSON and files, a streamed ZIP.

@@ -1,0 +1,265 @@
+{
+  "entities": [
+    {
+      "fidelity": 1,
+      "kind": "user",
+      "outcomes": {
+        "created": 3,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 3,
+      "target": 3
+    },
+    {
+      "fidelity": 1,
+      "kind": "status",
+      "outcomes": {
+        "created": 0,
+        "failed": 0,
+        "linked": 13,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 13,
+      "target": 13
+    },
+    {
+      "fidelity": 1,
+      "kind": "priority",
+      "outcomes": {
+        "created": 0,
+        "failed": 0,
+        "linked": 4,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 4,
+      "target": 4
+    },
+    {
+      "fidelity": 1,
+      "kind": "close_reason",
+      "outcomes": {
+        "created": 0,
+        "failed": 0,
+        "linked": 4,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 4,
+      "target": 4
+    },
+    {
+      "fidelity": 1,
+      "kind": "ticket_type",
+      "outcomes": {
+        "created": 0,
+        "failed": 0,
+        "linked": 7,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 7,
+      "target": 7
+    },
+    {
+      "fidelity": 1,
+      "kind": "link_type",
+      "outcomes": {
+        "created": 0,
+        "failed": 0,
+        "linked": 4,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 4,
+      "target": 4
+    },
+    {
+      "fidelity": 1,
+      "kind": "track",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2,
+      "target": 2
+    },
+    {
+      "fidelity": 1,
+      "kind": "release",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2,
+      "target": 2
+    },
+    {
+      "fidelity": 1,
+      "kind": "area",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2,
+      "target": 2
+    },
+    {
+      "fidelity": 1,
+      "kind": "field",
+      "outcomes": {
+        "created": 8,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 8,
+      "target": 8
+    },
+    {
+      "fidelity": 1,
+      "kind": "field_context",
+      "outcomes": {
+        "created": 8,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 8,
+      "target": 8
+    },
+    {
+      "fidelity": 1,
+      "kind": "field_option",
+      "outcomes": {
+        "created": 5,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 5,
+      "target": 5
+    },
+    {
+      "fidelity": 1,
+      "kind": "board",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2,
+      "target": 2
+    },
+    {
+      "fidelity": 1,
+      "kind": "ticket",
+      "outcomes": {
+        "created": 22,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 22,
+      "target": 22
+    },
+    {
+      "fidelity": 1,
+      "kind": "sprint",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2,
+      "target": 2
+    },
+    {
+      "fidelity": 1,
+      "kind": "comment",
+      "outcomes": {
+        "created": 11,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 11,
+      "target": 11
+    },
+    {
+      "fidelity": 1,
+      "kind": "time_entry",
+      "outcomes": {
+        "created": 7,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 7,
+      "target": 7
+    },
+    {
+      "fidelity": 1,
+      "kind": "history",
+      "outcomes": {
+        "created": 15,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 39,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 54,
+      "target": 15
+    }
+  ],
+  "unsupported": [],
+  "warnings": [
+    {
+      "code": "type_not_offered",
+      "count": 6,
+      "detail": "5",
+      "kind": "ticket"
+    }
+  ]
+}

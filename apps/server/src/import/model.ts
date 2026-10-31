@@ -1,10 +1,12 @@
 import type {
   AreaDefaultAssignee,
+  Database,
   GranteeKind,
   JsonValue,
   NotificationRecipient,
   TrackType,
 } from '@taskmoor/db';
+import type { Kysely } from 'kysely';
 import type { FieldType } from '../fields/types';
 
 /**
@@ -55,7 +57,9 @@ export const ENTITY_KINDS = [
   'global_grant',
   'workflow',
   'workflow_map',
+  'board',
   'ticket',
+  'sprint',
   'comment',
   'link',
   'time_entry',
@@ -119,6 +123,18 @@ export interface ImportSource {
    * say (IMP-001 (2)). They join the report's warnings under the kind `source`.
    */
   notes?(): Promise<SourceNote[]>;
+  /**
+   * Work before the first batch (M1-095): a remote source fetches into its stage, committing as
+   * it goes. 'more' when `until` passed first: the job's next part goes on from where it got to.
+   */
+  prepare?(until: number): Promise<'ready' | 'more'>;
+}
+
+/** What a format may need to open a source: the run it reads for and the database. */
+export interface OpenContext {
+  db: Kysely<Database>;
+  runId: string;
+  workspaceId: number;
 }
 
 /** Something left out or changed on the way, counted per kind, code and detail in the report. */
@@ -151,6 +167,13 @@ export interface UserCommand {
   active: boolean;
   timeZone: string | null;
   locale?: string | null;
+  /**
+   * The person is one the target already has (M1-095): `existing`, found by `email`; `scim`, a
+   * person provisioned over SCIM with that address. Never created or changed; when nobody is
+   * found, a deactivated placeholder keeps the attribution and the record warns
+   * `person_unmapped`.
+   */
+  link?: 'existing' | 'scim';
 }
 
 export interface GroupCommand {
@@ -429,6 +452,38 @@ export interface WorkflowMapCommand {
   tracks: Ref[];
 }
 
+/**
+ * A board of a track (M1-095): its query (null: the track's tickets), and its columns with the
+ * statuses each holds. Linked by name within its track, or created; a re-run updates it.
+ */
+export interface BoardCommand {
+  kind: 'board';
+  name: string;
+  description: string;
+  boardKind: 'scrum' | 'kanban';
+  track: Ref;
+  query: string | null;
+  columns: { name: string; statuses: Ref[]; min: number | null; max: number | null }[];
+}
+
+/**
+ * A sprint of a board (M1-095), with its dates and the tickets in it. A closed sprint's tickets
+ * stay in its history; a ticket is in one open sprint at most, so a second open one is left out
+ * with a warning.
+ */
+export interface SprintCommand {
+  kind: 'sprint';
+  board: Ref;
+  name: string;
+  goal: string;
+  state: 'future' | 'active' | 'closed';
+  startAt: string | null;
+  endAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  tickets: Ref[];
+}
+
 /** A custom value given as cell text (CSV), read against a target field by its id. */
 export interface CustomText {
   fieldId: number;
@@ -635,7 +690,9 @@ export type Command =
   | GlobalGrantCommand
   | WorkflowCommand
   | WorkflowMapCommand
+  | BoardCommand
   | TicketCommand
+  | SprintCommand
   | CommentCommand
   | LinkCommand
   | TimeEntryCommand
@@ -655,7 +712,7 @@ export type Mapper = (record: SourceRecord) => Mapped;
 /** A source format: how to open its source from a run's stored settings, and its mapper. */
 export interface ImportFormat {
   importSource: string;
-  open(source: unknown): ImportSource;
+  open(source: unknown, context?: OpenContext): ImportSource;
   map: Mapper;
   /**
    * The source holds complete history and derived values (Taskmoor's own export): tickets get

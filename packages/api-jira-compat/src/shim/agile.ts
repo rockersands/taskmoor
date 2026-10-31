@@ -144,7 +144,8 @@ export const AGILE_ROUTES: readonly ShimRoute[] = [
     path: `${AGILE}/board/:boardId`,
     handle: async (ctx) => {
       const b = await loadBoard(ctx);
-      const trackId = b.location?.trackId ?? b.trackId ?? b.locationTrackId;
+      const trackId =
+        b.location?.track?.id ?? b.location?.trackId ?? b.trackId ?? b.locationTrackId;
       const track = trackId
         ? (await ctx.native('GET', `/api/v1/tracks/${trackId}`)).body?.track
         : undefined;

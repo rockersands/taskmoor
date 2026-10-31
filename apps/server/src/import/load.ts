@@ -328,9 +328,58 @@ export function placeholderEmail(system: string, sourceId: string): string {
   return `imported-${hash.slice(0, 20)}@placeholder.invalid`;
 }
 
+/**
+ * A person a mapping names (M1-095): linked to the target's own person of that address (one
+ * an identity provider provisioned over SCIM, for `scim`), never created or changed. Nobody
+ * found, or no address to look for: a deactivated placeholder keeps the attribution, and the
+ * record warns `person_unmapped` so the report lists everyone left to map.
+ */
+async function planLinked(
+  ctx: LoadContext,
+  cmd: UserCommand,
+  existing: number | null,
+  sourceId: string,
+  link: 'existing' | 'scim',
+): Promise<Plan> {
+  const email = cmd.email === null ? null : lower(cmd.email);
+  const found =
+    email === null
+      ? undefined
+      : await ctx.trx
+          .selectFrom('app_user as u')
+          .select('u.id')
+          .where('u.workspace_id', '=', ctx.workspaceId)
+          .where(sql<string>`lower(u.email)`, '=', email)
+          .$if(link === 'scim', (q) =>
+            q.where((eb) =>
+              eb.exists(
+                eb
+                  .selectFrom('scim_user as s')
+                  .select('s.user_id')
+                  .whereRef('s.user_id', '=', 'u.id')
+                  .where('s.removed_at', 'is', null),
+              ),
+            ),
+          )
+          .executeTakeFirst();
+  if (found) {
+    const fingerprint = userPrint({ email: email as string, name: cmd.name, active: true });
+    return { action: 'link', targetId: found.id, fingerprint };
+  }
+  ctx.warn({ code: 'person_unmapped', detail: link });
+  const placeholder = placeholderEmail(ctx.system, sourceId);
+  const fingerprint = userPrint({ email: placeholder, name: cmd.name, active: false });
+  if (existing !== null) {
+    await existingTarget(ctx, 'app_user', existing);
+    return { action: 'update', targetId: existing, fingerprint, data: placeholder };
+  }
+  return { action: 'create', targetId: null, fingerprint, data: placeholder };
+}
+
 const users: Loader<UserCommand> = {
   table: { name: 'app_user', id: 'id' },
   async plan(ctx, cmd, existing, sourceId) {
+    if (cmd.link !== undefined) return planLinked(ctx, cmd, existing, sourceId, cmd.link);
     const email = lower(cmd.email ?? placeholderEmail(ctx.system, sourceId));
     const fingerprint = userPrint({ email, name: cmd.name, active: cmd.active });
     if (existing !== null) {
@@ -349,6 +398,9 @@ const users: Loader<UserCommand> = {
   },
   async apply(ctx, cmd, plan) {
     if (plan.action === 'link') return plan.targetId as number;
+    if (cmd.link !== undefined && plan.action === 'update') return plan.targetId as number;
+    // A person a mapping names nobody for: a deactivated placeholder keeps the attribution.
+    const active = cmd.link === undefined ? cmd.active : false;
     if (plan.action === 'update') {
       const id = plan.targetId as number;
       await ctx.trx
@@ -377,7 +429,7 @@ const users: Loader<UserCommand> = {
         locale: cmd.locale ?? null,
         password_changed_at: null,
         last_sign_in_at: null,
-        deactivated_at: cmd.active ? null : new Date(),
+        deactivated_at: active ? null : new Date(),
       })
       .returning('id')
       .executeTakeFirstOrThrow();

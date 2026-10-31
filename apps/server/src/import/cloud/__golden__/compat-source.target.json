@@ -1,0 +1,2379 @@
+{
+  "boards": [
+    {
+      "columns": [
+        {
+          "name": "New",
+          "statuses": [
+            "New"
+          ]
+        },
+        {
+          "name": "Active",
+          "statuses": [
+            "Active",
+            "In Review"
+          ]
+        },
+        {
+          "name": "Closed",
+          "statuses": [
+            "Closed"
+          ]
+        }
+      ],
+      "kind": "scrum",
+      "name": "Alpine sprints",
+      "sprints": [
+        {
+          "endAt": "2026-11-09T17:00:00.000Z",
+          "goal": "First slice",
+          "name": "Alpine 1",
+          "startAt": "2026-10-26T09:00:00.000Z",
+          "state": "active",
+          "tickets": [
+            "ALP-1",
+            "ALP-2",
+            "ALP-3",
+            "ALP-4"
+          ]
+        },
+        {
+          "endAt": null,
+          "goal": "",
+          "name": "Alpine 2",
+          "startAt": null,
+          "state": "future",
+          "tickets": [
+            "ALP-5",
+            "ALP-6",
+            "ALP-7"
+          ]
+        }
+      ],
+      "track": "ALP"
+    },
+    {
+      "columns": [
+        {
+          "name": "New",
+          "statuses": [
+            "New"
+          ]
+        },
+        {
+          "name": "Active",
+          "statuses": [
+            "Active",
+            "In Review"
+          ]
+        },
+        {
+          "name": "Closed",
+          "statuses": [
+            "Closed"
+          ]
+        }
+      ],
+      "kind": "kanban",
+      "name": "Beta flow",
+      "sprints": [],
+      "track": "BET"
+    }
+  ],
+  "tickets": {
+    "ALP-1": {
+      "areas": [
+        {
+          "name": "API"
+        }
+      ],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "Edited look at ALP-1",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.529Z",
+          "edited": {
+            "at": "2026-10-31T13:52:10.586Z",
+            "by": "Ada Admin"
+          }
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:08.064Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 1, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": "2026-11-11",
+      "environment": null,
+      "fields": {
+        "Points": 1.5,
+        "Topics": [
+          "import",
+          "topic-1"
+        ]
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:09.588Z",
+          "by": null,
+          "field": "summary",
+          "from": "Synthetic ticket 1",
+          "to": "ALP-1 renamed"
+        },
+        {
+          "at": "2026-10-31T13:52:09.900Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "ALP-1",
+      "labels": [],
+      "number": 1,
+      "parent": null,
+      "priority": {
+        "color": "#e0803a",
+        "icon": "priority-high",
+        "name": "High"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "ALP-1 renamed",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#d9534f",
+        "icon": "bug",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Bug"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.537Z",
+      "visibilityLevel": null
+    },
+    "ALP-10": {
+      "areas": [],
+      "assignee": {
+        "name": "Cyd Checker"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:08.756Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 10, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Customer": "Customer 10",
+        "Reviewer": {
+          "name": "Cyd Checker"
+        },
+        "Severity": {
+          "value": "S2"
+        },
+        "Target day": "2026-12-10",
+        "Topics": [
+          "import",
+          "topic-2"
+        ]
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:10.144Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "ALP-10",
+      "labels": [
+        "synthetic",
+        "wave-1"
+      ],
+      "number": 10,
+      "parent": null,
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "Synthetic ticket 10",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#d9534f",
+        "icon": "bug",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Bug"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.164Z",
+      "visibilityLevel": null
+    },
+    "ALP-11": {
+      "areas": [
+        {
+          "name": "UI"
+        }
+      ],
+      "assignee": null,
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "First look at ALP-11, ",
+                    "type": "text"
+                  },
+                  {
+                    "attrs": {
+                      "label": "Cyd"
+                    },
+                    "type": "mention"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.805Z",
+          "edited": null
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:08.853Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": "2026-11-21",
+      "environment": null,
+      "fields": {},
+      "foundInReleases": [],
+      "history": [],
+      "key": "ALP-11",
+      "labels": [],
+      "number": 11,
+      "parent": null,
+      "priority": {
+        "color": "#8a9bb0",
+        "icon": "priority-low",
+        "name": "Low"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 11",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "chore",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Chore"
+      },
+      "timeEntries": [
+        {
+          "author": "Ada Admin",
+          "description": "Work on ALP-11",
+          "duration": 8100,
+          "startedAt": "2026-10-31T13:52:11.292Z"
+        }
+      ],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 8100
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.298Z",
+      "visibilityLevel": null
+    },
+    "ALP-12": {
+      "areas": [],
+      "assignee": {
+        "name": "Ada Admin"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:08.913Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 12, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Notes": {
+          "content": [
+            {
+              "attrs": {},
+              "content": [
+                {
+                  "text": "Asked ",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "label": "Bea"
+                  },
+                  "type": "mention"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "doc"
+        },
+        "Severity": {
+          "value": "S1"
+        },
+        "Tags": [
+          {
+            "value": "alpha"
+          },
+          {
+            "value": "gamma"
+          }
+        ]
+      },
+      "foundInReleases": [
+        {
+          "name": "2.0",
+          "shipped": false
+        }
+      ],
+      "history": [],
+      "key": "ALP-12",
+      "labels": [
+        "synthetic",
+        "wave-0"
+      ],
+      "number": 12,
+      "parent": null,
+      "priority": {
+        "color": "#d9534f",
+        "icon": "priority-urgent",
+        "name": "Urgent"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 12",
+      "targetReleases": [
+        {
+          "name": "1.0",
+          "shipped": false
+        }
+      ],
+      "ticketType": {
+        "color": "#5aa469",
+        "icon": "feature",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Feature"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": 10800,
+        "remainingEstimate": 10800,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:08.913Z",
+      "visibilityLevel": null
+    },
+    "ALP-13": {
+      "areas": [],
+      "assignee": {
+        "name": "Cyd Checker"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "First look at ALP-13, ",
+                    "type": "text"
+                  },
+                  {
+                    "attrs": {
+                      "label": "Cyd"
+                    },
+                    "type": "mention"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:11.057Z",
+          "edited": null
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:09.314Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {},
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:10.349Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "ALP-13",
+      "labels": [],
+      "number": 13,
+      "parent": "ALP-1",
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "Subticket 1 of ALP-1",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#6fa8c9",
+        "icon": "subticket",
+        "level": {
+          "name": "Subticket"
+        },
+        "name": "Subticket"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.062Z",
+      "visibilityLevel": null
+    },
+    "ALP-14": {
+      "areas": [],
+      "assignee": {
+        "name": "Cyd Checker"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:09.391Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {},
+      "foundInReleases": [],
+      "history": [],
+      "key": "ALP-14",
+      "labels": [],
+      "number": 14,
+      "parent": "ALP-1",
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Subticket 2 of ALP-1",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#6fa8c9",
+        "icon": "subticket",
+        "level": {
+          "name": "Subticket"
+        },
+        "name": "Subticket"
+      },
+      "timeEntries": [
+        {
+          "author": "Ada Admin",
+          "description": "Work on ALP-14",
+          "duration": 8100,
+          "startedAt": "2026-10-31T13:52:11.414Z"
+        }
+      ],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 8100
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.429Z",
+      "visibilityLevel": null
+    },
+    "ALP-15": {
+      "areas": [],
+      "assignee": {
+        "name": "Cyd Checker"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "Edited look at ALP-15",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:11.099Z",
+          "edited": {
+            "at": "2026-10-31T13:52:11.131Z",
+            "by": "Ada Admin"
+          }
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:09.455Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {},
+      "foundInReleases": [],
+      "history": [],
+      "key": "ALP-15",
+      "labels": [],
+      "number": 15,
+      "parent": "ALP-5",
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Subticket 3 of ALP-5",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#6fa8c9",
+        "icon": "subticket",
+        "level": {
+          "name": "Subticket"
+        },
+        "name": "Subticket"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.102Z",
+      "visibilityLevel": null
+    },
+    "ALP-2": {
+      "areas": [],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:08.185Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Customer": "Customer 2",
+        "Severity": {
+          "value": "S3"
+        }
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:09.632Z",
+          "by": null,
+          "field": "summary",
+          "from": "Synthetic ticket 2",
+          "to": "ALP-2 renamed"
+        },
+        {
+          "at": "2026-10-31T13:52:09.632Z",
+          "by": null,
+          "field": "assignee",
+          "from": "Cyd Checker",
+          "to": "Bea Builder"
+        }
+      ],
+      "key": "ALP-2",
+      "labels": [
+        "synthetic",
+        "wave-2"
+      ],
+      "number": 2,
+      "parent": null,
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "ALP-2 renamed",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "chore",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Chore"
+      },
+      "timeEntries": [
+        {
+          "author": "Ada Admin",
+          "description": "Work on ALP-2",
+          "duration": 8100,
+          "startedAt": "2026-10-31T13:52:11.167Z"
+        }
+      ],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 8100
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.179Z",
+      "visibilityLevel": null
+    },
+    "ALP-3": {
+      "areas": [
+        {
+          "name": "UI"
+        }
+      ],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "First look at ALP-3, ",
+                    "type": "text"
+                  },
+                  {
+                    "attrs": {
+                      "label": "Cyd"
+                    },
+                    "type": "mention"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.601Z",
+          "edited": null
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:08.257Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 3, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Tags": [
+          {
+            "value": "alpha"
+          },
+          {
+            "value": "gamma"
+          }
+        ],
+        "Target day": "2026-12-03"
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:09.684Z",
+          "by": null,
+          "field": "summary",
+          "from": "Synthetic ticket 3",
+          "to": "ALP-3 renamed"
+        },
+        {
+          "at": "2026-10-31T13:52:09.684Z",
+          "by": null,
+          "field": "assignee",
+          "from": null,
+          "to": "Bea Builder"
+        }
+      ],
+      "key": "ALP-3",
+      "labels": [],
+      "number": 3,
+      "parent": null,
+      "priority": {
+        "color": "#8a9bb0",
+        "icon": "priority-low",
+        "name": "Low"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "ALP-3 renamed",
+      "targetReleases": [
+        {
+          "name": "1.0",
+          "shipped": false
+        }
+      ],
+      "ticketType": {
+        "color": "#5aa469",
+        "icon": "feature",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Feature"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.606Z",
+      "visibilityLevel": null
+    },
+    "ALP-4": {
+      "areas": [],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:08.325Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 4, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Severity": {
+          "value": "S2"
+        },
+        "Topics": [
+          "import",
+          "topic-0"
+        ]
+      },
+      "foundInReleases": [
+        {
+          "name": "2.0",
+          "shipped": false
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:09.727Z",
+          "by": null,
+          "field": "summary",
+          "from": "Synthetic ticket 4",
+          "to": "ALP-4 renamed"
+        },
+        {
+          "at": "2026-10-31T13:52:09.727Z",
+          "by": null,
+          "field": "assignee",
+          "from": "Ada Admin",
+          "to": "Bea Builder"
+        },
+        {
+          "at": "2026-10-31T13:52:09.984Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "ALP-4",
+      "labels": [
+        "synthetic",
+        "wave-1"
+      ],
+      "number": 4,
+      "parent": null,
+      "priority": {
+        "color": "#d9534f",
+        "icon": "priority-urgent",
+        "name": "Urgent"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "ALP-4 renamed",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#d9534f",
+        "icon": "bug",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Bug"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": 18000,
+        "remainingEstimate": 18000,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.004Z",
+      "visibilityLevel": null
+    },
+    "ALP-5": {
+      "areas": [
+        {
+          "name": "API"
+        }
+      ],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "Edited look at ALP-5",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.643Z",
+          "edited": {
+            "at": "2026-10-31T13:52:10.684Z",
+            "by": "Ada Admin"
+          }
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:08.418Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Points": 7.5,
+        "Reviewer": {
+          "name": "Cyd Checker"
+        }
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:09.779Z",
+          "by": null,
+          "field": "summary",
+          "from": "Synthetic ticket 5",
+          "to": "ALP-5 renamed"
+        }
+      ],
+      "key": "ALP-5",
+      "labels": [],
+      "number": 5,
+      "parent": null,
+      "priority": {
+        "color": "#e0803a",
+        "icon": "priority-high",
+        "name": "High"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "ALP-5 renamed",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "chore",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Chore"
+      },
+      "timeEntries": [
+        {
+          "author": "Ada Admin",
+          "description": "Work on ALP-5",
+          "duration": 8100,
+          "startedAt": "2026-10-31T13:52:11.225Z"
+        }
+      ],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 8100
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.234Z",
+      "visibilityLevel": null
+    },
+    "ALP-6": {
+      "areas": [],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:08.498Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 6, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": "2026-11-16",
+      "environment": null,
+      "fields": {
+        "Customer": "Customer 6",
+        "Notes": {
+          "content": [
+            {
+              "attrs": {},
+              "content": [
+                {
+                  "text": "Asked ",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "label": "Bea"
+                  },
+                  "type": "mention"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "doc"
+        },
+        "Severity": {
+          "value": "S1"
+        },
+        "Tags": [
+          {
+            "value": "alpha"
+          },
+          {
+            "value": "gamma"
+          }
+        ]
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:09.816Z",
+          "by": null,
+          "field": "summary",
+          "from": "Synthetic ticket 6",
+          "to": "ALP-6 renamed"
+        },
+        {
+          "at": "2026-10-31T13:52:09.816Z",
+          "by": null,
+          "field": "assignee",
+          "from": "Cyd Checker",
+          "to": "Bea Builder"
+        }
+      ],
+      "key": "ALP-6",
+      "labels": [
+        "synthetic",
+        "wave-0"
+      ],
+      "number": 6,
+      "parent": null,
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "ALP-6 renamed",
+      "targetReleases": [
+        {
+          "name": "1.0",
+          "shipped": false
+        }
+      ],
+      "ticketType": {
+        "color": "#5aa469",
+        "icon": "feature",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Feature"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:09.828Z",
+      "visibilityLevel": null
+    },
+    "ALP-7": {
+      "areas": [
+        {
+          "name": "UI"
+        }
+      ],
+      "assignee": null,
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "First look at ALP-7, ",
+                    "type": "text"
+                  },
+                  {
+                    "attrs": {
+                      "label": "Cyd"
+                    },
+                    "type": "mention"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.707Z",
+          "edited": null
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:08.567Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 7, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Topics": [
+          "import",
+          "topic-3"
+        ]
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:10.052Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "ALP-7",
+      "labels": [],
+      "number": 7,
+      "parent": null,
+      "priority": {
+        "color": "#8a9bb0",
+        "icon": "priority-low",
+        "name": "Low"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "Synthetic ticket 7",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#d9534f",
+        "icon": "bug",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Bug"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.710Z",
+      "visibilityLevel": null
+    },
+    "ALP-8": {
+      "areas": [],
+      "assignee": {
+        "name": "Ada Admin"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:08.622Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Severity": {
+          "value": "S3"
+        }
+      },
+      "foundInReleases": [
+        {
+          "name": "2.0",
+          "shipped": false
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:11.257Z",
+          "by": null,
+          "field": "remainingEstimate",
+          "from": "14400",
+          "to": "6300"
+        }
+      ],
+      "key": "ALP-8",
+      "labels": [
+        "synthetic",
+        "wave-2"
+      ],
+      "number": 8,
+      "parent": null,
+      "priority": {
+        "color": "#d9534f",
+        "icon": "priority-urgent",
+        "name": "Urgent"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 8",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "chore",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Chore"
+      },
+      "timeEntries": [
+        {
+          "author": "Ada Admin",
+          "description": "Work on ALP-8",
+          "duration": 8100,
+          "startedAt": "2026-10-31T13:52:11.257Z"
+        }
+      ],
+      "timeTracking": {
+        "originalEstimate": 14400,
+        "remainingEstimate": 6300,
+        "timeSpent": 8100
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.266Z",
+      "visibilityLevel": null
+    },
+    "ALP-9": {
+      "areas": [
+        {
+          "name": "API"
+        }
+      ],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "Edited look at ALP-9",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.741Z",
+          "edited": {
+            "at": "2026-10-31T13:52:10.789Z",
+            "by": "Ada Admin"
+          }
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:08.694Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 9, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Points": 13.5,
+        "Tags": [
+          {
+            "value": "alpha"
+          },
+          {
+            "value": "gamma"
+          }
+        ]
+      },
+      "foundInReleases": [],
+      "history": [],
+      "key": "ALP-9",
+      "labels": [],
+      "number": 9,
+      "parent": null,
+      "priority": {
+        "color": "#e0803a",
+        "icon": "priority-high",
+        "name": "High"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 9",
+      "targetReleases": [
+        {
+          "name": "1.0",
+          "shipped": false
+        }
+      ],
+      "ticketType": {
+        "color": "#5aa469",
+        "icon": "feature",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "Feature"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "ALP",
+        "name": "Alpine"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.749Z",
+      "visibilityLevel": null
+    },
+    "BET-1": {
+      "areas": [],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "Edited look at BET-1",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.849Z",
+          "edited": {
+            "at": "2026-10-31T13:52:10.882Z",
+            "by": "Ada Admin"
+          }
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:08.981Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 13, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Points": 19.5,
+        "Topics": [
+          "import",
+          "topic-1"
+        ]
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:10.202Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "BET-1",
+      "labels": [],
+      "number": 1,
+      "parent": null,
+      "priority": {
+        "color": "#e0803a",
+        "icon": "priority-high",
+        "name": "High"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "Synthetic ticket 13",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "to-do",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "To-do"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "BET",
+        "name": "Beta desk"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.854Z",
+      "visibilityLevel": null
+    },
+    "BET-2": {
+      "areas": [],
+      "assignee": {
+        "name": "Cyd Checker"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:09.041Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Customer": "Customer 14",
+        "Severity": {
+          "value": "S3"
+        }
+      },
+      "foundInReleases": [],
+      "history": [],
+      "key": "BET-2",
+      "labels": [
+        "synthetic",
+        "wave-2"
+      ],
+      "number": 2,
+      "parent": null,
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 14",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "to-do",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "To-do"
+      },
+      "timeEntries": [
+        {
+          "author": "Ada Admin",
+          "description": "Work on BET-2",
+          "duration": 8100,
+          "startedAt": "2026-10-31T13:52:11.329Z"
+        }
+      ],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 8100
+      },
+      "track": {
+        "key": "BET",
+        "name": "Beta desk"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.337Z",
+      "visibilityLevel": null
+    },
+    "BET-3": {
+      "areas": [],
+      "assignee": null,
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "First look at BET-3, ",
+                    "type": "text"
+                  },
+                  {
+                    "attrs": {
+                      "label": "Cyd"
+                    },
+                    "type": "mention"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.917Z",
+          "edited": null
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:09.088Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 15, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Reviewer": {
+          "name": "Cyd Checker"
+        },
+        "Tags": [
+          {
+            "value": "alpha"
+          },
+          {
+            "value": "gamma"
+          }
+        ]
+      },
+      "foundInReleases": [],
+      "history": [],
+      "key": "BET-3",
+      "labels": [],
+      "number": 3,
+      "parent": null,
+      "priority": {
+        "color": "#8a9bb0",
+        "icon": "priority-low",
+        "name": "Low"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 15",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "to-do",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "To-do"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "BET",
+        "name": "Beta desk"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.923Z",
+      "visibilityLevel": null
+    },
+    "BET-4": {
+      "areas": [],
+      "assignee": {
+        "name": "Ada Admin"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:09.152Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 16, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": "2026-11-26",
+      "environment": null,
+      "fields": {
+        "Severity": {
+          "value": "S2"
+        },
+        "Topics": [
+          "import",
+          "topic-0"
+        ]
+      },
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:10.270Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "BET-4",
+      "labels": [
+        "synthetic",
+        "wave-1"
+      ],
+      "number": 4,
+      "parent": null,
+      "priority": {
+        "color": "#d9534f",
+        "icon": "priority-urgent",
+        "name": "Urgent"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "Synthetic ticket 16",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "to-do",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "To-do"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": 7200,
+        "remainingEstimate": 7200,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "BET",
+        "name": "Beta desk"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.289Z",
+      "visibilityLevel": null
+    },
+    "BET-5": {
+      "areas": [],
+      "assignee": {
+        "name": "Bea Builder"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [
+        {
+          "author": "Ada Admin",
+          "body": {
+            "content": [
+              {
+                "attrs": {},
+                "content": [
+                  {
+                    "text": "Edited look at BET-5",
+                    "type": "text"
+                  }
+                ],
+                "type": "paragraph"
+              }
+            ],
+            "type": "doc"
+          },
+          "createdAt": "2026-10-31T13:52:10.963Z",
+          "edited": {
+            "at": "2026-10-31T13:52:11.034Z",
+            "by": "Ada Admin"
+          }
+        }
+      ],
+      "createdAt": "2026-10-31T13:52:09.195Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Points": 25.5,
+        "Target day": "2026-12-17"
+      },
+      "foundInReleases": [],
+      "history": [],
+      "key": "BET-5",
+      "labels": [],
+      "number": 5,
+      "parent": null,
+      "priority": {
+        "color": "#e0803a",
+        "icon": "priority-high",
+        "name": "High"
+      },
+      "requester": {
+        "name": "Bea Builder"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 17",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "to-do",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "To-do"
+      },
+      "timeEntries": [
+        {
+          "author": "Ada Admin",
+          "description": "Work on BET-5",
+          "duration": 8100,
+          "startedAt": "2026-10-31T13:52:11.372Z"
+        }
+      ],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 8100
+      },
+      "track": {
+        "key": "BET",
+        "name": "Beta desk"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:11.388Z",
+      "visibilityLevel": null
+    },
+    "BET-6": {
+      "areas": [],
+      "assignee": {
+        "name": "Cyd Checker"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:09.257Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": {
+        "content": [
+          {
+            "attrs": {},
+            "content": [
+              {
+                "text": "Steps for ticket 18, with ",
+                "type": "text"
+              },
+              {
+                "attrs": {
+                  "label": "Ada"
+                },
+                "type": "mention"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "doc"
+      },
+      "dueDate": null,
+      "environment": null,
+      "fields": {
+        "Customer": "Customer 18",
+        "Notes": {
+          "content": [
+            {
+              "attrs": {},
+              "content": [
+                {
+                  "text": "Asked ",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "label": "Bea"
+                  },
+                  "type": "mention"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "doc"
+        },
+        "Severity": {
+          "value": "S1"
+        },
+        "Tags": [
+          {
+            "value": "alpha"
+          },
+          {
+            "value": "gamma"
+          }
+        ]
+      },
+      "foundInReleases": [],
+      "history": [],
+      "key": "BET-6",
+      "labels": [
+        "synthetic",
+        "wave-0"
+      ],
+      "number": 6,
+      "parent": null,
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "New",
+        "stage": "new"
+      },
+      "summary": "Synthetic ticket 18",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#5b8def",
+        "icon": "to-do",
+        "level": {
+          "name": "Standard"
+        },
+        "name": "To-do"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "BET",
+        "name": "Beta desk"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:09.257Z",
+      "visibilityLevel": null
+    },
+    "BET-7": {
+      "areas": [],
+      "assignee": {
+        "name": "Cyd Checker"
+      },
+      "closeReason": null,
+      "closedAt": null,
+      "comments": [],
+      "createdAt": "2026-10-31T13:52:09.505Z",
+      "creator": {
+        "name": "Ada Admin"
+      },
+      "description": null,
+      "dueDate": null,
+      "environment": null,
+      "fields": {},
+      "foundInReleases": [],
+      "history": [
+        {
+          "at": "2026-10-31T13:52:10.449Z",
+          "by": null,
+          "field": "status",
+          "from": "New",
+          "to": "Active"
+        }
+      ],
+      "key": "BET-7",
+      "labels": [],
+      "number": 7,
+      "parent": "BET-2",
+      "priority": {
+        "color": "#5b8def",
+        "icon": "priority-normal",
+        "name": "Normal"
+      },
+      "requester": {
+        "name": "Ada Admin"
+      },
+      "startDate": null,
+      "status": {
+        "name": "Active",
+        "stage": "active"
+      },
+      "summary": "Subticket 4 of BET-2",
+      "targetReleases": [],
+      "ticketType": {
+        "color": "#6fa8c9",
+        "icon": "subticket",
+        "level": {
+          "name": "Subticket"
+        },
+        "name": "Subticket"
+      },
+      "timeEntries": [],
+      "timeTracking": {
+        "originalEstimate": null,
+        "remainingEstimate": null,
+        "timeSpent": 0
+      },
+      "track": {
+        "key": "BET",
+        "name": "Beta desk"
+      },
+      "trash": null,
+      "updatedAt": "2026-10-31T13:52:10.473Z",
+      "visibilityLevel": null
+    }
+  }
+}

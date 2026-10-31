@@ -74,6 +74,10 @@ export function remapDoc(doc: JsonValue, map: IdMap): JsonValue {
     else if (group) {
       const g = one(map, 'group', group[1] as string, 'mention');
       mapped = g === null ? null : `group:${g}`;
+    } else if (id !== null) {
+      // An account id of another form (a Cloud REST source's, M1-095) maps when it was imported.
+      const person = map.id('user', id);
+      if (person !== null) mapped = person;
     }
     if (mapped !== undefined) out.attrs = { ...a, id: mapped };
   }

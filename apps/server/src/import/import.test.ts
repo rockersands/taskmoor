@@ -146,8 +146,8 @@ describe('imports (M1-086)', () => {
     }
     // Kinds without an importer are reported, never dropped silently (IMP-004, IMP-010).
     expect(r.unsupported).toEqual([
-      { kind: 'board', count: counts.board, reason: 'no_importer_for_kind' },
       { kind: 'dashboard', count: counts.dashboard, reason: 'no_importer_for_kind' },
+      { kind: 'filter', count: counts.filter, reason: 'no_importer_for_kind' },
     ]);
     const codes = r.warnings.map((w) => `${w.kind}:${w.code}:${w.detail ?? ''}`);
     expect(codes).toEqual(

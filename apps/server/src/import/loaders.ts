@@ -6,6 +6,7 @@ import {
   visibilityLevels,
   visibilityPolicies,
 } from './load-access';
+import { boards, sprints } from './load-agile';
 import {
   areas,
   closeReasons,
@@ -26,7 +27,8 @@ import type { Command, EntityKind } from './model';
 /**
  * The loader of every entity kind (ADR-048; M1-098 added configuration and attachments, M1-089
  * field rule sets and layout sets,
- * M1-092 access, visibility and notification policies and global grants).
+ * M1-092 access, visibility and notification policies and global grants, M1-095 boards and
+ * sprints).
  */
 export const LOADERS: { [K in EntityKind]: Loader<Extract<Command, { kind: K }>> } = {
   ...CORE_LOADERS,
@@ -49,4 +51,6 @@ export const LOADERS: { [K in EntityKind]: Loader<Extract<Command, { kind: K }>>
   workflow: workflows,
   workflow_map: workflowMaps,
   attachment: attachments,
+  board: boards,
+  sprint: sprints,
 };

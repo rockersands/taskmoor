@@ -1837,6 +1837,23 @@ export interface ImportRunTable {
   started_at: Timestamp | null;
   updated_at: DefaultTimestamp;
   finished_at: Timestamp | null;
+  /** Where a remote source's fetch got to (M1-095): its steps, page tokens and counts. */
+  fetch_state: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+}
+
+/**
+ * A record a remote source's fetch staged for its run (M1-095; ADR-094), read back in the order
+ * of `depth` (parents first) and `ordinal`.
+ */
+export interface ImportStagedTable {
+  run_id: string;
+  workspace_id: number;
+  kind: string;
+  source_id: string;
+  depth: Generated<number>;
+  ordinal: ColumnType<string, number | string, number | string>;
+  label: string | null;
+  data: ColumnType<JsonValue, string, string>;
 }
 
 /** What one run did with one source record. */
@@ -2374,6 +2391,7 @@ export interface Database {
   import_run: ImportRunTable;
   import_record: ImportRecordTable;
   import_external_id: ImportExternalIdTable;
+  import_staged: ImportStagedTable;
   workflow_map: WorkflowMapTable;
   workflow_map_entry: WorkflowMapEntryTable;
   workflow_migration: WorkflowMigrationTable;

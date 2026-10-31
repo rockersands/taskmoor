@@ -1,15 +1,16 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
 accessed: 2026-10-31
 attestation: own-words
 jira-names: import sources and field mapping
 ---
 # Importing and exporting
 
-Taskmoor imports CSV files, its own full exports and a Jira Data Center backup's configuration
-and issues, and exports a whole workspace, chosen tracks, or the results of a search. Imports are
+Taskmoor imports CSV files, its own full exports, a Jira Data Center backup's configuration
+and issues, and a Jira Cloud site (or any server with a Jira-compatible REST API) read with your
+own API token, and exports a whole workspace, chosen tracks, or the results of a search. Imports are
 for site administrators and run in the background; exports of search results are open to
 everyone who can search.
 
@@ -21,8 +22,10 @@ field configurations and screens, permission, issue security and notification sc
 permissions, and its issues as tickets with their own fields, custom values and security levels;
 see [Data Center backups](#data-center-backups). Comments, history, time, links between
 issues, attachments, workflows, boards and filters are not imported yet: the report counts each
-of them under "Not imported". Taskmoor does not yet import a Jira Cloud site. Any CSV file can be imported with
-a mapping of its columns, including one exported from another tracker; see
+of them under "Not imported". A Jira Cloud site imports its projects, issues with their
+changelog, comments and worklogs, custom fields, boards and sprints over its REST API, with your
+own API token; see [Jira Cloud sites](#jira-cloud-sites). Any CSV file can be imported with a
+mapping of its columns, including one exported from another tracker; see
 [CSV import](#csv-import).
 
 ## How imports run
@@ -64,7 +67,8 @@ Content-Type: application/json
 `name` is optional. The answer is `202` with the new run. `source.format` is `csv` (see
 [CSV import](#csv-import)),
 `taskmoor` (see [Importing an export](#importing-an-export)), `dc-backup` (see
-[Data Center backups](#data-center-backups)), or `synthetic`, a test format of Taskmoor's own
+[Data Center backups](#data-center-backups)), `cloud-rest` (see
+[Jira Cloud sites](#jira-cloud-sites)), or `synthetic`, a test format of Taskmoor's own
 with a seeded generator, for trying the importer on a scratch instance.
 
 ### Following a run
@@ -207,6 +211,82 @@ parent), attachments, filters, boards and sprints, by their names in the backup,
 the backup are listed as `not_needed`, because Taskmoor gives its own ids.
 
 Times in a backup carry no time zone. Nothing imported so far depends on them.
+
+## Jira Cloud sites
+
+A Jira Cloud site, or any server that speaks the Jira-compatible REST API (another Taskmoor
+too), is read over that API with an API token of yours. Use the token of an account that can
+browse every project you want and see people's email addresses: the import sees what that
+account sees.
+
+```http
+POST /api/v1/admin/imports
+Content-Type: application/json
+
+{"dryRun": true, "source": {"format": "cloud-rest", "baseUrl": "https://example.your-site.net",
+  "email": "you@example.com", "token": "<your API token>", "projects": ["OPS", "WEB"]}}
+```
+
+| Setting | Meaning |
+|---|---|
+| `baseUrl` | The site's address. It must use `https`, or `http` to this machine only, with no user name, query or fragment |
+| `email`, `token` | Sign in with Basic: the account's email address and its API token. Without `email`, the token is sent as a Bearer token |
+| `projects` | The project keys to import; left out, every project the account sees |
+| `jql` | The issues to import, as a query; left out, every issue of those projects |
+| `people` | How people are matched; see below. Left out: by email address |
+| `pageSize`, `concurrency` | Issues per page (up to 100, the default) and requests at once (1 to 16, default 4) |
+| `system` | Names the site in Taskmoor's records of what came from where; by default its host name. Import the same site again under the same name to update rather than duplicate |
+
+**The token** is sealed with the server's password pepper before the run is stored, and never
+shown again. It is not written to logs, errors or reports. Keep the run as long as you may want
+to import again; delete the token in the site's account settings when you are done.
+
+**What is read.** In order, each step committed as it goes: custom fields, issue types,
+priorities, resolutions, statuses, link types and projects (with their versions as releases and
+components as areas); the issues, by token-paged search and bulk fetch, a page at a time; each
+issue's changelog, comments and worklogs; boards with their columns, and each Scrum board's
+sprints with the issues in them; then the people seen along the way, looked up for their email
+address. Issues the account cannot read and boards of projects you left out are counted under
+"Not imported".
+
+**Throttling.** When the site answers `429` or `503` with `Retry-After` (seconds or a date),
+every request waits that long, up to 15 minutes. Without it, and after other server errors or
+lost connections, a request is tried again after a growing, randomised pause (half a second to
+a second at first, the range doubling each time up to a minute), eight times in all. If it still fails, the attempt stops and the
+import's next attempt goes on from the last page it kept: nothing fetched before is fetched
+again. The report counts the slow-downs under `source_throttled` and the retried failures under
+`source_failures_retried`.
+
+**People** are matched one of three ways (`"people": {"mode": ...}`):
+
+- `email` (the default): by email address, as other imports do. People Taskmoor does not have are
+  created; people whose address the site hides become placeholders.
+- `csv`: a file you give in `data`, two columns: the person in the site (account id or email
+  address) and the address of their Taskmoor account. A header row is optional. Everyone the file
+  leaves out, or maps to an address nobody here has, is **unmapped**.
+- `scim`: the person your identity provider provisioned over SCIM with the same address. Everyone
+  else is unmapped.
+
+An unmapped person becomes a deactivated placeholder, so their comments, time and history keep
+an author, and their record warns `person_unmapped`. Run a dry run first: the `records` list for
+`kind=user` names everyone unmapped. A later run with a better file links them to the right
+person from then on; content an earlier run gave a placeholder stays with the placeholder.
+
+**How it maps.** Statuses take their stage from their category; sub-task types become subticket
+types and types above the standard level outcome types. Descriptions, comments and paragraph
+fields come in the document format and keep their mentions. Each custom field gets one context
+that applies to every track and type, and select fields get the options that issues hold (the
+API has no list of options), so options no issue uses are not imported. Fields of apps become
+read-only text. Changelog entries keep their author and time for status, assignee, reporter,
+summary, dates, priority, resolution, type, labels and estimates; changes to other fields are
+counted as warnings (`history_field_not_imported`). A board keeps its type, columns and the
+statuses in them, and a sprint its state, dates, goal and issues; other board settings take a
+new board's defaults.
+
+**Not imported yet:** links between issues, attachments, watchers and votes, filters and
+dashboards, issue type and permission schemes (tickets of a type the track does not offer keep
+it and warn `type_not_offered`), comment visibility (warned), and changes since the last run
+only (delta runs, planned).
 
 ## CSV import
 

@@ -530,10 +530,18 @@ export async function runImport(
   }
   let source: ImportSource;
   try {
-    source = format.open(run.source);
+    source = format.open(run.source, { db, runId, workspaceId: run.workspace_id });
   } catch {
     await finishRun(db, runId, 'failed', 'source_unreadable');
     return 'finished';
+  }
+  if (source.prepare) {
+    // A remote source fetches into its stage first, a part at a time (M1-095).
+    if (run.cancel_requested) {
+      await finishRun(db, runId, 'cancelled');
+      return 'finished';
+    }
+    if ((await source.prepare(options.until)) === 'more') return 'more';
   }
   const kinds = kindOrder(await source.kinds());
   for (;;) {

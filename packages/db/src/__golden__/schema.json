@@ -802,11 +802,28 @@
       "created_at timestamp with time zone not null default now()",
       "started_at timestamp with time zone",
       "updated_at timestamp with time zone not null default now()",
-      "finished_at timestamp with time zone"
+      "finished_at timestamp with time zone",
+      "fetch_state jsonb not null default '{}'::jsonb"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX import_run_pkey ON public.import_run USING btree (id)",
       "CREATE INDEX import_run_workspace_idx ON public.import_run USING btree (workspace_id, created_at DESC)"
+    ]
+  },
+  "import_staged": {
+    "columns": [
+      "run_id bigint not null",
+      "workspace_id integer not null",
+      "kind text not null",
+      "source_id text not null",
+      "depth integer not null default 0",
+      "ordinal bigint not null",
+      "label text",
+      "data jsonb not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX import_staged_order_idx ON public.import_staged USING btree (run_id, kind, depth, ordinal)",
+      "CREATE UNIQUE INDEX import_staged_pkey ON public.import_staged USING btree (run_id, kind, source_id)"
     ]
   },
   "inbox_state": {
