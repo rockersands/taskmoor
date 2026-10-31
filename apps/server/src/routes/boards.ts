@@ -48,6 +48,7 @@ import {
 } from '../workflows/board-managed';
 import { registerBacklogPlanningRoutes } from './backlog-planning';
 import { registerBoardReportRoutes } from './board-reports';
+import { registerPropertyRoutes } from './properties';
 import { registerScopeReportRoutes } from './scope-reports';
 import { searchRefusal } from './search';
 import { registerSprintRoutes, type SprintBoard, type SprintRouteDeps } from './sprints';
@@ -1165,6 +1166,43 @@ export function registerBoardRoutes(
     },
   };
   registerSprintRoutes(app, db, sprintRoutes);
+  // Board and sprint properties (M1-129): seen as the board is, changed by its configurers or,
+  // for a sprint, by those who manage its sprints.
+  registerPropertyRoutes(app, db, 'board', '/api/v1/boards', async (request, reply, id) => {
+    const numeric = /^\d{1,10}$/.test(id) ? Number(id) : null;
+    if (numeric === null) {
+      await reply.code(404).send({ error: 'not_found' });
+      return null;
+    }
+    const found = await visibleBoard(request, reply, numeric);
+    if (!found) return null;
+    const configure = await mayConfigure(
+      request,
+      found.row,
+      found.admins.map((a) => a.id),
+    );
+    return { id: found.row.id, mayWrite: configure };
+  });
+  registerPropertyRoutes(app, db, 'sprint', '/api/v1/sprints', async (request, reply, id) => {
+    const numeric = /^\d{1,10}$/.test(id) ? Number(id) : null;
+    const sprint =
+      numeric === null
+        ? undefined
+        : await db
+            .selectFrom('sprint')
+            .select(['id', 'board_id'])
+            .where('workspace_id', '=', request.workspaceId)
+            .where('id', '=', numeric)
+            .where('deleted_at', 'is', null)
+            .executeTakeFirst();
+    if (!sprint) {
+      await reply.code(404).send({ error: 'not_found' });
+      return null;
+    }
+    const board = await sprintRoutes.board(request, reply, sprint.board_id);
+    if (!board) return null;
+    return { id: sprint.id, mayWrite: board.manage };
+  });
   // Planning on the backlog (M1-047): ranks, parents and releases through the ticket routes.
   const updateTicket = handler('PATCH', '/api/v1/tickets/:id');
   registerBacklogPlanningRoutes(app, db, {

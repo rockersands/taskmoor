@@ -234,6 +234,34 @@ export const link = z
   .loose()
   .meta({ id: 'Link' });
 
+export const property = z
+  .object({
+    key: z.string(),
+    value: z.unknown().meta({ description: 'Any JSON value, as it was set.' }),
+    createdAt: instant,
+    updatedAt: instant,
+  })
+  .loose()
+  .meta({ id: 'Property', description: 'A JSON document an integration keeps under a key.' });
+
+export const propertyKey = z
+  .object({ key: z.string(), updatedAt: instant })
+  .loose()
+  .meta({ id: 'PropertyKey' });
+
+export const propertyIndex = z
+  .object({
+    id,
+    key: z.string(),
+    path: z
+      .string()
+      .meta({ description: 'Dot-separated names inside the value; empty for all of it.' }),
+    type: z.enum(['number', 'string', 'text', 'date', 'user']),
+    alias: nullable(z.string()),
+  })
+  .loose()
+  .meta({ id: 'PropertyIndex' });
+
 export const linkType = z
   .object({ id, name: z.string(), outward: z.string(), inward: z.string(), isCopy: z.boolean() })
   .loose()

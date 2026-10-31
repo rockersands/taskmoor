@@ -388,7 +388,14 @@ class Parser {
       );
     }
     this.next();
-    if (t.text.toLowerCase() === 'cf' && this.peek().type === 'lbracket') {
+    const lower = t.text.toLowerCase();
+    if (
+      (lower === 'ticket.property' || lower === 'issue.property') &&
+      this.peek().type === 'lbracket'
+    ) {
+      return this.propertyField(t);
+    }
+    if (lower === 'cf' && this.peek().type === 'lbracket') {
       this.next();
       const n = this.expect('number', 'Expected a custom field number', ['number']);
       const close = this.expect('rbracket', 'Expected "]"', [']']);
@@ -399,6 +406,47 @@ class Parser {
       };
     }
     return { name: t.text, span: t.span };
+  }
+
+  /**
+   * `ticket.property[key].path` (M1-129): the key as a word, a number or a quoted string, then a
+   * dot path written right after the bracket (`.a.b`), or none for the whole value.
+   */
+  private propertyField(t: Token): FieldRef {
+    this.next();
+    const key = this.peek();
+    if (key.type !== 'word' && key.type !== 'string' && key.type !== 'number') {
+      throw this.error('Expected a property key', ['property key']);
+    }
+    this.next();
+    const close = this.expect('rbracket', 'Expected "]"', [']']);
+    let end = close.span.end;
+    let path = '';
+    const after = this.peek();
+    if (
+      after.type === 'word' &&
+      after.span.start === close.span.end &&
+      after.text.startsWith('.')
+    ) {
+      this.next();
+      path = after.text.slice(1);
+      end = after.span.end;
+      if (path === '' || path.split('.').some((s) => s === '')) {
+        throw new QueryError(
+          'Expected a property path such as .status.name',
+          after.span.start,
+          after.text.length,
+          {
+            expected: ['property path'],
+          },
+        );
+      }
+    }
+    return {
+      name: t.text.toLowerCase() === 'issue.property' ? 'issue.property' : 'ticket.property',
+      property: { key: key.text, path },
+      span: { start: t.span.start, end },
+    };
   }
 
   /**

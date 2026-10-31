@@ -1419,6 +1419,91 @@
         ],
         "type": "object"
       },
+      "Property": {
+        "additionalProperties": {},
+        "description": "A JSON document an integration keeps under a key.",
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "value": {
+            "description": "Any JSON value, as it was set."
+          }
+        },
+        "required": [
+          "key",
+          "value",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "PropertyIndex": {
+        "additionalProperties": {},
+        "properties": {
+          "alias": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "key": {
+            "type": "string"
+          },
+          "path": {
+            "description": "Dot-separated names inside the value; empty for all of it.",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "number",
+              "string",
+              "text",
+              "date",
+              "user"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "path",
+          "type",
+          "alias"
+        ],
+        "type": "object"
+      },
+      "PropertyKey": {
+        "additionalProperties": {},
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "QueryCheck": {
         "anyOf": [
           {
@@ -4778,6 +4863,292 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/admin/property-indexes": {
+      "get": {
+        "description": "For site and configuration administrators.",
+        "operationId": "listPropertyIndexes",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "propertyIndexes": {
+                      "items": {
+                        "$ref": "#/components/schemas/PropertyIndex"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "propertyIndexes"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Every index, oldest first."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "The declared property indexes",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "stable"
+      },
+      "post": {
+        "description": "Declares that the values found at `path` inside the `key` property of tickets are of `type`, and fills the index from the properties already set. Queries then read them as `ticket.property[key].path`, or by the `alias`. An array along the path gives one value per element; a value of another type is left out. For site and configuration administrators.",
+        "operationId": "createPropertyIndex",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "alias": {
+                    "anyOf": [
+                      {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "pattern": "^[\\p{L}_][\\p{L}\\p{N}_]*$",
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null
+                  },
+                  "key": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "path": {
+                    "default": "",
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  "type": {
+                    "enum": [
+                      "number",
+                      "string",
+                      "text",
+                      "date",
+                      "user"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "key",
+                  "type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "propertyIndex": {
+                      "$ref": "#/components/schemas/PropertyIndex"
+                    }
+                  },
+                  "required": [
+                    "propertyIndex"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The new index."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Make a value inside ticket properties searchable",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "stable"
+      }
+    },
+    "/api/v1/admin/property-indexes/{id}": {
+      "delete": {
+        "description": "The properties stay; queries can no longer read the values.",
+        "operationId": "deletePropertyIndex",
+        "parameters": [
+          {
+            "description": "The index’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Dropped."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Drop a property index",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "stable"
+      }
+    },
     "/api/v1/admin/rate-limits": {
       "get": {
         "operationId": "internal-get-admin-rate-limits",
@@ -7165,6 +7536,425 @@
         ],
         "x-taskmoor-access": "write",
         "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/boards/{id}/properties": {
+      "get": {
+        "operationId": "listBoardProperties",
+        "parameters": [
+          {
+            "description": "The board’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "properties": {
+                      "items": {
+                        "$ref": "#/components/schemas/PropertyKey"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "properties"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Its keys, in order, with when each was last set."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "The property keys of a board",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      }
+    },
+    "/api/v1/boards/{id}/properties/{key}": {
+      "delete": {
+        "operationId": "deleteBoardProperty",
+        "parameters": [
+          {
+            "description": "The board’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Delete a property of a board",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
+      },
+      "get": {
+        "operationId": "getBoardProperty",
+        "parameters": [
+          {
+            "description": "The board’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The property."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "One property of a board",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      },
+      "put": {
+        "description": "Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see the board; writing, the right to configure it.",
+        "operationId": "setBoardProperty",
+        "parameters": [
+          {
+            "description": "The board’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "value": {}
+                },
+                "required": [
+                  "value"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Replaced."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Set for the first time."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Set a property of a board",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/boards/{id}/reports/cumulative-flow": {
@@ -16760,6 +17550,425 @@
         "x-taskmoor-stability": "stable"
       }
     },
+    "/api/v1/sprints/{id}/properties": {
+      "get": {
+        "operationId": "listSprintProperties",
+        "parameters": [
+          {
+            "description": "The sprint’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "properties": {
+                      "items": {
+                        "$ref": "#/components/schemas/PropertyKey"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "properties"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Its keys, in order, with when each was last set."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "The property keys of a sprint",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      }
+    },
+    "/api/v1/sprints/{id}/properties/{key}": {
+      "delete": {
+        "operationId": "deleteSprintProperty",
+        "parameters": [
+          {
+            "description": "The sprint’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Delete a property of a sprint",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
+      },
+      "get": {
+        "operationId": "getSprintProperty",
+        "parameters": [
+          {
+            "description": "The sprint’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The property."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "One property of a sprint",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      },
+      "put": {
+        "description": "Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see its board; writing, the right to manage its sprints.",
+        "operationId": "setSprintProperty",
+        "parameters": [
+          {
+            "description": "The sprint’s id.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "value": {}
+                },
+                "required": [
+                  "value"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Replaced."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Set for the first time."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Set a property of a sprint",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
+      }
+    },
     "/api/v1/sprints/{id}/rank": {
       "post": {
         "operationId": "internal-post-sprints-by-id-rank",
@@ -21247,6 +22456,425 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/tickets/{id}/properties": {
+      "get": {
+        "operationId": "listTicketProperties",
+        "parameters": [
+          {
+            "description": "The ticket: its id or its key, such as `PAY-12`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "properties": {
+                      "items": {
+                        "$ref": "#/components/schemas/PropertyKey"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "properties"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Its keys, in order, with when each was last set."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "The property keys of a ticket",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      }
+    },
+    "/api/v1/tickets/{id}/properties/{key}": {
+      "delete": {
+        "operationId": "deleteTicketProperty",
+        "parameters": [
+          {
+            "description": "The ticket: its id or its key, such as `PAY-12`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Delete a property of a ticket",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
+      },
+      "get": {
+        "operationId": "getTicketProperty",
+        "parameters": [
+          {
+            "description": "The ticket: its id or its key, such as `PAY-12`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The property."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "One property of a ticket",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      },
+      "put": {
+        "description": "Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see the ticket; writing, the right to edit it. The values of declared property indexes become searchable as `ticket.property[key].path`.",
+        "operationId": "setTicketProperty",
+        "parameters": [
+          {
+            "description": "The ticket: its id or its key, such as `PAY-12`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "value": {}
+                },
+                "required": [
+                  "value"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Replaced."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Set for the first time."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Set a property of a ticket",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
+      }
+    },
     "/api/v1/tickets/{id}/purge": {
       "post": {
         "operationId": "internal-post-tickets-by-id-purge",
@@ -23707,6 +25335,425 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/tracks/{id}/properties": {
+      "get": {
+        "operationId": "listTrackProperties",
+        "parameters": [
+          {
+            "description": "The track: its id or its key.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "properties": {
+                      "items": {
+                        "$ref": "#/components/schemas/PropertyKey"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "properties"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Its keys, in order, with when each was last set."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "The property keys of a track",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      }
+    },
+    "/api/v1/tracks/{id}/properties/{key}": {
+      "delete": {
+        "operationId": "deleteTrackProperty",
+        "parameters": [
+          {
+            "description": "The track: its id or its key.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Delete a property of a track",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
+      },
+      "get": {
+        "operationId": "getTrackProperty",
+        "parameters": [
+          {
+            "description": "The track: its id or its key.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The property."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "One property of a track",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      },
+      "put": {
+        "description": "Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to browse the track; writing, the right to administer it.",
+        "operationId": "setTrackProperty",
+        "parameters": [
+          {
+            "description": "The track: its id or its key.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "value": {}
+                },
+                "required": [
+                  "value"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Replaced."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Set for the first time."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "write"
+            ]
+          }
+        ],
+        "summary": "Set a property of a track",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "write",
+        "x-taskmoor-stability": "stable"
+      }
+    },
     "/api/v1/tracks/{id}/purge": {
       "post": {
         "operationId": "internal-post-tracks-by-id-purge",
@@ -25299,6 +27346,425 @@
         ],
         "x-taskmoor-access": "admin",
         "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/users/{id}/properties": {
+      "get": {
+        "operationId": "listUserProperties",
+        "parameters": [
+          {
+            "description": "The person: their id, or `me`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "properties": {
+                      "items": {
+                        "$ref": "#/components/schemas/PropertyKey"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "properties"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Its keys, in order, with when each was last set."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "The property keys of a user",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "stable"
+      }
+    },
+    "/api/v1/users/{id}/properties/{key}": {
+      "delete": {
+        "operationId": "deleteUserProperty",
+        "parameters": [
+          {
+            "description": "The person: their id, or `me`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Delete a property of a user",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "stable"
+      },
+      "get": {
+        "operationId": "getUserProperty",
+        "parameters": [
+          {
+            "description": "The person: their id, or `me`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The property."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "One property of a user",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "stable"
+      },
+      "put": {
+        "description": "Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Only the person and site administrators read and write a person’s properties.",
+        "operationId": "setUserProperty",
+        "parameters": [
+          {
+            "description": "The person: their id, or `me`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The property key: 1 to 255 characters, percent-encoded.",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "value": {}
+                },
+                "required": [
+                  "value"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Replaced."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "property": {
+                      "$ref": "#/components/schemas/Property"
+                    }
+                  },
+                  "required": [
+                    "property"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Set for the first time."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Set a property of a user",
+        "tags": [
+          "Properties"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/users/{id}/reactivate": {
@@ -26981,6 +29447,9 @@
     },
     {
       "name": "Links"
+    },
+    {
+      "name": "Properties"
     },
     {
       "name": "Reference"

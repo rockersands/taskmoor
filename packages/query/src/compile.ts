@@ -1,4 +1,4 @@
-import type { CustomField, Field, SystemField } from './fields';
+import type { CustomField, Field, PropertyField, SystemField } from './fields';
 import type { Comparison, HistoryPredicate, Plan, Pred, Typed } from './resolve';
 
 /**
@@ -10,6 +10,14 @@ function plain(t: Typed): Exclude<Typed, { type: 'call' | 'token' }> {
   if (t.type === 'call') throw new Error(`${t.fn}() is not supported by the spike compiler`);
   if (t.type === 'token') throw new Error(`@${t.value} is not supported by the spike compiler`);
   return t;
+}
+
+/** A field this spike compiler can read: indexed ticket properties (M1-129) are the server's. */
+function spikeField<F extends Field>(field: F): Exclude<F, PropertyField> {
+  if (field.kind === 'property') {
+    throw new Error(`${field.name} is not supported by the spike compiler`);
+  }
+  return field as Exclude<F, PropertyField>;
 }
 
 export interface CompileOptions {
@@ -98,7 +106,9 @@ export function compilePlan(plan: Plan, options: CompileOptions): CompiledQuery 
     // planner from walking a plain DESC index, which sorts nulls first.
     (o) =>
       `${c.orderExpr(o.field)} ${o.direction.toUpperCase()}${
-        o.field.kind === 'custom' || o.field.nullable ? ' NULLS LAST' : ''
+        spikeField(o.field).kind === 'custom' || (o.field as SystemField).nullable
+          ? ' NULLS LAST'
+          : ''
       }`,
   );
   order.push('i.id DESC');
@@ -130,20 +140,21 @@ class Compiler {
       case 'not':
         return `NOT ${this.pred(p.pred)}`;
       case 'compare': {
-        if (p.field.kind === 'system') return this.systemCompare(p.field, p.op, p.value);
-        const field = p.field;
+        const field = spikeField(p.field);
+        if (field.kind === 'system') return this.systemCompare(field, p.op, p.value);
         return this.customExists(field, () => this.sideValue('v.value', field, p.op, p.value));
       }
       case 'in': {
-        if (p.field.kind === 'system') {
-          if (p.field.type === 'labels') {
+        const target = spikeField(p.field);
+        if (target.kind === 'system') {
+          if (target.type === 'labels') {
             const expr = `i.labels && ${this.param(p.values.map((v) => plain(v).value))}::text[]`;
             return p.negated ? `NOT (${expr})` : expr;
           }
-          return `i.${p.field.column} ${p.negated ? '<> ALL' : '= ANY'}(${this.param(p.values.map((v) => plain(v).value))}::${arrayType(p.values)})`;
+          return `i.${target.column} ${p.negated ? '<> ALL' : '= ANY'}(${this.param(p.values.map((v) => plain(v).value))}::${arrayType(p.values)})`;
         }
         const values = p.values;
-        const field = p.field;
+        const field = target;
         const exists = this.customExists(
           field,
           () =>
@@ -152,12 +163,13 @@ class Compiler {
         return p.negated ? `NOT ${exists}` : exists;
       }
       case 'empty': {
+        const field = spikeField(p.field);
         const expr =
-          p.field.kind === 'system'
-            ? p.field.type === 'labels'
+          field.kind === 'system'
+            ? field.type === 'labels'
               ? `cardinality(i.labels) = 0`
-              : `i.${p.field.column} IS NULL`
-            : `NOT ${this.customExists(p.field)}`;
+              : `i.${field.column} IS NULL`
+            : `NOT ${this.customExists(field)}`;
         return p.negated ? `NOT (${expr})` : expr;
       }
       case 'history':
@@ -165,7 +177,8 @@ class Compiler {
     }
   }
 
-  orderExpr(field: Field): string {
+  orderExpr(sorted: Field): string {
+    const field = spikeField(sorted);
     if (field.kind === 'system') return `i.${field.column}`;
     return `(SELECT v.value FROM ${this.options.schema}.${SIDE_TABLE[field.type]} v WHERE v.item_id = i.id AND v.field_id = ${this.param(field.id)} LIMIT 1)`;
   }
@@ -234,7 +247,8 @@ class Compiler {
    */
   private history(p: Extract<Pred, { kind: 'history' }>): string {
     const h = `${this.options.historyTable}`;
-    const name = p.field.kind === 'system' ? (p.field.history ?? p.field.name) : `cf:${p.field.id}`;
+    const field = spikeField(p.field);
+    const name = field.kind === 'system' ? (field.history ?? field.name) : `cf:${field.id}`;
     const conditions = [`h.item_id = i.id`, `h.field = ${this.param(name)}`];
     if (p.op === 'was' && (p.values.length > 0 || p.empty)) {
       const list = `ANY(${this.param(p.values.map((v) => String(plain(v).value)))}::text[])`;

@@ -1,5 +1,9 @@
 import type { TextSearch } from '@taskmoor/query';
-import type { SideTable } from '../fields/storage';
+import type { SideTable as FieldSideTable } from '../fields/storage';
+import type { PropertyValueTable } from '../properties/model';
+
+/** Where typed values live: custom fields' side tables and indexed properties' (M1-129). */
+export type SideTable = FieldSideTable | PropertyValueTable;
 
 /**
  * What the compiler compiles (M1-037; ADR-010): a resolved query (`@taskmoor/query` Plan) with

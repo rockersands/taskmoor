@@ -6,6 +6,7 @@ import {
   nativePermissionName,
   type Plan,
   type Pred,
+  type PropertyField,
   parseTextSearch,
   type SystemField,
   type TextSearch,
@@ -16,7 +17,6 @@ import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { isTrackPermission, type TrackPermission } from '../authz/permissions';
 import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
-import type { SideTable } from '../fields/storage';
 import { findTeam, teamMemberIds } from '../teams';
 import { masterTextSet, textSourceSet } from './compile';
 import { COUNT_CAP } from './count';
@@ -35,6 +35,7 @@ import type {
   Scalarish,
   SideOrder,
   SideRef,
+  SideTable,
   SprintMatch,
   SqlType,
   TicketColumn,
@@ -124,7 +125,11 @@ const MODULES: Record<NonNullable<SystemField['module']>, string> = {
 };
 
 const label = (field: Field) =>
-  field.kind === 'custom' ? `"${field.name}" (cf[${field.id}])` : `"${field.name}"`;
+  field.kind === 'custom'
+    ? `"${field.name}" (cf[${field.id}])`
+    : field.kind === 'property'
+      ? field.name
+      : `"${field.name}"`;
 
 type Leaf = Exclude<Pred, { kind: 'and' | 'or' | 'not' }>;
 type HistoryLeaf = Extract<Leaf, { kind: 'history' }>;
@@ -298,6 +303,29 @@ const column = (name: TicketColumn, type: SqlType, nullable: boolean) =>
   ({ kind: 'column', column: name, type, nullable }) as const;
 
 /** The side table and value type of each custom field type (ADR-008, `fields/storage.ts`). */
+/** Where a property index's values are (M1-129): `field_id` is the index's id. */
+function propertySide(field: PropertyField): SideRef {
+  const ref = (table: SideTable, type: SqlType, ordered: boolean): SideRef => ({
+    table,
+    fieldId: field.indexId,
+    type,
+    // An array in the document gives a row per element.
+    multiple: true,
+    ordered,
+  });
+  switch (field.type) {
+    case 'number':
+      return ref('p_number', 'numeric', true);
+    case 'datetime':
+      return ref('p_time', 'timestamptz', true);
+    case 'user':
+      return ref('p_user', 'int', false);
+    case 'labels':
+    case 'text':
+      return ref('p_text', 'text', false);
+  }
+}
+
 function sideOf(field: CustomField, catalog: Catalog): SideRef {
   const def = catalog.fields.get(field.id);
   const multiple = def?.multiple === true;
@@ -591,6 +619,16 @@ class Binder {
 
   order(field: Field, direction: 'asc' | 'desc'): OrderKey[] {
     const key = (source: OrderSource): OrderKey => ({ source, direction });
+    if (field.kind === 'property') {
+      const by: Record<PropertyField['type'], SideOrder> = {
+        number: 'value',
+        datetime: 'value',
+        labels: 'sortKey',
+        text: 'sortKey',
+        user: 'personName',
+      };
+      return [key({ kind: 'side', side: propertySide(field), by: by[field.type] })];
+    }
     if (field.kind === 'custom') {
       const side = sideOf(field, this.ctx.catalog);
       const by: Record<CustomField['type'], SideOrder> = {
@@ -682,6 +720,7 @@ class Binder {
   private async leaf(p: Leaf): Promise<Cond> {
     if (p.kind === 'history') return this.history(p);
     if (p.field.kind === 'custom') return this.custom(p, p.field);
+    if (p.field.kind === 'property') return this.property(p, p.field);
     this.supported(p.field);
     return this.system(p, p.field);
   }
@@ -823,6 +862,8 @@ class Binder {
 
   /** Where a field's history is and how its values read. */
   private historyShape(field: Field): HistoryShape {
+    // Property values keep no history; the resolver refuses WAS and CHANGED on them.
+    if (field.kind === 'property') throw new Error('unreachable');
     const state = (name: string, test: HistoryShape['test']): HistoryShape => ({
       name,
       rows: 'state',
@@ -1019,6 +1060,50 @@ class Binder {
   }
 
   // --- custom fields ---------------------------------------------------------------------
+
+  /**
+   * A ticket property's indexed value (M1-129; ADR-083): compared as a custom field of its type
+   * is, in its own side table. Several values (an array) match when one does; `!=` and `NOT IN`
+   * when none does.
+   */
+  private async property(p: Leaf, field: PropertyField): Promise<Cond> {
+    const side = propertySide(field);
+    if (p.kind === 'empty') return { kind: 'sideEmpty', side, negated: p.negated };
+    if (p.kind === 'history') throw new Error('unreachable');
+    const values = p.kind === 'compare' ? [p.value] : p.values;
+    const scalars: Scalar[] = field.type === 'user' ? await this.people(values) : values.map(ISO);
+    if (p.kind === 'compare') {
+      if (p.op === '~' || p.op === '!~') {
+        return {
+          kind: 'side',
+          side,
+          test: { kind: 'words', search: textSearch(p.value, label(field)) },
+          quantifier: p.op === '~' ? 'some' : 'none',
+        };
+      }
+      if (field.type !== 'user') {
+        const op: Op = p.op === '!=' ? '=' : (p.op as Op);
+        return {
+          kind: 'side',
+          side,
+          test: { kind: 'cmp', op, value: scalars[0] as Scalar },
+          quantifier: p.op === '!=' ? 'none' : 'some',
+        };
+      }
+      return {
+        kind: 'side',
+        side,
+        test: { kind: 'in', values: scalars },
+        quantifier: p.op === '!=' ? 'none' : 'some',
+      };
+    }
+    return {
+      kind: 'side',
+      side,
+      test: { kind: 'in', values: scalars },
+      quantifier: p.negated ? 'none' : 'some',
+    };
+  }
 
   private async custom(p: Leaf, field: CustomField): Promise<Cond> {
     const side = sideOf(field, this.ctx.catalog);

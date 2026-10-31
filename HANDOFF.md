@@ -2,6 +2,39 @@
 
 Read this first in every session, then update it before you stop.
 
+## Start here: 2026-10-30 evening (cloud session): M1-129 and three fixes
+
+All on `main`, each push after a green `pnpm verify --e2e`:
+
+- **Fixes** (commits `314f4de`, `7e60c86` and `7e34932`):
+  - **Backend-kit test:** the "Docker missing" case no longer finds a real `/usr/bin/docker`
+    (`packages/devtools/src/backend-kit.test.ts`).
+  - **Upgrade rollback:** it now drops foreign keys a newer migration added before
+    `pg_restore --clean`. The restore failed on `user_session_parent_id_fkey` (0064). This
+    test only runs where `pg_dump` is installed, so this Mac skips it: install the PostgreSQL
+    client tools to run it.
+  - **E2E servers:** they listen on IPv4 when the machine has no IPv6 loopback
+    (`apps/web/e2e/loopback.ts`).
+- **M1-129 entity properties** (migration 0066, ADR-083):
+  - Code: `apps/server/src/properties/model.ts` and `apps/server/src/routes/properties.ts`;
+    board and sprint routes are registered in `routes/boards.ts`.
+  - Query syntax `ticket.property[key].path` lives in `packages/query`: parser, printer,
+    dialect, fields and resolver. The binder branch is in `apps/server/src/search/bind.ts`.
+  - Tests are in `routes/properties.test.ts` and `packages/query/src/properties.test.ts`, plus
+    the event and API contract scenarios.
+  - `syncFieldValues` now also rewrites property index rows on every full rewrite. Code that
+    creates, moves, trashes or restores tickets keeps them in step without doing anything else.
+  - Fastify's `maxParamLength` is now 3,072 (for 255-character keys).
+- **Left for later:**
+  - The Jira-compatible property routes come with M1-069, over the same tables.
+  - The query editor's autocomplete does not suggest property fields.
+  - Properties and property indexes are not in the full export (M1-098). Web links, boards and
+    sprints are not in it either. Backups (`pg_dump`) include them.
+  - `cli.mjs restore` into a database that a newer migration already changed may hit the same
+    foreign-key problem as the rollback did: `dropNewObjects` runs only in the upgrade
+    rollback.
+- **Next free numbers:** migration 0067 and ADR-084.
+
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 
 Everything below is on `main` and passed `pnpm verify --e2e` before each push. In order:
@@ -57,7 +90,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Next free numbers**: migration 0066 and ADR-083.
+**Next free numbers**: migration 0066 and ADR-083 (now 0067 and ADR-084: see the cloud session above).
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 

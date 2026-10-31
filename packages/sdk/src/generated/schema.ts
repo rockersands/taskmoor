@@ -20,6 +20,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/property-indexes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The declared property indexes
+         * @description For site and configuration administrators.
+         */
+        get: operations["listPropertyIndexes"];
+        put?: never;
+        /**
+         * Make a value inside ticket properties searchable
+         * @description Declares that the values found at `path` inside the `key` property of tickets are of `type`, and fills the index from the properties already set. Queries then read them as `ticket.property[key].path`, or by the `alias`. An array along the path gives one value per element; a value of another type is left out. For site and configuration administrators.
+         */
+        post: operations["createPropertyIndex"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/property-indexes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Drop a property index
+         * @description The properties stay; queries can no longer read the values.
+         */
+        delete: operations["deletePropertyIndex"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/boards": {
         parameters: {
             query?: never;
@@ -84,6 +128,45 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/boards/{id}/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The property keys of a board */
+        get: operations["listBoardProperties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/boards/{id}/properties/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One property of a board */
+        get: operations["getBoardProperty"];
+        /**
+         * Set a property of a board
+         * @description Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see the board; writing, the right to configure it.
+         */
+        put: operations["setBoardProperty"];
+        post?: never;
+        /** Delete a property of a board */
+        delete: operations["deleteBoardProperty"];
         options?: never;
         head?: never;
         patch?: never;
@@ -377,6 +460,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sprints/{id}/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The property keys of a sprint */
+        get: operations["listSprintProperties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sprints/{id}/properties/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One property of a sprint */
+        get: operations["getSprintProperty"];
+        /**
+         * Set a property of a sprint
+         * @description Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see its board; writing, the right to manage its sprints.
+         */
+        put: operations["setSprintProperty"];
+        post?: never;
+        /** Delete a property of a sprint */
+        delete: operations["deleteSprintProperty"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sprints/{id}/start": {
         parameters: {
             query?: never;
@@ -602,6 +724,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tickets/{id}/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The property keys of a ticket */
+        get: operations["listTicketProperties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tickets/{id}/properties/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One property of a ticket */
+        get: operations["getTicketProperty"];
+        /**
+         * Set a property of a ticket
+         * @description Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see the ticket; writing, the right to edit it. The values of declared property indexes become searchable as `ticket.property[key].path`.
+         */
+        put: operations["setTicketProperty"];
+        post?: never;
+        /** Delete a property of a ticket */
+        delete: operations["deleteTicketProperty"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tickets/{id}/rank": {
         parameters: {
             query?: never;
@@ -696,6 +857,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tracks/{id}/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The property keys of a track */
+        get: operations["listTrackProperties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tracks/{id}/properties/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One property of a track */
+        get: operations["getTrackProperty"];
+        /**
+         * Set a property of a track
+         * @description Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to browse the track; writing, the right to administer it.
+         */
+        put: operations["setTrackProperty"];
+        post?: never;
+        /** Delete a property of a track */
+        delete: operations["deleteTrackProperty"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tracks/{id}/releases": {
         parameters: {
             query?: never;
@@ -726,6 +926,45 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The property keys of a user */
+        get: operations["listUserProperties"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/properties/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One property of a user */
+        get: operations["getUserProperty"];
+        /**
+         * Set a property of a user
+         * @description Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Only the person and site administrators read and write a person’s properties.
+         */
+        put: operations["setUserProperty"];
+        post?: never;
+        /** Delete a property of a user */
+        delete: operations["deleteUserProperty"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1122,6 +1361,36 @@ export interface components {
             id: number;
             name: string;
             order: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description A JSON document an integration keeps under a key. */
+        Property: {
+            /** Format: date-time */
+            createdAt: string;
+            key: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Any JSON value, as it was set. */
+            value: unknown;
+        } & {
+            [key: string]: unknown;
+        };
+        PropertyIndex: {
+            alias: string | null;
+            id: number;
+            key: string;
+            /** @description Dot-separated names inside the value; empty for all of it. */
+            path: string;
+            /** @enum {string} */
+            type: "number" | "string" | "text" | "date" | "user";
+        } & {
+            [key: string]: unknown;
+        };
+        PropertyKey: {
+            key: string;
+            /** Format: date-time */
+            updatedAt: string;
         } & {
             [key: string]: unknown;
         };
@@ -1597,6 +1866,184 @@ export interface operations {
             };
         };
     };
+    listPropertyIndexes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every index, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        propertyIndexes: components["schemas"]["PropertyIndex"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPropertyIndex: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @default null */
+                    alias?: string | null;
+                    key: string;
+                    /** @default  */
+                    path?: string;
+                    /** @enum {string} */
+                    type: "number" | "string" | "text" | "date" | "user";
+                };
+            };
+        };
+        responses: {
+            /** @description The new index. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        propertyIndex: components["schemas"]["PropertyIndex"];
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deletePropertyIndex: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The index’s id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dropped. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listBoards: {
         parameters: {
             query?: {
@@ -1966,6 +2413,271 @@ export interface operations {
             };
             /** @description There is no such resource, or the caller may not see it. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listBoardProperties: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The board’s id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its keys, in order, with when each was last set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        properties: components["schemas"]["PropertyKey"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getBoardProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The board’s id. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The property. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setBoardProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The board’s id. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    value: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description Set for the first time. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteBoardProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The board’s id. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3235,6 +3947,271 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listSprintProperties: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The sprint’s id. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its keys, in order, with when each was last set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        properties: components["schemas"]["PropertyKey"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getSprintProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The sprint’s id. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The property. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setSprintProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The sprint’s id. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    value: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description Set for the first time. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteSprintProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The sprint’s id. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request is not valid: see `error` and, for fields, `fields`. */
             400: {
@@ -4578,6 +5555,271 @@ export interface operations {
             };
         };
     };
+    listTicketProperties: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ticket: its id or its key, such as `PAY-12`. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its keys, in order, with when each was last set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        properties: components["schemas"]["PropertyKey"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getTicketProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ticket: its id or its key, such as `PAY-12`. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The property. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setTicketProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ticket: its id or its key, such as `PAY-12`. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    value: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description Set for the first time. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteTicketProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ticket: its id or its key, such as `PAY-12`. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     rankTicket: {
         parameters: {
             query?: never;
@@ -5172,6 +6414,271 @@ export interface operations {
             };
         };
     };
+    listTrackProperties: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The track: its id or its key. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its keys, in order, with when each was last set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        properties: components["schemas"]["PropertyKey"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getTrackProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The track: its id or its key. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The property. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setTrackProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The track: its id or its key. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    value: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description Set for the first time. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteTrackProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The track: its id or its key. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listReleases: {
         parameters: {
             query?: {
@@ -5364,6 +6871,271 @@ export interface operations {
             };
             /** @description There is no such resource, or the caller may not see it. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listUserProperties: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The person: their id, or `me`. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Its keys, in order, with when each was last set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        properties: components["schemas"]["PropertyKey"][];
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getUserProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The person: their id, or `me`. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The property. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setUserProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The person: their id, or `me`. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    value: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Replaced. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description Set for the first time. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        property: components["schemas"]["Property"];
+                    };
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deleteUserProperty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The person: their id, or `me`. */
+                id: string;
+                /** @description The property key: 1 to 255 characters, percent-encoded. */
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,7 +1,7 @@
 ---
 title: "The REST API"
 audience: admins
-sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md
+sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -41,8 +41,10 @@ In the document, each operation carries `x-taskmoor-stability` (`stable` or `int
 | Boards and sprints | `listBoards`, `createBoard`, `getBoard`, `getBacklog`, `getBoardCards`, `listSprints`, `createSprint`, `startSprint`, `completeSprint`, `addSprintTickets` |
 | Releases | `listReleases`, `createRelease`, `getRelease` |
 | Reference data | `listFields`, `listPriorities`, `listStatuses` |
+| Properties | `list…Properties`, `get…Property`, `set…Property`, `delete…Property` for `Ticket`, `Track`, `User`, `Board` and `Sprint`; `listPropertyIndexes`, `createPropertyIndex`, `deletePropertyIndex` |
 
-Administration, reports and dashboards have no stable operations yet. The administration
+Apart from property indexes, administration, reports and dashboards have no stable operations
+yet. The administration
 routes on the pages of this manual (tokens, webhooks, notification policies, the MCP settings)
 work today, but they are internal and may change between releases.
 
@@ -142,6 +144,46 @@ build it from the source of your release.
   and base path, the frontend versions the backend serves, how people sign in, and the
   instance's id and public key. Read it before anything else.
 
+## Entity properties
+
+A property is a JSON document that a program keeps under a key of its own on a ticket, a
+track, a person, a board or a sprint: a review state, a sync cursor, a build result. People do
+not see properties in the app; programs read and write them through the API.
+
+- `GET /api/v1/tickets/PAY-12/properties` lists a ticket's keys, `GET .../properties/<key>`
+  reads one, `PUT .../properties/<key>` with `{ "value": ... }` sets it (201 the first time,
+  200 after), and `DELETE` removes it. Tracks, boards and sprints work the same way under
+  `/api/v1/tracks/<id or key>`, `/api/v1/boards/<id>` and `/api/v1/sprints/<id>`, and people
+  under `/api/v1/users/<id>`, or `/api/v1/users/me` for yourself.
+- A key is 1 to 255 characters with no control characters; put it in the path
+  percent-encoded. A value is any JSON value of at most 32,768 bytes once written as JSON.
+- Reading a property needs what seeing its ticket, track, board or sprint needs. Setting or
+  deleting one needs what changing it needs: editing the ticket, administering the track,
+  configuring the board, managing the board's sprints. A person's properties are only for
+  that person and site administrators. In an archived track the properties can be read but
+  not changed (`409 track_archived`).
+- Each change sends an event, such as `ticket.property_set` or `ticket.property_deleted`,
+  that names the key but not the value; webhooks can subscribe to the ticket ones.
+
+**Making a value searchable.** A site or configuration administrator declares a property
+index with `POST /api/v1/admin/property-indexes`:
+
+```json
+{ "key": "support", "path": "level", "type": "number", "alias": "supportLevel" }
+```
+
+`path` names the value inside the property, with dots between names (empty for the whole
+value), and `type` is `number`, `string`, `text`, `date` (a `YYYY-MM-DD` day or an ISO 8601
+instant) or `user` (a person's id or email address). The index is filled from the properties
+already set, and kept up to date from then on. Queries then read
+`ticket.property[support].level`, or the alias, as described in
+[Search and the query language](../use/search.md). An array along the path gives one value
+per element, and a value of another type is left out of the index without failing the write.
+`DELETE /api/v1/admin/property-indexes/<id>` drops an index; the properties stay. Only ticket
+properties can be indexed.
+
+The Jira-compatible property routes are not available yet.
+
 ## Webhooks
 
 A webhook sends Taskmoor's events to another system as they happen. Only site administrators
@@ -184,7 +226,7 @@ expire.
 
 | Family | Events |
 |---|---|
-| `ticket.*` | `created`, `updated`, `transitioned`, `moved`, `deleted`, `restored`, `purged`, `linked`, `unlinked`, `web_link_added`, `web_link_updated`, `web_link_removed` |
+| `ticket.*` | `created`, `updated`, `transitioned`, `moved`, `deleted`, `restored`, `purged`, `linked`, `unlinked`, `web_link_added`, `web_link_updated`, `web_link_removed`, `property_set`, `property_deleted` |
 | `comment.*` | `created`, `updated`, `deleted` |
 | `attachment.*` | `created`, `deleted` |
 | `time_entry.*` | `created`, `updated`, `deleted` |

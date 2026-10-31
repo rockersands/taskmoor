@@ -63,6 +63,7 @@ Absolute formats: `yyyy/MM/dd HH:mm`, `yyyy-MM-dd HH:mm`, `yyyy/MM/dd`, `yyyy-MM
 | `area` | `component` | |
 | `created`, `updated`, `due`, `closed`, `lastViewed` | `resolved`; `updatedDate` (given); `createdDate`, `dueDate`, `resolutionDate` (verify) | Dates |
 | custom field name or id | `cf[<id>]` (verify) | Operators by field type |
+| `ticket.property[<key>].<path>`, or the index's alias | `issue.property[<key>].<path>` | Values inside a ticket property that a declared property index covers (API-013); operators by the index's type: number, string, text (`~`), date, user. No history predicates |
 | `parent` | `"Epic link"` (retired; rewritten to `parent`) | |
 | `savedSearch` | `filter`; `request`, `savedFilter`, `searchRequest` (given) | Saved search by id or name; cycles rejected |
 | `targetRelease` | `fixVersion` | |

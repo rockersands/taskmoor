@@ -1248,6 +1248,46 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          ORDER BY s.id LIMIT 1`.execute(db);
     },
   },
+  '0066_entity_properties': {
+    tables: {
+      ticket_property: "key = 'seed.support' AND value->>'level' = '2'",
+      track_property: "key = 'seed.track'",
+      user_property: "key = 'seed.user'",
+      board_property: "key = 'seed.board'",
+      sprint_property: "key = 'seed.sprint'",
+      property_index: "key = 'seed.support' AND path = 'level' AND type = 'number'",
+      p_number: 'value = 2',
+    },
+    seed: async (db) => {
+      // A property on one of each kind of entity, an index on the ticket's and its value.
+      await sql`INSERT INTO ticket_property (workspace_id, ticket_id, key, value)
+        SELECT workspace_id, id, 'seed.support', '{"level": 2}'::jsonb
+          FROM ticket ORDER BY id LIMIT 1`.execute(db);
+      await sql`INSERT INTO track_property (workspace_id, track_id, key, value)
+        SELECT workspace_id, id, 'seed.track', '"on"'::jsonb FROM track ORDER BY id LIMIT 1`.execute(
+        db,
+      );
+      await sql`INSERT INTO user_property (workspace_id, user_id, key, value)
+        SELECT workspace_id, id, 'seed.user', '[1, 2]'::jsonb FROM app_user ORDER BY id LIMIT 1`.execute(
+        db,
+      );
+      await sql`INSERT INTO board_property (workspace_id, board_id, key, value)
+        SELECT workspace_id, id, 'seed.board', 'true'::jsonb FROM board ORDER BY id LIMIT 1`.execute(
+        db,
+      );
+      await sql`INSERT INTO sprint_property (workspace_id, sprint_id, key, value)
+        SELECT workspace_id, id, 'seed.sprint', 'null'::jsonb FROM sprint ORDER BY id LIMIT 1`.execute(
+        db,
+      );
+      await sql`INSERT INTO property_index (workspace_id, key, path, type)
+        VALUES (1, 'seed.support', 'level', 'number')`.execute(db);
+      await sql`INSERT INTO p_number (workspace_id, ticket_id, track_id, field_id, value, created_at)
+        SELECT t.workspace_id, t.id, t.track_id, i.id, 2, t.created_at
+          FROM ticket t, property_index i
+         WHERE i.key = 'seed.support'
+         ORDER BY t.id LIMIT 1`.execute(db);
+    },
+  },
 };
 
 /**

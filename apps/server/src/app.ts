@@ -57,6 +57,7 @@ import { registerNotificationRoutes } from './routes/notifications';
 import { registerOAuthRoutes } from './routes/oauth';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
+import { registerCorePropertyRoutes } from './routes/properties';
 import { registerRateLimitRoutes, registerRateLimits } from './routes/rate-limits';
 import { registerReleaseHubRoutes } from './routes/release-hub';
 import { registerReleaseRoutes } from './routes/releases';
@@ -175,6 +176,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const roles = deps.roles ?? ['api'];
   const app = Fastify({
     logger: level === 'silent' ? false : { level },
+    // A property key is up to 255 characters (M1-129), percent-encoded in the path: up to 12
+    // characters each for a 4-byte character.
+    maxParamLength: 3072,
     ...(deps.trustedProxies ? { trustProxy: deps.trustedProxies } : {}),
   });
   // Every route as "METHOD /path", for fitness tests (every mutation emits one event).
@@ -372,6 +376,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
+    // Entity properties (M1-129); boards and sprints register theirs with the board routes.
+    registerCorePropertyRoutes(app, db);
     registerTimeRoutes(app, db, fieldCatalogs);
     registerCommentRoutes(app, db, authorizer);
     await registerAttachmentRoutes(app, db, deps.attachments ?? NO_STORAGE);

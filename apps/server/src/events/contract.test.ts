@@ -1786,6 +1786,76 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/tickets/${state.ticket}/web-links/${state.webLink}`,
         }),
     },
+    // Entity properties (M1-129): set, replaced and removed; the index is declared and dropped.
+    {
+      route: 'POST /api/v1/admin/property-indexes',
+      expect: 'property_index.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/admin/property-indexes',
+          payload: { key: 'contract', path: 'n', type: 'number', alias: 'contractN' },
+        });
+        state.propertyIndex = res.json().propertyIndex?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PUT /api/v1/tickets/:id/properties/:key',
+      expect: 'ticket.property_set',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/tickets/${state.ticket}/properties/contract`,
+          payload: { value: { n: 1 } },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tickets/:id/properties/:key',
+      expect: 'ticket.property_deleted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/tickets/${state.ticket}/properties/contract`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/admin/property-indexes/:id',
+      expect: 'property_index.deleted',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/admin/property-indexes/${state.propertyIndex}` }),
+    },
+    {
+      route: 'PUT /api/v1/tracks/:id/properties/:key',
+      expect: 'track.property_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/tracks/${state.newTrack}/properties/contract`,
+          payload: { value: true },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tracks/:id/properties/:key',
+      expect: 'track.property_deleted',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/tracks/${state.newTrack}/properties/contract` }),
+    },
+    {
+      route: 'PUT /api/v1/users/:id/properties/:key',
+      expect: 'user.property_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/users/me/properties/contract',
+          payload: { value: 'dark' },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/users/:id/properties/:key',
+      expect: 'user.property_deleted',
+      run: () => admin({ method: 'DELETE', url: '/api/v1/users/me/properties/contract' }),
+    },
     {
       // Bo follows the ticket already: creating and editing it did that.
       route: 'DELETE /api/v1/tickets/:id/followers/:userId',
@@ -2544,6 +2614,41 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/sprints/${state.sprint}/complete`,
           payload: { moveTo: { type: 'backlog' } },
         }),
+    },
+    {
+      route: 'PUT /api/v1/sprints/:id/properties/:key',
+      expect: 'sprint.property_set',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'PUT',
+          url: `/api/v1/sprints/${state.sprint}/properties/contract`,
+          payload: { value: { goal: 1 } },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/sprints/:id/properties/:key',
+      expect: 'sprint.property_deleted',
+      run: () =>
+        call(String(state.bo1b), {
+          method: 'DELETE',
+          url: `/api/v1/sprints/${state.sprint}/properties/contract`,
+        }),
+    },
+    {
+      route: 'PUT /api/v1/boards/:id/properties/:key',
+      expect: 'board.property_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/boards/${state.board}/properties/contract`,
+          payload: { value: [1, 2] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/boards/:id/properties/:key',
+      expect: 'board.property_deleted',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/boards/${state.board}/properties/contract` }),
     },
     {
       route: 'DELETE /api/v1/sprints/:id',

@@ -2,7 +2,7 @@
 title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
-sources: apps/web/src/search/SearchPage.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts
+sources: apps/web/src/search/SearchPage.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -143,6 +143,15 @@ Custom fields are named in quotes, `"Customer tier" = Gold`, or by number, `cf[1
 A Team field takes a team's name or number: `Team = Platform`, `Team IN (Platform, Mobile)`,
 `Team IS EMPTY`; renaming a team changes the name your queries use.
 
+Integrations can keep their own data on a ticket as properties (see
+[The REST API](../admin/rest-api.md#entity-properties)). Once an administrator makes a value
+inside a property searchable, a query reads it by the property's key in brackets and a path
+to the value: `ticket.property[support].level >= 2`, or by the short name the administrator
+gave it, `supportLevel >= 2`. The value's kind decides the operators, as for a custom field:
+numbers and dates compare, text takes `~`, people take `currentUser()`. A property value
+that nobody made searchable is refused with a message that says so, and history operators
+do not apply.
+
 ### Functions
 
 | Function | Gives |
@@ -241,6 +250,7 @@ project = PAY AND issuetype = Bug AND fixVersion IN unreleasedVersions() AND rep
 | `effortRatio`, `timeEntryComment`, `timeEntryDate` | `workRatio`, `worklogComment`, `worklogDate` |
 | `visibilityLevel`, `savedSearch` | `level`, `filter` |
 | `ticketLink`, `ticketLinkType`, `parent` | `issueLink`, `issueLinkType`, `"Epic link"` |
+| `ticket.property[key].path` | `issue.property[key].path` |
 | `followedTickets()`, `votedTickets()`, `ticketHistory()`, `linkedTickets()` | `watchedIssues()`, `votedIssues()`, `issueHistory()`, `linkedIssues()` |
 | `tracksOwnedByUser()`, `tracksWhereUserHasRole()`, `tracksWhereUserHasPermission()`, `areasOwnedByUser()` | `projectsLeadByUser()`, `projectsWhereUserHasRole()`, `projectsWhereUserHasPermission()`, `componentsLeadByUser()` |
 | `standardTicketTypes()`, `subticketTypes()` | `standardIssueTypes()`, `subTaskIssueTypes()` |

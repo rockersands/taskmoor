@@ -34,6 +34,8 @@ export const FIELD_NAMES: readonly (readonly [native: string, ...jira: string[]]
   ['timeEntryDate', 'worklogDate'],
   ['visibilityLevel', 'level'],
   ['savedSearch', 'filter', 'request', 'savedFilter', 'searchRequest'],
+  // A ticket property's indexed value (M1-129): `ticket.property[key].path`.
+  ['ticket.property', 'issue.property'],
   ['ticketLink', 'issueLink', 'workItemLink'],
   ['ticketLinkType', 'issueLinkType', 'workItemLinkType'],
   ['linkedTicket', 'linkedWorkItem'],

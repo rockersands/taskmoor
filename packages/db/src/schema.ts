@@ -1333,6 +1333,48 @@ export type DateValueTable = SideRow<string>;
 export type TimeValueTable = SideRow<ColumnType<Date, Date | string, Date | string>>;
 export type IdValueTable = SideRow<number>;
 
+/**
+ * A JSON document an integration keeps on an entity under a key (M1-129; API-013; ADR-083):
+ * one table per kind of entity, so properties go with their entity.
+ */
+interface PropertyRow {
+  workspace_id: number;
+  key: string;
+  value: ColumnType<JsonValue, string, string>;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+  updated_by: number | null;
+}
+export interface TicketPropertyTable extends PropertyRow {
+  ticket_id: number;
+}
+export interface TrackPropertyTable extends PropertyRow {
+  track_id: number;
+}
+export interface UserPropertyTable extends PropertyRow {
+  user_id: number;
+}
+export interface BoardPropertyTable extends PropertyRow {
+  board_id: number;
+}
+export interface SprintPropertyTable extends PropertyRow {
+  sprint_id: number;
+}
+
+/** A value inside a ticket property that queries may name (M1-129; ADR-083). */
+export interface PropertyIndexTable {
+  id: Generated<number>;
+  workspace_id: number;
+  key: string;
+  /** Dot-separated names inside the document; '' for the whole value. */
+  path: Generated<string>;
+  type: 'number' | 'string' | 'text' | 'date' | 'user';
+  /** A plain field name queries may use for it. */
+  alias: string | null;
+  created_at: Generated<Date>;
+  created_by: number | null;
+}
+
 /** A field rule set or a layout set (M1-012); a local-mode track's own name it. */
 export interface ConfigurationSetTable {
   id: Generated<number>;
@@ -2253,6 +2295,18 @@ export interface Database {
   v_time: TimeValueTable;
   v_user: IdValueTable;
   v_option: IdValueTable;
+  // Entity properties (M1-129): the documents, the declared indexes and their typed values,
+  // shaped like the custom field side tables (`field_id` is the index's id).
+  ticket_property: TicketPropertyTable;
+  track_property: TrackPropertyTable;
+  user_property: UserPropertyTable;
+  board_property: BoardPropertyTable;
+  sprint_property: SprintPropertyTable;
+  property_index: PropertyIndexTable;
+  p_text: TextValueTable;
+  p_number: NumberValueTable;
+  p_time: TimeValueTable;
+  p_user: IdValueTable;
   global_grant: GlobalGrantTable;
   authz_epoch: AuthzEpochTable;
   domain_event: DomainEventTable;

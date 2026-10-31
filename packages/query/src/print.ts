@@ -76,6 +76,11 @@ function printPredicate(p: Predicate): string {
 
 export function printField(field: FieldRef): string {
   if (field.custom !== undefined) return `cf[${field.custom}]`;
+  if (field.property) {
+    const { key, path } = field.property;
+    const plainKey = /^[\p{L}\p{N}_-]+$/u.test(key) && !/^\d/.test(key) ? key : quote(key);
+    return `${field.name}[${plainKey}]${path === '' ? '' : `.${path}`}`;
+  }
   return /^[\p{L}_][\p{L}\p{N}_.]*$/u.test(field.name) && !isReservedWord(field.name)
     ? field.name
     : quote(field.name);

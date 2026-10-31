@@ -72,13 +72,32 @@ export interface CustomField {
   type: CustomType;
 }
 
-export type Field = SystemField | CustomField;
+/**
+ * A declared index on a ticket property's value (M1-129; ADR-083): queries name it as
+ * `ticket.property[key].path` or by its alias. Its type is the custom type it compares like:
+ * number, labels (exact strings), text (words), datetime or user. It has no history.
+ */
+export interface PropertyField {
+  kind: 'property';
+  /** The index's id; its values are in the property side tables under it. */
+  indexId: number;
+  key: string;
+  path: string;
+  /** How messages name it: `ticket.property[key].path`, or its alias. */
+  name: string;
+  alias: string | null;
+  type: Extract<CustomType, 'number' | 'labels' | 'text' | 'datetime' | 'user'>;
+}
+
+export type Field = SystemField | CustomField | PropertyField;
 
 export interface Catalogue {
   systems: readonly SystemField[];
   customs: readonly CustomField[];
   /** Track key to ID, so `track = ABC` (Jira: `project = ABC`) becomes a number. */
   trackKeys: Readonly<Record<string, number>>;
+  /** Declared ticket property indexes (M1-129). */
+  properties?: readonly PropertyField[];
 }
 
 /** Operators, grouped as section 1.2 groups them. */
@@ -121,7 +140,9 @@ export const OPERATORS_BY_TYPE: Readonly<Record<FieldType, readonly OperatorFami
 
 export const takes = (field: Field, family: OperatorFamily): boolean =>
   OPERATORS_BY_TYPE[field.type].includes(family) &&
-  (family !== 'history' || field.kind === 'custom' || field.history !== null);
+  (family !== 'history' ||
+    field.kind === 'custom' ||
+    (field.kind === 'system' && field.history !== null));
 
 type Def = Omit<SystemField, 'kind' | 'aliases'> & { aliases?: readonly string[] };
 const system = (d: Def): SystemField => ({
@@ -397,8 +418,9 @@ export const SYSTEM_FIELDS: readonly SystemField[] = [
 export function makeCatalogue(
   customs: readonly CustomField[] = [],
   trackKeys: Readonly<Record<string, number>> = {},
+  properties: readonly PropertyField[] = [],
 ): Catalogue {
-  return { systems: SYSTEM_FIELDS, customs, trackKeys };
+  return { systems: SYSTEM_FIELDS, customs, trackKeys, properties };
 }
 
 export type FieldLookup =
@@ -413,11 +435,16 @@ export type FieldLookup =
  */
 export function findField(
   catalogue: Catalogue,
-  ref: { name: string; custom?: number },
+  ref: { name: string; custom?: number; property?: { key: string; path: string } },
 ): FieldLookup {
   if (ref.custom !== undefined) {
     const custom = catalogue.customs.find((f) => f.id === ref.custom);
     return custom ? { field: custom } : { missing: true };
+  }
+  if (ref.property) {
+    const { key, path } = ref.property;
+    const found = catalogue.properties?.find((p) => p.key === key && p.path === path);
+    return found ? { field: found } : { missing: true };
   }
   const wanted = ref.name.toLowerCase();
   const system = catalogue.systems.find(
@@ -427,13 +454,16 @@ export function findField(
   const customs = catalogue.customs.filter((f) => f.name.toLowerCase() === wanted);
   if (customs.length === 1) return { field: customs[0] as CustomField };
   if (customs.length > 1) return { ambiguous: customs };
+  // A property index's alias comes after every field's name (it cannot take one; ADR-083).
+  const alias = catalogue.properties?.find((p) => p.alias?.toLowerCase() === wanted);
+  if (alias) return { field: alias };
   return { missing: true };
 }
 
 /** A field by name, alias or id; undefined when none or several match. */
 export function lookupField(
   catalogue: Catalogue,
-  ref: { name: string; custom?: number },
+  ref: { name: string; custom?: number; property?: { key: string; path: string } },
 ): Field | undefined {
   const found = findField(catalogue, ref);
   return 'field' in found ? found.field : undefined;

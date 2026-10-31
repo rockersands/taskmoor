@@ -275,6 +275,35 @@ describe('API v1 contract (M1-065)', () => {
     await call('POST', '/api/v1/sprints/:id/complete', `/api/v1/sprints/${sprint.id}/complete`, {
       moveTo: { type: 'backlog' },
     });
+    // Entity properties (M1-129): every kind, set twice (201, then 200), read, listed, deleted.
+    const index = (
+      await call('POST', '/api/v1/admin/property-indexes', '/api/v1/admin/property-indexes', {
+        key: 'api.review',
+        path: 'state',
+        type: 'string',
+      })
+    ).propertyIndex;
+    await call('GET', '/api/v1/admin/property-indexes', '/api/v1/admin/property-indexes');
+    for (const [base, owner] of [
+      ['/api/v1/tickets', a.key],
+      ['/api/v1/tracks', track.key],
+      ['/api/v1/users', 'me'],
+      ['/api/v1/boards', board.id],
+      ['/api/v1/sprints', sprint.id],
+    ] as const) {
+      const url = `${base}/${owner}/properties/api.review`;
+      const template = `${base}/:id/properties/:key`;
+      await call('PUT', template, url, { value: { state: 'pending' } });
+      await call('PUT', template, url, { value: { state: 'approved', by: [1] } });
+      await call('GET', template, url);
+      await call('GET', `${base}/:id/properties`, `${base}/${owner}/properties`);
+      await call('DELETE', template, url);
+    }
+    await call(
+      'DELETE',
+      '/api/v1/admin/property-indexes/:id',
+      `/api/v1/admin/property-indexes/${index.id}`,
+    );
     const release = (
       await call('POST', '/api/v1/tracks/:id/releases', `/api/v1/tracks/${track.id}/releases`, {
         name: '1.0',

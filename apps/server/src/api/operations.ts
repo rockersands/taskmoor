@@ -11,6 +11,7 @@ import {
 } from '../routes/comments';
 import { createLinkBody } from '../routes/links';
 import { metaAnswer, metaQuery } from '../routes/meta';
+import { propertyIndexBody, putPropertyBody } from '../routes/properties';
 import { createReleaseBody, archivedQuery as releaseListQuery } from '../routes/releases';
 import {
   createBody as savedSearchCreateBody,
@@ -55,6 +56,65 @@ const format = z
   .strict();
 const one = <K extends string>(key: K, schema: z.ZodType) =>
   z.object({ [key]: schema } as Record<K, z.ZodType>);
+
+/** The four operations on the properties of one kind of entity (M1-129; API-013). */
+function propertyOperations(
+  base: string,
+  name: string,
+  owner: string,
+  rights: string,
+): Operation[] {
+  const params = { id: owner };
+  const keyed = { ...params, key: 'The property key: 1 to 255 characters, percent-encoded.' };
+  return [
+    op({
+      method: 'GET',
+      path: `${base}/:id/properties`,
+      id: `list${name}Properties`,
+      tag: 'Properties',
+      summary: `The property keys of a ${name.toLowerCase()}`,
+      params,
+      responses: {
+        200: {
+          description: 'Its keys, in order, with when each was last set.',
+          schema: z.object({ properties: z.array(s.propertyKey) }).loose(),
+        },
+      },
+    }),
+    op({
+      method: 'GET',
+      path: `${base}/:id/properties/:key`,
+      id: `get${name}Property`,
+      tag: 'Properties',
+      summary: `One property of a ${name.toLowerCase()}`,
+      params: keyed,
+      responses: { 200: { description: 'The property.', schema: one('property', s.property) } },
+    }),
+    op({
+      method: 'PUT',
+      path: `${base}/:id/properties/:key`,
+      id: `set${name}Property`,
+      tag: 'Properties',
+      summary: `Set a property of a ${name.toLowerCase()}`,
+      description: `Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. ${rights}`,
+      params: keyed,
+      body: putPropertyBody,
+      responses: {
+        200: { description: 'Replaced.', schema: one('property', s.property) },
+        201: { description: 'Set for the first time.', schema: one('property', s.property) },
+      },
+    }),
+    op({
+      method: 'DELETE',
+      path: `${base}/:id/properties/:key`,
+      id: `delete${name}Property`,
+      tag: 'Properties',
+      summary: `Delete a property of a ${name.toLowerCase()}`,
+      params: keyed,
+      responses: { 204: { description: 'Deleted.' } },
+    }),
+  ];
+}
 
 export const OPERATIONS: readonly Operation[] = [
   // The instance (M1-106): what a frontend or a client reads before anything else.
@@ -408,6 +468,75 @@ export const OPERATIONS: readonly Operation[] = [
     summary: 'Remove a link',
     params: { ...ticketParam, linkId: 'The link’s id.' },
     responses: { 204: { description: 'Removed.' } },
+  }),
+
+  // Entity properties (M1-129; API-013): an integration's JSON under its own key.
+  ...propertyOperations(
+    '/api/v1/tickets',
+    'Ticket',
+    ticketParam.id,
+    'Reading needs the right to see the ticket; writing, the right to edit it. The values of declared property indexes become searchable as `ticket.property[key].path`.',
+  ),
+  ...propertyOperations(
+    '/api/v1/tracks',
+    'Track',
+    trackParam.id,
+    'Reading needs the right to browse the track; writing, the right to administer it.',
+  ),
+  ...propertyOperations(
+    '/api/v1/users',
+    'User',
+    'The person: their id, or `me`.',
+    'Only the person and site administrators read and write a person’s properties.',
+  ),
+  ...propertyOperations(
+    '/api/v1/boards',
+    'Board',
+    'The board’s id.',
+    'Reading needs the right to see the board; writing, the right to configure it.',
+  ),
+  ...propertyOperations(
+    '/api/v1/sprints',
+    'Sprint',
+    'The sprint’s id.',
+    'Reading needs the right to see its board; writing, the right to manage its sprints.',
+  ),
+  op({
+    method: 'GET',
+    path: '/api/v1/admin/property-indexes',
+    id: 'listPropertyIndexes',
+    tag: 'Properties',
+    summary: 'The declared property indexes',
+    description: 'For site and configuration administrators.',
+    responses: {
+      200: {
+        description: 'Every index, oldest first.',
+        schema: z.object({ propertyIndexes: z.array(s.propertyIndex) }).loose(),
+      },
+    },
+  }),
+  op({
+    method: 'POST',
+    path: '/api/v1/admin/property-indexes',
+    id: 'createPropertyIndex',
+    tag: 'Properties',
+    summary: 'Make a value inside ticket properties searchable',
+    description:
+      'Declares that the values found at `path` inside the `key` property of tickets are of `type`, and fills the index from the properties already set. Queries then read them as `ticket.property[key].path`, or by the `alias`. An array along the path gives one value per element; a value of another type is left out. For site and configuration administrators.',
+    body: propertyIndexBody,
+    responses: {
+      201: { description: 'The new index.', schema: one('propertyIndex', s.propertyIndex) },
+    },
+  }),
+  op({
+    method: 'DELETE',
+    path: '/api/v1/admin/property-indexes/:id',
+    id: 'deletePropertyIndex',
+    tag: 'Properties',
+    summary: 'Drop a property index',
+    description: 'The properties stay; queries can no longer read the values.',
+    params: { id: 'The index’s id.' },
+    responses: { 204: { description: 'Dropped.' } },
   }),
 
   // Time tracking.

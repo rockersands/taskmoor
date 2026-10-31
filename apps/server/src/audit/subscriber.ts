@@ -132,6 +132,9 @@ export const AUDITED_EVENTS = [
   'field.created',
   'field.updated',
   'field.deleted',
+  // What becomes searchable in ticket properties (M1-129).
+  'property_index.created',
+  'property_index.deleted',
   'field_context.created',
   'field_context.updated',
   'field_context.deleted',
@@ -229,6 +232,8 @@ export const AUDITED_EVENTS = [
 ] as const satisfies readonly EventType[];
 
 const TICKET_ACTIVITY = 'ticket activity: the ticket history keeps it (M1-009), not the audit log';
+const PROPERTY_DATA =
+  'integration data on an entity (M1-129): the property is its own record, not a change of configuration';
 export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'ticket.created': TICKET_ACTIVITY,
   'ticket.updated': TICKET_ACTIVITY,
@@ -238,6 +243,18 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'ticket.linked': TICKET_ACTIVITY,
   'ticket.unlinked': TICKET_ACTIVITY,
   'ticket.web_link_added': TICKET_ACTIVITY,
+  // An integration's data on an entity (M1-129): the property holds its own state; declaring
+  // a property index is configuration and audited.
+  'ticket.property_set': PROPERTY_DATA,
+  'ticket.property_deleted': PROPERTY_DATA,
+  'track.property_set': PROPERTY_DATA,
+  'track.property_deleted': PROPERTY_DATA,
+  'user.property_set': PROPERTY_DATA,
+  'user.property_deleted': PROPERTY_DATA,
+  'board.property_set': PROPERTY_DATA,
+  'board.property_deleted': PROPERTY_DATA,
+  'sprint.property_set': PROPERTY_DATA,
+  'sprint.property_deleted': PROPERTY_DATA,
   'ticket.web_link_updated': TICKET_ACTIVITY,
   'ticket.web_link_removed': TICKET_ACTIVITY,
   'ticket.followed': 'ticket activity: who follows a ticket, not a security or configuration event',

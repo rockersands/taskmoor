@@ -9,6 +9,12 @@ export interface FieldRef {
   name: string;
   /** Set for `cf[n]`; `name` is then "cf". */
   custom?: number;
+  /**
+   * Set for a ticket property's value (M1-129): `ticket.property[key].path`, in the Jira
+   * dialect `issue.property[key].path`; `name` is then that prefix. The path is '' for the
+   * whole value.
+   */
+  property?: { key: string; path: string };
   span: Span;
 }
 

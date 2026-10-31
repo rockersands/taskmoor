@@ -87,5 +87,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [080](0080-cross-origin-auth.md) | Cross-origin sign-in with the backend's cookie on one site and OAuth across sites | Accepted |
 | [081](0081-dc-backup-mapping.md) | The Data Center backup import: a streaming stage of per-kind files, and a mapping report by name | Accepted |
 | [082](0082-load-tests.md) | Load tests with k6 against the real server, and a sizing table computed from them | Accepted |
+| [083](0083-entity-properties.md) | Entity properties in a table per entity kind, and declared indexes in typed side tables | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

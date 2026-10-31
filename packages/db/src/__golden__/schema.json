@@ -288,6 +288,21 @@
       "CREATE INDEX board_admin_user_idx ON public.board_admin USING btree (user_id)"
     ]
   },
+  "board_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "board_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX board_property_key_idx ON public.board_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX board_property_pkey ON public.board_property USING btree (board_id, key)"
+    ]
+  },
   "bulk_item": {
     "columns": [
       "operation_id bigint not null",
@@ -1162,6 +1177,73 @@
       "CREATE UNIQUE INDEX organization_domain_pkey ON public.organization_domain USING btree (workspace_id, domain)"
     ]
   },
+  "p_number": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value numeric not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_number_field_created_idx ON public.p_number USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_number_field_value_idx ON public.p_number USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_number_pkey ON public.p_number USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_number_track_field_value_idx ON public.p_number USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "p_text": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value text not null",
+      "sort_key text not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_text_field_created_idx ON public.p_text USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_text_field_sort_idx ON public.p_text USING btree (field_id, sort_key, ticket_id)",
+      "CREATE INDEX p_text_field_value_idx ON public.p_text USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_text_pkey ON public.p_text USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_text_track_field_value_idx ON public.p_text USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE INDEX p_text_words_idx ON public.p_text USING gin (to_tsvector('taskmoor_search'::regconfig, value))"
+    ]
+  },
+  "p_time": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value timestamp with time zone not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_time_field_created_idx ON public.p_time USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_time_field_value_idx ON public.p_time USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_time_pkey ON public.p_time USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_time_track_field_value_idx ON public.p_time USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "p_user": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value integer not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_user_field_created_idx ON public.p_user USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_user_field_value_idx ON public.p_user USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_user_pkey ON public.p_user USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_user_track_field_value_idx ON public.p_user USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
   "password_link": {
     "columns": [
       "id integer not null default nextval('password_link_id_seq'::regclass)",
@@ -1224,6 +1306,23 @@
     "indexes": [
       "CREATE UNIQUE INDEX priority_set_member_pkey ON public.priority_set_member USING btree (priority_set_id, priority_id)",
       "CREATE INDEX priority_set_member_priority_idx ON public.priority_set_member USING btree (priority_id)"
+    ]
+  },
+  "property_index": {
+    "columns": [
+      "id integer not null default nextval('property_index_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "key text not null",
+      "path text not null default ''::text",
+      "type text not null",
+      "alias text",
+      "created_at timestamp with time zone not null default now()",
+      "created_by integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX property_index_alias_idx ON public.property_index USING btree (workspace_id, lower(alias)) WHERE (alias IS NOT NULL)",
+      "CREATE UNIQUE INDEX property_index_pkey ON public.property_index USING btree (id)",
+      "CREATE UNIQUE INDEX property_index_workspace_id_key_path_key ON public.property_index USING btree (workspace_id, key, path)"
     ]
   },
   "rate_limit_policy": {
@@ -1541,6 +1640,21 @@
       "CREATE INDEX sprint_change_ticket_idx ON public.sprint_change USING btree (ticket_id)"
     ]
   },
+  "sprint_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "sprint_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX sprint_property_key_idx ON public.sprint_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX sprint_property_pkey ON public.sprint_property USING btree (sprint_id, key)"
+    ]
+  },
   "sprint_ticket": {
     "columns": [
       "workspace_id integer not null",
@@ -1846,6 +1960,21 @@
       "CREATE UNIQUE INDEX ticket_link_unique_idx ON public.ticket_link USING btree (source_id, link_type_id, target_id)"
     ]
   },
+  "ticket_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_property_key_idx ON public.ticket_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX ticket_property_pkey ON public.ticket_property USING btree (ticket_id, key)"
+    ]
+  },
   "ticket_release": {
     "columns": [
       "workspace_id integer not null",
@@ -2097,6 +2226,21 @@
       "CREATE INDEX track_key_history_track_idx ON public.track_key_history USING btree (track_id)"
     ]
   },
+  "track_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX track_property_key_idx ON public.track_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX track_property_pkey ON public.track_property USING btree (track_id, key)"
+    ]
+  },
   "track_role_actor": {
     "columns": [
       "workspace_id integer not null",
@@ -2224,6 +2368,21 @@
     ],
     "indexes": [
       "CREATE UNIQUE INDEX user_preference_pkey ON public.user_preference USING btree (user_id)"
+    ]
+  },
+  "user_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX user_property_key_idx ON public.user_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX user_property_pkey ON public.user_property USING btree (user_id, key)"
     ]
   },
   "user_session": {

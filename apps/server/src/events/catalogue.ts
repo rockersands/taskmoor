@@ -1331,6 +1331,52 @@ export const EVENT_TYPES = {
     subject: 'webhook',
     payload: z.object({ deliveryIds: z.array(z.string()) }),
   },
+  // Entity properties (M1-129; ADR-083): an integration's JSON under a key on an entity. The
+  // events name the key, never the value, which may be large or private to the integration.
+  'ticket.property_set': {
+    subject: 'ticket',
+    payload: z.object({ key: z.string(), propertyKey: z.string(), created: z.boolean() }),
+  },
+  'ticket.property_deleted': {
+    subject: 'ticket',
+    payload: z.object({ key: z.string(), propertyKey: z.string() }),
+  },
+  'track.property_set': {
+    subject: 'track',
+    payload: z.object({ trackKey: z.string(), propertyKey: z.string(), created: z.boolean() }),
+  },
+  'track.property_deleted': {
+    subject: 'track',
+    payload: z.object({ trackKey: z.string(), propertyKey: z.string() }),
+  },
+  'user.property_set': {
+    subject: 'user',
+    payload: z.object({ propertyKey: z.string(), created: z.boolean() }),
+  },
+  'user.property_deleted': { subject: 'user', payload: z.object({ propertyKey: z.string() }) },
+  'board.property_set': {
+    subject: 'board',
+    payload: z.object({ propertyKey: z.string(), created: z.boolean() }),
+  },
+  'board.property_deleted': { subject: 'board', payload: z.object({ propertyKey: z.string() }) },
+  'sprint.property_set': {
+    subject: 'sprint',
+    payload: z.object({ propertyKey: z.string(), created: z.boolean() }),
+  },
+  'sprint.property_deleted': { subject: 'sprint', payload: z.object({ propertyKey: z.string() }) },
+  'property_index.created': {
+    subject: 'property_index',
+    payload: z.object({
+      key: z.string(),
+      path: z.string(),
+      type: z.enum(['number', 'string', 'text', 'date', 'user']),
+      alias: z.string().nullable(),
+    }),
+  },
+  'property_index.deleted': {
+    subject: 'property_index',
+    payload: z.object({ key: z.string(), path: z.string() }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

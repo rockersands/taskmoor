@@ -20,6 +20,7 @@ import {
   RESULT_NAMES,
 } from './functions';
 import { QueryError } from './lexer';
+import { printField } from './print';
 import { parseTextSearch, TextSearchError } from './text';
 
 /** What the query needs from its surroundings. */
@@ -205,6 +206,12 @@ class Resolver {
       const ids = found.ambiguous.map((f) => `cf[${f.id}]`).join(', ');
       throw fail(
         `Several custom fields are called "${ref.name}" (${ids}); name one by its id`,
+        ref.span,
+      );
+    }
+    if (ref.property) {
+      throw fail(
+        `${printField(ref)} is not searchable: no property index is declared for it`,
         ref.span,
       );
     }

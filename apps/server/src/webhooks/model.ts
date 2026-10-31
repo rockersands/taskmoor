@@ -34,6 +34,8 @@ export const WEBHOOK_EVENTS = [
   'ticket.web_link_added',
   'ticket.web_link_updated',
   'ticket.web_link_removed',
+  'ticket.property_set',
+  'ticket.property_deleted',
   'comment.created',
   'comment.updated',
   'comment.deleted',

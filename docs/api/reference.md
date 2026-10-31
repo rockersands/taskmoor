@@ -11,6 +11,7 @@ it by hand. How to authenticate, page, read errors and what "stable" promises ar
 - [Comments](#comments)
 - [Instance](#instance)
 - [Links](#links)
+- [Properties](#properties)
 - [Reference](#reference)
 - [Releases](#releases)
 - [Search](#search)
@@ -500,6 +501,442 @@ Responses:
 Responses:
 
 - 204: Removed.
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+## Properties
+
+### The declared property indexes
+
+`GET /api/v1/admin/property-indexes`, operation `listPropertyIndexes`, access: admin.
+
+For site and configuration administrators.
+
+Responses:
+
+- 200: Every index, oldest first. Body: `propertyIndexes` (array of [PropertyIndex](#schema-propertyindex)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+
+### Make a value inside ticket properties searchable
+
+`POST /api/v1/admin/property-indexes`, operation `createPropertyIndex`, access: admin.
+
+Declares that the values found at `path` inside the `key` property of tickets are of `type`, and fills the index from the properties already set. Queries then read them as `ticket.property[key].path`, or by the `alias`. An array along the path gives one value per element; a value of another type is left out. For site and configuration administrators.
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `key` | string | yes |  |
+| `path` | string | no |  |
+| `type` | `"number"`, `"string"`, `"text"`, `"date"`, `"user"` | yes |  |
+| `alias` | string or null | no |  |
+
+Responses:
+
+- 201: The new index. Body: `propertyIndex` ([PropertyIndex](#schema-propertyindex)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### Drop a property index
+
+`DELETE /api/v1/admin/property-indexes/{id}`, operation `deletePropertyIndex`, access: admin.
+
+The properties stay; queries can no longer read the values.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The index’s id. |
+
+Responses:
+
+- 204: Dropped.
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### The property keys of a board
+
+`GET /api/v1/boards/{id}/properties`, operation `listBoardProperties`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The board’s id. |
+
+Responses:
+
+- 200: Its keys, in order, with when each was last set. Body: `properties` (array of [PropertyKey](#schema-propertykey)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Delete a property of a board
+
+`DELETE /api/v1/boards/{id}/properties/{key}`, operation `deleteBoardProperty`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The board’s id. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 204: Deleted.
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### One property of a board
+
+`GET /api/v1/boards/{id}/properties/{key}`, operation `getBoardProperty`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The board’s id. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 200: The property. Body: `property` ([Property](#schema-property)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Set a property of a board
+
+`PUT /api/v1/boards/{id}/properties/{key}`, operation `setBoardProperty`, access: write.
+
+Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see the board; writing, the right to configure it.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The board’s id. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `value` | any | yes |  |
+
+Responses:
+
+- 200: Replaced. Body: `property` ([Property](#schema-property)).
+- 201: Set for the first time. Body: `property` ([Property](#schema-property)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### The property keys of a sprint
+
+`GET /api/v1/sprints/{id}/properties`, operation `listSprintProperties`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The sprint’s id. |
+
+Responses:
+
+- 200: Its keys, in order, with when each was last set. Body: `properties` (array of [PropertyKey](#schema-propertykey)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Delete a property of a sprint
+
+`DELETE /api/v1/sprints/{id}/properties/{key}`, operation `deleteSprintProperty`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The sprint’s id. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 204: Deleted.
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### One property of a sprint
+
+`GET /api/v1/sprints/{id}/properties/{key}`, operation `getSprintProperty`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The sprint’s id. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 200: The property. Body: `property` ([Property](#schema-property)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Set a property of a sprint
+
+`PUT /api/v1/sprints/{id}/properties/{key}`, operation `setSprintProperty`, access: write.
+
+Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see its board; writing, the right to manage its sprints.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The sprint’s id. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `value` | any | yes |  |
+
+Responses:
+
+- 200: Replaced. Body: `property` ([Property](#schema-property)).
+- 201: Set for the first time. Body: `property` ([Property](#schema-property)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### The property keys of a ticket
+
+`GET /api/v1/tickets/{id}/properties`, operation `listTicketProperties`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+
+Responses:
+
+- 200: Its keys, in order, with when each was last set. Body: `properties` (array of [PropertyKey](#schema-propertykey)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Delete a property of a ticket
+
+`DELETE /api/v1/tickets/{id}/properties/{key}`, operation `deleteTicketProperty`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 204: Deleted.
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### One property of a ticket
+
+`GET /api/v1/tickets/{id}/properties/{key}`, operation `getTicketProperty`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 200: The property. Body: `property` ([Property](#schema-property)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Set a property of a ticket
+
+`PUT /api/v1/tickets/{id}/properties/{key}`, operation `setTicketProperty`, access: write.
+
+Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to see the ticket; writing, the right to edit it. The values of declared property indexes become searchable as `ticket.property[key].path`.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `value` | any | yes |  |
+
+Responses:
+
+- 200: Replaced. Body: `property` ([Property](#schema-property)).
+- 201: Set for the first time. Body: `property` ([Property](#schema-property)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### The property keys of a track
+
+`GET /api/v1/tracks/{id}/properties`, operation `listTrackProperties`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The track: its id or its key. |
+
+Responses:
+
+- 200: Its keys, in order, with when each was last set. Body: `properties` (array of [PropertyKey](#schema-propertykey)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Delete a property of a track
+
+`DELETE /api/v1/tracks/{id}/properties/{key}`, operation `deleteTrackProperty`, access: write.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The track: its id or its key. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 204: Deleted.
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### One property of a track
+
+`GET /api/v1/tracks/{id}/properties/{key}`, operation `getTrackProperty`, access: read.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The track: its id or its key. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 200: The property. Body: `property` ([Property](#schema-property)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Set a property of a track
+
+`PUT /api/v1/tracks/{id}/properties/{key}`, operation `setTrackProperty`, access: write.
+
+Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Reading needs the right to browse the track; writing, the right to administer it.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The track: its id or its key. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `value` | any | yes |  |
+
+Responses:
+
+- 200: Replaced. Body: `property` ([Property](#schema-property)).
+- 201: Set for the first time. Body: `property` ([Property](#schema-property)).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### The property keys of a user
+
+`GET /api/v1/users/{id}/properties`, operation `listUserProperties`, access: admin.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The person: their id, or `me`. |
+
+Responses:
+
+- 200: Its keys, in order, with when each was last set. Body: `properties` (array of [PropertyKey](#schema-propertykey)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Delete a property of a user
+
+`DELETE /api/v1/users/{id}/properties/{key}`, operation `deleteUserProperty`, access: admin.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The person: their id, or `me`. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 204: Deleted.
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+- 409: The resource changed or is in a state that refuses this; read it again.
+
+### One property of a user
+
+`GET /api/v1/users/{id}/properties/{key}`, operation `getUserProperty`, access: admin.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The person: their id, or `me`. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Responses:
+
+- 200: The property. Body: `property` ([Property](#schema-property)).
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Set a property of a user
+
+`PUT /api/v1/users/{id}/properties/{key}`, operation `setUserProperty`, access: admin.
+
+Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Only the person and site administrators read and write a person’s properties.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The person: their id, or `me`. |
+| `key` | path | string | yes | The property key: 1 to 255 characters, percent-encoded. |
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `value` | any | yes |  |
+
+Responses:
+
+- 200: Replaced. Body: `property` ([Property](#schema-property)).
+- 201: Set for the first time. Body: `property` ([Property](#schema-property)).
 - 400: The request is not valid: see `error` and, for fields, `fields`.
 - 401: No session or token, or an expired one.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
@@ -1346,6 +1783,34 @@ A person, by id and display name.
 | `name` | string | yes |  |
 | `description` | string | yes |  |
 | `order` | integer | yes |  |
+
+### Schema: Property
+
+A JSON document an integration keeps under a key.
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `key` | string | yes |  |
+| `value` | any | yes | Any JSON value, as it was set. |
+| `createdAt` | string | yes |  |
+| `updatedAt` | string | yes |  |
+
+### Schema: PropertyIndex
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `id` | integer | yes |  |
+| `key` | string | yes |  |
+| `path` | string | yes | Dot-separated names inside the value; empty for all of it. |
+| `type` | `"number"`, `"string"`, `"text"`, `"date"`, `"user"` | yes |  |
+| `alias` | string or null | yes |  |
+
+### Schema: PropertyKey
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `key` | string | yes |  |
+| `updatedAt` | string | yes |  |
 
 ### Schema: QueryCheck
 

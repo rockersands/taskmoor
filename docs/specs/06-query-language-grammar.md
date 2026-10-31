@@ -53,7 +53,9 @@ list       = "(" values ")" | function-call
 values     = value { "," value }
 value      = string | number | word | EMPTY | NULL | function-call
 function-call = word "(" [ values ] ")"
-field      = word | string | "cf" "[" number "]"
+field      = word | string | "cf" "[" number "]" | property
+property   = ( "ticket.property" | "issue.property" ) "[" ( word | string | number ) "]"
+             [ "." word { "." word } ]
 order-by   = ORDER BY sort { "," sort }
 sort       = field [ ASC | DESC ]
 compare-op = "=" | "!=" | "<" | "<=" | ">" | ">=" | "~" | "!~"
@@ -65,6 +67,10 @@ compare-op = "=" | "!=" | "<" | "<=" | ">" | ">=" | "~" | "!~"
 - `IN` and `WAS IN` take a list of at least one value; `IN someFunction()` takes the list a
   function returns.
 - Without `ASC` or `DESC` a sort is ascending.
+- A property reference names a ticket property's key in brackets and, after it with no space, a
+  dot path into its JSON value (M1-129, API-013): `ticket.property[support].level`. An empty
+  key or an empty step of the path is a syntax error. Only values a declared property index
+  covers resolve (file 01b, section 1.5).
 - Parentheses, `NOT` and function calls together nest at most 100 levels; a deeper query is
   refused with an error rather than exhausting the parser.
 
@@ -77,7 +83,8 @@ and what a value means are the resolver's rules (file 01b, sections 1.2 to 1.6).
 
 - writes keywords in upper case, `IS NULL` as `IS EMPTY`, and every sort with its direction;
 - double-quotes strings (escaping `"` and `\`), and quotes field names that are not plain words
-  or that are reserved; custom fields by id print as `cf[n]`;
+  or that are reserved; custom fields by id print as `cf[n]`; a property reference prints its
+  key bare when it is a plain word that does not start with a digit, and quoted otherwise;
 - prints a one-value `WAS IN (x)` as `WAS x` and a list made of one function as `IN f()`;
 - adds parentheses only where precedence needs them, or where the same operator nests (so the
   tree keeps its shape when read back), and never around the whole condition.

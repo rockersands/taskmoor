@@ -194,7 +194,11 @@ function matchesFrom(
   const { words: each, prefix } = expansions(term);
   const probes = each.map((w) => `${operand(w)}${prefix ? ':*' : ''}`);
   const on = or(words.map((w) => sql<boolean>`${w} @@ to_tsquery(${config}, x.q)`));
-  const live = table === 'v_text' ? TRUE : sql<boolean>`${raw(alias)}.deleted_at IS NULL`;
+  // Side rows exist for live tickets only; other tables (tickets, comments) mark their trash.
+  const live =
+    table === 'v_text' || table === 'p_text'
+      ? TRUE
+      : sql<boolean>`${raw(alias)}.deleted_at IS NULL`;
   return sql`unnest(${array(probes, 'text')}) AS x (q) CROSS JOIN LATERAL (SELECT * FROM ${raw(table)} ${raw(alias)} WHERE ${and([on, live])} OFFSET 0) ${raw(alias)}`;
 }
 

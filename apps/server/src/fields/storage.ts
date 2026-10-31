@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { syncPropertyValues } from '../properties/model';
 import type { Catalog, FieldDef } from './catalog';
 import { type FieldConfig, type FieldType, fold, plainText, type Stored, storageOf } from './types';
 
@@ -154,6 +155,9 @@ export async function syncFieldValues(
         .execute();
     }
   }
+  // A full rewrite (create, move, trash, restore, import) also rewrites the indexed property
+  // values (M1-129), which copy the same track and creation time and leave with the trash.
+  if (fieldIds === undefined) await syncPropertyValues(trx, ids);
 }
 
 /** The field ids whose values differ between two `fields` documents. */

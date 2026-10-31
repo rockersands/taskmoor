@@ -33,6 +33,7 @@ export {
   type FieldType,
   lookupField,
   makeCatalogue,
+  type PropertyField,
   SYSTEM_FIELDS,
   type SystemField,
 } from './fields';
