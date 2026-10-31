@@ -37,28 +37,16 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   (M1-097) should offer it.
 - **AI provider key:** not yet. M1-073 and M1-074's live tests stay skipped.
 - **Spanish review:** the user does it once every M1 task is finished.
-- **Release signing key** (M1-100): the user asked Claude to make it. A cloud container cannot
-  keep a private key, so the **next session on the Mac** does this, once:
-
-  ```sh
-  umask 077
-  mkdir -p ~/.taskmoor-release
-  openssl ecparam -name prime256v1 -genkey -noout -out ~/.taskmoor-release/release-key.pem
-  openssl ec -in ~/.taskmoor-release/release-key.pem -pubout -out tools/airgap/taskmoor-release.pub
-  # Keep the private key in the Keychain and remove the file:
-  security add-generic-password -a taskmoor -s taskmoor-release-key \
-    -w "$(base64 < ~/.taskmoor-release/release-key.pem)"
-  rm ~/.taskmoor-release/release-key.pem
-  ```
-
-  To sign a bundle: `security find-generic-password -s taskmoor-release-key -w | base64 -d >
-  "$TMPDIR/k.pem"`, then `SIGNING_KEY="$TMPDIR/k.pem" PUBLIC_KEY=tools/airgap/taskmoor-release.pub
-  bash tools/airgap/bundle.sh <version>`, then delete `$TMPDIR/k.pem`.
-  - Commit **only** `tools/airgap/taskmoor-release.pub`. `.gitignore` now refuses `*.pem` and
-    `*.key`.
-  - Before pushing, check `git show --stat HEAD` holds no private key.
-  - Tell the user where the private key is, so they can back it up.
-  - Publishing images on ghcr.io is still the user's call.
+- **Release signing key** (M1-100, done): made in the cloud session on 2026-10-31 at the user's
+  request (they chose this over making it on the Mac). The private key (ECDSA P-256) is in the
+  user's Google Drive, folder "Taskmoor release signing key" inside "JIRA knockoff", with a
+  README; it was never in the repository and was deleted from the container after the upload.
+  The public key is `tools/airgap/taskmoor-release.pub` (SHA-256 of its DER form starts
+  `bbca863a`). To sign a bundle: download the key to a private folder outside the clone, run
+  `SIGNING_KEY=<file> PUBLIC_KEY=tools/airgap/taskmoor-release.pub bash tools/airgap/bundle.sh
+  <version>`, delete the file. `.gitignore` refuses `*.pem` and `*.key`. Publishing images on
+  ghcr.io is still the user's call.
+- **The 1M-issue import run (M1-091) goes last**, after every other M1 task (the user, 2026-10-31).
 
 ## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 to M1-071, M1-108, M1-112, M1-089 to M1-092, M1-095 and three fixes
 
