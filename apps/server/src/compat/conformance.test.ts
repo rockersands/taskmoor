@@ -16,13 +16,13 @@ const nextAddress = () => `100.99.${Math.floor(++address / 250)}.${(address % 25
  * The Jira-compatible API's conformance suite against this server (M1-068; API-003, API-014;
  * ADR-085): a site administrator with a shared project and a Scrum board runs every case, and
  * the result is the compatibility matrix in `docs/api/jira-compat/matrix.md`, which only this
- * test writes. Until the compatible API is served (M1-069, M1-070), every operation reads
- * missing or untested.
+ * test writes. It signs in as scripts do, with Basic: the email address and an API token.
  */
 describe('Jira-compatible API conformance (M1-068)', () => {
   const database = useMigratedDatabase();
   let app: FastifyInstance;
   let cookie = '';
+  let basic = '';
   let boardId = 0;
 
   const call = async (r: CompatRequest) => {
@@ -31,11 +31,11 @@ describe('Jira-compatible API conformance (M1-068)', () => {
       method: r.method as 'GET',
       url: `${r.path}${query}`,
       remoteAddress: nextAddress(),
-      headers: { cookie },
+      headers: { authorization: basic },
       ...(r.body !== undefined
         ? {
             payload: JSON.stringify(r.body),
-            headers: { cookie, 'content-type': 'application/json' },
+            headers: { authorization: basic, 'content-type': 'application/json' },
           }
         : {}),
     });
@@ -90,15 +90,89 @@ describe('Jira-compatible API conformance (M1-068)', () => {
     });
     expect(board.statusCode, board.body).toBe(201);
     boardId = board.json().board.id;
+    // Scripts sign in with Basic: the email address and an API token.
+    const token = await app.inject({
+      method: 'POST',
+      url: '/api/v1/account/tokens',
+      headers: { cookie },
+      remoteAddress: nextAddress(),
+      payload: { name: 'compat suite', scopes: ['read', 'write', 'admin'], expiresInDays: 1 },
+    });
+    expect(token.statusCode, token.body).toBe(201);
+    basic = `Basic ${Buffer.from(`ada@example.com:${token.json().token}`).toString('base64')}`;
   });
 
   afterAll(async () => {
     await app?.close();
   });
 
+  const rest = (
+    method: 'GET' | 'POST',
+    url: string,
+    headers: Record<string, string>,
+    payload?: string,
+  ) =>
+    app.inject({
+      method,
+      url,
+      remoteAddress: nextAddress(),
+      headers: {
+        ...headers,
+        ...(payload !== undefined ? { 'content-type': 'application/json' } : {}),
+      },
+      ...(payload !== undefined ? { payload } : {}),
+    });
+
+  it('[API-002] signs scripts in with a token, Bearer or Basic, and nothing else', async () => {
+    const myself = '/rest/api/2/myself';
+    const token = Buffer.from(basic.slice('Basic '.length), 'base64')
+      .toString()
+      .split(':')[1] as string;
+    expect((await rest('GET', myself, { authorization: basic })).json()).toMatchObject({
+      displayName: 'Ada Admin',
+    });
+    expect((await rest('GET', myself, { authorization: `Bearer ${token}` })).statusCode).toBe(200);
+    // No credential, a cookie only, a password, or another person's address: refused alike.
+    const anonymous = await rest('GET', myself, {});
+    expect(anonymous.statusCode).toBe(401);
+    expect(anonymous.json()).toMatchObject({ errorMessages: [expect.any(String)], errors: {} });
+    expect(anonymous.headers['www-authenticate']).toContain('Basic');
+    expect((await rest('GET', myself, { cookie })).statusCode).toBe(401);
+    const password = `Basic ${Buffer.from(`ada@example.com:${PASSWORD}`).toString('base64')}`;
+    expect((await rest('GET', myself, { authorization: password })).statusCode).toBe(401);
+    const other = `Basic ${Buffer.from(`eve@example.com:${token}`).toString('base64')}`;
+    expect((await rest('GET', myself, { authorization: other })).statusCode).toBe(401);
+  });
+
+  it('[API-003] (2) refuses unknown fields by name, and takes an empty JSON body', async () => {
+    const made = await rest(
+      'POST',
+      '/rest/api/2/issue',
+      { authorization: basic },
+      JSON.stringify({
+        fields: {
+          project: { key: 'CMP' },
+          issuetype: { name: 'Chore' },
+          summary: 'Unknown field',
+          nonsense: 1,
+        },
+      }),
+    );
+    expect(made.statusCode).toBe(400);
+    expect(made.json().errors).toHaveProperty('nonsense');
+    const empty = await rest('POST', '/rest/api/2/search', { authorization: basic }, '');
+    expect(empty.statusCode, empty.body).toBe(200);
+  });
+
   it('[API-014] reports each operation’s state as the generated matrix', async () => {
     const report = await runCompatContract({ project: 'CMP', issueType: 'Chore', boardId, call });
     expect(report.operations.length).toBeGreaterThan(60);
+    // M1-069's core: every operation outside the Agile API is complete, but bulk label edits,
+    // which add labels per issue (native bulk edits set them; ADR-086).
+    const core = report.operations.filter((o) => o.family !== 'agile' && o.id !== 'bulkEditFields');
+    expect(core.filter((o) => o.state !== 'complete').map((o) => `${o.id}: ${o.state}`)).toEqual(
+      [],
+    );
     await expect(
       formatMatrix(report, 'Jira-compatible API: compatibility matrix'),
     ).toMatchFileSnapshot('../../../../docs/api/jira-compat/matrix.md');

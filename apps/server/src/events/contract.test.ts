@@ -3423,8 +3423,12 @@ describe('every mutation emits exactly one event (M1-005)', () => {
   ];
 
   it('covers every mutating route with a scenario or a stated exemption', () => {
+    // The Jira-compatible API (M1-069, ADR-086) changes nothing itself: it runs the native
+    // routes in-process, and their events are checked by their own scenarios here.
     const mutating = app.routeTable.filter(
-      (r) => MUTATING.includes(r.split(' ')[0] ?? '') || REDIRECT_MUTATIONS.includes(r),
+      (r) =>
+        (MUTATING.includes(r.split(' ')[0] ?? '') || REDIRECT_MUTATIONS.includes(r)) &&
+        !(r.split(' ')[1] ?? '').startsWith('/rest/'),
     );
     const covered = new Set([...scenarios.map((s) => s.route), ...Object.keys(EXEMPT)]);
     expect(

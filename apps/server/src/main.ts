@@ -133,6 +133,7 @@ const app = await buildApp({
   smtpConfigured: config.smtp !== undefined,
   ...(config.smtpPassword ? { smtpPassword: config.smtpPassword } : {}),
   queryTimeoutMs: config.queryTimeoutMs,
+  jiraCompat: config.jiraCompat,
 });
 const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
 

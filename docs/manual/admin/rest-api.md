@@ -1,8 +1,8 @@
 ---
 title: "The REST API"
 audience: admins
-sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md
-accessed: 2026-10-30
+sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md
+accessed: 2026-10-31
 attestation: own-words
 ---
 # The REST API
@@ -321,7 +321,49 @@ Creating, changing, deleting and replaying webhooks are audit events.
 
 ## The Jira-compatible API
 
-Taskmoor does not yet offer the Jira-compatible REST API, so tools written for that API cannot
-connect to it today. What the native API already shares with it is the Jira-compatible
-document format for rich text (`?format=adf`), and the query language also accepts the
-Jira-compatible field names (see [Search and the query language](../use/search.md)).
+Scripts and tools written for Jira's REST API can work with Taskmoor through its Jira-compatible
+API, under `/rest/api/2` and `/rest/api/3` on your server's address. Point a script at your
+Taskmoor address instead of the Jira one.
+
+**Signing in.** Use an API token (see [API tokens and service accounts](api-tokens.md)):
+
+- as a bearer token: `Authorization: Bearer <token>`; or
+- with Basic, as most Jira scripts do: your email address as the user name and the token as
+  the password. The email must be the token owner's.
+
+Passwords are not accepted, so a script cannot get past second factors. Browser sessions are not
+accepted either, so another site cannot use your session. The token's scopes apply: a `read`
+token can search and read but not change anything.
+
+**What works:**
+
+- **Issues:** create, read, edit (with `fields` and `update`), delete; transitions;
+  the change history; comments; worklogs; watchers; votes; remote links (with `globalId`);
+  issue properties; linking issues.
+- **Search:** `/search/jql` with `nextPageToken`, and the older `/search` with `startAt`,
+  `maxResults` and `total`. Queries use the Jira-compatible names, as in
+  [Search and the query language](../use/search.md).
+- **Bulk:**
+  - creating and reading many issues;
+  - bulk transitions and deletes, run as background tasks that `/bulk/queue/<id>` reports on;
+  - bulk label changes that replace the labels.
+- **Projects** (Taskmoor's tracks), their components (areas), versions (releases) and roles.
+  Also fields, issue types, priorities, resolutions (close reasons), statuses and link types;
+  filters (saved searches) and dashboards; the current user, user search, groups and
+  permissions; server information.
+- **Webhooks:** registering and listing them under `/rest/webhooks/1.0/webhook`, with the
+  Jira-compatible event names.
+
+Everything runs as the person the token belongs to, through Taskmoor's own API, so their
+permissions, field rules, history and notifications apply as in the app.
+
+**Not yet:**
+
+- the Agile API (`/rest/agile/1.0`: boards, sprints, backlog, rank);
+- attachments;
+- bulk label changes that add or remove labels issue by issue (they answer an error);
+- wiki markup on version 2. Version 2 carries Markdown for now; plain text reads the same.
+
+`docs/api/jira-compat/matrix.md` in the source of your release lists every operation and its
+state. Administrators can switch the compatible API off with `TASKMOOR_JIRA_COMPAT=off` (see
+[Configuration](configuration.md)).

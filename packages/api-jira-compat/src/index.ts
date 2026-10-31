@@ -22,3 +22,13 @@ export {
   plannedRuns,
   runCompatContract,
 } from './runner';
+export {
+  COMPAT_ROUTES,
+  fromNative,
+  type Native,
+  type NativeAnswer,
+  type ShimContext,
+  ShimError,
+  type ShimReply,
+  type ShimRoute,
+} from './shim';

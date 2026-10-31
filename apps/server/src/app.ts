@@ -15,6 +15,7 @@ import { type AttachmentStores, NO_STORAGE } from './attachments/stores';
 import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
 import { Collaboration } from './collab/server';
+import { registerJiraCompat } from './compat/register';
 import type { Role, ServerConfig } from './config';
 import { FieldCatalogs } from './fields/catalog';
 import { serveFrontend } from './frontend';
@@ -121,6 +122,8 @@ export interface AppDeps {
   secureCookies?: boolean;
   /** Where browsers reach this instance; one-time links point here. */
   publicUrl?: string;
+  /** Serve the Jira-compatible API under /rest (M1-069; on unless false). */
+  jiraCompat?: boolean;
   /**
    * Frontends on other origins (M1-107, ADR-080): CORS, WebSockets and OAuth sign-in are
    * open to these exact origins besides this instance's own.
@@ -464,6 +467,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       innerCallSecret,
       resourceMetadataUrl: metadataUrl,
     });
+    // The Jira-compatible API (M1-069, ADR-086): /rest/api/2 and /3 over the native API.
+    if (deps.jiraCompat !== false) {
+      await registerJiraCompat(app, { publicUrl: deps.publicUrl ?? 'http://localhost:8080' });
+    }
     // The public meta endpoint (M1-106): versions, sign-in methods and the instance's identity.
     registerMetaRoutes(app, db, {
       version: deps.version,

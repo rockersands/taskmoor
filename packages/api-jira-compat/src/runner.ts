@@ -125,8 +125,15 @@ async function runCase(
     status: answer.status,
     problem,
   });
-  if (answer.status !== c.status) return fail(`status ${answer.status}, expected ${c.status}`);
-  const schema = c.error ? jiraError : responseSchema(operation, c.status, ctx.version);
+  if (answer.status !== c.status) {
+    const excerpt = JSON.stringify(answer.body ?? null).slice(0, 160);
+    return fail(`status ${answer.status}, expected ${c.status}: ${excerpt}`);
+  }
+  const schema = c.error
+    ? jiraError
+    : c.narrowed
+      ? undefined
+      : responseSchema(operation, c.status, ctx.version);
   if (schema) {
     const parsed = schema.safeParse(answer.body);
     if (!parsed.success) {

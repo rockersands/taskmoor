@@ -138,6 +138,8 @@ const envSchema = z.object({
   TASKMOOR_SMTP_FROM: z.string().min(3).optional(),
   /** How long one search statement may run (QRY-010 (3)), in milliseconds. */
   TASKMOOR_QUERY_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).default(30_000),
+  /** The Jira-compatible API under /rest (M1-069, ADR-086): on unless `off`. */
+  TASKMOOR_JIRA_COMPAT: z.enum(['on', 'off']).default('on'),
 });
 
 export interface ServerConfig {
@@ -185,6 +187,8 @@ export interface ServerConfig {
   smtpPassword: string | undefined;
   /** Milliseconds a search statement may run before it is stopped (QRY-010 (3)). */
   queryTimeoutMs: number;
+  /** Whether the Jira-compatible API is served (M1-069). */
+  jiraCompat: boolean;
 }
 
 export interface SmtpConfig {
@@ -382,6 +386,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
         : undefined,
     shutdownDrainMs: e.TASKMOOR_SHUTDOWN_DRAIN_MS,
     queryTimeoutMs: e.TASKMOOR_QUERY_TIMEOUT_MS,
+    jiraCompat: e.TASKMOOR_JIRA_COMPAT === 'on',
     storage: {
       backend: e.TASKMOOR_STORAGE,
       filesDir: e.TASKMOOR_FILES_DIR,

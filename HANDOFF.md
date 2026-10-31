@@ -2,7 +2,7 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 and three fixes
+## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068, M1-069 and three fixes
 
 All on `main`, each push after a green `pnpm verify --e2e`:
 
@@ -67,7 +67,24 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     in `TASKMOOR_TOKEN`). It refuses Atlassian hosts.
   - The container's Postgres had stopped after a restart: `pg_ctlcluster 16 main start` (the
     first start replays about 15 GB of test databases).
-- **Next free numbers:** migration 0068 and ADR-086.
+- **M1-069 Jira-compatible API core** (2026-10-31; ADR-086; no migration).
+  - `packages/api-jira-compat/src/shim` (`COMPAT_ROUTES`) is registered by
+    `apps/server/src/compat/register.ts` under `/rest/api/2` and `/3`. Native calls run in
+    process with the caller's token. The sign-in is Bearer or Basic (email plus API token);
+    cookies and passwords are refused.
+  - The matrix reads 57 of 72 complete.
+  - **M1-070 (Agile)** adds routes in a `shim/agile.ts` next to the others; its cases are
+    already in `cases.ts` and the suite's board is set up by the test.
+  - **M1-071** replaces the Markdown stand-in on v2 with wiki markup:
+    - `nativeFormat` in `shim/map.ts` and `richText` for search results;
+    - the native API needs a `wiki` format first.
+  - Not done: bulk label ADD and REMOVE, which need a native bulk add or remove, and
+    attachments.
+  - `TASKMOOR_JIRA_COMPAT=off` turns it off.
+  - On a loaded machine, `search/plans.test.ts` once chose an equivalent index. It passes alone:
+    rerun it before treating it as real.
+- **Next free numbers:** migration 0071 and ADR-091 (0068 to 0070 and ADR-087 to ADR-090 are
+  held by the side agents: M1-108, M1-112, M1-089, M1-092).
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 
@@ -124,7 +141,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Next free numbers**: migration 0066 and ADR-083 (now 0068 and ADR-086: see the cloud session above).
+**Next free numbers**: migration 0066 and ADR-083 (now 0071 and ADR-091: see the cloud session above).
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 

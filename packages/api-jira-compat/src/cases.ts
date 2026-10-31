@@ -43,6 +43,8 @@ export interface CompatCase {
   status: number;
   /** A refusal: the body must be a Jira-compatible error. */
   error?: boolean;
+  /** A narrowed answer (`fields=`) the full schema does not describe: `check` alone decides. */
+  narrowed?: boolean;
   check?: (body: unknown, ctx: CaseContext) => string | null;
   capture?: (body: unknown, ctx: CaseContext) => void;
 }
@@ -87,12 +89,14 @@ const richTextHas = (ctx: CaseContext, value: unknown, text: string) => {
   return flat.includes(text) ? null : `rich text without ${JSON.stringify(text)}`;
 };
 
+/** Each version's run labels its own issues, so searches find only them. */
+const label = (ctx: CaseContext) => `contract-v${ctx.version}`;
 const createBody = (ctx: CaseContext, summary: string) => ({
   fields: {
     project: { key: ctx.project },
     issuetype: { name: ctx.issueType },
     summary,
-    labels: ['contract'],
+    labels: [label(ctx)],
     description: richText(ctx, 'Made by the conformance suite'),
   },
 });
@@ -204,7 +208,7 @@ export const COMPAT_CASES: readonly CompatCase[] = [
     status: 200,
     check: (body, ctx) =>
       expectEqual(at(body, 'fields.summary'), 'Contract issue', 'summary') ??
-      (list(body, 'fields.labels').includes('contract') ? null : 'label missing') ??
+      (list(body, 'fields.labels').includes(label(ctx)) ? null : 'label missing') ??
       richTextHas(ctx, at(body, 'fields.description'), 'Made by the conformance suite'),
   },
   {
@@ -223,7 +227,13 @@ export const COMPAT_CASES: readonly CompatCase[] = [
     needs: ['issue.key'],
     request: (ctx) => ({ ...issue()(ctx), query: { fields: 'summary,status' } }),
     status: 200,
-    check: (body) => (typeof at(body, 'fields.summary') === 'string' ? null : 'no summary'),
+    narrowed: true,
+    check: (body) =>
+      typeof at(body, 'fields.summary') === 'string' && at(body, 'fields.status.name')
+        ? at(body, 'fields.labels') === undefined
+          ? null
+          : 'labels not narrowed away'
+        : 'no summary or status',
   },
   {
     id: 'getIssue.unknown',
@@ -259,9 +269,9 @@ export const COMPAT_CASES: readonly CompatCase[] = [
     needs: ['issue.key'],
     request: issue(),
     status: 200,
-    check: (body) =>
+    check: (body, ctx) =>
       expectEqual(at(body, 'fields.summary'), 'Contract issue, edited', 'summary') ??
-      (['contract', 'second'].every((l) => list(body, 'fields.labels').includes(l))
+      ([label(ctx), 'second'].every((l) => list(body, 'fields.labels').includes(l))
         ? null
         : 'labels not both there'),
   },
@@ -534,12 +544,13 @@ export const COMPAT_CASES: readonly CompatCase[] = [
     name: 'Answers the first page of one and a token for the next',
     request: (ctx) => ({
       body: {
-        jql: `project = ${ctx.project} AND labels = contract ORDER BY key ASC`,
+        jql: `project = ${ctx.project} AND labels = ${label(ctx)} ORDER BY key ASC`,
         maxResults: 1,
         fields: ['summary'],
       },
     }),
     status: 200,
+    narrowed: true,
     check: (body) =>
       list(body, 'issues').length === 1 && at(body, 'isLast') === false
         ? null
@@ -553,13 +564,14 @@ export const COMPAT_CASES: readonly CompatCase[] = [
     needs: ['search.token'],
     request: (ctx) => ({
       body: {
-        jql: `project = ${ctx.project} AND labels = contract ORDER BY key ASC`,
+        jql: `project = ${ctx.project} AND labels = ${label(ctx)} ORDER BY key ASC`,
         maxResults: 1,
         nextPageToken: String(v(ctx, 'search.token')),
         fields: ['summary'],
       },
     }),
     status: 200,
+    narrowed: true,
     check: (body) => (list(body, 'issues').length === 1 ? null : 'expected one issue'),
   },
   {
@@ -584,7 +596,7 @@ export const COMPAT_CASES: readonly CompatCase[] = [
     operation: 'searchLegacy',
     name: 'Answers by offset with the total',
     request: (ctx) => ({
-      query: { jql: `project = ${ctx.project} AND labels = contract`, maxResults: '1' },
+      query: { jql: `project = ${ctx.project} AND labels = ${label(ctx)}`, maxResults: '1' },
     }),
     status: 200,
     check: (body) =>
@@ -596,7 +608,11 @@ export const COMPAT_CASES: readonly CompatCase[] = [
     operation: 'searchLegacyPost',
     name: 'Starts at an offset',
     request: (ctx) => ({
-      body: { jql: `project = ${ctx.project} AND labels = contract`, startAt: 1, maxResults: 5 },
+      body: {
+        jql: `project = ${ctx.project} AND labels = ${label(ctx)}`,
+        startAt: 1,
+        maxResults: 5,
+      },
     }),
     status: 200,
     check: (body) =>
