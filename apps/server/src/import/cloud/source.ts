@@ -7,6 +7,7 @@ import { type FieldShape, type FieldType, parseValue } from '../../fields/types'
 import { checkLabels } from '../../tickets/fields';
 import { shapeOfType } from '../dc-fields';
 import type {
+  Coverage,
   HistoryValue,
   ImportFormat,
   ImportSource,
@@ -20,7 +21,7 @@ import type {
   Warning,
 } from '../model';
 import { type ClientOptions, CloudClient, type Transport } from './client';
-import { CloudFetcher, type FetchState } from './fetch';
+import { CloudFetcher, type FetchState, LISTED_TICKETS } from './fetch';
 import { type PeopleSettings, peopleSettings, personMapping } from './people';
 
 /**
@@ -50,6 +51,11 @@ export const cloudSettings = z
     pageSize: z.number().int().min(1).max(100).default(100),
     concurrency: z.number().int().min(1).max(16).default(4),
     people: peopleSettings.default({ mode: 'email' }),
+    /**
+     * A delta run (M1-096): when the earlier run's fetch began. Only issues updated since then
+     * are fetched, and the site's issue ids are listed to find the ones it no longer has.
+     */
+    since: z.iso.datetime().nullable().default(null),
   })
   .strict();
 export type CloudSettings = z.infer<typeof cloudSettings>;
@@ -63,6 +69,8 @@ export interface CloudDeps {
   client?: Omit<ClientOptions, 'transport' | 'authorization' | 'concurrency'>;
   /** Issues per details chunk (tests use small ones). */
   detailChunk?: number;
+  /** How far before the earlier fetch a delta search reaches (`DELTA_OVERLAP_MS`). */
+  deltaOverlapMs?: number;
 }
 
 export class CloudSourceError extends Error {}
@@ -74,6 +82,20 @@ export function authorizationOf(settings: CloudSettings, peppers: PepperRing | u
   if (settings.auth.kind === 'bearer') return `Bearer ${token}`;
   return `Basic ${Buffer.from(`${settings.auth.email}:${token}`).toString('base64')}`;
 }
+
+/** Kinds the fetch reads whole on every run (M1-096). */
+const WHOLE = new Set([
+  'field',
+  'field_context',
+  'ticket_type',
+  'priority',
+  'close_reason',
+  'status',
+  'link_type',
+  'track',
+  'release',
+  'area',
+]);
 
 /** Reasons of the staged kinds the framework does not load. */
 const LEFT_OUT: Record<string, string> = {
@@ -118,7 +140,9 @@ export class CloudSource implements ImportSource {
         projects: this.settings.projects,
         jql: this.settings.jql,
         pageSize: this.settings.pageSize,
+        since: this.settings.since,
         ...(this.deps.detailChunk ? { detailChunk: this.deps.detailChunk } : {}),
+        ...(this.deps.deltaOverlapMs !== undefined ? { overlapMs: this.deps.deltaOverlapMs } : {}),
       },
     );
     return fetcher.run(until);
@@ -131,7 +155,34 @@ export class CloudSource implements ImportSource {
       .distinct()
       .where('run_id', '=', this.context.runId)
       .execute();
-    return rows.map((r) => r.kind);
+    // A delta run's listing of the site's ids is no kind of record (M1-096).
+    return rows.map((r) => r.kind).filter((k) => k !== LISTED_TICKETS);
+  }
+
+  /**
+   * What a delta run (M1-096) can tell is gone: configuration, boards and sprints are read whole;
+   * tickets are listed by id; a changed ticket's comments, time and history are read whole.
+   * People and options are only those seen, so nothing is said of them.
+   */
+  async coverage(kind: string): Promise<Coverage> {
+    if (kind === 'ticket') return this.settings.since === null ? 'all' : 'listed';
+    if (kind === 'comment' || kind === 'time_entry' || kind === 'history') {
+      return 'within_tickets';
+    }
+    if (kind === 'board' || kind === 'sprint') {
+      const state = await this.fetchState();
+      return state.agile?.unavailable ? null : 'all';
+    }
+    return WHOLE.has(kind) ? 'all' : null;
+  }
+
+  private async fetchState(): Promise<FetchState> {
+    const row = await this.db
+      .selectFrom('import_run')
+      .select('fetch_state')
+      .where('id', '=', this.context.runId)
+      .executeTakeFirstOrThrow();
+    return row.fetch_state as FetchState;
   }
 
   async unsupported(kind: string): Promise<{ count: number; reason: string } | null> {
@@ -147,12 +198,7 @@ export class CloudSource implements ImportSource {
   }
 
   async notes(): Promise<SourceNote[]> {
-    const row = await this.db
-      .selectFrom('import_run')
-      .select('fetch_state')
-      .where('id', '=', this.context.runId)
-      .executeTakeFirstOrThrow();
-    const state = row.fetch_state as FetchState;
+    const state = await this.fetchState();
     const notes: SourceNote[] = [];
     const stats = state.stats;
     if (stats && stats.throttled > 0) {
@@ -832,5 +878,6 @@ export function cloudFormat(deps: CloudDeps): ImportFormat {
       return new CloudSource(cloudSettings.parse(source), context, deps);
     },
     map: mapCloudRecord,
+    sourceHistory: true,
   };
 }

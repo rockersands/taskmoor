@@ -51,6 +51,11 @@ export const fidelityReport = z
         startedAt: z.iso.datetime().nullable(),
         finishedAt: z.iso.datetime(),
         batches: count,
+        /**
+         * A delta run (M1-096): the earlier run it started from. What the source no longer holds
+         * is in the warnings, under the code `deleted_in_source`.
+         */
+        deltaFrom: z.number().int().positive().optional(),
       })
       .strict(),
     entities: z.array(
@@ -223,6 +228,7 @@ type RunRow = {
   dry_run: boolean;
   started_at: Date | null;
   batches: number;
+  delta_from?: string | null;
   tallies: Record<string, JsonValue>;
   warnings: Record<string, JsonValue>;
   unsupported: Record<string, JsonValue>;
@@ -327,7 +333,7 @@ export async function buildReport(
     SELECT entity_kind, source_id, label, outcome, target_id, error
       FROM (SELECT r.*, row_number() OVER (PARTITION BY r.entity_kind ORDER BY r.source_id) AS n
               FROM import_record r
-             WHERE r.run_id = ${Number(run.id)}
+             WHERE r.run_id = ${Number(run.id)} AND r.outcome <> 'deleted'
                AND r.entity_kind = ANY(${[...MAPPED_KINDS]}::text[])) numbered
      WHERE n <= ${MAPPING_PER_KIND + 1}
      ORDER BY entity_kind, source_id`.execute(db);
@@ -369,6 +375,7 @@ export async function buildReport(
       startedAt: run.started_at?.toISOString() ?? null,
       finishedAt: finishedAt.toISOString(),
       batches: run.batches,
+      ...(run.delta_from ? { deltaFrom: Number(run.delta_from) } : {}),
     },
     entities,
     totals: {

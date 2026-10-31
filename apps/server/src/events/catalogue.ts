@@ -1254,6 +1254,8 @@ export const EVENT_TYPES = {
       sourceSystem: z.string(),
       name: z.string(),
       dryRun: z.boolean(),
+      /** A delta run (M1-096): the earlier run it starts from. */
+      deltaFrom: id.optional(),
     }),
   },
   'import_run.cancelled': {

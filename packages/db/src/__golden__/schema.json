@@ -981,7 +981,8 @@
       "started_at timestamp with time zone",
       "updated_at timestamp with time zone not null default now()",
       "finished_at timestamp with time zone",
-      "fetch_state jsonb not null default '{}'::jsonb"
+      "fetch_state jsonb not null default '{}'::jsonb",
+      "delta_from bigint"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX import_run_pkey ON public.import_run USING btree (id)",

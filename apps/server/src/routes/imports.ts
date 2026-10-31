@@ -89,9 +89,38 @@ const createBody = z
   .object({
     name: z.string().max(200).optional(),
     dryRun: z.boolean().optional(),
-    source: z.union([syntheticSource, csvInput, exportSource, dcBackupSource, cloudInput]),
+    /**
+     * A delta run (M1-096): starts from this earlier, finished run of the same source. A Cloud
+     * site's delta may leave out `source` (the earlier run's settings and token are used); a
+     * Data Center delta names the later backup.
+     */
+    deltaFrom: z.number().int().positive().optional(),
+    source: z
+      .union([syntheticSource, csvInput, exportSource, dcBackupSource, cloudInput])
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine((b) => b.source !== undefined || b.deltaFrom !== undefined, {
+    path: ['source'],
+    message: 'A source, or the run a delta starts from.',
+  });
+
+/** The importers whose runs a delta run can start from (M1-096). */
+const DELTA_SOURCES: readonly string[] = [CLOUD_SOURCE, DC_SOURCE];
+
+/**
+ * Where a Cloud delta run starts (M1-096): when the earlier run's fetch began, or else when the
+ * run itself started.
+ */
+function sinceOf(earlier: {
+  fetch_state: Record<string, unknown>;
+  started_at: Date | null;
+  created_at: Date;
+}): string {
+  const started = (earlier.fetch_state as { startedAt?: unknown }).startedAt;
+  if (typeof started === 'string' && !Number.isNaN(Date.parse(started))) return started;
+  return (earlier.started_at ?? earlier.created_at).toISOString();
+}
 
 /** The base URL a Cloud import may use: https, or http to this machine. */
 function cloudBaseUrl(text: string): string {
@@ -127,7 +156,9 @@ const recordsQuery = z
     kind: z.string().max(40).optional(),
     after: z.string().max(400).optional(),
     limit: z.coerce.number().int().min(1).max(1000).optional(),
-    outcome: z.enum(['created', 'updated', 'unchanged', 'linked', 'failed', 'skipped']).optional(),
+    outcome: z
+      .enum(['created', 'updated', 'unchanged', 'linked', 'failed', 'skipped', 'deleted'])
+      .optional(),
   })
   .strict();
 
@@ -181,6 +212,25 @@ export function registerImportRoutes(
     return user;
   }
 
+  /** The finished run a delta starts from, or a refusal (M1-096). */
+  async function deltaBase(ws: number, id: string) {
+    const earlier = await db
+      .selectFrom('import_run')
+      .selectAll()
+      .where('workspace_id', '=', ws)
+      .where('id', '=', id)
+      .executeTakeFirst();
+    if (!earlier) throw new SourceRefused('unknown_delta_run');
+    if (!DELTA_SOURCES.includes(earlier.import_source)) {
+      throw new SourceRefused('delta_not_supported', { importSource: earlier.import_source });
+    }
+    if (earlier.dry_run) throw new SourceRefused('delta_from_dry_run');
+    if (earlier.status !== 'done') {
+      throw new SourceRefused('delta_from_unfinished', { status: earlier.status });
+    }
+    return earlier;
+  }
+
   async function find(request: FastifyRequest, reply: FastifyReply) {
     const p = idParam.safeParse(request.params);
     const row = p.success
@@ -212,11 +262,20 @@ export function registerImportRoutes(
     }
     const body = parsed.data;
     const ws = request.workspaceId;
-    let system: string;
-    let importSource: string;
+    let system = '';
+    let importSource = '';
     let source: unknown = body.source;
+    let deltaFrom: string | null = null;
     try {
-      if (body.source.format === SYNTHETIC_SOURCE) {
+      const earlier =
+        body.deltaFrom === undefined ? null : await deltaBase(ws, String(body.deltaFrom));
+      if (body.source === undefined) {
+        // Only a Cloud site's delta goes without a source: the earlier run's settings serve.
+        if (earlier?.import_source !== CLOUD_SOURCE) throw new SourceRefused('source_required');
+        importSource = CLOUD_SOURCE;
+        system = earlier.source_system;
+        source = earlier.source;
+      } else if (body.source.format === SYNTHETIC_SOURCE) {
         importSource = SYNTHETIC_SOURCE;
         if ('data' in body.source) {
           try {
@@ -299,6 +358,7 @@ export function registerImportRoutes(
           pageSize: input.pageSize ?? 100,
           concurrency: input.concurrency ?? 4,
           people,
+          since: null,
         };
         source = settings;
       } else if (body.source.format === DC_SOURCE) {
@@ -334,6 +394,24 @@ export function registerImportRoutes(
         }
         source = { format: EXPORT_SOURCE, path };
       }
+      if (earlier) {
+        // The same importer and instance as the earlier run, whatever the body says.
+        if (importSource !== earlier.import_source) {
+          throw new SourceRefused('delta_source_mismatch');
+        }
+        deltaFrom = earlier.id;
+        if (importSource === CLOUD_SOURCE) {
+          const was = earlier.source as CloudSettings;
+          const now = source as CloudSettings;
+          if (now.baseUrl !== was.baseUrl || now.system !== was.system) {
+            throw new SourceRefused('delta_source_mismatch');
+          }
+          source = { ...now, since: sinceOf(earlier) };
+        } else {
+          system = earlier.source_system;
+          source = { ...(source as Record<string, unknown>), system };
+        }
+      }
     } catch (error) {
       if (error instanceof SourceRefused) {
         return reply.code(400).send({ error: error.code, ...error.detail });
@@ -341,6 +419,19 @@ export function registerImportRoutes(
       throw error;
     }
     const row = await db.transaction().execute(async (trx) => {
+      if (deltaFrom !== null) {
+        // Two runs of one instance at once would race for the same external ids.
+        const busy = await trx
+          .selectFrom('import_run')
+          .select('id')
+          .where('workspace_id', '=', ws)
+          .where('import_source', '=', importSource)
+          .where('source_system', '=', system)
+          .where('status', 'in', ['queued', 'running'])
+          .forUpdate()
+          .executeTakeFirst();
+        if (busy) return { busy: Number(busy.id) };
+      }
       const created = await createRun(trx, {
         workspaceId: ws,
         userId: user.id,
@@ -349,6 +440,7 @@ export function registerImportRoutes(
         name: body.name ?? '',
         source,
         dryRun: body.dryRun ?? false,
+        deltaFrom,
       });
       await emit(
         trx,
@@ -361,13 +453,17 @@ export function registerImportRoutes(
             sourceSystem: created.source_system,
             name: created.name,
             dryRun: created.dry_run,
+            ...(deltaFrom !== null ? { deltaFrom: Number(deltaFrom) } : {}),
           },
         },
       );
       await enqueue(trx, [importJob(ws, created.id)]);
-      return created;
+      return { created };
     });
-    return reply.code(202).send({ importRun: runView(row) });
+    if ('busy' in row) {
+      return reply.code(409).send({ error: 'run_in_progress', importRunId: row.busy });
+    }
+    return reply.code(202).send({ importRun: runView(row.created) });
   });
 
   app.get('/api/v1/admin/imports', async (request, reply) => {

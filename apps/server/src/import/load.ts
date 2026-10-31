@@ -166,6 +166,14 @@ export interface LoadContext {
   dryRun: boolean;
   /** The source holds complete history and derived values (`ImportFormat.verbatim`). */
   verbatim: boolean;
+  /** The source's history covers every change to a ticket (`ImportFormat.sourceHistory`). */
+  sourceHistory?: boolean;
+  /**
+   * Fields of tickets (by target id) changed in Taskmoor since an import last wrote them
+   * (M1-096): when the source's version replaces them, the history shows those fields going
+   * back, which the source's own history cannot say.
+   */
+  editedInTarget?: ReadonlyMap<number, ReadonlySet<string>>;
   /** The batch's start, for times a source leaves out. */
   now: string;
   refs: Resolver;
@@ -1674,12 +1682,16 @@ const tickets: Loader<TicketCommand> = {
       number = row.number;
       await writeTicketSets(ctx, id, v, true);
       const after = await loadTicket(ctx.trx, ws, id);
-      // A verbatim source's own history says what changed; others get the difference.
+      // A verbatim source's own history says what changed, and so does one whose history
+      // covers every change (M1-096: its new entries follow as history records), except for
+      // the fields edited in Taskmoor meanwhile; others get the difference.
       if (before && after && !ctx.verbatim) {
-        await recordChanges(ctx.trx, ws, null, [
+        const reverted = ctx.sourceHistory ? (ctx.editedInTarget?.get(id) ?? new Set()) : null;
+        const changes = [
           ...ticketChanges(before, after),
           ...(await customChanges(ctx.trx, ws, ctx.catalog, id, before.fields, after.fields)),
-        ]);
+        ].filter((c) => reverted === null || reverted.has(c.field));
+        if (changes.length > 0) await recordChanges(ctx.trx, ws, null, changes);
       }
     } else {
       number =

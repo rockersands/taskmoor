@@ -91,6 +91,7 @@ import { mapWorkflow, mapWorkflowMap } from './dc-workflows';
 import { readJsonLines } from './lines';
 import type {
   Command,
+  Coverage,
   ImportFormat,
   ImportSource,
   Mapped,
@@ -310,6 +311,14 @@ export class DcBackupSource implements ImportSource {
 
   async unsupported(kind: string): Promise<{ count: number; reason: string } | null> {
     return (await this.leftOut()).get(kind) ?? null;
+  }
+
+  /**
+   * A backup holds the whole instance (M1-096): every kind the run's scope reads is read whole,
+   * so a record an earlier run imported that this backup lacks is gone from the source.
+   */
+  async coverage(kind: string): Promise<Coverage> {
+    return kind in STAGED_KINDS && !this.leavesOut(kind) ? 'all' : null;
   }
 
   async notes(): Promise<SourceNote[]> {
@@ -613,4 +622,5 @@ export const dcBackupFormat: ImportFormat = {
   importSource: DC_SOURCE,
   open: (source) => new DcBackupSource(dcBackupSource.parse(source)),
   map: mapDcRecord,
+  sourceHistory: true,
 };

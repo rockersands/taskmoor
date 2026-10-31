@@ -1841,7 +1841,15 @@ export interface BulkItemTable {
 }
 
 export type ImportRunStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
-export type ImportOutcome = 'created' | 'updated' | 'unchanged' | 'linked' | 'failed' | 'skipped';
+/** `deleted`: a delta run found the source no longer holds the record (M1-096). */
+export type ImportOutcome =
+  | 'created'
+  | 'updated'
+  | 'unchanged'
+  | 'linked'
+  | 'failed'
+  | 'skipped'
+  | 'deleted';
 
 /**
  * One import (M1-086; IMP-009, IMP-010): its source, state, the checkpoint it resumes from,
@@ -1874,6 +1882,8 @@ export interface ImportRunTable {
   finished_at: Timestamp | null;
   /** Where a remote source's fetch got to (M1-095): its steps, page tokens and counts. */
   fetch_state: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  /** The earlier run a delta run starts from (M1-096). */
+  delta_from: string | null;
 }
 
 /**
