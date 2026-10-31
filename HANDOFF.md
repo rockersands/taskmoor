@@ -2,7 +2,7 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 to M1-071, M1-108, M1-112, M1-089, M1-092 and three fixes
+## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 to M1-071, M1-108, M1-112, M1-089 to M1-092, M1-095 and three fixes
 
 All on `main`, each push after a green `pnpm verify --e2e`:
 
@@ -94,8 +94,9 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - `TASKMOOR_JIRA_COMPAT=off` turns it off.
   - On a loaded machine, `search/plans.test.ts` once chose an equivalent index. It passes alone:
     rerun it before treating it as real.
-- **Next free numbers:** migration 0069 and ADR-092 (M1-108 used 0068; M1-089 and M1-092
-  needed none; ADR-085 to ADR-091 are used).
+- **Next free numbers:** migration **0072** and ADR-095. 0069 and 0070 were held for M1-091 and
+  M1-090, which needed none, and M1-095 used 0071, so **never use 0069 or 0070**: Kysely refuses a
+  migration that sorts before one a database already ran. ADR-085 to ADR-094 are used.
 - **M1-112 Builder page** (2026-10-31; ADR-088, no migration): M1-112 is done.
   - The page is a second entry of the web app (`apps/web/src/builder`,
     `vite.builder.config.ts`). It is built into one file, `apps/web/dist-builder/index.html`,
@@ -191,7 +192,7 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     golden `import/__golden__/dc-access-seed92.parity.json` expects that for them, and the
     source's model for everyone else.
 - **M1-090 Data Center workflows and workflow maps** (branch `work/m1-090-dc-workflows`, side
-  session 2026-10-31; ADR-093, no migration, so 0070 stays free; M1-090 is done):
+  session 2026-10-31; ADR-093, no migration; M1-090 is done):
   - Format layer: `dc-backup/workflow-format.ts` holds the new elements (`Workflow`,
     `WorkflowScheme`, `WorkflowSchemeEntity`, `EventType`, spread into `ENTITIES`), the
     descriptor model, its writer and reader, and `workflowCases`. The generator's workflows are
@@ -296,7 +297,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Next free numbers**: migration 0066 and ADR-083 (now 0069 and ADR-092: see the cloud session above).
+**Next free numbers**: migration 0066 and ADR-083 (now 0072 and ADR-095: see the cloud session above).
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
