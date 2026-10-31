@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { AiSettingsPage } from './admin/AiSettingsPage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
 import { AuditPage } from './admin/audit/AuditPage';
 import { FrontendsPage } from './admin/FrontendsPage';
@@ -130,6 +131,7 @@ const ADMIN_API_USAGE = '#/admin/api-usage';
 const ADMIN_AUDIT = '#/admin/audit';
 const ADMIN_NETWORK = '#/admin/network-access';
 const ADMIN_FRONTENDS = '#/admin/frontends';
+const ADMIN_AI = '#/admin/ai';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
@@ -466,6 +468,8 @@ function Pages() {
     content = <NetworkAccessPage />;
   } else if (isRoute(hash, ADMIN_FRONTENDS)) {
     content = <FrontendsPage />;
+  } else if (isRoute(hash, ADMIN_AI)) {
+    content = <AiSettingsPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
   } else if (isRoute(hash, ADMIN_USERS)) {

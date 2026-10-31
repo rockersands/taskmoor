@@ -381,3 +381,4 @@ export class FakeProviderFailure extends Error {
     super(message);
   }
 }
+export { FakeProviderServer } from './fake-server';

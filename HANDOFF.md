@@ -260,6 +260,20 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     `MASTER_KEY` and `AI_*` is closed; `TOKEN_SIGNING_KEY` is still not read (not needed).
   - Not done: a real KMS or Vault adapter and a setting to choose one; `install.ps1` does not
     remove `TASKMOOR_AI_KEY` from `.env` after the first start.
+- **M1-076 AI settings page** (same branch, second commit; ADR-099, no migration; M1-076 is
+  done):
+  - Page `apps/web/src/admin/AiSettingsPage.tsx` at `#/admin/ai`, linked from Settings. Routes in
+    `apps/server/src/routes/ai.ts`: `PUT /api/v1/admin/ai`, `PUT /api/v1/admin/ai/tracks/:id`,
+    `POST /api/v1/admin/ai/test` (exempt: stores nothing), `GET /api/v1/ai/features`.
+  - **Product AI calls go through `app.ai.call({ workspaceId, trackId, feature }, fn)`**, and
+    every AI control inside `<AiFeature feature trackId>` (`apps/web/src/ai/AiFeature.tsx`).
+    `scopeBlock` in `ai/settings.ts` holds the workspace, track and strict-mode rule.
+  - `FakeProviderServer` (`@taskmoor/ai/testing`, re-exported from `@taskmoor/server/testing`)
+    answers like the Anthropic API from the recorded fixtures. The e2e runs it on **port 8796**
+    for the attachments backend (4174), whose two processes now share a per-run master key; the
+    accepted key is `TASKMOOR_E2E_AI_KEY`, made by `playwright.config.ts`.
+  - M1-077 (spend limits, in parallel on another branch) will meet these files: its checks
+    belong in `AiService.call`, next to `scopeBlock`.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

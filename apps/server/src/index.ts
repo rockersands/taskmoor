@@ -1,3 +1,4 @@
+export { aiKeyRing } from './ai/keyring';
 export { type AppDeps, buildApp } from './app';
 export { registerAttachmentJobs } from './attachments/jobs';
 export { type AttachmentStores, attachmentStores, storesOf } from './attachments/stores';

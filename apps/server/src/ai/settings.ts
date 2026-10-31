@@ -1,4 +1,11 @@
-import { type ProviderConfig, type ProviderId, providerConfigSchema } from '@taskmoor/ai';
+import {
+  AI_FEATURES,
+  type FeatureId,
+  featureSettingsSchema,
+  type ProviderConfig,
+  type ProviderId,
+  providerConfigSchema,
+} from '@taskmoor/ai';
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
@@ -49,10 +56,21 @@ export const REQUIRED_SLOTS: Record<ProviderId, readonly CredentialSlot[]> = {
 export const providerSettings = z.looseObject({ provider: z.enum(PROVIDER_IDS) });
 export type ProviderSettings = z.infer<typeof providerSettings>;
 
+export const FEATURE_IDS = Object.keys(AI_FEATURES) as [FeatureId, ...FeatureId[]];
+
 export const storedAiSettings = z.object({
   /** AI for the workspace at all (AI-001); off until a provider is set up. */
   enabled: z.boolean().default(false),
+  /**
+   * Strict mode (IAM-019, the AI part): AI only in tracks an administrator opted in; everywhere
+   * else (other tracks, and anything outside a track) it is off and its controls hidden.
+   */
+  strict: z.boolean().default(false),
   provider: providerSettings.nullable().default(null),
+  /** Per-feature switch, model and effort (AI-006); anything left out uses the feature's default. */
+  features: z.record(z.string(), featureSettingsSchema).default({}),
+  /** Track switches by track id: false turns AI off there; true opts it in under strict mode. */
+  tracks: z.record(z.string(), z.boolean()).default({}),
 });
 export type StoredAiSettings = z.infer<typeof storedAiSettings>;
 
@@ -131,4 +149,69 @@ export function withCredentialRefs(
     ok: false,
     problems: parsed.error.issues.map((i) => `${i.path.join('.') || 'provider'}: ${i.message}`),
   };
+}
+
+/** What an administrator saves on the AI settings page (M1-076): everything but the tracks. */
+export const aiSettingsInput = z
+  .object({
+    enabled: z.boolean(),
+    strict: z.boolean(),
+    provider: providerSettings.nullable(),
+    features: z.partialRecord(z.enum(FEATURE_IDS), featureSettingsSchema.strict()).default({}),
+  })
+  .strict();
+export type AiSettingsInput = z.infer<typeof aiSettingsInput>;
+
+/**
+ * Checks provider settings an administrator saves: no secret in them (keys go through the
+ * credential routes, write-only) and complete once the provider's required keys are stored.
+ * Problems are field paths and rules, never values.
+ */
+export function checkProvider(provider: ProviderSettings): string[] {
+  const secret = CREDENTIAL_SLOTS.filter((slot) => Object.hasOwn(provider, slot));
+  if (secret.length > 0) return secret.map((slot) => `${slot}: set keys on their own route`);
+  const resolved = withCredentialRefs(provider, REQUIRED_SLOTS[provider.provider]);
+  return resolved.ok ? [] : resolved.problems;
+}
+
+/**
+ * Changes the settings under the row's lock, so two administrators' changes (a track switch
+ * and a save) never undo each other. Returns the settings before and after.
+ */
+export async function updateAiSettings(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  actorId: number | null,
+  change: (current: StoredAiSettings) => StoredAiSettings,
+): Promise<{ before: StoredAiSettings; after: StoredAiSettings; version: number }> {
+  await trx
+    .insertInto('ai_setting')
+    .values({ workspace_id: workspaceId, value: JSON.stringify(DEFAULT_AI_SETTINGS) })
+    .onConflict((oc) => oc.column('workspace_id').doNothing())
+    .execute();
+  const row = await trx
+    .selectFrom('ai_setting')
+    .select('value')
+    .where('workspace_id', '=', workspaceId)
+    .forUpdate()
+    .executeTakeFirstOrThrow();
+  const parsed = storedAiSettings.safeParse(row.value);
+  const before = parsed.success ? parsed.data : DEFAULT_AI_SETTINGS;
+  const after = change(before);
+  const version = await writeAiSettings(trx, workspaceId, actorId, after);
+  return { before, after, version };
+}
+
+export type AiBlock = 'disabled' | 'track_off' | 'strict';
+
+/**
+ * Whether the workspace and track let AI run (AI-001, IAM-019): off for the workspace, off for
+ * the track, or strict mode with the track not opted in (or no track at all). Null: it may.
+ */
+export function scopeBlock(settings: StoredAiSettings, trackId?: number | null): AiBlock | null {
+  if (!settings.enabled) return 'disabled';
+  const explicit = trackId != null ? settings.tracks[String(trackId)] : undefined;
+  if (explicit === false) return 'track_off';
+  if (settings.strict && explicit !== true) return 'strict';
+  return null;
 }

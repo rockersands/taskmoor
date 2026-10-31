@@ -143,6 +143,9 @@ export const AUDITED_EVENTS = [
   // Who set, replaced or removed an AI provider credential (M1-075, IAM-020): last four only.
   'ai.credential_set',
   'ai.credential_deleted',
+  // Where AI runs and on what (M1-076): configuration that decides what data leaves.
+  'ai.settings_updated',
+  'ai.track_switched',
   // What becomes searchable in ticket properties (M1-129).
   'property_index.created',
   'property_index.deleted',
