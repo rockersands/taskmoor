@@ -1,0 +1,18 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "language": "js"
+      },
+      "content": [
+        {
+          "text": "const a = 1;",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    }
+  ],
+  "type": "doc"
+}

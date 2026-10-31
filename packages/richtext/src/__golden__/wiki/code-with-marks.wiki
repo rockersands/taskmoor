@@ -1,0 +1,5 @@
+{{bold code}}
+
+[linked code|https://example.test/runbook]
+
+{{struck code}} plain

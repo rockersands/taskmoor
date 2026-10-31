@@ -1,0 +1,3 @@
+plain _first{color:#ff5630} both{color}_{color:#ff5630} second{color} end
+
+{color:#ff5630}_together_{color}

@@ -1,0 +1,6 @@
+*
+* &#32; indented
+* * star text
+* &#91;x] looks like a box
+
+# &#91; ] also looks like one

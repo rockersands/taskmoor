@@ -1,0 +1,7 @@
+one \ alone
+
+ends with &#92;
+
+&#92;\server\share
+
+before a star &#92;* and before a brace &#92;\{

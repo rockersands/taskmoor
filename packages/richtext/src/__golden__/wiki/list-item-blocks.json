@@ -1,0 +1,141 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "First paragraph",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "type": "hardBreak"
+                },
+                {
+                  "text": "Second paragraph",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "With code",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "type": "hardBreak"
+                },
+                {
+                  "text": "run()",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "type": "hardBreak"
+                },
+                {
+                  "text": "stop()",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "With a quote",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "type": "hardBreak"
+                },
+                {
+                  "text": "quoted",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "attrs": {
+                        "adfAttrs": null
+                      },
+                      "content": [
+                        {
+                          "text": "and a nested list",
+                          "type": "text"
+                        }
+                      ],
+                      "type": "paragraph"
+                    }
+                  ],
+                  "type": "listItem"
+                }
+              ],
+              "type": "bulletList"
+            }
+          ],
+          "type": "listItem"
+        }
+      ],
+      "type": "bulletList"
+    }
+  ],
+  "type": "doc"
+}

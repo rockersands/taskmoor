@@ -1,0 +1,3 @@
+{code:js}
+const a = 1;
+{code}

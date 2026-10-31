@@ -164,6 +164,67 @@ describe('Jira-compatible API conformance (M1-068)', () => {
     expect(empty.statusCode, empty.body).toBe(200);
   });
 
+  it('[API-011] carries wiki markup on version 2 and the document format on version 3', async () => {
+    const auth = { authorization: basic };
+    const me = (await rest('GET', '/rest/api/2/myself', auth)).json().accountId as string;
+    const wiki = `h2. Plan\n\nShip *it* with [~accountid:${me}].\n\n* \\[x] tested`;
+    const made = await rest(
+      'POST',
+      '/rest/api/2/issue',
+      auth,
+      JSON.stringify({
+        fields: {
+          project: { key: 'CMP' },
+          issuetype: { name: 'Chore' },
+          summary: 'Wiki markup',
+          description: wiki,
+        },
+      }),
+    );
+    expect(made.statusCode, made.body).toBe(201);
+    const key = made.json().key as string;
+    expect((await rest('GET', `/rest/api/2/issue/${key}`, auth)).json().fields.description).toBe(
+      wiki,
+    );
+    const v3 = (await rest('GET', `/rest/api/3/issue/${key}`, auth)).json().fields.description;
+    expect(v3.content.map((n: { type: string }) => n.type)).toEqual([
+      'heading',
+      'paragraph',
+      'taskList',
+    ]);
+    expect(v3.content[1].content).toEqual([
+      { type: 'text', text: 'Ship ' },
+      { type: 'text', text: 'it', marks: [{ type: 'strong' }] },
+      { type: 'text', text: ' with ' },
+      { type: 'mention', attrs: { id: me } },
+      { type: 'text', text: '.' },
+    ]);
+    // Search answers the stored document; the shim writes it as wiki markup on version 2.
+    const found = await rest(
+      'GET',
+      `/rest/api/2/search?jql=${encodeURIComponent(`key = ${key}`)}&fields=description`,
+      auth,
+    );
+    expect(found.statusCode, found.body).toBe(200);
+    expect(found.json().issues[0].fields.description).toBe(wiki);
+    const agile = await rest('GET', `/rest/agile/1.0/issue/${key}`, auth);
+    expect(agile.json().fields.description).toBe(wiki);
+    // A comment written in wiki markup reads back in the document format.
+    const comment = await rest(
+      'POST',
+      `/rest/api/2/issue/${key}/comment`,
+      auth,
+      JSON.stringify({ body: 'Looks _good_' }),
+    );
+    expect(comment.statusCode, comment.body).toBe(201);
+    expect(comment.json().body).toBe('Looks _good_');
+    const read = await rest('GET', `/rest/api/3/issue/${key}/comment`, auth);
+    expect(read.json().comments[0].body.content[0].content).toEqual([
+      { type: 'text', text: 'Looks ' },
+      { type: 'text', text: 'good', marks: [{ type: 'em' }] },
+    ]);
+  });
+
   it('[API-014] reports each operation’s state as the generated matrix', async () => {
     const report = await runCompatContract({ project: 'CMP', issueType: 'Chore', boardId, call });
     expect(report.operations.length).toBeGreaterThan(60);

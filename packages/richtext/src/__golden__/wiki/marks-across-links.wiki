@@ -1,0 +1,7 @@
+bold [*start* rest of link|https://example.test/runbook] after
+
+*before [linked|https://example.test/runbook] after*
+
+[in{_}side_|https://example.test/runbook]{_} out_
+
+{color:#ff5630}red [link|https://example.test/runbook] red{color}

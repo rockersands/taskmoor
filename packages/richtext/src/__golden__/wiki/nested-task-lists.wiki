@@ -1,0 +1,9 @@
+* \[ ] parent
+** \[x] child done
+** \[ ] child open
+
+* plain
+** \[x] task under a bullet
+
+# numbered
+#* \[ ] task under a number

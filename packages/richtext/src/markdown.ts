@@ -109,7 +109,7 @@ const PANEL_TYPES = ['info', 'note', 'tip', 'warning', 'error', 'success', 'cust
 const ALERT_ALIASES: Record<string, string> = { important: 'info', caution: 'error' };
 
 /** Only colours we can write back safely: hex values or plain colour names. */
-const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$/;
+export const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$/;
 
 /** Link targets a document may hold; anything else (javascript:, data:, ...) keeps only its text. */
 export function isSafeHref(href: string): boolean {
@@ -337,7 +337,7 @@ function textOf(n: PmJson): string {
  * What an unknown block holds that a reader can use: its children when they are blocks or
  * inline content the editor knows, else a link to the URL it names, else nothing.
  */
-function readableBlocks(adf: AdfNode | null | undefined): PmJson[] {
+export function readableBlocks(adf: AdfNode | null | undefined): PmJson[] {
   if (!adf) return [];
   const children = adf.content ?? [];
   if (children.length > 0) {
@@ -584,7 +584,7 @@ function leafOut(n: PmJson): PhrasingContent[] {
 }
 
 /** A date node's timestamp (milliseconds) as the day it names, in UTC. */
-function dayOf(timestamp: string): string {
+export function dayOf(timestamp: string): string {
   const ms = Number(timestamp);
   if (timestamp === '' || !Number.isFinite(ms)) return timestamp;
   const date = new Date(ms);

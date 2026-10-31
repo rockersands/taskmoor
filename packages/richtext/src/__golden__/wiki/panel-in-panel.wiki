@@ -1,0 +1,5 @@
+{panel:bgColor=#fffae6}
+outer
+
+inner
+{panel}

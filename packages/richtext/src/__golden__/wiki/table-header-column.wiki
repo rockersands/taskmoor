@@ -1,0 +1,2 @@
+||Region|north|south|
+||Load|40%|70%|

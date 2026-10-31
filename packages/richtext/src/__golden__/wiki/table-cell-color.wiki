@@ -1,0 +1,2 @@
+||h {color:#ff5630}color{color}||
+|{color:#ff5630}color{color} c|

@@ -1,0 +1,5 @@
+{panel:panelType=custom}
+A custom panel.
+
+* with a list
+{panel}

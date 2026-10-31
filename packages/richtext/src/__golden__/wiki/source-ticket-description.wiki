@@ -1,0 +1,12 @@
+h2. Problem
+
+The *export* fails for _large_ boards.
+It started on Monday.
+
+* Chrome
+* Firefox
+** only on Linux
+
+{code:java}
+throw new IllegalStateException("too big");
+{code}

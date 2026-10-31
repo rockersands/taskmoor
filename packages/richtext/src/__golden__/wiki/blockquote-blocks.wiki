@@ -1,0 +1,14 @@
+{quote}
+h3. Quoted heading
+
+Quoted *text*
+
+{code:js}
+quoted()
+{code}
+
+||a||
+|1|
+
+----
+{quote}

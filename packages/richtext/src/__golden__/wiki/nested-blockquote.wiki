@@ -1,0 +1,7 @@
+{quote}
+Outer
+
+bq. Inner, one paragraph
+
+Outer again
+{quote}

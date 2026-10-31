@@ -1,0 +1,12 @@
+\{noformat}
+
+before
+\{noformat}
+
+{quote}
+\{noformat}
+{quote}
+
+{panel:bgColor=#deebff}
+\{noformat}
+{panel}

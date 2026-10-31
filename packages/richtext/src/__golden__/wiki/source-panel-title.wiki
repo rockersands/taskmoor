@@ -1,0 +1,5 @@
+{panel:bgColor=#deebff}
+*Heads up*
+
+Read this first.
+{panel}

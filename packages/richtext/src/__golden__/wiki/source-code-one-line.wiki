@@ -1,0 +1,7 @@
+Before
+
+{code:sql}
+SELECT 1;
+{code}
+
+ after on the same line

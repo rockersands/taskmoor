@@ -1,0 +1,13 @@
+{panel:bgColor=#fffae6}
+h4. Before you upgrade
+
+{quote}
+Back up first.
+{quote}
+
+{code:bash}
+cli.mjs backup
+{code}
+
+|step|1|
+{panel}

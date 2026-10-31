@@ -47,9 +47,9 @@ or a bearer token (API-002).
   - Instants are written as `2026-10-31T09:00:00.000+0000`.
   - Custom fields are `customfield_<id>`.
 - **Bodies, rich text:** version 3 carries the Jira-compatible document format (native
-  `?format=adf`). Version 2 carries **Markdown** until M1-071 adds wiki markup; plain text reads
-  the same in both. Search answers the stored document, which the shim converts with
-  `@taskmoor/richtext`.
+  `?format=adf`). Version 2 carries wiki markup (native `?format=wiki`) since M1-071 (ADR-091);
+  until then it carried Markdown as a stand-in. Search answers the stored document, which the
+  shim converts with `@taskmoor/richtext`.
 - **Bodies, edits and errors:**
   - `fields` and `update` (add, remove and set for labels; set for the rest) become one native
     change.

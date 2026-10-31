@@ -1,0 +1,7 @@
+  two leading spaces
+
+trailing spaces  
+
+a	tab and a no-break space
+
+&#32;  

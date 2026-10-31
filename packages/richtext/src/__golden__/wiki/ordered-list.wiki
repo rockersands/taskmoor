@@ -1,0 +1,3 @@
+# Open the board
+# Pick a sprint
+# Start it

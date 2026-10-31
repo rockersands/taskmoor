@@ -1,0 +1,5 @@
+C++ and C# and snake_case_name and a*b*c and 2^10 and ~/home and x+y+z.
+
+A path C:\Users\ana\file.txt and a regex ^a+b*$.
+
+Braces \{like this} and \[brackets] and a|pipe and wow!

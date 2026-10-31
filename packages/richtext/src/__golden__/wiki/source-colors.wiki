@@ -1,0 +1,1 @@
+{color:red}red{color} {color:#36B37E}green{color} \{color:url(x)}not\{color}

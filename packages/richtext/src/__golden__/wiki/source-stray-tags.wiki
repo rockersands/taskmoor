@@ -1,0 +1,5 @@
+{quote}
+ alone
+
+then \{code} mid-line and \{panel}
+{quote}

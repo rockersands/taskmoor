@@ -1,0 +1,27 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "*not bold* [not link] {not macro} ",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "type": "hardBreak"
+        },
+        {
+          "text": " \\x",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

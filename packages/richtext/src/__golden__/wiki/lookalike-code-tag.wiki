@@ -1,0 +1,12 @@
+\{code:java}
+
+before
+\{code:java}
+
+{quote}
+\{code:java}
+{quote}
+
+{panel:bgColor=#deebff}
+\{code:java}
+{panel}

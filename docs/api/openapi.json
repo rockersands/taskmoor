@@ -19396,7 +19396,9 @@
               "enum": [
                 "doc",
                 "adf",
-                "markdown"
+                "markdown",
+                "wiki",
+                "text"
               ],
               "type": "string"
             }
@@ -19919,7 +19921,7 @@
             }
           },
           {
-            "description": "The rich-text format of bodies, in and out; the stored document by default.",
+            "description": "The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only.",
             "in": "query",
             "name": "format",
             "required": false,
@@ -19927,7 +19929,9 @@
               "enum": [
                 "doc",
                 "adf",
-                "markdown"
+                "markdown",
+                "wiki",
+                "text"
               ],
               "type": "string"
             }
@@ -21203,7 +21207,7 @@
             }
           },
           {
-            "description": "The rich-text format of bodies, in and out; the stored document by default.",
+            "description": "The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only.",
             "in": "query",
             "name": "format",
             "required": false,
@@ -21211,7 +21215,9 @@
               "enum": [
                 "doc",
                 "adf",
-                "markdown"
+                "markdown",
+                "wiki",
+                "text"
               ],
               "type": "string"
             }
@@ -21528,7 +21534,7 @@
             }
           },
           {
-            "description": "The rich-text format of bodies, in and out; the stored document by default.",
+            "description": "The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only.",
             "in": "query",
             "name": "format",
             "required": false,
@@ -21536,7 +21542,9 @@
               "enum": [
                 "doc",
                 "adf",
-                "markdown"
+                "markdown",
+                "wiki",
+                "text"
               ],
               "type": "string"
             }

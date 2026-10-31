@@ -1,0 +1,7 @@
+{panel:bgColor=#ffebe6}
+red
+{panel}
+
+{panel:bgColor=#e3fcef}
+green
+{panel}

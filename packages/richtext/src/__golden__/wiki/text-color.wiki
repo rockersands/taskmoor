@@ -1,0 +1,5 @@
+Status: {color:#ff5630}red{color}, {color:#36b37e}green{color}
+
+{color:purple}named{color} and short {color:#0af}hex{color}
+
+{color:#ff5630}*bold red*{color} then plain

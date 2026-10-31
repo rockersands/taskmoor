@@ -1,4 +1,4 @@
-import { type PmJson, toAdfFromJson, toMarkdown } from '@taskmoor/richtext';
+import { type PmJson, toAdfFromJson, toWiki } from '@taskmoor/richtext';
 import type { Version } from '../operations';
 import { type NativeAnswer, ShimError, type ShimReply } from './types';
 
@@ -12,8 +12,8 @@ type Json = Record<string, unknown>;
 // biome-ignore lint/suspicious/noExplicitAny: native bodies are read field by field
 type Any = any;
 
-/** Rich text as native requests ask for it: the document format on v3, Markdown on v2. */
-export const nativeFormat = (version: Version) => (version === '3' ? 'adf' : 'markdown');
+/** Rich text as native requests ask for it: the document format on v3, wiki markup on v2. */
+export const nativeFormat = (version: Version) => (version === '3' ? 'adf' : 'wiki');
 
 export function error(status: number, messages: string[], errors: Record<string, string> = {}) {
   return { status, body: { errorMessages: messages, errors } };
@@ -131,14 +131,14 @@ const named = (x: Any, base: string, kind: string) =>
 
 /**
  * Rich text in the version's form. Native reads that took `?format=` are already in it; search
- * answers the stored document, which becomes Markdown on v2 and the document format on v3.
+ * answers the stored document, which becomes wiki markup on v2 and the document format on v3.
  */
 export function richText(value: unknown, version: Version): unknown {
   if (value === null || value === undefined) return null;
   if (typeof value !== 'object') return value;
   const doc = value as { type?: string; version?: number };
   if (doc.type !== 'doc' || doc.version !== undefined) return value;
-  return version === '3' ? toAdfFromJson(value as PmJson) : toMarkdown(value as PmJson);
+  return version === '3' ? toAdfFromJson(value as PmJson) : toWiki(value as PmJson);
 }
 
 /** A native ticket as a Jira-compatible issue; `only` narrows `fields` (the `fields` parameter). */

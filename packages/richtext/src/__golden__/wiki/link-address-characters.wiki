@@ -1,0 +1,5 @@
+[query|https://example.test/s?q=a*b&sort=-created#top]
+
+[under_scores|https://example.test/a_b_c/d-e-f]
+
+[encoded|https://example.test/a%20b]

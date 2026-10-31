@@ -1,0 +1,10 @@
+Hi,
+
+Thanks for the details. The fix is in *1.4.2*, out on Monday.
+
+Until then:
+1. turn off the sync
+2. export by hand
+
+Regards,
+Support

@@ -1,0 +1,15 @@
+{panel:bgColor=#deebff}
+info
+{panel}
+
+{panel:bgColor=#eae6ff}
+note
+{panel}
+
+{panel:panelType=tip}
+tip
+{panel}
+
+{panel:bgColor=#fffae6}
+warning
+{panel}

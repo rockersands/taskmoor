@@ -1,0 +1,22 @@
+h2. Summary
+
+Saving a filter with a _long_ name fails with {{413}}.
+
+h3. Steps
+
+# Open *Filters*
+# Type a name of 300 characters
+# Save
+
+h3. Expected
+
+The filter is saved, or the form says the name is too long.
+
+h3. Logs
+
+{code:text}
+POST /api/v1/filters 413
+  body: 2.1 MB
+{code}
+
+Reported by [~accountid:12] — see [the thread|https://example.test/runbook].

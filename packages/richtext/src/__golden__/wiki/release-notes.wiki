@@ -1,0 +1,19 @@
+h1. Release 1.4
+
+{panel:bgColor=#deebff}
+Upgrade with {{upgrade.sh}}; it backs up first.
+{panel}
+
+h2. New
+
+* Boards: 
+** swimlanes by _assignee_
+* Search: saved filters can be shared
+
+h2. Fixed
+
+* Exports of 10,000+ tickets no longer time out
+
+----
+
+_Thanks to everyone who reported issues._

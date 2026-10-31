@@ -357,7 +357,7 @@ Responses:
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
 | `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
-| `format` | query | `"doc"`, `"adf"`, `"markdown"` | no | The rich-text format of bodies, in and out; the stored document by default. |
+| `format` | query | `"doc"`, `"adf"`, `"markdown"`, `"wiki"`, `"text"` | no | The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only. |
 
 Body:
 
@@ -401,7 +401,7 @@ Responses:
 | --- | --- | --- | --- | --- |
 | `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
 | `commentId` | path | string | yes | The comment’s id. |
-| `format` | query | `"doc"`, `"adf"`, `"markdown"` | no | The rich-text format of bodies, in and out; the stored document by default. |
+| `format` | query | `"doc"`, `"adf"`, `"markdown"`, `"wiki"`, `"text"` | no | The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only. |
 
 Body:
 
@@ -1209,7 +1209,7 @@ For queries, use search; this lists a track’s tickets by rank.
 
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
-| `format` | query | `"doc"`, `"adf"`, `"markdown"` | no |  |
+| `format` | query | `"doc"`, `"adf"`, `"markdown"`, `"wiki"`, `"text"` | no |  |
 | `track` | query | string | no |  |
 | `parent` | query | string | no |  |
 | `cursor` | query | string | no |  |
@@ -1286,7 +1286,7 @@ Responses:
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
 | `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
-| `format` | query | `"doc"`, `"adf"`, `"markdown"` | no | The rich-text format of bodies, in and out; the stored document by default. |
+| `format` | query | `"doc"`, `"adf"`, `"markdown"`, `"wiki"`, `"text"` | no | The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only. |
 
 Responses:
 

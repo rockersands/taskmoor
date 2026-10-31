@@ -1,0 +1,31 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "language": null
+      },
+      "content": [
+        {
+          "text": "use {code} to start",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "language": null
+      },
+      "content": [
+        {
+          "text": "both {code} and {noformat }",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    }
+  ],
+  "type": "doc"
+}

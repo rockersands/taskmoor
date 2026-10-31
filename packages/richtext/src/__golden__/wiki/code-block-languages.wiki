@@ -1,0 +1,19 @@
+{code:java}
+class A {}
+{code}
+
+{code:c++}
+int main() { return 0; }
+{code}
+
+{code:c#}
+var x = 1;
+{code}
+
+{code:objective-c}
+@interface A @end
+{code}
+
+{code:shell}
+echo "$HOME"
+{code}

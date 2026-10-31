@@ -1,0 +1,3 @@
+The line ends with {{it}}
+
+Then {{punctuation}}.

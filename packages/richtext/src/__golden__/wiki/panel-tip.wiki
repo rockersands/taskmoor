@@ -1,0 +1,5 @@
+{panel:panelType=tip}
+A tip panel.
+
+* with a list
+{panel}

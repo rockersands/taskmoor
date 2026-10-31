@@ -1,0 +1,9 @@
+h3. Imported
+
+[~accountid:acc-1] see [docs|https://example.test/d]
+
+{panel:bgColor=#eae6ff}
+Kept as a panel.
+{panel}
+
+* \[x] checked off

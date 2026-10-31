@@ -1,0 +1,7 @@
+{panel:bgColor=#eae6ff}
+before
+
+a *marked* paragraph
+
+after
+{panel}

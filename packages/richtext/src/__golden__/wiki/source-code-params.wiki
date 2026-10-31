@@ -1,0 +1,3 @@
+{code:java}
+class Main {}
+{code}

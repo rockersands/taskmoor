@@ -1,0 +1,5 @@
+{panel:bgColor=#deebff}
+A info panel.
+
+* with a list
+{panel}

@@ -1,0 +1,9 @@
+h2. Ranking
+
+Each ticket has a rank _r_ with 0 ≤ r < 1; moving a ticket sets r to the mean of its neighbours.
+
+Complexity is O(n{^}2^) in the worst case, O(log n) on average.
+
+||Case||Cost||
+|best|{{O(1)}}|
+|worst|{{O(n)}}|

@@ -1,0 +1,2 @@
+|&#32;padded&#32;|ends with &#92;|\|starts with pipe|
+|\[link-like]\|x|\{\{not code}}|\!not image!|

@@ -1,0 +1,3 @@
+a line feed inside text
+
+h2. heading with one

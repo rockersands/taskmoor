@@ -1,0 +1,8 @@
+{quote}
+before
+
+* \[x] done
+* \[ ] open
+
+after
+{quote}

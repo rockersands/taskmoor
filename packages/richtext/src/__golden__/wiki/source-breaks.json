@@ -1,0 +1,51 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "one",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "type": "hardBreak"
+        },
+        {
+          "text": "two",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "type": "hardBreak"
+        },
+        {
+          "text": "three",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "type": "hardBreak"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

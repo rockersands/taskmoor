@@ -1,0 +1,9 @@
+{panel:bgColor=#eae6ff}
+before
+
+* one
+* two
+** nested
+
+after
+{panel}

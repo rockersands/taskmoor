@@ -1,0 +1,7 @@
+{quote}
+before
+
+a *marked* paragraph
+
+after
+{quote}
