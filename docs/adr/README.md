@@ -102,5 +102,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [095](0095-dc-boards-and-sprints.md) | The Data Center import of boards, sprints, rank, releases and areas: queries translated and checked, rank keys that keep the order | Accepted |
 | [098](0098-ai-key-storage.md) | AI provider keys under envelope encryption, write-only, moved in from the environment, rotated without failed calls | Accepted |
 | [099](0099-ai-settings-page.md) | The AI settings page: provider, write-only keys, live test connection, per-feature model and effort, and switches enforced at one choke point | Accepted |
+| [100](0100-ai-spend-audit-redaction.md) | AI spend limits, the AI audit log and redaction, in the gateway's call path | Accepted |
+| [101](0101-agent-runs-with-budgets.md) | Agent runs with budgets that are enforced before they can be passed | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

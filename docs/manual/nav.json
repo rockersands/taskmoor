@@ -48,7 +48,7 @@
     },
     {
       "title": "Integrations",
-      "pages": ["admin/api-tokens.md", "admin/rest-api.md", "admin/mcp.md", "admin/ai.md"]
+      "pages": ["admin/api-tokens.md", "admin/rest-api.md", "admin/mcp.md", "admin/ai.md", "admin/ai-usage.md"]
     },
     {
       "title": "Running a server",

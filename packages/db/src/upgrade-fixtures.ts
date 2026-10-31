@@ -1354,6 +1354,48 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
                 'seed', 'environment')`.execute(db);
     },
   },
+  '0075_ai_spend': {
+    tables: {
+      ai_policy: 'workspace_id = 1 AND content_days = 7',
+      ai_price: "provider = 'bedrock' AND model = 'claude-opus-5-5'",
+      ai_spend_limit: "scope = 'feature' AND feature = 'summarize' AND amount = 500000",
+      ai_call: "feature = 'summarize' AND outcome = 'ok' AND cost_nanos = 3200000",
+      ai_usage_day: "feature = 'summarize' AND day = '2026-10-30'",
+      ai_spend_counter: "key = 'feature:summarize' AND period = 'day'",
+      ai_limit_alert: 'percent = 80 AND used = 400000',
+      ai_notice_ack: 'workspace_id = 1',
+    },
+    seed: async (db) => {
+      // A workspace keeping content a week, a Bedrock price, a feature's daily token limit
+      // that raised its 80% alert, one call with its daily sums, and a person who read the notice.
+      await sql`INSERT INTO ai_policy (workspace_id, content_days, redact_terms, redacted_fields)
+        VALUES (1, 7, ARRAY['Heron'], ARRAY['environment'])`.execute(db);
+      await sql`INSERT INTO ai_price (workspace_id, provider, model, input_nanos, output_nanos,
+          cache_read_nanos, cache_write_nanos)
+        VALUES (1, 'bedrock', 'claude-opus-5-5', 4400, 22000, 220, 5500)`.execute(db);
+      await sql`INSERT INTO ai_spend_limit (workspace_id, scope, feature, period, metric, amount)
+        VALUES (1, 'feature', 'summarize', 'day', 'tokens', 500000)`.execute(db);
+      await sql`INSERT INTO ai_call (workspace_id, occurred_at, user_id, feature, provider, model,
+          served_model, mode, outcome, input_tokens, output_tokens, cost_nanos, priced, latency_ms)
+        SELECT 1, '2026-10-30T10:00:00Z', min(id), 'summarize', 'anthropic', 'claude-opus-5-5',
+               'claude-opus-5-5', 'stream', 'ok', 300, 100, 3200000, true, 850
+          FROM app_user`.execute(db);
+      await sql`INSERT INTO ai_usage_day (workspace_id, day, feature, user_id, provider, model,
+          calls, input_tokens, output_tokens, cost_nanos)
+        SELECT 1, '2026-10-30', 'summarize', min(id), 'anthropic', 'claude-opus-5-5', 1, 300, 100,
+               3200000
+          FROM app_user`.execute(db);
+      await sql`INSERT INTO ai_spend_counter (workspace_id, period, period_start, key, tokens,
+          cost_nanos)
+        VALUES (1, 'day', '2026-10-30', 'feature:summarize', 400, 3200000)`.execute(db);
+      await sql`INSERT INTO ai_limit_alert (workspace_id, limit_id, period_start, percent, used)
+        SELECT 1, id, '2026-10-30', 80, 400000 FROM ai_spend_limit WHERE feature = 'summarize'`.execute(
+        db,
+      );
+      await sql`INSERT INTO ai_notice_ack (workspace_id, user_id)
+        SELECT 1, min(id) FROM app_user`.execute(db);
+    },
+  },
 };
 
 /**

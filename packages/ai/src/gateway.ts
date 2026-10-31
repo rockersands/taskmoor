@@ -8,9 +8,11 @@ import {
   AiOutputError,
   AiPolicyError,
   AiProviderError,
+  AiSpendLimitError,
   AiUnsupportedError,
 } from './errors';
 import { type FeatureId, type ResolvedFeature, resolveFeature } from './features';
+import { NO_REDACTION, type RedactionRules, Redactor, type SensitiveValue } from './redact';
 import {
   CircuitBreaker,
   type CircuitBreakerOptions,
@@ -21,6 +23,13 @@ import {
 } from './retry';
 import { check, checkJsonAnswer, strictJsonSchema } from './schema';
 import { redactSecrets } from './secrets';
+import {
+  type AiMeter,
+  type CallOutcome,
+  type CallTag,
+  type MeteredCall,
+  ZERO_USAGE,
+} from './spend';
 import type {
   AdapterRequest,
   AdapterResponse,
@@ -58,6 +67,18 @@ export interface GenerateRequest<T = unknown> {
   tools?: AiTool[];
   cacheSystem?: boolean;
   maxOutputTokens?: number;
+  /** Who the call is for: the spend limits and the AI audit log count it there (M1-077). */
+  tag?: CallTag;
+  /**
+   * The token budget of the agent run this call is a step of (M1-131). Sent only to models
+   * that take one; others are held to the run's limits by the loop alone.
+   */
+  taskBudget?: number;
+  /**
+   * Values of fields marked sensitive that the prompt was built from: they are replaced
+   * wherever they appear in what is sent, besides the workspace's redaction rules (IAM-022).
+   */
+  sensitive?: readonly SensitiveValue[];
 }
 
 export interface GenerateResult<T = unknown> extends AdapterResponse {
@@ -93,6 +114,10 @@ export interface AiGatewayOptions {
   breaker?: Partial<CircuitBreakerOptions>;
   logger?: AiLogger;
   now?: () => number;
+  /** Spend limits before each call and one audit row after it (M1-077). */
+  meter?: AiMeter;
+  /** The redaction rules in force for a call (IAM-022); none when left out. */
+  redaction?: (tag: CallTag) => RedactionRules | Promise<RedactionRules>;
 }
 
 export type FeatureAvailability =
@@ -108,6 +133,8 @@ export interface BatchRequest<T = unknown> {
   maxOutputTokens?: number;
   /** IDs are the caller's (1 to 64 letters, digits, `-` or `_`); results are matched by them. */
   items: { id: string; messages: ChatMessage[] }[];
+  tag?: CallTag;
+  sensitive?: readonly SensitiveValue[];
 }
 
 export type BatchResult<T = unknown> =
@@ -211,6 +238,8 @@ export class AiGateway {
   private readonly breaker: CircuitBreaker;
   private readonly logger: AiLogger | undefined;
   private readonly now: () => number;
+  private readonly meter: AiMeter | undefined;
+  private readonly redaction: AiGatewayOptions['redaction'];
 
   constructor(
     private readonly adapter: ProviderAdapter,
@@ -221,6 +250,8 @@ export class AiGateway {
     this.now = options.now ?? Date.now;
     this.breaker = new CircuitBreaker({ ...DEFAULT_BREAKER, now: this.now, ...options.breaker });
     this.logger = options.logger;
+    this.meter = options.meter;
+    this.redaction = options.redaction;
   }
 
   get provider(): ProviderId {
@@ -247,14 +278,16 @@ export class AiGateway {
     request: GenerateRequest<T>,
     options: CallOptions = {},
   ): Promise<GenerateResult<T>> {
-    const prepared = this.prepare(request);
-    const started = this.now();
-    const first = await this.attempt(
-      request.feature,
-      (signal) => this.adapter.generate(prepared.request, signal ? { signal } : {}),
-      options.signal,
-    );
-    return this.complete(request, prepared, first.value, first.retries, started, options.signal);
+    const prepared = await this.outgoing(this.prepare(request), request);
+    return this.metered(this.callOf(request, prepared, 'generate'), prepared.request, async () => {
+      const started = this.now();
+      const first = await this.attempt(
+        request.feature,
+        (signal) => this.adapter.generate(prepared.request, signal ? { signal } : {}),
+        options.signal,
+      );
+      return this.complete(request, prepared, first.value, first.retries, started, options.signal);
+    });
   }
 
   /**
@@ -273,31 +306,37 @@ export class AiGateway {
     let emitted = false;
     const result = (async () => {
       try {
-        const prepared = this.prepare(request);
-        const started = this.now();
-        const first = await this.attempt(
-          request.feature,
-          (signal) =>
-            this.adapter.stream(prepared.request, {
-              ...(signal ? { signal } : {}),
-              onText: (text) => {
-                emitted = true;
-                queue.push({ type: 'text', text });
-              },
-            }),
-          controller.signal,
-          () => !emitted,
-        );
-        if (first.value.refused) {
-          queue.push({ type: 'refused', category: first.value.refusalCategory });
-        }
-        const done = await this.complete(
-          request,
-          prepared,
-          first.value,
-          first.retries,
-          started,
-          controller.signal,
+        const prepared = await this.outgoing(this.prepare(request), request);
+        const done = await this.metered(
+          this.callOf(request, prepared, 'stream'),
+          prepared.request,
+          async () => {
+            const started = this.now();
+            const first = await this.attempt(
+              request.feature,
+              (signal) =>
+                this.adapter.stream(prepared.request, {
+                  ...(signal ? { signal } : {}),
+                  onText: (text) => {
+                    emitted = true;
+                    queue.push({ type: 'text', text });
+                  },
+                }),
+              controller.signal,
+              () => !emitted,
+            );
+            if (first.value.refused) {
+              queue.push({ type: 'refused', category: first.value.refusalCategory });
+            }
+            return this.complete(
+              request,
+              prepared,
+              first.value,
+              first.retries,
+              started,
+              controller.signal,
+            );
+          },
         );
         queue.end();
         return done;
@@ -319,7 +358,7 @@ export class AiGateway {
 
   /** Input tokens the request would use, from the provider's own counter. */
   async countTokens(request: GenerateRequest, options: CallOptions = {}): Promise<number> {
-    const prepared = this.prepare(request);
+    const prepared = await this.outgoing(this.prepare(request), request);
     if (!this.adapter.capabilities(prepared.request.model).tokenCounting) {
       throw new AiUnsupportedError(this.provider, 'tokenCounting');
     }
@@ -368,10 +407,20 @@ export class AiGateway {
       ...(batch.schema ? { schema: batch.schema } : {}),
       ...(batch.maxOutputTokens ? { maxOutputTokens: batch.maxOutputTokens } : {}),
     });
+    const rules = this.redaction ? await this.redaction(batch.tag ?? {}) : NO_REDACTION;
+    const redactor = new Redactor(rules, batch.sensitive ?? []);
     const items = batch.items.map((item) => ({
       id: item.id,
-      request: { ...base.request, messages: item.messages },
+      request: redactor.request({ ...base.request, messages: item.messages }),
     }));
+    const call: MeteredCall = {
+      feature: batch.feature,
+      provider: this.provider,
+      model: base.request.model,
+      mode: 'batch',
+      tag: batch.tag ?? {},
+    };
+    await this.admit(call);
     // Retry only when the provider plainly turned the submission away; after a lost answer
     // the batch may exist already, and a second one would be billed twice.
     const submitted = await this.attempt(
@@ -405,21 +454,50 @@ export class AiGateway {
     ).value;
   }
 
-  /** Results in any order, keyed by item ID; structured answers are validated per item. */
+  /**
+   * Results in any order, keyed by item ID; structured answers are validated per item. With
+   * `feature`, each result is booked as one call at the batch rate (M1-077): read a batch's
+   * results once.
+   */
   async *batchResults<T = unknown>(
     batchId: string,
-    options: CallOptions & { schema?: z.ZodType<T> } = {},
+    options: CallOptions & { schema?: z.ZodType<T>; feature?: FeatureId; tag?: CallTag } = {},
   ): AsyncGenerator<BatchResult<T>> {
     const batches = this.batchAdapter();
+    const call: MeteredCall | undefined = options.feature
+      ? {
+          feature: options.feature,
+          provider: this.provider,
+          model: this.resolve(options.feature).model,
+          mode: 'batch',
+          tag: options.tag ?? {},
+        }
+      : undefined;
     for await (const outcome of batches.results(
       batchId,
       options.signal ? { signal: options.signal } : {},
     )) {
       if (!outcome.ok) {
+        if (call) {
+          await this.book(call, {
+            ...this.blank(call),
+            status: outcome.error.type === 'canceled' ? 'aborted' : 'error',
+            errorKind: outcome.error.type,
+          });
+        }
         yield outcome;
         continue;
       }
       const response = outcome.response;
+      if (call) {
+        await this.book(call, {
+          ...this.blank(call),
+          status: response.refused ? 'refused' : 'ok',
+          usage: response.usage,
+          servedModel: response.model,
+          fellBack: response.fellBack,
+        });
+      }
       const base: GenerateResult<T> = {
         ...response,
         parsed: undefined,
@@ -443,6 +521,107 @@ export class AiGateway {
             ok: false,
             error: { type: 'invalid_output', message: checked.problem },
           };
+    }
+  }
+
+  /** The request as it leaves the process: the workspace's redaction rules applied. */
+  private async outgoing(
+    prepared: Prepared,
+    request: { tag?: CallTag; sensitive?: readonly SensitiveValue[] },
+  ): Promise<Prepared> {
+    if (!this.redaction && !request.sensitive?.length) return prepared;
+    const rules = this.redaction ? await this.redaction(request.tag ?? {}) : NO_REDACTION;
+    const redactor = new Redactor(rules, request.sensitive ?? []);
+    return redactor.active
+      ? { ...prepared, request: redactor.request(prepared.request) }
+      : prepared;
+  }
+
+  private callOf(
+    request: { feature: FeatureId; tag?: CallTag },
+    prepared: Prepared,
+    mode: MeteredCall['mode'],
+  ): MeteredCall {
+    return {
+      feature: request.feature,
+      provider: this.provider,
+      model: prepared.request.model,
+      mode,
+      tag: request.tag ?? {},
+    };
+  }
+
+  private blank(call: MeteredCall): CallOutcome {
+    return {
+      status: 'ok',
+      usage: ZERO_USAGE,
+      servedModel: call.model,
+      latencyMs: 0,
+      retries: 0,
+      fellBack: false,
+    };
+  }
+
+  /** Checks the spend limits; a refusal is booked as a call of its own before it is thrown. */
+  private async admit(call: MeteredCall): Promise<void> {
+    if (!this.meter) return;
+    try {
+      await this.meter.admit(call);
+    } catch (error) {
+      if (error instanceof AiSpendLimitError) {
+        await this.book(call, { ...this.blank(call), status: 'limited', limit: error.limit });
+      }
+      throw error;
+    }
+  }
+
+  /** Books a call; a failure to book is logged, never turned into a failed call. */
+  private async book(call: MeteredCall, outcome: CallOutcome): Promise<void> {
+    if (!this.meter) return;
+    try {
+      await this.meter.record(call, outcome);
+    } catch (error) {
+      this.logger?.warn(
+        {
+          provider: this.provider,
+          feature: call.feature,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'AI call could not be booked',
+      );
+    }
+  }
+
+  /** Admits, runs and books one call: exactly one audit row whatever happens (M1-077). */
+  private async metered<R extends GenerateResult<unknown>>(
+    call: MeteredCall,
+    sent: AdapterRequest,
+    run: () => Promise<R>,
+  ): Promise<R> {
+    if (!this.meter) return run();
+    await this.admit(call);
+    const started = this.now();
+    try {
+      const result = await run();
+      await this.book(call, {
+        status: result.refused ? 'refused' : 'ok',
+        usage: result.usage,
+        servedModel: result.model,
+        latencyMs: result.latencyMs,
+        retries: result.retries,
+        fellBack: result.fellBack,
+        content: { request: sent, answer: result.text },
+      });
+      return result;
+    } catch (error) {
+      await this.book(call, {
+        ...this.blank(call),
+        status: error instanceof AiAbortedError ? 'aborted' : 'error',
+        latencyMs: this.now() - started,
+        errorKind: errorKind(error),
+        ...(error instanceof AiOutputError && error.usage ? { usage: error.usage } : {}),
+      });
+      throw error;
     }
   }
 
@@ -494,6 +673,9 @@ export class AiGateway {
                 inputSchema: strictJsonSchema(tool.input),
               })),
             }
+          : {}),
+        ...(request.taskBudget !== undefined && capabilities.taskBudget
+          ? { taskBudget: request.taskBudget }
           : {}),
       },
     };
@@ -598,6 +780,29 @@ export class AiGateway {
     started: number,
     signal: AbortSignal | undefined,
   ): Promise<GenerateResult<T>> {
+    let usage = response.usage;
+    try {
+      return await this.completeChecked(request, prepared, response, retries, started, signal, {
+        add: (more) => {
+          usage = addUsage(usage, more);
+          return usage;
+        },
+      });
+    } catch (error) {
+      if (error instanceof AiOutputError && !error.usage) error.usage = usage;
+      throw error;
+    }
+  }
+
+  private async completeChecked<T>(
+    request: GenerateRequest<T>,
+    prepared: Prepared,
+    response: AdapterResponse,
+    retries: number,
+    started: number,
+    signal: AbortSignal | undefined,
+    billed: { add(more: Usage): Usage },
+  ): Promise<GenerateResult<T>> {
     let current = response;
     let usage = response.usage;
     let totalRetries = retries;
@@ -635,7 +840,7 @@ export class AiGateway {
         signal,
       );
       current = second.value;
-      usage = addUsage(usage, current.usage);
+      usage = billed.add(current.usage);
       totalRetries += second.retries;
       repaired = true;
       if (current.refused) return finish(current, undefined);
@@ -649,4 +854,14 @@ export class AiGateway {
     }
     return finish(current, checked.data);
   }
+}
+
+function errorKind(error: unknown): string {
+  if (error instanceof AiProviderError) return error.kind;
+  if (error instanceof AiOutputError) return 'invalid_output';
+  if (error instanceof AiPolicyError) return 'policy';
+  if (error instanceof AiUnsupportedError) return 'unsupported';
+  if (error instanceof AiCircuitOpenError) return 'circuit_open';
+  if (error instanceof AiAbortedError) return 'aborted';
+  return 'unknown';
 }

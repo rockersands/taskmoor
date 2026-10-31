@@ -8,7 +8,7 @@ import type {
   BetaUsage,
   MessageCreateParamsNonStreaming,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { assertClaudeRequestPolicy, SERVER_FALLBACK_BETA } from '../policy';
+import { assertClaudeRequestPolicy, SERVER_FALLBACK_BETA, TASK_BUDGET_BETA } from '../policy';
 import type {
   AdapterRequest,
   AdapterResponse,
@@ -107,6 +107,10 @@ export function buildClaudeParams(
         }))
     : undefined;
 
+  const betas = [
+    ...(options.serverFallback ? [SERVER_FALLBACK_BETA] : []),
+    ...(request.taskBudget !== undefined ? [TASK_BUDGET_BETA] : []),
+  ];
   const params: ClaudeParams = {
     model: options.model,
     max_tokens: request.maxTokens,
@@ -118,9 +122,14 @@ export function buildClaudeParams(
       ...(request.jsonSchema
         ? { format: { type: 'json_schema', schema: request.jsonSchema } }
         : {}),
+      // An agent run's budget (M1-131): the server counts down from the total itself.
+      ...(request.taskBudget !== undefined
+        ? { task_budget: { type: 'tokens', total: request.taskBudget } }
+        : {}),
     },
     ...(tools ? { tools, tool_choice: { type: 'auto' } } : {}),
-    ...(options.serverFallback ? { betas: [SERVER_FALLBACK_BETA], fallbacks: 'default' } : {}),
+    ...(betas.length > 0 ? { betas } : {}),
+    ...(options.serverFallback ? { fallbacks: 'default' } : {}),
   };
   assertClaudeRequestPolicy(params as unknown as Record<string, unknown>);
   return params;

@@ -2287,6 +2287,134 @@ export interface LdapSyncRunTable {
   error: string | null;
 }
 
+/** Bigint columns read as text (the pg driver keeps their precision). */
+type Bigint = ColumnType<string, string | number, string | number>;
+type DefaultBigint = ColumnType<string, string | number | undefined, string | number>;
+
+/** A workspace's AI content logging and redaction rules (M1-077; IAM-021, IAM-022; ADR-100). */
+export interface AiPolicyTable {
+  workspace_id: number;
+  /** Days prompt and answer content is kept; 0 keeps none. */
+  content_days: ColumnType<number, number | undefined, number>;
+  redact_patterns: ColumnType<string[], string[] | undefined, string[]>;
+  redact_terms: ColumnType<string[], string[] | undefined, string[]>;
+  /** `description`, `environment` or `cf[<id>]`. */
+  redacted_fields: ColumnType<string[], string[] | undefined, string[]>;
+  updated_by: number | null;
+  updated_at: DefaultTimestamp;
+}
+
+/** An administrator's price for a model, in billionths of a dollar per token (M1-077). */
+export interface AiPriceTable {
+  workspace_id: number;
+  provider: string;
+  model: string;
+  input_nanos: Bigint;
+  output_nanos: Bigint;
+  cache_read_nanos: Bigint;
+  cache_write_nanos: Bigint;
+  long_above_tokens: number | null;
+  long_input_nanos: ColumnType<string | null, string | number | null, string | number | null>;
+  long_output_nanos: ColumnType<string | null, string | number | null, string | number | null>;
+  updated_by: number | null;
+  updated_at: DefaultTimestamp;
+}
+
+/** A hard stop on AI use per period (M1-077; OPS-020). */
+export interface AiSpendLimitTable {
+  id: Generated<number>;
+  workspace_id: number;
+  scope: 'workspace' | 'feature' | 'user';
+  feature: string | null;
+  /** One person; null on a user limit means each person. */
+  user_id: number | null;
+  period: 'day' | 'week' | 'month';
+  metric: 'tokens' | 'cost';
+  /** Tokens, or nanos for a cost limit. */
+  amount: Bigint;
+  alert_percents: ColumnType<number[], number[] | undefined, number[]>;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** The AI audit log: one row per gateway call (M1-077; IAM-021). */
+export interface AiCallTable {
+  id: Generated<string>;
+  workspace_id: number;
+  occurred_at: DefaultTimestamp;
+  user_id: number | null;
+  track_id: number | null;
+  run_id: string | null;
+  feature: string;
+  provider: string;
+  model: string;
+  served_model: string;
+  mode: 'generate' | 'stream' | 'batch';
+  outcome: 'ok' | 'refused' | 'error' | 'aborted' | 'limited';
+  error_kind: string | null;
+  limit_id: number | null;
+  input_tokens: ColumnType<number, number | undefined, number>;
+  output_tokens: ColumnType<number, number | undefined, number>;
+  cache_read_tokens: ColumnType<number, number | undefined, number>;
+  cache_write_tokens: ColumnType<number, number | undefined, number>;
+  cost_nanos: DefaultBigint;
+  priced: boolean;
+  latency_ms: ColumnType<number, number | undefined, number>;
+  retries: ColumnType<number, number | undefined, number>;
+  fell_back: ColumnType<boolean, boolean | undefined, boolean>;
+  /** What was sent and answered, only while content logging keeps it. */
+  content: ColumnType<JsonValue | null, string | null | undefined, string | null>;
+  content_expires_at: Timestamp | null;
+}
+
+/** AI calls summed per UTC day, feature, person (0: nobody), provider and model (M1-077). */
+export interface AiUsageDayTable {
+  workspace_id: number;
+  day: ColumnType<string, string, string>;
+  feature: string;
+  user_id: number;
+  provider: string;
+  model: string;
+  calls: ColumnType<number, number | undefined, number>;
+  limited: ColumnType<number, number | undefined, number>;
+  failed: ColumnType<number, number | undefined, number>;
+  unpriced: ColumnType<number, number | undefined, number>;
+  input_tokens: DefaultBigint;
+  output_tokens: DefaultBigint;
+  cache_read_tokens: DefaultBigint;
+  cache_write_tokens: DefaultBigint;
+  cost_nanos: DefaultBigint;
+}
+
+/** Usage per spend-limit period and key (`workspace`, `feature:<id>`, `user:<id>`) (M1-077). */
+export interface AiSpendCounterTable {
+  workspace_id: number;
+  period: 'day' | 'week' | 'month';
+  period_start: ColumnType<string, string, string>;
+  key: string;
+  tokens: DefaultBigint;
+  cost_nanos: DefaultBigint;
+}
+
+/** A spend-limit threshold already announced for a period and person (M1-077). */
+export interface AiLimitAlertTable {
+  workspace_id: number;
+  limit_id: number;
+  period_start: ColumnType<string, string, string>;
+  user_id: ColumnType<number, number | undefined, number>;
+  percent: number;
+  used: Bigint;
+  raised_at: DefaultTimestamp;
+}
+
+/** Who has read the AI data-egress notice (M1-077; IAM-022). */
+export interface AiNoticeAckTable {
+  workspace_id: number;
+  user_id: number;
+  acknowledged_at: DefaultTimestamp;
+}
+
 /** Every table Kysely knows about. Add a table here in the same change as its migration. */
 export interface Database {
   instance_setting: InstanceSettingTable;
@@ -2304,6 +2432,14 @@ export interface Database {
   frontend_origin: FrontendOriginTable;
   ai_setting: AiSettingTable;
   ai_credential: AiCredentialTable;
+  ai_policy: AiPolicyTable;
+  ai_price: AiPriceTable;
+  ai_spend_limit: AiSpendLimitTable;
+  ai_call: AiCallTable;
+  ai_usage_day: AiUsageDayTable;
+  ai_spend_counter: AiSpendCounterTable;
+  ai_limit_alert: AiLimitAlertTable;
+  ai_notice_ack: AiNoticeAckTable;
   oauth_token: OauthTokenTable;
   sign_in_throttle: SignInThrottleTable;
   password_link: PasswordLinkTable;

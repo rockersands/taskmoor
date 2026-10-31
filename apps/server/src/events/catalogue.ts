@@ -1441,6 +1441,87 @@ export const EVENT_TYPES = {
   'ai.track_switched': {
     subject: 'track',
     payload: z.object({ key: z.string(), enabled: z.boolean().nullable() }),
+  // AI spend limits, prices and data controls (M1-077; OPS-020, IAM-021, IAM-022; ADR-100).
+  // Amounts are tokens, or billionths of a dollar for a cost limit.
+  'ai_limit.created': {
+    subject: 'ai_spend_limit',
+    payload: z.object({
+      scope: z.enum(['workspace', 'feature', 'user']),
+      feature: z.string().nullable(),
+      userId: id.nullable(),
+      period: z.enum(['day', 'week', 'month']),
+      metric: z.enum(['tokens', 'cost']),
+      amount: z.number().int().positive(),
+      alertPercents: z.array(z.number().int()),
+    }),
+  },
+  'ai_limit.updated': { subject: 'ai_spend_limit', payload: z.object({ changes }) },
+  'ai_limit.deleted': {
+    subject: 'ai_spend_limit',
+    payload: z.object({
+      scope: z.enum(['workspace', 'feature', 'user']),
+      feature: z.string().nullable(),
+      userId: id.nullable(),
+      period: z.enum(['day', 'week', 'month']),
+      metric: z.enum(['tokens', 'cost']),
+    }),
+  },
+  /** A limit's use crossed one of its alert thresholds (OPS-020 (2)); raised by the meter. */
+  'ai_limit.threshold_reached': {
+    subject: 'ai_spend_limit',
+    payload: z.object({
+      scope: z.enum(['workspace', 'feature', 'user']),
+      feature: z.string().nullable(),
+      userId: id.nullable(),
+      period: z.enum(['day', 'week', 'month']),
+      periodStart: z.string(),
+      metric: z.enum(['tokens', 'cost']),
+      amount: z.number().int().positive(),
+      used: z.number().int().min(0),
+      percent: z.number().int(),
+    }),
+  },
+  /** An administrator's price for a model, in US dollars per million tokens. */
+  'ai_price.updated': {
+    subject: 'workspace',
+    payload: z.object({ provider: z.string(), model: z.string(), changes }),
+  },
+  /** A model's administrator price removed: the list price, or none, applies again. */
+  'ai_price.reset': {
+    subject: 'workspace',
+    payload: z.object({ provider: z.string(), model: z.string() }),
+  },
+  /** Content logging and redaction changed; terms appear as their count, never as text. */
+  'ai_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  /** A person read the data-egress notice before their first AI use. */
+  'ai_notice.acknowledged': { subject: 'user', payload: z.object({}) },
+  /**
+   * An agent run ended (M1-131; AI-011; ADR-101): how, which limit stopped it, what it used
+   * against which limits, and the tools it called by name and count. No content.
+   */
+  'ai_run.finished': {
+    subject: 'ai_run',
+    payload: z.object({
+      feature: z.string(),
+      status: z.enum(['completed', 'budget_reached', 'refused', 'failed', 'cancelled']),
+      limit: z
+        .enum(['steps', 'tokens', 'input_tokens', 'output_tokens', 'cost', 'time', 'spend_limit'])
+        .nullable(),
+      steps: z.number().int().min(0),
+      inputTokens: z.number().int().min(0),
+      outputTokens: z.number().int().min(0),
+      costNanos: z.number().int().min(0),
+      elapsedMs: z.number().min(0),
+      tools: z.record(z.string(), z.number().int().min(1)),
+      limits: z.object({
+        maxSteps: z.number().int(),
+        maxWallMs: z.number(),
+        maxTokens: z.number().int().nullable(),
+        maxInputTokens: z.number().int().nullable(),
+        maxOutputTokens: z.number().int().nullable(),
+        maxCostNanos: z.number().int().nullable(),
+      }),
+    }),
   },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 

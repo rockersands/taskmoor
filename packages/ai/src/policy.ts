@@ -1,6 +1,20 @@
 import { EFFORTS } from './config';
 import { AiPolicyError } from './errors';
 
+/** Beta that lets a request carry the token budget of an agent run (M1-131). */
+export const TASK_BUDGET_BETA = 'task-budgets-2026-03-13';
+
+/**
+ * Models that take a task budget on the Anthropic API. Other platforms do not document it, so
+ * it is not sent there.
+ */
+export const TASK_BUDGET_MODELS: ReadonlySet<string> = new Set([
+  'claude-opus-5-5',
+  'claude-opus-5',
+  'claude-sonnet-5-5',
+  'claude-haiku-5-5',
+]);
+
 /** Beta that enables `fallbacks: "default"` on the Anthropic API (server-side refusal fallback). */
 export const SERVER_FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 

@@ -7,6 +7,23 @@ export {
 export { buildClaudeParams, echoableContent, fromClaudeMessage } from './adapters/claude-request';
 export { OpenAiCompatibleAdapter } from './adapters/openai-compatible';
 export {
+  AGENT_LIMITS,
+  type AgentClock,
+  type AgentLimit,
+  type AgentLimits,
+  type AgentReport,
+  type AgentRunOptions,
+  type AgentStatus,
+  type AgentStep,
+  type AgentTool,
+  type AgentToolContext,
+  type AgentToolResult,
+  MIN_TASK_BUDGET,
+  runAgent,
+  SYSTEM_CLOCK,
+  ToolRegistry,
+} from './agent';
+export {
   type AiSettings,
   aiSettingsSchema,
   CLAUDE_MODELS,
@@ -28,7 +45,9 @@ export {
   AiOutputError,
   AiPolicyError,
   AiProviderError,
+  AiSpendLimitError,
   AiUnsupportedError,
+  type SpendLimitReached,
 } from './errors';
 export { type AdapterFactoryOptions, createProviderAdapter } from './factory';
 export {
@@ -51,7 +70,24 @@ export {
   type GenerateResult,
   type StreamEvent,
 } from './gateway';
-export { assertClaudeRequestPolicy, SERVER_FALLBACK_BETA, SERVER_FALLBACK_MODELS } from './policy';
+export {
+  assertClaudeRequestPolicy,
+  SERVER_FALLBACK_BETA,
+  SERVER_FALLBACK_MODELS,
+  TASK_BUDGET_BETA,
+  TASK_BUDGET_MODELS,
+} from './policy';
+export {
+  DEFAULT_REDACTION_PATTERNS,
+  MIN_VALUE_LENGTH,
+  NO_REDACTION,
+  placeholder,
+  REDACTION_PATTERNS,
+  type RedactionPattern,
+  type RedactionRules,
+  Redactor,
+  type SensitiveValue,
+} from './redact';
 export {
   CircuitBreaker,
   type CircuitBreakerOptions,
@@ -60,6 +96,34 @@ export {
   retryDelay,
 } from './retry';
 export { InMemorySecretStore, redactSecrets, type SecretRef, type SecretStore } from './secrets';
+export {
+  type AiMeter,
+  BATCH_DISCOUNT,
+  type CallOutcome,
+  type CallStatus,
+  type CallTag,
+  callCost,
+  LIST_PRICES,
+  type ListPrice,
+  limitApplies,
+  type MeteredCall,
+  type ModelPrice,
+  NANOS_PER_USD,
+  nanosOf,
+  periodWindow,
+  priceModelId,
+  reachedLimit,
+  SPEND_METRICS,
+  SPEND_PERIODS,
+  SPEND_SCOPES,
+  type SpendLimit,
+  type SpendMetric,
+  type SpendPeriod,
+  type SpendScope,
+  totalTokens,
+  usdPerMillionOf,
+  ZERO_USAGE,
+} from './spend';
 export type {
   AdapterRequest,
   AdapterResponse,

@@ -340,6 +340,43 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     accepted key is `TASKMOOR_E2E_AI_KEY`, made by `playwright.config.ts`.
   - M1-077 (spend limits, in parallel on another branch) will meet these files: its checks
     belong in `AiService.call`, next to `scopeBlock`.
+- **M1-077 AI spend limits, usage and data controls** (branch `work/m1-077-ai-spend`, side
+  agent 2026-10-31; migration 0075, ADR-100; M1-077 is done):
+  - Gateway: `AiGatewayOptions.meter` and `redaction`; `GenerateRequest.tag` (`userId`,
+    `trackId`, `runId`) and `sensitive`. Every generate and stream books exactly one row through
+    the meter, whatever happens. `@taskmoor/ai` has `spend.ts`, `redact.ts` and `MemoryMeter`
+    (in `testing.ts`) for tests without a database.
+  - Server: `app.ai.service.gateway(workspaceId)` is the way AI features (M1-079) call AI: it
+    wires `DbMeter` (`apps/server/src/ai/usage.ts`) and the workspace's redaction. Tag every
+    call with the person, build ticket prompts with `app.ai.context.ticket(caller, id)` and pass
+    its `sensitive` along, answer failures with `aiErrorBody`, and wrap the feature's controls in
+    the web `AiNotice`. `aiRefusalMessage` words a refused call.
+  - **For M1-075 and M1-076:** `AppDeps.ai.source` (`AiProviderSource`: workspace to
+    `{ adapter, features, region }` or null) is where key storage plugs in; until then AI is not
+    configured anywhere. The server now depends on `@taskmoor/ai` (package.json, tsconfig, lock):
+    expect a trivial conflict. The settings page can show and edit limits, prices and the
+    redaction policy through `/api/v1/admin/ai/{limits,prices,policy}`; this branch has no form
+    for them (the usage page shows limits read-only).
+  - Prices are list prices to verify (`verify: true`), never dated; Bedrock and Vertex AI are
+    unpriced until an administrator enters a rate.
+  - Not done: alert email (no administrator channel yet; alerts are audited events), the partial
+    usage of cancelled streams, redaction by classification (IAM-016, M2).
+- **M1-131 agent runs with budgets** (same branch, second commit; ADR-101, no migration;
+  M1-131 is done):
+  - `runAgent(gateway, options)` and `ToolRegistry` in `packages/ai/src/agent.ts`. Limits are
+    enforced before a step, not after: the prompt is counted (`countTokens`) and `max_tokens`
+    capped to the tightest limit's room. A new step needs 1,024 tokens of room
+    (`minStepOutputTokens`). Tools get the run's abort signal and should honour it.
+  - New capability `taskBudget` (in `ModelCapabilities`) and `AdapterRequest.taskBudget`; the
+    Claude adapter sends `output_config.task_budget` with beta `task-budgets-2026-03-13` on the
+    Anthropic API only. M1-076's capability display may want to show it.
+  - Server: `app.ai.agents.run({ workspaceId, userId, feature, system, task, tools, limits,
+    post })`. Tools act as the person: build them on the person's `Caller`. The report goes to
+    `post`; where it appears (a comment, the page) is the feature's choice (M1-079).
+  - Tests: `agent.test.ts` (property test; `VirtualClock` from `@taskmoor/ai/testing`),
+    `adapters/agent.contract.test.ts` with fixtures `anthropic/agent-run.json` and
+    `agent-budget.json` (request bodies written from our adapter against a fake server, then
+    checked by hand; responses synthetic), `apps/server/src/ai/agent-runs.test.ts`.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

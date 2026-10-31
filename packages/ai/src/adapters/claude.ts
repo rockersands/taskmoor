@@ -18,7 +18,7 @@ import type {
 import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 import type { ClaudeProviderConfig, ClaudeProviderId, ProviderId } from '../config';
 import { AiUnsupportedError, kindForHttpStatus } from '../errors';
-import { SERVER_FALLBACK_MODELS } from '../policy';
+import { SERVER_FALLBACK_MODELS, TASK_BUDGET_MODELS } from '../policy';
 import { retryAfterFromHeaders, shouldRetryFromHeaders } from '../retry';
 import type { SecretStore } from '../secrets';
 import type {
@@ -287,6 +287,7 @@ export class ClaudeAdapter implements ProviderAdapter {
       tokenCounting: true,
       modelListing: firstParty,
       batches: firstParty,
+      taskBudget: firstParty && TASK_BUDGET_MODELS.has(model),
       refusalFallback:
         this.bundle.refusalFallback === 'server'
           ? SERVER_FALLBACK_MODELS.has(model)
@@ -333,12 +334,14 @@ export class ClaudeAdapter implements ProviderAdapter {
   }
 
   async countTokens(request: AdapterRequest, options?: CallOptions): Promise<number> {
+    // The task budget belongs to the run, not to the count: the count leaves it out.
+    const { taskBudget: _budget, ...unbudgeted } = request;
     const {
       max_tokens: _max,
       betas: _betas,
       fallbacks: _fallbacks,
       ...rest
-    } = this.params(request, false);
+    } = this.params(unbudgeted, false);
     // The generally available endpoint: same body, no beta header.
     const counted = await this.bundle.client.messages.countTokens(
       rest as unknown as MessageCountTokensParams,

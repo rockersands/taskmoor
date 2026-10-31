@@ -10,8 +10,11 @@ import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/
 import type { RoutingMode } from '@taskmoor/webconfig';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
+import { AgentRuns } from './ai/agent-runs';
+import { AiContext } from './ai/context';
 import { type AiKeyRing, aiKeyRing } from './ai/keyring';
-import { type AdapterFactory, AiService } from './ai/service';
+import { type AdapterFactory, AiService, type AiServiceOptions } from './ai/service';
+import { purgeAiContent } from './ai/usage';
 import { sweepStorage } from './attachments/cleanup';
 import { type AttachmentStores, NO_STORAGE } from './attachments/stores';
 import { presentedToken, resolveSession } from './auth';
@@ -34,6 +37,7 @@ import { registerAccountRoutes } from './routes/account';
 import { registerActivityRoutes } from './routes/activity';
 import { registerAdminRoutes } from './routes/admin';
 import { registerAiRoutes } from './routes/ai';
+import { registerAiUsageRoutes } from './routes/ai-usage';
 import { registerAttachmentRoutes } from './routes/attachments';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
@@ -108,8 +112,12 @@ declare module 'fastify' {
     routeTable: string[];
     /** Real-time co-editing (M1-017), when this process has the realtime role. */
     collaboration: Collaboration | null;
-    /** The way into AI (M1-075), when this process has the API role. */
-    ai: AiService | null;
+    /**
+     * The way into AI (M1-075, M1-076): stored keys and settings, with spend limits, redaction
+     * and the AI audit log (M1-077), tickets as prompts see them, and agent runs with budgets
+     * (M1-131); null without the API role.
+     */
+    ai: { service: AiService; context: AiContext; agents: AgentRuns } | null;
   }
 }
 
@@ -193,6 +201,11 @@ export interface AppDeps {
    * thousands of requests leave them out, and the rate limit tests pass their own clock.
    */
   rateLimits?: { limiter?: RateLimiter; now?: () => number };
+  /**
+   * A provider that wins over the stored settings (tests), and test clocks and retry settings
+   * (M1-077). Without a source the stored keys and settings decide (M1-075).
+   */
+  ai?: Pick<AiServiceOptions, 'source' | 'now' | 'gateway'>;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -531,16 +544,27 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       servesFrontend: roles.includes('web') && deps.webDir !== undefined,
     });
     registerBackupRoutes(app, db);
-    // AI provider settings and sealed credentials (M1-075; IAM-020; ADR-098).
+    // AI provider settings and sealed credentials (M1-075; IAM-020; ADR-098), with spend
+    // limits, the usage dashboard, the AI audit log and data controls (M1-077; ADR-100).
     const aiKeys = deps.aiKeys ?? aiKeyRing({ peppers: deps.peppers });
     const ai = new AiService(db, {
       ring: aiKeys.ring,
       ...(deps.aiAdapterFactory ? { adapterFactory: deps.aiAdapterFactory } : {}),
       logger: { warn: (data, message) => app.log.warn(data, message) },
+      ...deps.ai,
     });
-    app.ai = ai;
+    app.ai = {
+      service: ai,
+      context: new AiContext(db, authorizer, fieldCatalogs, ai.settings),
+      // Agent runs with budgets (M1-131), for the AI features to use.
+      agents: new AgentRuns(db, ai),
+    };
     registerAiRoutes(app, db, { ai, keyStorage: aiKeys.storage });
     registerTokenRoutes(app, db);
+    registerAiUsageRoutes(app, db, {
+      ai,
+      ...(deps.ai?.now ? { now: deps.ai.now } : {}),
+    });
     registerRateLimitRoutes(app, db, {
       policies,
       usage,
@@ -554,9 +578,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // Expired sessions, used links, stale counters and long-dead tokens go at start and every
     // six hours.
     const prune = () =>
-      Promise.all([pruneIdentityData(db), pruneApiTokens(db), pruneOAuth(db)]).catch((error) =>
-        app.log.warn({ error }, 'prune failed'),
-      );
+      Promise.all([
+        pruneIdentityData(db),
+        pruneApiTokens(db),
+        pruneOAuth(db),
+        purgeAiContent(db),
+      ]).catch((error) => app.log.warn({ error }, 'prune failed'));
     let pruneTimer: NodeJS.Timeout | undefined;
     // Files of deleted attachments leave this process's stores every ten minutes too, so a
     // store only the API can see (local disk on its own volume) is cleaned as well (ADR-040).

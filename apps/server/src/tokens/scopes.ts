@@ -81,6 +81,8 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   // Approving an OAuth client is a person's answer at their browser (M1-072).
   'GET /api/v1/oauth/requests/:id',
   'POST /api/v1/oauth/requests/:id',
+  // Reading the AI data-egress notice is a person's own answer at their browser (M1-077).
+  'POST /api/v1/ai/notice',
 ]);
 
 /** Routes other than GET that change nothing anyone else sees: a read token reaches them. */
