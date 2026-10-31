@@ -2,7 +2,23 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: 2026-10-31 (cloud session): the user's decisions, and search changes
+## Start here: 2026-10-31 (cloud session): the user's decisions, search changes, batch 3
+
+**Batch 3 is on `main`** (one gate, `pnpm verify --e2e`: 5,215 tests, 157 e2e): M1-093 boards and
+sprints, M1-094 saved filters, M1-128 imported links, M1-075 AI key storage, M1-076 the AI
+settings page, M1-077 AI spend and audit, M1-131 agent budgets, and the M1-040 changes below.
+Their entries are in the 2026-10-30 evening section. What the merge joined:
+- **One `AiService`** (`apps/server/src/ai/service.ts`): stored keys and settings (M1-075/076),
+  and on every workspace gateway the meter, redaction and AI audit of M1-077 (the settings page's
+  test connection is not metered). `deps.ai.source` supplies a provider in tests and wins over
+  the stored settings. `app.ai` is `{ service, context, agents }`. Agent runs go through
+  `AiService.call` (so workspace, track, strict and feature switches apply) and keep one gateway
+  for the run; the data statement reads `AiService.summary`. The usage page's message ids that
+  clashed with the settings page's are `ai.statement.*`.
+- **The DC importer** has both parts: agile (M1-093) and filters (M1-094) hook the stage,
+  generator and validator, agile first (it lets `SearchRequest` rows pass). `STAGE_VERSION` is 6.
+  Board filters (12000 and up) are saved searches too, so `dc-filters.test.ts` counts the added
+  boards. Sprints and rank now resolve in translated filters.
 
 The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions.csv`):
 
@@ -11,11 +27,11 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   from a capped subquery, and `rankedWarning` in `routes/search.ts` warns when there are more).
   Patterns are dropped: a `*` anywhere but the end of a word is refused ("A * can only end a
   word"). Spec 01b 1.8, ADR-069 (Changes), ADR-010, ADR-011 and the manual's search page are
-  updated. The trigram indexes of migration 0057 are no longer used: a later migration may drop
-  them (not before batch 3's 0072 to 0075 are on main).
+  updated. The trigram indexes of migration 0057 are no longer used: a later migration (0076 or
+  after) may drop them.
 - **DC import system administrators** (M1-090): both, as an import setting, site administrator
-  by default and configuration administrator as the option. Not built yet: it touches
-  `apps/server/src/import/dc-schemes.ts`, so it comes after the batch 3 merge.
+  by default and configuration administrator as the option. Not built yet (next, now that batch
+  3 is merged): it touches `apps/server/src/import/dc-schemes.ts`.
 - **AI provider key:** not yet. M1-073 and M1-074's live tests stay skipped.
 - **Spanish review:** the user does it once every M1 task is finished.
 - **Release signing key** (M1-100): the user asked Claude to make it. A cloud container cannot
@@ -133,9 +149,9 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - `TASKMOOR_JIRA_COMPAT=off` turns it off.
   - On a loaded machine, `search/plans.test.ts` once chose an equivalent index. It passes alone:
     rerun it before treating it as real.
-- **Next free numbers:** migration **0072** and ADR-095. 0069 and 0070 were held for M1-091 and
-  M1-090, which needed none, and M1-095 used 0071, so **never use 0069 or 0070**: Kysely refuses a
-  migration that sorts before one a database already ran. ADR-085 to ADR-094 are used.
+- **Next free numbers:** migration **0076** and ADR-102 (batch 3 merged on 2026-10-31: 0073 to
+  0075, ADR-095 to ADR-101). **Never use 0069, 0070 or 0072**: they were held and left unused, and
+  Kysely refuses a migration that sorts before one a database already ran.
 - **M1-112 Builder page** (2026-10-31; ADR-088, no migration): M1-112 is done.
   - The page is a second entry of the web app (`apps/web/src/builder`,
     `vite.builder.config.ts`). It is built into one file, `apps/web/dist-builder/index.html`,
