@@ -128,6 +128,10 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/admin/frontends']).toBe('admin');
     expect(classes['PATCH /api/v1/admin/frontends/:id']).toBe('admin');
     expect(classes['DELETE /api/v1/admin/frontends/:id']).toBe('admin');
+    // AI provider settings and write-only credentials (M1-075).
+    expect(classes['GET /api/v1/admin/ai']).toBe('admin');
+    expect(classes['PUT /api/v1/admin/ai/credentials/:slot']).toBe('admin');
+    expect(classes['DELETE /api/v1/admin/ai/credentials/:slot']).toBe('admin');
     const adminOnly = api.filter(
       (r) =>
         /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|directories|audit)/.test(

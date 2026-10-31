@@ -1414,6 +1414,23 @@ export const EVENT_TYPES = {
     subject: 'frontend_origin',
     payload: z.object({ origin: z.string() }),
   },
+  // AI provider credentials (M1-075; IAM-020; ADR-098): which slot, and only its last four
+  // characters; the key itself never enters an event. `environment`: moved in at first start.
+  'ai.credential_set': {
+    subject: 'workspace',
+    payload: z.object({
+      slot: z.enum(['apiKey', 'accessKeyId', 'secretAccessKey', 'sessionToken', 'accessToken']),
+      last4: z.string().max(4),
+      replaced: z.boolean(),
+      source: z.enum(['admin', 'environment']),
+    }),
+  },
+  'ai.credential_deleted': {
+    subject: 'workspace',
+    payload: z.object({
+      slot: z.enum(['apiKey', 'accessKeyId', 'secretAccessKey', 'sessionToken', 'accessToken']),
+    }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

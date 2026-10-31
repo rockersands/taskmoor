@@ -5,6 +5,19 @@ export {
   newApiToken,
 } from './api-token';
 export {
+  type Envelope,
+  EnvelopeError,
+  type EnvelopeErrorCode,
+  ExternalKek,
+  type ExternalKeyService,
+  type KeyEncryptionKey,
+  KeyRing,
+  LocalKek,
+  openEnvelope,
+  rewrapEnvelope,
+  sealEnvelope,
+} from './envelope';
+export {
   ARGON2,
   hashPassword,
   hashPasswordScryptForTests,

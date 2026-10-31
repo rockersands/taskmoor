@@ -241,6 +241,25 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     votes, schemes, comment visibility, custom field history, real contexts and options, a
     1M-item rate run (IMP-002 (1)), clearing a finished run's sealed token; M1-096 builds delta
     runs on `fetch_state`, M1-097 the wizard and CLI.
+- **M1-075 AI key storage** (branch `work/m1-075-ai-keys`, side agent 2026-10-31; migration
+  0074, ADR-098; M1-075 is done):
+  - Envelope encryption is generic, in `packages/iam/src/envelope.ts` (`sealEnvelope`,
+    `openEnvelope`, `rewrapEnvelope`, `KeyRing`, `LocalKek`, `ExternalKek`); `FakeKeyService` is
+    in `@taskmoor/iam/testing`. The server's ring is `apps/server/src/ai/keyring.ts`: a key
+    service, else `TASKMOOR_MASTER_KEY`, else the pepper. TOTP seeds and LDAP passwords still use
+    `sealSecret`; moving them is a separate change.
+  - `apps/server/src/ai/`: `settings.ts` (the `ai_setting` JSON; M1-076 extends
+    `storedAiSettings`), `credentials.ts` (sealed slots, last four), `environment.ts` (first-start
+    import, called from `main.ts` with the re-wrap), `service.ts` (`AiService`, on `app.ai`).
+    **Every AI call goes through `app.ai.use(workspaceId, fn)`**: that is where M1-076's switches
+    and M1-077's spend limits and audit belong. `buildApp` takes `aiKeys` and
+    `aiAdapterFactory` (tests) and `logStream` (log capture).
+  - The server now depends on `@taskmoor/ai` (the Anthropic SDKs go into `server.mjs`).
+  - Tests: `ai/keys.test.ts`, `iam/src/envelope.test.ts`, the build test in
+    `apps/web/build/artefact.test.ts`. The "Product gaps the manual found" note about
+    `MASTER_KEY` and `AI_*` is closed; `TOKEN_SIGNING_KEY` is still not read (not needed).
+  - Not done: a real KMS or Vault adapter and a setting to choose one; `install.ps1` does not
+    remove `TASKMOOR_AI_KEY` from `.env` after the first start.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

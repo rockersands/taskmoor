@@ -186,6 +186,36 @@ export interface FrontendOriginTable {
   updated_at: DefaultTimestamp;
 }
 
+/**
+ * A workspace's AI settings (M1-075, ADR-098): provider and non-secret settings as JSON;
+ * `version` goes up with every change to them or to a credential.
+ */
+export interface AiSettingTable {
+  workspace_id: number;
+  value: ColumnType<JsonValue, string | undefined, string>;
+  version: ColumnType<number, number | undefined, number>;
+  /** When the environment's provider and key were moved in; the environment is ignored since. */
+  environment_imported_at: Timestamp | null;
+  updated_by: number | null;
+  updated_at: DefaultTimestamp;
+}
+
+/** A provider secret, sealed with envelope encryption (IAM-020, ADR-098). Never returned. */
+export interface AiCredentialTable {
+  workspace_id: number;
+  slot: 'apiKey' | 'accessKeyId' | 'secretAccessKey' | 'sessionToken' | 'accessToken';
+  /** The key-encryption key that wrapped the data key: `master:…`, `pepper:…`, `kms:…`. */
+  kek_id: string;
+  wrapped_key: string;
+  ciphertext: string;
+  /** The last four characters, all an answer shows; empty for short secrets. */
+  last4: string;
+  source: 'admin' | 'environment';
+  updated_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
 /** An authorization request waiting for sign-in and consent, for ten minutes (M1-072). */
 export interface OauthRequestTable {
   id_hash: string;
@@ -2272,6 +2302,8 @@ export interface Database {
   oauth_client: OauthClientTable;
   oauth_request: OauthRequestTable;
   frontend_origin: FrontendOriginTable;
+  ai_setting: AiSettingTable;
+  ai_credential: AiCredentialTable;
   oauth_token: OauthTokenTable;
   sign_in_throttle: SignInThrottleTable;
   password_link: PasswordLinkTable;

@@ -81,6 +81,9 @@ describe('the backend kit (M1-110)', () => {
     }
     expect(sh.indexOf('preflight\n[ "${1:-}" = "--preflight" ]')).toBeGreaterThan(0);
     expect(sh).toContain('$PUBLIC_URL/#/setup?token=$TOKEN');
+    // IAM-020 (3): once the backend holds the AI key sealed, the key leaves .env.
+    expect(sh).toContain("sed -i.bak '/^TASKMOOR_AI_KEY=/d' .env");
+    expect(sh.indexOf('TASKMOOR_AI_KEY=/d')).toBeGreaterThan(sh.indexOf('ready || {'));
   });
 
   it('[OPS-015] offers Helm values and a Secret instead, for the Helm target', async () => {

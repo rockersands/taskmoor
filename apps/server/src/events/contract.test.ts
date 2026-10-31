@@ -7,6 +7,7 @@ import { hashPassword, totpCode, totpStep } from '@taskmoor/iam';
 import { LocalStore } from '@taskmoor/storage';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { aiKeyRing } from '../ai/keyring';
 import { buildApp } from '../app';
 import { processAttachment } from '../attachments/jobs';
 import { type AttachmentStores, storesOf } from '../attachments/stores';
@@ -183,6 +184,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       roles: ['api'],
       attachments,
       allowedOrigins: [FRONTEND],
+      aiKeys: aiKeyRing({ masterKey: randomBytes(32).toString('base64url') }),
     });
   });
   afterAll(async () => {
@@ -373,6 +375,22 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       route: 'DELETE /api/v1/admin/frontends/:id',
       expect: 'frontend_origin.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/admin/frontends/${state.frontend}` }),
+    },
+    // An AI provider key, set and removed (M1-075): write-only, made at run time.
+    {
+      route: 'PUT /api/v1/admin/ai/credentials/:slot',
+      expect: 'ai.credential_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/ai/credentials/apiKey',
+          payload: { value: `fake-ai-key-${randomBytes(18).toString('hex')}` },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/admin/ai/credentials/:slot',
+      expect: 'ai.credential_deleted',
+      run: () => admin({ method: 'DELETE', url: '/api/v1/admin/ai/credentials/apiKey' }),
     },
     {
       route: 'PATCH /api/v1/account',

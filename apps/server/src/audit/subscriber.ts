@@ -140,6 +140,9 @@ export const AUDITED_EVENTS = [
   'frontend_origin.created',
   'frontend_origin.updated',
   'frontend_origin.deleted',
+  // Who set, replaced or removed an AI provider credential (M1-075, IAM-020): last four only.
+  'ai.credential_set',
+  'ai.credential_deleted',
   // What becomes searchable in ticket properties (M1-129).
   'property_index.created',
   'property_index.deleted',
