@@ -6,6 +6,8 @@ import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { API_VERSION } from '../api/operation';
 import { type InstanceIdentity, loadIdentity } from '../meta/identity';
+import { FRONTEND_VERSION, recordFrontendVersion } from '../network/frontends';
+import type { OriginPolicy } from '../origins';
 import { INSTANCE_KEY, readSetting } from '../setup';
 
 /**
@@ -22,6 +24,10 @@ export const metaQuery = z
     nonce: z.string().regex(NONCE).optional().meta({
       description:
         '16 to 128 base64url characters the instance signs, chosen afresh by the caller.',
+    }),
+    frontend: z.string().max(200).optional().meta({
+      description:
+        'The calling frontend’s version (its `version.json`). A frontend on a registered origin is listed with the version it last reported.',
     }),
   })
   .strict();
@@ -88,6 +94,8 @@ export interface MetaRouteOptions {
   peppers?: PepperRing | undefined;
   /** The identity a Builder kit gives the instance, used when none is stored yet. */
   instance?: { id: string; seed: string };
+  /** Which origins are registered frontends, whose reported versions are kept (M1-108). */
+  origins?: OriginPolicy;
 }
 
 export function registerMetaRoutes(
@@ -129,6 +137,17 @@ export function registerMetaRoutes(
         return reply.code(503).send({ error: 'identity_unavailable' });
       }
       signature = { nonce: query.data.nonce, value };
+    }
+    // A registered frontend says which version it runs (M1-108); a failure costs the answer
+    // nothing.
+    const origin = request.headers.origin;
+    const reported = query.data.frontend;
+    if (origin && reported && FRONTEND_VERSION.test(reported) && options.origins) {
+      if ((await options.origins.current()).registered.has(origin)) {
+        await recordFrontendVersion(db, request.workspaceId, origin, reported).catch((error) =>
+          request.log.warn({ error }, 'could not record a frontend version'),
+        );
+      }
     }
     // Cross-origin readers are the allowed frontends, approved like every API call (M1-107).
     reply.header('cache-control', 'no-store');

@@ -24,5 +24,5 @@ export default defineConfig({
     rollupOptions: { output: { inlineDynamicImports: true } },
   },
   server: { port: 5174 },
-  preview: { port: 4183, strictPort: true },
+  preview: { port: 4184, strictPort: true },
 });

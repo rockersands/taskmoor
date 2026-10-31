@@ -11,7 +11,7 @@ import { resolveSession, SECURE_SESSION_COOKIE, SESSION_COOKIE } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import type { FieldCatalogs } from '../fields/catalog';
 import { isAccessToken, resolveAccessToken } from '../oauth/tokens';
-import { OriginPolicy } from '../origins';
+import type { OriginPolicy } from '../origins';
 import { checkRichText } from '../tickets/model';
 import { docHash } from '../tickets/rich-text';
 import { loadTicket } from '../tickets/store';
@@ -90,8 +90,8 @@ export interface CollaborationOptions {
   catalogs: FieldCatalogs;
   /** Where browsers reach this instance; its origin may open sockets. */
   publicUrl: string;
-  /** Frontends on other origins that may open sockets too (TASKMOOR_ALLOWED_ORIGINS). */
-  allowedOrigins?: readonly string[];
+  /** Which frontends on other origins may open sockets too (M1-107, M1-108). */
+  origins: OriginPolicy;
   /** Milliseconds of quiet before a save (tests shorten it). */
   debounceMs?: number;
 }
@@ -107,10 +107,7 @@ export class Collaboration {
   private log: FastifyInstance['log'] | undefined;
 
   constructor(private readonly options: CollaborationOptions) {
-    this.origins = new OriginPolicy({
-      publicUrl: options.publicUrl,
-      allowedOrigins: options.allowedOrigins ?? [],
-    });
+    this.origins = options.origins;
     this.hocuspocus = new Hocuspocus<CollabContext>({
       quiet: true,
       debounce: options.debounceMs ?? 2_000,
@@ -221,7 +218,7 @@ export class Collaboration {
     socket: Duplex,
     head: Buffer,
   ): Promise<void> {
-    if (!this.originAllowed(request)) {
+    if (!(await this.originAllowed(request))) {
       reject(socket, 403);
       return;
     }
@@ -258,8 +255,9 @@ export class Collaboration {
   }
 
   /** A browser may connect only from this instance's own origin or an allowed frontend's. */
-  private originAllowed(request: IncomingMessage): boolean {
-    return this.origins.allows(request.headers.origin, request.headers.host);
+  private async originAllowed(request: IncomingMessage): Promise<boolean> {
+    const origins = await this.origins.current();
+    return origins.allowsSocket(request.headers.origin, request.headers.host);
   }
 
   /** The person an OAuth access token signs in, or a refusal (M1-107). */

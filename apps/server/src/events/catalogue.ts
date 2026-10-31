@@ -1395,6 +1395,25 @@ export const EVENT_TYPES = {
     subject: 'oauth_client',
     payload: z.object({ name: z.string(), grantsEnded: z.number().int() }),
   },
+  // Frontends on other origins a site administrator registered (M1-108; ADR-087): which
+  // origin may call the API, where OAuth sign-in may return, whether it opens the sockets.
+  'frontend_origin.created': {
+    subject: 'frontend_origin',
+    payload: z.object({
+      origin: z.string(),
+      label: z.string(),
+      redirectUris: z.array(z.string()),
+      websocket: z.boolean(),
+    }),
+  },
+  'frontend_origin.updated': {
+    subject: 'frontend_origin',
+    payload: z.object({ origin: z.string(), changes }),
+  },
+  'frontend_origin.deleted': {
+    subject: 'frontend_origin',
+    payload: z.object({ origin: z.string() }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

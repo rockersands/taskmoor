@@ -15,13 +15,13 @@ import {
 import { expectWithinBudget } from './budget';
 
 /**
- * The Builder page (M1-112; OPS-014, OPS-016): the one-file page served alone on 4183, with
+ * The Builder page (M1-112; OPS-014, OPS-016): the one-file page served alone on 4184, with
  * every request that is not the page itself refused and the browser offline once it has
  * loaded. It makes both kits from a project file or a filled form, saves and loads the project
  * file, and its downloads are byte for byte what `pnpm builder` writes from the same project
  * file and seed (or the secrets the project keeps).
  */
-const BUILDER = 'http://localhost:4183';
+const BUILDER = 'http://localhost:4184';
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const WEB = fileURLToPath(new URL('../dist', import.meta.url));
 const OUTPUTS = Object.keys(KIT_FILE_NAMES) as KitOutput[];

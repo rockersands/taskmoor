@@ -8,6 +8,9 @@
 // (api.taskmoor.localhost:8794) directly (M1-107, cross-origin.spec.ts):
 //   4181  app.taskmoor.localhost, a sibling subdomain: the backend's cookie (auth "session")
 //   4182  127.0.0.1, another site: OAuth with PKCE (auth "oauth")
+// and one that backend does not list, for an administrator to register (M1-108,
+// frontends.spec.ts):
+//   4183  kit2.taskmoor.localhost, a sibling subdomain (auth "session")
 // Playwright starts it after the preview's build and the API servers.
 // Started with: tsx apps/web/e2e/kit-server.ts
 import { randomUUID } from 'node:crypto';
@@ -25,6 +28,7 @@ export const E2E_KIT_SINGLE_PORT = 4179;
 export const E2E_KIT_WRONG_PORT = 4180;
 export const E2E_KIT_SIBLING_PORT = 4181;
 export const E2E_KIT_CROSS_SITE_PORT = 4182;
+export const E2E_KIT_UNLISTED_PORT = 4183;
 const API = { host: '127.0.0.1', port: 8791 };
 const TOPOLOGY_API = 'http://api.taskmoor.localhost:8794';
 
@@ -137,6 +141,7 @@ const topologyPin = { id: topology.instance.id, key: topology.instance.publicKey
 for (const [port, auth] of [
   [E2E_KIT_SIBLING_PORT, 'session'],
   [E2E_KIT_CROSS_SITE_PORT, 'oauth'],
+  [E2E_KIT_UNLISTED_PORT, 'session'],
 ] as const) {
   const kit = await assembleFrontendKit(web, {
     ...config(topologyPin, 'path'),
@@ -146,5 +151,5 @@ for (const [port, auth] of [
   host(port, kit, true, false);
 }
 process.stdout.write(
-  `frontend kits on ${E2E_KIT_ZIP_PORT}, ${E2E_KIT_SINGLE_PORT}, ${E2E_KIT_WRONG_PORT}, ${E2E_KIT_SIBLING_PORT} and ${E2E_KIT_CROSS_SITE_PORT} (${kitText(single['index.html']).length} bytes in one file)\n`,
+  `frontend kits on ${E2E_KIT_ZIP_PORT}, ${E2E_KIT_SINGLE_PORT}, ${E2E_KIT_WRONG_PORT}, ${E2E_KIT_SIBLING_PORT}, ${E2E_KIT_CROSS_SITE_PORT} and ${E2E_KIT_UNLISTED_PORT} (${kitText(single['index.html']).length} bytes in one file)\n`,
 );

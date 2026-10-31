@@ -370,6 +370,9 @@ export const messagesEs: Record<MessageId, string> = {
   'settings.auditLogHint': 'Quién cambió qué, una descarga para auditores y el reenvío a syslog.',
   'settings.networkAccess': 'Acceso por red',
   'settings.networkAccessHint': 'Las direcciones a las que responden la aplicación y la API.',
+  'settings.frontends': 'Frontends web',
+  'settings.frontendsHint':
+    'Los frontends en otras direcciones que pueden usar este servidor y las versiones que ejecutan.',
   'settings.mcp': 'Servidor MCP',
   'settings.mcpHint':
     'Permite que agentes y asistentes de IA trabajen con tickets, con las herramientas que permitas.',
@@ -802,6 +805,63 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.network.failed': 'No se pudo guardar la lista de permitidos. Inténtalo de nuevo.',
   'admin.network.saved': 'Lista de permitidos guardada.',
   'admin.network.save': 'Guardar',
+  'admin.frontends.title': 'Frontends web',
+  'admin.frontends.forbidden':
+    'Solo los administradores del sitio cambian qué frontends pueden usar este servidor.',
+  'admin.frontends.loading': 'Cargando los frontends…',
+  'admin.frontends.loadFailed': 'No se pudieron cargar los frontends.',
+  'admin.frontends.intro':
+    'Un frontend en otra dirección distinta de la de este servidor debe registrarse aquí, o figurar en el entorno del servidor, antes de poder llamar a la API, iniciar sesiones o abrir actualizaciones en vivo. Un cambio se aplica al momento, sin reiniciar.',
+  'admin.frontends.self': 'Este servidor',
+  'admin.frontends.serves': 'Sirve la aplicación él mismo, versión {version}.',
+  'admin.frontends.servesNot': 'No sirve la aplicación él mismo en este proceso.',
+  'admin.frontends.backendVersion': 'Versión del servidor {version}.',
+  'admin.frontends.registered': 'Frontends registrados',
+  'admin.frontends.none': 'Todavía no hay ningún frontend registrado.',
+  'admin.frontends.notSeen': 'Todavía no ha informado de su versión.',
+  'admin.frontends.seen': 'Ejecuta la versión {version}, informada por última vez el {when}.',
+  'admin.frontends.current': 'Actualizado.',
+  'admin.frontends.updateAvailable': 'Hay una actualización disponible.',
+  'admin.frontends.updateRequired': 'Demasiado antiguo para este servidor: hay que actualizarlo.',
+  'admin.frontends.unknownVersion': 'Su versión no se puede comparar con la de este servidor.',
+  'admin.frontends.cookieOnly':
+    'Inicia sesión solo con la cookie de este servidor (sin dirección de retorno OAuth).',
+  'admin.frontends.returnsTo': 'El inicio de sesión OAuth vuelve a {uris}.',
+  'admin.frontends.sockets': 'Puede abrir actualizaciones en vivo.',
+  'admin.frontends.noSockets': 'No puede abrir actualizaciones en vivo.',
+  'admin.frontends.addedBy': 'Añadido por {name} el {when}.',
+  'admin.frontends.addedOn': 'Añadido el {when}.',
+  'admin.frontends.alsoInEnvironment':
+    'El entorno del servidor también lo incluye, así que quitarlo aquí no lo rechaza.',
+  'admin.frontends.remove': 'Quitar',
+  'admin.frontends.removeLabel': 'Quitar {origin}',
+  'admin.frontends.confirm': '¿Quitar {origin}? Su próxima petición se rechaza.',
+  'admin.frontends.confirmRemove': 'Quitarlo',
+  'admin.frontends.cancel': 'Cancelar',
+  'admin.frontends.removed': 'Se quitó {origin}.',
+  'admin.frontends.removeFailed': 'No se pudo quitar el frontend. Inténtalo de nuevo.',
+  'admin.frontends.environment': 'Del entorno del servidor',
+  'admin.frontends.environmentHint':
+    'TASKMOOR_ALLOWED_ORIGINS los incluye. Cámbialos allí; un reinicio aplica el cambio.',
+  'admin.frontends.add': 'Añadir un frontend',
+  'admin.frontends.origin': 'Origen',
+  'admin.frontends.originHint':
+    'Solo esquema, host y puerto, como https://tracker.example.com. http sin cifrar solo para localhost. Sin ruta y sin comodines.',
+  'admin.frontends.label': 'Etiqueta',
+  'admin.frontends.redirects': 'Direcciones de retorno OAuth',
+  'admin.frontends.redirectsHint':
+    'Una por línea, en el mismo origen. Déjalo vacío para la dirección raíz del frontend.',
+  'admin.frontends.websocket': 'Puede abrir actualizaciones en vivo (WebSockets)',
+  'admin.frontends.addButton': 'Añadir frontend',
+  'admin.frontends.added': 'Se añadió {origin}. Ya puede usar este servidor.',
+  'admin.frontends.exists': 'Ese origen ya está registrado.',
+  'admin.frontends.ownOrigin':
+    'Ese es el origen propio de este servidor, que no necesita registro.',
+  'admin.frontends.invalidOrigin':
+    'Ese no es un origen que este servidor acepte. Usa https (http solo para localhost), sin ruta y sin comodines.',
+  'admin.frontends.invalidRedirect':
+    'Cada dirección de retorno debe ser una dirección completa en el mismo origen, sin fragmento.',
+  'admin.frontends.addFailed': 'No se pudo añadir el frontend. Inténtalo de nuevo.',
   'admin.system.title': 'Estado del sistema',
   'admin.system.refresh': 'Actualizar',
   'admin.system.loading': 'Leyendo el estado del sistema…',

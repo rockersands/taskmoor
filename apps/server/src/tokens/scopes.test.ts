@@ -123,6 +123,11 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/oauth/register']).toBe('public');
     expect(classes['POST /api/v1/oauth/requests/:id']).toBe('session');
     expect(classes['GET /api/v1/admin/oauth-clients']).toBe('admin');
+    // Registered frontend origins (M1-108).
+    expect(classes['GET /api/v1/admin/frontends']).toBe('admin');
+    expect(classes['POST /api/v1/admin/frontends']).toBe('admin');
+    expect(classes['PATCH /api/v1/admin/frontends/:id']).toBe('admin');
+    expect(classes['DELETE /api/v1/admin/frontends/:id']).toBe('admin');
     const adminOnly = api.filter(
       (r) =>
         /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|directories|audit)/.test(

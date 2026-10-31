@@ -1828,6 +1828,8 @@ export interface operations {
     getMeta: {
         parameters: {
             query?: {
+                /** @description The calling frontend’s version (its `version.json`). A frontend on a registered origin is listed with the version it last reported. */
+                frontend?: string;
                 /** @description 16 to 128 base64url characters the instance signs, chosen afresh by the caller. */
                 nonce?: string;
             };

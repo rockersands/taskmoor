@@ -1,7 +1,7 @@
 ---
 title: "The Builder's kits"
 audience: admins
-sources: apps/web/src/builder/BuilderPage.tsx, apps/web/build/builder-page.ts, apps/web/vite.builder.config.ts, packages/builder-core/src/run.ts, docs/adr/0088-builder-page.md, packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md
+sources: apps/web/src/builder/BuilderPage.tsx, apps/web/build/builder-page.ts, apps/web/vite.builder.config.ts, packages/builder-core/src/run.ts, docs/adr/0088-builder-page.md, packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/routes/frontends.ts, apps/server/src/network/frontends.ts, apps/web/src/admin/FrontendsPage.tsx, docs/adr/0087-registered-frontend-origins.md
 accessed: 2026-10-31
 attestation: own-words
 ---
@@ -244,14 +244,48 @@ backend takes it for a stolen copy, ends that sign-in and signs the person out.
 With attachments in an S3 bucket and the OAuth layout, the app fetches previews from the
 bucket itself: add a CORS rule to the bucket that allows `GET` from the frontend's origin.
 
+## Adding frontends without a restart
+
+A site administrator can let more frontends use the backend under **Settings > Frontends**,
+beside the ones `.env` lists. A frontend added there may use the backend at once, with no
+restart. With several API processes, the others follow within five seconds.
+
+- **Origin**: the frontend's address with scheme, name and port only, such as
+  `https://board.example.org`. Use `https`; plain `http` works only for `localhost`, names under
+  it and the loopback addresses. A path, a query or a wildcard such as `https://*.example.org`
+  is refused, and so is the backend's own address, which needs no entry.
+- **OAuth return addresses**: where sign-in from another site sends people back, one per line,
+  all on the same origin. Left empty, it is the frontend's root address. The API also takes an
+  empty list, for a frontend on the same site that signs in with the backend's cookie only.
+- **Live updates**: whether the frontend may open the WebSockets that carry live changes and
+  shared editing. Turned off, the backend refuses those connections from that frontend.
+
+Each frontend shows the version it last reported and when, compared with the backend's own: up
+to date, an update available, or too old for this backend. A frontend reports its version each
+time it loads and every half hour. The page also names this server's own address and, when it
+serves the app itself, that app's version. The origins `.env` lists appear apart and change
+only there, with a restart. An origin can be in both lists, for instance to give it a label and
+see its version; removing it from the page then leaves it allowed by `.env`.
+
+Removing a frontend refuses its next request. Pages already open lose their live updates
+connection only once it closes. The same list is under `GET`, `POST`, `PATCH` and `DELETE`
+`/api/v1/admin/frontends` for a token with the admin scope, and every change is in the audit
+log.
+
+The backend serving the app itself (the image's default, `TASKMOOR_ROLE=all`) needs no entry
+at all: its own origin is always allowed.
+
 ## What is not there yet
 
 - **Settings the server does not read yet.** The backend kit's `.env` also carries
   `TASKMOOR_TOKEN_SIGNING_KEY`, `TASKMOOR_MASTER_KEY`, `TASKMOOR_AI_PROVIDER` and
   `TASKMOOR_AI_KEY`. They are kept for later releases; today they change nothing.
-- **Allowed origins in the admin area.** The frontend origins come from `.env` and change with
-  a restart; an admin page for them is still to come.
 - **Branding in the kits.** Logo, favicon and colours are not in the kits yet, so the page asks
   for none.
 - **The Builder page in a release.** `pnpm build` makes it; a release that publishes it beside
   the image is still to come.
+- **Versions of frontends listed only in `.env`.** Only registered frontends have their version
+  recorded. Register the origin as well to see it.
+- **Changing an entry on the page.** The page adds and removes frontends. To change a label,
+  the return addresses or live updates, use `PATCH /api/v1/admin/frontends/{id}`, or remove the
+  entry and add it again.

@@ -1,5 +1,6 @@
 import type { FrontendWindow } from '@taskmoor/webconfig';
 import { runtimeConfig } from '../runtime/config';
+import { WEB_VERSION } from '../runtime/version';
 
 /** The parts of the backend's meta answer (GET /api/meta, M1-106) the app reads. */
 export interface Meta {
@@ -15,10 +16,22 @@ export interface MetaClient {
   meta(nonce?: string): Promise<Meta>;
 }
 
-/** The meta endpoint sits beside the versioned API, at the backend's own address. */
+/**
+ * The meta endpoint sits beside the versioned API, at the backend's own address. A frontend on
+ * another origin says which version it runs, so the backend's list of registered frontends
+ * shows it (M1-108); the backend's own pages need not, it serves them.
+ */
+export function metaQuery(nonce: string | undefined, apiUrl = runtimeConfig.apiUrl): string {
+  const params = new URLSearchParams();
+  if (nonce) params.set('nonce', nonce);
+  if (apiUrl) params.set('frontend', WEB_VERSION);
+  const text = params.toString();
+  return text ? `?${text}` : '';
+}
+
 export const httpMetaClient: MetaClient = {
   async meta(nonce) {
-    const query = nonce ? `?nonce=${encodeURIComponent(nonce)}` : '';
+    const query = metaQuery(nonce);
     const response = await fetch(`${runtimeConfig.apiUrl}/api/meta${query}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`meta ${response.status}`);
     const body = (await response.json()) as Partial<Meta> | null;

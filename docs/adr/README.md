@@ -91,6 +91,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [084](0084-oauth-for-mcp-clients.md) | OAuth for MCP clients through self-registration, consent at the browser and tokens bound to the MCP endpoint | Accepted |
 | [085](0085-jira-compat-contract-suite.md) | The Jira-compatible API's contract as our own operations and synthetic cases, with a generated matrix | Accepted |
 | [086](0086-jira-compat-shim.md) | The Jira-compatible API as routes that call the native API in-process, with token sign-in only | Accepted |
+| [087](0087-registered-frontend-origins.md) | Registered frontend origins in the database, read by the origin policy with a short cache, and versions the frontends report | Accepted |
 | [088](0088-builder-page.md) | The Builder page as a second entry of the web app, built into one offline file | Accepted |
 | [091](0091-wiki-markup-converter.md) | Wiki markup as a rich-text format of its own, with a reader and writer that agree | Accepted |
 

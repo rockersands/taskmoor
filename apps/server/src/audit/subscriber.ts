@@ -136,6 +136,10 @@ export const AUDITED_EVENTS = [
   'oauth_client.registered',
   'oauth_client.consent',
   'oauth_client.deleted',
+  // Which other origins may call the API with people's sessions (M1-108): security settings.
+  'frontend_origin.created',
+  'frontend_origin.updated',
+  'frontend_origin.deleted',
   // What becomes searchable in ticket properties (M1-129).
   'property_index.created',
   'property_index.deleted',

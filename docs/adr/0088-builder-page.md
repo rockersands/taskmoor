@@ -97,7 +97,7 @@ axe run, i18n check and component test setup, all of which `apps/web` already ha
   script's hash, and that the carried build matches byte for byte. It also checks that the
   page's own path (decoding the data block, then `generateKits`) gives the same bytes as
   `runBuilder` for one project file and seed.
-- `e2e/builder-page.spec.ts` serves the real page alone on port 4183. It refuses every request
+- `e2e/builder-page.spec.ts` serves the real page alone on port 4184. It refuses every request
   that does not come from that origin and takes the browser offline once the page has loaded.
   Then it checks two runs on a desktop and on a phone:
   - a project file with a seed, compared by SHA-256 with `pnpm builder --seed`;

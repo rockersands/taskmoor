@@ -44,6 +44,7 @@ import { registerDirectoryRoutes } from './routes/directories';
 import { registerEmailRoutes } from './routes/email';
 import { registerExportRoutes } from './routes/exports';
 import { registerFieldRoutes } from './routes/fields';
+import { registerFrontendRoutes } from './routes/frontends';
 import { registerGroupRoutes } from './routes/groups';
 import { registerGuardrailRoutes } from './routes/guardrails';
 import { registerHomeRoutes } from './routes/home';
@@ -131,6 +132,11 @@ export interface AppDeps {
   allowedOrigins?: readonly string[];
   /** Where OAuth sign-in may return; each allowed origin's root unless given. */
   oauthRedirectUris?: readonly string[];
+  /**
+   * How long a process trusts its read of the registered frontends (M1-108) before reading
+   * again; five seconds. A change made through this process applies at once regardless.
+   */
+  originsTtlMs?: number;
   /** How long OAuth access tokens live (ten minutes); tests shorten it. */
   accessTokenTtlMs?: number;
   /** Origins attachments are downloaded from besides this one (a bucket), for the CSP. */
@@ -230,10 +236,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   };
   const authorizer = deps.db ? (deps.authorizer ?? new Authorizer(deps.db)) : null;
   const fieldCatalogs = deps.db ? new FieldCatalogs(deps.db) : null;
-  // Which browser origins may call the API and open its sockets (M1-107, ADR-080).
+  // Which browser origins may call the API and open its sockets (M1-107, ADR-080): the
+  // environment's list and the frontends site administrators register (M1-108, ADR-087).
   const origins = new OriginPolicy({
     publicUrl: deps.publicUrl ?? 'http://localhost:8080',
     allowedOrigins: deps.allowedOrigins ?? [],
+    ...(deps.oauthRedirectUris ? { redirectUris: deps.oauthRedirectUris } : {}),
+    ...(deps.db ? { db: deps.db } : {}),
+    ...(deps.originsTtlMs !== undefined ? { ttlMs: deps.originsTtlMs } : {}),
   });
 
   if (roles.includes('api') && deps.db && authorizer && fieldCatalogs) {
@@ -358,7 +368,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // OAuth 2.1 with PKCE for frontends on another site (M1-107, ADR-080).
     await registerOAuthRoutes(app, db, {
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
-      redirectUris: deps.oauthRedirectUris ?? (deps.allowedOrigins ?? []).map((o) => `${o}/`),
+      origins,
       ...(deps.accessTokenTtlMs ? { accessTtlMs: deps.accessTokenTtlMs } : {}),
     });
     registerAccountRoutes(app, db, { passwords, directories });
@@ -382,12 +392,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       secureCookies: cookieOptions.secureCookies,
       peppers: deps.peppers,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
-      allowedOrigins: deps.allowedOrigins ?? [],
+      origins,
     });
     await registerSamlRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
-      allowedOrigins: deps.allowedOrigins ?? [],
+      origins,
     });
     // Filled in once the boards are registered: the board a track template makes (M1-054).
     const trackHooks: TrackRouteHooks = {};
@@ -476,6 +486,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       version: deps.version,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       peppers: deps.peppers,
+      origins,
       ...(deps.instance ? { instance: deps.instance } : {}),
     });
     // A track's list and calendar views (M1-049): format rules and dated tickets.
@@ -496,6 +507,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       hostname: new URL(deps.publicUrl ?? 'http://localhost:8080').hostname,
     });
     registerAllowlistRoutes(app, db, allowlists);
+    // Frontends on other origins, registered without a restart (M1-108, ADR-087).
+    registerFrontendRoutes(app, db, {
+      origins,
+      version: deps.version,
+      servesFrontend: roles.includes('web') && deps.webDir !== undefined,
+    });
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);
     registerRateLimitRoutes(app, db, {
@@ -552,7 +569,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       authorizer,
       catalogs: fieldCatalogs,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
-      allowedOrigins: deps.allowedOrigins ?? [],
+      origins,
       ...(deps.collabDebounceMs !== undefined ? { debounceMs: deps.collabDebounceMs } : {}),
     });
     collaboration.attach(app, passOn);
