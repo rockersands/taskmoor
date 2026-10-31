@@ -364,6 +364,44 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   scheme; every project but the second has a field configuration scheme, so the second uses
   the default field configuration.
 
+### Permissions, issue security and notifications (M1-092)
+
+- **Verify:** permission schemes are `PermissionScheme` rows (`id`, `name`, `description`).
+  Each grant is a `SchemePermissions` row with `id`, `scheme`, `permission` (an old numeric
+  code, which may be missing), `permissionKey` (such as `BROWSE_PROJECTS`), `type` and
+  `parameter`. The types are `group` (a group's name; none means anyone, signed in or not),
+  `user` (a user key), `projectrole` (a role's id), `reporter`, `assignee`, `lead`, `userCF` and
+  `groupCF` (a field key `customfield_<id>`) and `applicationRole` (anyone signed in). Apps add
+  permission keys of their own.
+- **Verify:** issue security schemes are `IssueSecurityScheme` rows (`id`, `name`,
+  `description`, `defaultlevel`). Their levels are `SchemeIssueSecurityLevels` rows (`id`,
+  `name`, `description`, `scheme`), and who sees a level is in `SchemeIssueSecurities` rows
+  (`id`, `scheme`, `security` (the level), `type`, `parameter`), with the same types as
+  permissions. An issue's level is its `security` attribute. A sub-task has its parent's level.
+- **Verify:** notification schemes are `NotificationScheme` rows (`id`, `name`,
+  `description`). Each `Notification` row (`id`, `scheme`, `eventTypeId`, `type`, `parameter`)
+  sends one event to one kind of recipient. The event numbers are 1 created, 2 updated, 3
+  assigned, 4 resolved, 5 closed, 6 commented, 7 reopened, 8 deleted, 9 moved, 10 work logged,
+  11 work started, 12 work stopped, 13 generic, 14 comment edited, 15 work log updated, 16 work
+  log deleted and 17 comment deleted. Custom events have numbers from 10000. The recipient
+  types are `Current_Assignee`, `Current_Reporter`, `Current_User`, `Project_Lead`,
+  `Component_Lead`, `All_Watchers`, `Single_User` (a user key), `Group_Dropdown` (a group),
+  `Project_Role` (a role's id), `User_Custom_Field_Value` and `Group_Custom_Field_Value` (a
+  field key), and `Single_Email_Address`.
+- **Verify:** global permissions are `GlobalPermissionEntry` rows with `id`, `permission`
+  (such as `SYSTEM_ADMIN`, `ADMINISTER`, `USE`, `USER_PICKER`, `CREATE_SHARED_OBJECTS`,
+  `MANAGE_GROUP_FILTER_SUBSCRIPTIONS`, `BULK_CHANGE`) and `group_id`, which holds a group's
+  name, or nothing for anyone.
+- **Verify:** a project uses its permission, issue security and notification schemes through
+  `NodeAssociation` rows like the ones above, with `sinkNodeEntity` `PermissionScheme`,
+  `IssueSecurityScheme` or `NotificationScheme`.
+- **Our choice:** four permission schemes, two of them identical but for the name; two issue
+  security schemes with five levels, one with a default level; two notification schemes,
+  including a comment-edited event, an email address recipient and a custom event; eight
+  global permissions, one for a plugin and one to anyone. Projects take the permission schemes
+  in turn; two in three projects have an issue security scheme. About 40% of issues there have
+  a level.
+
 ### Seen, not generated yet
 
 - `Version`, `Component`, `NodeAssociation` rows for an issue's affected and fix versions and
@@ -454,6 +492,10 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   until the end, and then one ticket record per issue is written, issues without a parent
   first. A context row naming a project category, or a project or type with no row, is left
   out with a warning; a context left with no scope at all is refused rather than widened.
+- **Our choice:** identical permission schemes (the same grants, names aside) are merged into
+  the one with the lowest id, which takes the others' projects; the report names each merge
+  (M1-092, ADR-090). Grants, levels and notifications that name a person keep that person
+  named, so a deleted person stays as a placeholder.
 - **Our choice:** a project without a field configuration scheme gets a field rule set of its
   own made from the default field configuration. A screen scheme's default screen stands in for
   each operation it does not name.

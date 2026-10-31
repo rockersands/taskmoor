@@ -22,6 +22,7 @@
     "fieldRulesHidden": 5,
     "fieldRulesRequired": 10,
     "issueNumbersSkipped": 201,
+    "issuesWithSecurity": 2946,
     "optionsCascadeChildren": 7,
     "optionsDisabled": 2,
     "resolvedIssues": 4081,
@@ -62,23 +63,31 @@
     "FieldScreenTab": 5,
     "FileAttachment": 1042,
     "GenericConfiguration": 3,
+    "GlobalPermissionEntry": 8,
     "Group": 3,
     "Issue": 10000,
     "IssueLink": 1933,
     "IssueLinkType": 5,
+    "IssueSecurityScheme": 2,
     "IssueType": 5,
     "IssueTypeScreenScheme": 2,
     "IssueTypeScreenSchemeEntity": 3,
     "Label": 10203,
     "Membership": 123,
-    "NodeAssociation": 7,
+    "NodeAssociation": 18,
+    "Notification": 21,
+    "NotificationScheme": 2,
+    "PermissionScheme": 4,
     "Priority": 5,
     "Project": 4,
     "ProjectRole": 3,
     "ProjectRoleActor": 12,
     "Resolution": 4,
+    "SchemeIssueSecurities": 11,
+    "SchemeIssueSecurityLevels": 5,
+    "SchemePermissions": 66,
     "SearchRequest": 4,
-    "SequenceValueItem": 41,
+    "SequenceValueItem": 49,
     "Status": 6,
     "User": 50,
     "Worklog": 3750
@@ -89,8 +98,8 @@
       "sha256": "b911039b59956faed5b7b8ae06bfef5d1d02994fc818d0ceef55520b012218b0"
     },
     "entities": {
-      "bytes": 24760522,
-      "sha256": "c8b2515d6002100538a576463a8b1e1312ff9a11aed590a769834994c4b323c1"
+      "bytes": 24825746,
+      "sha256": "f742955fb2f2716eef19779ae7d6c30bf4aa4c2d81fad1280fd4f5acfc30bcb3"
     }
   },
   "forbidden": {

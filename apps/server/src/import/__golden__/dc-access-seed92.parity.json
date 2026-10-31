@@ -1,0 +1,149 @@
+[
+  {
+    "expected": 1642,
+    "extra": [],
+    "missing": [],
+    "seen": 1642,
+    "viewer": "anonymous"
+  },
+  {
+    "expected": 2068,
+    "extra": [],
+    "missing": [],
+    "seen": 2068,
+    "viewer": "darnal.tamnalvel0"
+  },
+  {
+    "expected": 2311,
+    "extra": [],
+    "missing": [],
+    "seen": 2311,
+    "viewer": "JIRAUSER10001 (site admin)"
+  },
+  {
+    "expected": 2484,
+    "extra": [],
+    "missing": [],
+    "seen": 2484,
+    "viewer": "JIRAUSER10002 (site admin)"
+  },
+  {
+    "expected": 1849,
+    "extra": [],
+    "missing": [],
+    "seen": 1849,
+    "viewer": "velmor.torhincor3"
+  },
+  {
+    "expected": 1842,
+    "extra": [],
+    "missing": [],
+    "seen": 1842,
+    "viewer": "JIRAUSER10004"
+  },
+  {
+    "expected": 0,
+    "extra": [],
+    "missing": [],
+    "seen": 0,
+    "viewer": "JIRAUSER10005 (inactive)"
+  },
+  {
+    "expected": 2598,
+    "extra": [],
+    "missing": [],
+    "seen": 2598,
+    "viewer": "quodar.juneth6"
+  },
+  {
+    "expected": 2362,
+    "extra": [],
+    "missing": [],
+    "seen": 2362,
+    "viewer": "JIRAUSER10007"
+  },
+  {
+    "expected": 2359,
+    "extra": [],
+    "missing": [],
+    "seen": 2359,
+    "viewer": "JIRAUSER10008 (site admin)"
+  },
+  {
+    "expected": 2588,
+    "extra": [],
+    "missing": [],
+    "seen": 2588,
+    "viewer": "kajun.coryor9 (site admin)"
+  },
+  {
+    "expected": 1749,
+    "extra": [],
+    "missing": [],
+    "seen": 1749,
+    "viewer": "JIRAUSER10010"
+  },
+  {
+    "expected": 2074,
+    "extra": [],
+    "missing": [],
+    "seen": 2074,
+    "viewer": "JIRAUSER10011"
+  },
+  {
+    "expected": 2442,
+    "extra": [],
+    "missing": [],
+    "seen": 2442,
+    "viewer": "velris.tamvel12"
+  },
+  {
+    "expected": 2388,
+    "extra": [],
+    "missing": [],
+    "seen": 2388,
+    "viewer": "JIRAUSER10013"
+  },
+  {
+    "expected": 1746,
+    "extra": [],
+    "missing": [],
+    "seen": 1746,
+    "viewer": "JIRAUSER10014"
+  },
+  {
+    "expected": 2372,
+    "extra": [],
+    "missing": [],
+    "seen": 2372,
+    "viewer": "isra.nalris15"
+  },
+  {
+    "expected": 2596,
+    "extra": [],
+    "missing": [],
+    "seen": 2596,
+    "viewer": "JIRAUSER10016 (site admin)"
+  },
+  {
+    "expected": 2371,
+    "extra": [],
+    "missing": [],
+    "seen": 2371,
+    "viewer": "JIRAUSER10017"
+  },
+  {
+    "expected": 2585,
+    "extra": [],
+    "missing": [],
+    "seen": 2585,
+    "viewer": "corzel.ivotammi18"
+  },
+  {
+    "expected": 2656,
+    "extra": [],
+    "missing": [],
+    "seen": 2656,
+    "viewer": "JIRAUSER10019 (site admin)"
+  }
+]

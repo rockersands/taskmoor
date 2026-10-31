@@ -477,6 +477,7 @@ function record(state: EntitiesState, name: string, v: Record<string, string>): 
       state.issueTypeUse.set(type, (state.issueTypeUse.get(type) ?? 0) + 1);
       if (v.resolution !== undefined) state.note('resolvedIssues');
       if (v.assignee === undefined) state.note('unassignedIssues');
+      if (v.security !== undefined) state.note('issuesWithSecurity');
       return;
     }
     case 'IssueType':

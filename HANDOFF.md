@@ -67,6 +67,18 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     18,464 of 18,464 values match.
   - Open: issue type schemes are not mapped, so tickets warn `type_not_offered`. Identical
     schemes are not merged (IMP-005).
+- **M1-092 Data Center access, visibility and notifications** (same branch, second commit;
+  ADR-090, no migration; M1-092 is done):
+  - Generator `dc-backup/schemes.ts` (permission, issue security and notification schemes, global
+    permissions, each issue's level); mapper `import/dc-schemes.ts`; loaders
+    `import/load-access.ts`; five new kinds; tickets carry `visibilityLevel`.
+  - Identical permission schemes merge (IMP-005 (1)). Notification rules are written by
+    `notifications/rules.ts`, which `routes/notifications.ts` now uses.
+  - `SYSTEM_ADMIN` becomes `site_admin`, so those people browse every track (warned). The parity
+    golden `import/__golden__/dc-access-seed92.parity.json` expects that for them, and the
+    source's model for everyone else.
+  - Next free numbers on this branch: no migration was used (0069 and 0070 stay free), ADRs 089
+    and 090 are taken.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

@@ -16,6 +16,7 @@ import {
 import { parseXml, type XmlHandlers } from './parse';
 import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
 import { ISSUE_ELEMENTS, IssueCollector } from './stage-issues';
+import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
 
 /**
  * Stages a Data Center backup ZIP for import (M1-088; IMP-001, IMP-004; ADR-081): one streaming
@@ -32,7 +33,7 @@ import { ISSUE_ELEMENTS, IssueCollector } from './stage-issues';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 2;
+export const STAGE_VERSION = 3;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -53,8 +54,22 @@ export const STAGED_KINDS = {
   field_option: 'CustomFieldOption',
   field_rule_set: 'FieldLayoutScheme',
   layout_set: 'IssueTypeScreenScheme',
+  access_policy: 'PermissionScheme',
+  visibility_policy: 'IssueSecurityScheme',
+  visibility_level: 'SchemeIssueSecurityLevels',
+  notification_policy: 'NotificationScheme',
+  global_grant: 'GlobalPermissionEntry',
   ticket: 'Issue',
 } as const;
+
+/** The schemes a project's `NodeAssociation` rows may name that the mapping reads. */
+const READ_SCHEMES = new Set([
+  'FieldLayoutScheme',
+  'IssueTypeScreenScheme',
+  'PermissionScheme',
+  'IssueSecurityScheme',
+  'NotificationScheme',
+]);
 export type StagedKind = keyof typeof STAGED_KINDS;
 
 /**
@@ -74,6 +89,7 @@ export const CONSUMED = new Set<string>([
   'NodeAssociation',
   ...FIELD_ELEMENTS,
   ...ISSUE_ELEMENTS,
+  ...SCHEME_ELEMENTS,
 ]);
 
 /** Elements only tickets consume: a configuration-only import leaves them out (M1-089). */
@@ -229,6 +245,7 @@ class Collector {
   /** Every person reference as written, lower case. */
   readonly personRefs = new Set<string>();
   readonly fieldPart = new FieldCollector();
+  readonly schemePart = new SchemeCollector();
   readonly issuePart: IssueCollector;
   /** Link type ids by style (sub-task links make parents). */
   readonly linkTypeStyles = new Map<string, string>();
@@ -269,13 +286,21 @@ class Collector {
       this.issuePart.row(name, v);
       return;
     }
+    if ((SCHEME_ELEMENTS as readonly string[]).includes(name)) {
+      this.schemePart.row(name, v);
+      return;
+    }
     switch (name) {
       case 'IssueLinkType':
         if (v.style) this.linkTypeStyles.set(id, v.style);
         return;
       case 'NodeAssociation': {
         // A project tied to one of its schemes; other associations are not read yet.
-        if (v.sourceNodeEntity !== 'Project' || v.associationType !== PROJECT_SCHEME) {
+        if (
+          v.sourceNodeEntity !== 'Project' ||
+          v.associationType !== PROJECT_SCHEME ||
+          !READ_SCHEMES.has(v.sinkNodeEntity ?? '')
+        ) {
           this.leaveOut(name);
           return;
         }
@@ -414,6 +439,8 @@ class Collector {
     for (const raw of this.issuePart.personValues(this.fieldPart.fields)) {
       this.personRefs.add(raw.toLowerCase());
     }
+    // And people named by grants, levels and notifications (M1-092).
+    for (const raw of this.schemePart.personRefs) this.personRefs.add(raw.toLowerCase());
     const userRows = this.winners(this.users);
     // People by staged id (the lower-case user key); user names point at the key.
     const people = new Map<string, StagedUser>();
@@ -529,6 +556,15 @@ class Collector {
     const named = <T extends StagedNamed>(rows: T[]) =>
       bySequence(rows).map((r) => ({ id: r.id, label: r.name, data: r }));
 
+    const projectIds = new Set(this.projects.map((p) => p.id));
+    const schemeRecords = this.schemePart.resolve(projectIds, this.associations, {
+      person,
+      group: (raw) => {
+        const id = raw.toLowerCase();
+        return groups.has(id) ? id : null;
+      },
+      role: (id) => this.roles.has(id),
+    });
     const fieldRecords = this.fieldPart.resolve(
       new Set(this.projects.map((p) => p.id)),
       new Set(this.issueTypes.map((t) => t.id)),
@@ -562,6 +598,7 @@ class Collector {
         return { id: p.id, label: `${p.key}: ${p.name}`, data };
       }),
       ...fieldRecords,
+      ...schemeRecords,
     };
     return {
       records,

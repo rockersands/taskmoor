@@ -163,6 +163,11 @@ export const MAPPED_KINDS: readonly string[] = [
   'field_context',
   'field_rule_set',
   'layout_set',
+  'access_policy',
+  'visibility_policy',
+  'visibility_level',
+  'notification_policy',
+  'global_grant',
   'workflow',
   'workflow_map',
 ] satisfies EntityKind[];

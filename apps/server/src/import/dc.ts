@@ -22,6 +22,13 @@ import type {
   StagedRuleSet,
 } from './dc-backup/stage-fields';
 import type { StagedIssue } from './dc-backup/stage-issues';
+import type {
+  StagedGlobalPermission,
+  StagedNotificationScheme,
+  StagedPermissionScheme,
+  StagedSecurityLevel,
+  StagedSecurityScheme,
+} from './dc-backup/stage-schemes';
 import {
   instantOf,
   mapContext,
@@ -32,6 +39,13 @@ import {
   plainDoc,
   storedValues,
 } from './dc-fields';
+import {
+  mapAccessPolicy,
+  mapGlobalGrant,
+  mapNotificationPolicy,
+  mapVisibilityLevel,
+  mapVisibilityPolicy,
+} from './dc-schemes';
 import { readJsonLines } from './lines';
 import type {
   Command,
@@ -321,6 +335,8 @@ function mapTicket(i: StagedIssue): Mapped {
       closedAt: i.resolution === null ? null : instantOf(i.resolved),
       originalEstimate: i.estimate,
       remainingEstimate: i.remaining,
+      // Its security level (M1-092), as the backup stores it.
+      visibilityLevel: i.security === null ? null : ref('visibility_level', i.security),
       ...(Object.keys(fields).length > 0 ? { fields } : {}),
     },
     warnings,
@@ -376,11 +392,16 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
   field_option: (d) => mapOption(d as unknown as StagedOption),
   field_rule_set: (d) => mapRuleSet(d as unknown as StagedRuleSet),
   layout_set: (d) => mapLayoutSet(d as unknown as StagedLayoutSet),
+  access_policy: (d) => mapAccessPolicy(d as unknown as StagedPermissionScheme),
+  visibility_policy: (d) => mapVisibilityPolicy(d as unknown as StagedSecurityScheme),
+  visibility_level: (d) => mapVisibilityLevel(d as unknown as StagedSecurityLevel),
+  notification_policy: (d) => mapNotificationPolicy(d as unknown as StagedNotificationScheme),
+  global_grant: (d) => mapGlobalGrant(d as unknown as StagedGlobalPermission),
   ticket: (d) => mapTicket(d as unknown as StagedIssue),
 };
 
 /** Kinds whose records carry no name of their own. */
-const UNNAMED = new Set(['user', 'field_option', 'ticket']);
+const UNNAMED = new Set(['user', 'field_option', 'ticket', 'global_grant']);
 
 /** Maps a staged record; a name the target cannot hold fails the record. */
 export function mapDcRecord(record: SourceRecord): Mapped {

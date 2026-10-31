@@ -211,6 +211,50 @@ export const ENTITIES = {
       associationType: text,
     },
   },
+  GlobalPermissionEntry: {
+    attrs: { id, permission: text, group_id: { type: 'group', optional: true } },
+  },
+  IssueSecurityScheme: {
+    attrs: {
+      id,
+      name: text,
+      description: optText,
+      defaultlevel: optRef('SchemeIssueSecurityLevels'),
+    },
+  },
+  Notification: {
+    attrs: {
+      id,
+      scheme: ref('NotificationScheme'),
+      eventTypeId: int,
+      type: text,
+      parameter: optText,
+    },
+  },
+  NotificationScheme: { attrs: { id, name: text, description: optText } },
+  PermissionScheme: { attrs: { id, name: text, description: optText } },
+  SchemeIssueSecurities: {
+    attrs: {
+      id,
+      scheme: ref('IssueSecurityScheme'),
+      security: ref('SchemeIssueSecurityLevels'),
+      type: text,
+      parameter: optText,
+    },
+  },
+  SchemeIssueSecurityLevels: {
+    attrs: { id, name: text, description: optText, scheme: ref('IssueSecurityScheme') },
+  },
+  SchemePermissions: {
+    attrs: {
+      id,
+      scheme: ref('PermissionScheme'),
+      permission: optInt,
+      permissionKey: text,
+      type: text,
+      parameter: optText,
+    },
+  },
   Action: {
     attrs: {
       id,
@@ -289,6 +333,7 @@ export const ENTITIES = {
       timeoriginalestimate: optInt,
       timeestimate: optInt,
       timespent: optInt,
+      security: optRef('SchemeIssueSecurityLevels'),
     },
   },
   IssueLink: {

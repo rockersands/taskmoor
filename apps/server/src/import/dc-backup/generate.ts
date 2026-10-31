@@ -33,6 +33,7 @@ import {
 } from './manifest';
 import * as parts from './parts';
 import { Random } from './random';
+import { roleActors, schemeWorldOf, securityOf } from './schemes';
 import { buildWorld, FIRST_ID, type Person, type World, walkIssues } from './world';
 import { escapeAttr, TextOut } from './xml';
 
@@ -251,29 +252,15 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
       return;
     case 'ProjectRoleActor': {
       let id = FIRST_ID;
-      const [managers, contributors, observers] = world.roles.map((r) => r.id) as [
-        number,
-        number,
-        number,
-      ];
       for (const project of world.projects) {
-        const r = Random.derive(seed, 'role-actors', project.index);
-        const actor = async (role: number, type: 'user' | 'group', parameter: string) =>
-          w.row(name, {
+        for (const a of roleActors(world, project)) {
+          await w.row(name, {
             id: id++,
             pid: project.id,
-            projectroleid: role,
-            roletype: `atlassian-${type}-role-actor`,
-            roletypeparameter: parameter,
+            projectroleid: a.role,
+            roletype: `atlassian-${a.user ? 'user' : 'group'}-role-actor`,
+            roletypeparameter: a.user ? a.user.key : (a.group as string),
           });
-        await actor(managers, 'user', project.lead.key);
-        await actor(contributors, 'group', r.pick(world.groups).name);
-        const seen = new Set<string>([project.lead.key]);
-        for (let n = r.int(0, 2); n > 0; n--) {
-          const p = world.users[r.int(0, world.users.length - 1)] as Person;
-          if (seen.has(p.key)) continue;
-          seen.add(p.key);
-          await actor(observers, 'user', p.key);
         }
       }
       return;
@@ -372,7 +359,9 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           timeoriginalestimate: issue.estimate,
           timeestimate: issue.estimate === null ? null : Math.max(0, issue.estimate - spent),
           timespent: spent === 0 ? null : spent,
+          security: securityOf(world, issue),
         });
+        if (securityOf(world, issue) !== null) w.note('issuesWithSecurity');
       }
       return;
     case 'Action': {
@@ -514,6 +503,7 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
       return;
     default:
       await writeFieldEntity(world, w, name);
+      await writeSchemeEntity(world, w, name);
       return;
   }
 }
@@ -783,9 +773,13 @@ async function writeFieldEntity(world: World, w: EntityWriter, name: EntityName)
     }
     case 'NodeAssociation':
       for (const project of world.projects) {
+        const sw = schemeWorldOf(world);
         const schemes: [string, number | undefined][] = [
           ['FieldLayoutScheme', fw.layoutSchemeOf.get(project.id)],
           ['IssueTypeScreenScheme', fw.typeScreenSchemeOf.get(project.id)],
+          ['PermissionScheme', sw.permissionSchemeOf.get(project.id)],
+          ['IssueSecurityScheme', sw.securitySchemeOf.get(project.id)],
+          ['NotificationScheme', sw.notificationSchemeOf.get(project.id)],
         ];
         for (const [entity, sink] of schemes) {
           if (sink === undefined) continue;
@@ -799,6 +793,95 @@ async function writeFieldEntity(world: World, w: EntityWriter, name: EntityName)
         }
       }
       return;
+  }
+}
+
+/** The access, visibility and notification elements (M1-092, `schemes.ts`). */
+async function writeSchemeEntity(world: World, w: EntityWriter, name: EntityName): Promise<void> {
+  const sw = schemeWorldOf(world);
+  switch (name) {
+    case 'PermissionScheme':
+    case 'NotificationScheme':
+      for (const x of name === 'PermissionScheme' ? sw.permissionSchemes : sw.notificationSchemes) {
+        await w.row(name, { id: x.id, name: x.name, description: x.description });
+      }
+      return;
+    case 'SchemePermissions': {
+      let id = FIRST_ID;
+      for (const scheme of sw.permissionSchemes) {
+        for (const g of scheme.grants) {
+          await w.row(name, {
+            id: id++,
+            scheme: scheme.id,
+            permissionKey: g.permission,
+            type: g.grantee.type,
+            parameter: g.grantee.parameter,
+          });
+        }
+      }
+      return;
+    }
+    case 'IssueSecurityScheme':
+      for (const x of sw.securitySchemes) {
+        await w.row(name, {
+          id: x.id,
+          name: x.name,
+          description: x.description,
+          defaultlevel: x.defaultLevel,
+        });
+      }
+      return;
+    case 'SchemeIssueSecurityLevels':
+      for (const scheme of sw.securitySchemes) {
+        for (const l of scheme.levels) {
+          await w.row(name, {
+            id: l.id,
+            name: l.name,
+            description: l.description,
+            scheme: scheme.id,
+          });
+        }
+      }
+      return;
+    case 'SchemeIssueSecurities': {
+      let id = FIRST_ID;
+      for (const scheme of sw.securitySchemes) {
+        for (const l of scheme.levels) {
+          for (const m of l.members) {
+            await w.row(name, {
+              id: id++,
+              scheme: scheme.id,
+              security: l.id,
+              type: m.type,
+              parameter: m.parameter,
+            });
+          }
+        }
+      }
+      return;
+    }
+    case 'Notification': {
+      let id = FIRST_ID;
+      for (const scheme of sw.notificationSchemes) {
+        for (const n of scheme.notifications) {
+          await w.row(name, {
+            id: id++,
+            scheme: scheme.id,
+            eventTypeId: n.event,
+            type: n.type,
+            parameter: n.parameter,
+          });
+        }
+      }
+      return;
+    }
+    case 'GlobalPermissionEntry': {
+      let id = FIRST_ID;
+      for (const g of sw.globalPermissions) {
+        await w.row(name, { id: id++, permission: g.permission, group_id: g.group });
+      }
+      return;
+    }
   }
 }
 

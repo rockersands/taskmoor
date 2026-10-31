@@ -157,6 +157,66 @@
       "source": 2
     },
     {
+      "kind": "access_policy",
+      "outcomes": {
+        "created": 3,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 1,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 4
+    },
+    {
+      "kind": "visibility_policy",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2
+    },
+    {
+      "kind": "visibility_level",
+      "outcomes": {
+        "created": 5,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 5
+    },
+    {
+      "kind": "notification_policy",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2
+    },
+    {
+      "kind": "global_grant",
+      "outcomes": {
+        "created": 6,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 2,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 8
+    },
+    {
       "kind": "ticket",
       "outcomes": {
         "created": 4000,
@@ -560,7 +620,7 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 41,
+      "count": 49,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -571,6 +631,18 @@
     }
   ],
   "warnings": [
+    {
+      "code": "merged_into",
+      "count": 1,
+      "detail": "Open permissions",
+      "kind": "access_policy"
+    },
+    {
+      "code": "permission_not_mapped",
+      "count": 3,
+      "detail": "com.example.reviews:APPROVE",
+      "kind": "access_policy"
+    },
     {
       "code": "app_field_as_read_only_text",
       "count": 1,
@@ -584,10 +656,40 @@
       "kind": "field_rule_set"
     },
     {
+      "code": "permission_not_mapped",
+      "count": 1,
+      "detail": "GADGET_ONE_CLICK",
+      "kind": "global_grant"
+    },
+    {
+      "code": "site_admin_browses_every_track",
+      "count": 1,
+      "detail": null,
+      "kind": "global_grant"
+    },
+    {
       "code": "layout_field_not_mapped",
       "count": 1,
       "detail": "security",
       "kind": "layout_set"
+    },
+    {
+      "code": "custom_event_not_imported",
+      "count": 1,
+      "detail": "10001",
+      "kind": "notification_policy"
+    },
+    {
+      "code": "event_not_mapped",
+      "count": 1,
+      "detail": "14",
+      "kind": "notification_policy"
+    },
+    {
+      "code": "recipient_not_mapped",
+      "count": 1,
+      "detail": "Single_Email_Address",
+      "kind": "notification_policy"
     },
     {
       "code": "removed_character",

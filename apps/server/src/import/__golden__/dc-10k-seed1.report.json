@@ -155,6 +155,66 @@
         "updated": 0
       },
       "source": 2
+    },
+    {
+      "kind": "access_policy",
+      "outcomes": {
+        "created": 3,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 1,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 4
+    },
+    {
+      "kind": "visibility_policy",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2
+    },
+    {
+      "kind": "visibility_level",
+      "outcomes": {
+        "created": 5,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 5
+    },
+    {
+      "kind": "notification_policy",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2
+    },
+    {
+      "kind": "global_grant",
+      "outcomes": {
+        "created": 6,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 2,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 8
     }
   ],
   "mapping": [
@@ -1169,6 +1229,190 @@
       "reason": null,
       "sourceId": "10001",
       "warnings": []
+    },
+    {
+      "kind": "access_policy",
+      "label": "Open permissions",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "permission_not_mapped: com.example.reviews:APPROVE"
+      ]
+    },
+    {
+      "kind": "access_policy",
+      "label": "Open permissions (copy)",
+      "outcome": "skipped",
+      "reason": "merged_identical",
+      "sourceId": "10001",
+      "warnings": [
+        "merged_into: Open permissions"
+      ]
+    },
+    {
+      "kind": "access_policy",
+      "label": "Team permissions",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": [
+        "permission_not_mapped: com.example.reviews:APPROVE"
+      ]
+    },
+    {
+      "kind": "access_policy",
+      "label": "Restricted permissions",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": [
+        "permission_not_mapped: com.example.reviews:APPROVE"
+      ]
+    },
+    {
+      "kind": "visibility_policy",
+      "label": "Confidentiality",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "visibility_policy",
+      "label": "Customer data",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "visibility_level",
+      "label": "Confidentiality: Staff only",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "visibility_level",
+      "label": "Confidentiality: Reporter and assignee",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "visibility_level",
+      "label": "Confidentiality: Reviewers",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "visibility_level",
+      "label": "Customer data: Signed in",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "visibility_level",
+      "label": "Customer data: Team",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "notification_policy",
+      "label": "Team notifications",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "event_not_mapped: 14",
+        "recipient_not_mapped: Single_Email_Address",
+        "custom_event_not_imported: 10001"
+      ]
+    },
+    {
+      "kind": "notification_policy",
+      "label": "Quiet notifications",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "global_grant",
+      "label": "SYSTEM_ADMIN: team-halhal-2",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "site_admin_browses_every_track"
+      ]
+    },
+    {
+      "kind": "global_grant",
+      "label": "ADMINISTER: team-sennal-1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "global_grant",
+      "label": "USE: everyone",
+      "outcome": "skipped",
+      "reason": "not_needed",
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "global_grant",
+      "label": "USER_PICKER: everyone",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "global_grant",
+      "label": "CREATE_SHARED_OBJECTS: everyone",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "global_grant",
+      "label": "MANAGE_GROUP_FILTER_SUBSCRIPTIONS: team-sennal-1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": []
+    },
+    {
+      "kind": "global_grant",
+      "label": "BULK_CHANGE: everyone",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10006",
+      "warnings": []
+    },
+    {
+      "kind": "global_grant",
+      "label": "GADGET_ONE_CLICK: anyone",
+      "outcome": "skipped",
+      "reason": "permission_not_mapped",
+      "sourceId": "10007",
+      "warnings": [
+        "permission_not_mapped: GADGET_ONE_CLICK"
+      ]
     }
   ],
   "unsupported": [
@@ -1233,7 +1477,7 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 41,
+      "count": 49,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -1244,6 +1488,18 @@
     }
   ],
   "warnings": [
+    {
+      "code": "merged_into",
+      "count": 1,
+      "detail": "Open permissions",
+      "kind": "access_policy"
+    },
+    {
+      "code": "permission_not_mapped",
+      "count": 3,
+      "detail": "com.example.reviews:APPROVE",
+      "kind": "access_policy"
+    },
     {
       "code": "app_field_as_read_only_text",
       "count": 1,
@@ -1257,10 +1513,40 @@
       "kind": "field_rule_set"
     },
     {
+      "code": "permission_not_mapped",
+      "count": 1,
+      "detail": "GADGET_ONE_CLICK",
+      "kind": "global_grant"
+    },
+    {
+      "code": "site_admin_browses_every_track",
+      "count": 1,
+      "detail": null,
+      "kind": "global_grant"
+    },
+    {
       "code": "layout_field_not_mapped",
       "count": 1,
       "detail": "security",
       "kind": "layout_set"
+    },
+    {
+      "code": "custom_event_not_imported",
+      "count": 1,
+      "detail": "10001",
+      "kind": "notification_policy"
+    },
+    {
+      "code": "event_not_mapped",
+      "count": 1,
+      "detail": "14",
+      "kind": "notification_policy"
+    },
+    {
+      "code": "recipient_not_mapped",
+      "count": 1,
+      "detail": "Single_Email_Address",
+      "kind": "notification_policy"
     },
     {
       "code": "removed_character",

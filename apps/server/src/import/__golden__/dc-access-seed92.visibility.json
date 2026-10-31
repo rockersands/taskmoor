@@ -1,0 +1,112 @@
+{
+  "global": [
+    "browse_users any_user",
+    "browse_users group everyone",
+    "bulk_change any_user",
+    "bulk_change group everyone",
+    "configuration_admin group team-keldei-1",
+    "create_local_tracks any_user",
+    "manage_group_subscriptions group team-keldei-1",
+    "share_saved_searches any_user",
+    "share_saved_searches group everyone",
+    "site_admin group team-isbel-5"
+  ],
+  "notifications": [
+    {
+      "name": "Quiet notifications",
+      "rules": [
+        "ticket_assigned assignee",
+        "ticket_closed current_user",
+        "ticket_closed user_field field:Reviewer",
+        "ticket_created assignee",
+        "ticket_moved area_owner",
+        "ticket_reopened group_field field:Owning group"
+      ],
+      "tracks": [
+        "BX",
+        "DX",
+        "FX"
+      ]
+    },
+    {
+      "name": "Team notifications",
+      "rules": [
+        "generic track_owner",
+        "ticket_assigned assignee",
+        "ticket_close_reason_set group group:team-keldei-1",
+        "ticket_close_reason_set requester",
+        "ticket_commented follower",
+        "ticket_commented role role:Observers",
+        "ticket_created assignee",
+        "ticket_created follower",
+        "ticket_created requester",
+        "ticket_updated assignee",
+        "ticket_updated follower",
+        "time_entry_added user user:darnal.tamnalvel0@example.test"
+      ],
+      "tracks": [
+        "AX",
+        "CX",
+        "EX"
+      ]
+    }
+  ],
+  "visibility": [
+    {
+      "default": null,
+      "levels": [
+        {
+          "members": [
+            "group group:team-keldei-1",
+            "role role:Managers"
+          ],
+          "name": "Staff only"
+        },
+        {
+          "members": [
+            "assignee",
+            "requester",
+            "track_owner"
+          ],
+          "name": "Reporter and assignee"
+        },
+        {
+          "members": [
+            "group_field field:Owning group",
+            "user user:pirjun.risvel2@example.test",
+            "user_field field:Helpers",
+            "user_field field:Reviewer"
+          ],
+          "name": "Reviewers"
+        }
+      ],
+      "name": "Confidentiality",
+      "tracks": [
+        "AX",
+        "DX"
+      ]
+    },
+    {
+      "default": "Signed in",
+      "levels": [
+        {
+          "members": [
+            "any_user"
+          ],
+          "name": "Signed in"
+        },
+        {
+          "members": [
+            "role role:Contributors"
+          ],
+          "name": "Team"
+        }
+      ],
+      "name": "Customer data",
+      "tracks": [
+        "CX",
+        "FX"
+      ]
+    }
+  ]
+}

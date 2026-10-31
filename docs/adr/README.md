@@ -90,5 +90,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [083](0083-entity-properties.md) | Entity properties in a table per entity kind, and declared indexes in typed side tables | Accepted |
 | [084](0084-oauth-for-mcp-clients.md) | OAuth for MCP clients through self-registration, consent at the browser and tokens bound to the MCP endpoint | Accepted |
 | [089](0089-dc-fields-and-forms.md) | The Data Center import of custom fields and forms, and tickets carrying their values | Accepted |
+| [090](0090-dc-access-and-visibility.md) | The Data Center import of permissions, issue security, notifications and global permissions | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
