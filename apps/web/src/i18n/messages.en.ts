@@ -164,6 +164,8 @@ export const messagesEn = {
   'saved.subscribed': 'You are subscribed to {name}. The first email goes out {when}.',
   'saved.nameTaken': 'You have a saved search of that name already.',
   'saved.forbidden': 'You may not do that with this saved search.',
+  'saved.importProblem':
+    'This saved search came from an import and does not run yet: {problem}. Change the query and save it to fix it.',
   'saved.failed': 'That did not work. Try again in a moment.',
   'saved.notFound': 'This saved search does not exist, or you cannot see it.',
   'guardrails.title': 'Guardrails',

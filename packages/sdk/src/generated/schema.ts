@@ -1449,6 +1449,7 @@ export interface components {
             description: string;
             editable: boolean;
             id: number;
+            importProblem: string | null;
             name: string;
             owner: components["schemas"]["PersonRef"];
             query: string;

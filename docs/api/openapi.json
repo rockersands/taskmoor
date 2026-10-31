@@ -1704,6 +1704,12 @@
             "minimum": -9007199254740991,
             "type": "integer"
           },
+          "importProblem": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -1735,6 +1741,7 @@
           "name",
           "description",
           "query",
+          "importProblem",
           "owner",
           "shares",
           "starred",

@@ -6,6 +6,7 @@ import { PassThrough, Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import yazl from 'yazl';
 import { customValues, fieldWorldOf } from './fields';
+import { writeFilterEntity } from './filters';
 import {
   ACTIVE_OBJECTS_FILE,
   AO_NAMESPACE,
@@ -330,6 +331,8 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           request: { text: `project = ${b.project.key} ORDER BY Rank ASC` },
         });
       }
+      // Saved filters of their own (M1-094).
+      await writeFilterEntity(world, w, name);
       return;
     case 'Issue':
       for (const issue of walkIssues(world)) {
@@ -569,6 +572,7 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
       await writeFieldEntity(world, w, name);
       await writeSchemeEntity(world, w, name);
       await writeWorkflowEntity(world, w, name);
+      await writeFilterEntity(world, w, name);
       return;
   }
 }

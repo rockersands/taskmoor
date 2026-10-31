@@ -74,10 +74,11 @@ the issues they belong to, and a reader must not resolve references in a single 
 
 Not generated yet; the M1-093 and M1-094 mappings add them as they need them: versions,
 components, renamed projects, each issue's workflow state, draft workflows, rank, the board
-columns and the issues' sprints, filters other than the boards', dashboards, avatars and logos,
-and thumbnails. Custom fields (M1-089), permission, security and notification schemes (M1-092),
-workflows with their schemes (M1-090), and issue content with watchers, voters and the keys of
-moved issues (M1-091) are generated.
+columns and the issues' sprints, avatars and logos, and thumbnails. Custom fields (M1-089),
+permission, security and notification schemes (M1-092), workflows with their schemes (M1-090),
+issue content with watchers, voters and the keys of moved issues (M1-091), and saved filters
+with their shares, favourites and subscriptions, and dashboards with their gadgets (M1-094) are
+generated.
 
 ### Measured
 
@@ -325,6 +326,72 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 - **Verify:** saved filters are `SearchRequest` rows with `id`, `name`, `author` (a user key)
   and `request` (the query text). The generator writes one filter per board,
   `project = KEY ORDER BY Rank ASC`.
+
+### Saved filters, dashboards and subscriptions (M1-094)
+
+Nothing in this section comes from a public page we could cite: it is our best understanding of
+the format, so every rule is **Verify** until a design partner's backup confirms it.
+
+- **Verify:** a saved filter is a `SearchRequest` row: besides the attributes above it has
+  `description` and `favCount` (how many people made it a favourite). Its `request` is the query
+  in the Jira-compatible language (spec 01b section 1), as the person or a script wrote it:
+  fields and functions by name, the instance's objects by name or by id (a project `10000`, a
+  status `10001`, a custom field `cf[10010]`, an option `10100`, a sprint, another filter), and
+  people by user name or user key.
+- **Verify:** who besides the owner may see a filter or a dashboard is a `SharePermissions` row
+  each, with `id`, `entityId`, `entityType` (`SearchRequest` or `PortalPage`), `sharetype` and
+  two parameters. `global` shares with everyone, anonymous visitors included; `loggedin` with
+  everyone signed in; `group` with the group named by `param1`; `project` with the members of
+  the project whose id is `param1`, or, with a role's id in `param2`, only that role's members.
+  Newer versions add `rights`: `1` to view, `3` to view and change. A filter with no row is
+  private.
+- **Verify:** a person's favourites are `FavouriteAssociations` rows with `id`, `username` (a
+  user key, despite the name), `entityType`, `entityId` and `sequence` (the order in their
+  list).
+- **Verify:** a dashboard is a `PortalPage` row with `id`, `username` (its owner's key),
+  `pagename`, `description`, `sequence`, `favCount`, `layout` and `ppversion`. The layout names
+  its columns by letters: `A` one column, `AA` two of the same width, `AAA` three, `AB` a narrow
+  one then a wide one, `BA` a wide one then a narrow one.
+- **Verify:** each gadget on a dashboard is a `PortletConfiguration` row with `id`,
+  `portalpage`, `columnNumber` (from 0), `positionSeq` (from 0, top down), `gadgetXml` (the
+  address of the gadget's definition, which names the app module that provides it as
+  `<app key>:<module>` before `/gadgets/`) and `color`. Each of its settings is a
+  `GadgetUserPreference` row with `id`, `portletconfiguration`, `userprefkey` and
+  `userprefvalue`. A setting that names a filter or a project writes `filter-<id>` or
+  `project-<id>`; `filterId` and `projectOrFilterId` are the usual names, `num` a number of
+  rows, `statType`, `xstattype` and `ystattype` what a chart counts by (`assignees`,
+  `statuses`, `priorities`, `issuetype`, `project`, `resolution`, `components`, `fixfor`,
+  `version`, `labels`, `reporter` or `customfield_<id>`), `daysprevious` and `periodName`
+  (`hourly` to `yearly`) a chart's window, `rapidViewId` a board.
+- **Verify:** a filter subscription is a `FilterSubscription` row with `id`, `filterID`,
+  `username` (the person who made it, a user key), `groupname` (the group it goes to, or none
+  for that person alone), `lastRun` and `emailOnEmpty` (`true` to mail an empty result too).
+  Its schedule is a `ClusteredJob` row whose `jobId` is `JIRA-SUB-` and the subscription's id,
+  with `jobRunnerKey`, `schedType` `C` and a `cronExpression`, or `I` and `intervalMillis`. The
+  expression has six or seven fields: seconds, minutes, hours, day of month, month, day of week
+  (`1` is Sunday, or `MON` to `SUN`), and an optional year; `?` stands for "no particular day",
+  `L` for the last day, `W` for the nearest weekday and `#` for the n-th weekday of the month.
+  Other jobs are `ClusteredJob` rows too. Schedules carry no time zone of their own in the rows
+  the generator writes.
+- **Our choice:** about one filter per corpus entry of the translation corpus
+  (`translate/corpus.ts`), plus one more per ten people, with each query written against the
+  instance's own ids and names: projects by key, id and name, statuses, priorities, resolutions,
+  types and security levels by id and name, people by user name and key, every custom field
+  kind by id and name, options by id and value, sprints, an earlier filter by id and by name,
+  history clauses, ORDER BY `Rank`, apps' functions and fields, a person and a project nobody
+  has, and broken text. The first filter is shared with everyone. About a third are private;
+  the rest are shared with everyone, everyone signed in, a group (some with change rights) or a
+  project (some only with a role, some with a group too). Owners and a few others make filters
+  favourites.
+- **Our choice:** one dashboard per gadget kind at least (one per five people, at most 200),
+  with every layout, two to five gadgets of the kinds `GADGETS` lists (results of a filter,
+  assigned to me, watched, a pie chart, created against resolved, recently created, average
+  age, resolution time, statistics, a two-dimensional table, a text gadget, a sprint burndown,
+  sprint days remaining, an activity stream and an app's calendar), most over a filter and the
+  rest over a project. The first dashboard is shared with everyone signed in.
+- **Our choice:** about one filter in seven has a subscription, some to a group, with schedules
+  that are daily, on weekdays, weekly, monthly, every fifteen minutes, on Fridays, and two that
+  no five-field cron can say: the last day of the month and the first Monday.
 
 ### Custom fields and their values (M1-089)
 
@@ -633,6 +700,13 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 - **Our choice:** attachment files are found by the attachment id that names them, under any
   folders (`<project>/<bucket>/<issue key>/<id>` or the older layout without the bucket); the
   import reads each from its place in the ZIP. A file no attachment row names is reported.
+- **Our choice:** saved filters, their shares and favourites, dashboards with their gadgets and
+  settings, and subscriptions with their schedule jobs are small, so the stage keeps them and
+  resolves them after the file (M1-094, ADR-096). It analyses each filter's query there, since
+  only the stage knows the source's custom fields, people, projects and filters by id and name,
+  and writes filters that name other filters after them. Other `ClusteredJob` rows are reported
+  as not imported. A share naming a group, project or role without a row is left out, never
+  widened.
 
 ## Sources
 

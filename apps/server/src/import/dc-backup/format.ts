@@ -1,3 +1,4 @@
+import { FILTER_ENTITIES } from './filter-format';
 import { WORKFLOW_ENTITIES } from './workflow-format';
 
 /**
@@ -422,7 +423,17 @@ export const ENTITIES = {
     },
   },
   Resolution: { attrs: { id, sequence: int, name: text, description: optText } },
-  SearchRequest: { attrs: { id, name: text, author: optUser, request: longText } },
+  SearchRequest: {
+    attrs: {
+      id,
+      name: text,
+      author: optUser,
+      request: longText,
+      // Saved filters' own (M1-094).
+      description: longText,
+      favCount: optInt,
+    },
+  },
   SequenceValueItem: { attrs: { seqName: text, seqId: int } },
   Status: {
     attrs: {
@@ -479,6 +490,8 @@ export const ENTITIES = {
   },
   // Workflows, their schemes and custom events (M1-090).
   ...WORKFLOW_ENTITIES,
+  // Saved filters' shares and favourites, dashboards and subscriptions (M1-094).
+  ...FILTER_ENTITIES,
 } as const satisfies Record<string, EntitySpec>;
 export type EntityName = keyof typeof ENTITIES;
 

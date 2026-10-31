@@ -251,6 +251,42 @@
         "updated": 0
       },
       "source": 4000
+    },
+    {
+      "kind": "saved_search",
+      "outcomes": {
+        "created": 107,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 107
+    },
+    {
+      "kind": "subscription",
+      "outcomes": {
+        "created": 18,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 6,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 24
+    },
+    {
+      "kind": "dashboard",
+      "outcomes": {
+        "created": 15,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 15
     }
   ],
   "mapping": [
@@ -644,12 +680,7 @@
       "reason": "tickets_only"
     },
     {
-      "count": 5,
-      "kind": "SearchRequest",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 55,
+      "count": 62,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -671,6 +702,42 @@
       "count": 3,
       "detail": "com.example.reviews:APPROVE",
       "kind": "access_policy"
+    },
+    {
+      "code": "dashboard_favourites_not_imported",
+      "count": 12,
+      "detail": null,
+      "kind": "dashboard"
+    },
+    {
+      "code": "edit_share_not_imported",
+      "count": 1,
+      "detail": "group",
+      "kind": "dashboard"
+    },
+    {
+      "code": "gadget_not_mapped",
+      "count": 3,
+      "detail": "activitystream-gadget",
+      "kind": "dashboard"
+    },
+    {
+      "code": "gadget_not_mapped",
+      "count": 6,
+      "detail": "month-calendar",
+      "kind": "dashboard"
+    },
+    {
+      "code": "widget_reference_not_imported",
+      "count": 1,
+      "detail": "days-remaining board",
+      "kind": "dashboard"
+    },
+    {
+      "code": "widget_reference_not_imported",
+      "count": 3,
+      "detail": "sprint-burndown board",
+      "kind": "dashboard"
     },
     {
       "code": "app_field_as_read_only_text",
@@ -715,6 +782,144 @@
       "kind": "notification_policy"
     },
     {
+      "code": "edit_share_not_imported",
+      "count": 5,
+      "detail": "group",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_changed",
+      "count": 1,
+      "detail": "order_term_dropped: Business Value",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_changed",
+      "count": 6,
+      "detail": "order_term_dropped: Rank",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_flagged",
+      "count": 1,
+      "detail": "module_not_available: approvals",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_flagged",
+      "count": 1,
+      "detail": "module_not_available: customerGroup",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_flagged",
+      "count": 1,
+      "detail": "module_not_available: myPendingApproval()",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"key\" cannot be compared with >; its values have no order",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"lastViewed\" is not recorded yet",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"Rating\" (cf[18]) cannot be compared with >; its values have no order",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"sprint\" has no value \"FX sprint 2\"",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "syntax_error: syntax",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: cf[99999]",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: issueFunction",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: Parent Link",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: Team",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: Time to resolution",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_function: epicsOf",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_function: linkedIssuesOfAll",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_function: portfolioChildIssuesOf",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_person: nobody.here",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_project: NOPE",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_saved_search: No such filter",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "value_not_imported: sprint",
+      "kind": "saved_search"
+    },
+    {
       "code": "removed_character",
       "count": 3,
       "detail": "char_ref",
@@ -737,6 +942,24 @@
       "count": 6,
       "detail": "nul",
       "kind": "source"
+    },
+    {
+      "code": "schedule_not_imported",
+      "count": 3,
+      "detail": "0 0 12 ? * 2#1",
+      "kind": "subscription"
+    },
+    {
+      "code": "schedule_not_imported",
+      "count": 3,
+      "detail": "0 0 18 L * ?",
+      "kind": "subscription"
+    },
+    {
+      "code": "schedule_time_zone_utc",
+      "count": 18,
+      "detail": null,
+      "kind": "subscription"
     },
     {
       "code": "type_not_offered",

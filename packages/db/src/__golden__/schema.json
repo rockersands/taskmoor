@@ -1518,7 +1518,8 @@
       "columns jsonb",
       "version integer not null default 1",
       "created_at timestamp with time zone not null default now()",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "import_problem text"
     ],
     "indexes": [
       "CREATE INDEX saved_search_name_idx ON public.saved_search USING btree (workspace_id, lower(name), id)",

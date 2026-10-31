@@ -1840,6 +1840,7 @@ A object or object.
 | `name` | string | yes |  |
 | `description` | string | yes |  |
 | `query` | string | yes |  |
+| `importProblem` | string or null | yes |  |
 | `owner` | [PersonRef](#schema-personref) | yes |  |
 | `shares` | array of any | yes |  |
 | `starred` | boolean | yes |  |

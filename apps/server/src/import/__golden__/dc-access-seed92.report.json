@@ -305,12 +305,7 @@
       "reason": "tickets_only"
     },
     {
-      "count": 5,
-      "kind": "SearchRequest",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 55,
+      "count": 62,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },

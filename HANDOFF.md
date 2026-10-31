@@ -241,6 +241,29 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     votes, schemes, comment visibility, custom field history, real contexts and options, a
     1M-item rate run (IMP-002 (1)), clearing a finished run's sealed token; M1-096 builds delta
     runs on `fetch_state`, M1-097 the wizard and CLI.
+- **M1-094 Data Center saved filters, dashboards and subscriptions** (branch
+  `work/m1-094-dc-filters`, side agent 2026-10-31; migration 0073, ADR-096; M1-094 is done):
+  - Translator `import/translate/jql.ts`: `analyseQuery` runs in the stage
+    (`dc-backup/stage-filters.ts`, which knows the source's fields, people, projects and filters)
+    and leaves references in a query template; `renderQuery` runs in the loader
+    (`import/load-filters.ts`), which then prepares the text as the owner would run it. Change
+    the translator and you must bump `STAGE_VERSION` (now 5; M1-093 bumps it too: take the
+    higher number plus one when merging).
+  - Corpus `translate/corpus.ts` (100 entries, written against a vocabulary); its golden
+    `translate/__golden__/corpus.json` is the review point. The generator's filters
+    (`dc-backup/filters.ts`) use the same corpus, so `dc-filters.test.ts` meets every entry.
+  - New framework kinds `saved_search`, `subscription`, `dashboard`, last in `ENTITY_KINDS`.
+    Boards' own filters (`SearchRequest` rows the boards name) become saved searches too.
+    `FilterCollector` consumes `SearchRequest`: if M1-093 needs a board's filter query, read it
+    from `collector.filterPart.filters` rather than collecting the element twice. Sprint gadgets
+    resolve boards through `{ kind: 'board' }` refs once boards are imported.
+  - Untranslatable queries keep their text with `saved_search.import_problem` (API
+    `importProblem`, a note on the search page; a new query clears it). Report warnings
+    `query_not_translated`, `query_flagged`, `query_changed` carry `<code>: <name>`.
+  - All DC report goldens, the fidelity report schema, OpenAPI, reference and SDK goldens
+    changed. The synthetic format's unsupported example kind is now `automation` (`dashboard`
+    is a framework kind).
+  - Not done: user shares, edit rights, dashboard stars, a source time zone for schedules.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

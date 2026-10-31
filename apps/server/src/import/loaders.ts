@@ -21,6 +21,7 @@ import {
   workflows,
 } from './load-config';
 import { attachments } from './load-files';
+import { dashboards, savedSearches, subscriptions } from './load-filters';
 import { fieldRuleSets, layoutSets } from './load-forms';
 import { webLinks } from './load-weblinks';
 import type { Command, EntityKind } from './model';
@@ -29,7 +30,7 @@ import type { Command, EntityKind } from './model';
  * The loader of every entity kind (ADR-048; M1-098 added configuration and attachments, M1-089
  * field rule sets and layout sets,
  * M1-091 web links, M1-092 access, visibility and notification policies and global grants,
- * M1-095 boards and sprints).
+ * M1-095 boards and sprints, M1-094 saved searches, subscriptions and dashboards).
  */
 export const LOADERS: { [K in EntityKind]: Loader<Extract<Command, { kind: K }>> } = {
   ...CORE_LOADERS,
@@ -55,4 +56,7 @@ export const LOADERS: { [K in EntityKind]: Loader<Extract<Command, { kind: K }>>
   web_link: webLinks,
   board: boards,
   sprint: sprints,
+  saved_search: savedSearches,
+  subscription: subscriptions,
+  dashboard: dashboards,
 };

@@ -20,6 +20,7 @@ import {
 } from './format';
 import { type Manifest, manifestSchema } from './manifest';
 import { parseXml, type XmlHandlers } from './parse';
+import { FilterChecks } from './validate-filters';
 import { WorkflowChecks } from './validate-workflows';
 import type { Written } from './xml';
 
@@ -148,6 +149,8 @@ class EntitiesState {
   readonly associations: { entity: string; id: number; project: number }[] = [];
   /** Workflows, their schemes and events, and each issue's status in its workflow (M1-090). */
   readonly workflows = new WorkflowChecks();
+  /** Saved filters' shares and favourites, dashboards and subscriptions (M1-094). */
+  readonly filters = new FilterChecks();
   readonly cases: Record<string, number> = {};
   rootSeen = false;
 
@@ -457,6 +460,7 @@ function checkValue(
 function record(state: EntitiesState, name: string, v: Record<string, string>): void {
   const id = Number(v.id);
   state.workflows.row(name, v, (key, by) => state.note(key, by));
+  state.filters.row(name, v, (key, by) => state.note(key, by));
   switch (name) {
     case 'User':
       state.userNames.add(v.lowerUserName ?? '');
@@ -864,6 +868,12 @@ function crossCheck(
       groupNames: state.groupNames,
       associations: state.associations,
     },
+    problem,
+  );
+
+  // Saved filters, dashboards and subscriptions (M1-094).
+  state.filters.check(
+    { ids: (entity) => state.ids.get(entity), groupNames: state.groupNames },
     problem,
   );
 

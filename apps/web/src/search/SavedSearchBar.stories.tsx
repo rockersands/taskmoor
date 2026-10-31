@@ -67,3 +67,19 @@ export const SharedWithMe: Story = {
     await expect(canvas.getByRole('combobox', { name: 'On' })).toBeVisible();
   },
 };
+
+/** One an import could not translate (M1-094): it says why, and how to fix it. */
+export const FromAnImport: Story = {
+  args: {
+    opened: {
+      ...(client.saved[0] as NonNullable<(typeof client.saved)[0]>),
+      name: 'Sub-tasks of the shop',
+      query: 'issueFunction in subtasksOf("project = SHOP")',
+      importProblem: 'No field "issueFunction"',
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('note')).toHaveTextContent('No field "issueFunction"');
+  },
+};

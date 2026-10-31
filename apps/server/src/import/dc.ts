@@ -28,6 +28,7 @@ import type {
   StagedOption,
   StagedRuleSet,
 } from './dc-backup/stage-fields';
+import type { StagedDashboard, StagedFilter, StagedSubscription } from './dc-backup/stage-filters';
 import type {
   StagedAttachment,
   StagedChange,
@@ -63,6 +64,7 @@ import {
   mapRuleSet,
   storedValues,
 } from './dc-fields';
+import { mapDashboard, mapSavedSearch, mapSubscription } from './dc-filters';
 import {
   mapAccessPolicy,
   mapGlobalGrant,
@@ -520,6 +522,10 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
   link: (d) => mapLink(d as unknown as StagedLink),
   web_link: (d) => mapWebLink(d as unknown as StagedWebLink),
   attachment: (d) => mapAttachment(d as unknown as StagedAttachment),
+  // Saved filters, subscriptions and dashboards (M1-094).
+  saved_search: (d) => mapSavedSearch(d as unknown as StagedFilter),
+  subscription: (d) => mapSubscription(d as unknown as StagedSubscription),
+  dashboard: (d) => mapDashboard(d as unknown as StagedDashboard),
 };
 
 /** Kinds whose records carry no name of their own. */
@@ -534,6 +540,7 @@ const UNNAMED = new Set([
   'link',
   'web_link',
   'attachment',
+  'subscription',
 ]);
 
 /** Maps a staged record; a name the target cannot hold fails the record. */

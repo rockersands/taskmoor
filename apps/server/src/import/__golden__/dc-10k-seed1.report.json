@@ -239,6 +239,42 @@
         "updated": 0
       },
       "source": 3
+    },
+    {
+      "kind": "saved_search",
+      "outcomes": {
+        "created": 109,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 109
+    },
+    {
+      "kind": "subscription",
+      "outcomes": {
+        "created": 17,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 4,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 21
+    },
+    {
+      "kind": "dashboard",
+      "outcomes": {
+        "created": 15,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 15
     }
   ],
   "mapping": [
@@ -1528,6 +1564,1305 @@
       "warnings": [
         "merged_into: Software workflows"
       ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Filter for AX board",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "query_changed: order_term_dropped: Rank"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Filter for BX board",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": [
+        "query_changed: order_term_dropped: Rank"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Filter for CX board",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": [
+        "query_changed: order_term_dropped: Rank"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Filter for DX board",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": [
+        "query_changed: order_term_dropped: Rank"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A project by key",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11000",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A project by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11001",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A project by name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11002",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Projects in a list, mixed",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11003",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A type by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11004",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Types by name and function",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11005",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Standard types",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11006",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A status by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11007",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Statuses by name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11008",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A status category by number and name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11009",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A priority by id, ordered by priority",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11010",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Priorities above one",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11011",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A resolution by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11012",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Unresolved work",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11013",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Resolved in the last week",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11014",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A security level by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11015",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A security level by name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11016",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "An assignee by user name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11017",
+      "warnings": [
+        "edit_share_not_imported: group"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An assignee by key",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11018",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Mine, unresolved",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11019",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Reporters in a list",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11020",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Reporters in a group",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11021",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A creator",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11022",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Watched by me, or watched",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11023",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Voted for",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11024",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Many watchers",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11025",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Unassigned",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11026",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A person the source does not have",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11027",
+      "warnings": [
+        "query_not_translated: unknown_person: nobody.here"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Created in the last two weeks",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11028",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Updated since a date",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11029",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Due this month",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11030",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Date functions with increments",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11031",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Since my last login",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11032",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Words in the summary",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11033",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Text with a wildcard",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11034",
+      "warnings": [
+        "edit_share_not_imported: group"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Environment words",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11035",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Labels",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11036",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Issues by key and id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11037",
+      "warnings": [
+        "query_not_translated: value_not_imported: ticket"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Keys after one (Taskmoor does not order keys)",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11038",
+      "warnings": [
+        "query_not_translated: refused: \"key\" cannot be compared with >; its values have no order"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Children of an issue",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11039",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "An epic link",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11040",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Issues linked to one",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11041",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "By link type",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11042",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Issues with a remote link",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11043",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Recently viewed",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11044",
+      "warnings": [
+        "query_not_translated: refused: \"lastViewed\" is not recorded yet"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "With attachments",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11045",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Estimates and time spent",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11046",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Work ratio",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11047",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Work log comments and dates",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11048",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Projects I lead",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11049",
+      "warnings": [
+        "edit_share_not_imported: group"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Projects another person leads",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11050",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Projects where I may browse",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11051",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Projects where I have a role",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11052",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Components I lead",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11053",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Updated by a person",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11054",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Unreleased versions of a project",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11055",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Latest released version",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11056",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Open sprints",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11057",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Closed sprints",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11058",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A sprint by name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11059",
+      "warnings": [
+        "query_not_translated: refused: \"sprint\" has no value \"DX sprint 6\""
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A sprint by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11060",
+      "warnings": [
+        "query_not_translated: value_not_imported: sprint"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A number field by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11061",
+      "warnings": [
+        "edit_share_not_imported: group"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A number field by name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11062",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A text field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11063",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A date field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11064",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "An option by value",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11065",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "An option by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11066",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Several options",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11067",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A cascading option by ids",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11068",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A cascading option by names",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11069",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A person field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11070",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A labels field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11071",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "An empty custom field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11072",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A custom field id the source does not have",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11073",
+      "warnings": [
+        "query_not_translated: unknown_field: cf[99999]"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An app field compared like a number",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11074",
+      "warnings": [
+        "query_not_translated: refused: \"Rating\" (cf[18]) cannot be compared with >; its values have no order"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A status it had",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11075",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A status it had, by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11076",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A status change",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11077",
+      "warnings": [
+        "edit_share_not_imported: group"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An assignee it had",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11078",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A priority change",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11079",
+      "warnings": [
+        "edit_share_not_imported: group"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Another filter by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11080",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Another filter by name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11081",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A filter the source does not have",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11082",
+      "warnings": [
+        "query_not_translated: unknown_saved_search: No such filter"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A board filter",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11083",
+      "warnings": [
+        "query_changed: order_term_dropped: Rank"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Several orderings",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11084",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Ordering by an app field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11085",
+      "warnings": [
+        "query_changed: order_term_dropped: Business Value"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Nested AND, OR and NOT",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11086",
+      "warnings": [
+        "edit_share_not_imported: group"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Keywords in lower case",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11087",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "NOT IN with ids",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11088",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "No condition, only an order",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11089",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A service SLA",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11090",
+      "warnings": [
+        "query_not_translated: unknown_field: Time to resolution"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Approvals waiting for me",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11091",
+      "warnings": [
+        "query_flagged: module_not_available: approvals",
+        "query_flagged: module_not_available: myPendingApproval()"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A customer organisation",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11092",
+      "warnings": [
+        "query_flagged: module_not_available: customerGroup"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An app's function over sub-tasks",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11093",
+      "warnings": [
+        "query_not_translated: unknown_field: issueFunction"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An app's function on a known field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11094",
+      "warnings": [
+        "query_not_translated: unknown_function: linkedIssuesOfAll"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An app's epic function",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11095",
+      "warnings": [
+        "query_not_translated: unknown_function: epicsOf"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An app's team field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11096",
+      "warnings": [
+        "query_not_translated: unknown_field: Team",
+        "query_not_translated: unknown_field: Parent Link"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "An app's hierarchy function",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11097",
+      "warnings": [
+        "query_not_translated: unknown_function: portfolioChildIssuesOf"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A project the source does not have",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11098",
+      "warnings": [
+        "query_not_translated: unknown_project: NOPE"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "Broken text",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11099",
+      "warnings": [
+        "query_not_translated: syntax_error: syntax"
+      ]
+    },
+    {
+      "kind": "saved_search",
+      "label": "A project by key (2)",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11100",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A project by id (2)",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11101",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A project by name (2)",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11102",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "Projects in a list, mixed (2)",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11103",
+      "warnings": []
+    },
+    {
+      "kind": "saved_search",
+      "label": "A type by id (2)",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "11104",
+      "warnings": []
+    },
+    {
+      "kind": "subscription",
+      "label": "Projects in a list, mixed",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "A priority by id, ordered by priority",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Resolved in the last week",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "A security level by name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "An assignee by user name",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Mine, unresolved",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Voted for",
+      "outcome": "skipped",
+      "reason": "cron_day_rule_not_supported",
+      "sourceId": "10006",
+      "warnings": [
+        "schedule_not_imported: 0 0 18 L * ?"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Date functions with increments",
+      "outcome": "skipped",
+      "reason": "cron_day_rule_not_supported",
+      "sourceId": "10007",
+      "warnings": [
+        "schedule_not_imported: 0 0 12 ? * 2#1"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Keys after one (Taskmoor does not order keys) to everyone",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10008",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "With attachments",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10009",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Projects where I have a role",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10010",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "A sprint by name to team-halhal-2",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10011",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "An option by id",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10012",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "A person field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10013",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "A custom field id the source does not have to team-sennal-1",
+      "outcome": "skipped",
+      "reason": "cron_day_rule_not_supported",
+      "sourceId": "10014",
+      "warnings": [
+        "schedule_not_imported: 0 0 18 L * ?"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Another filter by id to team-halhal-2",
+      "outcome": "skipped",
+      "reason": "cron_day_rule_not_supported",
+      "sourceId": "10015",
+      "warnings": [
+        "schedule_not_imported: 0 0 12 ? * 2#1"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Several orderings",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10016",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "Keywords in lower case",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10017",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "An app's function on a known field",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10018",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "An app's hierarchy function",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10019",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "subscription",
+      "label": "A project by id (2)",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10020",
+      "warnings": [
+        "schedule_time_zone_utc"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Team overview",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "dashboard_favourites_not_imported"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 2 of Yorbel",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 3 of Junyor",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": [
+        "dashboard_favourites_not_imported",
+        "widget_reference_not_imported: sprint-burndown board"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 4 of Cormi",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": [
+        "dashboard_favourites_not_imported"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 5 of Vinivo",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": [
+        "dashboard_favourites_not_imported",
+        "widget_reference_not_imported: sprint-burndown board"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 6 of Kelsen",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": []
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 7 of Torkel",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10006",
+      "warnings": []
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 8 of Halhal",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10007",
+      "warnings": [
+        "dashboard_favourites_not_imported",
+        "widget_reference_not_imported: sprint-burndown board",
+        "widget_reference_not_imported: days-remaining board",
+        "widget_reference_not_imported: days-remaining board"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 9 of Lozel",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10008",
+      "warnings": [
+        "gadget_not_mapped: month-calendar"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 10 of Anbel",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10009",
+      "warnings": [
+        "dashboard_favourites_not_imported",
+        "widget_reference_not_imported: days-remaining board"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 11 of Velra",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10010",
+      "warnings": []
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 12 of Senjun",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10011",
+      "warnings": [
+        "dashboard_favourites_not_imported",
+        "widget_reference_not_imported: sprint-burndown board",
+        "widget_reference_not_imported: days-remaining board"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 13 of Corcor",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10012",
+      "warnings": [
+        "widget_reference_not_imported: days-remaining board"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 14 of Aneth",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10013",
+      "warnings": [
+        "gadget_not_mapped: activitystream-gadget"
+      ]
+    },
+    {
+      "kind": "dashboard",
+      "label": "Dashboard 15 of Zelbel",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10014",
+      "warnings": [
+        "gadget_not_mapped: month-calendar",
+        "widget_reference_not_imported: sprint-burndown board"
+      ]
     }
   ],
   "unsupported": [
@@ -1597,12 +2932,7 @@
       "reason": "configuration_only"
     },
     {
-      "count": 4,
-      "kind": "SearchRequest",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 55,
+      "count": 62,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -1629,6 +2959,36 @@
       "count": 3,
       "detail": "com.example.reviews:APPROVE",
       "kind": "access_policy"
+    },
+    {
+      "code": "dashboard_favourites_not_imported",
+      "count": 7,
+      "detail": null,
+      "kind": "dashboard"
+    },
+    {
+      "code": "gadget_not_mapped",
+      "count": 1,
+      "detail": "activitystream-gadget",
+      "kind": "dashboard"
+    },
+    {
+      "code": "gadget_not_mapped",
+      "count": 2,
+      "detail": "month-calendar",
+      "kind": "dashboard"
+    },
+    {
+      "code": "widget_reference_not_imported",
+      "count": 5,
+      "detail": "days-remaining board",
+      "kind": "dashboard"
+    },
+    {
+      "code": "widget_reference_not_imported",
+      "count": 5,
+      "detail": "sprint-burndown board",
+      "kind": "dashboard"
     },
     {
       "code": "app_field_as_read_only_text",
@@ -1673,6 +3033,150 @@
       "kind": "notification_policy"
     },
     {
+      "code": "edit_share_not_imported",
+      "count": 7,
+      "detail": "group",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_changed",
+      "count": 1,
+      "detail": "order_term_dropped: Business Value",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_changed",
+      "count": 5,
+      "detail": "order_term_dropped: Rank",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_flagged",
+      "count": 1,
+      "detail": "module_not_available: approvals",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_flagged",
+      "count": 1,
+      "detail": "module_not_available: customerGroup",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_flagged",
+      "count": 1,
+      "detail": "module_not_available: myPendingApproval()",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"key\" cannot be compared with >; its values have no order",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"lastViewed\" is not recorded yet",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"Rating\" (cf[18]) cannot be compared with >; its values have no order",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "refused: \"sprint\" has no value \"DX sprint 6\"",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "syntax_error: syntax",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: cf[99999]",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: issueFunction",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: Parent Link",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: Team",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_field: Time to resolution",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_function: epicsOf",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_function: linkedIssuesOfAll",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_function: portfolioChildIssuesOf",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_person: nobody.here",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_project: NOPE",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "unknown_saved_search: No such filter",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "value_not_imported: sprint",
+      "kind": "saved_search"
+    },
+    {
+      "code": "query_not_translated",
+      "count": 1,
+      "detail": "value_not_imported: ticket",
+      "kind": "saved_search"
+    },
+    {
       "code": "removed_character",
       "count": 13,
       "detail": "char_ref",
@@ -1695,6 +3199,24 @@
       "count": 15,
       "detail": "nul",
       "kind": "source"
+    },
+    {
+      "code": "schedule_not_imported",
+      "count": 2,
+      "detail": "0 0 12 ? * 2#1",
+      "kind": "subscription"
+    },
+    {
+      "code": "schedule_not_imported",
+      "count": 2,
+      "detail": "0 0 18 L * ?",
+      "kind": "subscription"
+    },
+    {
+      "code": "schedule_time_zone_utc",
+      "count": 17,
+      "detail": null,
+      "kind": "subscription"
     },
     {
       "code": "deleted_user",

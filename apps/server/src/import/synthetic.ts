@@ -19,7 +19,7 @@ import type {
  * `{"kind": "...", "id": "...", ...fields}`. Its vocabulary is deliberately not the
  * target's (`category` instead of stage, `lead`, `reporter`, `resolved`, `started`), so the
  * mapper has real work.
- * Records of kinds the framework does not import (`filter`, `dashboard`) are reported as
+ * Records of kinds the framework does not import (`filter`, `automation`) are reported as
  * unsupported; fields the mapper does not know are reported as warnings.
  */
 export const SYNTHETIC_FORMAT = 'taskmoor-synthetic';
@@ -647,7 +647,7 @@ export function syntheticFixture(options: FixtureOptions): string {
   lines.push(
     { kind: 'filter', id: 'b1', name: 'Team filter', tracks: ['p1'] },
     { kind: 'filter', id: 'b2', name: 'Cross-track filter', tracks: ['p1', 'p2'] },
-    { kind: 'dashboard', id: 'd1', name: 'Overview' },
+    { kind: 'automation', id: 'r1', name: 'Close stale tickets' },
   );
   return `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
 }

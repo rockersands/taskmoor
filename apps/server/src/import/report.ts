@@ -170,6 +170,9 @@ export const MAPPED_KINDS: readonly string[] = [
   'global_grant',
   'workflow',
   'workflow_map',
+  'saved_search',
+  'subscription',
+  'dashboard',
 ] satisfies EntityKind[];
 
 /** A record's label for the mapping: the source's, or else the command's key or name. */

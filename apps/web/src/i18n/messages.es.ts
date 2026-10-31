@@ -176,6 +176,8 @@ export const messagesEs: Record<MessageId, string> = {
   'saved.subscribed': 'Estás suscrito a {name}. El primer correo sale {when}.',
   'saved.nameTaken': 'Ya tienes una búsqueda guardada con ese nombre.',
   'saved.forbidden': 'No puedes hacer eso con esta búsqueda guardada.',
+  'saved.importProblem':
+    'Esta búsqueda guardada llegó con una importación y aún no funciona: {problem}. Cambia la consulta y guárdala para arreglarla.',
   'saved.failed': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
   'saved.notFound': 'Esta búsqueda guardada no existe, o no puedes verla.',
   'guardrails.title': 'Salvaguardas',

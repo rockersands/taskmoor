@@ -52,7 +52,10 @@
               "web_link",
               "time_entry",
               "attachment",
-              "history"
+              "history",
+              "saved_search",
+              "subscription",
+              "dashboard"
             ],
             "type": "string"
           },
@@ -193,7 +196,10 @@
               "web_link",
               "time_entry",
               "attachment",
-              "history"
+              "history",
+              "saved_search",
+              "subscription",
+              "dashboard"
             ],
             "type": "string"
           },
@@ -387,7 +393,10 @@
               "web_link",
               "time_entry",
               "attachment",
-              "history"
+              "history",
+              "saved_search",
+              "subscription",
+              "dashboard"
             ],
             "type": "string"
           },

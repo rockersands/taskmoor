@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import yauzl from 'yauzl';
 import { sniff } from '../../attachments/sniff';
+import { queryType } from '../../search/catalogue';
+import { targetShape } from '../dc-fields';
 import type { CleanStats } from './clean';
 import {
   ACTIVE_OBJECTS_FILE,
@@ -17,6 +19,7 @@ import {
 import { parseXml, type XmlHandlers } from './parse';
 import { readLines as readLinesOf } from './spill';
 import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
+import { FILTER_ELEMENTS, FilterCollector } from './stage-filters';
 import { CONTENT_KINDS, ISSUE_ELEMENTS, IssueCollector, type StagedFile } from './stage-issues';
 import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
 import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
@@ -36,7 +39,7 @@ import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 4;
+export const STAGE_VERSION = 5;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -66,6 +69,10 @@ export const STAGED_KINDS = {
   workflow_map: 'WorkflowScheme',
   ticket: 'Issue',
   ...CONTENT_KINDS,
+  // Saved filters, their subscriptions and dashboards (M1-094).
+  saved_search: 'SearchRequest',
+  subscription: 'FilterSubscription',
+  dashboard: 'PortalPage',
 } as const;
 
 /** The schemes a project's `NodeAssociation` rows may name that the mapping reads. */
@@ -98,6 +105,7 @@ export const CONSUMED = new Set<string>([
   ...ISSUE_ELEMENTS,
   ...SCHEME_ELEMENTS,
   ...WORKFLOW_ELEMENTS,
+  ...FILTER_ELEMENTS,
 ]);
 
 /** Elements only tickets consume: a configuration-only import leaves them out (M1-089). */
@@ -282,6 +290,7 @@ class Collector {
   readonly fieldPart = new FieldCollector();
   readonly schemePart = new SchemeCollector();
   readonly workflowPart = new WorkflowCollector();
+  readonly filterPart = new FilterCollector();
   readonly issuePart: IssueCollector;
   /** Link types by id (sub-task links make parents). */
   readonly linkTypes = new Map<
@@ -340,6 +349,10 @@ class Collector {
     }
     if ((WORKFLOW_ELEMENTS as readonly string[]).includes(name)) {
       this.workflowPart.row(name, v);
+      return;
+    }
+    if (name === 'SearchRequest' || (FILTER_ELEMENTS as readonly string[]).includes(name)) {
+      this.filterPart.row(name, v);
       return;
     }
     switch (name) {
@@ -639,6 +652,26 @@ class Collector {
       }
     }
     const inWorkflow = this.workflowPart.statusesInWorkflows();
+    // Saved filters, dashboards and subscriptions (M1-094), queries analysed for translation.
+    const filterRecords = this.filterPart.resolve({
+      fields: this.fieldPart.fields,
+      fieldType: (typeKey) => {
+        const shape = targetShape(typeKey);
+        return shape ? queryType(shape) : null;
+      },
+      person: (raw) => {
+        const id = person(raw);
+        return people.has(id) ? id : undefined;
+      },
+      group: (raw) => {
+        const id = raw.toLowerCase();
+        return groups.has(id) ? id : null;
+      },
+      projects: this.projects,
+      role: (id) => this.roles.has(id),
+    });
+    const otherJobs = this.filterPart.otherJobs();
+    if (otherJobs > 0) this.partial.ClusteredJob = otherJobs;
     const records = {
       user: [...people.entries()]
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -671,6 +704,7 @@ class Collector {
       ...fieldRecords,
       ...schemeRecords,
       ...workflowRecords,
+      ...filterRecords,
     };
     return {
       records,

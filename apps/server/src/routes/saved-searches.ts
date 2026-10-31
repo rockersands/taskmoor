@@ -32,6 +32,8 @@ import { searchPerson, searchRefusal, searchScope } from './search';
  *   one that leads back to itself is refused (QRY-011 (2)). Running a saved search is running
  *   its query (`/api/v1/search`) as the person, so nobody sees a ticket through a saved search
  *   that they could not find with the query themselves.
+ * - A saved search an import could not translate (M1-094) keeps the source's text and says why
+ *   in `importProblem`; saving a query clears it.
  * - `PUT` and `DELETE /api/v1/saved-searches/:id/star` star and unstar it for the person.
  * - `GET` and `POST /api/v1/saved-searches/:id/subscriptions` and
  *   `DELETE /api/v1/saved-searches/:id/subscriptions/:subscriptionId`: the person subscribes
@@ -101,6 +103,7 @@ type Row = {
   description: string;
   query: string;
   columns: JsonValue | null;
+  import_problem: string | null;
   owner_id: number;
   owner_name: string;
   version: number;
@@ -143,6 +146,7 @@ export function registerSavedSearchRoutes(
         's.description',
         's.query',
         's.columns',
+        's.import_problem',
         's.owner_id',
         'o.name as owner_name',
         's.version',
@@ -182,6 +186,8 @@ export function registerSavedSearchRoutes(
       description: r.description,
       query: r.query,
       columns: r.columns,
+      // Why a query an import brought does not run here (M1-094); null for every other one.
+      importProblem: r.import_problem,
       owner: { id: r.owner_id, name: r.owner_name },
       shares: shares.get(r.id) ?? [],
       starred: starred.has(r.id),
@@ -402,7 +408,7 @@ export function registerSavedSearchRoutes(
         .set({
           ...(body.name !== undefined ? { name: body.name } : {}),
           ...(body.description !== undefined ? { description: body.description } : {}),
-          ...(body.query !== undefined ? { query: body.query } : {}),
+          ...(body.query !== undefined ? { query: body.query, import_problem: null } : {}),
           ...(body.columns !== undefined
             ? { columns: body.columns === null ? null : JSON.stringify(body.columns) }
             : {}),
