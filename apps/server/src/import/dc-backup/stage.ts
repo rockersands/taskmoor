@@ -11,8 +11,11 @@ import {
   ENTITIES,
   ENTITIES_FILE,
   type EntitySpec,
+  PROJECT_SCHEME,
 } from './format';
 import { parseXml, type XmlHandlers } from './parse';
+import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
+import { ISSUE_ELEMENTS, IssueCollector } from './stage-issues';
 
 /**
  * Stages a Data Center backup ZIP for import (M1-088; IMP-001, IMP-004; ADR-081): one streaming
@@ -29,7 +32,7 @@ import { parseXml, type XmlHandlers } from './parse';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 1;
+export const STAGE_VERSION = 2;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -45,13 +48,21 @@ export const STAGED_KINDS = {
   close_reason: 'Resolution',
   ticket_type: 'IssueType',
   track: 'Project',
+  field: 'CustomField',
+  field_context: 'FieldConfigScheme',
+  field_option: 'CustomFieldOption',
+  field_rule_set: 'FieldLayoutScheme',
+  layout_set: 'IssueTypeScreenScheme',
+  ticket: 'Issue',
 } as const;
 export type StagedKind = keyof typeof STAGED_KINDS;
 
 /**
  * Elements read into the staged kinds: the kinds' own and the ones folded into them (user keys,
- * directories, memberships, role actors). Every other element is counted and reported as not
- * imported, with its reason.
+ * directories, memberships, role actors, the parts of contexts, field configurations and
+ * screens, the projects' scheme associations, issues' custom values, labels and sub-task
+ * links). Every other element is counted and reported as not imported, with its reason; rows
+ * of a consumed element that the mapping leaves out are counted in `partial`.
  */
 export const CONSUMED = new Set<string>([
   ...Object.values(STAGED_KINDS),
@@ -59,7 +70,14 @@ export const CONSUMED = new Set<string>([
   'Directory',
   'Membership',
   'ProjectRoleActor',
+  'IssueLinkType',
+  'NodeAssociation',
+  ...FIELD_ELEMENTS,
+  ...ISSUE_ELEMENTS,
 ]);
+
+/** Elements only tickets consume: a configuration-only import leaves them out (M1-089). */
+export const CONTENT_ELEMENTS: ReadonlySet<string> = new Set(ISSUE_ELEMENTS);
 
 /** Elements the importer has no use for: ids are Taskmoor's own. */
 export const NOT_NEEDED = new Set<string>(['SequenceValueItem']);
@@ -138,6 +156,8 @@ export interface StageSummary {
   files: Record<string, number>;
   /** Records per staged kind. */
   kinds: Record<string, number>;
+  /** Rows of consumed elements that no staged kind carries (links between issues, say). */
+  partial: Record<string, number>;
   /** Characters XML forbids that the cleaner removed, with the first places of each kind. */
   removed: Record<keyof CleanStats['offsets'], { count: number; examples: string[] }>;
 }
@@ -208,6 +228,22 @@ class Collector {
   readonly resolutions: StagedNamed[] = [];
   /** Every person reference as written, lower case. */
   readonly personRefs = new Set<string>();
+  readonly fieldPart = new FieldCollector();
+  readonly issuePart: IssueCollector;
+  /** Link type ids by style (sub-task links make parents). */
+  readonly linkTypeStyles = new Map<string, string>();
+  /** Scheme element to scheme id to the projects naming it (`NodeAssociation`). */
+  readonly associations = new Map<string, Map<string, string[]>>();
+  /** Rows of consumed elements left out, by element. */
+  readonly partial: Record<string, number> = {};
+
+  constructor(dir: string) {
+    this.issuePart = new IssueCollector(dir);
+  }
+
+  private leaveOut(name: string): void {
+    this.partial[name] = (this.partial[name] ?? 0) + 1;
+  }
 
   row(name: string, v: Record<string, string>): void {
     this.entities[name] = (this.entities[name] ?? 0) + 1;
@@ -225,7 +261,32 @@ class Collector {
       description: v.description ?? '',
       sequence: int(v.sequence),
     });
+    if ((FIELD_ELEMENTS as readonly string[]).includes(name)) {
+      this.fieldPart.row(name, v);
+      return;
+    }
+    if ((ISSUE_ELEMENTS as readonly string[]).includes(name)) {
+      this.issuePart.row(name, v);
+      return;
+    }
     switch (name) {
+      case 'IssueLinkType':
+        if (v.style) this.linkTypeStyles.set(id, v.style);
+        return;
+      case 'NodeAssociation': {
+        // A project tied to one of its schemes; other associations are not read yet.
+        if (v.sourceNodeEntity !== 'Project' || v.associationType !== PROJECT_SCHEME) {
+          this.leaveOut(name);
+          return;
+        }
+        const entity = v.sinkNodeEntity ?? '';
+        const byScheme = this.associations.get(entity) ?? new Map<string, string[]>();
+        this.associations.set(entity, byScheme);
+        const projects = byScheme.get(v.sinkNodeId ?? '') ?? [];
+        byScheme.set(v.sinkNodeId ?? '', projects);
+        projects.push(v.sourceNodeId ?? '');
+        return;
+      }
       case 'Directory':
         this.directories.set(id, {
           position: int(v.directoryPosition) ?? Number.MAX_SAFE_INTEGER,
@@ -341,8 +402,18 @@ class Collector {
     return out;
   }
 
-  /** The staged records of every kind, with references resolved. */
-  resolve(): { [K in StagedKind]: { id: string; label: string; data: unknown }[] } {
+  /** The staged records of every configuration kind, with references resolved. */
+  resolve(): {
+    records: {
+      [K in Exclude<StagedKind, 'ticket'>]: { id: string; label: string; data: unknown }[];
+    };
+    person: (raw: string) => string;
+    group: (raw: string) => string | null;
+  } {
+    // People named by custom values count as named (M1-089).
+    for (const raw of this.issuePart.personValues(this.fieldPart.fields)) {
+      this.personRefs.add(raw.toLowerCase());
+    }
     const userRows = this.winners(this.users);
     // People by staged id (the lower-case user key); user names point at the key.
     const people = new Map<string, StagedUser>();
@@ -458,7 +529,12 @@ class Collector {
     const named = <T extends StagedNamed>(rows: T[]) =>
       bySequence(rows).map((r) => ({ id: r.id, label: r.name, data: r }));
 
-    return {
+    const fieldRecords = this.fieldPart.resolve(
+      new Set(this.projects.map((p) => p.id)),
+      new Set(this.issueTypes.map((t) => t.id)),
+      this.associations,
+    );
+    const records = {
       user: [...people.entries()]
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
         .map(([id, u]) => ({
@@ -485,6 +561,15 @@ class Collector {
         };
         return { id: p.id, label: `${p.key}: ${p.name}`, data };
       }),
+      ...fieldRecords,
+    };
+    return {
+      records,
+      person,
+      group: (raw: string) => {
+        const id = raw.toLowerCase();
+        return groups.has(id) ? id : null;
+      },
     };
   }
 }
@@ -554,7 +639,20 @@ async function writeLines(path: string, records: readonly unknown[]): Promise<vo
 
 /** Reads a backup ZIP and writes its staged records into `dir` (made fresh). */
 async function stageInto(zipPath: string, dir: string, zipInfo: StageSummary['zip']) {
-  const collector = new Collector();
+  const collector = new Collector(dir);
+  try {
+    return await stageWith(collector, zipPath, dir, zipInfo);
+  } finally {
+    collector.issuePart.dispose();
+  }
+}
+
+async function stageWith(
+  collector: Collector,
+  zipPath: string,
+  dir: string,
+  zipInfo: StageSummary['zip'],
+) {
   const removed: StageSummary['removed'] = {
     nul: { count: 0, examples: [] },
     control: { count: 0, examples: [] },
@@ -606,12 +704,24 @@ async function stageInto(zipPath: string, dir: string, zipInfo: StageSummary['zi
   if (!sawEntities) throw new DcBackupError(`no ${ENTITIES_FILE} at the root of the ZIP`);
   if (!entitiesRoot) throw new DcBackupError(`${ENTITIES_FILE} has no root element`);
 
-  const records = collector.resolve();
+  const { records, person, group } = collector.resolve();
   const kinds: Record<string, number> = {};
-  for (const kind of Object.keys(STAGED_KINDS) as StagedKind[]) {
+  for (const kind of Object.keys(records) as (keyof typeof records)[]) {
     kinds[kind] = records[kind].length;
     await writeLines(join(dir, `${kind}.ndjson`), records[kind]);
   }
+  const tickets = await collector.issuePart.writeTickets(join(dir, 'ticket.ndjson'), {
+    person,
+    group,
+    fields: collector.fieldPart.fields,
+    subtaskLinkTypes: new Set(
+      [...collector.linkTypeStyles]
+        .filter(([, style]) => style === 'jira_subtask')
+        .map(([id]) => id),
+    ),
+  });
+  kinds.ticket = tickets.count;
+  if (tickets.otherLinks > 0) collector.partial.IssueLink = tickets.otherLinks;
   const summary: StageSummary = {
     format: STAGE_FORMAT,
     version: STAGE_VERSION,
@@ -620,6 +730,7 @@ async function stageInto(zipPath: string, dir: string, zipInfo: StageSummary['zi
     activeObjects: sortedRecord(collector.activeObjects),
     files: sortedRecord(collector.files),
     kinds,
+    partial: sortedRecord(collector.partial),
     removed,
   };
   // Written last: a folder with a summary is complete.

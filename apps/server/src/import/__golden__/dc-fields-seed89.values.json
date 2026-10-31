@@ -1,0 +1,85 @@
+{
+  "fixture": {
+    "issues": 4000,
+    "projects": 6,
+    "seed": 89
+  },
+  "matched": 18464,
+  "mismatches": [],
+  "perField": {
+    "Audience": {
+      "matched": 570,
+      "values": 570
+    },
+    "Channel": {
+      "matched": 1150,
+      "values": 1150
+    },
+    "Checks": {
+      "matched": 1029,
+      "values": 1029
+    },
+    "Customer": {
+      "matched": 778,
+      "values": 778
+    },
+    "Design link": {
+      "matched": 312,
+      "values": 312
+    },
+    "Effort": {
+      "matched": 2003,
+      "values": 2003
+    },
+    "Helpers": {
+      "matched": 783,
+      "values": 783
+    },
+    "Legacy code": {
+      "matched": 754,
+      "values": 754
+    },
+    "Owning group": {
+      "matched": 997,
+      "values": 997
+    },
+    "Platforms": {
+      "matched": 1147,
+      "values": 1147
+    },
+    "Rating": {
+      "matched": 760,
+      "values": 760
+    },
+    "Region": {
+      "matched": 1223,
+      "values": 1223
+    },
+    "Reviewed at": {
+      "matched": 817,
+      "values": 817
+    },
+    "Reviewer": {
+      "matched": 1455,
+      "values": 1455
+    },
+    "Severity": {
+      "matched": 1757,
+      "values": 1757
+    },
+    "Steps to reproduce": {
+      "matched": 655,
+      "values": 655
+    },
+    "Target date": {
+      "matched": 1045,
+      "values": 1045
+    },
+    "Topics": {
+      "matched": 1229,
+      "values": 1229
+    }
+  },
+  "rate": 1,
+  "values": 18464
+}

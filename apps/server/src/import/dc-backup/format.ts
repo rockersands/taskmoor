@@ -56,13 +56,14 @@ export const ATTRIBUTE_TEXT_MAX = 255;
 // --- Entities ------------------------------------------------------------------------------
 
 /**
- * One attribute: `id` (the row's integer id, unique per element), `int`, `bool` (1 or 0),
+ * One attribute: `id` (the row's integer id, unique per element), `int`, `number` (a decimal
+ * number, as doubles are written), `bool` (1 or 0),
  * `time`, `text`, `enum`, `ref` (another element's id), `user` (a user key, which may name a
  * person with no row: a deleted user), `group` (a group name).
  */
 export type Attr =
   | { type: 'id' }
-  | { type: 'int' | 'bool' | 'time' | 'user' | 'group'; optional?: true }
+  | { type: 'int' | 'number' | 'bool' | 'time' | 'user' | 'group'; optional?: true }
   | { type: 'text'; optional?: true; long?: true }
   | { type: 'enum'; values: readonly string[]; optional?: true }
   | { type: 'ref'; to: string; optional?: true };
@@ -81,11 +82,135 @@ const text = { type: 'text' } as const;
 const optText = { type: 'text', optional: true } as const;
 const longText = { type: 'text', optional: true, long: true } as const;
 const optUser = { type: 'user', optional: true } as const;
+const optNumber = { type: 'number', optional: true } as const;
+/** `true` or `false`, as the field configuration tables write their flags (Verify). */
+const textFlag = { type: 'enum', values: ['true', 'false'], optional: true } as const;
 const ref = (to: string) => ({ type: 'ref', to }) as const;
 const optRef = (to: string) => ({ type: 'ref', to, optional: true }) as const;
 
 /** Every element the generator writes, with its attributes. */
 export const ENTITIES = {
+  ConfigurationContext: {
+    attrs: {
+      id,
+      projectcategory: optInt,
+      project: optRef('Project'),
+      key: text,
+      fieldconfigscheme: ref('FieldConfigScheme'),
+    },
+  },
+  CustomField: {
+    attrs: {
+      id,
+      customfieldtypekey: text,
+      customfieldsearcherkey: optText,
+      cfname: text,
+      description: longText,
+    },
+  },
+  CustomFieldOption: {
+    attrs: {
+      id,
+      customfield: ref('CustomField'),
+      customfieldconfig: ref('FieldConfiguration'),
+      parentoptionid: optRef('CustomFieldOption'),
+      sequence: int,
+      customvalue: text,
+      disabled: { type: 'enum', values: ['Y', 'N'], optional: true },
+    },
+  },
+  CustomFieldValue: {
+    attrs: {
+      id,
+      issue: ref('Issue'),
+      customfield: ref('CustomField'),
+      parentkey: optText,
+      stringvalue: optText,
+      numbervalue: optNumber,
+      textvalue: longText,
+      datevalue: optTime,
+    },
+  },
+  FieldConfigScheme: {
+    attrs: { id, name: text, description: optText, fieldid: text },
+  },
+  FieldConfigSchemeIssueType: {
+    attrs: {
+      id,
+      issuetype: optRef('IssueType'),
+      fieldconfigscheme: ref('FieldConfigScheme'),
+      fieldconfiguration: ref('FieldConfiguration'),
+    },
+  },
+  FieldConfiguration: {
+    attrs: { id, name: text, description: optText, fieldid: text },
+  },
+  FieldLayout: {
+    attrs: {
+      id,
+      name: text,
+      description: optText,
+      type: { type: 'enum', values: ['default'], optional: true },
+    },
+  },
+  FieldLayoutItem: {
+    attrs: {
+      id,
+      fieldlayout: ref('FieldLayout'),
+      fieldidentifier: text,
+      description: longText,
+      verticalposition: optInt,
+      ishidden: textFlag,
+      isrequired: textFlag,
+      renderertype: optText,
+    },
+  },
+  FieldLayoutScheme: { attrs: { id, name: text, description: optText } },
+  FieldLayoutSchemeEntity: {
+    attrs: {
+      id,
+      scheme: ref('FieldLayoutScheme'),
+      issuetype: optRef('IssueType'),
+      fieldlayout: ref('FieldLayout'),
+    },
+  },
+  FieldScreen: { attrs: { id, name: text, description: optText } },
+  FieldScreenLayoutItem: {
+    attrs: { id, fieldidentifier: text, sequence: int, fieldscreentab: ref('FieldScreenTab') },
+  },
+  FieldScreenScheme: { attrs: { id, name: text, description: optText } },
+  FieldScreenSchemeItem: {
+    attrs: {
+      id,
+      operation: optInt,
+      fieldscreen: ref('FieldScreen'),
+      fieldscreenscheme: ref('FieldScreenScheme'),
+    },
+  },
+  FieldScreenTab: {
+    attrs: { id, name: text, description: optText, sequence: int, fieldscreen: ref('FieldScreen') },
+  },
+  GenericConfiguration: {
+    attrs: { id, datatype: text, datakey: text, xmlvalue: longText },
+  },
+  IssueTypeScreenScheme: { attrs: { id, name: text, description: optText } },
+  IssueTypeScreenSchemeEntity: {
+    attrs: {
+      id,
+      issuetype: optRef('IssueType'),
+      scheme: ref('IssueTypeScreenScheme'),
+      fieldscreenscheme: ref('FieldScreenScheme'),
+    },
+  },
+  NodeAssociation: {
+    attrs: {
+      sourceNodeId: int,
+      sourceNodeEntity: text,
+      sinkNodeId: int,
+      sinkNodeEntity: text,
+      associationType: text,
+    },
+  },
   Action: {
     attrs: {
       id,
@@ -193,7 +318,7 @@ export const ENTITIES = {
       description: optText,
     },
   },
-  Label: { attrs: { id, issue: ref('Issue'), label: text } },
+  Label: { attrs: { id, issue: ref('Issue'), fieldid: optRef('CustomField'), label: text } },
   Membership: {
     attrs: {
       id,
@@ -290,6 +415,52 @@ export const ENTITY_ORDER: readonly EntityName[] = [
   ...(Object.keys(ENTITIES) as EntityName[]).filter((e) => e !== 'SequenceValueItem').sort(),
   'SequenceValueItem',
 ];
+
+/** Where configuration tables name a custom field: `customfield_<CustomField id>`. */
+export const customFieldKey = (id: number) => `customfield_${id}`;
+export const CUSTOM_FIELD_KEY = /^customfield_(\d+)$/;
+
+/** The plugin key that prefixes the built-in custom field types (Verify). */
+export const SYSTEM_FIELD_TYPES = 'com.atlassian.jira.plugin.system.customfieldtypes:';
+
+/** The built-in custom field types the generator writes, by their key after the prefix. */
+export const CUSTOM_FIELD_TYPES = [
+  'textfield',
+  'textarea',
+  'float',
+  'datepicker',
+  'datetime',
+  'select',
+  'multiselect',
+  'radiobuttons',
+  'multicheckboxes',
+  'cascadingselect',
+  'userpicker',
+  'multiuserpicker',
+  'grouppicker',
+  'multigrouppicker',
+  'labels',
+  'url',
+  'readonlyfield',
+] as const;
+export type CustomFieldType = (typeof CUSTOM_FIELD_TYPES)[number];
+
+/** Custom field types whose values name people by user key, or groups by name (Verify). */
+export const PERSON_FIELD_TYPES: ReadonlySet<string> = new Set(
+  ['userpicker', 'multiuserpicker'].map((t) => `${SYSTEM_FIELD_TYPES}${t}`),
+);
+export const GROUP_FIELD_TYPES: ReadonlySet<string> = new Set(
+  ['grouppicker', 'multigrouppicker'].map((t) => `${SYSTEM_FIELD_TYPES}${t}`),
+);
+
+/** The `parentkey` of a cascading select's child value (Verify). */
+export const CASCADE_CHILD_KEY = '1';
+
+/** `FieldScreenSchemeItem.operation`: absent for the default screen (Verify). */
+export const SCREEN_OPERATIONS = { create: 0, edit: 1, view: 2 } as const;
+
+/** `NodeAssociation` rows that tie a project to one of its schemes (Verify). */
+export const PROJECT_SCHEME = 'ProjectScheme';
 
 /** Status categories by the number the Status element stores. */
 export const STATUS_CATEGORIES = { new: '2', done: '3', indeterminate: '4' } as const;

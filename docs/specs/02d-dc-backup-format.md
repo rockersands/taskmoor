@@ -289,13 +289,86 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   and `request` (the query text). The generator writes one filter per board,
   `project = KEY ORDER BY Rank ASC`.
 
+### Custom fields and their values (M1-089)
+
+- `CustomField` and `CustomFieldValue` are elements. A value names its issue and its field by
+  the `customfield` attribute, and holds a string, number, text or date value. [S13] [S24]
+  [S52]
+- **Verify:** `CustomField` carries `id`, `customfieldtypekey`, `customfieldsearcherkey`,
+  `cfname` and `description`. The built-in types' keys start with
+  `com.atlassian.jira.plugin.system.customfieldtypes:` and end in `textfield`, `textarea`,
+  `float`, `datepicker`, `datetime`, `select`, `multiselect`, `radiobuttons`,
+  `multicheckboxes`, `cascadingselect`, `userpicker`, `multiuserpicker`, `grouppicker`,
+  `multigrouppicker`, `labels`, `url` or `readonlyfield`. A plugin's field type has a key of
+  its own.
+- **Verify:** `CustomFieldValue` carries `id`, `issue`, `customfield`, `parentkey`,
+  `stringvalue`, `numbervalue` (a decimal number), `textvalue` (long text, which may be a
+  child element) and `datevalue` (a timestamp). Text, URL, read-only text and the choice
+  types keep `stringvalue`: an option's id, a person's user key or a group's name. A field
+  with several values has one row per value. A cascading select has a row for the parent
+  option and one for the child with `parentkey` `1`. Numbers have a decimal point (`5.0`).
+  Dates and date-times keep `datevalue`; a date is at midnight.
+- **Verify:** a labels custom field keeps its values as `Label` rows whose `fieldid` is the
+  field's id, not as values.
+- **Verify:** configuration tables name a custom field `customfield_<id>`.
+- **Verify:** a field's contexts are `FieldConfigScheme` rows (`id`, `name`, `description`,
+  `fieldid`). Each has `ConfigurationContext` rows (`id`, `projectcategory`, `project`, `key`,
+  `fieldconfigscheme`): one with neither a project nor a category makes the context apply to
+  every project. Its `FieldConfigSchemeIssueType` rows (`id`, `issuetype`,
+  `fieldconfigscheme`, `fieldconfiguration`) name its issue types, and a row without
+  `issuetype` means every type. Each names the `FieldConfiguration` (`id`, `name`,
+  `description`, `fieldid`) that holds the context's options and default value.
+- **Verify:** options are `CustomFieldOption` rows with `id`, `customfield`,
+  `customfieldconfig` (the `FieldConfiguration`), `parentoptionid` (a cascading select's
+  child), `sequence`, `customvalue` and `disabled` (`Y` or `N`).
+- **Verify:** default values are `GenericConfiguration` rows with `datatype` `DefaultValue`,
+  `datakey` (the `FieldConfiguration` id) and `xmlvalue`, a small XML value such as
+  `<string>10021</string>` (an option's id) or `<double>3.0</double>`.
+- **Our choice:** 18 fields, one of each built-in type above and one plugin type
+  (`com.example.ratings:stars`). Most have one context for every project and type; one is
+  limited to software projects and two issue types, one to one type, and the select field has
+  a context of its own for the first project before the general one. A project's own context
+  wins over the general one. Values are written only for issues inside a context. People in
+  values are present users, so deleted people stay named only by the attributes above. About
+  1 in 20 choice values names a disabled option. The Effort change in the history ends at the
+  issue's current Effort value, or clears it when there is none.
+
+### Field configurations and screens (M1-089)
+
+- **Verify:** field configurations are `FieldLayout` rows (`id`, `name`, `description`, and
+  `type` `default` on the one projects use without a scheme). Their `FieldLayoutItem` rows
+  (`id`, `fieldlayout`, `fieldidentifier`, `description`, `verticalposition`, `ishidden`,
+  `isrequired`, `renderertype`) list every field with `true` or `false` flags and an optional
+  help text. A system field is named by its id (`summary`, `duedate`, `components`,
+  `timetracking` ...), a custom field as `customfield_<id>`.
+- **Verify:** a `FieldLayoutScheme` (`id`, `name`, `description`) picks a field configuration
+  per issue type through `FieldLayoutSchemeEntity` rows (`id`, `scheme`, `issuetype`,
+  `fieldlayout`); the row without `issuetype` is for every other type.
+- **Verify:** screens are `FieldScreen` rows (`id`, `name`, `description`) with tabs
+  (`FieldScreenTab`: `id`, `name`, `description`, `sequence`, `fieldscreen`) and fields on
+  each tab (`FieldScreenLayoutItem`: `id`, `fieldidentifier`, `sequence`, `fieldscreentab`).
+- **Verify:** a `FieldScreenScheme` (`id`, `name`, `description`) picks a screen per
+  operation through `FieldScreenSchemeItem` rows (`id`, `operation`, `fieldscreen`,
+  `fieldscreenscheme`): `operation` `0` for create, `1` for edit, `2` for view, and none for
+  the default screen of the other operations.
+- **Verify:** an `IssueTypeScreenScheme` (`id`, `name`, `description`) picks a screen scheme
+  per issue type through `IssueTypeScreenSchemeEntity` rows (`id`, `issuetype`, `scheme`,
+  `fieldscreenscheme`); the row without `issuetype` is the default.
+- **Verify:** a project uses a scheme through a `NodeAssociation` row with `sourceNodeId` (the
+  project's id), `sourceNodeEntity` `Project`, `sinkNodeId` (the scheme's id),
+  `sinkNodeEntity` (the scheme's element, such as `FieldLayoutScheme` or
+  `IssueTypeScreenScheme`) and `associationType` `ProjectScheme`. These rows have no `id`.
+- **Our choice:** three field configurations (the default, one for defects, one for business
+  projects) in two schemes, and three screens (everything, defects, a short create screen) in
+  two screen schemes and two issue type screen schemes. Every project has an issue type screen
+  scheme; every project but the second has a field configuration scheme, so the second uses
+  the default field configuration.
+
 ### Seen, not generated yet
 
-- `CustomField`, `CustomFieldValue` (the issue, the field by its `customfield` attribute, and
-  one of a string, number, text or date value), `Version`, `Component`, `NodeAssociation` (an
-  issue's affected and fix versions and its components), `UserAssociation` (votes and
-  watches), `OSPropertyEntry`, `EntityProperty` and `RemoteIssueLink` are elements too. [S13]
-  [S24] [S52]
+- `Version`, `Component`, `NodeAssociation` rows for an issue's affected and fix versions and
+  its components, `UserAssociation` (votes and watches), `OSPropertyEntry`, `EntityProperty`
+  and `RemoteIssueLink` are elements too. [S13] [S24] [S52]
 
 ## 4. activeobjects.xml
 
@@ -375,6 +448,15 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   as a group inside a group (**Verify**), and any other type as a user in a group.
 - **Our choice:** the reader takes the status category by number or by key (`new`,
   `indeterminate`, `done`), and a group's `description` when it is there.
+- **Our choice:** custom fields, contexts, options, field configurations and screens are small,
+  so the stage keeps them and resolves them after the file (M1-089, ADR-089). Issue rows go to
+  a raw file during the pass; each issue's custom values, labels and sub-task link are kept
+  until the end, and then one ticket record per issue is written, issues without a parent
+  first. A context row naming a project category, or a project or type with no row, is left
+  out with a warning; a context left with no scope at all is refused rather than widened.
+- **Our choice:** a project without a field configuration scheme gets a field rule set of its
+  own made from the default field configuration. A screen scheme's default screen stands in for
+  each operation it does not name.
 
 ## Sources
 

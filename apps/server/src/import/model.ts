@@ -40,6 +40,8 @@ export const ENTITY_KINDS = [
   'field',
   'field_context',
   'field_option',
+  'field_rule_set',
+  'layout_set',
   'workflow',
   'workflow_map',
   'ticket',
@@ -291,6 +293,43 @@ export interface FieldOptionCommand {
   default?: boolean;
 }
 
+/** A field a rule or a layout names: a system field by its key, or a custom field. */
+export type FormField = { key: string } | { custom: Ref };
+
+/**
+ * A field rule set (M1-089): required, hidden and help text per field, for every ticket type
+ * (`type` null) or one, and the tracks that use it. Linked by name to the target's shared set
+ * (whose rules then stay as they are), or created.
+ */
+export interface FieldRuleSetCommand {
+  kind: 'field_rule_set';
+  name: string;
+  description: string;
+  rules: {
+    type: Ref | null;
+    field: FormField;
+    required: boolean;
+    hidden: boolean;
+    description: string | null;
+  }[];
+  tracks: Ref[];
+}
+
+/** A layout set (M1-089): per ticket type (or every type) and operation, tabs of fields. */
+export interface LayoutSetCommand {
+  kind: 'layout_set';
+  name: string;
+  description: string;
+  layouts: {
+    type: Ref | null;
+    operation: 'create' | 'edit' | 'view';
+    tabs: { name: string; fields: FormField[] }[];
+    /** Whether fields the layout does not place appear after it. */
+    others: 'show' | 'omit';
+  }[];
+  tracks: Ref[];
+}
+
 /**
  * A workflow's published definition as the source stores it (statuses, groups, roles, people
  * and fields by source id), mapped on load. The default workflow links to the target's.
@@ -509,6 +548,8 @@ export type Command =
   | FieldCommand
   | FieldContextCommand
   | FieldOptionCommand
+  | FieldRuleSetCommand
+  | LayoutSetCommand
   | WorkflowCommand
   | WorkflowMapCommand
   | TicketCommand

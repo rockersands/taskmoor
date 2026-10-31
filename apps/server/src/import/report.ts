@@ -161,6 +161,8 @@ export const MAPPED_KINDS: readonly string[] = [
   'area',
   'field',
   'field_context',
+  'field_rule_set',
+  'layout_set',
   'workflow',
   'workflow_map',
 ] satisfies EntityKind[];

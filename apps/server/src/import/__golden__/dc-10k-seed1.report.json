@@ -95,6 +95,66 @@
         "updated": 0
       },
       "source": 4
+    },
+    {
+      "kind": "field",
+      "outcomes": {
+        "created": 18,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 18
+    },
+    {
+      "kind": "field_context",
+      "outcomes": {
+        "created": 19,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 19
+    },
+    {
+      "kind": "field_option",
+      "outcomes": {
+        "created": 29,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 29
+    },
+    {
+      "kind": "field_rule_set",
+      "outcomes": {
+        "created": 3,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 3
+    },
+    {
+      "kind": "layout_set",
+      "outcomes": {
+        "created": 2,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 2
     }
   ],
   "mapping": [
@@ -767,6 +827,348 @@
       "reason": null,
       "sourceId": "10003",
       "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Effort",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Customer",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Steps to reproduce",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Target date",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Reviewed at",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Severity",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Platforms",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10006",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Channel",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10007",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Checks",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10008",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Region",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10009",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Reviewer",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10010",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Helpers",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10011",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Owning group",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10012",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Audience",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10013",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Topics",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10014",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Design link",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10015",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Legacy code",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10016",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Rating",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10017",
+      "warnings": [
+        "app_field_as_read_only_text: com.example.ratings:stars"
+      ]
+    },
+    {
+      "kind": "field_context",
+      "label": "Effort: Effort everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Customer: Customer in software",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Steps to reproduce: Steps for defects",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Target date: Target date everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Reviewed at: Reviewed at everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Severity: Severity for the first project",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Severity: Severity everywhere else",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10006",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Platforms: Platforms everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10007",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Channel: Channel everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10008",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Checks: Checks everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10009",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Region: Region everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10010",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Reviewer: Reviewer everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10011",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Helpers: Helpers everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10012",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Owning group: Owning group everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10013",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Audience: Audience everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10014",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Topics: Topics everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10015",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Design link: Design link for features",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10016",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Legacy code: Legacy code everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10017",
+      "warnings": []
+    },
+    {
+      "kind": "field_context",
+      "label": "Rating: Rating everywhere",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10018",
+      "warnings": []
+    },
+    {
+      "kind": "field_rule_set",
+      "label": "Software field rules",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "field_rule_not_mapped: security"
+      ]
+    },
+    {
+      "kind": "field_rule_set",
+      "label": "Business field rules",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "field_rule_set",
+      "label": "Standard field rules",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "default",
+      "warnings": []
+    },
+    {
+      "kind": "layout_set",
+      "label": "Software screens",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": [
+        "layout_field_not_mapped: security"
+      ]
+    },
+    {
+      "kind": "layout_set",
+      "label": "Business screens",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
     }
   ],
   "unsupported": [
@@ -796,6 +1198,11 @@
       "reason": "not_imported_yet"
     },
     {
+      "count": 52204,
+      "kind": "CustomFieldValue",
+      "reason": "configuration_only"
+    },
+    {
       "count": 1042,
       "kind": "data/attachments",
       "reason": "not_imported_yet"
@@ -808,22 +1215,17 @@
     {
       "count": 10000,
       "kind": "Issue",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
       "count": 1933,
       "kind": "IssueLink",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
-      "count": 5,
-      "kind": "IssueLinkType",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 4673,
+      "count": 10203,
       "kind": "Label",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
       "count": 4,
@@ -831,7 +1233,7 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 22,
+      "count": 41,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -842,6 +1244,24 @@
     }
   ],
   "warnings": [
+    {
+      "code": "app_field_as_read_only_text",
+      "count": 1,
+      "detail": "com.example.ratings:stars",
+      "kind": "field"
+    },
+    {
+      "code": "field_rule_not_mapped",
+      "count": 1,
+      "detail": "security",
+      "kind": "field_rule_set"
+    },
+    {
+      "code": "layout_field_not_mapped",
+      "count": 1,
+      "detail": "security",
+      "kind": "layout_set"
+    },
     {
       "code": "removed_character",
       "count": 14,

@@ -114,6 +114,7 @@ interface Row {
 }
 
 const INTEGER = /^-?\d+$/;
+const DECIMAL = /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/;
 
 /** Everything the entities pass keeps for the checks after it. */
 class EntitiesState {
@@ -135,6 +136,8 @@ class EntitiesState {
   readonly linkTypeStyles = new Map<number, string>();
   readonly attachments: { id: number; issue: number; size: number }[] = [];
   readonly sequences: { name: string; next: number }[] = [];
+  /** Scheme rows a project names through `NodeAssociation`, by element (M1-089). */
+  readonly associations: { entity: string; id: number; project: number }[] = [];
   readonly cases: Record<string, number> = {};
   rootSeen = false;
 
@@ -404,6 +407,9 @@ function checkValue(
     case 'int':
       if (!INTEGER.test(value)) problem(`${label}: ${key} is not a whole number`);
       return;
+    case 'number':
+      if (!DECIMAL.test(value)) problem(`${label}: ${key} is not a number`);
+      return;
     case 'bool':
       if (value !== '0' && value !== '1') problem(`${label}: ${key} is not 1 or 0`);
       return;
@@ -500,6 +506,30 @@ function record(state: EntitiesState, name: string, v: Record<string, string>): 
       return;
     case 'SequenceValueItem':
       state.sequences.push({ name: v.seqName ?? '', next: Number(v.seqId) });
+      return;
+    case 'NodeAssociation':
+      if (v.sourceNodeEntity === 'Project') {
+        state.associations.push({
+          entity: v.sinkNodeEntity ?? '',
+          id: Number(v.sinkNodeId),
+          project: Number(v.sourceNodeId),
+        });
+      }
+      return;
+    case 'CustomFieldValue':
+      state.note('customFieldValues');
+      if (v.parentkey !== undefined) state.note('cascadeChildValues');
+      return;
+    case 'Label':
+      if (v.fieldid !== undefined) state.note('customLabels');
+      return;
+    case 'CustomFieldOption':
+      if (v.disabled === 'Y') state.note('optionsDisabled');
+      if (v.parentoptionid !== undefined) state.note('optionsCascadeChildren');
+      return;
+    case 'FieldLayoutItem':
+      if (v.isrequired === 'true') state.note('fieldRulesRequired');
+      if (v.ishidden === 'true') state.note('fieldRulesHidden');
       return;
   }
 }
@@ -751,6 +781,15 @@ function crossCheck(
   }
   for (const path of zipped.keys())
     if (!claimed.has(path)) problem(`${path} belongs to no FileAttachment row`);
+
+  // Schemes: each association names a project and a row of the element it says (M1-089).
+  const projectIds = state.ids.get('Project');
+  for (const a of state.associations) {
+    if (!projectIds?.has(a.project))
+      problem(`NodeAssociation names project ${a.project}, which has no row`);
+    const sinks = state.ids.get(a.entity);
+    if (!sinks?.has(a.id)) problem(`NodeAssociation names ${a.entity} ${a.id}, which has no row`);
+  }
 
   // Id sequences: each names an element and is above its highest id.
   for (const s of state.sequences) {

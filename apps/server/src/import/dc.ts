@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import {
   CONSUMED,
+  CONTENT_ELEMENTS,
   NOT_NEEDED,
   STAGED_KINDS,
   type StagedGroup,
@@ -13,6 +14,24 @@ import {
   type StageSummary,
   stageDcBackup,
 } from './dc-backup/stage';
+import type {
+  StagedContext,
+  StagedField,
+  StagedLayoutSet,
+  StagedOption,
+  StagedRuleSet,
+} from './dc-backup/stage-fields';
+import type { StagedIssue } from './dc-backup/stage-issues';
+import {
+  instantOf,
+  mapContext,
+  mapField,
+  mapLayoutSet,
+  mapOption,
+  mapRuleSet,
+  plainDoc,
+  storedValues,
+} from './dc-fields';
 import { readJsonLines } from './lines';
 import type {
   Command,
@@ -35,9 +54,12 @@ import type {
  * does not import yet is counted from the stage and reported with its reason, never dropped
  * silently, and the characters XML forbids that the reader removed are reported as warnings.
  *
- * This task maps people, groups with their members, roles, projects (to tracks, with their role
+ * M1-088 maps people, groups with their members, roles, projects (to tracks, with their role
  * actors), issue types (to ticket types), statuses with their stage, priorities and resolutions
- * (to close reasons). Custom fields, workflows, issues and the rest follow in M1-089 to M1-094.
+ * (to close reasons). M1-089 adds custom fields with their contexts and options, field
+ * configurations (to field rule sets), screens (to layout sets) and issues as tickets with their
+ * own fields, custom values, labels and parents (`dc-fields.ts`); history, comments, links and
+ * the rest of an issue's content follow in M1-091, workflows in M1-090.
  */
 export const DC_SOURCE = 'dc-backup';
 
@@ -48,6 +70,11 @@ export const dcBackupSource = z
     path: z.string().min(1).max(4096),
     /** Names the instance: importing a later backup with the same system updates. */
     system: z.string().min(1).max(200).default('dc'),
+    /**
+     * `configuration`: people, groups, roles, tracks, types, statuses, fields and forms only;
+     * issues and their parts are counted and left out (a first look before the full run).
+     */
+    scope: z.enum(['all', 'configuration']).default('all'),
   })
   .strict();
 export type DcBackupSettings = z.infer<typeof dcBackupSource>;
@@ -55,6 +82,7 @@ export type DcBackupSettings = z.infer<typeof dcBackupSource>;
 /** Why an element is not imported, as the report gives it. */
 export const NOT_IMPORTED_YET = 'not_imported_yet';
 export const NOT_NEEDED_REASON = 'not_needed';
+export const CONFIGURATION_ONLY = 'configuration_only';
 
 /** The staged backup as a source: records of a kind from its file, cursors are byte offsets. */
 export class DcBackupSource implements ImportSource {
@@ -79,8 +107,18 @@ export class DcBackupSource implements ImportSource {
   private async leftOut(): Promise<Map<string, { count: number; reason: string }>> {
     const { summary } = await this.stage();
     const out = new Map<string, { count: number; reason: string }>();
+    const configurationOnly = this.settings.scope === 'configuration';
     for (const [name, count] of Object.entries(summary.entities)) {
-      if (CONSUMED.has(name)) continue;
+      if (configurationOnly && CONTENT_ELEMENTS.has(name)) {
+        out.set(name, { count, reason: CONFIGURATION_ONLY });
+        continue;
+      }
+      const partial = summary.partial[name] ?? 0;
+      if (CONSUMED.has(name)) {
+        // Rows of an element read in part: links between issues, other associations.
+        if (partial > 0) out.set(name, { count: partial, reason: NOT_IMPORTED_YET });
+        continue;
+      }
       out.set(name, { count, reason: NOT_NEEDED.has(name) ? NOT_NEEDED_REASON : NOT_IMPORTED_YET });
     }
     for (const [table, count] of Object.entries(summary.activeObjects)) {
@@ -94,18 +132,23 @@ export class DcBackupSource implements ImportSource {
 
   async kinds(): Promise<string[]> {
     const { summary } = await this.stage();
-    const staged = Object.keys(STAGED_KINDS).filter((k) => (summary.kinds[k] ?? 0) > 0);
+    const staged = Object.keys(STAGED_KINDS).filter(
+      (k) =>
+        (summary.kinds[k] ?? 0) > 0 && !(k === 'ticket' && this.settings.scope === 'configuration'),
+    );
     return [...staged, ...(await this.leftOut()).keys()];
   }
 
   async read(kind: string, after: string | null, limit: number): Promise<SourceItem[]> {
     const { dir, summary } = await this.stage();
     if (!(kind in STAGED_KINDS) || (summary.kinds[kind] ?? 0) === 0) return [];
+    if (kind === 'ticket' && this.settings.scope === 'configuration') return [];
     return (await readJsonLines(join(dir, `${kind}.ndjson`), after, limit)).map(
       ({ value, cursor }) => ({
         kind,
         id: String(value.id),
-        label: String(value.label),
+        // Tickets are counted, not named, in the report's mapping.
+        ...(value.label ? { label: String(value.label) } : {}),
         data: value.data as Record<string, unknown>,
         cursor,
       }),
@@ -241,6 +284,49 @@ function mapTrack(p: StagedProject): Mapped {
   };
 }
 
+/** An issue as a ticket: its own fields, custom values, labels and parent (M1-089). */
+function mapTicket(i: StagedIssue): Mapped {
+  if (i.summary.trim() === '') return { fail: 'no_summary' };
+  const warnings: Warning[] = [];
+  if (i.number === null) warnings.push({ code: 'no_issue_number' });
+  const person = (id: string | null) => (id === null ? null : ref('user', id));
+  const fields = storedValues(i.values, warnings);
+  return {
+    command: {
+      kind: 'ticket',
+      track: ref('track', i.project),
+      number: i.number,
+      type: ref('ticket_type', i.type),
+      status: ref('status', i.status),
+      summary: i.summary.trim(),
+      description: null,
+      // Plain text for now: the backup's wiki markup is converted with the rest of the
+      // content (M1-091).
+      docs: {
+        description: i.description === null ? null : plainDoc(i.description),
+        environment: i.environment === null ? null : plainDoc(i.environment),
+      },
+      assignee: person(i.assignee),
+      requester: person(i.reporter),
+      creator: person(i.creator),
+      parent: i.parent === null ? null : ref('ticket', i.parent),
+      priority: null,
+      priorityRef: i.priority === null ? null : ref('priority', i.priority),
+      closeReason: i.resolution === null ? null : ref('close_reason', i.resolution),
+      labels: [...new Set(i.labels)],
+      startDate: null,
+      dueDate: i.due === null ? null : i.due.trim().slice(0, 10),
+      createdAt: instantOf(i.created),
+      updatedAt: instantOf(i.updated),
+      closedAt: i.resolution === null ? null : instantOf(i.resolved),
+      originalEstimate: i.estimate,
+      remainingEstimate: i.remaining,
+      ...(Object.keys(fields).length > 0 ? { fields } : {}),
+    },
+    warnings,
+  };
+}
+
 const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
   user: (d) => mapUser(d as unknown as StagedUser),
   group: (d) => mapGroup(d as unknown as StagedGroup),
@@ -285,14 +371,23 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
     };
   },
   track: (d) => mapTrack(d as unknown as StagedProject),
+  field: (d) => mapField(d as unknown as StagedField),
+  field_context: (d) => mapContext(d as unknown as StagedContext),
+  field_option: (d) => mapOption(d as unknown as StagedOption),
+  field_rule_set: (d) => mapRuleSet(d as unknown as StagedRuleSet),
+  layout_set: (d) => mapLayoutSet(d as unknown as StagedLayoutSet),
+  ticket: (d) => mapTicket(d as unknown as StagedIssue),
 };
+
+/** Kinds whose records carry no name of their own. */
+const UNNAMED = new Set(['user', 'field_option', 'ticket']);
 
 /** Maps a staged record; a name the target cannot hold fails the record. */
 export function mapDcRecord(record: SourceRecord): Mapped {
   const mapper = MAPPERS[record.kind];
   if (!mapper) return { fail: 'unsupported_kind' };
   const name = (record.data as { name?: unknown }).name;
-  if (record.kind !== 'user' && (typeof name !== 'string' || name.trim() === '')) {
+  if (!UNNAMED.has(record.kind) && (typeof name !== 'string' || name.trim() === '')) {
     return { fail: 'no_name' };
   }
   return mapper(record.data);

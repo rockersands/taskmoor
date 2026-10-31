@@ -1,3 +1,4 @@
+import { effortOf } from './fields';
 import { Random } from './random';
 import {
   between,
@@ -162,17 +163,22 @@ export function history(world: World, issue: IssueFacts): ChangeGroup[] {
   }
   if (r.chance(0.05)) {
     const before = r.int(1, 13);
+    const author = actor();
+    const created = between(r, issue.created + MINUTE, issue.updated);
+    const step = r.int(1, 8);
+    // The change ends at the issue's current value, or clears it when it has none (M1-089).
+    const now = effortOf(world, issue);
     groups.push({
-      author: actor(),
-      created: between(r, issue.created + MINUTE, issue.updated),
+      author,
+      created,
       items: [
         {
           fieldtype: 'custom',
           field: 'Effort',
           oldvalue: null,
-          oldstring: String(before),
+          oldstring: String(now === before ? before + step : before),
           newvalue: null,
-          newstring: String(before + r.int(1, 8)),
+          newstring: now === null ? null : String(now),
         },
       ],
     });

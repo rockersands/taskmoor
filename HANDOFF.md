@@ -49,6 +49,24 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - Not yet: client ID metadata documents (an SSRF-safe fetch is needed first); browser-based
     MCP clients on other origins (the origin policy refuses them).
 - **Next free numbers:** migration 0068 and ADR-085.
+- **M1-089 Data Center custom fields and forms** (branch `work/m1-089-dc-fields`, side session
+  2026-10-31; ADR-089, no migration; M1-089 is done):
+  - The generator now writes custom fields, contexts, options, defaults, field configurations,
+    screens and scheme associations (`dc-backup/fields.ts`; format notes 02d, all **Verify** or
+    **Our choice**). The golden manifest and M1-088's golden report changed with it.
+  - **Tickets arrive now**, with their own fields, custom values, labels and parent
+    (`dc-backup/stage-issues.ts`, `mapTicket` in `import/dc.ts`). M1-091 adds history,
+    comments, time, links, attachments, followers and votes to the same `ticket` kind. The
+    stage keeps each issue's custom values and labels in memory until the end of the file;
+    check that at a million issues. Descriptions and paragraph values are plain text paragraphs
+    until wiki markup is converted.
+  - New framework kinds `field_rule_set` and `layout_set` (`import/load-forms.ts`). Rules and
+    layouts are checked and written by `fields/sets.ts`, which `routes/layouts.ts` uses too.
+  - `"scope": "configuration"` on a `dc-backup` source leaves the issues out. M1-088's test
+    (`dc.test.ts`) uses it. M1-089's golden is `dc-fields.test.ts`: 4,000 issues, seed 89,
+    18,464 of 18,464 values match.
+  - Open: issue type schemes are not mapped, so tickets warn `type_not_offered`. Identical
+    schemes are not merged (IMP-005).
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

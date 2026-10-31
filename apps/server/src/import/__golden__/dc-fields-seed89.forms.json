@@ -1,0 +1,458 @@
+{
+  "layoutSets": [
+    {
+      "layouts": [
+        {
+          "operation": "create",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "assignee",
+                "description"
+              ],
+              "name": "Fields"
+            }
+          ],
+          "type": null
+        },
+        {
+          "operation": "edit",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "priority",
+                "assignee",
+                "requester",
+                "description",
+                "dueDate",
+                "labels",
+                "area",
+                "targetRelease",
+                "originalEstimate",
+                "remainingEstimate",
+                "cf:Effort",
+                "cf:Customer",
+                "cf:Target date",
+                "cf:Severity",
+                "cf:Platforms",
+                "cf:Channel",
+                "cf:Region"
+              ],
+              "name": "Fields"
+            },
+            {
+              "fields": [
+                "cf:Reviewer",
+                "cf:Helpers",
+                "cf:Owning group",
+                "cf:Audience",
+                "cf:Topics",
+                "cf:Design link",
+                "cf:Legacy code",
+                "cf:Reviewed at",
+                "cf:Checks",
+                "cf:Rating"
+              ],
+              "name": "More"
+            }
+          ],
+          "type": null
+        },
+        {
+          "operation": "view",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "priority",
+                "assignee",
+                "requester",
+                "description",
+                "dueDate",
+                "labels",
+                "area",
+                "targetRelease",
+                "originalEstimate",
+                "remainingEstimate",
+                "cf:Effort",
+                "cf:Customer",
+                "cf:Target date",
+                "cf:Severity",
+                "cf:Platforms",
+                "cf:Channel",
+                "cf:Region"
+              ],
+              "name": "Fields"
+            },
+            {
+              "fields": [
+                "cf:Reviewer",
+                "cf:Helpers",
+                "cf:Owning group",
+                "cf:Audience",
+                "cf:Topics",
+                "cf:Design link",
+                "cf:Legacy code",
+                "cf:Reviewed at",
+                "cf:Checks",
+                "cf:Rating"
+              ],
+              "name": "More"
+            }
+          ],
+          "type": null
+        }
+      ],
+      "name": "Business screens",
+      "tracks": [
+        "EX"
+      ]
+    },
+    {
+      "layouts": [
+        {
+          "operation": "create",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "priority",
+                "assignee",
+                "requester",
+                "description",
+                "environment",
+                "foundInRelease",
+                "cf:Steps to reproduce",
+                "cf:Severity",
+                "cf:Effort"
+              ],
+              "name": "Fields"
+            },
+            {
+              "fields": [
+                "cf:Reviewer",
+                "cf:Platforms",
+                "cf:Rating"
+              ],
+              "name": "Triage"
+            }
+          ],
+          "type": "Defect"
+        },
+        {
+          "operation": "edit",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "priority",
+                "assignee",
+                "requester",
+                "description",
+                "environment",
+                "foundInRelease",
+                "cf:Steps to reproduce",
+                "cf:Severity",
+                "cf:Effort"
+              ],
+              "name": "Fields"
+            },
+            {
+              "fields": [
+                "cf:Reviewer",
+                "cf:Platforms",
+                "cf:Rating"
+              ],
+              "name": "Triage"
+            }
+          ],
+          "type": "Defect"
+        },
+        {
+          "operation": "view",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "priority",
+                "assignee",
+                "requester",
+                "description",
+                "environment",
+                "foundInRelease",
+                "cf:Steps to reproduce",
+                "cf:Severity",
+                "cf:Effort"
+              ],
+              "name": "Fields"
+            },
+            {
+              "fields": [
+                "cf:Reviewer",
+                "cf:Platforms",
+                "cf:Rating"
+              ],
+              "name": "Triage"
+            }
+          ],
+          "type": "Defect"
+        },
+        {
+          "operation": "create",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "assignee",
+                "description"
+              ],
+              "name": "Fields"
+            }
+          ],
+          "type": null
+        },
+        {
+          "operation": "edit",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "priority",
+                "assignee",
+                "requester",
+                "description",
+                "dueDate",
+                "labels",
+                "area",
+                "targetRelease",
+                "originalEstimate",
+                "remainingEstimate",
+                "cf:Effort",
+                "cf:Customer",
+                "cf:Target date",
+                "cf:Severity",
+                "cf:Platforms",
+                "cf:Channel",
+                "cf:Region"
+              ],
+              "name": "Fields"
+            },
+            {
+              "fields": [
+                "cf:Reviewer",
+                "cf:Helpers",
+                "cf:Owning group",
+                "cf:Audience",
+                "cf:Topics",
+                "cf:Design link",
+                "cf:Legacy code",
+                "cf:Reviewed at",
+                "cf:Checks",
+                "cf:Rating"
+              ],
+              "name": "More"
+            }
+          ],
+          "type": null
+        },
+        {
+          "operation": "view",
+          "others": "omit",
+          "tabs": [
+            {
+              "fields": [
+                "summary",
+                "priority",
+                "assignee",
+                "requester",
+                "description",
+                "dueDate",
+                "labels",
+                "area",
+                "targetRelease",
+                "originalEstimate",
+                "remainingEstimate",
+                "cf:Effort",
+                "cf:Customer",
+                "cf:Target date",
+                "cf:Severity",
+                "cf:Platforms",
+                "cf:Channel",
+                "cf:Region"
+              ],
+              "name": "Fields"
+            },
+            {
+              "fields": [
+                "cf:Reviewer",
+                "cf:Helpers",
+                "cf:Owning group",
+                "cf:Audience",
+                "cf:Topics",
+                "cf:Design link",
+                "cf:Legacy code",
+                "cf:Reviewed at",
+                "cf:Checks",
+                "cf:Rating"
+              ],
+              "name": "More"
+            }
+          ],
+          "type": null
+        }
+      ],
+      "name": "Software screens",
+      "tracks": [
+        "AX",
+        "BX",
+        "CX",
+        "DX",
+        "FX"
+      ]
+    }
+  ],
+  "ruleSets": [
+    {
+      "name": "Business field rules",
+      "rules": [
+        {
+          "description": null,
+          "field": "cf:Customer",
+          "hidden": false,
+          "required": true,
+          "type": null
+        },
+        {
+          "description": null,
+          "field": "dueDate",
+          "hidden": false,
+          "required": true,
+          "type": null
+        },
+        {
+          "description": null,
+          "field": "originalEstimate",
+          "hidden": true,
+          "required": false,
+          "type": null
+        },
+        {
+          "description": null,
+          "field": "remainingEstimate",
+          "hidden": true,
+          "required": false,
+          "type": null
+        }
+      ],
+      "tracks": [
+        "EX"
+      ]
+    },
+    {
+      "name": "Software field rules",
+      "rules": [
+        {
+          "description": null,
+          "field": "area",
+          "hidden": true,
+          "required": false,
+          "type": "Defect"
+        },
+        {
+          "description": null,
+          "field": "cf:Rating",
+          "hidden": true,
+          "required": false,
+          "type": "Defect"
+        },
+        {
+          "description": "Numbered steps, please",
+          "field": "cf:Steps to reproduce",
+          "hidden": false,
+          "required": true,
+          "type": "Defect"
+        },
+        {
+          "description": null,
+          "field": "description",
+          "hidden": false,
+          "required": false,
+          "type": "Defect"
+        },
+        {
+          "description": "Fix by this day",
+          "field": "dueDate",
+          "hidden": false,
+          "required": false,
+          "type": "Defect"
+        },
+        {
+          "description": null,
+          "field": "environment",
+          "hidden": false,
+          "required": false,
+          "type": "Defect"
+        },
+        {
+          "description": null,
+          "field": "priority",
+          "hidden": false,
+          "required": true,
+          "type": "Defect"
+        },
+        {
+          "description": "What needs doing and why",
+          "field": "description",
+          "hidden": false,
+          "required": false,
+          "type": null
+        },
+        {
+          "description": null,
+          "field": "environment",
+          "hidden": true,
+          "required": false,
+          "type": null
+        }
+      ],
+      "tracks": [
+        "AX",
+        "CX",
+        "DX",
+        "FX"
+      ]
+    },
+    {
+      "name": "Standard field rules",
+      "rules": [
+        {
+          "description": "What needs doing and why",
+          "field": "description",
+          "hidden": false,
+          "required": false,
+          "type": null
+        },
+        {
+          "description": null,
+          "field": "environment",
+          "hidden": true,
+          "required": false,
+          "type": null
+        }
+      ],
+      "tracks": [
+        "BX"
+      ]
+    }
+  ]
+}
