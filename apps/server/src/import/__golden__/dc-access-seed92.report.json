@@ -178,8 +178,7 @@
       "sourceId": "10000",
       "warnings": [
         "event_not_mapped: 14",
-        "recipient_not_mapped: Single_Email_Address",
-        "custom_event_not_imported: 10001"
+        "recipient_not_mapped: Single_Email_Address"
       ]
     },
     {
@@ -311,7 +310,7 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 51,
+      "count": 55,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -345,12 +344,6 @@
       "count": 1,
       "detail": null,
       "kind": "global_grant"
-    },
-    {
-      "code": "custom_event_not_imported",
-      "count": 1,
-      "detail": "10001",
-      "kind": "notification_policy"
     },
     {
       "code": "event_not_mapped",

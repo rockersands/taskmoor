@@ -1324,6 +1324,20 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user`.execute(db);
     },
   },
+  '0071_import_staged': {
+    tables: {
+      import_staged: "kind = 'ticket' AND source_id = '10001' AND depth = 1",
+    },
+    seed: async (db) => {
+      // A ticket a remote fetch staged for the seed import, below its parent.
+      await sql`INSERT INTO import_staged (run_id, workspace_id, kind, source_id, depth, ordinal,
+          label, data)
+        SELECT id, 1, 'ticket', '10001', 1, 1, 'SEED-2', '{"key": "SEED-2"}'::jsonb
+          FROM import_run WHERE source_system = 'seed'`.execute(db);
+      await sql`UPDATE import_run SET fetch_state = '{"done": true}'::jsonb
+        WHERE source_system = 'seed'`.execute(db);
+    },
+  },
 };
 
 /**

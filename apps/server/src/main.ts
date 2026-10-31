@@ -190,7 +190,7 @@ if (config.roles.includes('worker') && db) {
     stores: attachments,
   });
   // Imports (M1-086): a batch per transaction, resumable from the run's checkpoint.
-  registerImportJobs(runner, db, new FieldCatalogs(db), { stores: attachments });
+  registerImportJobs(runner, db, new FieldCatalogs(db), { stores: attachments, peppers });
   // Status migrations after a change of workflow map (M1-028), a batch at a time.
   registerWorkflowMigrationJobs(runner, db, new FieldCatalogs(db));
   // Webhook deliveries (M1-067): one job per sending, retried with backoff.

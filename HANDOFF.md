@@ -220,6 +220,26 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     tickets without one.
   - Not done: ticket counts per unmapped rule (IMP-005 (2)), webhook functions, drafts, triggers,
     each issue's workflow state (counted `not_needed`).
+- **M1-095 Cloud REST import** (branch `work/m1-095-cloud-import`, side agent 2026-10-31;
+  migration 0071, ADR-094; M1-095 is done):
+  - Code in `apps/server/src/import/cloud/`: `client.ts` (throttling, backoff, concurrency),
+    `fetch.ts` (the resumable fetch into `import_staged`, state in `import_run.fetch_state`),
+    `source.ts` (settings, source, mapper), `people.ts`, `replay.ts`. Boards and sprints are new
+    framework kinds (`import/load-agile.ts`). `ImportSource.prepare(until)` runs before the first
+    batch; `format.open` now gets `{ db, runId, workspaceId }`.
+  - The token is sealed with the pepper ring: `registerImportJobs` needs `peppers` (main.ts
+    passes them). Formats come from `importFormats({ peppers, transport })`.
+  - **Fixtures**: `cloud/__fixtures__/compat-source.json`, recorded from Taskmoor's own
+    compatible API over the synthetic source in `testing/compat-source.ts`. If the fetch's
+    requests change, the replay misses: run `cloud.test.ts` with
+    `TASKMOOR_RECORD_CLOUD_FIXTURES=1`, then `pnpm format` and `pnpm verify --update`, and
+    review the fixture and goldens. Never record from anything but Taskmoor.
+  - The synthetic format's example of an unsupported kind is now `filter` (was `board`, which
+    the framework now loads).
+  - Not done: issue links and attachments (the compatible issue has no `issuelinks`), watchers,
+    votes, schemes, comment visibility, custom field history, real contexts and options, a
+    1M-item rate run (IMP-002 (1)), clearing a finished run's sealed token; M1-096 builds delta
+    runs on `fetch_state`, M1-097 the wizard and CLI.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

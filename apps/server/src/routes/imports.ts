@@ -1,12 +1,16 @@
 import { realpath, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 import type { Database } from '@taskmoor/db';
+import { type PepperRing, sealSecret } from '@taskmoor/iam';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { emit } from '../events/bus';
 import { enqueue } from '../events/queue';
+import { checkSourceHost } from '../import/cloud/client';
+import { parsePeopleCsv } from '../import/cloud/people';
+import { CLOUD_SOURCE, type CloudSettings } from '../import/cloud/source';
 import { CSV_SOURCE, CsvFormatError, CsvSource, csvMapping, csvSource } from '../import/csv';
 import { DC_SOURCE, dcBackupSource } from '../import/dc';
 import { checkDcBackup, DcBackupError } from '../import/dc-backup/stage';
@@ -31,7 +35,8 @@ import { EXPORT_SOURCE, ExportFormatError, exportManifest, exportSource } from '
  *
  * Sources: the synthetic format (M1-086), CSV with a column mapping (M1-098; the mapping can be
  * copied from an earlier run, a saved template in effect), Taskmoor's own export (M1-098) and a
- * Data Center backup ZIP (M1-088). A file named by path must be inside the imports folder
+ * Data Center backup ZIP (M1-088), and a server that speaks the Jira-compatible REST API, read
+ * with the customer's own token (M1-095). A file named by path must be inside the imports folder
  * (`TASKMOOR_IMPORT_DIR`, by default `TASKMOOR_DATA/imports`), so an administrator's request
  * never reads anything else on the server. The records route lists what became of each source
  * record, with the name it had there: the whole mapping the report shows the start of.
@@ -50,13 +55,63 @@ const csvInput = z
   })
   .strict();
 
+/**
+ * A server that speaks the Jira-compatible REST API (M1-095): its address and the customer's
+ * own token, Basic with the account's email or Bearer. The token is sealed before it is stored
+ * and never shown again.
+ */
+const cloudInput = z
+  .object({
+    format: z.literal(CLOUD_SOURCE),
+    baseUrl: z.string().url().max(2000),
+    email: z.string().trim().email().max(320).optional(),
+    token: z.string().min(1).max(4096),
+    system: z.string().min(1).max(200).optional(),
+    projects: z
+      .array(z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/))
+      .min(1)
+      .max(1000)
+      .optional(),
+    jql: z.string().trim().min(1).max(10_000).optional(),
+    pageSize: z.number().int().min(1).max(100).optional(),
+    concurrency: z.number().int().min(1).max(16).optional(),
+    people: z
+      .discriminatedUnion('mode', [
+        z.object({ mode: z.literal('email') }).strict(),
+        z.object({ mode: z.literal('scim') }).strict(),
+        z.object({ mode: z.literal('csv'), data: z.string().min(1).max(8_000_000) }).strict(),
+      ])
+      .optional(),
+  })
+  .strict();
+
 const createBody = z
   .object({
     name: z.string().max(200).optional(),
     dryRun: z.boolean().optional(),
-    source: z.union([syntheticSource, csvInput, exportSource, dcBackupSource]),
+    source: z.union([syntheticSource, csvInput, exportSource, dcBackupSource, cloudInput]),
   })
   .strict();
+
+/** The base URL a Cloud import may use: https, or http to this machine. */
+function cloudBaseUrl(text: string): string {
+  const url = new URL(text);
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) {
+    throw new SourceRefused('invalid_source', { message: 'The address must use https.' });
+  }
+  if (url.username || url.password || url.search || url.hash) {
+    throw new SourceRefused('invalid_source', {
+      message: 'The address takes no credentials, query or fragment.',
+    });
+  }
+  try {
+    checkSourceHost(url.toString());
+  } catch (error) {
+    throw new SourceRefused('invalid_source', { message: (error as Error).message });
+  }
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+}
 const idParam = z.object({ id: z.string().regex(/^[1-9][0-9]{0,17}$/) });
 const reportQuery = z.object({ format: z.enum(['json', 'html']).optional() }).strict();
 const problemsQuery = z
@@ -113,7 +168,7 @@ async function insideImports(importDir: string | undefined, path: string): Promi
 export function registerImportRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
-  options: { importDir?: string } = {},
+  options: { importDir?: string; peppers?: PepperRing | undefined } = {},
 ): void {
   /** The signed-in site administrator, or the refusal already sent. */
   async function admin(request: FastifyRequest, reply: FastifyReply) {
@@ -210,6 +265,42 @@ export function registerImportRoutes(
         }
         system = settings.data.system;
         source = settings.data;
+      } else if (body.source.format === CLOUD_SOURCE) {
+        importSource = CLOUD_SOURCE;
+        const input = body.source;
+        const baseUrl = cloudBaseUrl(input.baseUrl);
+        let people: CloudSettings['people'] = { mode: 'email' };
+        if (input.people?.mode === 'csv') {
+          try {
+            people = { mode: 'csv', rows: parsePeopleCsv(input.people.data) };
+          } catch (error) {
+            if (error instanceof CsvFormatError) {
+              throw new SourceRefused('invalid_people_mapping', {
+                line: error.line,
+                message: error.message,
+              });
+            }
+            throw error;
+          }
+        } else if (input.people) people = input.people;
+        // The token is sealed with the install's pepper: the run's row never holds it.
+        const token = sealSecret(input.token, options.peppers?.active);
+        system = input.system ?? new URL(baseUrl).host;
+        const settings: CloudSettings = {
+          format: CLOUD_SOURCE,
+          baseUrl,
+          system,
+          auth:
+            input.email !== undefined
+              ? { kind: 'basic', email: input.email, token }
+              : { kind: 'bearer', token },
+          projects: input.projects?.map((p) => p.toUpperCase()) ?? null,
+          jql: input.jql ?? null,
+          pageSize: input.pageSize ?? 100,
+          concurrency: input.concurrency ?? 4,
+          people,
+        };
+        source = settings;
       } else if (body.source.format === DC_SOURCE) {
         importSource = DC_SOURCE;
         const path = await insideImports(options.importDir, body.source.path);

@@ -55,7 +55,7 @@ const example = (): FidelityReport => ({
   warnings: [
     { kind: 'ticket', code: 'unknown_priority', detail: 'Blocker', count: 2, examples: ['i3'] },
   ],
-  unsupported: [{ kind: 'board', count: 2, reason: 'no_importer_for_kind' }],
+  unsupported: [{ kind: 'filter', count: 2, reason: 'no_importer_for_kind' }],
   failures: [{ kind: 'ticket', sourceId: 'i9', error: 'number_taken' }],
   failuresTruncated: false,
   mapping: [
@@ -89,7 +89,7 @@ describe('the fidelity report (M1-086, IMP-010)', () => {
     ['a fidelity above 1', (r: FidelityReport) => Object.assign(r.totals, { fidelity: 1.5 })],
     [
       'an unknown entity kind',
-      (r: FidelityReport) => Object.assign(r.entities[0] ?? {}, { kind: 'board' }),
+      (r: FidelityReport) => Object.assign(r.entities[0] ?? {}, { kind: 'filter' }),
     ],
     [
       'a checksum that is not SHA-256',
@@ -170,13 +170,13 @@ describe('the synthetic source format (M1-086)', () => {
   });
 
   it('[IMP-004] runs the framework kinds in dependency order and the others after', () => {
-    expect(kindOrder(['dashboard', 'ticket', 'board', 'user', 'track', 'history'])).toEqual([
+    expect(kindOrder(['dashboard', 'ticket', 'filter', 'user', 'track', 'history'])).toEqual([
       'user',
       'track',
       'ticket',
       'history',
-      'board',
       'dashboard',
+      'filter',
     ]);
   });
 
@@ -241,7 +241,7 @@ describe('the synthetic source format (M1-086)', () => {
     expect(a).toContain('"key":"XYSYN"');
     for (const line of a.trim().split('\n').slice(1)) {
       const record = JSON.parse(line);
-      if (record.kind === 'board' || record.kind === 'dashboard') continue;
+      if (record.kind === 'filter' || record.kind === 'dashboard') continue;
       expect(
         mapSynthetic({ kind: record.kind, id: record.id, data: record }),
         line,

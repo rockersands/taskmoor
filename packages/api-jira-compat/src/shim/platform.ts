@@ -452,7 +452,13 @@ export const PLATFORM_ROUTES: readonly ShimRoute[] = [
             navigable: true,
             searchable: true,
             clauseNames: [`cf[${f.id}]`, f.name],
-            schema: { type: f.type, custom: `taskmoor:${f.type}`, customId: Number(f.id) },
+            // A field of several values is an array of its type, as the compatible API says.
+            schema: {
+              type: f.multiple ? 'array' : f.type,
+              ...(f.multiple ? { items: f.type } : {}),
+              custom: `taskmoor:${f.type}`,
+              customId: Number(f.id),
+            },
           })),
         ],
       };

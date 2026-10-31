@@ -1,8 +1,11 @@
 import type { Database } from '@taskmoor/db';
+import type { PepperRing } from '@taskmoor/iam';
 import type { Kysely } from 'kysely';
 import type { AttachmentStores } from '../attachments/stores';
 import { enqueue, extendLock, type JobRunner } from '../events/queue';
 import type { FieldCatalogs } from '../fields/catalog';
+import { fetchTransport } from './cloud/client';
+import { type CloudDeps, cloudFormat } from './cloud/source';
 import { csvFormat } from './csv';
 import { dcBackupFormat } from './dc';
 import type { ImportFormat } from './model';
@@ -26,6 +29,17 @@ export const IMPORT_FORMATS: Readonly<Record<string, ImportFormat>> = {
   [dcBackupFormat.importSource]: dcBackupFormat,
 };
 
+/**
+ * Every format, the Cloud REST one (M1-095) with what it needs: the pepper ring that opens its
+ * sealed token, and the network (or a test's transport).
+ */
+export function importFormats(
+  cloud: Partial<CloudDeps> = {},
+): Readonly<Record<string, ImportFormat>> {
+  const format = cloudFormat({ transport: fetchTransport, ...cloud });
+  return { ...IMPORT_FORMATS, [format.importSource]: format };
+}
+
 export const importJob = (workspaceId: number, runId: string, part = 0) => ({
   workspaceId,
   task: IMPORT_TASK,
@@ -44,12 +58,14 @@ export function registerImportJobs(
     formats?: Readonly<Record<string, ImportFormat>>;
     /** Where imported attachments go. */
     stores?: AttachmentStores | null;
+    /** Opens the Cloud REST importer's sealed tokens (M1-095). */
+    peppers?: PepperRing | undefined;
   } = {},
 ): void {
   const deps = {
     db,
     catalogs,
-    formats: options.formats ?? IMPORT_FORMATS,
+    formats: options.formats ?? importFormats({ peppers: options.peppers }),
     stores: options.stores ?? null,
   };
   runner.handle(IMPORT_TASK, async (job) => {
