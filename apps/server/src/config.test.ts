@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from './config';
 
@@ -26,7 +27,43 @@ describe('loadConfig', () => {
       queryTimeoutMs: 30_000,
       jiraCompat: true,
       storage: { urlTtl: 300 },
+      previousMasterKeys: [],
+      aiEnvironment: {},
     });
+  });
+
+  it('[IAM-020] reads the master key and the AI settings of a backend kit, and names no value when they are wrong', () => {
+    // Made at run time: never a real key in the repository.
+    const master = randomBytes(32).toString('base64url');
+    const previous = randomBytes(32).toString('base64url');
+    const key = `fake-ai-key-${randomBytes(18).toString('hex')}`;
+    const config = loadConfig({
+      DATABASE_URL: DB,
+      TASKMOOR_MASTER_KEY: master,
+      TASKMOOR_MASTER_KEY_PREVIOUS: ` ${previous} ,`,
+      TASKMOOR_AI_PROVIDER: 'bedrock',
+      TASKMOOR_AI_KEY: key,
+      TASKMOOR_AI_REGION: 'eu-west-1',
+    });
+    expect(config.masterKey).toBe(master);
+    expect(config.previousMasterKeys).toEqual([previous]);
+    expect(config.aiEnvironment).toMatchObject({ provider: 'bedrock', key, region: 'eu-west-1' });
+    for (const env of [
+      { TASKMOOR_MASTER_KEY: master.slice(0, 20) },
+      { TASKMOOR_MASTER_KEY_PREVIOUS: `${previous},${master.slice(0, 20)}` },
+      { TASKMOOR_AI_PROVIDER: 'other', TASKMOOR_AI_KEY: key },
+    ]) {
+      let message = '';
+      try {
+        loadConfig({ DATABASE_URL: DB, ...env });
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      expect(message).toContain('Invalid server configuration');
+      for (const value of [master, master.slice(0, 20), previous, key]) {
+        expect(message).not.toContain(value);
+      }
+    }
   });
 
   it('[CORE-021] reads the attachment store, S3 credentials and the scanner from the environment', () => {
