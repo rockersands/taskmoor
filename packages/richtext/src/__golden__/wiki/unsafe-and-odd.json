@@ -1,0 +1,43 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "script and styled and empty",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "language": null
+      },
+      "content": [
+        {
+          "text": "echo hi",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "language": null
+      },
+      "content": [
+        {
+          "text": "echo there",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    }
+  ],
+  "type": "doc"
+}

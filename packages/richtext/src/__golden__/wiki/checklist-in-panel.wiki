@@ -1,0 +1,8 @@
+{panel:bgColor=#eae6ff}
+before
+
+* \[x] done
+* \[ ] open
+
+after
+{panel}

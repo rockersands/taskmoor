@@ -1,0 +1,12 @@
+&#98;q. text
+
+before
+&#98;q. text
+
+{quote}
+&#98;q. text
+{quote}
+
+{panel:bgColor=#deebff}
+&#98;q. text
+{panel}

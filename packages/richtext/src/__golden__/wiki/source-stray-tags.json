@@ -1,0 +1,37 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": " alone",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "then {code} mid-line and {panel}",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "blockquote"
+    }
+  ],
+  "type": "doc"
+}

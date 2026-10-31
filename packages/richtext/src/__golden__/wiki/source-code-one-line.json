@@ -1,0 +1,42 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "Before",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "language": "sql"
+      },
+      "content": [
+        {
+          "text": "SELECT 1;",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": " after on the same line",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

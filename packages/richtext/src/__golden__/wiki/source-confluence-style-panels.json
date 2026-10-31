@@ -1,0 +1,89 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "panelType": "info"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "info",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "panel"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "panelType": "note"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "note",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "panel"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "panelType": "tip"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "tip",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "panel"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "panelType": "warning"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "warning",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "panel"
+    }
+  ],
+  "type": "doc"
+}

@@ -1,0 +1,47 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "panelType": "error"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "red",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "panel"
+    },
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "panelType": "success"
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "green",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "panel"
+    }
+  ],
+  "type": "doc"
+}

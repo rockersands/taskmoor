@@ -1,0 +1,63 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "item",
+                  "type": "text"
+                },
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "type": "hardBreak"
+                },
+                {
+                  "text": "continues here",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "next",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        }
+      ],
+      "type": "bulletList"
+    }
+  ],
+  "type": "doc"
+}

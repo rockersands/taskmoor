@@ -2,7 +2,7 @@
   "name": "@taskmoor/richtext",
   "version": "0.0.0",
   "private": true,
-  "description": "Rich text model: the ProseMirror schema shared by editor and server, and lossless conversion to and from the Jira-compatible document format.",
+  "description": "Rich text model: the ProseMirror schema shared by editor and server, lossless conversion to and from the Jira-compatible document format, and Markdown, wiki-markup and plain-text conversion.",
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {

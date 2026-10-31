@@ -1,0 +1,15 @@
+{code:text}
+
+starts with a newline
+{code}
+
+{code:text}
+ends with one
+
+{code}
+
+{noformat}
+
+
+
+{noformat}

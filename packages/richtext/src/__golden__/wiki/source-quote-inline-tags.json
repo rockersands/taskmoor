@@ -1,0 +1,25 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "quoted on one line",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "blockquote"
+    }
+  ],
+  "type": "doc"
+}

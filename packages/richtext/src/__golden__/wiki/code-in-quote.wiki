@@ -1,0 +1,9 @@
+{quote}
+before
+
+{code:ts}
+const a = 1;
+{code}
+
+after
+{quote}

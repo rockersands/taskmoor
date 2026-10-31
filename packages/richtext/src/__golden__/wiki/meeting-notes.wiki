@@ -1,0 +1,15 @@
+h2. Planning, week 44
+
+||Item||Owner||Due||
+|Importer|[~accountid:5]|Fri|
+
+h3. Decisions
+
+{quote}
+We freeze the schema on Thursday.
+{quote}
+
+h3. Actions
+
+* \[ ] Write the ADR
+* \[x] Book the room

@@ -92,5 +92,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [085](0085-jira-compat-contract-suite.md) | The Jira-compatible API's contract as our own operations and synthetic cases, with a generated matrix | Accepted |
 | [086](0086-jira-compat-shim.md) | The Jira-compatible API as routes that call the native API in-process, with token sign-in only | Accepted |
 | [088](0088-builder-page.md) | The Builder page as a second entry of the web app, built into one offline file | Accepted |
+| [091](0091-wiki-markup-converter.md) | Wiki markup as a rich-text format of its own, with a reader and writer that agree | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

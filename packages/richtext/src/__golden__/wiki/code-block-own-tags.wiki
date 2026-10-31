@@ -1,0 +1,7 @@
+{noformat}
+use {code} to start
+{noformat}
+
+{noformat}
+both {code} and {noformat }
+{noformat}

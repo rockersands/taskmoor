@@ -11,8 +11,8 @@ type Json = Record<string, unknown>;
 // biome-ignore lint/suspicious/noExplicitAny: native bodies are read field by field
 type Any = any;
 
-/** Rich text as native requests ask for it: the document format on v3, Markdown on v2. */
-export const nativeFormat = (version: Version) => (version === '3' ? 'adf' : 'markdown');
+/** Rich text as native requests ask for it: the document format on v3, wiki markup on v2. */
+export const nativeFormat = (version: Version) => (version === '3' ? 'adf' : 'wiki');
 
 export function error(status: number, messages: string[], errors: Record<string, string> = {}) {
   return { status, body: { errorMessages: messages, errors } };

@@ -1,0 +1,9 @@
+Stars \*not bold\* and \_not italic\_ and \-not struck\- and \+not under\+.
+
+Carets \^not sup\^ and tildes \~not sub\~ and \{\{not code}}.
+
+Not a link \[text|page] and not a mention \[~accountid:1].
+
+Not an image \!picture.png! and not a colour \{color:red}x\{color}.
+
+Not a break &#92;\ and not a reference \&#92; and &amp; stays.

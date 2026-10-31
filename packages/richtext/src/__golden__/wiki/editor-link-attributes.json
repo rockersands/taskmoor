@@ -1,0 +1,30 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "https://example.test",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "Opens in a new tab",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

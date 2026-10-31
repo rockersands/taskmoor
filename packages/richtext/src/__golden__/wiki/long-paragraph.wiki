@@ -1,0 +1,1 @@
+The nightly job reads every open ticket, recomputes its rank, writes the new rank in batches of five hundred and then refreshes the board caches; when a batch fails it retries twice and then stops, leaving the remaining tickets with their old rank until the next night.

@@ -50,7 +50,8 @@ const trackParam = { id: 'The track: its id or its key.' };
 const format = z
   .object({
     format: z.enum(RICH_TEXT_FORMATS).optional().meta({
-      description: 'The rich-text format of bodies, in and out; the stored document by default.',
+      description:
+        'The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only.',
     }),
   })
   .strict();

@@ -1,0 +1,3 @@
+plain _first{^} both^_{^} second^ end
+
+^_together_^

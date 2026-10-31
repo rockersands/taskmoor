@@ -1,0 +1,47 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "color": "red"
+              },
+              "type": "textColor"
+            }
+          ],
+          "text": "red",
+          "type": "text"
+        },
+        {
+          "text": " ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "color": "#36B37E"
+              },
+              "type": "textColor"
+            }
+          ],
+          "text": "green",
+          "type": "text"
+        },
+        {
+          "text": " {color:url(x)}not{color}",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

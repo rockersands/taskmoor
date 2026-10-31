@@ -1,0 +1,11 @@
+{quote}
+{panel:bgColor=#deebff}
+panel in a quote
+{panel}
+{quote}
+
+{panel:panelType=tip}
+{quote}
+quote in a panel
+{quote}
+{panel}

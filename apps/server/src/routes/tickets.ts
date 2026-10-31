@@ -68,6 +68,7 @@ import {
   inFormat,
   keepOriginals,
   type ReadText,
+  RICH_TEXT_FORMATS,
   type RichTextFormat,
   readRichText,
   requestedFormat,
@@ -259,7 +260,7 @@ export const rankBody = z
   );
 export const listQuery = z
   .object({
-    format: z.enum(['doc', 'adf', 'markdown']).optional(),
+    format: z.enum(RICH_TEXT_FORMATS).optional(),
     track: z.string().min(1).max(300).optional(),
     parent: z.string().min(1).max(300).optional(),
     /** The `next` of the page before (API v1 paging, M1-065). */

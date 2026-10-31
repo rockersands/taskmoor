@@ -1,0 +1,7 @@
+Run {{pnpm verify}} before pushing.
+
+Braces inside: {{\{a: \[1, 2]\}}} and {{a\}\}b}}.
+
+Markup inside: {{\*not bold\* \_no\_ \-no\-}}
+
+Back{{slash&#92;}} and {{x|y}}

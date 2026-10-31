@@ -1,0 +1,83 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "text": "top",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "attrs": {
+                        "adfAttrs": null
+                      },
+                      "type": "paragraph"
+                    },
+                    {
+                      "attrs": {
+                        "adfAttrs": null
+                      },
+                      "content": [
+                        {
+                          "attrs": {
+                            "adfAttrs": null
+                          },
+                          "content": [
+                            {
+                              "attrs": {
+                                "adfAttrs": null
+                              },
+                              "content": [
+                                {
+                                  "text": "three levels down",
+                                  "type": "text"
+                                }
+                              ],
+                              "type": "paragraph"
+                            }
+                          ],
+                          "type": "listItem"
+                        }
+                      ],
+                      "type": "bulletList"
+                    }
+                  ],
+                  "type": "listItem"
+                }
+              ],
+              "type": "bulletList"
+            }
+          ],
+          "type": "listItem"
+        }
+      ],
+      "type": "bulletList"
+    }
+  ],
+  "type": "doc"
+}

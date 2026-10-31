@@ -1,0 +1,3 @@
+plain *first{_} both_*{_} second_ end
+
+*_together_*

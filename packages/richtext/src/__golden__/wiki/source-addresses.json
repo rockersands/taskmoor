@@ -1,0 +1,80 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "See ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "https://example.test/a_b",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "https://example.test/a_b",
+          "type": "text"
+        },
+        {
+          "text": ", then (",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "https://example.test/c",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "https://example.test/c",
+          "type": "text"
+        },
+        {
+          "text": "). Mail ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "mailto:x@example.test",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "mailto:x@example.test",
+          "type": "text"
+        },
+        {
+          "text": "!",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

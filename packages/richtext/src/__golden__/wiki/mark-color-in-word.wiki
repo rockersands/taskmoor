@@ -1,0 +1,1 @@
+word{color:#ff5630}inside{color}word and {color:#ff5630}9{color}9

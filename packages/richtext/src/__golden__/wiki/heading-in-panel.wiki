@@ -1,0 +1,7 @@
+{panel:bgColor=#eae6ff}
+before
+
+h2. a heading
+
+after
+{panel}

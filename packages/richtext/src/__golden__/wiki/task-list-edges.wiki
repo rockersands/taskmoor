@@ -1,0 +1,3 @@
+* \[ ]
+* \[x]  leading space
+* \[ ] *done* later

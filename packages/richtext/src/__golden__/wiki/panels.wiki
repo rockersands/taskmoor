@@ -1,0 +1,30 @@
+{panel:bgColor=#deebff}
+Maintenance on Sunday.
+{panel}
+
+{panel:bgColor=#eae6ff}
+Numbers are rounded.
+{panel}
+
+{panel:panelType=tip}
+Press {{?}} for shortcuts.
+{panel}
+
+{panel:bgColor=#fffae6}
+This deletes data.
+
+* tickets
+* comments
+{panel}
+
+{panel:bgColor=#ffebe6}
+The import failed.
+{panel}
+
+{panel:bgColor=#e3fcef}
+All checks passed.
+{panel}
+
+{panel:panelType=custom}
+A custom panel.
+{panel}

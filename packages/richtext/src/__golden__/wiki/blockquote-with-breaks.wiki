@@ -1,0 +1,11 @@
+{quote}
+line one
+line two
+{quote}
+
+{quote}
+x
+
+bq. a
+b
+{quote}

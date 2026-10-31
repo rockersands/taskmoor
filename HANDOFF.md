@@ -76,9 +76,19 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - **M1-070 (Agile, done)**: `shim/agile.ts` on the native board and sprint API, plus a new
     native `GET /api/v1/sprints/:id`. "Back to the backlog" searches the open sprints of the
     boards the caller sees. The matrix now reads 71 of 72.
-  - **M1-071** replaces the Markdown stand-in on v2 with wiki markup:
-    - `nativeFormat` in `shim/map.ts` and `richText` for search results;
-    - the native API needs a `wiki` format first.
+  - **M1-071 (wiki markup, done; ADR-091, no migration)**: v2 now carries wiki markup.
+    - `packages/richtext/src/wiki.ts` has `toWiki`, `fromWiki` and `toPlainText`. The reader
+      and writer share one set of rules: marker flanking, braced `{*}` inside words, and
+      escapes only where text could read as markup. Change one side only with the other.
+    - The corpus is `wiki-corpus.ts`: 252 documents and 40 sources, with goldens in
+      `__golden__/wiki`. Each document also checks that v2 and v3 agree. The fast-check
+      properties in `wiki.test.ts` found every escaping bug so far. After any change to the
+      rules, run them with `FC_RUNS=20000` and `--testTimeout=600000` (from
+      `packages/richtext`: `npx vitest run src/wiki.test.ts -t properties`).
+    - On the native API, `?format=wiki` reads and writes and `?format=text` only reads (a write
+      with rich text in it gets `invalid`). The OpenAPI and SDK goldens are updated.
+    - Not done: mentions written through v2 have no display name (the markup names people by
+      id), so the editor shows the id; HTML as a format.
   - Not done: bulk label ADD and REMOVE, which need a native bulk add or remove, and
     attachments.
   - `TASKMOOR_JIRA_COMPAT=off` turns it off.

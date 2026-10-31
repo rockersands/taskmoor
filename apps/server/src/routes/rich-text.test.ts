@@ -186,6 +186,55 @@ describe('rich text formats and mentions (M1-017)', () => {
     );
   });
 
+  it('[API-011] writing wiki markup and reading the other formats gives the same content', async () => {
+    const wiki =
+      'h2. Steps\n\n# Open *Filters*\n# Save\n\n* \\[x] checked\n\n{code:sql}\nSELECT 1;\n{code}';
+    const created = await as('alice', {
+      method: 'POST',
+      url: '/api/v1/tickets?format=wiki',
+      payload: {
+        track: 'RT',
+        summary: 'Wiki in',
+        description: wiki,
+        environment: 'Firefox {{143}}',
+      },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    expect(created.json().ticket.description).toBe(wiki);
+    expect(created.json().ticket.environment).toBe('Firefox {{143}}');
+    const key = created.json().ticket.key as string;
+    const md = await as('alice', { method: 'GET', url: `/api/v1/tickets/${key}?format=markdown` });
+    expect(md.json().ticket.description).toBe(
+      '## Steps\n\n1. Open **Filters**\n2. Save\n\n- [x] checked\n\n```sql\nSELECT 1;\n```\n',
+    );
+    // API-011 (2): plain text strips the formatting, for exports and ETL.
+    const text = await as('alice', { method: 'GET', url: `/api/v1/tickets/${key}?format=text` });
+    expect(text.json().ticket.description).toBe(
+      'Steps\n\nOpen Filters\nSave\n\nchecked\n\nSELECT 1;',
+    );
+    expect(text.json().ticket.environment).toBe('Firefox 143');
+    const listed = await as('alice', {
+      method: 'GET',
+      url: '/api/v1/tickets?track=RT&format=wiki',
+    });
+    expect(listed.statusCode, listed.body).toBe(200);
+    expect(listed.json().tickets.find((t: { key: string }) => t.key === key).description).toBe(
+      wiki,
+    );
+    // Comments take the same formats.
+    const comment = await as('alice', {
+      method: 'POST',
+      url: `/api/v1/tickets/${key}/comments?format=wiki`,
+      payload: { body: `Looks *good* to [~accountid:${users.alice.id}]` },
+    });
+    expect(comment.statusCode, comment.body).toBe(201);
+    const comments = await as('alice', {
+      method: 'GET',
+      url: `/api/v1/tickets/${key}/comments?format=text`,
+    });
+    expect(comments.json().comments[0].body).toBe(`Looks good to @${users.alice.id}`);
+  });
+
   it('[IMP-008] keeps the original of a document written in the Jira-compatible format', async () => {
     const created = await as('alice', {
       method: 'POST',
@@ -291,11 +340,14 @@ describe('rich text formats and mentions (M1-017)', () => {
         url: `/api/v1/tickets?format=${format}`,
         payload: { track: 'RT', summary: 'Bad', description },
       });
-    expect((await write('wiki', 'h1. Title')).statusCode).toBe(400);
+    expect((await write('html', '<h1>Title</h1>')).statusCode).toBe(400);
     for (const [format, value] of [
       ['adf', 'not a document'],
       ['adf', { type: 'paragraph' }],
       ['markdown', { type: 'doc' }],
+      ['wiki', { type: 'doc' }],
+      // Plain text is for reading only.
+      ['text', 'Title'],
       ['doc', ADF],
     ] as const) {
       const res = await write(format, value);

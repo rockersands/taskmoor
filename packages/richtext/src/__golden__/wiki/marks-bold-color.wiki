@@ -1,0 +1,3 @@
+plain *first{color:#ff5630} both{color}*{color:#ff5630} second{color} end
+
+{color:#ff5630}*together*{color}

@@ -1,0 +1,250 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "Name",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableHeader"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "Value",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableHeader"
+            }
+          ],
+          "type": "tableRow"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "a",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "1",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            }
+          ],
+          "type": "tableRow"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "b",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "2",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            }
+          ],
+          "type": "tableRow"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "text": "c",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            },
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "align": null,
+                "colspan": 1,
+                "colwidth": null,
+                "rowspan": 1
+              },
+              "content": [
+                {
+                  "attrs": {
+                    "adfAttrs": null
+                  },
+                  "content": [
+                    {
+                      "marks": [
+                        {
+                          "attrs": {
+                            "adfAttrs": null,
+                            "class": null,
+                            "href": "https://example.test/c",
+                            "rel": null,
+                            "target": null,
+                            "title": null
+                          },
+                          "type": "link"
+                        }
+                      ],
+                      "text": "link",
+                      "type": "text"
+                    }
+                  ],
+                  "type": "paragraph"
+                }
+              ],
+              "type": "tableCell"
+            }
+          ],
+          "type": "tableRow"
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "type": "doc"
+}

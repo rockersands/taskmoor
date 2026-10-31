@@ -1,0 +1,15 @@
+&#104;1. is not a heading
+
+&#98;q. is not a quote
+
+\* is not a list
+
+\# is not a numbered list
+
+\- is not a bullet
+
+\----
+
+\|not|a|table|
+
+\{code}not code\{code}

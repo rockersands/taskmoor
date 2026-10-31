@@ -1,0 +1,7 @@
+[a \[bracketed\] \| piped ~ text|https://example.test/x]
+
+[\~tilde first|https://example.test/y]
+
+[\^caret first|https://example.test/z]
+
+[ends with &#92;|https://example.test/w]

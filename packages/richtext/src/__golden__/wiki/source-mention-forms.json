@@ -1,0 +1,39 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "attrs": {
+            "adfAttrs": null,
+            "id": "557058:abc",
+            "label": null,
+            "mentionSuggestionChar": "@"
+          },
+          "type": "mention"
+        },
+        {
+          "text": " and ",
+          "type": "text"
+        },
+        {
+          "attrs": {
+            "adfAttrs": null,
+            "id": "kalo",
+            "label": null,
+            "mentionSuggestionChar": "@"
+          },
+          "type": "mention"
+        },
+        {
+          "text": " and [~]",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

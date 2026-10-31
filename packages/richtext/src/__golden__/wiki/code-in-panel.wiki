@@ -1,0 +1,9 @@
+{panel:bgColor=#eae6ff}
+before
+
+{code:ts}
+const a = 1;
+{code}
+
+after
+{panel}

@@ -1,0 +1,56 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "text": "intra",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "type": "bold"
+            }
+          ],
+          "text": "word",
+          "type": "text"
+        },
+        {
+          "text": " and ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "type": "italic"
+            }
+          ],
+          "text": "it",
+          "type": "text"
+        },
+        {
+          "text": "alic and x",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "type": "sup"
+              },
+              "type": "subsup"
+            }
+          ],
+          "text": "2",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

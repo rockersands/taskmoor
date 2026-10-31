@@ -1,0 +1,1 @@
+[~accountid:42] and [~accountid:7]

@@ -1,0 +1,8 @@
+{panel:bgColor=#eae6ff}
+before
+
+||h||
+|c|
+
+after
+{panel}

@@ -4,9 +4,12 @@ import {
   type AdfNode,
   fromAdfJson,
   fromMarkdown,
+  fromWiki,
   type PmJson,
   toAdfFromJson,
   toMarkdown,
+  toPlainText,
+  toWiki,
 } from '@taskmoor/richtext';
 import type { Kysely, Transaction } from 'kysely';
 import { canonicalJson, checkRichText, RICH_TEXT_MAX_BYTES, type RichTextProblem } from './model';
@@ -15,7 +18,9 @@ import { canonicalJson, checkRichText, RICH_TEXT_MAX_BYTES, type RichTextProblem
  * Rich text on the API (M1-017; API-011, NTF-007, IMP-008; ADR-014 "Implementation (M1-017)").
  *
  * - `?format=` picks how a request writes and reads rich text: `doc` (the stored ProseMirror
- *   document, the default), `adf` (the Jira-compatible document format) or `markdown`.
+ *   document, the default), `adf` (the Jira-compatible document format), `markdown`, `wiki`
+ *   (wiki markup, M1-071) or `text` (plain text without formatting, for exports; reads only:
+ *   a write that carries rich text in it is refused as invalid).
  * - A field written as `adf` keeps that document as its original (`ticket_text_original`),
  *   with the hash of the document converted from it; reading it back as `adf` converts the
  *   stored document, so later edits show.
@@ -24,7 +29,7 @@ export const RICH_TEXT_FIELDS = [
   'description',
   'environment',
 ] as const satisfies readonly RichTextField[];
-export const RICH_TEXT_FORMATS = ['doc', 'adf', 'markdown'] as const;
+export const RICH_TEXT_FORMATS = ['doc', 'adf', 'markdown', 'wiki', 'text'] as const;
 export type RichTextFormat = (typeof RICH_TEXT_FORMATS)[number];
 
 /** The format a request asks for (`?format=`); `doc` when it names none, null when unknown. */
@@ -63,10 +68,13 @@ export function readRichText(
     } catch {
       return { ok: false, problem: 'invalid' };
     }
-  } else if (format === 'markdown') {
+  } else if (format === 'markdown' || format === 'wiki') {
     if (typeof value !== 'string') return { ok: false, problem: 'invalid' };
     if (value.length > RICH_TEXT_MAX_BYTES) return { ok: false, problem: 'too_long' };
-    doc = fromMarkdown(value);
+    doc = format === 'markdown' ? fromMarkdown(value) : fromWiki(value);
+  } else if (format === 'text') {
+    // Plain text is a read format: it has no way to say what the formatting was.
+    return { ok: false, problem: 'invalid' };
   }
   const checked = checkRichText(doc);
   if (!checked.ok) return checked;
@@ -83,7 +91,16 @@ export function readRichText(
 export function writeRichText(doc: JsonValue | null, format: RichTextFormat): unknown {
   if (doc === null || format === 'doc') return doc;
   const json = doc as unknown as PmJson;
-  return format === 'adf' ? toAdfFromJson(json) : toMarkdown(json);
+  switch (format) {
+    case 'adf':
+      return toAdfFromJson(json);
+    case 'markdown':
+      return toMarkdown(json);
+    case 'wiki':
+      return toWiki(json);
+    default:
+      return toPlainText(json);
+  }
 }
 
 /** A ticket view with its rich text in `format`. */

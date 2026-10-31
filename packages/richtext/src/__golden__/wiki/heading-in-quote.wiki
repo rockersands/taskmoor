@@ -1,0 +1,7 @@
+{quote}
+before
+
+h2. a heading
+
+after
+{quote}

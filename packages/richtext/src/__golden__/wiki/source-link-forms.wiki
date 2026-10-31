@@ -1,0 +1,1 @@
+[https://example.test] [Text|https://example.test/t] [mailto:a@example.test] [#anchor] attachment.pdf

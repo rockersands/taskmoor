@@ -2,7 +2,7 @@
 title: "The REST API"
 audience: admins
 jira-names: the Jira-compatible API's paths, and the scripts written for Jira that call them
-sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts
+sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts, packages/richtext/src/wiki.ts, docs/adr/0091-wiki-markup-converter.md
 accessed: 2026-10-31
 attestation: own-words
 ---
@@ -121,9 +121,21 @@ receive them:
 
 - `doc`: the stored document, the default;
 - `markdown`: Markdown;
-- `adf`: the Jira-compatible document format.
+- `adf`: the Jira-compatible document format;
+- `wiki`: wiki markup, as Jira's version 2 API carries it (`*bold*`, `h2.`, `{code}`);
+- `text`: plain text without formatting, for exports and other systems. It is for reading
+  only: a request that sends rich text with `format=text` is refused.
 
 For example, `GET /api/v1/tickets/PAY-12?format=markdown` returns the description as Markdown.
+
+Every format can say less than the stored document. What each one drops on the way:
+
+- Markdown and wiki markup write mentions, emoji, dates and status lozenges as text, or as a
+  link for mentions. Wiki markup names a mentioned person by id only, so a mention written in
+  it shows the person's id rather than their name.
+- Neither can merge table cells. A list item or a table cell holds one line in wiki markup:
+  blocks after the first line join it with line breaks.
+- Web and email addresses written as text come back as links.
 
 ## The TypeScript SDK
 
@@ -367,8 +379,12 @@ permissions, field rules, history and notifications apply as in the app.
 **Not yet:**
 
 - attachments;
-- bulk label changes that add or remove labels issue by issue (they answer an error);
-- wiki markup on version 2. Version 2 carries Markdown for now; plain text reads the same.
+- bulk label changes that add or remove labels issue by issue (they answer an error).
+
+**Rich text.** Version 3 sends and reads descriptions and comments in the Jira-compatible
+document format, and version 2 in wiki markup. Both read the same stored text, so a script on
+version 2 and the app can work on the same ticket. Wiki markup has a few limits, listed under
+[Rich text](#rich-text).
 
 `docs/api/jira-compat/matrix.md` in the source of your release lists every operation and its
 state. Administrators can switch the compatible API off with `TASKMOOR_JIRA_COMPAT=off` (see

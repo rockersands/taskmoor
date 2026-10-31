@@ -1,0 +1,5 @@
+{panel:bgColor=#ffebe6}
+A error panel.
+
+* with a list
+{panel}

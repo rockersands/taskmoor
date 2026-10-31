@@ -4467,7 +4467,7 @@ export interface operations {
             query?: {
                 after?: string;
                 cursor?: string;
-                format?: "doc" | "adf" | "markdown";
+                format?: "doc" | "adf" | "markdown" | "wiki" | "text";
                 limit?: number;
                 parent?: string;
                 track?: string;
@@ -4610,8 +4610,8 @@ export interface operations {
     getTicket: {
         parameters: {
             query?: {
-                /** @description The rich-text format of bodies, in and out; the stored document by default. */
-                format?: "doc" | "adf" | "markdown";
+                /** @description The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only. */
+                format?: "doc" | "adf" | "markdown" | "wiki" | "text";
             };
             header?: never;
             path: {
@@ -4995,8 +4995,8 @@ export interface operations {
     addComment: {
         parameters: {
             query?: {
-                /** @description The rich-text format of bodies, in and out; the stored document by default. */
-                format?: "doc" | "adf" | "markdown";
+                /** @description The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only. */
+                format?: "doc" | "adf" | "markdown" | "wiki" | "text";
             };
             header?: never;
             path: {
@@ -5147,8 +5147,8 @@ export interface operations {
     updateComment: {
         parameters: {
             query?: {
-                /** @description The rich-text format of bodies, in and out; the stored document by default. */
-                format?: "doc" | "adf" | "markdown";
+                /** @description The rich-text format of bodies, in and out; the stored document by default. `text` (plain text) is for answers only. */
+                format?: "doc" | "adf" | "markdown" | "wiki" | "text";
             };
             header?: never;
             path: {

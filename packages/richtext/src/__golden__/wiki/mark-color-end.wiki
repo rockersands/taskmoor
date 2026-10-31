@@ -1,0 +1,3 @@
+The line ends with {color:#ff5630}it{color}
+
+Then {color:#ff5630}punctuation{color}.

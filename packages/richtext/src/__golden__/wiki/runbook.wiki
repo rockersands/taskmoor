@@ -1,0 +1,15 @@
+{panel:bgColor=#fffae6}
+*Only on-call engineers run these steps.*
+{panel}
+
+# Check the queue depth:
+#* below 1,000: wait
+#* above: page the owner
+# Restart the worker
+
+{code:bash}
+kubectl rollout restart deploy/worker
+kubectl get pods -w
+{code}
+
+If it fails again, open an incident and link it here: [incidents|https://example.test/runbook]

@@ -1,4 +1,4 @@
-import { error, instant, issue, ok, project } from './map';
+import { error, instant, issue, nativeFormat, ok, project } from './map';
 import { type ShimContext, ShimError, type ShimRoute } from './types';
 
 /**
@@ -380,7 +380,7 @@ export const AGILE_ROUTES: readonly ShimRoute[] = [
       const t = ok(
         await ctx.native(
           'GET',
-          `/api/v1/tickets/${enc(ctx.params.issueIdOrKey ?? '')}?format=markdown`,
+          `/api/v1/tickets/${enc(ctx.params.issueIdOrKey ?? '')}?format=${nativeFormat('2')}`,
         ),
         'The issue',
       ).ticket;

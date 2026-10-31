@@ -1,0 +1,1 @@
+*open bold and _open italic and \{color:red}open colour

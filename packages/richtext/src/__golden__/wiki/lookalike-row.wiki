@@ -1,0 +1,12 @@
+\|a|b|
+
+before
+\|a|b|
+
+{quote}
+\|a|b|
+{quote}
+
+{panel:bgColor=#deebff}
+\|a|b|
+{panel}

@@ -1,0 +1,7 @@
+{quote}
+outer
+
+inner one
+
+inner two
+{quote}

@@ -1,0 +1,1 @@
+\&#65; is not A, \&#x41; neither, and && or & # stay.

@@ -1,0 +1,12 @@
+\{panel:title=x}
+
+before
+\{panel:title=x}
+
+{quote}
+\{panel:title=x}
+{quote}
+
+{panel:bgColor=#deebff}
+\{panel:title=x}
+{panel}

@@ -1,0 +1,51 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null
+      },
+      "content": [
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "https://example.test/a.png",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "https://example.test/a.png",
+          "type": "text"
+        },
+        {
+          "text": " and ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "adfAttrs": null,
+                "class": null,
+                "href": "screenshot.png",
+                "rel": null,
+                "target": null,
+                "title": null
+              },
+              "type": "link"
+            }
+          ],
+          "text": "screenshot.png",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "type": "doc"
+}

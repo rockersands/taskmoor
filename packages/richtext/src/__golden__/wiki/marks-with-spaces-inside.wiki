@@ -1,0 +1,3 @@
+a{*} spaced bold {*}b
+
+{_} leading_ end

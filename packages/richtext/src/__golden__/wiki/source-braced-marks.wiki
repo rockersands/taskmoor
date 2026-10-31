@@ -1,0 +1,1 @@
+intra{*}word* and _it{_}alic and x{^}2^

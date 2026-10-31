@@ -1,0 +1,5 @@
+{code:python}
+def f():
+	return 1
+    # spaces   
+{code}

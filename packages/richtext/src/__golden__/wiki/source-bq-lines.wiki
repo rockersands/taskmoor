@@ -1,0 +1,6 @@
+{quote}
+A quoted paragraph
+that goes on.
+{quote}
+
+Not quoted.

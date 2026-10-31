@@ -1,0 +1,5 @@
+first line
+&#104;2. second line
+\** third line
+\||fourth line
+\-----

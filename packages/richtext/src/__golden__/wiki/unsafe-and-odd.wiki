@@ -1,0 +1,9 @@
+script and styled and empty
+
+{noformat}
+echo hi
+{noformat}
+
+{noformat}
+echo there
+{noformat}

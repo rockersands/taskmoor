@@ -5,7 +5,7 @@ import {
   type ShimReply,
   type Version,
 } from '@taskmoor/api-jira-compat';
-import { type PmJson, toAdfFromJson, toMarkdown } from '@taskmoor/richtext';
+import { type PmJson, toAdfFromJson, toWiki } from '@taskmoor/richtext';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 
 /**
@@ -126,7 +126,7 @@ export async function registerJiraCompat(app: FastifyInstance, options: CompatOp
                 native,
                 baseUrl,
                 richText: (doc) =>
-                  version === '3' ? toAdfFromJson(doc as PmJson) : toMarkdown(doc as PmJson),
+                  version === '3' ? toAdfFromJson(doc as PmJson) : toWiki(doc as PmJson),
               });
             } catch (error) {
               if (error instanceof ShimError) answer = error.reply;
