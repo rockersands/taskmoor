@@ -1,6 +1,6 @@
 # ADR-090: The Data Center import of permissions, issue security, notifications and global permissions
 
-- Status: Accepted
+- Status: Accepted (amended 2026-10-31: the import chooses what system administrators become)
 - Date: 2026-10-31
 - Backlog: M1-092
 
@@ -65,8 +65,9 @@ while a Data Center system administrator does not browse every project by that a
 
 | Option | For | Against |
 |---|---|---|
-| Map system administrators to site administrators, warn (chosen) | Someone can run the instance after the import; the difference is named | They browse every track, which their source role did not imply |
+| Map system administrators to site administrators, warn (the default) | Someone can run the instance after the import; the difference is named | They browse every track, which their source role did not imply |
 | Map them to configuration administrators | No widening | Nobody imported can manage the site; an administrator must re-grant by hand |
+| Both, as an import setting (chosen by the user on 2026-10-31) | Each import picks; the default keeps the instance runnable | One more setting to explain |
 | Keep each identical scheme as its own policy | Simpler | Against IMP-005 (1); forty copies to keep in step |
 | Import a ticket without its level when the level fails | The ticket is not lost | It becomes visible to everyone who browses its track |
 | Merge identical security or notification schemes too | Fewer objects | Not asked for, and a merged level would need its tickets moved; later if needed |
@@ -88,3 +89,13 @@ while a Data Center system administrator does not browse every project by that a
   yet.
 - Revisit the grantee and event names when a design partner's backup confirms or corrects the
   **Verify** notes.
+
+## Changes
+
+- **2026-10-31, the user's decision: both.** The DC source takes `systemAdmins`:
+  `site_admin` (the default, as above) or `configuration_admin`, which maps `SYSTEM_ADMIN` to
+  `configuration_admin` with the warning `system_admin_as_configuration_admin`. The source adds
+  the setting to each global grant it reads, so changing it needs no new stage. A re-import with
+  the other choice changes the grant the earlier run made (`regrant` in `load-access.ts`): in
+  place, or removed when the group already holds the new permission, so the wider one never
+  stays. Test: the last case of `dc-access.test.ts`.

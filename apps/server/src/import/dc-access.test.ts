@@ -490,4 +490,66 @@ describe('Data Center backup import: access, visibility and notifications (M1-09
       }),
     ).toMatchFileSnapshot('./__golden__/dc-access-seed92.report.json');
   });
+
+  // Last: it imports the backup again and changes what the first run made.
+  it('[IMP-004] [IAM-011] imports system administrators as configuration administrators when asked, also on a re-import', async () => {
+    const sw = schemeWorldOf(world);
+    const sysadmins = sw.globalPermissions.find((g) => g.permission === 'SYSTEM_ADMIN')?.group;
+    expect(sysadmins).toBeDefined();
+    const grantsOf = async () =>
+      (
+        await database.db
+          .selectFrom('global_grant as g')
+          .innerJoin('user_group as u', 'u.id', 'g.group_id')
+          .select('g.permission')
+          .where('u.name', '=', sysadmins as string)
+          .execute()
+      )
+        .map((r) => r.permission)
+        .sort();
+    // The first run took the default: site administrators.
+    expect(await grantsOf()).toContain('site_admin');
+    const started = await as({
+      method: 'POST',
+      url: '/api/v1/admin/imports',
+      payload: {
+        name: 'Access again',
+        dryRun: false,
+        source: { ...SOURCE, scope: 'configuration', systemAdmins: 'configuration_admin' },
+      },
+    });
+    expect(started.statusCode, started.body).toBe(202);
+    const run = started.json().importRun as { id: number };
+    for (let i = 0; i < 1000; i++) {
+      if ((await runner.runOnce()) === 0) break;
+    }
+    const again = fidelityReport.parse(
+      (await as({ method: 'GET', url: `/api/v1/admin/imports/${run.id}/report` })).json().report,
+    );
+    // The grant changed in place (or went, the group holding the new one already): never both.
+    const after = await grantsOf();
+    expect(after).not.toContain('site_admin');
+    expect(after).toContain('configuration_admin');
+    expect(after.filter((p) => p === 'configuration_admin')).toHaveLength(1);
+    expect(
+      again.warnings.some(
+        (w) => w.kind === 'global_grant' && w.code === 'system_admin_as_configuration_admin',
+      ),
+    ).toBe(true);
+    expect(again.warnings.some((w) => w.code === 'site_admin_browses_every_track')).toBe(false);
+    // Its members manage the configuration but are not site administrators.
+    const member = world.people.find((p) =>
+      world.groups.find((g) => g.name === sysadmins)?.members.some((i) => world.people[i] === p),
+    );
+    expect(member).toBeDefined();
+    const user = await database.db
+      .selectFrom('app_user')
+      .select(['id', 'is_site_admin'])
+      .where('email', '=', (member as Person).email.toLowerCase())
+      .executeTakeFirstOrThrow();
+    expect(user.is_site_admin).toBe(false);
+    const globals = await new Authorizer(database.db).globalPermissions(1, user.id);
+    expect(globals.has('configuration_admin')).toBe(true);
+    expect(globals.has('site_admin')).toBe(false);
+  }, 600_000);
 });

@@ -314,7 +314,13 @@ export function registerImportRoutes(
           throw error;
         }
         system = body.source.system;
-        source = { format: DC_SOURCE, path, system, scope: body.source.scope };
+        source = {
+          format: DC_SOURCE,
+          path,
+          system,
+          scope: body.source.scope,
+          systemAdmins: body.source.systemAdmins,
+        };
       } else {
         importSource = EXPORT_SOURCE;
         const path = await insideImports(options.importDir, body.source.path);

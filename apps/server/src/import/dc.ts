@@ -135,6 +135,12 @@ export const dcBackupSource = z
      * left out (M1-091).
      */
     scope: z.enum(['all', 'tickets', 'configuration']).default('all'),
+    /**
+     * What the source's system administrators become (the user's decision of 2026-10-31;
+     * ADR-090): site administrators, who run the instance and browse every track (the default),
+     * or configuration administrators, who manage the configuration but not the site.
+     */
+    systemAdmins: z.enum(['site_admin', 'configuration_admin']).default('site_admin'),
   })
   .strict();
 export type DcBackupSettings = z.infer<typeof dcBackupSource>;
@@ -257,7 +263,13 @@ export class DcBackupSource implements ImportSource {
         id: String(value.id),
         // Tickets are counted, not named, in the report's mapping.
         ...(value.label ? { label: String(value.label) } : {}),
-        data: value.data as Record<string, unknown>,
+        data:
+          kind === 'global_grant'
+            ? {
+                ...(value.data as Record<string, unknown>),
+                systemAdmins: this.settings.systemAdmins,
+              }
+            : (value.data as Record<string, unknown>),
         cursor,
       }),
     );

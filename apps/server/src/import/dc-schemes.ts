@@ -299,7 +299,9 @@ export function mapNotificationPolicy(s: StagedNotificationScheme): Mapped {
 }
 
 export function mapGlobalGrant(g: StagedGlobalPermission): Mapped {
-  const permission = GLOBALS[g.permission];
+  // System administrators as configuration administrators when the import says so (ADR-090).
+  const narrowed = g.permission === 'SYSTEM_ADMIN' && g.systemAdmins === 'configuration_admin';
+  const permission = narrowed ? 'configuration_admin' : GLOBALS[g.permission];
   if (!permission) {
     return {
       skip: g.permission === 'USE' ? 'not_needed' : 'permission_not_mapped',
@@ -316,6 +318,10 @@ export function mapGlobalGrant(g: StagedGlobalPermission): Mapped {
   }
   if (g.group === null) return { fail: 'missing_reference:group' };
   const warnings: Warning[] =
-    permission === 'site_admin' ? [{ code: 'site_admin_browses_every_track' }] : [];
+    permission === 'site_admin'
+      ? [{ code: 'site_admin_browses_every_track' }]
+      : narrowed
+        ? [{ code: 'system_admin_as_configuration_admin' }]
+        : [];
   return { command: { kind: 'global_grant', permission, group: ref('group', g.group) }, warnings };
 }

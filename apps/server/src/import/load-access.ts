@@ -421,6 +421,44 @@ export const notificationPolicies: Loader<NotificationPolicyCommand> = {
   read: readNamed('notification_policy'),
 };
 
+/**
+ * A grant imported before, whose permission the import now gives otherwise (system
+ * administrators as configuration administrators, ADR-090): the grant changes in place, or goes
+ * when the group already holds the new permission, so a re-import never leaves the wider one.
+ */
+async function regrant(
+  ctx: LoadContext,
+  id: number,
+  permission: string,
+  group: number | null,
+): Promise<number> {
+  const row = await ctx.trx
+    .selectFrom('global_grant')
+    .select('permission')
+    .where('id', '=', id)
+    .where('workspace_id', '=', ctx.workspaceId)
+    .executeTakeFirst();
+  if (!row || row.permission === permission) return id;
+  const same = await ctx.trx
+    .selectFrom('global_grant')
+    .select('id')
+    .where('workspace_id', '=', ctx.workspaceId)
+    .where('permission', '=', permission)
+    .where('grantee', '=', group === null ? 'any_user' : 'group')
+    .where(sql<number>`coalesce(group_id, 0)`, '=', group ?? 0)
+    .executeTakeFirst();
+  if (same) {
+    await ctx.trx.deleteFrom('global_grant').where('id', '=', id).execute();
+    return same.id;
+  }
+  await ctx.trx
+    .updateTable('global_grant')
+    .set({ permission: permission })
+    .where('id', '=', id)
+    .execute();
+  return id;
+}
+
 export const globalGrants: Loader<GlobalGrantCommand> = {
   table: { name: 'global_grant', id: 'id' },
   async prepare(ctx, cmds) {
@@ -449,8 +487,10 @@ export const globalGrants: Loader<GlobalGrantCommand> = {
     return { action: 'create', targetId: null, fingerprint, data };
   },
   async apply(ctx, cmd, plan) {
-    if (plan.action !== 'create') return plan.targetId as number;
     const { group } = plan.data as { group: number | null };
+    if (plan.action === 'update')
+      return regrant(ctx, plan.targetId as number, cmd.permission, group);
+    if (plan.action !== 'create') return plan.targetId as number;
     const row = await ctx.trx
       .insertInto('global_grant')
       .values({

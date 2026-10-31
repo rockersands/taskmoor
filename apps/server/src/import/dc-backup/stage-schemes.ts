@@ -64,6 +64,11 @@ export interface StagedGlobalPermission {
   /** The group's staged id; null for anyone. */
   group: string | null;
   groupName: string | null;
+  /**
+   * What `SYSTEM_ADMIN` becomes, from the import's settings (not staged: the source adds it to
+   * each record it reads, so changing the setting needs no new stage).
+   */
+  systemAdmins?: 'site_admin' | 'configuration_admin';
 }
 
 export const SCHEME_ELEMENTS = [

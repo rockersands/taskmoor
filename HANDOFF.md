@@ -30,8 +30,11 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   updated. The trigram indexes of migration 0057 are no longer used: a later migration (0076 or
   after) may drop them.
 - **DC import system administrators** (M1-090): both, as an import setting, site administrator
-  by default and configuration administrator as the option. Not built yet (next, now that batch
-  3 is merged): it touches `apps/server/src/import/dc-schemes.ts`.
+  by default and configuration administrator as the option. Built: the DC source's
+  `systemAdmins` (`site_admin` | `configuration_admin`; `dc.ts`, `dc-schemes.ts`
+  `mapGlobalGrant`, `regrant` in `load-access.ts`, the route passes it on), ADR-090 Changes, the
+  manual's import page; tested by the last case of `dc-access.test.ts`. The import wizard
+  (M1-097) should offer it.
 - **AI provider key:** not yet. M1-073 and M1-074's live tests stay skipped.
 - **Spanish review:** the user does it once every M1 task is finished.
 - **Release signing key** (M1-100): the user asked Claude to make it. A cloud container cannot
