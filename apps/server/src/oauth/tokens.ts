@@ -22,6 +22,8 @@ export const WEB_CLIENT_ID = 'taskmoor-web';
 /** IAM-024's default: ten minutes. */
 export const ACCESS_TOKEN_TTL_MS = 10 * 60 * 1000;
 export const CODE_TTL_MS = 60 * 1000;
+/** How long a registered client's grant lasts before the person approves it again (M1-072). */
+export const CLIENT_FAMILY_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 /** Prefixes tell the two kinds from API tokens (`tmk_`) and from each other at a glance. */
 export const ACCESS_TOKEN_PREFIX = 'tma_';
 export const REFRESH_TOKEN_PREFIX = 'tmr_';
@@ -57,6 +59,8 @@ export async function issueCode(
     clientId: string;
     redirectUri: string;
     challenge: string;
+    /** A registered client's scope (M1-072); none for the first-party frontends. */
+    scope?: string | null;
     now?: Date;
   },
 ): Promise<string> {
@@ -74,6 +78,7 @@ export async function issueCode(
       expires_at: new Date(now.getTime() + CODE_TTL_MS),
       used_at: null,
       family_id: null,
+      scope: options.scope ?? null,
     })
     .execute();
   return code;
@@ -210,17 +215,23 @@ export async function exchangeCode(
   }
   const parent = await liveParent(db, options.workspaceId, row.session_id, now);
   if (!parent) return { ok: false, error: 'invalid_grant' };
+  // A registered client's family (M1-072) outlives the browser that approved it: an MCP client
+  // keeps working after the person signs out there, for its own lifetime. The first-party
+  // frontends' families end with their browser session.
+  const registered = row.scope !== null;
+  const expiresAt = registered ? new Date(now.getTime() + CLIENT_FAMILY_TTL_MS) : parent.expires_at;
   const family = await db
     .insertInto('user_session')
     .values({
       workspace_id: options.workspaceId,
       user_id: parent.user_id,
       token_hash: null,
-      expires_at: parent.expires_at,
+      expires_at: expiresAt,
       ip: options.ip,
       user_agent: options.userAgent,
       client_id: row.client_id,
-      parent_id: parent.id,
+      parent_id: registered ? null : parent.id,
+      scope: row.scope,
     })
     .returning('id')
     .executeTakeFirstOrThrow();
@@ -233,7 +244,7 @@ export async function exchangeCode(
     db,
     options.workspaceId,
     family.id,
-    parent.expires_at,
+    expiresAt,
     now,
     options.accessTtlMs ?? ACCESS_TOKEN_TTL_MS,
   );
@@ -269,6 +280,7 @@ export async function refreshTokens(
       's.user_id',
       's.expires_at',
       's.last_seen_at',
+      's.scope',
       'u.deactivated_at',
       'u.kind as userKind',
     ])
@@ -285,7 +297,8 @@ export async function refreshTokens(
   if (
     row.client_id !== options.clientId ||
     row.expires_at <= now ||
-    row.last_seen_at.getTime() <= now.getTime() - SESSION_IDLE_MS ||
+    // A registered client's family is bounded by its lifetime, not by idleness (M1-072).
+    (row.scope === null && row.last_seen_at.getTime() <= now.getTime() - SESSION_IDLE_MS) ||
     row.deactivated_at !== null ||
     row.userKind !== 'person'
   ) {
@@ -347,7 +360,9 @@ export async function resolveAccessToken(
   workspaceId: number,
   token: string,
   now = new Date(),
-): Promise<(CurrentSession & { parentId: number | null }) | null> {
+): Promise<
+  (CurrentSession & { parentId: number | null; scope: string | null; clientId: string }) | null
+> {
   const row = await db
     .selectFrom('oauth_token as t')
     .innerJoin('user_session as s', 's.id', 't.session_id')
@@ -355,6 +370,8 @@ export async function resolveAccessToken(
     .select([
       's.id as sessionId',
       's.parent_id',
+      's.scope',
+      's.client_id',
       's.last_seen_at',
       'u.id',
       'u.email',
@@ -369,7 +386,12 @@ export async function resolveAccessToken(
     .where('t.expires_at', '>', now)
     .where('s.workspace_id', '=', workspaceId)
     .where('s.expires_at', '>', now)
-    .where('s.last_seen_at', '>', new Date(now.getTime() - SESSION_IDLE_MS))
+    .where((eb) =>
+      eb.or([
+        eb('s.scope', 'is not', null),
+        eb('s.last_seen_at', '>', new Date(now.getTime() - SESSION_IDLE_MS)),
+      ]),
+    )
     .where('u.deactivated_at', 'is', null)
     .where('u.kind', '=', 'person')
     .executeTakeFirst();
@@ -384,6 +406,8 @@ export async function resolveAccessToken(
   return {
     id: row.sessionId,
     parentId: row.parent_id,
+    scope: row.scope,
+    clientId: row.client_id ?? '',
     user: {
       id: row.id,
       email: row.email,
@@ -402,6 +426,13 @@ export async function resolveAccessToken(
  */
 export async function pruneOAuth(db: Kysely<Database>, now = new Date()): Promise<void> {
   await db.deleteFrom('oauth_code').where('expires_at', '<', now).execute();
+  await db.deleteFrom('oauth_request').where('expires_at', '<', now).execute();
+  // Registrations nobody completed within a day: what an endless stream of them would leave.
+  await db
+    .deleteFrom('oauth_client')
+    .where('last_used_at', 'is', null)
+    .where('created_at', '<', new Date(now.getTime() - 24 * 60 * 60 * 1000))
+    .execute();
   await db
     .deleteFrom('oauth_token')
     .where('kind', '=', 'access')

@@ -262,6 +262,30 @@ describe('entity properties (M1-129)', () => {
       404,
     );
 
+    // A personal token with the write scope reaches its owner's own properties, not others'.
+    const issued = await post('bob', '/api/v1/account/tokens', {
+      name: 'props',
+      scopes: ['read', 'write'],
+      expiresInDays: 1,
+    });
+    expect(issued.statusCode, issued.body).toBe(201);
+    const bearer = { authorization: `Bearer ${issued.json().token}` };
+    const viaToken = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/users/me/properties/editor',
+      headers: bearer,
+      payload: { value: 'vim' },
+      remoteAddress: nextAddress(),
+    });
+    expect(viaToken.statusCode, viaToken.body).toBe(201);
+    const others = await app.inject({
+      method: 'GET',
+      url: `/api/v1/users/${users.alice.id}/properties`,
+      headers: bearer,
+      remoteAddress: nextAddress(),
+    });
+    expect(others.statusCode).toBe(404);
+
     // Boards: those who see it read; those who configure it write. Sprints: those who manage
     // the board's sprints write.
     const board = await post('admin', '/api/v1/boards', {
@@ -292,13 +316,16 @@ describe('entity properties (M1-129)', () => {
       propertyKey: 'team',
       created: true,
     });
-    expect(await events('user.property_set')).toEqual([
-      {
-        subject: String(users.bob.id),
-        payload: { propertyKey: 'theme', created: true },
-        actor: users.bob.id,
-      },
-    ]);
+    expect(
+      (await events('user.property_set')).map(
+        (e) => (e.payload as { propertyKey: string }).propertyKey,
+      ),
+    ).toEqual(['theme', 'editor']);
+    expect((await events('user.property_set'))[0]).toEqual({
+      subject: String(users.bob.id),
+      payload: { propertyKey: 'theme', created: true },
+      actor: users.bob.id,
+    });
     expect((await events('board.property_deleted')).map((e) => e.subject)).toEqual([
       String(boardId),
     ]);

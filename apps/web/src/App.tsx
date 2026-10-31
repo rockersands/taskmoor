@@ -35,6 +35,7 @@ import { ListPage } from './list/ListPage';
 import type { MetaClient } from './meta/client';
 import { VersionGate } from './meta/VersionGate';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
+import { ConsentPage } from './oauth/ConsentPage';
 import { GroupsPage } from './people/GroupsPage';
 import { TeamsPage } from './people/TeamsPage';
 import { UsersPage } from './people/UsersPage';
@@ -161,6 +162,8 @@ const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
 const UNSUBSCRIBE = '#/unsubscribe';
+/** An MCP client's OAuth request waiting for the person's answer (M1-072). */
+const OAUTH_CONSENT = '#/oauth/consent';
 const HOME = '#/home';
 
 /** A path segment of the hash, decoded; as it is when it is not valid percent-encoding. */
@@ -431,6 +434,7 @@ function Pages() {
   if (hash.startsWith('#/setup')) return <SetupPage onDone={goHome} />;
   if (isRoute(hash, PASSWORD_LINK)) return <PasswordLinkPage onDone={goHome} />;
   if (isRoute(hash, UNSUBSCRIBE)) return <UnsubscribePage />;
+  if (isRoute(hash, OAUTH_CONSENT)) return <ConsentPage />;
 
   // Which navigation entry is highlighted, what the main area shows, and whether it needs a
   // session. Account is personal settings, so Settings stays highlighted there.

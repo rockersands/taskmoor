@@ -1,8 +1,8 @@
 ---
 title: "The MCP server"
 audience: admins
-sources: apps/server/src/mcp/protocol.ts, apps/server/src/mcp/settings.ts, apps/server/src/mcp/tools.ts, apps/server/src/mcp/stdio.ts, apps/server/src/routes/mcp.ts, apps/server/src/cli.ts, apps/server/src/tokens/scopes.ts, apps/server/src/audit/subscriber.ts, apps/web/src/admin/McpPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, Dockerfile, docs/api/README.md, docs/adr/0018-mcp-server.md, docs/adr/0068-mcp-server.md, docs/specs/02a-platform-api-and-integrations.md
-accessed: 2026-10-30
+sources: apps/server/src/mcp/protocol.ts, apps/server/src/mcp/settings.ts, apps/server/src/mcp/tools.ts, apps/server/src/mcp/stdio.ts, apps/server/src/routes/mcp.ts, apps/server/src/cli.ts, apps/server/src/tokens/scopes.ts, apps/server/src/audit/subscriber.ts, apps/web/src/admin/McpPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, Dockerfile, docs/api/README.md, docs/adr/0018-mcp-server.md, docs/adr/0068-mcp-server.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/oauth.ts, apps/server/src/oauth/clients.ts, apps/server/src/oauth/tokens.ts, apps/web/src/oauth/ConsentPage.tsx, docs/adr/0084-oauth-for-mcp-clients.md
+accessed: 2026-10-31
 attestation: own-words
 ---
 # The MCP server
@@ -14,8 +14,8 @@ install and needs nothing extra.
 
 ## How it works
 
-- An agent connects with a person's or a service account's API token. Every tool runs the REST
-  API as that token, so the token's scopes, the owner's permissions, field rules, ticket
+- An agent connects with a person's or a service account's API token, or signs in with OAuth
+  as a person who approves it (below). Every tool runs the REST API as that token, so the token's scopes, the owner's permissions, field rules, ticket
   history and notifications apply exactly as for any other API call. An agent can never do
   more than the token could.
 - Administrators choose one tool profile for the whole instance, and may restrict which MCP
@@ -43,8 +43,12 @@ restart.
 The list of allowed clients matches the name a client gives about itself. It keeps unexpected
 tools out, but it is not a credential: the token is.
 
+- **Let apps register themselves to sign in with OAuth** lets MCP clients sign in without a
+  token (below). It is on by default; each person still approves each app.
+
 The same settings are at `GET` and `PUT /api/v1/admin/mcp`, with `enabled`, `profile`
-(`read-only`, `planner` or `full`) and `allowedClients`. A token needs the `admin` scope there.
+(`read-only`, `planner` or `full`), `allowedClients` and `oauthRegistration`. A token needs the
+`admin` scope there.
 
 ## The tools
 
@@ -87,8 +91,53 @@ the tool answers with the reason as text, so the agent can try another way.
 - Each request carries one JSON-RPC message; batches are refused. The server answers in JSON
   and does not open a server-sent event stream.
 
-Taskmoor does not yet support OAuth sign-in for MCP clients; use an API token. It also does not
-limit how many tool calls an agent makes.
+Taskmoor does not limit how many tool calls an agent makes.
+
+## Signing in with OAuth
+
+Many assistants and editors can sign in to an MCP server themselves, with no token to copy. Give
+them the server's address (`https://tracker.example.com/api/v1/mcp`) and they do the rest:
+
+1. The server answers the first request with `401` and the address of its description
+   (`/.well-known/oauth-protected-resource/api/v1/mcp`), which names this server's OAuth
+   endpoints (`/.well-known/oauth-authorization-server`).
+2. The app registers itself and opens the person's browser. Someone not signed in signs in
+   first.
+3. A page asks the person whether to allow the app. It names the app and where the browser
+   goes back to (a website, an app on the same computer, or an app's own kind of link), and says
+   what the app may do: see what the person can see, and, unless the person unticks **Also let
+   it make changes**, create and change tickets, comment and link as them.
+4. The app then calls the MCP server as that person.
+
+What an app signed in this way can and cannot do:
+
+- It acts as the person who allowed it, with the scope they chose: `read`, or `read` and
+  `write`. It never has administrator rights, even when the person is an administrator, and it
+  cannot manage tokens, passwords or sessions.
+- Its tokens work at the MCP endpoint only. Other API calls with them are refused.
+- The grant lasts 30 days, even when the person signs out of the browser where they allowed
+  it. Then the app asks again. The person can end it sooner under **Account**, **Sessions**.
+- The apps that registered themselves are listed at `GET /api/v1/admin/oauth-clients`, with
+  when each was last used and how many grants it holds. `DELETE /api/v1/admin/oauth-clients/<id>`
+  removes an app and ends every grant it holds. Both need a site administrator. Apps that
+  register but are never approved are forgotten after a day.
+- Registration, each answer on the approval page and each removal are in the audit log.
+
+An app may register only an `https://` address, an `http://` address on the computer itself
+(`localhost` or `127.0.0.1`, on any port), or a link of its own kind such as `cursor://`. Apps
+cannot register while the MCP server or **Let apps register themselves** is off.
+
+Things to know:
+
+- Anyone who can reach the server can register an app. That is how MCP clients expect to sign
+  in, and it gives an app nothing until a person allows it. People should allow an app only
+  when they started the connection themselves, as the approval page says.
+- The descriptions are at the root of your server's address. If Taskmoor runs under a path
+  behind a proxy (`https://example.com/tracker`), the proxy must also pass
+  `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource/...` to
+  it.
+- Apps that identify themselves by a web address instead of registering (client ID metadata
+  documents) are not supported yet.
 
 ## Connecting a client
 

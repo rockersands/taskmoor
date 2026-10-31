@@ -56,6 +56,8 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'GET /api/v1/oauth/authorize',
   'POST /api/v1/oauth/token',
   'POST /api/v1/oauth/revoke',
+  // MCP clients register themselves (M1-072): RFC 7591's open registration.
+  'POST /api/v1/oauth/register',
 ]);
 
 export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
@@ -76,6 +78,9 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/account/two-factor/webauthn',
   'POST /api/v1/account/two-factor/webauthn/:id/remove',
   'POST /api/v1/account/two-factor/webauthn/options',
+  // Approving an OAuth client is a person's answer at their browser (M1-072).
+  'GET /api/v1/oauth/requests/:id',
+  'POST /api/v1/oauth/requests/:id',
 ]);
 
 /** Routes other than GET that change nothing anyone else sees: a read token reaches them. */
@@ -109,6 +114,11 @@ export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/webhooks',
 ];
 
+const USER_PROPERTY_ROUTES: ReadonlySet<string> = new Set([
+  '/api/v1/users/:id/properties',
+  '/api/v1/users/:id/properties/:key',
+]);
+
 /** The SCIM service: identity providers provision people and groups here (IAM-006). */
 export const SCIM_ROUTE_PREFIX = '/api/v1/scim/v2';
 
@@ -127,7 +137,12 @@ export function routeAccess(method: string, routeUrl: string): RouteAccess {
   }
   if (PUBLIC_ROUTES.has(key)) return 'public';
   if (SESSION_ONLY_ROUTES.has(key)) return 'session';
-  if (ADMIN_ROUTE_PREFIXES.some((p) => routeUrl === p || routeUrl.startsWith(`${p}/`))) {
+  // A person's own properties (M1-129) are data, not administration: the route checks that
+  // only the person or a site administrator reaches them.
+  if (
+    !USER_PROPERTY_ROUTES.has(routeUrl) &&
+    ADMIN_ROUTE_PREFIXES.some((p) => routeUrl === p || routeUrl.startsWith(`${p}/`))
+  ) {
     return 'admin';
   }
   if (READ_ONLY_ROUTES.has(key)) return 'read';

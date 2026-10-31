@@ -10,6 +10,9 @@ import { z } from 'zod';
  * - `read-only`: search and read tickets; list tracks, boards and sprints.
  * - `planner`: also create and change tickets, comment and link (the default).
  * - `full`: also move tickets through their transitions.
+ *
+ * `oauthRegistration` (M1-072; ADR-084): whether MCP clients may register themselves for OAuth.
+ * Each one still needs a person's consent before it acts for them.
  */
 export const MCP_PROFILES = ['read-only', 'planner', 'full'] as const;
 export type McpProfile = (typeof MCP_PROFILES)[number];
@@ -19,6 +22,7 @@ export const mcpSettingsInput = z
     enabled: z.boolean(),
     allowedClients: z.array(z.string().trim().min(1).max(100)).max(100),
     profile: z.enum(MCP_PROFILES),
+    oauthRegistration: z.boolean().default(true),
   })
   .strict();
 export type McpSettings = z.infer<typeof mcpSettingsInput>;
@@ -27,6 +31,7 @@ export const DEFAULT_MCP_SETTINGS: McpSettings = {
   enabled: true,
   allowedClients: [],
   profile: 'planner',
+  oauthRegistration: true,
 };
 const KEY = 'mcp';
 

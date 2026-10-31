@@ -480,6 +480,31 @@ export const messagesEs: Record<MessageId, string> = {
   'unsubscribe.done': 'Hecho: ya no recibirás {what}.',
   'unsubscribe.failed': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
   'unsubscribe.settings': 'Configuración de notificaciones',
+  // The consent page of an MCP client's OAuth sign-in (M1-072).
+  'consent.titlePlain': 'Conectar una aplicación',
+  'consent.title': '¿Permitir que {name} use Taskmoor?',
+  'consent.loading': 'Leyendo la solicitud…',
+  'consent.intro': '{name} pide actuar en tu nombre a través del servidor MCP. Si lo permites:',
+  'consent.reads': 'Verá lo que tú puedes ver: tickets, tracks, tableros y sprints.',
+  'consent.writes': 'Podrá crear y cambiar tickets, comentar y enlazar, en tu nombre.',
+  'consent.backToSite': 'Volverás a {host}.',
+  'consent.backToComputer': 'Volverás a una aplicación de este ordenador.',
+  'consent.backToApp': 'Volverás a la aplicación que abre los enlaces «{scheme}».',
+  'consent.allowChanges': 'Permitir también que haga cambios',
+  'consent.caution':
+    'La aplicación se registró sola en este servidor; Taskmoor no responde por ella. Permítela solo si tú iniciaste esta conexión. Puedes terminarla cuando quieras en Cuenta > Sesiones.',
+  'consent.allow': 'Permitir',
+  'consent.deny': 'No permitir',
+  'consent.leaving': 'Volviendo a la aplicación…',
+  'consent.signedOut': 'Inicia sesión para responder a esta solicitud.',
+  'consent.signIn': 'Iniciar sesión',
+  'consent.gone':
+    'Esta solicitud ha caducado o ya se respondió. Vuelve a iniciar la conexión desde la aplicación.',
+  'consent.failed': 'No ha funcionado. Inténtalo de nuevo en un momento.',
+  'mcp.oauthRegistration':
+    'Permitir que las aplicaciones se registren para iniciar sesión con OAuth',
+  'mcp.oauthRegistrationHint':
+    'Los asistentes y editores compatibles con MCP se conectan entonces con la aprobación de la persona, sin token. Cada persona aprueba cada aplicación.',
   'account.appearance.saveFailed':
     'Se muestra en este navegador, pero no se pudo actualizar tu cuenta. Inténtalo de nuevo en un momento.',
   'skins.light': 'Claro',
@@ -506,6 +531,7 @@ export const messagesEs: Record<MessageId, string> = {
   'account.wrongPassword': 'La contraseña actual no es correcta.',
   'account.passwordFailed': 'No se pudo cambiar la contraseña. Inténtalo de nuevo en un momento.',
   'account.sessions': 'Sesiones',
+  'account.sessionApp': '{name} (una aplicación que permitiste)',
   'account.sessionsIntro': 'Los navegadores y dispositivos donde tienes la sesión iniciada.',
   'account.sessionsLoading': 'Leyendo tus sesiones…',
   'account.sessionsFailed': 'No se pudieron leer tus sesiones. Inténtalo de nuevo en un momento.',

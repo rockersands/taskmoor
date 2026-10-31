@@ -115,10 +115,19 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['PATCH /api/v1/scim/v2/Groups/:id']).toBe('scim');
     expect(classes['GET /api/v1/scim/v2/ServiceProviderConfig']).toBe('scim');
     // Every route that only site administrators may use is in the admin class.
-    const adminOnly = api.filter((r) =>
-      /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|directories|audit)/.test(
-        r,
-      ),
+    // A person's own properties (M1-129) are data: read and write, the route checks who.
+    expect(classes['GET /api/v1/users/:id/properties']).toBe('read');
+    expect(classes['PUT /api/v1/users/:id/properties/:key']).toBe('write');
+    expect(classes['DELETE /api/v1/users/:id/properties/:key']).toBe('write');
+    // OAuth for MCP clients (M1-072): registration is open, consent takes the person's browser.
+    expect(classes['POST /api/v1/oauth/register']).toBe('public');
+    expect(classes['POST /api/v1/oauth/requests/:id']).toBe('session');
+    expect(classes['GET /api/v1/admin/oauth-clients']).toBe('admin');
+    const adminOnly = api.filter(
+      (r) =>
+        /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|directories|audit)/.test(
+          r,
+        ) && !r.includes('/properties'),
     );
     expect(adminOnly.length).toBeGreaterThan(30);
     for (const r of adminOnly) expect(classes[r], r).toBe('admin');

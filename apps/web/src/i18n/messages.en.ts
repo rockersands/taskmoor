@@ -459,6 +459,30 @@ export const messagesEn = {
   'unsubscribe.done': 'Done: you will no longer get {what}.',
   'unsubscribe.failed': 'That did not work. Try again in a moment.',
   'unsubscribe.settings': 'Notification settings',
+  // The consent page of an MCP client's OAuth sign-in (M1-072).
+  'consent.titlePlain': 'Connect an app',
+  'consent.title': 'Allow {name} to use Taskmoor?',
+  'consent.loading': 'Reading the request…',
+  'consent.intro': '{name} asks to act as you through the MCP server. If you allow it:',
+  'consent.reads': 'It sees what you can see: tickets, tracks, boards and sprints.',
+  'consent.writes': 'It can create and change tickets, comment and link, as you.',
+  'consent.backToSite': 'You go back to {host}.',
+  'consent.backToComputer': 'You go back to an app on this computer.',
+  'consent.backToApp': 'You go back to the app that opens “{scheme}” links.',
+  'consent.allowChanges': 'Also let it make changes',
+  'consent.caution':
+    'The app registered itself with this server; Taskmoor does not vouch for it. Allow it only if you started this connection. You can end it any time under Account > Sessions.',
+  'consent.allow': 'Allow',
+  'consent.deny': 'Don’t allow',
+  'consent.leaving': 'Sending you back to the app…',
+  'consent.signedOut': 'Sign in to answer this request.',
+  'consent.signIn': 'Sign in',
+  'consent.gone':
+    'This request has expired or was already answered. Start the connection again from the app.',
+  'consent.failed': 'That did not work. Try again in a moment.',
+  'mcp.oauthRegistration': 'Let apps register themselves to sign in with OAuth',
+  'mcp.oauthRegistrationHint':
+    'Assistants and editors that support MCP then connect with the person’s approval, without a token. Each person still approves each app.',
   'account.appearance.saveFailed':
     'Shown in this browser, but your account could not be updated. Try again in a moment.',
   'skins.light': 'Light',
@@ -485,6 +509,7 @@ export const messagesEn = {
   'account.wrongPassword': 'The current password is not correct.',
   'account.passwordFailed': 'The password could not be changed. Try again in a moment.',
   'account.sessions': 'Sessions',
+  'account.sessionApp': '{name} (an app you allowed)',
   'account.sessionsIntro': 'The browsers and devices where you are signed in.',
   'account.sessionsLoading': 'Reading your sessions…',
   'account.sessionsFailed': 'Your sessions could not be read. Try again in a moment.',

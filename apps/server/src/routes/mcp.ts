@@ -24,7 +24,8 @@ import type { Api } from '../mcp/tools';
  * The built-in MCP server over streamable HTTP (M1-072; API-012; ADR-068): `POST /api/v1/mcp`
  * takes one JSON-RPC message and answers it in JSON (no server-sent stream: `GET` answers 405),
  * `DELETE` ends the session named by `Mcp-Session-Id`. A personal or service-account API token
- * (bearer) or a session authenticates; OAuth 2.1 comes with the cross-origin auth (M1-107).
+ * (bearer), a session or an OAuth access token of a registered client authenticates; a 401
+ * names the protected resource metadata, from which a client finds how to sign in (M1-072).
  * Every tool call is audited (`mcp.tool_called`: client, person, tool, outcome).
  *
  * `GET` and `PUT /api/v1/admin/mcp`: the settings (on or off, allowed clients, tool profile),
@@ -32,7 +33,13 @@ import type { Api } from '../mcp/tools';
  */
 export interface McpRouteOptions {
   version: string;
+  /** Marks the tools' own REST calls, which a registered client's token may make (M1-072). */
+  innerCallSecret: string;
+  /** The protected resource metadata, named in the 401 challenge (RFC 9728 section 5.1). */
+  resourceMetadataUrl: string;
 }
+
+export const INNER_CALL_HEADER = 'x-taskmoor-inner-call';
 
 export function registerMcpRoutes(
   app: FastifyInstance,
@@ -45,7 +52,7 @@ export function registerMcpRoutes(
   const apiFor =
     (request: FastifyRequest): Api =>
     async (method, url, body) => {
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = { [INNER_CALL_HEADER]: options.innerCallSecret };
       for (const name of ['authorization', 'cookie'] as const) {
         const value = request.headers[name];
         if (typeof value === 'string') headers[name] = value;
@@ -69,7 +76,10 @@ export function registerMcpRoutes(
   const unauthenticated = (reply: FastifyReply) =>
     reply
       .code(401)
-      .header('www-authenticate', 'Bearer realm="taskmoor"')
+      .header(
+        'www-authenticate',
+        `Bearer realm="taskmoor", resource_metadata="${options.resourceMetadataUrl}", scope="read write"`,
+      )
       .send({ error: 'unauthenticated' });
 
   app.post('/api/v1/mcp', async (request, reply) => {

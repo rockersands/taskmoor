@@ -10,6 +10,8 @@ export interface McpSettings {
   enabled: boolean;
   allowedClients: string[];
   profile: McpProfile;
+  /** Whether MCP clients may register themselves to sign in with OAuth (M1-072). */
+  oauthRegistration: boolean;
 }
 
 export interface McpClient {
@@ -108,6 +110,21 @@ export function McpPage({
           />
           <label htmlFor={`${id}-enabled`}>{t('mcp.enabled')}</label>
         </div>
+        <div className="form-field form-field-inline">
+          <input
+            id={`${id}-oauth`}
+            type="checkbox"
+            checked={settings.oauthRegistration}
+            aria-describedby={`${id}-oauth-hint`}
+            onChange={(event) =>
+              setSettings({ ...settings, oauthRegistration: event.target.checked })
+            }
+          />
+          <label htmlFor={`${id}-oauth`}>{t('mcp.oauthRegistration')}</label>
+        </div>
+        <p id={`${id}-oauth-hint`} className="form-hint">
+          {t('mcp.oauthRegistrationHint')}
+        </p>
         <fieldset className="form-field">
           <legend className="form-label">{t('mcp.profile')}</legend>
           {PROFILES.map((p) => (

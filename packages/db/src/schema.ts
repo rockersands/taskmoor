@@ -126,6 +126,8 @@ export interface UserSessionTable {
   client_id: ColumnType<string | null, string | null | undefined, string | null>;
   /** The cookie session that approved a token family's code. */
   parent_id: ColumnType<number | null, number | null | undefined, number | null>;
+  /** What a registered client's family may do (M1-072): `read` or `read write`; null for all. */
+  scope: ColumnType<string | null, string | null | undefined, string | null>;
 }
 
 /** One-minute authorization codes with their PKCE challenge (M1-107, ADR-080). */
@@ -142,6 +144,37 @@ export interface OauthCodeTable {
   used_at: Timestamp | null;
   /** The token family the code was exchanged for; ended if the code comes back. */
   family_id: number | null;
+  created_at: DefaultTimestamp;
+  /** A registered client's scope (M1-072); null for the first-party frontends. */
+  scope: ColumnType<string | null, string | null | undefined, string | null>;
+}
+
+/** A client that registered itself (M1-072; RFC 7591): public, no secret. */
+export interface OauthClientTable {
+  /** `tmc_` and random characters. */
+  id: string;
+  workspace_id: number;
+  name: string;
+  redirect_uris: string[];
+  client_uri: string | null;
+  software_id: string | null;
+  software_version: string | null;
+  registered_ip: string | null;
+  created_at: DefaultTimestamp;
+  last_used_at: Timestamp | null;
+}
+
+/** An authorization request waiting for sign-in and consent, for ten minutes (M1-072). */
+export interface OauthRequestTable {
+  id_hash: string;
+  workspace_id: number;
+  client_id: string;
+  redirect_uri: string;
+  code_challenge: string;
+  state: string | null;
+  /** `read` or `read write`. */
+  scope: string;
+  expires_at: Timestamp;
   created_at: DefaultTimestamp;
 }
 
@@ -2197,6 +2230,8 @@ export interface Database {
   group_nesting: GroupNestingTable;
   user_session: UserSessionTable;
   oauth_code: OauthCodeTable;
+  oauth_client: OauthClientTable;
+  oauth_request: OauthRequestTable;
   oauth_token: OauthTokenTable;
   sign_in_throttle: SignInThrottleTable;
   password_link: PasswordLinkTable;

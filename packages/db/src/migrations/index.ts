@@ -59,6 +59,7 @@ import * as m0063 from './0063_board_workflow';
 import * as m0064 from './0064_oauth';
 import * as m0065 from './0065_import_labels';
 import * as m0066 from './0066_entity_properties';
+import * as m0067 from './0067_oauth_clients';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -128,4 +129,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0064_oauth': m0064,
   '0065_import_labels': m0065,
   '0066_entity_properties': m0066,
+  '0067_oauth_clients': m0067,
 };

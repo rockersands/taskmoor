@@ -1377,6 +1377,24 @@ export const EVENT_TYPES = {
     subject: 'property_index',
     payload: z.object({ key: z.string(), path: z.string() }),
   },
+  // OAuth for MCP clients (M1-072; ADR-084): a client registered itself, a person answered its
+  // request (approved with a scope, or refused), an administrator removed it with its grants.
+  'oauth_client.registered': {
+    subject: 'oauth_client',
+    payload: z.object({ name: z.string(), redirectUris: z.array(z.string()) }),
+  },
+  'oauth_client.consent': {
+    subject: 'oauth_client',
+    payload: z.object({
+      name: z.string(),
+      approved: z.boolean(),
+      scope: z.enum(['read', 'read write']).nullable(),
+    }),
+  },
+  'oauth_client.deleted': {
+    subject: 'oauth_client',
+    payload: z.object({ name: z.string(), grantsEnded: z.number().int() }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

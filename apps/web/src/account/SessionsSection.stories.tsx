@@ -39,6 +39,24 @@ export const UnknownDeviceAndAddress: Story = {
   },
 };
 
+/** An MCP client's grant (M1-072) shows the app the person allowed, and can be ended. */
+export const AnAppYouAllowed: Story = {
+  args: {
+    client: fakeAccountClient(
+      {},
+      {
+        sessions: sampleSessions().map((s) =>
+          s.id === 12 ? { ...s, userAgent: 'node', app: 'Desktop assistant' } : s,
+        ),
+      },
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Desktop assistant (an app you allowed)')).toBeVisible();
+  },
+};
+
 export const OthersSignedOut: Story = {
   // Its own backend: signing out changes the sessions it keeps.
   args: { client: fakeAccountClient() },

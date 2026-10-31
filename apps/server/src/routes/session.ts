@@ -252,14 +252,24 @@ export function registerSessionRoutes(
   app.get('/api/v1/sessions', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
+    // An MCP client's grant (M1-072) shows the name the app registered with.
     const rows = await db
-      .selectFrom('user_session')
-      .select(['id', 'created_at', 'last_seen_at', 'expires_at', 'ip', 'user_agent'])
-      .where('workspace_id', '=', request.workspaceId)
-      .where('user_id', '=', user.id)
-      .where('expires_at', '>', new Date())
-      .orderBy('last_seen_at', 'desc')
-      .orderBy('id', 'desc')
+      .selectFrom('user_session as s')
+      .leftJoin('oauth_client as c', 'c.id', 's.client_id')
+      .select([
+        's.id',
+        's.created_at',
+        's.last_seen_at',
+        's.expires_at',
+        's.ip',
+        's.user_agent',
+        'c.name as app',
+      ])
+      .where('s.workspace_id', '=', request.workspaceId)
+      .where('s.user_id', '=', user.id)
+      .where('s.expires_at', '>', new Date())
+      .orderBy('s.last_seen_at', 'desc')
+      .orderBy('s.id', 'desc')
       .execute();
     return {
       sessions: rows.map((r) => ({
@@ -269,6 +279,7 @@ export function registerSessionRoutes(
         expiresAt: r.expires_at.toISOString(),
         ip: r.ip,
         userAgent: r.user_agent,
+        app: r.app ?? null,
         current: r.id === request.authSession?.id,
       })),
     };

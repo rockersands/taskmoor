@@ -132,6 +132,10 @@ export const AUDITED_EVENTS = [
   'field.created',
   'field.updated',
   'field.deleted',
+  // Who may act for people through OAuth (M1-072).
+  'oauth_client.registered',
+  'oauth_client.consent',
+  'oauth_client.deleted',
   // What becomes searchable in ticket properties (M1-129).
   'property_index.created',
   'property_index.deleted',

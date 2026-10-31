@@ -5,7 +5,14 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
 import { type McpClient, McpPage, type McpSettings } from './McpPage';
 
-function fakeMcp(start: McpSettings = { enabled: true, allowedClients: [], profile: 'planner' }) {
+function fakeMcp(
+  start: McpSettings = {
+    enabled: true,
+    allowedClients: [],
+    profile: 'planner',
+    oauthRegistration: true,
+  },
+) {
   let saved = structuredClone(start);
   const client: McpClient & { saved: () => McpSettings } = {
     saved: () => saved,
@@ -42,12 +49,19 @@ describe('the MCP settings page (M1-072)', () => {
         enabled: true,
         allowedClients: ['claude-code', 'cursor'],
         profile: 'read-only',
+        oauthRegistration: true,
       }),
     );
     expect(screen.getByRole('status')).toHaveTextContent('The MCP settings were saved.');
     await user.click(screen.getByRole('checkbox', { name: 'Let agents connect' }));
     await user.click(screen.getByRole('button', { name: 'Save MCP settings' }));
     await waitFor(() => expect(client.saved().enabled).toBe(false));
+    // OAuth self-registration of MCP clients (M1-072) turns off on its own.
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Let apps register themselves to sign in with OAuth' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Save MCP settings' }));
+    await waitFor(() => expect(client.saved().oauthRegistration).toBe(false));
   });
 
   it('[API-012] shows how to connect, over HTTP and stdio', async () => {

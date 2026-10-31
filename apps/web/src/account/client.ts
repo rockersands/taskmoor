@@ -11,6 +11,8 @@ export interface AccountSession {
   expiresAt: string;
   ip: string | null;
   userAgent: string | null;
+  /** The app an MCP client's grant belongs to (M1-072); null for a browser. */
+  app?: string | null;
   current: boolean;
 }
 

@@ -1,0 +1,83 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { I18nProvider } from '../i18n/I18nProvider';
+import { setViewportWidth } from '../test/viewport';
+import { ConsentPage } from './ConsentPage';
+import { failingLoad, fakeConsentClient, SAMPLE_REQUEST } from './fixtures';
+
+function renderPage(client = fakeConsentClient()) {
+  render(
+    <I18nProvider locale="en">
+      <ConsentPage client={client} />
+    </I18nProvider>,
+  );
+  return client;
+}
+
+describe('the OAuth consent page (M1-072)', () => {
+  beforeEach(() => {
+    window.location.hash = '#/oauth/consent?request=test-request-0123456789abcdef';
+  });
+
+  it('[API-002] (3) names the app, what it may do and where it goes back, then sends the answer', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    expect(
+      await screen.findByRole('heading', { name: 'Allow Desktop assistant to use Taskmoor?' }),
+    ).toBeVisible();
+    expect(screen.getByText(/It sees what you can see/)).toBeVisible();
+    expect(screen.getByText(/It can create and change tickets/)).toBeVisible();
+    expect(screen.getByText('You go back to an app on this computer.')).toBeVisible();
+    expect(client.answers).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Allow' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Sending you back to the app');
+    expect(client.answers).toEqual([{ approve: true, scope: 'read write' }]);
+    expect(client.visited[0]).toContain('code=sample-code');
+  });
+
+  it('[API-002] (3) lets the person allow reading only, or refuse', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('checkbox', { name: 'Also let it make changes' }));
+    expect(screen.queryByText(/It can create and change tickets/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Allow' }));
+    expect(client.answers).toEqual([{ approve: true, scope: 'read' }]);
+
+    const refusing = fakeConsentClient();
+    document.body.innerHTML = '';
+    renderPage(refusing);
+    await user.click(await screen.findByRole('button', { name: 'Don’t allow' }));
+    expect(refusing.answers).toEqual([{ approve: false, scope: 'read write' }]);
+    expect(refusing.visited[0]).toContain('error=access_denied');
+  });
+
+  it('[API-002] (3) offers no changes to an app that asked only to read, and names a site', async () => {
+    renderPage(
+      fakeConsentClient(
+        {},
+        { ...SAMPLE_REQUEST, scope: 'read', redirectUri: 'https://assistant.example.com/cb' },
+      ),
+    );
+    expect(await screen.findByText('You go back to assistant.example.com.')).toBeVisible();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByText(/It can create and change tickets/)).toBeNull();
+  });
+
+  it('says when the request is gone, and offers sign-in when signed out', async () => {
+    renderPage(fakeConsentClient({ load: failingLoad(404) }));
+    expect(await screen.findByText(/This request has expired/)).toBeVisible();
+    document.body.innerHTML = '';
+    renderPage(fakeConsentClient({ load: failingLoad(401) }));
+    const link = await screen.findByRole('link', { name: 'Sign in' });
+    expect(link.getAttribute('href')).toContain(
+      encodeURIComponent('/api/v1/oauth/authorize?request=test-request-0123456789abcdef'),
+    );
+  });
+
+  it('fits a phone', async () => {
+    setViewportWidth(360);
+    renderPage();
+    expect(await screen.findByRole('button', { name: 'Allow' })).toBeVisible();
+  });
+});

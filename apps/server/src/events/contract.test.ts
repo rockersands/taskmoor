@@ -299,6 +299,52 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { token: state.refreshToken, client_id: 'taskmoor-web' },
         }),
     },
+    // An MCP client registers itself, Bo approves it, an administrator removes it (M1-072).
+    {
+      route: 'POST /api/v1/oauth/register',
+      expect: 'oauth_client.registered',
+      run: async () => {
+        const res = await call(undefined, {
+          method: 'POST',
+          url: '/api/v1/oauth/register',
+          payload: { client_name: 'Contract assistant', redirect_uris: ['http://127.0.0.1:9/cb'] },
+        });
+        state.oauthClient = res.json().client_id;
+        return res;
+      },
+    },
+    {
+      route: 'POST /api/v1/oauth/requests/:id',
+      expect: 'oauth_client.consent',
+      prepare: async () => {
+        const params = new URLSearchParams({
+          response_type: 'code',
+          client_id: String(state.oauthClient),
+          redirect_uri: 'http://127.0.0.1:9/cb',
+          code_challenge: createHash('sha256').update('x'.repeat(43)).digest('base64url'),
+          code_challenge_method: 'S256',
+        });
+        const res = await call(String(state.bo1), {
+          method: 'GET',
+          url: `/api/v1/oauth/authorize?${params}`,
+        });
+        state.oauthRequest = decodeURIComponent(
+          String(res.headers.location).split('request=')[1] ?? '',
+        );
+      },
+      run: () =>
+        call(String(state.bo1), {
+          method: 'POST',
+          url: `/api/v1/oauth/requests/${state.oauthRequest}`,
+          payload: { approve: true },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/admin/oauth-clients/:id',
+      expect: 'oauth_client.deleted',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/admin/oauth-clients/${state.oauthClient}` }),
+    },
     {
       route: 'PATCH /api/v1/account',
       expect: 'user.updated',

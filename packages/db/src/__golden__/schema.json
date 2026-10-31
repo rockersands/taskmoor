@@ -1116,6 +1116,24 @@
       "CREATE UNIQUE INDEX notification_rule_unique_idx ON public.notification_rule USING btree (policy_id, event, recipient, COALESCE(user_id, 0), COALESCE(group_id, 0), COALESCE(role_id, 0), COALESCE(field_key, ''::text))"
     ]
   },
+  "oauth_client": {
+    "columns": [
+      "id text not null",
+      "workspace_id integer not null",
+      "name text not null",
+      "redirect_uris ARRAY not null",
+      "client_uri text",
+      "software_id text",
+      "software_version text",
+      "registered_ip text",
+      "created_at timestamp with time zone not null default now()",
+      "last_used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX oauth_client_pkey ON public.oauth_client USING btree (id)",
+      "CREATE INDEX oauth_client_workspace_idx ON public.oauth_client USING btree (workspace_id, created_at)"
+    ]
+  },
   "oauth_code": {
     "columns": [
       "code_hash text not null",
@@ -1127,11 +1145,29 @@
       "expires_at timestamp with time zone not null",
       "used_at timestamp with time zone",
       "family_id integer",
-      "created_at timestamp with time zone not null default now()"
+      "created_at timestamp with time zone not null default now()",
+      "scope text"
     ],
     "indexes": [
       "CREATE INDEX oauth_code_expires_idx ON public.oauth_code USING btree (expires_at)",
       "CREATE UNIQUE INDEX oauth_code_pkey ON public.oauth_code USING btree (code_hash)"
+    ]
+  },
+  "oauth_request": {
+    "columns": [
+      "id_hash text not null",
+      "workspace_id integer not null",
+      "client_id text not null",
+      "redirect_uri text not null",
+      "code_challenge text not null",
+      "state text",
+      "scope text not null",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX oauth_request_expires_idx ON public.oauth_request USING btree (expires_at)",
+      "CREATE UNIQUE INDEX oauth_request_pkey ON public.oauth_request USING btree (id_hash)"
     ]
   },
   "oauth_token": {
@@ -2397,7 +2433,8 @@
       "ip text",
       "user_agent text",
       "client_id text",
-      "parent_id integer"
+      "parent_id integer",
+      "scope text"
     ],
     "indexes": [
       "CREATE INDEX user_session_expires_idx ON public.user_session USING btree (expires_at)",

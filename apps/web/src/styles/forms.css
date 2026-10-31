@@ -205,6 +205,12 @@
   margin-top: var(--space-4);
 }
 
+.consent-list {
+  margin: var(--space-4) 0;
+  padding-left: var(--space-6);
+  line-height: 1.6;
+}
+
 .setup-link {
   display: inline-flex;
   align-items: center;

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import type { IncomingMessage, Server } from 'node:http';
 import type { Duplex } from 'node:stream';
@@ -51,10 +52,10 @@ import { registerAllowlist, registerAllowlistRoutes } from './routes/ip-allowlis
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
 import { registerListViewRoutes } from './routes/list-views';
-import { registerMcpRoutes } from './routes/mcp';
+import { INNER_CALL_HEADER, registerMcpRoutes } from './routes/mcp';
 import { registerMetaRoutes } from './routes/meta';
 import { registerNotificationRoutes } from './routes/notifications';
-import { registerOAuthRoutes } from './routes/oauth';
+import { registerOAuthRoutes, resourceMetadataUrl } from './routes/oauth';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerCorePropertyRoutes } from './routes/properties';
@@ -93,6 +94,7 @@ import { registerSyncSocket } from './sync/socket';
 import { pruneIdentityData } from './throttle';
 import { bearerToken, pruneApiTokens } from './tokens/api-tokens';
 import { authenticateBearer } from './tokens/bearer';
+import { type ApiTokenScope, scopeDenial } from './tokens/scopes';
 import { defaultWorkspaceId } from './workspace';
 
 declare module 'fastify' {
@@ -241,6 +243,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     app.decorateRequest('authz', null as unknown as never);
     // Strict CORS and the origin check come first: a refused origin costs no database work.
     registerCrossOrigin(app, origins);
+    // The MCP tools' own REST calls carry this, so a registered client's token, good at the MCP
+    // endpoint alone, still reaches what the tools call (M1-072). It never leaves the process.
+    const innerCallSecret = randomBytes(32).toString('base64url');
+    const metadataUrl = resourceMetadataUrl(deps.publicUrl ?? 'http://localhost:8080');
     app.addHook('onRequest', async (request, reply) => {
       if (!request.url.startsWith('/api/')) return;
       request.workspaceId = await defaultWorkspaceId(db);
@@ -251,19 +257,51 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       // do not count as failed attempts the way unknown API tokens do.
       if (bearer !== undefined && isAccessToken(bearer)) {
         const family = await resolveAccessToken(db, request.workspaceId, bearer);
+        const mcp = request.routeOptions.url === '/api/v1/mcp';
+        // MCP clients find the authorization server from here (RFC 9728 section 5.1).
+        const metadata = mcp ? `, resource_metadata="${metadataUrl}"` : '';
         if (!family) {
           return reply
             .code(401)
             .header(
               'www-authenticate',
-              'Bearer realm="taskmoor", error="invalid_token", error_description="The access token has expired or was revoked"',
+              `Bearer realm="taskmoor", error="invalid_token", error_description="The access token has expired or was revoked"${metadata}`,
             )
             .send({ error: 'invalid_token', reason: 'expired' });
         }
         request.authSession = { id: family.id, user: family.user };
         request.tokenFamily = { parentId: family.parentId };
         request.user = family.user;
-        request.authz = authorizer.context(request.workspaceId, { userId: family.user.id });
+        if (family.scope === null) {
+          request.authz = authorizer.context(request.workspaceId, { userId: family.user.id });
+          return;
+        }
+        // A registered client (M1-072; ADR-084): its scope, no administrator rights, and only
+        // the MCP endpoint, besides the REST calls the MCP tools make for it.
+        if (!mcp && request.headers[INNER_CALL_HEADER] !== innerCallSecret) {
+          return reply
+            .code(401)
+            .header(
+              'www-authenticate',
+              'Bearer realm="taskmoor", error="invalid_token", error_description="This token is for the MCP endpoint only"',
+            )
+            .send({ error: 'invalid_token', reason: 'wrong_resource' });
+        }
+        request.authz = authorizer.context(request.workspaceId, {
+          userId: family.user.id,
+          withoutAdminRights: true,
+        });
+        const scopes = family.scope.split(' ') as ApiTokenScope[];
+        const denial = scopeDenial(request.method, request.routeOptions.url, scopes);
+        if (denial) {
+          if (denial.error === 'insufficient_scope') {
+            reply.header(
+              'www-authenticate',
+              `Bearer realm="taskmoor", error="insufficient_scope", scope="${denial.requiredScope}"`,
+            );
+          }
+          return reply.code(403).send(denial);
+        }
         return;
       }
       if (bearer !== undefined) {
@@ -421,7 +459,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     // The built-in MCP server (M1-072): tools over the REST API, as the caller.
-    registerMcpRoutes(app, db, { version: deps.version });
+    registerMcpRoutes(app, db, {
+      version: deps.version,
+      innerCallSecret,
+      resourceMetadataUrl: metadataUrl,
+    });
     // The public meta endpoint (M1-106): versions, sign-in methods and the instance's identity.
     registerMetaRoutes(app, db, {
       version: deps.version,

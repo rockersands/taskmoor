@@ -119,7 +119,9 @@ export function SessionsSection({ client, timeZone }: SessionsSectionProps) {
         <>
           <ul className="session-list">
             {state.sessions.map((session) => {
-              const device = deviceName(t, session.userAgent);
+              const device = session.app
+                ? t('account.sessionApp', { name: session.app })
+                : deviceName(t, session.userAgent);
               return (
                 <li key={session.id} className="session-item">
                   <div className="session-main">

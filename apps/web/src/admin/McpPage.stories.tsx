@@ -8,7 +8,12 @@ const meta = {
   args: {
     origin: 'https://tracker.example.com',
     client: {
-      load: async () => ({ enabled: true, allowedClients: ['claude-code'], profile: 'planner' }),
+      load: async () => ({
+        enabled: true,
+        allowedClients: ['claude-code'],
+        profile: 'planner',
+        oauthRegistration: true,
+      }),
       save: async (s) => s,
     },
   },

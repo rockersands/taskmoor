@@ -1288,6 +1288,29 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          ORDER BY t.id LIMIT 1`.execute(db);
     },
   },
+  '0067_oauth_clients': {
+    tables: {
+      oauth_client: "id = 'tmc_seedclient0000000000000' AND name = 'Seed client'",
+      oauth_request: "id_hash = 'seed-request' AND scope = 'read write'",
+      user_session: "client_id = 'tmc_seedclient0000000000000' AND scope = 'read'",
+    },
+    seed: async (db) => {
+      // A registered client, a request waiting for consent and a read-only family it holds.
+      await sql`INSERT INTO oauth_client (id, workspace_id, name, redirect_uris)
+        VALUES ('tmc_seedclient0000000000000', 1, 'Seed client',
+                ARRAY['http://127.0.0.1:33418/callback'])`.execute(db);
+      await sql`INSERT INTO oauth_request (id_hash, workspace_id, client_id, redirect_uri,
+          code_challenge, state, scope, expires_at)
+        VALUES ('seed-request', 1, 'tmc_seedclient0000000000000',
+                'http://127.0.0.1:33418/callback', 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+                'seed-state', 'read write', now() + interval '10 minutes')`.execute(db);
+      await sql`INSERT INTO user_session (workspace_id, user_id, token_hash, expires_at,
+          client_id, parent_id, scope)
+        SELECT s.workspace_id, s.user_id, NULL, now() + interval '30 days',
+               'tmc_seedclient0000000000000', NULL, 'read'
+          FROM user_session s WHERE s.token_hash = 'seed-hash'`.execute(db);
+    },
+  },
 };
 
 /**

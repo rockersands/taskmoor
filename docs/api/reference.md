@@ -869,7 +869,7 @@ Responses:
 
 ### The property keys of a user
 
-`GET /api/v1/users/{id}/properties`, operation `listUserProperties`, access: admin.
+`GET /api/v1/users/{id}/properties`, operation `listUserProperties`, access: read.
 
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
@@ -884,7 +884,7 @@ Responses:
 
 ### Delete a property of a user
 
-`DELETE /api/v1/users/{id}/properties/{key}`, operation `deleteUserProperty`, access: admin.
+`DELETE /api/v1/users/{id}/properties/{key}`, operation `deleteUserProperty`, access: write.
 
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
@@ -902,7 +902,7 @@ Responses:
 
 ### One property of a user
 
-`GET /api/v1/users/{id}/properties/{key}`, operation `getUserProperty`, access: admin.
+`GET /api/v1/users/{id}/properties/{key}`, operation `getUserProperty`, access: read.
 
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
@@ -918,7 +918,7 @@ Responses:
 
 ### Set a property of a user
 
-`PUT /api/v1/users/{id}/properties/{key}`, operation `setUserProperty`, access: admin.
+`PUT /api/v1/users/{id}/properties/{key}`, operation `setUserProperty`, access: write.
 
 Sets the key to any JSON value of at most 32,768 bytes as JSON text, replacing what was there. Only the person and site administrators read and write a person’s properties.
 
@@ -2037,5 +2037,5 @@ Read-only info fields, computed from comments and history. Only comments everyon
 
 ## Internal routes
 
-The document also lists 412 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 417 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

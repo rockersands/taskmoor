@@ -2,7 +2,7 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: 2026-10-30 evening (cloud session): M1-129 and three fixes
+## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth and three fixes
 
 All on `main`, each push after a green `pnpm verify --e2e`:
 
@@ -33,7 +33,22 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - `cli.mjs restore` into a database that a newer migration already changed may hit the same
     foreign-key problem as the rollback did: `dropNewObjects` runs only in the upgrade
     rollback.
-- **Next free numbers:** migration 0067 and ADR-084.
+- **M1-072 OAuth for MCP clients** (2026-10-31; migration 0067, ADR-084): M1-072 is done.
+  - Server: `apps/server/src/oauth/clients.ts` (registration, redirect matching, pending
+    requests). In `routes/oauth.ts`: discovery, `register`, authorize for registered clients,
+    `requests/:id` for consent, and `admin/oauth-clients`.
+  - Token binding is in `app.ts`. A scoped family's token is accepted only at `/api/v1/mcp`,
+    plus the tools' in-process calls, which carry `INNER_CALL_HEADER` with a per-process
+    secret. If you add an in-process caller for MCP, send that header.
+  - Web: `apps/web/src/oauth/ConsentPage.tsx` at `#/oauth/consent`. The MCP settings page has
+    a registration switch, and the sessions list names an app's grant.
+  - Tests use the official MCP client's OAuth flow (`routes/mcp-oauth.test.ts`) and a
+    Playwright spec (`e2e/mcp-oauth.spec.ts`).
+  - Also fixed: personal tokens now reach `/api/v1/users/:id/properties` with read and write.
+    Before this, `/api/v1/users` as an admin prefix demanded the admin scope.
+  - Not yet: client ID metadata documents (an SSRF-safe fetch is needed first); browser-based
+    MCP clients on other origins (the origin policy refuses them).
+- **Next free numbers:** migration 0068 and ADR-085.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 
@@ -90,7 +105,7 @@ manual states each as "not yet"; update its page with each fix.
 hosts for the frontend kit (Apache, Netlify, Cloudflare Pages, S3 with a CDN), branded Edge and
 real phones, backup and restore of the full-text columns (no `pg_dump` on this Mac).
 
-**Next free numbers**: migration 0066 and ADR-083 (now 0067 and ADR-084: see the cloud session above).
+**Next free numbers**: migration 0066 and ADR-083 (now 0068 and ADR-085: see the cloud session above).
 
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
