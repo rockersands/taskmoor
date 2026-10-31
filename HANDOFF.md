@@ -82,8 +82,9 @@ All on `main`, each push after a green `pnpm verify --e2e`:
       escapes only where text could read as markup. Change one side only with the other.
     - The corpus is `wiki-corpus.ts`: 252 documents and 40 sources, with goldens in
       `__golden__/wiki`. Each document also checks that v2 and v3 agree. The fast-check
-      properties in `wiki.test.ts` found every escaping bug so far: run them with `FC_RUNS=20000`
-      after any change to the rules.
+      properties in `wiki.test.ts` found every escaping bug so far. After any change to the
+      rules, run them with `FC_RUNS=20000` and `--testTimeout=600000` (from
+      `packages/richtext`: `npx vitest run src/wiki.test.ts -t properties`).
     - On the native API, `?format=wiki` reads and writes and `?format=text` only reads (a write
       with rich text in it gets `invalid`). The OpenAPI and SDK goldens are updated.
     - Not done: mentions written through v2 have no display name (the markup names people by
