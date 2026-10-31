@@ -71,6 +71,10 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.apiUsageHint')}</p>
             </li>
             <li>
+              <a href={routeHref('#/admin/ai-usage')}>{t('settings.aiUsage')}</a>
+              <p className="page-note">{t('settings.aiUsageHint')}</p>
+            </li>
+            <li>
               <a href={routeHref('#/admin/audit')}>{t('settings.auditLog')}</a>
               <p className="page-note">{t('settings.auditLogHint')}</p>
             </li>

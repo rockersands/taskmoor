@@ -3,6 +3,21 @@ import { readFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import type { ProviderId } from './config';
+import { AiSpendLimitError } from './errors';
+import {
+  type AiMeter,
+  type CallOutcome,
+  callCost,
+  LIST_PRICES,
+  type ListPrice,
+  limitApplies,
+  type MeteredCall,
+  periodWindow,
+  priceModelId,
+  reachedLimit,
+  type SpendLimit,
+  totalTokens,
+} from './spend';
 import { encodeSse } from './sse';
 import type {
   AdapterRequest,
@@ -379,5 +394,65 @@ export class FakeProviderFailure extends Error {
     readonly retryAfterMs?: number,
   ) {
     super(message);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// An in-memory meter: the spend limits and audit rows of M1-077 without a database.
+
+export interface BookedCall {
+  call: MeteredCall;
+  outcome: CallOutcome;
+  costNanos: number;
+  at: Date;
+}
+
+/** Applies spend limits over the calls it booked; prices from `LIST_PRICES` unless given. */
+export class MemoryMeter implements AiMeter {
+  readonly booked: BookedCall[] = [];
+
+  constructor(
+    public limits: SpendLimit[] = [],
+    private readonly options: { now?: () => number; prices?: readonly ListPrice[] } = {},
+  ) {}
+
+  private now(): Date {
+    return new Date(this.options.now?.() ?? Date.now());
+  }
+
+  private used(limit: SpendLimit, call: MeteredCall, at: Date): number {
+    const { start } = periodWindow(limit.period, at);
+    return this.booked
+      .filter(
+        (b) =>
+          b.at >= start &&
+          limitApplies(limit, { feature: b.call.feature, userId: b.call.tag.userId }) &&
+          (limit.scope !== 'user' || b.call.tag.userId === call.tag.userId),
+      )
+      .reduce(
+        (sum, b) => sum + (limit.metric === 'cost' ? b.costNanos : totalTokens(b.outcome.usage)),
+        0,
+      );
+  }
+
+  async admit(call: MeteredCall): Promise<void> {
+    const at = this.now();
+    const applicable = this.limits
+      .filter((limit) => limitApplies(limit, { feature: call.feature, userId: call.tag.userId }))
+      .map((limit) => ({ limit, used: this.used(limit, call, at) }));
+    const reached = reachedLimit(applicable, at, call.tag.userId ?? null);
+    if (reached) throw new AiSpendLimitError(reached);
+  }
+
+  async record(call: MeteredCall, outcome: CallOutcome): Promise<void> {
+    const prices = this.options.prices ?? LIST_PRICES;
+    const model = priceModelId(outcome.servedModel);
+    const price =
+      prices.find((p) => p.provider === call.provider && p.model === model) ??
+      prices.find((p) => p.provider === call.provider && p.model === call.model);
+    const costNanos = price
+      ? callCost(outcome.usage, price.price, { batch: call.mode === 'batch' })
+      : 0;
+    this.booked.push({ call, outcome, costNanos, at: this.now() });
   }
 }

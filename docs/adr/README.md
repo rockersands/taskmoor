@@ -99,5 +99,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [092](0092-dc-ticket-content.md) | The Data Center import of an issue's content: a stage that spills to buckets, content kinds, and fidelity against the fixture | Accepted |
 | [093](0093-dc-workflows.md) | The Data Center import of workflows and workflow schemes, with every rule mapped or held and reported | Accepted |
 | [094](0094-cloud-rest-import.md) | The Cloud REST importer: a resumable fetch into a staging table, throttled as the source asks | Accepted |
+| [100](0100-ai-spend-audit-redaction.md) | AI spend limits, the AI audit log and redaction, in the gateway's call path | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

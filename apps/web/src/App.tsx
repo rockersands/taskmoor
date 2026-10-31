@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { AiUsagePage } from './admin/AiUsagePage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
 import { AuditPage } from './admin/audit/AuditPage';
 import { FrontendsPage } from './admin/FrontendsPage';
@@ -127,6 +128,7 @@ const ADMIN_IDENTITY_PROVIDERS = '#/admin/identity-providers';
 const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_MCP = '#/admin/mcp';
 const ADMIN_API_USAGE = '#/admin/api-usage';
+const ADMIN_AI_USAGE = '#/admin/ai-usage';
 const ADMIN_AUDIT = '#/admin/audit';
 const ADMIN_NETWORK = '#/admin/network-access';
 const ADMIN_FRONTENDS = '#/admin/frontends';
@@ -460,6 +462,8 @@ function Pages() {
     content = <McpPage />;
   } else if (isRoute(hash, ADMIN_API_USAGE)) {
     content = <ApiUsagePage />;
+  } else if (isRoute(hash, ADMIN_AI_USAGE)) {
+    content = <AiUsagePage />;
   } else if (isRoute(hash, ADMIN_AUDIT)) {
     content = <AuditPage />;
   } else if (isRoute(hash, ADMIN_NETWORK)) {

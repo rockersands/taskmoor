@@ -28,7 +28,9 @@ export {
   AiOutputError,
   AiPolicyError,
   AiProviderError,
+  AiSpendLimitError,
   AiUnsupportedError,
+  type SpendLimitReached,
 } from './errors';
 export { type AdapterFactoryOptions, createProviderAdapter } from './factory';
 export {
@@ -53,6 +55,17 @@ export {
 } from './gateway';
 export { assertClaudeRequestPolicy, SERVER_FALLBACK_BETA, SERVER_FALLBACK_MODELS } from './policy';
 export {
+  DEFAULT_REDACTION_PATTERNS,
+  MIN_VALUE_LENGTH,
+  NO_REDACTION,
+  placeholder,
+  REDACTION_PATTERNS,
+  type RedactionPattern,
+  type RedactionRules,
+  Redactor,
+  type SensitiveValue,
+} from './redact';
+export {
   CircuitBreaker,
   type CircuitBreakerOptions,
   type RetryOptions,
@@ -60,6 +73,34 @@ export {
   retryDelay,
 } from './retry';
 export { InMemorySecretStore, redactSecrets, type SecretRef, type SecretStore } from './secrets';
+export {
+  type AiMeter,
+  BATCH_DISCOUNT,
+  type CallOutcome,
+  type CallStatus,
+  type CallTag,
+  callCost,
+  LIST_PRICES,
+  type ListPrice,
+  limitApplies,
+  type MeteredCall,
+  type ModelPrice,
+  NANOS_PER_USD,
+  nanosOf,
+  periodWindow,
+  priceModelId,
+  reachedLimit,
+  SPEND_METRICS,
+  SPEND_PERIODS,
+  SPEND_SCOPES,
+  type SpendLimit,
+  type SpendMetric,
+  type SpendPeriod,
+  type SpendScope,
+  totalTokens,
+  usdPerMillionOf,
+  ZERO_USAGE,
+} from './spend';
 export type {
   AdapterRequest,
   AdapterResponse,

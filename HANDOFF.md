@@ -241,6 +241,27 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     votes, schemes, comment visibility, custom field history, real contexts and options, a
     1M-item rate run (IMP-002 (1)), clearing a finished run's sealed token; M1-096 builds delta
     runs on `fetch_state`, M1-097 the wizard and CLI.
+- **M1-077 AI spend limits, usage and data controls** (branch `work/m1-077-ai-spend`, side
+  agent 2026-10-31; migration 0075, ADR-100; M1-077 is done):
+  - Gateway: `AiGatewayOptions.meter` and `redaction`; `GenerateRequest.tag` (`userId`,
+    `trackId`, `runId`) and `sensitive`. Every generate and stream books exactly one row through
+    the meter, whatever happens. `@taskmoor/ai` has `spend.ts`, `redact.ts` and `MemoryMeter`
+    (in `testing.ts`) for tests without a database.
+  - Server: `app.ai.service.gateway(workspaceId)` is the way AI features (M1-079) call AI: it
+    wires `DbMeter` (`apps/server/src/ai/usage.ts`) and the workspace's redaction. Tag every
+    call with the person, build ticket prompts with `app.ai.context.ticket(caller, id)` and pass
+    its `sensitive` along, answer failures with `aiErrorBody`, and wrap the feature's controls in
+    the web `AiNotice`. `aiRefusalMessage` words a refused call.
+  - **For M1-075 and M1-076:** `AppDeps.ai.source` (`AiProviderSource`: workspace to
+    `{ adapter, features, region }` or null) is where key storage plugs in; until then AI is not
+    configured anywhere. The server now depends on `@taskmoor/ai` (package.json, tsconfig, lock):
+    expect a trivial conflict. The settings page can show and edit limits, prices and the
+    redaction policy through `/api/v1/admin/ai/{limits,prices,policy}`; this branch has no form
+    for them (the usage page shows limits read-only).
+  - Prices are list prices to verify (`verify: true`), never dated; Bedrock and Vertex AI are
+    unpriced until an administrator enters a rate.
+  - Not done: alert email (no administrator channel yet; alerts are audited events), the partial
+    usage of cancelled streams, redaction by classification (IAM-016, M2).
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

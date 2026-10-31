@@ -34,6 +34,154 @@
       "CREATE UNIQUE INDEX access_policy_workspace_name_idx ON public.access_policy USING btree (workspace_id, lower(name))"
     ]
   },
+  "ai_call": {
+    "columns": [
+      "id bigint not null default nextval('ai_call_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "occurred_at timestamp with time zone not null default now()",
+      "user_id integer",
+      "track_id integer",
+      "run_id uuid",
+      "feature text not null",
+      "provider text not null",
+      "model text not null",
+      "served_model text not null",
+      "mode text not null",
+      "outcome text not null",
+      "error_kind text",
+      "limit_id integer",
+      "input_tokens integer not null default 0",
+      "output_tokens integer not null default 0",
+      "cache_read_tokens integer not null default 0",
+      "cache_write_tokens integer not null default 0",
+      "cost_nanos bigint not null default 0",
+      "priced boolean not null",
+      "latency_ms integer not null default 0",
+      "retries smallint not null default 0",
+      "fell_back boolean not null default false",
+      "content jsonb",
+      "content_expires_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX ai_call_content_idx ON public.ai_call USING btree (content_expires_at) WHERE (content IS NOT NULL)",
+      "CREATE UNIQUE INDEX ai_call_pkey ON public.ai_call USING btree (id)",
+      "CREATE INDEX ai_call_run_idx ON public.ai_call USING btree (run_id) WHERE (run_id IS NOT NULL)",
+      "CREATE INDEX ai_call_time_idx ON public.ai_call USING btree (workspace_id, occurred_at DESC, id DESC)",
+      "CREATE INDEX ai_call_user_idx ON public.ai_call USING btree (workspace_id, user_id, occurred_at DESC)"
+    ]
+  },
+  "ai_limit_alert": {
+    "columns": [
+      "workspace_id integer not null",
+      "limit_id integer not null",
+      "period_start date not null",
+      "user_id integer not null default 0",
+      "percent smallint not null",
+      "used bigint not null",
+      "raised_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_limit_alert_pkey ON public.ai_limit_alert USING btree (limit_id, period_start, user_id, percent)"
+    ]
+  },
+  "ai_notice_ack": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "acknowledged_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_notice_ack_pkey ON public.ai_notice_ack USING btree (workspace_id, user_id)"
+    ]
+  },
+  "ai_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "content_days integer not null default 0",
+      "redact_patterns ARRAY not null default '{card-number,iban,us-ssn}'::text[]",
+      "redact_terms ARRAY not null default '{}'::text[]",
+      "redacted_fields ARRAY not null default '{}'::text[]",
+      "updated_by integer",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_policy_pkey ON public.ai_policy USING btree (workspace_id)"
+    ]
+  },
+  "ai_price": {
+    "columns": [
+      "workspace_id integer not null",
+      "provider text not null",
+      "model text not null",
+      "input_nanos bigint not null",
+      "output_nanos bigint not null",
+      "cache_read_nanos bigint not null",
+      "cache_write_nanos bigint not null",
+      "long_above_tokens integer",
+      "long_input_nanos bigint",
+      "long_output_nanos bigint",
+      "updated_by integer",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_price_pkey ON public.ai_price USING btree (workspace_id, provider, model)"
+    ]
+  },
+  "ai_spend_counter": {
+    "columns": [
+      "workspace_id integer not null",
+      "period text not null",
+      "period_start date not null",
+      "key text not null",
+      "tokens bigint not null default 0",
+      "cost_nanos bigint not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_spend_counter_pkey ON public.ai_spend_counter USING btree (workspace_id, period, period_start, key)"
+    ]
+  },
+  "ai_spend_limit": {
+    "columns": [
+      "id integer not null default nextval('ai_spend_limit_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "scope text not null",
+      "feature text",
+      "user_id integer",
+      "period text not null",
+      "metric text not null",
+      "amount bigint not null",
+      "alert_percents ARRAY not null default '{80,100}'::smallint[]",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_spend_limit_pkey ON public.ai_spend_limit USING btree (id)",
+      "CREATE INDEX ai_spend_limit_workspace_idx ON public.ai_spend_limit USING btree (workspace_id)"
+    ]
+  },
+  "ai_usage_day": {
+    "columns": [
+      "workspace_id integer not null",
+      "day date not null",
+      "feature text not null",
+      "user_id integer not null",
+      "provider text not null",
+      "model text not null",
+      "calls integer not null default 0",
+      "limited integer not null default 0",
+      "failed integer not null default 0",
+      "unpriced integer not null default 0",
+      "input_tokens bigint not null default 0",
+      "output_tokens bigint not null default 0",
+      "cache_read_tokens bigint not null default 0",
+      "cache_write_tokens bigint not null default 0",
+      "cost_nanos bigint not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_usage_day_pkey ON public.ai_usage_day USING btree (workspace_id, day, feature, user_id, provider, model)"
+    ]
+  },
   "api_token": {
     "columns": [
       "id integer not null default nextval('api_token_id_seq'::regclass)",

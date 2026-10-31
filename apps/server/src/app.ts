@@ -10,6 +10,9 @@ import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/
 import type { RoutingMode } from '@taskmoor/webconfig';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
+import { AiContext } from './ai/context';
+import { AiService, type AiServiceOptions } from './ai/service';
+import { purgeAiContent } from './ai/usage';
 import { sweepStorage } from './attachments/cleanup';
 import { type AttachmentStores, NO_STORAGE } from './attachments/stores';
 import { presentedToken, resolveSession } from './auth';
@@ -31,6 +34,7 @@ import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
 import { registerActivityRoutes } from './routes/activity';
 import { registerAdminRoutes } from './routes/admin';
+import { registerAiUsageRoutes } from './routes/ai-usage';
 import { registerAttachmentRoutes } from './routes/attachments';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
@@ -105,6 +109,11 @@ declare module 'fastify' {
     routeTable: string[];
     /** Real-time co-editing (M1-017), when this process has the realtime role. */
     collaboration: Collaboration | null;
+    /**
+     * AI with spend limits, redaction and the AI audit log (M1-077), and tickets as prompts
+     * see them; null without the API role.
+     */
+    ai: { service: AiService; context: AiContext } | null;
   }
 }
 
@@ -179,6 +188,11 @@ export interface AppDeps {
    * thousands of requests leave them out, and the rate limit tests pass their own clock.
    */
   rateLimits?: { limiter?: RateLimiter; now?: () => number };
+  /**
+   * Where the workspace's AI provider comes from (key storage, M1-075), and test clocks and
+   * retry settings (M1-077). Without a source, AI is not configured.
+   */
+  ai?: AiServiceOptions;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -195,6 +209,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // Every route as "METHOD /path", for fitness tests (every mutation emits one event).
   const routes: string[] = [];
   app.decorate('routeTable', routes);
+  app.decorate('ai', null);
   app.addHook('onRoute', (route) => {
     for (const method of [route.method].flat()) routes.push(`${method} ${route.url}`);
   });
@@ -516,6 +531,16 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerBackupRoutes(app, db);
     registerTokenRoutes(app, db);
+    // AI spend limits, the usage dashboard, the AI audit log and data controls (M1-077).
+    const aiService = new AiService(db, deps.ai ?? {});
+    app.ai = {
+      service: aiService,
+      context: new AiContext(db, authorizer, fieldCatalogs, aiService.settings),
+    };
+    registerAiUsageRoutes(app, db, {
+      ai: aiService,
+      ...(deps.ai?.now ? { now: deps.ai.now } : {}),
+    });
     registerRateLimitRoutes(app, db, {
       policies,
       usage,
@@ -529,9 +554,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // Expired sessions, used links, stale counters and long-dead tokens go at start and every
     // six hours.
     const prune = () =>
-      Promise.all([pruneIdentityData(db), pruneApiTokens(db), pruneOAuth(db)]).catch((error) =>
-        app.log.warn({ error }, 'prune failed'),
-      );
+      Promise.all([
+        pruneIdentityData(db),
+        pruneApiTokens(db),
+        pruneOAuth(db),
+        purgeAiContent(db),
+      ]).catch((error) => app.log.warn({ error }, 'prune failed'));
     let pruneTimer: NodeJS.Timeout | undefined;
     // Files of deleted attachments leave this process's stores every ten minutes too, so a
     // store only the API can see (local disk on its own volume) is cleaned as well (ADR-040).

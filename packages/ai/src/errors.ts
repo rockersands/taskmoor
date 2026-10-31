@@ -1,6 +1,6 @@
 import type { ProviderId } from './config';
 import type { FeatureId } from './features';
-import type { Capability, ProviderErrorKind } from './types';
+import type { Capability, ProviderErrorKind, Usage } from './types';
 
 export class AiError extends Error {
   override name = 'AiError';
@@ -27,6 +27,8 @@ export class AiUnsupportedError extends AiError {
 /** The answer could not be used: not JSON, not matching the schema, or cut off. */
 export class AiOutputError extends AiError {
   override name = 'AiOutputError';
+  /** Tokens the unusable answers were billed for, so the call is still booked (M1-077). */
+  usage: Usage | undefined;
 }
 
 /** A request was built that breaks the request rules of ADR-028; nothing was sent. */
@@ -105,5 +107,30 @@ export class AiProviderError extends AiError {
 
   get outage(): boolean {
     return OUTAGE.has(this.kind);
+  }
+}
+
+/** Which spend limit refused a call (M1-077; OPS-020), as the feature shows it. */
+export interface SpendLimitReached {
+  limitId: number | string;
+  scope: 'workspace' | 'feature' | 'user';
+  feature: string | null;
+  userId: number | null;
+  period: 'day' | 'week' | 'month';
+  metric: 'tokens' | 'cost';
+  /** Tokens, or cost in billionths of a US dollar. */
+  amount: number;
+  used: number;
+  /** When the period ends and calls are admitted again. */
+  resetsAt: string;
+}
+
+/** A spend limit is reached: the call was refused before anything was sent (OPS-020 (1)). */
+export class AiSpendLimitError extends AiError {
+  override name = 'AiSpendLimitError';
+  constructor(readonly limit: SpendLimitReached) {
+    super(
+      `The AI ${limit.period} limit (${limit.scope}${limit.feature ? ` ${limit.feature}` : ''}) is reached until ${limit.resetsAt}`,
+    );
   }
 }

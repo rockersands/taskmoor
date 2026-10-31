@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { FakeAdapter } from '@taskmoor/ai/testing';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword, totpCode, totpStep } from '@taskmoor/iam';
 import { LocalStore } from '@taskmoor/storage';
@@ -88,6 +89,8 @@ const JOB_EVENTS: readonly EventType[] = [
 ];
 /** The attachment worker's own event (M1-016): checked by its own test below. */
 const SCAN_JOB_EVENTS: readonly EventType[] = ['attachment.quarantined'];
+/** A spend limit's alert (M1-077), raised by the AI meter after a call: checked below. */
+const AI_METER_EVENTS: readonly EventType[] = ['ai_limit.threshold_reached'];
 /** The end of an import (M1-086), emitted by its job: checked by its own test below. */
 const IMPORT_JOB_EVENTS: readonly EventType[] = ['import_run.finished'];
 /** A copy's links and files (M1-124), emitted by the clone's job: checked below. */
@@ -183,6 +186,17 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       roles: ['api'],
       attachments,
       allowedOrigins: [FRONTEND],
+      // A fake provider for the AI meter's own event (M1-077); nothing calls a network.
+      ai: {
+        source: async () => ({
+          adapter: new FakeAdapter([
+            {
+              text: 'ok',
+              usage: { inputTokens: 900, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+            },
+          ]),
+        }),
+      },
     });
   });
   afterAll(async () => {
@@ -840,6 +854,82 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: '/api/v1/audit/syslog',
           payload: { enabled: false, host: '127.0.0.1', port: 6514, transport: 'tls' },
         }),
+    },
+    // AI spend limits, prices and data controls (M1-077).
+    {
+      route: 'POST /api/v1/admin/ai/limits',
+      expect: 'ai_limit.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/admin/ai/limits',
+          payload: {
+            scope: 'feature',
+            feature: 'summarize',
+            period: 'day',
+            metric: 'cost',
+            amount: 2.5,
+          },
+        });
+        state.aiLimit = res.json().limit.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/admin/ai/limits/:id',
+      expect: 'ai_limit.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/admin/ai/limits/${state.aiLimit}`,
+          payload: { amount: 5, alertPercents: [50, 100] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/admin/ai/limits/:id',
+      expect: 'ai_limit.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/admin/ai/limits/${state.aiLimit}` }),
+    },
+    {
+      route: 'PUT /api/v1/admin/ai/prices',
+      expect: 'ai_price.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/ai/prices',
+          payload: {
+            provider: 'vertex',
+            model: 'claude-sonnet-5-5',
+            input: 2.2,
+            output: 11,
+            cacheRead: 0.22,
+            cacheWrite: 2.75,
+          },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/admin/ai/prices',
+      expect: 'ai_price.reset',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: '/api/v1/admin/ai/prices?provider=vertex&model=claude-sonnet-5-5',
+        }),
+    },
+    {
+      route: 'PUT /api/v1/admin/ai/policy',
+      expect: 'ai_policy.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/ai/policy',
+          payload: { contentDays: 3, terms: ['Heron'], patterns: ['card-number', 'email'] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/ai/notice',
+      expect: 'ai_notice.acknowledged',
+      run: () => admin({ method: 'POST', url: '/api/v1/ai/notice' }),
     },
     {
       route: 'PUT /api/v1/admin/rate-limits',
@@ -3509,6 +3599,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         !SCAN_JOB_EVENTS.includes(t) &&
         !IMPORT_JOB_EVENTS.includes(t) &&
         !CLONE_JOB_EVENTS.includes(t) &&
+        !AI_METER_EVENTS.includes(t) &&
         !EXPORT_EVENTS.includes(t),
     );
     expect(missing, 'event types no route produces').toEqual([]);
@@ -3651,6 +3742,38 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     expect(event?.subject_type).toBe(spec.subject);
     expect(() => spec.payload.parse(event?.payload)).not.toThrow();
     expect(event?.actor_id).not.toBeNull();
+  });
+
+  it('[OPS-020] the AI meter raises one valid event per alert threshold, with no actor', async () => {
+    const res = await admin({
+      method: 'POST',
+      url: '/api/v1/admin/ai/limits',
+      payload: { scope: 'workspace', period: 'month', metric: 'tokens', amount: 1_000 },
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    const before = await database.db
+      .selectFrom('domain_event')
+      .select((eb) => eb.fn.max('id').as('max'))
+      .executeTakeFirstOrThrow();
+    const gateway = await app.ai?.service.gateway(1);
+    await gateway?.generate({
+      feature: 'summarize',
+      system: 'Summarise.',
+      messages: [{ role: 'user', content: 'x' }],
+      tag: { userId: Number(state.adminId) },
+    });
+    const events = await database.db
+      .selectFrom('domain_event')
+      .select(['type', 'payload', 'subject_type', 'actor_id'])
+      .where('id', '>', String(before.max ?? 0))
+      .execute();
+    // 900 of 1,000 tokens: the 80% threshold.
+    expect(events.map((e) => e.type)).toEqual(AI_METER_EVENTS);
+    const [event] = events;
+    const spec = EVENT_TYPES['ai_limit.threshold_reached'];
+    expect(event?.subject_type).toBe(spec.subject);
+    expect(() => spec.payload.parse(event?.payload)).not.toThrow();
+    expect(event?.actor_id).toBeNull();
   });
 
   it('[IMP-009] an import emits one valid event when it ends, with no actor', async () => {
