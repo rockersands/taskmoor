@@ -52,9 +52,10 @@ Sizes scale with `--issues`:
 - 1 board per software project (up to 200), with 0 to 6 sprints each.
 
 Per issue there are about 1.2 comments, 2.8 change groups (3.3 change items), 0.47 labels,
-0.37 time entries and 0.2 links. Attachments come at `--attachment-rate` (5% of issues have 1
-to 3 files by default), and `--forbidden-rate` sets the share of text values that carry a
-forbidden character (0.2% by default).
+0.37 time entries, 0.2 links, 1.6 watchers, 0.3 votes and 0.09 web links; about 1 issue in 300
+was moved from another project (M1-091). Attachments come at `--attachment-rate` (5% of issues
+have 1 to 3 files by default), and `--forbidden-rate` sets the share of text values that carry
+a forbidden character (0.2% by default).
 
 The `cases` counted in the manifest:
 
@@ -62,18 +63,19 @@ The `cases` counted in the manifest:
   referenced, keyed by user name or by a generated key.
 - **Issues:** skipped issue numbers, sub-tasks, unassigned issues, resolved issues.
 - **Comments:** restricted to a group or to a role, edited.
+- **Time entries:** restricted to a group or to a role (M1-091).
 - **History:** anonymous changes, changes of a custom field.
+- **Issues' people and keys:** watches, votes, moved issues, web links (M1-091).
 - **Sprints:** closed, active, future.
 - **Text:** values written as child elements, and CDATA sections split at `]]>`.
 
 Rows are written in name order, with the id sequences last. So comments and history come before
 the issues they belong to, and a reader must not resolve references in a single pass.
 
-Not generated yet; the M1-089 to M1-094 mappings add them as they need them: custom fields and
-their values, versions, components, followers and votes as rows, key history of moved issues,
-renamed projects, workflows and their per-issue state, rank, the board columns and the issues'
-sprints, permission and notification schemes, filters other than the boards', dashboards, avatars
-and logos, and thumbnails.
+Not generated yet; the M1-090 to M1-094 mappings add them as they need them: versions,
+components, renamed projects, workflows and their per-issue state, rank, the board columns and
+the issues' sprints, filters other than the boards', dashboards, avatars and logos, and
+thumbnails.
 
 ### Measured
 
@@ -282,6 +284,39 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   `updated`, `startdate` and `timeworked` (seconds).
 - Labels are `Label` rows with `id`, `issue`, `fieldid` and `label`. [S24]
 - **Verify:** a label of the system labels field has no `fieldid`.
+- **Verify:** a time entry visible to one group or one role carries `grouplevel` (the group's
+  name) or `rolelevel` (the role's id), as comments carry `level` and `rolelevel`.
+- **Our choice:** about 3% of time entries are restricted to a group and 3% to a role, from a
+  stream of their own (M1-091).
+
+### Text: wiki markup (M1-091)
+
+- **Verify:** descriptions, environments, comment bodies and time entry text are written in the
+  server's wiki markup, which Taskmoor reads with `fromWiki` (ADR-091).
+- **Our choice:** a quarter of descriptions, a seventh of comments and a tenth of time entries
+  end in a piece of markup: a heading, a bulleted or numbered list, emphasis, monospace, a link,
+  a quote, a code block, a table, or underline, superscript, subscript and citation marks.
+
+### Watchers, votes, moves and web links (M1-091)
+
+- **Verify:** watchers and voters are `UserAssociation` rows with `sourceName` (a user key),
+  `sinkNodeId` (the issue's id), `sinkNodeEntity` `Issue`, `associationType` `WatchIssue` or
+  `VoteIssue`, and `created`. These rows have no `id`. An issue's `watches` and `votes` count
+  its rows.
+- **Our choice:** an issue's reporter watches it unless deleted; other watchers and voters are
+  present people, a voter is never the reporter, each person once.
+- **Verify:** an issue moved to another project keeps its earlier key in a `MovedIssueKey` row
+  (`id`, `oldIssueKey`, `issueId`). The move is a change group with a `project` item (the
+  project ids as values, their names as text) and a `Key` item (the keys as text). The earlier
+  project's counter stays where it was, so no later issue takes the earlier number.
+- **Our choice:** about 1 issue in 250 that is not a sub-task was moved, from a project where
+  it held a number that project skipped, at a time between its creation and its last update.
+  Its sub-tasks keep only their own keys.
+- **Verify:** links to pages outside are `RemoteIssueLink` rows with `id`, `issueid`,
+  `globalid`, `title`, `summary`, `url`, `iconurl`, `icontitle`, `relationship`,
+  `applicationtype` and `applicationname`. They carry no time or author.
+- **Our choice:** 6% of issues have one or two web links to `docs.example.test`, some with a
+  summary, an icon, a relationship phrase and an application's global id.
 
 ### Boards' filters
 
@@ -405,8 +440,7 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 ### Seen, not generated yet
 
 - `Version`, `Component`, `NodeAssociation` rows for an issue's affected and fix versions and
-  its components, `UserAssociation` (votes and watches), `OSPropertyEntry`, `EntityProperty`
-  and `RemoteIssueLink` are elements too. [S13] [S24] [S52]
+  its components, `OSPropertyEntry` and `EntityProperty` are elements too. [S13] [S24] [S52]
 
 ## 4. activeobjects.xml
 
@@ -499,6 +533,16 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 - **Our choice:** a project without a field configuration scheme gets a field rule set of its
   own made from the default field configuration. A screen scheme's default screen stands in for
   each operation it does not name.
+- **Our choice:** the stage keeps no issue content in memory (M1-091, ADR-092). While it reads,
+  the rows of tickets (issues, custom values, labels, watchers, voters) go to bucket files by
+  issue id range, change groups and items to bucket files by change group id range, and
+  comments, time entries, links, web links and attachments to one file each. After the file
+  each bucket is joined on its own, so memory holds one bucket, the sub-task links, the earlier
+  keys of moved issues and an index of the attachment files (their place in the ZIP, size, hash
+  and type, read once). Tickets are written in issue id order, parents first.
+- **Our choice:** attachment files are found by the attachment id that names them, under any
+  folders (`<project>/<bucket>/<issue key>/<id>` or the older layout without the bucket); the
+  import reads each from its place in the ZIP. A file no attachment row names is reported.
 
 ## Sources
 

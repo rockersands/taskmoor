@@ -364,6 +364,7 @@ export const ENTITIES = {
     },
   },
   Label: { attrs: { id, issue: ref('Issue'), fieldid: optRef('CustomField'), label: text } },
+  MovedIssueKey: { attrs: { id, oldIssueKey: text, issueId: ref('Issue') } },
   Membership: {
     attrs: {
       id,
@@ -403,6 +404,21 @@ export const ENTITIES = {
       roletypeparameter: text,
     },
   },
+  RemoteIssueLink: {
+    attrs: {
+      id,
+      issueid: ref('Issue'),
+      globalid: optText,
+      title: text,
+      summary: longText,
+      url: { type: 'text', long: true },
+      iconurl: optText,
+      icontitle: optText,
+      relationship: optText,
+      applicationtype: optText,
+      applicationname: optText,
+    },
+  },
   Resolution: { attrs: { id, sequence: int, name: text, description: optText } },
   SearchRequest: { attrs: { id, name: text, author: optUser, request: longText } },
   SequenceValueItem: { attrs: { seqName: text, seqId: int } },
@@ -413,6 +429,15 @@ export const ENTITIES = {
       name: text,
       description: optText,
       statuscategory: { type: 'enum', values: ['2', '3', '4'] },
+    },
+  },
+  UserAssociation: {
+    attrs: {
+      sourceName: { type: 'user' },
+      sinkNodeId: ref('Issue'),
+      sinkNodeEntity: { type: 'enum', values: ['Issue'] },
+      associationType: { type: 'enum', values: ['WatchIssue', 'VoteIssue'] },
+      created: optTime,
     },
   },
   User: {
@@ -446,6 +471,8 @@ export const ENTITIES = {
       updated: time,
       startdate: time,
       timeworked: int,
+      grouplevel: { type: 'group', optional: true },
+      rolelevel: optRef('ProjectRole'),
     },
   },
 } as const satisfies Record<string, EntitySpec>;
@@ -503,6 +530,13 @@ export const CASCADE_CHILD_KEY = '1';
 
 /** `FieldScreenSchemeItem.operation`: absent for the default screen (Verify). */
 export const SCREEN_OPERATIONS = { create: 0, edit: 1, view: 2 } as const;
+
+/** `UserAssociation` types for watching and voting for an issue (Verify). */
+export const WATCH_ISSUE = 'WatchIssue';
+export const VOTE_ISSUE = 'VoteIssue';
+
+/** The change item fields a move between projects writes (Verify). */
+export const MOVE_FIELDS = { project: 'project', key: 'Key' } as const;
 
 /** `NodeAssociation` rows that tie a project to one of its schemes (Verify). */
 export const PROJECT_SCHEME = 'ProjectScheme';

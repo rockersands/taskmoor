@@ -5,13 +5,14 @@ import { queueProcessing } from '../attachments/jobs';
 import { attachmentChange } from '../attachments/records';
 import { thumbnailable } from '../attachments/sniff';
 import {
+  deferChanges,
   existingTarget,
+  flushChanges,
   type Loader,
   optional,
   PlanFailure,
   real,
   required,
-  writeChanges,
 } from './load';
 import type { AttachmentCommand } from './model';
 
@@ -89,11 +90,14 @@ export const attachments: Loader<AttachmentCommand> = {
     if (scanning || thumbnail) await queueProcessing(ctx.trx, ctx.workspaceId, row.id);
     // A verbatim source's history has the entry for the new file.
     if (!ctx.verbatim) {
-      await writeChanges(ctx.trx, ctx.workspaceId, author, cmd.createdAt, [
+      deferChanges(ctx, author, cmd.createdAt, [
         attachmentChange(ticket, { id: row.id, name: cmd.name }, true),
       ]);
     }
     return row.id;
+  },
+  async finish(ctx) {
+    await flushChanges(ctx);
   },
   async read(db, ws, ids) {
     const rows = await db

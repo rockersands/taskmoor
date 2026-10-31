@@ -405,25 +405,46 @@ export async function customChanges(
   before: FieldValues,
   after: FieldValues,
 ): Promise<FieldChange[]> {
-  const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])]
-    .map(Number)
-    .filter((id) => catalog.fields.has(id) && catalog.fields.get(id)?.type !== 'formula')
-    .sort((a, b) => a - b);
+  return (await customChangesOf(db, workspaceId, catalog, [{ ticketId, before, after }]))[0] ?? [];
+}
+
+/**
+ * `customChanges` for several tickets at once, with one lookup of the names their references
+ * had (an import's batch, M1-091); the changes of each ticket, in the order given.
+ */
+export async function customChangesOf(
+  db: Db,
+  workspaceId: number,
+  catalog: Catalog,
+  tickets: readonly { ticketId: number; before: FieldValues; after: FieldValues }[],
+): Promise<FieldChange[][]> {
   const text = (field: FieldDef, value: JsonValue | undefined) =>
     value === undefined ? null : serialise(field, value as Stored);
-  const changed = keys.filter((id) => {
-    const field = catalog.fields.get(id) as FieldDef;
-    return text(field, before[id]) !== text(field, after[id]);
-  });
-  if (changed.length === 0) return [];
+  const changedOf = tickets.map(({ before, after }) =>
+    [...new Set([...Object.keys(before), ...Object.keys(after)])]
+      .map(Number)
+      .filter((id) => catalog.fields.has(id) && catalog.fields.get(id)?.type !== 'formula')
+      .sort((a, b) => a - b)
+      .filter((id) => {
+        const field = catalog.fields.get(id) as FieldDef;
+        return text(field, before[id]) !== text(field, after[id]);
+      }),
+  );
+  if (changedOf.every((c) => c.length === 0)) return tickets.map(() => []);
   // Names only of what changed: a ticket may hold hundreds of other values.
-  const pick = (fields: FieldValues) =>
+  const pick = (fields: FieldValues, changed: number[]) =>
     Object.fromEntries(changed.filter((id) => id in fields).map((id) => [id, fields[id]]));
   const resolver = await loadResolver(
     db,
     workspaceId,
     catalog,
-    wantedOf(catalog, [pick(before), pick(after)] as FieldValues[]),
+    wantedOf(
+      catalog,
+      tickets.flatMap((t, k) => [
+        pick(t.before, changedOf[k] as number[]),
+        pick(t.after, changedOf[k] as number[]),
+      ]) as FieldValues[],
+    ),
   );
   const display = (field: FieldDef, value: JsonValue | undefined) => {
     const ref = REFERENCE_OF[field.type];
@@ -433,17 +454,19 @@ export async function customChanges(
     );
     return names.join(field.type === 'cascading-select' ? ' / ' : ', ');
   };
-  return changed.map((id) => {
-    const field = catalog.fields.get(id) as FieldDef;
-    return {
-      ticketId,
-      field: historyName(id),
-      from: text(field, before[id]),
-      to: text(field, after[id]),
-      fromDisplay: display(field, before[id]),
-      toDisplay: display(field, after[id]),
-    };
-  });
+  return tickets.map(({ ticketId, before, after }, k) =>
+    (changedOf[k] as number[]).map((id) => {
+      const field = catalog.fields.get(id) as FieldDef;
+      return {
+        ticketId,
+        field: historyName(id),
+        from: text(field, before[id]),
+        to: text(field, after[id]),
+        fromDisplay: display(field, before[id]),
+        toDisplay: display(field, after[id]),
+      };
+    }),
+  );
 }
 
 /**

@@ -263,7 +263,7 @@
     {
       "count": 3541,
       "kind": "Action",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 5,
@@ -276,29 +276,34 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 8497,
+      "count": 8511,
       "kind": "ChangeGroup",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
-      "count": 9726,
+      "count": 9754,
       "kind": "ChangeItem",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 281,
       "kind": "data/attachments",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 281,
       "kind": "FileAttachment",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 226,
       "kind": "IssueLink",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
+    },
+    {
+      "count": 235,
+      "kind": "RemoteIssueLink",
+      "reason": "tickets_only"
     },
     {
       "count": 5,
@@ -306,14 +311,14 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 49,
+      "count": 51,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
     {
       "count": 1170,
       "kind": "Worklog",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     }
   ],
   "warnings": [

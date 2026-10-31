@@ -135,6 +135,13 @@ class EntitiesState {
   readonly linkTypeUse = new Map<number, number>();
   readonly linkTypeStyles = new Map<number, string>();
   readonly attachments: { id: number; issue: number; size: number }[] = [];
+  /** Each issue's vote and watch counts, and the rows that name its voters and watchers. */
+  readonly issueVotes = new IntById();
+  readonly issueWatches = new IntById();
+  readonly votesSeen = new IntById();
+  readonly watchesSeen = new IntById();
+  /** Earlier keys of moved issues (M1-091). */
+  readonly moved: { issue: number; key: string }[] = [];
   readonly sequences: { name: string; next: number }[] = [];
   /** Scheme rows a project names through `NodeAssociation`, by element (M1-089). */
   readonly associations: { entity: string; id: number; project: number }[] = [];
@@ -478,8 +485,28 @@ function record(state: EntitiesState, name: string, v: Record<string, string>): 
       if (v.resolution !== undefined) state.note('resolvedIssues');
       if (v.assignee === undefined) state.note('unassignedIssues');
       if (v.security !== undefined) state.note('issuesWithSecurity');
+      state.issueVotes.set(id, Number(v.votes ?? 0));
+      state.issueWatches.set(id, Number(v.watches ?? 0));
       return;
     }
+    case 'UserAssociation': {
+      const issue = Number(v.sinkNodeId);
+      const seen = v.associationType === 'VoteIssue' ? state.votesSeen : state.watchesSeen;
+      seen.set(issue, (seen.get(issue) ?? 0) + 1);
+      state.note(v.associationType === 'VoteIssue' ? 'votes' : 'watches');
+      return;
+    }
+    case 'RemoteIssueLink':
+      state.note('remoteLinks');
+      return;
+    case 'MovedIssueKey':
+      state.note('movedIssues');
+      state.moved.push({ issue: Number(v.issueId), key: v.oldIssueKey ?? '' });
+      return;
+    case 'Worklog':
+      if (v.grouplevel !== undefined) state.note('worklogsForGroup');
+      if (v.rolelevel !== undefined) state.note('worklogsForRole');
+      return;
     case 'IssueType':
       if (v.style) state.typeStyles.set(id, v.style);
       return;
@@ -752,6 +779,40 @@ function crossCheck(
     if (highest > p.counter)
       problem(`project ${p.key}: issue number ${highest} is above its counter ${p.counter}`);
     skipped += p.counter - numbers.length;
+    perProject.set(project, Array.from(sortedNumbers));
+  }
+  // Votes and watches: each issue's counts equal the rows that name its voters and watchers.
+  let countsOff = 0;
+  for (const id of issues?.values() ?? []) {
+    if (
+      (state.issueVotes.get(id) ?? 0) !== (state.votesSeen.get(id) ?? 0) ||
+      (state.issueWatches.get(id) ?? 0) !== (state.watchesSeen.get(id) ?? 0)
+    ) {
+      if (countsOff++ === 0) problem(`issue ${id}: votes or watches differ from its rows`);
+    }
+  }
+  if (countsOff > 1) problem(`${countsOff} issues' votes or watches differ from their rows`);
+  // Moved issues: an earlier key names a project and a number below its counter that no issue
+  // of that project holds now (M1-091).
+  const byKey = new Map([...state.projects].map(([id, p]) => [p.key, { id, ...p }]));
+  for (const m of state.moved) {
+    const match = /^([A-Z][A-Z0-9_]*)-(\d+)$/.exec(m.key);
+    const p = match ? byKey.get(match[1] as string) : undefined;
+    if (!match || !p) {
+      problem(`MovedIssueKey of issue ${m.issue}: ${m.key.slice(0, 40)} names no project`);
+      continue;
+    }
+    const n = Number(match[2]);
+    const numbers = perProject.get(p.id) ?? [];
+    let lo = 0;
+    let hi = numbers.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if ((numbers[mid] as number) < n) lo = mid + 1;
+      else hi = mid;
+    }
+    if (n > p.counter) problem(`MovedIssueKey ${m.key}: above the project's counter ${p.counter}`);
+    if (numbers[lo] === n) problem(`MovedIssueKey ${m.key}: an issue holds that key now`);
   }
   state.cases.issueNumbersSkipped = skipped;
   let subtasks = 0;

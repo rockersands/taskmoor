@@ -23,6 +23,8 @@ import {
   SCREEN_OPERATIONS,
   STATUS_CATEGORIES,
   timestamp,
+  VOTE_ISSUE,
+  WATCH_ISSUE,
   XSI_NAMESPACE,
 } from './format';
 import {
@@ -354,8 +356,10 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           updated: timestamp(issue.updated),
           resolutiondate: issue.resolved === null ? null : timestamp(issue.resolved),
           duedate: issue.due === null ? null : timestamp(issue.due - (issue.due % 86_400_000)),
-          votes: issue.votes,
-          watches: issue.watches,
+          // The rows that name them are counted (M1-091): the same numbers but for a tiny
+          // instance with fewer people than an issue's watchers.
+          votes: parts.voters(world, issue).length,
+          watches: parts.watchers(world, issue).length,
           timeoriginalestimate: issue.estimate,
           timeestimate: issue.estimate === null ? null : Math.max(0, issue.estimate - spent),
           timespent: spent === 0 ? null : spent,
@@ -469,7 +473,11 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
             updated: timestamp(l.updated),
             startdate: timestamp(l.started),
             timeworked: l.seconds,
+            grouplevel: l.group,
+            rolelevel: l.role,
           });
+          if (l.group) w.note('worklogsForGroup');
+          if (l.role) w.note('worklogsForRole');
         }
       }
       return;
@@ -490,6 +498,61 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
             thumbnailable: 0,
           });
         }
+      }
+      return;
+    }
+    case 'UserAssociation':
+      // Watchers and voters (M1-091); these rows have no id of their own (Verify).
+      for (const issue of walkIssues(world)) {
+        for (const [type, people] of [
+          [WATCH_ISSUE, parts.watchers(world, issue)],
+          [VOTE_ISSUE, parts.voters(world, issue)],
+        ] as const) {
+          for (const { person, at } of people) {
+            w.note(type === WATCH_ISSUE ? 'watches' : 'votes');
+            await w.row(name, {
+              sourceName: w.user(person),
+              sinkNodeId: issue.id,
+              sinkNodeEntity: 'Issue',
+              associationType: type,
+              created: timestamp(at),
+            });
+          }
+        }
+      }
+      return;
+    case 'RemoteIssueLink': {
+      let id = FIRST_ID;
+      for (const issue of walkIssues(world)) {
+        for (const l of parts.remoteLinks(world, issue)) {
+          w.note('remoteLinks');
+          await w.row(name, {
+            id: id++,
+            issueid: issue.id,
+            globalid: l.globalId,
+            title: { text: l.title },
+            summary: l.summary === null ? null : { text: l.summary },
+            url: { text: l.url },
+            iconurl: l.iconUrl,
+            icontitle: l.iconTitle,
+            relationship: l.relationship,
+            applicationtype: l.applicationType,
+            applicationname: l.applicationName,
+          });
+        }
+      }
+      return;
+    }
+    case 'MovedIssueKey': {
+      let id = FIRST_ID;
+      for (const issue of walkIssues(world)) {
+        if (!issue.moved) continue;
+        w.note('movedIssues');
+        await w.row(name, {
+          id: id++,
+          oldIssueKey: `${issue.moved.project.key}-${issue.moved.number}`,
+          issueId: issue.id,
+        });
       }
       return;
     }

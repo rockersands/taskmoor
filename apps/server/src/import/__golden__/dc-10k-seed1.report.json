@@ -1419,7 +1419,7 @@
     {
       "count": 12089,
       "kind": "Action",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
       "count": 4,
@@ -1432,14 +1432,14 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 28367,
+      "count": 28401,
       "kind": "ChangeGroup",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
-      "count": 32448,
+      "count": 32516,
       "kind": "ChangeItem",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
       "count": 52204,
@@ -1449,12 +1449,12 @@
     {
       "count": 1042,
       "kind": "data/attachments",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
       "count": 1042,
       "kind": "FileAttachment",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
       "count": 10000,
@@ -1472,19 +1472,34 @@
       "reason": "configuration_only"
     },
     {
+      "count": 34,
+      "kind": "MovedIssueKey",
+      "reason": "configuration_only"
+    },
+    {
+      "count": 872,
+      "kind": "RemoteIssueLink",
+      "reason": "configuration_only"
+    },
+    {
       "count": 4,
       "kind": "SearchRequest",
       "reason": "not_imported_yet"
     },
     {
-      "count": 49,
+      "count": 51,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
     {
+      "count": 19012,
+      "kind": "UserAssociation",
+      "reason": "configuration_only"
+    },
+    {
       "count": 3750,
       "kind": "Worklog",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     }
   ],
   "warnings": [
@@ -1550,7 +1565,7 @@
     },
     {
       "code": "removed_character",
-      "count": 14,
+      "count": 13,
       "detail": "char_ref",
       "kind": "source"
     },
@@ -1562,7 +1577,7 @@
     },
     {
       "code": "removed_character",
-      "count": 13,
+      "count": 14,
       "detail": "noncharacter",
       "kind": "source"
     },

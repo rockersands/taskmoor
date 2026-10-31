@@ -1,7 +1,7 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
 accessed: 2026-10-31
 attestation: own-words
 jira-names: import sources and field mapping
@@ -18,10 +18,10 @@ everyone who can search.
 A Jira Data Center or Server backup ZIP imports its people, groups, roles, projects (as tracks),
 issue types, statuses, priorities, resolutions, custom fields with their contexts and options,
 field configurations and screens, permission, issue security and notification schemes, global
-permissions, and its issues as tickets with their own fields, custom values and security levels;
-see [Data Center backups](#data-center-backups). Comments, history, time, links between
-issues, attachments, workflows, boards and filters are not imported yet: the report counts each
-of them under "Not imported". Taskmoor does not yet import a Jira Cloud site. Any CSV file can be imported with
+permissions, and its issues as tickets with their own fields, custom values, security levels,
+watchers, voters and earlier keys, with their comments, change history, time entries, links,
+web links and attachments; see [Data Center backups](#data-center-backups). Workflows, boards
+and filters are not imported yet: the report counts each of them under "Not imported". Taskmoor does not yet import a Jira Cloud site. Any CSV file can be imported with
 a mapping of its columns, including one exported from another tracker; see
 [CSV import](#csv-import).
 
@@ -125,7 +125,9 @@ Content-Type: application/json
 
 Add `"scope": "configuration"` to import everything but the issues first. The report then
 counts the issues and their values under "Not imported" with the reason `configuration_only`,
-and a later run without it adds them.
+and a later run without it adds them. `"scope": "tickets"` imports the tickets too, but not
+their comments, history, time entries, links, web links and attachments, which are counted with
+the reason `tickets_only`.
 
 `system` names the Jira instance, by default `dc`. Importing a later backup with the same
 `system` updates what the first import made instead of adding copies. Give each instance its own
@@ -135,7 +137,9 @@ The request only checks that the file is a ZIP with `entities.xml` at its root. 
 reads the whole backup once, as a stream, and keeps what it read in a folder next to the ZIP
 (`jira-backup.zip.staged`). Later runs of the same file, such as the real run after the dry run,
 use that folder instead of reading the backup again. Delete it when you no longer need it. The
-imports folder needs room for it.
+imports folder needs room for it: about the size of the backup's `entities.xml` while it is
+written, and somewhat less afterwards. Attachment files stay in the ZIP and are read from it
+during the import, so keep the ZIP until the import is done.
 
 What the import makes of the backup:
 
@@ -166,6 +170,14 @@ What the import makes of the backup:
 | Notification schemes | Notification policies, used by the projects' tracks, with each event's recipients | By name |
 | Global permissions | Global grants: system administrators become site administrators, administrators configuration administrators; the user picker, shared filters, group subscriptions and bulk change keep their meaning | Linked when the same grant is there |
 | Issues | Tickets with their key, type, status, priority, close reason, assignee, reporter (as requester), creator, summary, description, due date, estimates, labels, parent, custom values and security level | By track and number on a later run |
+| Watchers and voters | Followers and voters of the ticket | |
+| Earlier keys of issues moved between projects | Earlier keys of the ticket: opening or searching for the old key finds it | |
+| Comments, with group or role restrictions and edits | Comments by the same author at the same time, restricted to the same group or role, marked edited when they were | |
+| Change history | History entries with their original author and time: status, resolution (as close reason), priority, type, assignee, reporter, project (as track), key, summary, description, environment, due date, labels, estimates, time spent and custom fields. The ticket's starting values are worked out from the first change of each field | |
+| Work logs, with group or role restrictions | Time entries by the same person, started at the same time, with the same duration and text | |
+| Links between issues, of any link type | Ticket links of the link type of the same name, made when you have none | By link type name |
+| Remote links | Web links with the address, title, summary, icon, relationship and global id | |
+| Attachments in the ZIP's `data/attachments` folder | Attachments with their name, type, size, author and time; the file goes to the attachment store, and its hash is checked | |
 
 The report's mapping names each of these objects with its outcome. The warnings to look for:
 
@@ -192,21 +204,42 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `grantee_not_found`, `grantee_not_mapped`, `grantee_not_imported` | A grant or level member whose group, person, role or field is missing, or whose kind Taskmoor does not have. It is left out, so nobody sees more than before |
 | `site_admin_browses_every_track` | System administrators became site administrators, who see every track (visibility levels still apply to them) |
 | `event_not_mapped`, `custom_event_not_imported`, `recipient_not_mapped` | A notification for an event (such as a comment edited) or to a recipient (such as an email address) Taskmoor has no counterpart for |
+| `former_key_not_kept`, `former_key_taken` | A moved issue's earlier key names a project the backup does not have, or another ticket holds it now |
+| `history_field_not_mapped` | A change of a field Taskmoor's history does not follow (such as components or sprints): that part of the entry is left out. An entry with nothing left is skipped with the reason `history_nothing_mapped` |
+| `visibility_group_and_role` | A comment or time entry restricted to both a group and a role: the role is kept |
+| `web_link_application_not_kept`, `web_link_text_cut`, `web_link_icon_dropped` | A web link's application name, an over-long text or an icon that is not a web address was left out |
+| `attachment_size_differs`, `attachment_folder_key_differs` | An attachment's file has another size than its row says (the file's is kept), or sits in another issue's folder |
+| `link_type_created` | A link type you did not have was made for the backup's links |
+
+Records that fail rather than arrive changed, each with its reason in the report: a comment or
+time entry restricted to a group or role that did not import (`visibility_group_missing`,
+`visibility_role_missing`), so nobody sees it who could not before; an attachment whose file
+is not in the ZIP (`attachment_file_missing`) or whose bytes do not match; a web link whose
+address is not an http or https address (`web_link_url_invalid`); a link of a type the backup
+does not have (`link_type_missing`).
 
 A ticket whose security level could not be imported fails rather than arriving without one,
 because then everyone who browses its track would see it. People who were inactive are
 deactivated and see nothing until you reactivate them.
 
-Descriptions and paragraph values come in as plain text for now: the backup's wiki markup is
-not converted yet.
+Descriptions, environments and comments are wiki markup in the backup and become formatted
+text: headings, lists, emphasis, links, quotes, code, tables and the rest. Time entries hold
+plain text, so their markup is reduced to its words. Paragraph custom values still come in as
+plain text. Mentions of people (`[~key]`) keep the backup's user key, not the person.
+
+Links between issues and web links carry no time in the backup: a link takes the later of its
+two tickets' creation time, and a web link the time of the import. Followers and voters do not
+keep when they started following or voted.
 
 Under "Not imported", the report counts each part of the backup the importer does not handle
-yet: comments, history, time entries, links between issues (other than a sub-task's to its
-parent), attachments, filters, boards and sprints, by their names in the backup, with the reason
-`not_imported_yet`. The id counters of
-the backup are listed as `not_needed`, because Taskmoor gives its own ids.
+yet: workflows, filters, boards and sprints, other kinds of associations, and attachment files
+no attachment row names (`no_attachment_row`), by their names in the backup, with the reason
+`not_imported_yet`. The id counters of the backup are listed as `not_needed`, because Taskmoor
+gives its own ids.
 
-Times in a backup carry no time zone. Nothing imported so far depends on them.
+Times in a backup carry no time zone. They are read as UTC, so history, comments and time
+entries from a server in another zone are shifted by its offset; a setting for the source's
+zone is still to come.
 
 ## CSV import
 

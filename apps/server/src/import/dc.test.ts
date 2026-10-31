@@ -205,7 +205,8 @@ describe('Data Center backup import (M1-088)', () => {
     }
     // The stage stays beside the backup for the real run.
     expect((await stat(join(importDir, `dc-10k.zip${STAGED}`, 'stage.json'))).isFile()).toBe(true);
-  });
+    // Staging spills every issue's content to files and reads it back (M1-091): give it time.
+  }, 120_000);
 
   it('[IMP-004] [IMP-001] imports the configuration with every count equal to the golden manifest', async () => {
     const run = await start(SOURCE);
@@ -319,7 +320,8 @@ describe('Data Center backup import (M1-088)', () => {
     }));
     const files = { kind: 'data/attachments', count: manifest.attachments.files };
     expect(r.unsupported).toEqual(
-      [...leftOut, ...tables, { ...files, reason: 'not_imported_yet' }].sort((a, b) =>
+      // Attachment files are content too (M1-091).
+      [...leftOut, ...tables, { ...files, reason: 'configuration_only' }].sort((a, b) =>
         a.kind.localeCompare(b.kind),
       ),
     );

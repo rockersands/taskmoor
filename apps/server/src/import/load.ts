@@ -7,13 +7,18 @@ import type { Catalog } from '../fields/catalog';
 import { refreshFormulas } from '../fields/formulas';
 import { syncFieldValues } from '../fields/storage';
 import { REFERENCE_OF, type Reference } from '../fields/types';
-import { checkCustomValues, customChanges, rememberFieldLabels } from '../fields/values';
+import {
+  checkCustomValues,
+  customChanges,
+  customChangesOf,
+  rememberFieldLabels,
+} from '../fields/values';
 import { defaultTypeSetId } from '../tickets/configuration';
 import { rememberLabels } from '../tickets/fields';
 import { type FieldChange, linkChange, recordChanges, ticketChanges } from '../tickets/history';
 import { canonicalJson, ticketKey } from '../tickets/model';
-import { sequenceValueOf } from '../tickets/rank';
-import { bottomRank, loadTicket, type TicketRow, ticketQuery } from '../tickets/store';
+import { sequenceKey, sequenceValueOf } from '../tickets/rank';
+import { loadTicket, loadTickets, type TicketRow, ticketQuery } from '../tickets/store';
 import { checkKey } from '../tracks/model';
 import {
   type Command,
@@ -267,18 +272,95 @@ export async function writeChanges(
   at: string,
   changes: readonly FieldChange[],
 ): Promise<string | null> {
+  return (await writeChangeSets(trx, workspaceId, [{ actorId, at, changes }]))[0] ?? null;
+}
+
+/**
+ * Writes several change sets in one statement (M1-091: an import writes a great many), each
+ * with its actor and time, and returns their change set ids in order (null for one without
+ * changes). The time is text, not a Date: the source's microseconds are kept.
+ */
+export async function writeChangeSets(
+  trx: Transaction<Database>,
+  workspaceId: number,
+  sets: readonly { actorId: number | null; at: string; changes: readonly FieldChange[] }[],
+): Promise<(string | null)[]> {
+  const used = sets.flatMap((set, k) => (set.changes.length > 0 ? [k] : []));
+  if (used.length === 0) return sets.map(() => null);
+  const rows = used.flatMap((k) =>
+    (sets[k] as (typeof sets)[number]).changes.map((c) => ({ k, c })),
+  );
+  const { rows: made } = await sql<{ k: number; change_set: string }>`
+    WITH s AS (
+      SELECT u.k, nextval('ticket_change_set_seq') AS n
+        FROM unnest(${used}::int[]) WITH ORDINALITY AS u (k, o)
+       ORDER BY u.o),
+    added AS (
+      INSERT INTO ticket_change (workspace_id, ticket_id, change_set, at, transition_id, actor_id,
+                                 field, from_value, to_value, from_display, to_display)
+      SELECT ${workspaceId}, c.ticket_id, s.n, c.at::timestamptz, c.transition_id, c.actor_id,
+             c.field, c.from_value, c.to_value, c.from_display, c.to_display
+        FROM unnest(${rows.map((r) => r.k)}::int[], ${rows.map((r) => r.c.ticketId)}::int[],
+                    ${rows.map((r) => (sets[r.k] as (typeof sets)[number]).at)}::text[],
+                    ${rows.map((r) => r.c.transitionId ?? null)}::int[],
+                    ${rows.map((r) => (sets[r.k] as (typeof sets)[number]).actorId)}::int[],
+                    ${rows.map((r) => r.c.field)}::text[],
+                    ${rows.map((r) => r.c.from)}::text[], ${rows.map((r) => r.c.to)}::text[],
+                    ${rows.map((r) => r.c.fromDisplay)}::text[],
+                    ${rows.map((r) => r.c.toDisplay)}::text[])
+             WITH ORDINALITY AS c (k, ticket_id, at, transition_id, actor_id, field, from_value,
+                                   to_value, from_display, to_display, o)
+        JOIN s ON s.k = c.k
+       ORDER BY c.o
+      RETURNING change_set)
+    SELECT s.k, s.n::text AS change_set FROM s`.execute(trx);
+  const byIndex = new Map(made.map((m) => [Number(m.k), m.change_set]));
+  return sets.map((_, k) => byIndex.get(k) ?? null);
+}
+
+/** Sequence values a batch took in blocks, by sequence (M1-091). */
+const pools = new WeakMap<LoadContext, Map<string, string[]>>();
+const POOL = 250;
+
+/**
+ * The next value of a sequence, taken from a block the batch reads at once instead of one
+ * round trip a value. Values a batch does not use are skipped, as a rolled-back insert skips
+ * them.
+ */
+async function nextFrom(
+  ctx: LoadContext,
+  sequence: 'ticket_change_set_seq' | 'ticket_rank_seq',
+): Promise<string> {
+  const byName = pools.get(ctx) ?? new Map<string, string[]>();
+  pools.set(ctx, byName);
+  let list = byName.get(sequence) ?? [];
+  if (list.length === 0) {
+    const { rows } = await sql<{ n: string }>`
+      SELECT nextval(${sequence}::regclass)::text AS n FROM generate_series(1, ${POOL}) AS g (i)
+       ORDER BY g.i`.execute(ctx.trx);
+    list = rows.map((r) => r.n);
+  }
+  const next = list.shift() as string;
+  byName.set(sequence, list);
+  return next;
+}
+
+/** `writeChanges` with a change set from the batch's block: one statement a record. */
+async function writeChangesPooled(
+  ctx: LoadContext,
+  actorId: number | null,
+  at: string,
+  changes: readonly FieldChange[],
+): Promise<string | null> {
   if (changes.length === 0) return null;
-  const changeSet = (
-    await sql<{ n: string }>`SELECT nextval('ticket_change_set_seq') AS n`.execute(trx)
-  ).rows[0]?.n as string;
-  await trx
+  const changeSet = await nextFrom(ctx, 'ticket_change_set_seq');
+  await ctx.trx
     .insertInto('ticket_change')
     .values(
       changes.map((c) => ({
-        workspace_id: workspaceId,
+        workspace_id: ctx.workspaceId,
         ticket_id: c.ticketId,
         change_set: changeSet,
-        // Text, not a Date: the source's microseconds are kept.
         at,
         transition_id: c.transitionId ?? null,
         actor_id: actorId,
@@ -291,6 +373,34 @@ export async function writeChanges(
     )
     .execute();
   return changeSet;
+}
+
+/** Change sets a batch's records add, written together at the batch's end (M1-091). */
+const deferredChanges = new WeakMap<
+  LoadContext,
+  { actorId: number | null; at: string; changes: FieldChange[] }[]
+>();
+
+/**
+ * Adds a change set to those the batch writes at its end (`flushChanges` in the loader's
+ * `finish`), one statement for all instead of one per record. A record that fails later in its
+ * savepoint has not added its set yet, so only loaded records leave history.
+ */
+export function deferChanges(
+  ctx: LoadContext,
+  actorId: number | null,
+  at: string,
+  changes: FieldChange[],
+): void {
+  const list = deferredChanges.get(ctx) ?? [];
+  deferredChanges.set(ctx, list);
+  list.push({ actorId, at, changes });
+}
+
+export async function flushChanges(ctx: LoadContext): Promise<void> {
+  const list = deferredChanges.get(ctx) ?? [];
+  deferredChanges.delete(ctx);
+  if (list.length > 0) await writeChangeSets(ctx.trx, ctx.workspaceId, list);
 }
 
 export async function byName(
@@ -871,13 +981,15 @@ interface TicketValues {
   trash: { deleted_at: string; deleted_by: number | null; trashed_with: number | null } | null;
   /** Its visibility level (M1-092); undefined leaves it as it is (none for a new ticket). */
   visibility_level_id: number | null | undefined;
+  /** Keys it had in other tracks before (M1-091), kept in its key history. */
+  former_keys: { track_id: number; number: number; at: string | null }[];
 }
 
 const sortedIds = (ids: readonly number[] | null) =>
   ids === null ? null : [...new Set(ids.map((i) => real(i)))].sort((a, b) => (a ?? 0) - (b ?? 0));
 
 const ticketPrint = (
-  v: Omit<TicketValues, 'updated_at' | 'field_labels' | 'fields'>,
+  v: Omit<TicketValues, 'updated_at' | 'field_labels' | 'fields' | 'former_keys'>,
 ): JsonValue => ({
   track: real(v.track_id),
   number: v.number,
@@ -1133,6 +1245,24 @@ const tickets: Loader<TicketCommand> = {
         if (cmd.docs?.environment) remapDoc(cmd.docs.environment, map);
       }
     });
+    // Numbers the target's tracks already gave (M1-091): one read instead of one per ticket.
+    const wanted = cmds.flatMap((c) => {
+      const track = c.match === 'key' ? null : ctx.refs.get(c.track);
+      return track === null || track === PENDING || c.number === null
+        ? []
+        : [{ track, number: c.number }];
+    });
+    if (wanted.length === cmds.length && !ctx.dryRun) {
+      const { rows } = await sql<{ track_id: number; number: number }>`
+        SELECT h.track_id, h.number
+          FROM unnest(${wanted.map((w) => w.track)}::int[], ${wanted.map((w) => w.number)}::int[])
+               AS w (track_id, number)
+          JOIN ticket_key_history h ON h.track_id = w.track_id AND h.number = w.number`.execute(
+        ctx.trx,
+      );
+      for (const r of rows) ctx.cache.set(`taken:${r.track_id}:${r.number}`, 1);
+      ctx.cache.set('numbers:read', 1);
+    }
     // Ranks the target already uses: a source rank that clashes takes a new one.
     const ranks = cmds.flatMap((c) => (c.rank === undefined ? [] : [c.rank]));
     if (ranks.length > 0) {
@@ -1337,11 +1467,16 @@ const tickets: Loader<TicketCommand> = {
             trashed_with: optional(ctx, cmd.trash.trashedWith, 'trashedWith'),
           }
         : null,
+      former_keys: (cmd.formerKeys ?? []).flatMap((k) => {
+        const id = optional(ctx, k.track, 'formerKey');
+        return id === null ? [] : [{ track_id: id, number: k.number, at: k.at }];
+      }),
     };
     if (cmd.rank !== undefined && values.rank === null) ctx.warn({ code: 'rank_changed' });
+    const { former_keys: _formerKeys, ...printed } = values;
     // What the ticket will hold: values the command leaves out stay as they are (or empty).
     const fingerprint = ticketPrint({
-      ...values,
+      ...printed,
       compared: values.compared ?? withoutFormulas(current?.fields ?? {}, formulas),
       releases: values.releases ?? {
         target: currentReleases('target_releases'),
@@ -1355,12 +1490,16 @@ const tickets: Loader<TicketCommand> = {
     // A new ticket needs a summary, also from a file without that column.
     if (values.summary.trim() === '') throw new PlanFailure('summary_required');
     if (track !== PENDING && cmd.number !== null) {
-      const taken = await ctx.trx
-        .selectFrom('ticket_key_history')
-        .select('ticket_id')
-        .where('track_id', '=', track)
-        .where('number', '=', cmd.number)
-        .executeTakeFirst();
+      // Read for the whole batch in `prepare`; numbers the batch writes are added as it goes.
+      const known = ctx.cache.has('numbers:read');
+      const taken = known
+        ? ctx.cache.has(`taken:${track}:${cmd.number}`)
+        : await ctx.trx
+            .selectFrom('ticket_key_history')
+            .select('ticket_id')
+            .where('track_id', '=', track)
+            .where('number', '=', cmd.number)
+            .executeTakeFirst();
       if (taken) throw new PlanFailure('number_taken');
     }
     // A type the track's type set lacks: the ticket imports, but the track does not offer the
@@ -1478,7 +1617,7 @@ const tickets: Loader<TicketCommand> = {
             workspace_id: ws,
             ...columns,
             number,
-            rank: v.rank ?? (await bottomRank(ctx.trx)),
+            rank: v.rank ?? sequenceKey(await nextFrom(ctx, 'ticket_rank_seq')),
             fields: JSON.stringify(v.fields ?? {}),
             deleted_at: null,
             deleted_by: null,
@@ -1489,33 +1628,32 @@ const tickets: Loader<TicketCommand> = {
           .executeTakeFirstOrThrow()
       ).id;
       await writeTicketSets(ctx, id, v, false);
-      // Every starting value is history too (ADR-010), at the time and by the person that
-      // created the ticket; the source's history entries correct values they changed later.
-      // A verbatim source brings these entries itself.
-      if (!ctx.verbatim) {
-        const created = await loadTicket(ctx.trx, ws, id);
-        if (created) {
-          await writeChanges(ctx.trx, ws, v.creator_id, v.created_at, [
-            ...ticketChanges(null, created),
-            ...(await customChanges(ctx.trx, ws, ctx.catalog, id, {}, created.fields)),
-          ]);
-        }
-      }
     }
+    await writeFormerKeys(ctx, id, v);
     if (v.rank !== null) {
       const top = ctx.cache.get('sequence:rank') ?? null;
       const value = Number(sequenceValueOf(v.rank));
       if (top === null || value > top) ctx.cache.set('sequence:rank', value);
     }
+    ctx.cache.set(`taken:${v.track_id}:${number}`, 1);
     // Numbers come from the source: the counter moves past them (CORE-001).
     const last = ctx.cache.get(`counter:${v.track_id}`) ?? null;
     if (last === null || number > last) ctx.cache.set(`counter:${v.track_id}`, number);
     await rememberLabels(ctx.trx, ws, v.labels);
     if (v.field_labels.length > 0) await rememberFieldLabels(ctx.trx, ws, v.field_labels);
     ctx.touched.add(id);
+    // Every starting value is history too (ADR-010), at the time and by the person that
+    // created the ticket; the source's history entries correct values they changed later. A
+    // verbatim source brings these entries itself. Written for the whole batch at its end.
+    if (plan.action === 'create' && !ctx.verbatim) {
+      const list = startingValues.get(ctx) ?? [];
+      startingValues.set(ctx, list);
+      list.push({ id, actorId: v.creator_id, at: v.created_at });
+    }
     return id;
   },
   async finish(ctx) {
+    await writeStartingValues(ctx);
     await moveCounters(ctx);
     await syncFieldValues(ctx.trx, ctx.catalog, [...ctx.touched]);
     if (!ctx.verbatim) await refreshTouched(ctx);
@@ -1658,6 +1796,70 @@ async function writeTicketSets(
   }
 }
 
+/** Tickets a batch created, whose starting values its end writes as history (M1-091). */
+const startingValues = new WeakMap<
+  LoadContext,
+  { id: number; actorId: number | null; at: string }[]
+>();
+
+/**
+ * The starting values of the tickets a batch created, as one change set each at the ticket's
+ * creation, by its creator: read and written for the whole batch at once.
+ */
+async function writeStartingValues(ctx: LoadContext): Promise<void> {
+  const list = startingValues.get(ctx) ?? [];
+  startingValues.delete(ctx);
+  if (list.length === 0) return;
+  const rows = await loadTickets(
+    ctx.trx,
+    ctx.workspaceId,
+    list.map((t) => t.id),
+  );
+  const created = list.flatMap((t) => {
+    const row = rows.get(t.id);
+    return row ? [{ ...t, row }] : [];
+  });
+  const custom = await customChangesOf(
+    ctx.trx,
+    ctx.workspaceId,
+    ctx.catalog,
+    created.map((t) => ({ ticketId: t.id, before: {}, after: t.row.fields })),
+  );
+  await writeChangeSets(
+    ctx.trx,
+    ctx.workspaceId,
+    created.map((t, k) => ({
+      actorId: t.actorId,
+      at: t.at,
+      changes: [...ticketChanges(null, t.row), ...(custom[k] ?? [])],
+    })),
+  );
+}
+
+/**
+ * Keys a ticket had in other tracks before (M1-091), as rows of its key history that were
+ * replaced when it moved, so each keeps resolving to it (CORE-023 (3)). A key another ticket
+ * holds stays theirs, with a warning; a re-run finds its rows there already.
+ */
+async function writeFormerKeys(ctx: LoadContext, ticketId: number, v: TicketValues) {
+  for (const k of v.former_keys) {
+    if (k.track_id === PENDING) continue;
+    const { rows } = await sql<{ ticket_id: number }>`
+      WITH added AS (
+        INSERT INTO ticket_key_history (workspace_id, ticket_id, track_id, number, created_at,
+                                        replaced_at)
+        VALUES (${ctx.workspaceId}, ${ticketId}, ${k.track_id}, ${k.number}, ${v.created_at},
+                ${k.at ?? v.created_at})
+        ON CONFLICT DO NOTHING
+        RETURNING ticket_id)
+      SELECT ticket_id FROM added
+      UNION ALL
+      SELECT ticket_id FROM ticket_key_history WHERE track_id = ${k.track_id} AND number = ${k.number}
+       LIMIT 1`.execute(ctx.trx);
+    if (rows[0]?.ticket_id !== ticketId) ctx.warn({ code: 'former_key_taken' });
+  }
+}
+
 /** Ticket counters past the numbers the batch wrote, and the rank sequence past its ranks. */
 async function moveCounters(ctx: LoadContext): Promise<void> {
   for (const [key, value] of ctx.cache) {
@@ -1788,7 +1990,7 @@ const comments: Loader<CommentCommand> = {
       .executeTakeFirstOrThrow();
     // A verbatim source's history has the entry for the new comment.
     if (ctx.verbatim) return row.id;
-    await writeChanges(ctx.trx, ctx.workspaceId, d.author, cmd.createdAt, [
+    deferChanges(ctx, d.author, cmd.createdAt, [
       {
         ticketId: d.ticket,
         field: 'comment',
@@ -1799,6 +2001,9 @@ const comments: Loader<CommentCommand> = {
       },
     ]);
     return row.id;
+  },
+  async finish(ctx) {
+    await flushChanges(ctx);
   },
   async read(db, ws, ids) {
     const rows = await db
@@ -1903,6 +2108,16 @@ const links: Loader<LinkCommand> = {
       ).id;
       ctx.cache.set(`link_type:${lower(cmd.linkType.name)}`, typeId);
     }
+    // A source without the link's time: the later of the two tickets' creation (M1-091).
+    const createdAt =
+      cmd.createdAt ??
+      (
+        await sql<{ at: Date }>`
+          SELECT max(created_at) AS at FROM ticket WHERE id IN (${source}, ${target})`.execute(
+          ctx.trx,
+        )
+      ).rows[0]?.at.toISOString() ??
+      ctx.now;
     const row = await ctx.trx
       .insertInto('ticket_link')
       .values({
@@ -1911,14 +2126,14 @@ const links: Loader<LinkCommand> = {
         source_id: source,
         target_id: target,
         created_by: creator,
-        created_at: cmd.createdAt,
+        created_at: createdAt,
       })
       .returning('id')
       .executeTakeFirstOrThrow();
     // A verbatim source's history has the entries for the new link.
     if (ctx.verbatim) return row.id;
     const [sourceKey, targetKey] = [await keyOf(ctx.trx, source), await keyOf(ctx.trx, target)];
-    await writeChanges(ctx.trx, ctx.workspaceId, creator, cmd.createdAt, [
+    deferChanges(ctx, creator, createdAt, [
       linkChange(
         source,
         { typeId, direction: 'outward', phrase: cmd.linkType.outward, otherId: target },
@@ -1933,6 +2148,9 @@ const links: Loader<LinkCommand> = {
       ),
     ]);
     return row.id;
+  },
+  async finish(ctx) {
+    await flushChanges(ctx);
   },
   async read(db, ws, ids) {
     const rows = await db
@@ -2031,9 +2249,87 @@ function storedItem(ctx: LoadContext, item: StoredHistoryItem): HistoryItem | nu
   };
 }
 
+/** One history row as the history loader keeps it for its batch (M1-091). */
+interface HistoryEntry {
+  /** Null for rows the batch wrote: only the starting values' rows are changed by id. */
+  id: string | null;
+  changeSet: string;
+  field: string;
+  at: number;
+  /** The order rows were written in, as their ids give it. */
+  order: number;
+}
+
+/**
+ * Each ticket's history rows and creation time, read once per batch for all the tickets its
+ * entries name instead of once per entry (M1-091), and kept up to date as the batch writes.
+ */
+const historyStates = new WeakMap<
+  LoadContext,
+  Map<number, { createdAt: string; entries: HistoryEntry[]; next: number }>
+>();
+
+async function loadHistoryStates(ctx: LoadContext, tickets: readonly number[]): Promise<void> {
+  const states = historyStates.get(ctx) ?? new Map();
+  historyStates.set(ctx, states);
+  const wanted = [...new Set(tickets)].filter((t) => t > 0 && !states.has(t));
+  if (wanted.length === 0) return;
+  const created = await ctx.trx
+    .selectFrom('ticket')
+    .select(['id', 'created_at'])
+    .where('id', 'in', wanted)
+    .execute();
+  for (const t of created) {
+    states.set(t.id, { createdAt: t.created_at.toISOString(), entries: [], next: 0 });
+  }
+  const rows = await ctx.trx
+    .selectFrom('ticket_change')
+    .select(['id', 'ticket_id', 'change_set', 'field', 'at'])
+    .where('ticket_id', 'in', wanted)
+    .orderBy('id')
+    .execute();
+  for (const r of rows) {
+    const state = states.get(r.ticket_id);
+    if (!state) continue;
+    state.entries.push({
+      id: r.id,
+      changeSet: r.change_set,
+      field: r.field,
+      at: r.at.getTime(),
+      order: state.next++,
+    });
+  }
+}
+
+async function historyStateOf(ctx: LoadContext, ticket: number) {
+  await loadHistoryStates(ctx, [ticket]);
+  const state = historyStates.get(ctx)?.get(ticket);
+  if (!state) throw new PlanFailure('missing_reference:ticket');
+  return state;
+}
+
+/** The change set that created the ticket: its earliest key row's. */
+function firstSet(entries: readonly HistoryEntry[]): string | null {
+  let best: HistoryEntry | null = null;
+  for (const e of entries) {
+    if (e.field !== 'key') continue;
+    if (!best || e.at < best.at || (e.at === best.at && e.order < best.order)) best = e;
+  }
+  return best?.changeSet ?? null;
+}
+
 const history: Loader<HistoryCommand> = {
   table: { name: 'ticket_change', id: 'change_set' },
   async prepare(ctx, cmds) {
+    if (!ctx.verbatim && !ctx.dryRun) {
+      await loadHistoryStates(
+        ctx,
+        cmds.flatMap((c) => {
+          const id = ctx.refs.get(c.ticket);
+          return id === null ? [] : [id];
+        }),
+      );
+    }
     await preloadStored(ctx, (map) => {
       for (const cmd of cmds) {
         for (const item of cmd.stored ?? []) {
@@ -2090,67 +2386,72 @@ const history: Loader<HistoryCommand> = {
         ),
       );
     }
-    const first = await ctx.trx
-      .selectFrom('ticket_change')
-      .select('change_set')
-      .where('ticket_id', '=', ticket)
-      .where('field', '=', 'key')
-      .orderBy('at')
-      .orderBy('id')
-      .executeTakeFirst();
+    const state = await historyStateOf(ctx, ticket);
+    const at = Date.parse(cmd.at);
+    // Changes to the batch's picture of the ticket, kept until every write has succeeded.
+    const removed = new Set<HistoryEntry>();
+    const added: HistoryEntry[] = [];
+    const first = firstSet(state.entries);
     // The source's first entry for a field says what it started with: the ticket's starting
     // values (written from its current values) take the entry's "from".
     for (const item of items) {
-      if (!first) break;
-      const earlier = await ctx.trx
-        .selectFrom('ticket_change')
-        .select(['id', 'change_set'])
-        .where('ticket_id', '=', ticket)
-        .where('field', '=', item.field)
-        .where('at', '<', new Date(cmd.at))
-        .execute();
-      if (earlier.some((e) => e.change_set !== first.change_set)) continue;
-      const start = earlier.find((e) => e.change_set === first.change_set);
-      if (start && item.from === null) {
-        await ctx.trx.deleteFrom('ticket_change').where('id', '=', start.id).execute();
-      } else if (start) {
+      if (first === null) break;
+      const earlier = state.entries.filter(
+        (e) => e.field === item.field && e.at < at && !removed.has(e),
+      );
+      if (earlier.some((e) => e.changeSet !== first)) continue;
+      const start = earlier.find((e) => e.changeSet === first);
+      // With the ticket's id, so only its partition is searched.
+      if (start?.id && item.from === null) {
+        await ctx.trx
+          .deleteFrom('ticket_change')
+          .where('ticket_id', '=', ticket)
+          .where('id', '=', start.id)
+          .execute();
+        removed.add(start);
+      } else if (start?.id) {
         await ctx.trx
           .updateTable('ticket_change')
           .set({ to_value: item.from, to_display: item.fromDisplay })
+          .where('ticket_id', '=', ticket)
           .where('id', '=', start.id)
           .execute();
       } else if (item.from !== null) {
-        await writeChanges(
-          ctx.trx,
-          ws,
-          null,
-          (
-            await ctx.trx
-              .selectFrom('ticket')
-              .select('created_at')
-              .where('id', '=', ticket)
-              .executeTakeFirstOrThrow()
-          ).created_at.toISOString(),
-          [
-            {
-              ticketId: ticket,
-              field: item.field,
-              from: null,
-              to: item.from,
-              fromDisplay: null,
-              toDisplay: item.fromDisplay,
-            },
-          ],
-        );
+        const set = await writeChangesPooled(ctx, null, state.createdAt, [
+          {
+            ticketId: ticket,
+            field: item.field,
+            from: null,
+            to: item.from,
+            fromDisplay: null,
+            toDisplay: item.fromDisplay,
+          },
+        ]);
+        added.push({
+          id: null,
+          changeSet: String(set),
+          field: item.field,
+          at: Date.parse(state.createdAt),
+          order: state.next++,
+        });
       }
     }
-    const changeSet = await writeChanges(
-      ctx.trx,
-      ws,
+    const changeSet = await writeChangesPooled(
+      ctx,
       actor,
       cmd.at,
       items.map((i) => ({ ticketId: ticket, ...i })),
     );
+    for (const i of items) {
+      added.push({
+        id: null,
+        changeSet: String(changeSet),
+        field: i.field,
+        at,
+        order: state.next++,
+      });
+    }
+    state.entries = [...state.entries.filter((e) => !removed.has(e)), ...added];
     return Number(changeSet);
   },
   async read(db, ws, ids) {

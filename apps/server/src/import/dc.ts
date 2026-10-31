@@ -1,8 +1,14 @@
+import { createReadStream } from 'node:fs';
+import { open } from 'node:fs/promises';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
+import { createInflateRaw } from 'node:zlib';
 import { z } from 'zod';
+import { ATTACHMENTS_DIR } from './dc-backup/format';
 import {
   CONSUMED,
   CONTENT_ELEMENTS,
+  CONTENT_STAGED_KINDS,
   NOT_NEEDED,
   STAGED_KINDS,
   type StagedGroup,
@@ -13,6 +19,7 @@ import {
   type StagedUser,
   type StageSummary,
   stageDcBackup,
+  TICKET_CONTENT_ELEMENTS,
 } from './dc-backup/stage';
 import type {
   StagedContext,
@@ -21,7 +28,15 @@ import type {
   StagedOption,
   StagedRuleSet,
 } from './dc-backup/stage-fields';
-import type { StagedIssue } from './dc-backup/stage-issues';
+import type {
+  StagedAttachment,
+  StagedChange,
+  StagedComment,
+  StagedIssue,
+  StagedLink,
+  StagedWebLink,
+  StagedWorklog,
+} from './dc-backup/stage-issues';
 import type {
   StagedGlobalPermission,
   StagedNotificationScheme,
@@ -30,13 +45,21 @@ import type {
   StagedSecurityScheme,
 } from './dc-backup/stage-schemes';
 import {
+  mapAttachment,
+  mapComment,
+  mapHistory,
+  mapLink,
+  mapTimeEntry,
+  mapWebLink,
+  wikiDoc,
+} from './dc-content';
+import {
   instantOf,
   mapContext,
   mapField,
   mapLayoutSet,
   mapOption,
   mapRuleSet,
-  plainDoc,
   storedValues,
 } from './dc-fields';
 import {
@@ -87,8 +110,11 @@ export const dcBackupSource = z
     /**
      * `configuration`: people, groups, roles, tracks, types, statuses, fields and forms only;
      * issues and their parts are counted and left out (a first look before the full run).
+     * `tickets`: that and the tickets with their own fields, followers, voters and earlier
+     * keys; their comments, history, time, links, web links and attachments are counted and
+     * left out (M1-091).
      */
-    scope: z.enum(['all', 'configuration']).default('all'),
+    scope: z.enum(['all', 'tickets', 'configuration']).default('all'),
   })
   .strict();
 export type DcBackupSettings = z.infer<typeof dcBackupSource>;
@@ -97,6 +123,9 @@ export type DcBackupSettings = z.infer<typeof dcBackupSource>;
 export const NOT_IMPORTED_YET = 'not_imported_yet';
 export const NOT_NEEDED_REASON = 'not_needed';
 export const CONFIGURATION_ONLY = 'configuration_only';
+export const TICKETS_ONLY = 'tickets_only';
+/** Attachment files no attachment row names. */
+export const NO_ATTACHMENT_ROW = 'no_attachment_row';
 
 /** The staged backup as a source: records of a kind from its file, cursors are byte offsets. */
 export class DcBackupSource implements ImportSource {
@@ -117,14 +146,30 @@ export class DcBackupSource implements ImportSource {
     return this.staged;
   }
 
+  /** Whether the run's scope leaves out a staged kind. */
+  private leavesOut(kind: string): boolean {
+    if (this.settings.scope === 'configuration') return CONTENT_STAGED_KINDS.has(kind);
+    if (this.settings.scope === 'tickets')
+      return CONTENT_STAGED_KINDS.has(kind) && kind !== 'ticket';
+    return false;
+  }
+
   /** What the source reports as not imported: elements, tables and files, by name. */
   private async leftOut(): Promise<Map<string, { count: number; reason: string }>> {
     const { summary } = await this.stage();
     const out = new Map<string, { count: number; reason: string }>();
     const configurationOnly = this.settings.scope === 'configuration';
+    const ticketsOnly = this.settings.scope === 'tickets';
     for (const [name, count] of Object.entries(summary.entities)) {
       if (configurationOnly && CONTENT_ELEMENTS.has(name)) {
         out.set(name, { count, reason: CONFIGURATION_ONLY });
+        continue;
+      }
+      if (ticketsOnly && TICKET_CONTENT_ELEMENTS.has(name)) {
+        // Links other than sub-task links are content; sub-task links made the parents.
+        const left =
+          name === 'IssueLink' ? (summary.kinds.link ?? 0) + (summary.partial[name] ?? 0) : count;
+        if (left > 0) out.set(name, { count: left, reason: TICKETS_ONLY });
         continue;
       }
       const partial = summary.partial[name] ?? 0;
@@ -139,7 +184,17 @@ export class DcBackupSource implements ImportSource {
       out.set(table, { count, reason: NOT_IMPORTED_YET });
     }
     for (const [folder, count] of Object.entries(summary.files)) {
-      out.set(folder, { count, reason: NOT_IMPORTED_YET });
+      out.set(folder, {
+        count,
+        reason: folder === ATTACHMENTS_DIR ? NO_ATTACHMENT_ROW : NOT_IMPORTED_YET,
+      });
+    }
+    const files = (summary.attachmentFiles ?? 0) + (summary.files[ATTACHMENTS_DIR] ?? 0);
+    if ((configurationOnly || ticketsOnly) && files > 0) {
+      out.set(ATTACHMENTS_DIR, {
+        count: files,
+        reason: configurationOnly ? CONFIGURATION_ONLY : TICKETS_ONLY,
+      });
     }
     return out;
   }
@@ -147,8 +202,7 @@ export class DcBackupSource implements ImportSource {
   async kinds(): Promise<string[]> {
     const { summary } = await this.stage();
     const staged = Object.keys(STAGED_KINDS).filter(
-      (k) =>
-        (summary.kinds[k] ?? 0) > 0 && !(k === 'ticket' && this.settings.scope === 'configuration'),
+      (k) => (summary.kinds[k] ?? 0) > 0 && !this.leavesOut(k),
     );
     return [...staged, ...(await this.leftOut()).keys()];
   }
@@ -156,7 +210,7 @@ export class DcBackupSource implements ImportSource {
   async read(kind: string, after: string | null, limit: number): Promise<SourceItem[]> {
     const { dir, summary } = await this.stage();
     if (!(kind in STAGED_KINDS) || (summary.kinds[kind] ?? 0) === 0) return [];
-    if (kind === 'ticket' && this.settings.scope === 'configuration') return [];
+    if (this.leavesOut(kind)) return [];
     return (await readJsonLines(join(dir, `${kind}.ndjson`), after, limit)).map(
       ({ value, cursor }) => ({
         kind,
@@ -167,6 +221,39 @@ export class DcBackupSource implements ImportSource {
         cursor,
       }),
     );
+  }
+
+  /**
+   * An attachment's bytes, by the locator the stage gave it
+   * (`zip:<offset>:<compressed size>:<method>:<size>`):
+   * read from its place in the ZIP, past the entry's local header, and inflated when the entry
+   * is compressed (M1-091).
+   */
+  async openFile(locator: string): Promise<NodeJS.ReadableStream> {
+    const m = /^zip:(\d+):(\d+):(0|8):(\d+)$/.exec(locator);
+    if (!m) throw new Error('not a file of the backup');
+    const [offset, compressed, method] = [Number(m[1]), Number(m[2]), Number(m[3])];
+    const handle = await open(this.settings.path, 'r');
+    let start: number;
+    try {
+      const header = Buffer.alloc(30);
+      await handle.read(header, 0, 30, offset);
+      if (header.readUInt32LE(0) !== 0x04034b50) throw new Error('not a local file header');
+      start = offset + 30 + header.readUInt16LE(26) + header.readUInt16LE(28);
+    } finally {
+      await handle.close();
+    }
+    if (compressed === 0) return Readable.from([]);
+    const raw = createReadStream(this.settings.path, { start, end: start + compressed - 1 });
+    if (method === 0) return raw;
+    const inflate = createInflateRaw();
+    raw.on('error', (error) => inflate.destroy(error));
+    return raw.pipe(inflate);
+  }
+
+  async fileSize(locator: string): Promise<number | null> {
+    const m = /^zip:\d+:\d+:(0|8):(\d+)$/.exec(locator);
+    return m ? Number(m[2]) : null;
   }
 
   async unsupported(kind: string): Promise<{ count: number; reason: string } | null> {
@@ -314,11 +401,10 @@ function mapTicket(i: StagedIssue): Mapped {
       status: ref('status', i.status),
       summary: i.summary.trim(),
       description: null,
-      // Plain text for now: the backup's wiki markup is converted with the rest of the
-      // content (M1-091).
+      // The backup's text is wiki markup (ADR-091, M1-091).
       docs: {
-        description: i.description === null ? null : plainDoc(i.description),
-        environment: i.environment === null ? null : plainDoc(i.environment),
+        description: i.description === null ? null : wikiDoc(i.description),
+        environment: i.environment === null ? null : wikiDoc(i.environment),
       },
       assignee: person(i.assignee),
       requester: person(i.reporter),
@@ -338,9 +424,27 @@ function mapTicket(i: StagedIssue): Mapped {
       // Its security level (M1-092), as the backup stores it.
       visibilityLevel: i.security === null ? null : ref('visibility_level', i.security),
       ...(Object.keys(fields).length > 0 ? { fields } : {}),
+      // Watchers and voters (M1-091).
+      followers: (i.followers ?? []).map((p) => ref('user', p)),
+      voters: (i.voters ?? []).map((p) => ref('user', p)),
+      formerKeys: formerKeys(i, warnings),
     },
     warnings,
   };
+}
+
+/** Keys an issue had before it moved (M1-091): each in a project the backup holds. */
+function formerKeys(i: StagedIssue, warnings: Warning[]) {
+  const out: { track: Ref; number: number; at: string | null }[] = [];
+  for (const k of i.formerKeys ?? []) {
+    if (k.project === null || k.number === null) {
+      // A key of a project the backup no longer has cannot resolve to a track.
+      warnings.push({ code: 'former_key_not_kept', detail: k.key });
+      continue;
+    }
+    out.push({ track: ref('track', k.project), number: k.number, at: instantOf(k.at) });
+  }
+  return out;
 }
 
 const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
@@ -398,10 +502,27 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
   notification_policy: (d) => mapNotificationPolicy(d as unknown as StagedNotificationScheme),
   global_grant: (d) => mapGlobalGrant(d as unknown as StagedGlobalPermission),
   ticket: (d) => mapTicket(d as unknown as StagedIssue),
+  comment: (d) => mapComment(d as unknown as StagedComment),
+  history: (d) => mapHistory(d as unknown as StagedChange),
+  time_entry: (d) => mapTimeEntry(d as unknown as StagedWorklog),
+  link: (d) => mapLink(d as unknown as StagedLink),
+  web_link: (d) => mapWebLink(d as unknown as StagedWebLink),
+  attachment: (d) => mapAttachment(d as unknown as StagedAttachment),
 };
 
 /** Kinds whose records carry no name of their own. */
-const UNNAMED = new Set(['user', 'field_option', 'ticket', 'global_grant']);
+const UNNAMED = new Set([
+  'user',
+  'field_option',
+  'ticket',
+  'global_grant',
+  'comment',
+  'history',
+  'time_entry',
+  'link',
+  'web_link',
+  'attachment',
+]);
 
 /** Maps a staged record; a name the target cannot hold fails the record. */
 export function mapDcRecord(record: SourceRecord): Mapped {

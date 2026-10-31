@@ -1,9 +1,10 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import yauzl from 'yauzl';
+import { sniff } from '../../attachments/sniff';
 import type { CleanStats } from './clean';
 import {
   ACTIVE_OBJECTS_FILE,
@@ -14,8 +15,9 @@ import {
   PROJECT_SCHEME,
 } from './format';
 import { parseXml, type XmlHandlers } from './parse';
+import { readLines as readLinesOf } from './spill';
 import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
-import { ISSUE_ELEMENTS, IssueCollector } from './stage-issues';
+import { CONTENT_KINDS, ISSUE_ELEMENTS, IssueCollector, type StagedFile } from './stage-issues';
 import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
 
 /**
@@ -33,7 +35,7 @@ import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 3;
+export const STAGE_VERSION = 4;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -60,6 +62,7 @@ export const STAGED_KINDS = {
   notification_policy: 'NotificationScheme',
   global_grant: 'GlobalPermissionEntry',
   ticket: 'Issue',
+  ...CONTENT_KINDS,
 } as const;
 
 /** The schemes a project's `NodeAssociation` rows may name that the mapping reads. */
@@ -94,6 +97,23 @@ export const CONSUMED = new Set<string>([
 
 /** Elements only tickets consume: a configuration-only import leaves them out (M1-089). */
 export const CONTENT_ELEMENTS: ReadonlySet<string> = new Set(ISSUE_ELEMENTS);
+
+/** Elements of a ticket's content, which an import of tickets only leaves out (M1-091). */
+export const TICKET_CONTENT_ELEMENTS: ReadonlySet<string> = new Set([
+  'ChangeGroup',
+  'ChangeItem',
+  'Action',
+  'Worklog',
+  'FileAttachment',
+  'RemoteIssueLink',
+  'IssueLink',
+]);
+
+/** Kinds of issue content: a configuration-only import leaves them out. */
+export const CONTENT_STAGED_KINDS: ReadonlySet<string> = new Set([
+  'ticket',
+  ...Object.keys(CONTENT_KINDS),
+]);
 
 /** Elements the importer has no use for: ids are Taskmoor's own. */
 export const NOT_NEEDED = new Set<string>(['SequenceValueItem']);
@@ -168,8 +188,10 @@ export interface StageSummary {
   entities: Record<string, number>;
   /** Rows per table of the active-objects file. */
   activeObjects: Record<string, number>;
-  /** Other entries of the ZIP, by folder: attachments, avatars, logos. */
+  /** Other entries of the ZIP, by folder: avatars, logos, attachments no row names. */
   files: Record<string, number>;
+  /** Attachment files an attachment row names (M1-091). */
+  attachmentFiles: number;
   /** Records per staged kind. */
   kinds: Record<string, number>;
   /** Rows of consumed elements that no staged kind carries (links between issues, say). */
@@ -213,7 +235,7 @@ const PERSON_CHANGE_FIELDS = new Set(['assignee', 'reporter']);
 class Collector {
   readonly entities: Record<string, number> = {};
   readonly activeObjects: Record<string, number> = {};
-  readonly files: Record<string, number> = {};
+  readonly fileCounts: Record<string, number> = {};
   readonly directories = new Map<string, { position: number; active: boolean }>();
   readonly users: {
     row: number;
@@ -247,8 +269,13 @@ class Collector {
   readonly fieldPart = new FieldCollector();
   readonly schemePart = new SchemeCollector();
   readonly issuePart: IssueCollector;
-  /** Link type ids by style (sub-task links make parents). */
-  readonly linkTypeStyles = new Map<string, string>();
+  /** Link types by id (sub-task links make parents). */
+  readonly linkTypes = new Map<
+    string,
+    { name: string; outward: string; inward: string; style: string }
+  >();
+  /** Attachment files of the ZIP by attachment id (M1-091). */
+  readonly files = new Map<string, StagedFile>();
   /** Scheme element to scheme id to the projects naming it (`NodeAssociation`). */
   readonly associations = new Map<string, Map<string, string[]>>();
   /** Rows of consumed elements left out, by element. */
@@ -282,6 +309,13 @@ class Collector {
       this.fieldPart.row(name, v);
       return;
     }
+    if (name === 'ChangeItem') {
+      // History names people by key in its values.
+      if (v.fieldtype === 'jira' && PERSON_CHANGE_FIELDS.has(v.field ?? '')) {
+        if (v.oldvalue) this.personRefs.add(v.oldvalue.toLowerCase());
+        if (v.newvalue) this.personRefs.add(v.newvalue.toLowerCase());
+      }
+    }
     if ((ISSUE_ELEMENTS as readonly string[]).includes(name)) {
       this.issuePart.row(name, v);
       return;
@@ -292,7 +326,12 @@ class Collector {
     }
     switch (name) {
       case 'IssueLinkType':
-        if (v.style) this.linkTypeStyles.set(id, v.style);
+        this.linkTypes.set(id, {
+          name: v.linkname ?? '',
+          outward: v.outward ?? '',
+          inward: v.inward ?? '',
+          style: v.style ?? '',
+        });
         return;
       case 'NodeAssociation': {
         // A project tied to one of its schemes; other associations are not read yet.
@@ -392,13 +431,6 @@ class Collector {
       case 'Resolution':
         this.resolutions.push(named());
         return;
-      case 'ChangeItem':
-        // History names people by key in its values (M1-091 maps the history itself).
-        if (v.fieldtype === 'jira' && PERSON_CHANGE_FIELDS.has(v.field ?? '')) {
-          if (v.oldvalue) this.personRefs.add(v.oldvalue.toLowerCase());
-          if (v.newvalue) this.personRefs.add(v.newvalue.toLowerCase());
-        }
-        return;
     }
   }
 
@@ -430,16 +462,16 @@ class Collector {
   /** The staged records of every configuration kind, with references resolved. */
   resolve(): {
     records: {
-      [K in Exclude<StagedKind, 'ticket'>]: { id: string; label: string; data: unknown }[];
+      [K in Exclude<StagedKind, 'ticket' | keyof typeof CONTENT_KINDS>]: {
+        id: string;
+        label: string;
+        data: unknown;
+      }[];
     };
     person: (raw: string) => string;
     group: (raw: string) => string | null;
   } {
-    // People named by custom values count as named (M1-089).
-    for (const raw of this.issuePart.personValues(this.fieldPart.fields)) {
-      this.personRefs.add(raw.toLowerCase());
-    }
-    // And people named by grants, levels and notifications (M1-092).
+    // People named by grants, levels and notifications (M1-092).
     for (const raw of this.schemePart.personRefs) this.personRefs.add(raw.toLowerCase());
     const userRows = this.winners(this.users);
     // People by staged id (the lower-case user key); user names point at the key.
@@ -677,12 +709,32 @@ async function writeLines(path: string, records: readonly unknown[]): Promise<vo
 /** Reads a backup ZIP and writes its staged records into `dir` (made fresh). */
 async function stageInto(zipPath: string, dir: string, zipInfo: StageSummary['zip']) {
   const collector = new Collector(dir);
+  await collector.issuePart.open();
   try {
     return await stageWith(collector, zipPath, dir, zipInfo);
   } finally {
-    collector.issuePart.dispose();
+    await collector.issuePart.dispose();
   }
 }
+
+/** The bytes an attachment file holds: its hash and sniffed type, read once while staging. */
+async function readAttachment(
+  stream: Readable,
+): Promise<{ size: number; sha256: string; sniffed: string | null }> {
+  const hash = createHash('sha256');
+  let size = 0;
+  let head = Buffer.alloc(0);
+  for await (const chunk of stream) {
+    const b = chunk as Buffer;
+    hash.update(b);
+    size += b.length;
+    if (head.length < 4096) head = Buffer.concat([head, b.subarray(0, 4096 - head.length)]);
+  }
+  return { size, sha256: hash.digest('hex'), sniffed: sniff(head, size <= head.length) };
+}
+
+/** `<...>/<issue key>/<attachment id>`, with or without the bucket folder (format notes 5). */
+const ATTACHMENT_FILE = /^data\/attachments\/(?:[^/]+\/)+?([^/]+)\/(\d+)$/;
 
 async function stageWith(
   collector: Collector,
@@ -725,7 +777,20 @@ async function stageWith(
           addRemoved(ACTIVE_OBJECTS_FILE, cleaned);
         } else {
           const folder = folderOf(name);
-          collector.files[folder] = (collector.files[folder] ?? 0) + 1;
+          const file = ATTACHMENT_FILE.exec(name);
+          if (folder === ATTACHMENTS_DIR && file && !collector.files.has(file[2] as string)) {
+            // Read once for its hash and type; the import reads it again from its place.
+            const read = await readAttachment(await open(entry));
+            collector.files.set(file[2] as string, {
+              locator: `zip:${entry.relativeOffsetOfLocalHeader}:${entry.compressedSize}:${entry.compressionMethod}:${read.size}`,
+              size: read.size,
+              sha256: read.sha256,
+              sniffed: read.sniffed,
+              folderKey: file[1] as string,
+            });
+            return;
+          }
+          collector.fileCounts[folder] = (collector.fileCounts[folder] ?? 0) + 1;
         }
       };
       next().then(
@@ -741,31 +806,52 @@ async function stageWith(
   if (!sawEntities) throw new DcBackupError(`no ${ENTITIES_FILE} at the root of the ZIP`);
   if (!entitiesRoot) throw new DcBackupError(`${ENTITIES_FILE} has no root element`);
 
+  // People named by custom values count as named (M1-089).
+  for (const raw of await collector.issuePart.personValues(collector.fieldPart.fields)) {
+    collector.personRefs.add(raw.toLowerCase());
+  }
   const { records, person, group } = collector.resolve();
   const kinds: Record<string, number> = {};
   for (const kind of Object.keys(records) as (keyof typeof records)[]) {
     kinds[kind] = records[kind].length;
     await writeLines(join(dir, `${kind}.ndjson`), records[kind]);
   }
-  const tickets = await collector.issuePart.writeTickets(join(dir, 'ticket.ndjson'), {
+  const projects = new Map(collector.projects.map((p) => [p.id, { key: p.key }]));
+  const projectByKey = new Map<string, string>();
+  for (const p of [...collector.projects].sort((a, b) => Number(a.id) - Number(b.id))) {
+    for (const key of [p.key, p.originalKey]) {
+      if (key && !projectByKey.has(key.toUpperCase())) projectByKey.set(key.toUpperCase(), p.id);
+    }
+  }
+  const content = await collector.issuePart.writeAll({
     person,
     group,
+    roleKnown: (id) => collector.roles.has(id),
     fields: collector.fieldPart.fields,
-    subtaskLinkTypes: new Set(
-      [...collector.linkTypeStyles]
-        .filter(([, style]) => style === 'jira_subtask')
-        .map(([id]) => id),
-    ),
+    linkTypes: collector.linkTypes,
+    projects,
+    projectByKey,
+    files: collector.files,
   });
-  kinds.ticket = tickets.count;
-  if (tickets.otherLinks > 0) collector.partial.IssueLink = tickets.otherLinks;
+  Object.assign(kinds, content);
+  Object.assign(collector.partial, collector.issuePart.partial);
+  // Files no attachment row names are counted as not imported.
+  const named = new Set<string>();
+  for await (const line of readLinesOf(join(dir, 'attachment.ndjson'))) {
+    const file = (line as { data: { id: string; file: unknown } }).data;
+    if (file.file) named.add(file.id);
+  }
+  const unnamed = [...collector.files.keys()].filter((id) => !named.has(id)).length;
+  if (unnamed > 0) collector.fileCounts[ATTACHMENTS_DIR] = unnamed;
+  const attachmentFiles = named.size;
   const summary: StageSummary = {
     format: STAGE_FORMAT,
     version: STAGE_VERSION,
     zip: zipInfo,
     entities: sortedRecord(collector.entities),
     activeObjects: sortedRecord(collector.activeObjects),
-    files: sortedRecord(collector.files),
+    files: sortedRecord(collector.fileCounts),
+    attachmentFiles,
     kinds,
     partial: sortedRecord(collector.partial),
     removed,

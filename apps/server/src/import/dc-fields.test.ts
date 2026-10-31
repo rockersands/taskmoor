@@ -27,7 +27,8 @@ const nextAddress = () => `100.77.${Math.floor(++address / 250)}.${(address % 25
 
 /** Six projects, so one is a business project and one keeps the default field rules. */
 const OPTIONS = defaultOptions(4_000, 89, { projects: 6 });
-const SOURCE = { format: 'dc-backup', path: 'dc-fields.zip' } as const;
+/** Tickets with their values; their content is M1-091's test (`dc-content.test.ts`). */
+const SOURCE = { format: 'dc-backup', path: 'dc-fields.zip', scope: 'tickets' } as const;
 
 /** The share of custom values that must arrive exactly (M1-089's done-when). */
 const MATCH_RATE = 0.999;
