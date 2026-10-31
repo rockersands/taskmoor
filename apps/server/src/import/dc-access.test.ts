@@ -35,7 +35,8 @@ const nextAddress = () => `100.79.${Math.floor(++address / 250)}.${(address % 25
 
 /** Six projects (every permission scheme, both security schemes, none) and six groups. */
 const OPTIONS = defaultOptions(3_000, 92, { projects: 6, groups: 6 });
-const SOURCE = { format: 'dc-backup', path: 'dc-access.zip' } as const;
+/** Tickets with their levels; their content is M1-091's test (`dc-content.test.ts`). */
+const SOURCE = { format: 'dc-backup', path: 'dc-access.zip', scope: 'tickets' } as const;
 
 function sessionCookie(header: string | string[] | undefined): string {
   return (

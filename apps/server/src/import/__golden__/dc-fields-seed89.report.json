@@ -217,30 +217,6 @@
       "source": 8
     },
     {
-      "kind": "workflow",
-      "outcomes": {
-        "created": 5,
-        "failed": 0,
-        "linked": 0,
-        "skipped": 1,
-        "unchanged": 0,
-        "updated": 0
-      },
-      "source": 6
-    },
-    {
-      "kind": "workflow_map",
-      "outcomes": {
-        "created": 2,
-        "failed": 0,
-        "linked": 0,
-        "skipped": 1,
-        "unchanged": 0,
-        "updated": 0
-      },
-      "source": 3
-    },
-    {
       "kind": "ticket",
       "outcomes": {
         "created": 4000,
@@ -601,7 +577,7 @@
     {
       "count": 4780,
       "kind": "Action",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 5,
@@ -614,29 +590,34 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 11386,
+      "count": 11399,
       "kind": "ChangeGroup",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
-      "count": 13040,
+      "count": 13066,
       "kind": "ChangeItem",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 410,
       "kind": "data/attachments",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 410,
       "kind": "FileAttachment",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 322,
       "kind": "IssueLink",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
+    },
+    {
+      "count": 310,
+      "kind": "RemoteIssueLink",
+      "reason": "tickets_only"
     },
     {
       "count": 5,
@@ -644,14 +625,14 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 53,
+      "count": 51,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
     {
       "count": 1577,
       "kind": "Worklog",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     }
   ],
   "warnings": [
@@ -698,6 +679,12 @@
       "kind": "layout_set"
     },
     {
+      "code": "custom_event_not_imported",
+      "count": 1,
+      "detail": "10001",
+      "kind": "notification_policy"
+    },
+    {
       "code": "event_not_mapped",
       "count": 1,
       "detail": "14",
@@ -717,13 +704,13 @@
     },
     {
       "code": "removed_character",
-      "count": 9,
+      "count": 10,
       "detail": "control",
       "kind": "source"
     },
     {
       "code": "removed_character",
-      "count": 8,
+      "count": 7,
       "detail": "noncharacter",
       "kind": "source"
     },
@@ -732,6 +719,30 @@
       "count": 6,
       "detail": "nul",
       "kind": "source"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Declined",
+      "kind": "status"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Finished",
+      "kind": "status"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Selected",
+      "kind": "status"
+    },
+    {
+      "code": "status_not_in_workflow",
+      "count": 1,
+      "detail": "Working",
+      "kind": "status"
     },
     {
       "code": "type_not_offered",
@@ -774,132 +785,6 @@
       "count": 2,
       "detail": null,
       "kind": "user"
-    },
-    {
-      "code": "check_not_mapped",
-      "count": 1,
-      "detail": "Business flow: Complete (341): com.example.checklists.ChecklistDoneValidator",
-      "kind": "workflow"
-    },
-    {
-      "code": "check_not_mapped",
-      "count": 1,
-      "detail": "Delivery flow: Send to review (31): com.example.scripts.ScriptedValidator",
-      "kind": "workflow"
-    },
-    {
-      "code": "condition_not_mapped",
-      "count": 1,
-      "detail": "Archived flow: Finish (401): com.example.timeclock.BusinessHoursCondition",
-      "kind": "workflow"
-    },
-    {
-      "code": "condition_not_mapped",
-      "count": 1,
-      "detail": "Business flow: Complete (341): com.atlassian.jira.workflow.condition.InGroupCFCondition (field_not_readable: customfield_10012)",
-      "kind": "workflow"
-    },
-    {
-      "code": "condition_not_mapped",
-      "count": 1,
-      "detail": "Defect flow: Close (141): com.atlassian.jira.workflow.condition.AllowOnlyReporter (negated)",
-      "kind": "workflow"
-    },
-    {
-      "code": "condition_not_mapped",
-      "count": 1,
-      "detail": "Defect flow: Verify (131): com.atlassian.jira.workflow.condition.UserIsInCustomFieldCondition (field_not_readable: customfield_10010)",
-      "kind": "workflow"
-    },
-    {
-      "code": "condition_not_mapped",
-      "count": 1,
-      "detail": "Delivery flow: Escalate (62): com.example.timeclock.BusinessHoursCondition",
-      "kind": "workflow"
-    },
-    {
-      "code": "conditional_result_not_mapped",
-      "count": 1,
-      "detail": "Delivery flow: Approve (41): to Declined",
-      "kind": "workflow"
-    },
-    {
-      "code": "effect_not_mapped",
-      "count": 1,
-      "detail": "Business flow: Complete (341): com.atlassian.jira.workflow.function.issue.UpdateIssueFieldFunction (value_not_mapped: priority=10002)",
-      "kind": "workflow"
-    },
-    {
-      "code": "effect_not_mapped",
-      "count": 1,
-      "detail": "Defect flow: Accept (111): com.atlassian.jira.workflow.function.issue.SetIssueSecurityFromRoleFunction (levels_not_mapped)",
-      "kind": "workflow"
-    },
-    {
-      "code": "effect_not_mapped",
-      "count": 1,
-      "detail": "Defect flow: Close (141): com.atlassian.jira.plugins.webhooks.workflow.TriggerWebhookFunction (webhook_not_imported)",
-      "kind": "workflow"
-    },
-    {
-      "code": "effect_not_mapped",
-      "count": 1,
-      "detail": "Delivery flow: Approve (41): com.example.reports.ExportToSheetFunction",
-      "kind": "workflow"
-    },
-    {
-      "code": "effect_not_mapped",
-      "count": 1,
-      "detail": "Step flow: Review (231): script:beanshell (script_not_mapped: beanshell)",
-      "kind": "workflow"
-    },
-    {
-      "code": "layout_field_not_mapped",
-      "count": 1,
-      "detail": "Business flow: Decline (301): customfield_10000",
-      "kind": "workflow"
-    },
-    {
-      "code": "layout_field_not_mapped",
-      "count": 1,
-      "detail": "Defect flow: Close (141): customfield_10000",
-      "kind": "workflow"
-    },
-    {
-      "code": "layout_field_not_mapped",
-      "count": 1,
-      "detail": "Defect flow: Reject (112): customfield_10000",
-      "kind": "workflow"
-    },
-    {
-      "code": "layout_field_not_mapped",
-      "count": 1,
-      "detail": "Delivery flow: Approve (41): customfield_10000",
-      "kind": "workflow"
-    },
-    {
-      "code": "layout_field_not_mapped",
-      "count": 1,
-      "detail": "Delivery flow: Decline (61): customfield_10000",
-      "kind": "workflow"
-    },
-    {
-      "code": "merged_into",
-      "count": 1,
-      "detail": "Delivery flow",
-      "kind": "workflow"
-    },
-    {
-      "code": "status_property_not_mapped",
-      "count": 1,
-      "detail": "Delivery flow: Declined: jira.permission.delete.group",
-      "kind": "workflow"
-    },
-    {
-      "code": "merged_into",
-      "count": 1,
-      "detail": "Software workflows",
-      "kind": "workflow_map"
     }
   ]
 }

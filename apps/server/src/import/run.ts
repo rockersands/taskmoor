@@ -65,7 +65,8 @@ export interface RunOptions {
   beforeRecord?: (kind: string, ordinal: number) => void;
 }
 
-export const DEFAULT_BATCH = 100;
+/** Records per batch: large enough that a batch's own reads and writes cost little (M1-091). */
+export const DEFAULT_BATCH = 250;
 /** Warnings kept with one record. */
 const MAX_RECORD_WARNINGS = 20;
 /** Records of a kind always sampled, and the most a kind samples. */

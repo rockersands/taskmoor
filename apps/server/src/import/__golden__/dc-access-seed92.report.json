@@ -178,7 +178,8 @@
       "sourceId": "10000",
       "warnings": [
         "event_not_mapped: 14",
-        "recipient_not_mapped: Single_Email_Address"
+        "recipient_not_mapped: Single_Email_Address",
+        "custom_event_not_imported: 10001"
       ]
     },
     {
@@ -262,7 +263,7 @@
     {
       "count": 3541,
       "kind": "Action",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 5,
@@ -275,29 +276,34 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 8497,
+      "count": 8511,
       "kind": "ChangeGroup",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
-      "count": 9726,
+      "count": 9754,
       "kind": "ChangeItem",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 281,
       "kind": "data/attachments",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 281,
       "kind": "FileAttachment",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     },
     {
       "count": 226,
       "kind": "IssueLink",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
+    },
+    {
+      "count": 235,
+      "kind": "RemoteIssueLink",
+      "reason": "tickets_only"
     },
     {
       "count": 5,
@@ -305,14 +311,14 @@
       "reason": "not_imported_yet"
     },
     {
-      "count": 53,
+      "count": 51,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
     {
       "count": 1170,
       "kind": "Worklog",
-      "reason": "not_imported_yet"
+      "reason": "tickets_only"
     }
   ],
   "warnings": [
@@ -339,6 +345,12 @@
       "count": 1,
       "detail": null,
       "kind": "global_grant"
+    },
+    {
+      "code": "custom_event_not_imported",
+      "count": 1,
+      "detail": "10001",
+      "kind": "notification_policy"
     },
     {
       "code": "event_not_mapped",

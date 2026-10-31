@@ -58,6 +58,7 @@ export const ENTITY_KINDS = [
   'ticket',
   'comment',
   'link',
+  'web_link',
   'time_entry',
   'attachment',
   'history',
@@ -495,6 +496,11 @@ export interface TicketCommand {
   /** A parent named by key, for a parent the source does not hold (CSV). */
   parentKey?: string | null;
   /**
+   * Keys the ticket had before it moved between tracks (M1-091): each keeps resolving to it
+   * (CORE-023 (3)), left at `at` (null: when the ticket was created).
+   */
+  formerKeys?: { track: Ref; number: number; at: string | null }[];
+  /**
    * `key`: a ticket the target already has at this track and number is the one meant, and the
    * record updates it (CSV create-or-update by key, IMP-012).
    */
@@ -554,7 +560,23 @@ export interface LinkCommand {
   target: Ref;
   /** A link type by name, created with these phrases when the target has none of that name. */
   linkType: { name: string; outward: string; inward: string };
-  createdAt: string;
+  /** Null when the source does not say: the later of the two tickets' creation (M1-091). */
+  createdAt: string | null;
+  creator: Ref | null;
+}
+
+/** A link from a ticket to a page outside (M1-091), as `ticket_web_link` holds it. */
+export interface WebLinkCommand {
+  kind: 'web_link';
+  ticket: Ref;
+  url: string;
+  title: string;
+  summary: string;
+  iconUrl: string | null;
+  relationship: string;
+  /** The linked object's id in its own system, which integrations find their links by. */
+  globalId: string | null;
+  createdAt: string | null;
   creator: Ref | null;
 }
 
@@ -640,6 +662,7 @@ export type Command =
   | TicketCommand
   | CommentCommand
   | LinkCommand
+  | WebLinkCommand
   | TimeEntryCommand
   | AttachmentCommand
   | HistoryCommand;

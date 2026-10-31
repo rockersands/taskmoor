@@ -47,6 +47,7 @@
               "ticket",
               "comment",
               "link",
+              "web_link",
               "time_entry",
               "attachment",
               "history"
@@ -185,6 +186,7 @@
               "ticket",
               "comment",
               "link",
+              "web_link",
               "time_entry",
               "attachment",
               "history"
@@ -376,6 +378,7 @@
               "ticket",
               "comment",
               "link",
+              "web_link",
               "time_entry",
               "attachment",
               "history"

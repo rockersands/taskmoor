@@ -152,6 +152,34 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     18,464 of 18,464 values match.
   - Open: issue type schemes are not mapped, so tickets warn `type_not_offered`. Identical
     schemes are not merged (IMP-005).
+- **M1-091 Data Center issue content** (branch `work/m1-091-dc-tickets`, side session
+  2026-10-31; ADR-092, no migration; **in progress**: only the million-issue run is left):
+  - Stage: `dc-backup/stage-issues.ts` and `spill.ts`. Nothing per issue stays in memory: ticket
+    rows spill to buckets by issue id range, history to buckets by change group id range, the
+    rest to one file each; each bucket is joined alone after the file. Attachment files are
+    indexed by attachment id while staging (hash, sniffed type, ZIP offset); `DcBackupSource
+    .openFile` reads one entry from its offset. Keep the ZIP until the import is done.
+  - Mapping: `import/dc-content.ts` (comments, history, time entries, links, web links,
+    attachments), tickets in `dc.ts` (followers, voters, `formerKeys`, wiki descriptions).
+    History items are stored items with backup ids; the history loader maps them and corrects
+    starting values as before. New kind `web_link` (`load-weblinks.ts`). New scope
+    `"tickets"`: M1-089's and M1-092's tests use it, so they skip content.
+  - Loaders changed for speed, not behaviour (check them if history looks odd):
+    `writeChangeSets` (one statement), starting values written at a ticket batch's end,
+    the history loader's per-batch picture of each ticket's rows (`historyStates`), deferred
+    content history entries (`deferChanges`, flushed in each loader's `finish`), pooled change
+    set and rank numbers (`nextFrom`), `DEFAULT_BATCH` 250.
+  - Fidelity checker: `import/dc-fidelity.ts`, against the generator's world via external
+    ids. Golden: `dc-content.test.ts` (3,000 issues, 100%, about 100 s). Large:
+    `TASKMOOR_LARGE_DC_IMPORT=1 pnpm verify --only=tests -- apps/server/src/import/dc-import.large.test.ts`
+    (`_ISSUES`, `_DIR`, `_REPORT`, `_EVERY`). 100,000 issues: 1,630 s, 100% of 859,788.
+  - **Left:** the 1,000,000-issue run on a machine with 40 GB free (it needs about 24 GB of
+    database); here it extrapolates to 4.5 h, above the 4 h bar. The import is serial (load
+    average about 1 on four CPUs); parallel content kinds or set-based loading are the next
+    levers. Also not done: mentions (`[~key]` keeps the key), paragraph values as wiki, a
+    source time zone, attachments outside the ZIP.
+  - `pnpm verify --update` ignores the file filter after `--` and runs the whole suite; to
+    rewrite one file's golden, delete it and run the file normally.
 - **M1-092 Data Center access, visibility and notifications** (same branch, second commit;
   ADR-090, no migration; M1-092 is done):
   - Generator `dc-backup/schemes.ts` (permission, issue security and notification schemes, global

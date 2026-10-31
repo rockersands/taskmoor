@@ -439,9 +439,16 @@ export interface IssueFacts {
   estimate: number | null;
   /** Numbers skipped just before this issue's number (deleted issues in the source). */
   skipped: number;
+  /**
+   * Where the issue was before it was moved into its project (M1-091): the earlier project, the
+   * number it had there (one that project skipped, so no other issue holds it) and when.
+   */
+  moved: { project: Project; number: number; at: number } | null;
 }
 
 const RECENT = 16;
+/** Numbers a project skipped that a moved issue may have held there, kept per project. */
+const FREE_NUMBERS = 32;
 
 /**
  * The issues in id order with their core facts. The walk keeps a counter and a few recent
@@ -451,6 +458,8 @@ export function* walkIssues(world: World): Generator<IssueFacts> {
   const { options } = world;
   const counters = new Int32Array(world.projects.length);
   const recent: { id: number; children: number }[][] = world.projects.map(() => []);
+  const free: number[][] = world.projects.map(() => []);
+  const withFree = new Set<number>();
   const standard = world.issueTypes.filter((t) => !t.subtask);
   const subtaskType = world.issueTypes.find((t) => t.subtask) as IssueType;
   // Leave two days at the end, so every issue has room for later activity.
@@ -500,6 +509,32 @@ export function* walkIssues(world: World): Generator<IssueFacts> {
     );
     const due = r.chance(0.2) ? created + r.int(3, 90) * DAY : null;
     const estimate = r.chance(0.4) ? r.int(1, 40) * 3600 : null;
+    // Moves come from a stream of their own, so the facts above stay as they were (M1-091): an
+    // issue that is not a sub-task sometimes came from another project, where it held a number
+    // that project skipped.
+    let moved: IssueFacts['moved'] = null;
+    const m = Random.derive(options.seed, 'moved', i);
+    if (parent === null && withFree.size > 0 && m.chance(0.004)) {
+      const candidates = [...withFree].filter((q) => q !== p).sort((a, b) => a - b);
+      if (candidates.length > 0) {
+        const q = m.pick(candidates);
+        const numbers = free[q] as number[];
+        const old = numbers.shift() as number;
+        if (numbers.length === 0) withFree.delete(q);
+        moved = {
+          project: world.projects[q] as Project,
+          number: old,
+          at: between(m, created + 60_000, Math.max(created + 60_000, updated - 60_000)),
+        };
+      }
+    }
+    if (skipped > 0) {
+      const numbers = free[p] as number[];
+      for (let n = number - skipped; n < number; n++) {
+        if (numbers.length < FREE_NUMBERS) numbers.push(n);
+      }
+      withFree.add(p);
+    }
     yield {
       index: i,
       id,
@@ -522,6 +557,7 @@ export function* walkIssues(world: World): Generator<IssueFacts> {
       watches: 1 + r.geometric(0.6, 50),
       estimate,
       skipped,
+      moved,
     };
   }
 }

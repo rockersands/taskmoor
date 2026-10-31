@@ -96,6 +96,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [089](0089-dc-fields-and-forms.md) | The Data Center import of custom fields and forms, and tickets carrying their values | Accepted |
 | [090](0090-dc-access-and-visibility.md) | The Data Center import of permissions, issue security, notifications and global permissions | Accepted |
 | [091](0091-wiki-markup-converter.md) | Wiki markup as a rich-text format of its own, with a reader and writer that agree | Accepted |
+| [092](0092-dc-ticket-content.md) | The Data Center import of an issue's content: a stage that spills to buckets, content kinds, and fidelity against the fixture | Accepted |
 | [093](0093-dc-workflows.md) | The Data Center import of workflows and workflow schemes, with every rule mapped or held and reported | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

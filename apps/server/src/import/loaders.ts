@@ -21,12 +21,13 @@ import {
 } from './load-config';
 import { attachments } from './load-files';
 import { fieldRuleSets, layoutSets } from './load-forms';
+import { webLinks } from './load-weblinks';
 import type { Command, EntityKind } from './model';
 
 /**
  * The loader of every entity kind (ADR-048; M1-098 added configuration and attachments, M1-089
  * field rule sets and layout sets,
- * M1-092 access, visibility and notification policies and global grants).
+ * M1-091 web links, M1-092 access, visibility and notification policies and global grants).
  */
 export const LOADERS: { [K in EntityKind]: Loader<Extract<Command, { kind: K }>> } = {
   ...CORE_LOADERS,
@@ -49,4 +50,5 @@ export const LOADERS: { [K in EntityKind]: Loader<Extract<Command, { kind: K }>>
   workflow: workflows,
   workflow_map: workflowMaps,
   attachment: attachments,
+  web_link: webLinks,
 };
