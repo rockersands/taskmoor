@@ -362,9 +362,6 @@ importers:
 
   packages/api-jira-compat:
     dependencies:
-      '@taskmoor/richtext':
-        specifier: workspace:*
-        version: link:../richtext
       zod:
         specifier: ^4.6.6
         version: 4.6.6

@@ -9,7 +9,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@taskmoor/richtext": "workspace:*",
     "zod": "^4.6.6"
   },
   "devDependencies": {
