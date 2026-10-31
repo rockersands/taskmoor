@@ -38,7 +38,8 @@ const nextAddress = () => `100.80.${Math.floor(++address / 250)}.${(address % 25
 
 /** Six projects: four on the software scheme, one on the legacy copy, one business project. */
 const OPTIONS = defaultOptions(2_000, 90, { projects: 6 });
-const SOURCE = { format: 'dc-backup', path: 'dc-workflows.zip' } as const;
+// Tickets without their content (M1-091): the workflows need tickets, not their comments or files.
+const SOURCE = { format: 'dc-backup', path: 'dc-workflows.zip', scope: 'tickets' } as const;
 
 function sessionCookie(header: string | string[] | undefined): string {
   return (
