@@ -180,7 +180,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     logger: level === 'silent' ? false : { level },
     // A property key is up to 255 characters (M1-129), percent-encoded in the path: up to 12
     // characters each for a 4-byte character.
-    maxParamLength: 3072,
+    routerOptions: { maxParamLength: 3072 },
     ...(deps.trustedProxies ? { trustProxy: deps.trustedProxies } : {}),
   });
   // Every route as "METHOD /path", for fitness tests (every mutation emits one event).

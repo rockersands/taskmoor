@@ -21,7 +21,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [013](0013-sync-engine.md) | Sync engine: in-house change log with a commit-ordered sequence | Accepted |
 | [014](0014-rich-text-model.md) | Rich text model and collaboration | Accepted |
 | [015](0015-job-queue-and-outbox.md) | Job queue and transactional outbox in Postgres | Accepted |
-| [016](0016-api-contract-and-compat-shim.md) | Contract-first native API and a separate Jira-compatible shim | Accepted (conformance suite amended by ADR-085) |
+| [016](0016-api-contract-and-compat-shim.md) | Contract-first native API and a separate Jira-compatible shim | Accepted |
 | [017](0017-webhooks.md) | Webhooks with signatures, idempotency, replay and no expiry | Accepted |
 | [018](0018-mcp-server.md) | Built-in MCP server over the native API | Accepted |
 | [019](0019-identity.md) | Identity: OIDC, SAML, LDAP, SCIM, TOTP and WebAuthn, all free | Accepted |
