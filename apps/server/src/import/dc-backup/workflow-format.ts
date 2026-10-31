@@ -1,5 +1,4 @@
 import { SaxesParser } from 'saxes';
-import type { EntitySpec } from './format';
 import { escapeAttr, escapeText } from './xml';
 
 /**
@@ -25,7 +24,10 @@ const id = { type: 'id' } as const;
 const text = { type: 'text' } as const;
 const optText = { type: 'text', optional: true } as const;
 
-/** The elements of this part, with their attributes (merged into `format.ts`'s `ENTITIES`). */
+/**
+ * The elements of this part, with their attributes (merged into `format.ts`'s `ENTITIES`, which
+ * checks their shape; no import back, so the two files stay acyclic).
+ */
 export const WORKFLOW_ENTITIES = {
   EventType: { attrs: { id, name: text, description: optText, type: optText } },
   Workflow: {
@@ -42,7 +44,7 @@ export const WORKFLOW_ENTITIES = {
     // `workflow` names the workflow by name; `issuetype` is a type's id, or `0` for the rest.
     attrs: { id, scheme: { type: 'ref', to: 'WorkflowScheme' }, workflow: text, issuetype: text },
   },
-} as const satisfies Record<string, EntitySpec>;
+} as const;
 
 export const WORKFLOW_ELEMENTS = Object.keys(
   WORKFLOW_ENTITIES,
