@@ -2,6 +2,45 @@
 
 Read this first in every session, then update it before you stop.
 
+## Start here: 2026-10-31 (cloud session): the user's decisions, and search changes
+
+The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions.csv`):
+
+- **M1-040 search** (done on this branch): `ORDER BY relevance` ranks only the 10,000 most
+  recently updated matches (`RANKED_CAP` in `apps/server/src/search/compile.ts`; the page reads
+  from a capped subquery, and `rankedWarning` in `routes/search.ts` warns when there are more).
+  Patterns are dropped: a `*` anywhere but the end of a word is refused ("A * can only end a
+  word"). Spec 01b 1.8, ADR-069 (Changes), ADR-010, ADR-011 and the manual's search page are
+  updated. The trigram indexes of migration 0057 are no longer used: a later migration may drop
+  them (not before batch 3's 0072 to 0075 are on main).
+- **DC import system administrators** (M1-090): both, as an import setting, site administrator
+  by default and configuration administrator as the option. Not built yet: it touches
+  `apps/server/src/import/dc-schemes.ts`, so it comes after the batch 3 merge.
+- **AI provider key:** not yet. M1-073 and M1-074's live tests stay skipped.
+- **Spanish review:** the user does it once every M1 task is finished.
+- **Release signing key** (M1-100): the user asked Claude to make it. A cloud container cannot
+  keep a private key, so the **next session on the Mac** does this, once:
+
+  ```sh
+  umask 077
+  mkdir -p ~/.taskmoor-release
+  openssl ecparam -name prime256v1 -genkey -noout -out ~/.taskmoor-release/release-key.pem
+  openssl ec -in ~/.taskmoor-release/release-key.pem -pubout -out tools/airgap/taskmoor-release.pub
+  # Keep the private key in the Keychain and remove the file:
+  security add-generic-password -a taskmoor -s taskmoor-release-key \
+    -w "$(base64 < ~/.taskmoor-release/release-key.pem)"
+  rm ~/.taskmoor-release/release-key.pem
+  ```
+
+  To sign a bundle: `security find-generic-password -s taskmoor-release-key -w | base64 -d >
+  "$TMPDIR/k.pem"`, then `SIGNING_KEY="$TMPDIR/k.pem" PUBLIC_KEY=tools/airgap/taskmoor-release.pub
+  bash tools/airgap/bundle.sh <version>`, then delete `$TMPDIR/k.pem`.
+  - Commit **only** `tools/airgap/taskmoor-release.pub`. `.gitignore` now refuses `*.pem` and
+    `*.key`.
+  - Before pushing, check `git show --stat HEAD` holds no private key.
+  - Tell the user where the private key is, so they can back it up.
+  - Publishing images on ghcr.io is still the user's call.
+
 ## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 to M1-071, M1-108, M1-112, M1-089 to M1-092, M1-095 and three fixes
 
 All on `main`, each push after a green `pnpm verify --e2e`:
@@ -272,13 +311,8 @@ with `--no-edit` has no sign-off: `git commit --amend --no-edit -s` before the n
 Write gate logs outside `.verify/`, which verify clears. Do not run other tests while a gate
 runs: a query-timeout test and the spike tests' pools were flaky under load (both fixed today).
 
-**Decisions waiting for the user**
-- M1-040: rank only the 10,000 most recently updated matches for `ORDER BY relevance` at 10M
-  tickets (about 10 s otherwise for a common word)? Keep pattern searches (`*Exception`,
-  beyond spec 1.8)? See "Side session 2026-10-30: M1-040 full-text search".
-- A native speaker's review of the Spanish draft (`messages.es.ts`, the manual is English only).
-- Still open from before: the AI provider key for M1-073 and M1-074's live tests, the release
-  signing key (M1-100), image publishing on ghcr.io and the repository rename.
+**Decisions waiting for the user**: answered on 2026-10-31 (see the 2026-10-31 section at the
+top). Still open: image publishing on ghcr.io and the repository rename.
 
 **Product gaps the manual found (M1-114)**: fixed on 2026-10-30 (commit "Fix eight gaps the
 manual found"): the setup form's mail server is used, Compose passes mail, S3, backup and
@@ -556,8 +590,8 @@ migration **0057** `0057_full_text_search.ts`.
   escapes, and patterns (`*` anywhere but the end: `*Exception`) on summaries and text fields
   (refused on description, environment, comment and history; `text ~` applies them to summaries
   and text fields with a warning). The resolver refuses what cannot run at the value's
-  position. **Patterns are an extension beyond spec 1.8** (ADR-011 planned `pg_trgm` for
-  substring search on short text): the user may want to confirm or drop them.
+  position. **Patterns were an extension beyond spec 1.8**; the user dropped them on 2026-10-31
+  (now refused).
 - **Compile** (`search/text.ts`, `search/compile.ts`): one `to_tsquery('taskmoor_search', $n)`
   parameter per search with quoted operands; `?` and fuzzy words expand into the words they
   stand for and are read by probing the word index once per word (`matchesFrom`, a fenced `LATERAL`

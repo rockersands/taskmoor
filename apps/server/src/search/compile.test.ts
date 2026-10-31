@@ -76,8 +76,8 @@ export const GOLDEN_QUERIES = [
   'stage WAS closed AND creator WAS currentUser()',
   // Text search (M1-040): stored words, patterns on short text, the master field as one set,
   // relevance.
-  'summary ~ "*Exception" AND text ~ "\\"login failed\\" log* -password"',
-  'text ~ deploy AND Notes ~ "*draft*" ORDER BY relevance',
+  'summary ~ "Exception*" AND text ~ "\\"login failed\\" log* -password"',
+  'text ~ deploy AND Notes ~ "draft*" ORDER BY relevance',
   'comment ~ "release notes" ORDER BY priority DESC, relevance ASC',
 ] as const;
 
@@ -257,8 +257,8 @@ describe('query compiler (M1-037)', () => {
       (v: string) => `summary WAS ${quote(v)} OR Notes CHANGED TO ${quote(v)}`,
       (v: string) => `labels WAS ${quote(v)} AND Topics CHANGED FROM ${quote(v)} BY currentUser()`,
     ];
-    // Text searches (M1-040) read the value's syntax: patterns add conditions, so the
-    // statement depends on its shape. Same shape, same statement: each letter or digit as `a`,
+    // Text searches (M1-040) read the value's syntax: `?` and fuzzy words probe the index word
+    // by word, so the statement depends on its shape. Same shape, same statement: each letter or digit as `a`,
     // every other character but the syntax's own (space, quote, `*`, `?`, `~`, `-`, `\`) as `+`.
     const searches = new Set([0, 2, 4, 5, 7]);
     const shape = (v: string) =>
@@ -294,7 +294,7 @@ describe('query compiler (M1-037)', () => {
             });
             out = await sqlOf(template(value));
           } catch (error) {
-            // A search with nothing to look for, or a pattern where none is taken, is refused.
+            // A search with nothing to look for, or a * inside a word, is refused.
             if (!searches.has(i)) throw error;
             expect(error).toBeInstanceOf(Error);
             expect((error as Error).name).toMatch(/QueryError|SearchError/);

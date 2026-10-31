@@ -120,7 +120,7 @@ Absolute formats: `yyyy/MM/dd HH:mm`, `yyyy-MM-dd HH:mm`, `yyyy/MM/dd`, `yyyy-MM
 
 ### 1.8 Text search syntax (Taskmoor's design; Jira's exact rules were not captured, verify)
 
-Words are ANDed; quoted phrases; trailing `*` and single `?` wildcards; `term~` fuzzy match; `-term` excludes; case-insensitive; language stemming per site language; reserved characters escaped with a backslash.
+Words are ANDed; quoted phrases; trailing `*` and single `?` wildcards; `term~` fuzzy match; `-term` excludes; case-insensitive; language stemming per site language; reserved characters escaped with a backslash. A `*` anywhere but the end of a word is refused: searches match words, not text inside them. Ordering by relevance ranks the 10,000 most recently updated matches; the count still covers all of them (the user's decisions of 2026-10-31).
 
 ## 2. QRY requirements
 

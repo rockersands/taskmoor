@@ -51,6 +51,8 @@ export interface PrepareInput {
   anchor?: boolean;
   /** False keeps one statement instead of value branches (tests compare both). */
   branches?: boolean;
+  /** How many matches relevance ranks (tests make it small; `RANKED_CAP`). */
+  rankedCap?: number;
   /** Saving a saved search: a reference back to it is a cycle (M1-063). */
   savedSearch?: ExpandOptions['self'];
 }
@@ -98,6 +100,7 @@ export async function prepareSearch(input: PrepareInput): Promise<Prepared> {
     commentsOf: (track) => commentReadableSql(input.workspaceId, input.currentUserId, track),
     ...(input.anchor === undefined ? {} : { anchor: input.anchor }),
     ...(input.branches === undefined ? {} : { branches: input.branches }),
+    ...(input.rankedCap === undefined ? {} : { rankedCap: input.rankedCap }),
   });
   return { bound, compiled };
 }

@@ -3,8 +3,8 @@ import type { TextSearch, TextTerm } from '@taskmoor/query';
 /**
  * Text search in SQL terms (M1-040; QRY-007; ADR-069): a search read by `parseTextSearch`
  * (spec 01b section 1.8) becomes the input of `to_tsquery` over the `taskmoor_search`
- * configuration of migration 0057 (English stemming, no stop words), and patterns become
- * `ILIKE` patterns the trigram indexes serve.
+ * configuration of migration 0057 (English stemming, no stop words). Searches match words only:
+ * the patterns of the first version (`*Exception`) were dropped on 2026-10-31.
  *
  * - Words and phrases are quoted operands, so the database's own parser splits and stems them
  *   exactly as it split and stemmed the indexed text (`'login failed'` reads as
@@ -23,12 +23,8 @@ import type { TextSearch, TextTerm } from '@taskmoor/query';
 export const SEARCH_CONFIG = 'taskmoor_search';
 
 export interface TextQuery {
-  /** The input of `to_tsquery`; null when the search has only patterns. */
-  tsquery: string | null;
-  /** `ILIKE` patterns that must match. */
-  patterns: string[];
-  /** `ILIKE` patterns that must not match. */
-  excludedPatterns: string[];
+  /** The input of `to_tsquery`. */
+  tsquery: string;
 }
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -99,8 +95,8 @@ export function expansions(term: Expanding): { words: string[]; prefix: boolean 
     : { words: fuzzyWords(term.text), prefix: false };
 }
 
-/** One term as a tsquery expression; undefined for a pattern. */
-function tsTerm(term: TextTerm): string | undefined {
+/** One term as a tsquery expression. */
+function tsTerm(term: TextTerm): string {
   switch (term.kind) {
     case 'word':
       return `${operand(term.text)}${term.prefix ? ':*' : ''}`;
@@ -112,8 +108,6 @@ function tsTerm(term: TextTerm): string | undefined {
       const suffix = prefix ? ':*' : '';
       return `(${words.map((w) => `${operand(w)}${suffix}`).join(' | ')})`;
     }
-    case 'pattern':
-      return undefined;
   }
 }
 
@@ -125,44 +119,9 @@ function tsTerm(term: TextTerm): string | undefined {
 export const expands = (search: TextSearch) =>
   search.terms.some((t) => t.kind === 'wildcard' || t.kind === 'fuzzy');
 
-/** A pattern as `ILIKE` reads it: literal text escaped, `*` as `%`, `?` as `_`, anywhere. */
-export function likePattern(term: Extract<TextTerm, { kind: 'pattern' }>): string {
-  const literal = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
-  const parts = [...term.parts];
-  const gaps = [...term.gaps];
-  // A pattern matches anywhere already: a `*` at either end adds nothing.
-  if (parts[0] === '' && gaps[0] === 'many') {
-    parts.shift();
-    gaps.shift();
-  }
-  if (parts[parts.length - 1] === '' && gaps[gaps.length - 1] === 'many') {
-    parts.pop();
-    gaps.pop();
-  }
-  const body = parts
-    .map((p, i) => `${literal(p)}${i < gaps.length ? (gaps[i] === 'many' ? '%' : '_') : ''}`)
-    .join('');
-  return `%${body}%`;
-}
-
-const isPattern = (t: TextTerm): t is Extract<TextTerm, { kind: 'pattern' }> =>
-  t.kind === 'pattern';
-
-/** Whether a search holds a pattern (`*` inside or in front of a word). */
-export const hasPattern = (search: TextSearch) =>
-  search.terms.some(isPattern) || search.excluded.some(isPattern);
-
-/** The tsquery input and the patterns of a search. */
+/** The tsquery input of a search. */
 export function textQuery(search: TextSearch): TextQuery {
-  const must = search.terms.flatMap((t) => tsTerm(t) ?? []);
-  const not = search.excluded.flatMap((t) => {
-    const x = tsTerm(t);
-    return x === undefined ? [] : [`!${x}`];
-  });
-  const parts = [...must, ...not];
-  return {
-    tsquery: parts.length === 0 ? null : parts.join(' & '),
-    patterns: search.terms.filter(isPattern).map(likePattern),
-    excludedPatterns: search.excluded.filter(isPattern).map(likePattern),
-  };
+  const must = search.terms.map(tsTerm);
+  const not = search.excluded.map((t) => `!${tsTerm(t)}`);
+  return { tsquery: [...must, ...not].join(' & ') };
 }

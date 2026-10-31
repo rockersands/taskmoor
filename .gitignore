@@ -19,6 +19,9 @@ blob-report/
 .env
 .env.*
 !.env.example
+# Private keys never enter the repository (the release signing key lives outside the clone)
+*.pem
+*.key
 
 # OS and editor noise
 .DS_Store

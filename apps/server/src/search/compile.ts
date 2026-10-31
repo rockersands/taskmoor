@@ -66,6 +66,8 @@ export interface CompileOptions {
   anchor?: boolean;
   /** Merge value branches when the first key allows (default true); tests compare both forms. */
   branches?: boolean;
+  /** How many matches relevance ranks (default `RANKED_CAP`); tests make it small. */
+  rankedCap?: number;
 }
 
 /** A position in the results: the last row's order values and its id. */
@@ -101,7 +103,16 @@ export interface CompiledSearch {
   sample(percent: number, seed: number): RawBuilder<{ blocks: number; m: number; m2: number }>;
   /** The workspace searched. */
   workspaceId: number;
+  /** Ordered by relevance: only this many of the most recently updated matches are ranked. */
+  rankedAmong?: number;
 }
+
+/**
+ * `ORDER BY relevance` ranks the 10,000 most recently updated matches, not every match (the
+ * user's decision of 2026-10-31): ranking reads each match's words, about 10 s for a common word
+ * at 10M tickets. Counts still count every match.
+ */
+export const RANKED_CAP = 10_000;
 
 const raw = (text: string) => sql.raw(text);
 const param = (value: Scalar, type: SqlType) => sql`${value}::${raw(type)}`;
@@ -147,27 +158,9 @@ const wordsOf = (text: RawBuilder<unknown>) => sql`to_tsvector(${config}, ${text
 const documentWords = (doc: RawBuilder<unknown>) =>
   sql`to_tsvector(${config}, left(taskmoor_document_text(${doc}), 200000))`;
 
-/**
- * A text matches a search (spec 01b section 1.8): `words` holds its words for the word terms;
- * `text`, for a short text, is matched against the patterns (the trigram indexes serve them).
- * A long text (`text` null) never matches a search that needs a pattern.
- */
-function textMatch(
-  words: RawBuilder<unknown>,
-  text: RawBuilder<unknown> | null,
-  search: TextSearch,
-): RawBuilder<boolean> {
-  const q = textQuery(search);
-  const parts: RawBuilder<boolean>[] = [];
-  if (q.tsquery !== null) parts.push(sql<boolean>`${words} @@ ${tsquery(q.tsquery)}`);
-  for (const p of q.patterns) {
-    parts.push(text ? sql<boolean>`${text} ILIKE ${param(p, 'text')}` : FALSE);
-  }
-  if (text) {
-    for (const p of q.excludedPatterns)
-      parts.push(sql<boolean>`${text} NOT ILIKE ${param(p, 'text')}`);
-  }
-  return and(parts);
+/** A text's words match a search (spec 01b section 1.8). */
+function textMatch(words: RawBuilder<unknown>, search: TextSearch): RawBuilder<boolean> {
+  return sql<boolean>`${words} @@ ${tsquery(textQuery(search).tsquery)}`;
 }
 
 /**
@@ -205,14 +198,11 @@ function matchesFrom(
 /** How much each place counts towards relevance. */
 const RANK_WEIGHT = { summary: 1, description: 0.4, environment: 0.2, comment: 0.2, custom: 0.4 };
 
-/** How well `words` match a search's words, or nothing for a search of patterns only. */
-function rank(words: RawBuilder<unknown>, search: TextSearch): RawBuilder<unknown> | undefined {
-  const q = textQuery(search);
+/** How well `words` match a search's words. */
+function rank(words: RawBuilder<unknown>, search: TextSearch): RawBuilder<unknown> {
   // Normalised by the text's length (1 + its logarithm), so a short summary that matches
   // counts for more than a long description that mentions the word once.
-  return q.tsquery === null
-    ? undefined
-    : sql`coalesce(ts_rank(${words}, ${tsquery(q.tsquery)}, 1), 0)`;
+  return sql`coalesce(ts_rank(${words}, ${tsquery(textQuery(search).tsquery)}, 1), 0)`;
 }
 
 /**
@@ -223,8 +213,8 @@ function rank(words: RawBuilder<unknown>, search: TextSearch): RawBuilder<unknow
  */
 function relevanceExpr(searches: readonly RankedSearch[], comments: RawBuilder<boolean>) {
   const terms: RawBuilder<unknown>[] = [];
-  const add = (weight: number, value: RawBuilder<unknown> | undefined) => {
-    if (value) terms.push(sql`${raw(String(weight))} * ${value}`);
+  const add = (weight: number, value: RawBuilder<unknown>) => {
+    terms.push(sql`${raw(String(weight))} * ${value}`);
   };
   for (const s of searches) {
     switch (s.on) {
@@ -240,22 +230,18 @@ function relevanceExpr(searches: readonly RankedSearch[], comments: RawBuilder<b
         break;
       case 'comment': {
         const best = rank(raw('c.body_words'), s.search);
-        if (best) {
-          add(
-            RANK_WEIGHT.comment,
-            sql`coalesce((SELECT max(${best}) FROM ticket_comment c WHERE c.ticket_id = k.id AND ${comments}), 0)`,
-          );
-        }
+        add(
+          RANK_WEIGHT.comment,
+          sql`coalesce((SELECT max(${best}) FROM ticket_comment c WHERE c.ticket_id = k.id AND ${comments}), 0)`,
+        );
         break;
       }
       case 'custom': {
         const best = rank(wordsOf(raw('o.value')), s.search);
-        if (best) {
-          add(
-            RANK_WEIGHT.custom,
-            sql`coalesce((SELECT max(${best}) FROM v_text o WHERE o.ticket_id = k.id AND o.field_id = ${param(s.fieldId, 'int')}), 0)`,
-          );
-        }
+        add(
+          RANK_WEIGHT.custom,
+          sql`coalesce((SELECT max(${best}) FROM v_text o WHERE o.ticket_id = k.id AND o.field_id = ${param(s.fieldId, 'int')}), 0)`,
+        );
         break;
       }
     }
@@ -278,7 +264,7 @@ function valueTest(value: RawBuilder<unknown>, test: ValueTest, type: SqlType) {
         ? FALSE
         : sql<boolean>`${value} = ANY(${array(test.values, type)})`;
     case 'words':
-      return textMatch(wordsOf(value), value, test.search);
+      return textMatch(wordsOf(value), test.search);
   }
 }
 
@@ -507,7 +493,7 @@ function historyTest(t: HistoryTest, side: 'to' | 'from'): RawBuilder<boolean> {
       ]);
     case 'words': {
       const words = t.document ? documentWords(sql`${value}::jsonb`) : wordsOf(value);
-      return or(t.searches.map((x) => textMatch(words, t.document ? null : value, x)));
+      return or(t.searches.map((x) => textMatch(words, x)));
     }
     case 'linkTo':
       return anyOf(
@@ -838,15 +824,15 @@ export function compileCond(c: Cond, ctx: CondContext): RawBuilder<boolean> {
         return textSet(c.source, c.search, ctx);
       }
       if (c.source === 'summary') {
-        const match = textMatch(raw('k.summary_words'), raw('k.summary'), c.search);
+        const match = textMatch(raw('k.summary_words'), c.search);
         return c.negated ? not(match) : match;
       }
       if (c.source === 'comment') {
         // Several comments per ticket: `!~` means it has some the viewer reads, none matching.
-        const match = commentRows(ctx, textMatch(raw('c.body_words'), null, c.search));
+        const match = commentRows(ctx, textMatch(raw('c.body_words'), c.search));
         return c.negated ? and([commentRows(ctx), not(match)]) : match;
       }
-      const match = textMatch(raw(`k.${c.source}_words`), null, c.search);
+      const match = textMatch(raw(`k.${c.source}_words`), c.search);
       return and([sql<boolean>`k.${raw(c.source)} IS NOT NULL`, c.negated ? not(match) : match]);
     }
     case 'wordsEmpty': {
@@ -918,12 +904,12 @@ function masterText(c: Extract<Cond, { kind: 'text' }>, ctx: CondContext): RawBu
   if (ctx.rows || (ctx.purpose === 'count' ? c.perRow?.count : c.perRow?.page)) {
     // Many matches: a test of the row, so walking the order stops after a page.
     const parts = [
-      textMatch(raw('k.summary_words'), raw('k.summary'), c.search),
-      textMatch(raw('k.description_words'), null, c.search),
-      textMatch(raw('k.environment_words'), null, c.search),
-      commentRows(ctx, textMatch(raw('c.body_words'), null, c.search)),
+      textMatch(raw('k.summary_words'), c.search),
+      textMatch(raw('k.description_words'), c.search),
+      textMatch(raw('k.environment_words'), c.search),
+      commentRows(ctx, textMatch(raw('c.body_words'), c.search)),
     ];
-    const value = textMatch(wordsOf(raw('v.value')), raw('v.value'), c.search);
+    const value = textMatch(wordsOf(raw('v.value')), c.search);
     if (c.fieldIds.length > 0 && value !== FALSE) {
       parts.push(
         sql<boolean>`EXISTS (SELECT 1 FROM v_text v WHERE ${and([sql<boolean>`v.ticket_id = k.id`, sql<boolean>`v.field_id = ANY(${array(c.fieldIds, 'int')})`, value])})`,
@@ -945,16 +931,16 @@ function textSetBranches(
   const ws = param(ctx.workspaceId, 'int');
   const branches: RawBuilder<unknown>[] = [];
   const own = or([
-    textMatch(raw('t.summary_words'), raw('t.summary'), c.search),
-    textMatch(raw('t.description_words'), null, c.search),
-    textMatch(raw('t.environment_words'), null, c.search),
+    textMatch(raw('t.summary_words'), c.search),
+    textMatch(raw('t.description_words'), c.search),
+    textMatch(raw('t.environment_words'), c.search),
   ]);
   if (own !== FALSE) {
     branches.push(
       sql`SELECT t.id FROM ${matchesFrom('ticket', 't', [raw('t.summary_words'), raw('t.description_words'), raw('t.environment_words')], c.search)} WHERE ${and([sql<boolean>`t.workspace_id = ${ws}`, sql<boolean>`t.deleted_at IS NULL`, own])}`,
     );
   }
-  const comment = textMatch(raw('c.body_words'), null, c.search);
+  const comment = textMatch(raw('c.body_words'), c.search);
   const comments = matchesFrom('ticket_comment', 'c', [raw('c.body_words')], c.search);
   if (comment !== FALSE) {
     branches.push(
@@ -967,7 +953,7 @@ function textSetBranches(
           sql`SELECT c.ticket_id FROM ${comments} CROSS JOIN LATERAL (SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id OFFSET 0) k WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, comment, ctx.comments])}`,
     );
   }
-  const value = textMatch(wordsOf(raw('v.value')), raw('v.value'), c.search);
+  const value = textMatch(wordsOf(raw('v.value')), c.search);
   if (c.fieldIds.length > 0 && value !== FALSE) {
     branches.push(
       sql`SELECT v.ticket_id FROM ${matchesFrom('v_text', 'v', [wordsOf(raw('v.value'))], c.search)} WHERE ${and([sql<boolean>`v.field_id = ANY(${array(c.fieldIds, 'int')})`, value])}`,
@@ -988,8 +974,8 @@ export function textSourceSet(
   const ws = param(workspaceId, 'int');
   const match =
     source === 'comment'
-      ? textMatch(raw('c.body_words'), null, search)
-      : textMatch(raw(`t.${source}_words`), source === 'summary' ? raw('t.summary') : null, search);
+      ? textMatch(raw('c.body_words'), search)
+      : textMatch(raw(`t.${source}_words`), search);
   if (match === FALSE) return undefined;
   return source === 'comment'
     ? sql`SELECT c.ticket_id FROM ticket_comment c WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, sql<boolean>`c.deleted_at IS NULL`, match])}`
@@ -1027,18 +1013,13 @@ function textSet(
 ): RawBuilder<boolean> {
   const ws = param(ctx.workspaceId, 'int');
   if (source === 'comment') {
-    const match = textMatch(raw('c.body_words'), null, search);
+    const match = textMatch(raw('c.body_words'), search);
     const readable = ctx.commentsOf
       ? ctx.commentsOf(sql`(SELECT o.track_id FROM ticket o WHERE o.id = c.ticket_id)`)
       : sql<boolean>`EXISTS (SELECT 1 FROM ticket k WHERE k.id = c.ticket_id AND ${ctx.comments})`;
     return sql<boolean>`k.id = ANY(ARRAY(SELECT c.ticket_id FROM ${matchesFrom('ticket_comment', 'c', [raw('c.body_words')], search)} WHERE ${and([sql<boolean>`c.workspace_id = ${ws}`, match, readable])}))`;
   }
-  const match = textMatch(
-    raw(`t.${source}_words`),
-    source === 'summary' ? raw('t.summary') : null,
-    search,
-  );
-  if (match === FALSE) return FALSE;
+  const match = textMatch(raw(`t.${source}_words`), search);
   return sql<boolean>`k.id = ANY(ARRAY(SELECT t.id FROM ${matchesFrom('ticket', 't', [raw(`t.${source}_words`)], search)} WHERE ${and([sql<boolean>`t.workspace_id = ${ws}`, sql<boolean>`t.deleted_at IS NULL`, match])}))`;
 }
 
@@ -1240,16 +1221,22 @@ export function compileSearch(bound: Bound, options: CompileOptions): CompiledSe
   // Counts read all matches, and may want another form of a text search (M1-040).
   const countCond = compileCond(bound.where, { ...ctx, purpose: 'count' });
   const countWhere = [...baseConditions(options), ...(countCond === TRUE ? [] : [countCond])];
-  const anchor = options.anchor === false ? undefined : findAnchor(bound);
-  const plain: Walk = {
-    from: raw('ticket k'),
-    id: 'k.id',
-    exprs: keys.map((k) => orderExpr(k.source, options.comments)),
-    conditions: plainWhere,
-  };
+  const ranked = keys.some((k) => k.source.kind === 'relevance');
+  const rankedCap = options.rankedCap ?? RANKED_CAP;
+  const anchor = options.anchor === false || ranked ? undefined : findAnchor(bound);
+  const exprs = keys.map((k) => orderExpr(k.source, options.comments));
+  const plain: Walk = ranked
+    ? {
+        // The most recently updated matches, ranked and paged outside (RANKED_CAP).
+        from: sql`(SELECT k.* FROM ticket k WHERE ${join(plainWhere, ' AND ')} ORDER BY k.updated_at DESC, k.id DESC LIMIT ${param(rankedCap, 'int')}) k`,
+        id: 'k.id',
+        exprs,
+        conditions: [TRUE],
+      }
+    : { from: raw('ticket k'), id: 'k.id', exprs, conditions: plainWhere };
   const walk = anchor ? anchoredWalk(anchor, options, ctx) : plain;
   const branches =
-    anchor || !bound.domain || options.branches === false
+    anchor || ranked || !bound.domain || options.branches === false
       ? undefined
       : valueBranches(bound, bound.domain, options);
   return {
@@ -1282,6 +1269,7 @@ export function compileSearch(bound: Bound, options: CompileOptions): CompiledSe
         m2: number;
       }>`SELECT count(*)::float8 AS blocks, coalesce(sum(b.n), 0)::float8 AS m, coalesce(sum(b.n * b.n), 0)::float8 AS m2 FROM (SELECT count(*) FILTER (WHERE ${join(countWhere, ' AND ')}) AS n FROM ticket k TABLESAMPLE SYSTEM (${param(percent, 'float8')}) REPEATABLE (${param(seed, 'float8')}) GROUP BY (k.ctid::text::point)[0]) b`,
     workspaceId: options.workspaceId,
+    ...(ranked ? { rankedAmong: rankedCap } : {}),
   };
 }
 

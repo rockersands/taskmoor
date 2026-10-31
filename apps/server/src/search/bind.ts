@@ -18,7 +18,7 @@ import { isTrackPermission, type TrackPermission } from '../authz/permissions';
 import { effectiveGroupIds, effectiveMemberIds } from '../directory';
 import type { Catalog } from '../fields/catalog';
 import { findTeam, teamMemberIds } from '../teams';
-import { masterTextSet, textSourceSet } from './compile';
+import { masterTextSet, RANKED_CAP, textSourceSet } from './compile';
 import { COUNT_CAP } from './count';
 import type {
   Bound,
@@ -43,7 +43,7 @@ import type {
   TimeEdge,
   ValueTest,
 } from './model';
-import { expands, hasPattern } from './text';
+import { expands } from './text';
 
 /**
  * From a resolved query to one the compiler takes (M1-037; ADR-010): names become ids (statuses,
@@ -406,17 +406,17 @@ export async function bindPlan(plan: Plan, ctx: BindContext): Promise<Bound> {
  * - a count needs one past its cap (10,000): from twice the cap and `sqrt(cap · n / 4)` matches,
  *   where walking to 10,001 of them costs less than reading all from the set (at 200,000 tickets
  *   22,000; at 10M 158,000). Below the cap walking would read the whole table;
- * - relevance ranks every match: walking reads every ticket, the set every match four times
- *   over, so from 5,000 matches and a quarter of the tickets.
+ * - relevance ranks the 10,000 most recently updated matches (`RANKED_CAP`), walking the
+ *   tickets by their update: like a count, from twice the cap and `sqrt(cap · n / 4)` matches.
  *
  * Measured at 200,000 tickets: a prefix with 28,000 matches counted in 917 ms from the set and
- * 101 ms walking; a word in 84,000 tickets ordered by relevance took 1,007 ms from the set and
- * 185 ms walking.
+ * 101 ms walking.
  */
 const perRowPage = (m: number, n: number) => m >= Math.max(5_000, 0.003 * n);
 const perRowCount = (m: number, n: number) =>
   m >= Math.max(2 * COUNT_CAP, Math.sqrt((COUNT_CAP * n) / 4));
-const perRowRanked = (m: number, n: number) => m >= Math.max(5_000, n / 4);
+const perRowRanked = (m: number, n: number) =>
+  m >= Math.max(2 * RANKED_CAP, Math.sqrt((RANKED_CAP * n) / 4));
 
 /**
  * Chooses the form of each master text search (`compile.ts`, `masterText`) from the planner's
@@ -473,7 +473,7 @@ async function textForms(db: Db, workspaceId: number, where: Cond, ranked: boole
  * read the whole table (929 ms at 1M tickets for two words no summary holds together).
  */
 function severalWords(search: TextSearch): boolean {
-  const words = search.terms.filter((t) => t.kind !== 'pattern');
+  const words = search.terms;
   return words.length > 1 || words.some((t) => t.kind === 'phrase' && /\s/u.test(t.text.trim()));
 }
 
@@ -531,31 +531,14 @@ function relevance(where: Cond): OrderSource {
   return { kind: 'relevance', searches };
 }
 
-/**
- * Reads a `~` value (spec 01b section 1.8). Patterns need a short text the trigram indexes hold:
- * `long` texts (descriptions, environments, comments) and `history` refuse them.
- */
-function textSearch(
-  value: Typed,
-  field: string,
-  patterns: 'take' | 'long' | 'history' = 'take',
-): TextSearch {
-  let search: TextSearch;
+/** Reads a `~` value (spec 01b section 1.8). */
+function textSearch(value: Typed, field: string): TextSearch {
   try {
-    search = parseTextSearch(String(content(value).value));
+    return parseTextSearch(String(content(value).value));
   } catch (error) {
     if (!(error instanceof TextSearchError)) throw error;
     throw new SearchError(`${field}: ${error.message}`, 'unsupported');
   }
-  if (patterns !== 'take' && hasPattern(search)) {
-    throw new SearchError(
-      patterns === 'long'
-        ? `${field} is long text: a * inside or in front of a word searches summaries and text fields only`
-        : `${field}: WAS and CHANGED match words; a * inside or in front of a word is not taken`,
-      'unsupported',
-    );
-  }
-  return search;
 }
 
 /** Groups (id, value) rows by value: each order value with the ids that have it. */
@@ -907,7 +890,7 @@ class Binder {
       (document: boolean) =>
       async (values: Typed[]): Promise<HistoryTest> => ({
         kind: 'words',
-        searches: values.map((v) => textSearch(v, label(field), 'history')),
+        searches: values.map((v) => textSearch(v, label(field))),
         document,
       });
     const labels = async (values: Typed[]): Promise<HistoryTest> => ({
@@ -1347,7 +1330,7 @@ class Binder {
         return {
           kind: 'words',
           source: field.name,
-          search: textSearch(c.value, label(field), field.name === 'summary' ? 'take' : 'long'),
+          search: textSearch(c.value, label(field)),
           negated: c.op === '!~',
         };
       }
@@ -1357,15 +1340,9 @@ class Binder {
         const fieldIds = this.ctx.catalogue.customs
           .filter((f) => f.type === 'text')
           .map((f) => f.id);
-        const search = textSearch(c.value, label(field));
-        if (hasPattern(search)) {
-          this.warnings.push(
-            'A * inside or in front of a word searches summaries and text fields only, not descriptions, environments or comments',
-          );
-        }
         return {
           kind: 'text',
-          search,
+          search: textSearch(c.value, label(field)),
           fieldIds: idList(fieldIds),
           negated: c.op === '!~',
         };

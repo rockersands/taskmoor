@@ -1,14 +1,12 @@
 import { parseTextSearch } from '@taskmoor/query';
 import { describe, expect, it } from 'vitest';
-import { fuzzyWords, likePattern, operand, textQuery, wildcardWords } from './text';
+import { fuzzyWords, operand, textQuery, wildcardWords } from './text';
 
-/** A search as `to_tsquery` input and `ILIKE` patterns (M1-040; QRY-007). */
+/** A search as `to_tsquery` input (M1-040; QRY-007). */
 describe('text search in SQL terms (M1-040)', () => {
   it('[QRY-007] quotes words and phrases so the database splits and stems them', () => {
     expect(textQuery(parseTextSearch('Login "failed twice" log*'))).toEqual({
       tsquery: "'Login' & 'failed twice' & 'log':*",
-      patterns: [],
-      excludedPatterns: [],
     });
     expect(operand("it's a\\b")).toBe("'it''s a\\\\b'");
     expect(textQuery(parseTextSearch('a -b -"c d"')).tsquery).toBe("'a' & !'b' & !'c d'");
@@ -38,22 +36,5 @@ describe('text search in SQL terms (M1-040)', () => {
     // Too short or too long to expand.
     expect(fuzzyWords('ab')).toEqual(['ab']);
     expect(fuzzyWords('x'.repeat(25))).toEqual(['x'.repeat(25)]);
-  });
-
-  it('[QRY-007] turns patterns into ILIKE patterns with literal text escaped', () => {
-    const pattern = (text: string) => {
-      const t = parseTextSearch(text).terms[0];
-      if (t?.kind !== 'pattern') throw new Error(`not a pattern: ${text}`);
-      return likePattern(t);
-    };
-    expect(pattern('*Exception')).toBe('%Exception%');
-    expect(pattern('*draft*')).toBe('%draft%');
-    expect(pattern('*abc?de*fgh')).toBe('%abc_de%fgh%');
-    expect(pattern('*100\\%_done')).toBe('%100\\%\\_done%');
-    expect(textQuery(parseTextSearch('*abc -*xyz'))).toEqual({
-      tsquery: null,
-      patterns: ['%abc%'],
-      excludedPatterns: ['%xyz%'],
-    });
   });
 });
