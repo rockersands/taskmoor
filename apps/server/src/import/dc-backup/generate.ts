@@ -275,7 +275,7 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           id: p.id,
           name: p.name,
           key: p.key,
-          originalkey: p.key,
+          originalkey: p.originalKey ?? p.key,
           lead: w.user(p.lead),
           description: { text: p.description },
           counter: p.counter,
@@ -961,7 +961,12 @@ function* attachmentFiles(world: World): Generator<{ id: number; path: string; s
     for (const a of parts.attachments(world, issue)) {
       yield {
         id,
-        path: attachmentPath(issue.project.key, issue.number, issue.key, id),
+        path: attachmentPath(
+          issue.project.originalKey ?? issue.project.key,
+          issue.number,
+          issue.key,
+          id,
+        ),
         size: a.size,
       };
       id++;

@@ -70,18 +70,21 @@ describe('web role', () => {
     expect(asset.headers['content-type']).toMatch(/javascript/);
     const deep = await app.inject({
       method: 'GET',
-      url: '/browse/ABC-1',
+      url: '/boards/7',
       headers: { accept: 'text/html,*/*' },
     });
     expect(deep.statusCode).toBe(302);
-    expect(deep.headers.location).toBe('/#/browse/ABC-1');
+    expect(deep.headers.location).toBe('/#/boards/7');
+    // A link from the tracker an import came from goes to its own route (M1-128).
+    const old = await app.inject({ method: 'GET', url: '/browse/ABC-1' });
+    expect(old.headers.location).toBe('/#/tickets/ABC-1');
   });
 
   it('keeps JSON 404s for API paths and non-HTML clients', async () => {
     const api = await app.inject({ method: 'GET', url: '/api/v1/nope' });
     expect(api.statusCode).toBe(404);
     expect(api.json()).toMatchObject({ error: 'Not Found', statusCode: 404 });
-    const fetchLike = await app.inject({ method: 'GET', url: '/browse/ABC-1' });
+    const fetchLike = await app.inject({ method: 'GET', url: '/boards/7' });
     expect(fetchLike.statusCode).toBe(404);
   });
 

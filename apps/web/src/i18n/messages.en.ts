@@ -164,6 +164,11 @@ export const messagesEn = {
   'saved.subscribed': 'You are subscribed to {name}. The first email goes out {when}.',
   'saved.nameTaken': 'You have a saved search of that name already.',
   'saved.forbidden': 'You may not do that with this saved search.',
+  'importedLink.title': 'Opening a link from your earlier tracker',
+  'importedLink.looking': 'Looking for what this link became…',
+  'importedLink.missing': 'Nothing that was imported matches this link, or you may not see it.',
+  'importedLink.failed': 'The link could not be looked up. Try again in a moment.',
+  'importedLink.toSearch': 'Go to search',
   'saved.importProblem':
     'This saved search came from an import and does not run yet: {problem}. Change the query and save it to fix it.',
   'saved.failed': 'That did not work. Try again in a moment.',

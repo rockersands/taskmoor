@@ -48,6 +48,7 @@ import { registerFrontendRoutes } from './routes/frontends';
 import { registerGroupRoutes } from './routes/groups';
 import { registerGuardrailRoutes } from './routes/guardrails';
 import { registerHomeRoutes } from './routes/home';
+import { registerImportedLinkRoutes } from './routes/imported-links';
 import { registerImportRoutes } from './routes/imports';
 import { registerInboxRoutes } from './routes/inbox';
 import { registerAllowlist, registerAllowlistRoutes } from './routes/ip-allowlist';
@@ -504,6 +505,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerSavedSearchRoutes(app, db, fieldCatalogs, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
+    // Links from the tracker an import came from, through its external ids (M1-128).
+    registerImportedLinkRoutes(app, db);
     registerAuditRoutes(app, db, {
       hostname: new URL(deps.publicUrl ?? 'http://localhost:8080').hostname,
     });

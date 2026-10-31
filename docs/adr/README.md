@@ -100,5 +100,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [093](0093-dc-workflows.md) | The Data Center import of workflows and workflow schemes, with every rule mapped or held and reported | Accepted |
 | [094](0094-cloud-rest-import.md) | The Cloud REST importer: a resumable fetch into a staging table, throttled as the source asks | Accepted |
 | [096](0096-dc-filters-and-query-translation.md) | Translating saved filters, dashboards and subscriptions from a Data Center backup | Accepted |
+| [097](0097-imported-keys-and-links.md) | Keys and links from the tracker an import came from | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

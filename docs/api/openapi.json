@@ -12347,6 +12347,57 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/imported-links/{kind}/{sourceId}": {
+      "get": {
+        "operationId": "internal-get-imported-links-by-kind-by-sourceId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/inbox": {
       "get": {
         "operationId": "internal-get-inbox",

@@ -1,7 +1,7 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx
 accessed: 2026-10-31
 attestation: own-words
 jira-names: import sources and field mapping
@@ -182,6 +182,7 @@ What the import makes of the backup:
 | Issues | Tickets with their key, type, status, priority, close reason, assignee, reporter (as requester), creator, summary, description, due date, estimates, labels, parent, custom values and security level | By track and number on a later run |
 | Watchers and voters | Followers and voters of the ticket | |
 | Earlier keys of issues moved between projects | Earlier keys of the ticket: opening or searching for the old key finds it | |
+| A renamed project's first key | An earlier key of the track: its tickets open, and queries find them, by either key | A key another track has stays theirs (`former_key_taken`) |
 | Comments, with group or role restrictions and edits | Comments by the same author at the same time, restricted to the same group or role, marked edited when they were | |
 | Change history | History entries with their original author and time: status, resolution (as close reason), priority, type, assignee, reporter, project (as track), key, summary, description, environment, due date, labels, estimates, time spent and custom fields. The ticket's starting values are worked out from the first change of each field | |
 | Work logs, with group or role restrictions | Time entries by the same person, started at the same time, with the same duration and text | |
@@ -205,7 +206,7 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `status_not_in_workflow` | A new status that no workflow in the backup holds: it is in no workflow |
 | `unknown_status_category` | The status's category is not one Taskmoor knows: it is imported as a new-stage status |
 | `unknown_project_type` | A project type other than software or business: the track is a business track |
-| `original_key_not_kept` | The project was renamed in Jira: its earlier key is not kept yet |
+| `former_key_taken` (kind `track`) | The project was renamed in Jira, and its earlier key belongs to another track here: that track keeps it |
 | `role_actor_unknown_group`, `role_actor_unknown_role`, `role_actor_not_imported` | A project role member that could not be added |
 | `app_field_as_read_only_text` | A field of an app became read-only text with the raw values |
 | `context_scope_not_imported` | A context named a project category, or a project or type the backup does not have. A context with nothing left fails rather than applying everywhere |
@@ -284,6 +285,25 @@ Projects without a workflow scheme keep your default workflow map. Draft workflo
 Times in a backup carry no time zone. They are read as UTC, so history, comments and time
 entries from a server in another zone are shifted by its offset; a setting for the source's
 zone is still to come.
+
+### Old links keep working
+
+Point the old tracker's host name at Taskmoor (or add a redirect from it) and the links people
+kept go on working. When the backend serves the app, these addresses redirect to the page they
+stand for, in either routing mode; a static frontend kit reads them too:
+
+| Old link | Opens |
+|---|---|
+| `/browse/ABC-42`, with anything after it, and `/projects/ABC/issues/ABC-42` | Ticket ABC-42, also by an earlier key: a ticket moved from OLD-5 to NEW-9 opens by both, and the address then shows NEW-9 |
+| `/browse/ABC` | The track's summary |
+| `/issues/?filter=10010`, `/secure/IssueNavigator.jspa?requestId=10010` | The saved search the import made of filter 10010 |
+| `/issues/?jql=...` | The search page with that query |
+| `/secure/RapidBoard.jspa?rapidView=12` | The board the import made of board 12 |
+| `/secure/Dashboard.jspa?selectPageId=10100` | The dashboard the import made of it |
+
+Filters, boards and dashboards are found through the import's external ids, once the person has
+signed in and only when they may see the result; otherwise the page says that nothing imported
+matches the link. When you imported several instances, the latest import of that id wins.
 
 ## Jira Cloud sites
 

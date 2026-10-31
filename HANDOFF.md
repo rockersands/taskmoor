@@ -247,15 +247,17 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     (`dc-backup/stage-filters.ts`, which knows the source's fields, people, projects and filters)
     and leaves references in a query template; `renderQuery` runs in the loader
     (`import/load-filters.ts`), which then prepares the text as the owner would run it. Change
-    the translator and you must bump `STAGE_VERSION` (now 5; M1-093 bumps it too: take the
-    higher number plus one when merging).
+    the translator and you must bump `STAGE_VERSION` (now 6; M1-093 took 5).
   - Corpus `translate/corpus.ts` (100 entries, written against a vocabulary); its golden
     `translate/__golden__/corpus.json` is the review point. The generator's filters
     (`dc-backup/filters.ts`) use the same corpus, so `dc-filters.test.ts` meets every entry.
   - New framework kinds `saved_search`, `subscription`, `dashboard`, last in `ENTITY_KINDS`.
     Boards' own filters (`SearchRequest` rows the boards name) become saved searches too.
-    `FilterCollector` consumes `SearchRequest`: if M1-093 needs a board's filter query, read it
-    from `collector.filterPart.filters` rather than collecting the element twice. Sprint gadgets
+    `FilterCollector` consumes `SearchRequest` (M1-093's boards keep a copy of their filter's
+    query and still report the element `not_imported_yet`: on merging, drop that report, since
+    the filters import now). M1-093's `unresolved()` and `withTargetFields()` in
+    `load-agile.ts` check a board's query against the target; saved searches use
+    `prepareSearch` as the owner instead. Sprint gadgets
     resolve boards through `{ kind: 'board' }` refs once boards are imported.
   - Untranslatable queries keep their text with `saved_search.import_problem` (API
     `importProblem`, a note on the search page; a new query clears it). Report warnings
@@ -264,6 +266,20 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     changed. The synthetic format's unsupported example kind is now `automation` (`dashboard`
     is a framework kind).
   - Not done: user shares, edit rights, dashboard stars, a source time zone for schedules.
+- **M1-128 keys and links from the earlier tracker** (same branch, second commit; ADR-097, no
+  migration; M1-128 is done):
+  - The link patterns are in `packages/webconfig/src/links.ts`, shared by `frontend.ts` (302s,
+    only when the backend serves the frontend) and the app (`routing/ImportedLinkPage.tsx`, for
+    static kits). Filters, boards and dashboards go to `#/imported/<kind>/<source id>`, resolved
+    by `GET /api/v1/imported-links/:kind/:sourceId` (signed in, visibility checked, newest
+    external id wins). Page paths carry no session, so the server never resolves ids itself.
+  - `router.redirect(route)` is new: replace the entry and notify (Back skips the old link).
+  - Renamed projects: `TrackCommand.formerKeys`; the generator option `renamedProjects` makes
+    one (off by default). `original_key_not_kept` is gone (dc.test.ts now checks the key).
+  - E2E: `e2e/imported-links.spec.ts`; web-server.ts seeds ABC-42, NEW-9 (was OLD-5) and two
+    external ids on the 4176 and 4177 instances.
+  - When M1-093 lands, check that its boards write external ids of kind `board` with the
+    source's rapid view id: the board link and the sprint gadgets of M1-094 resolve through it.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

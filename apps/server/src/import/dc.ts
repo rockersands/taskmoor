@@ -357,10 +357,11 @@ function mapTrack(p: StagedProject): Mapped {
     warnings.push({ code: 'unknown_project_type', detail: p.type ?? '' });
     trackType = 'business';
   }
-  // Earlier keys become key aliases with the tickets (M1-128).
-  if (p.originalKey !== null && p.originalKey !== p.key) {
-    warnings.push({ code: 'original_key_not_kept', detail: p.originalKey });
-  }
+  // A renamed project's first key stays an earlier key of the track (M1-128).
+  const formerKeys =
+    p.originalKey !== null && p.originalKey.toUpperCase() !== p.key.toUpperCase()
+      ? [p.originalKey]
+      : [];
   const roleActors: NonNullable<Extract<Command, { kind: 'track' }>['roleActors']> = [];
   for (const a of p.actors) {
     if (!a.roleKnown) {
@@ -385,6 +386,7 @@ function mapTrack(p: StagedProject): Mapped {
       trackType,
       ...(p.counter !== null ? { lastNumber: p.counter } : {}),
       roleActors,
+      ...(formerKeys.length > 0 ? { formerKeys } : {}),
     },
     warnings,
   };

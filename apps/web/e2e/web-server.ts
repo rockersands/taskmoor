@@ -75,7 +75,7 @@ async function instance(
     { track: 'RT', summary: 'Deep link target', assigneeId: null },
     cookie,
   );
-  await call(
+  const board = await call(
     '/api/v1/boards',
     {
       name: 'Routes board',
@@ -85,9 +85,79 @@ async function instance(
     },
     cookie,
   );
+  if (!crossOrigin) await importedLeftovers(db, call, cookie, board.json().board.id as number);
   // Names under localhost may resolve to either loopback address: listen on both.
   await app.listen({ port, host: crossOrigin ? anyLoopback() : '127.0.0.1' });
   return { app, db, database };
+}
+
+/**
+ * What an import from another tracker leaves behind (M1-128, imported-links.spec.ts): ABC-42,
+ * NEW-9 that was OLD-5 before it moved, and the import's external ids of a saved filter (10010)
+ * and of the board (12).
+ */
+async function importedLeftovers(
+  db: ReturnType<typeof createDb>,
+  call: (url: string, payload: object, cookie?: string) => Promise<{ json(): unknown }>,
+  cookie: string,
+  boardId: number,
+) {
+  const track = async (key: string, last: number) => {
+    const res = (
+      await call('/api/v1/tracks', { key, name: `Imported ${key}`, mode: 'shared' }, cookie)
+    ).json() as { track: { id: number } };
+    await db
+      .insertInto('ticket_counter')
+      .values({ workspace_id: 1, track_id: res.track.id, last_number: last })
+      .onConflict((oc) => oc.column('track_id').doUpdateSet({ last_number: last }))
+      .execute();
+    return res.track.id;
+  };
+  await track('ABC', 41);
+  await call(
+    '/api/v1/tickets',
+    { track: 'ABC', summary: 'Imported answer', assigneeId: null },
+    cookie,
+  );
+  const old = await track('OLD', 5);
+  await track('NEW', 8);
+  const moved = (
+    await call(
+      '/api/v1/tickets',
+      { track: 'NEW', summary: 'Moved before the import', assigneeId: null },
+      cookie,
+    )
+  ).json() as { ticket: { id: number } };
+  await db
+    .insertInto('ticket_key_history')
+    .values({
+      workspace_id: 1,
+      ticket_id: moved.ticket.id,
+      track_id: old,
+      number: 5,
+      replaced_at: new Date(),
+    })
+    .execute();
+  const saved = (
+    await call('/api/v1/saved-searches', { name: 'Imported filter', query: 'track = ABC' }, cookie)
+  ).json() as { savedSearch: { id: number } };
+  for (const [kind, source, target] of [
+    ['saved_search', '10010', saved.savedSearch.id],
+    ['board', '12', boardId],
+  ] as const) {
+    await db
+      .insertInto('import_external_id')
+      .values({
+        workspace_id: 1,
+        import_source: 'dc-backup',
+        source_system: 'dc',
+        entity_kind: kind,
+        source_id: source,
+        target_id: String(target),
+        checksum: 'e2e',
+      })
+      .execute();
+  }
 }
 
 const instances = [

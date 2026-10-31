@@ -39,7 +39,7 @@ import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 5;
+export const STAGE_VERSION = 6;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 

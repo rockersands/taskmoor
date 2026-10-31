@@ -74,7 +74,9 @@ the issues they belong to, and a reader must not resolve references in a single 
 
 Not generated yet; the M1-093 and M1-094 mappings add them as they need them: versions,
 components, renamed projects, each issue's workflow state, draft workflows, rank, the board
-columns and the issues' sprints, avatars and logos, and thumbnails. Custom fields (M1-089),
+columns and the issues' sprints, projects renamed more than once (`ProjectKey` rows), avatars
+and logos, and thumbnails. A renamed project is generated only on request
+(`renamedProjects`, M1-128). Custom fields (M1-089),
 permission, security and notification schemes (M1-092), workflows with their schemes (M1-090),
 issue content with watchers, voters and the keys of moved issues (M1-091), and saved filters
 with their shares, favourites and subscriptions, and dashboards with their gadgets (M1-094) are
@@ -320,6 +322,15 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   `applicationtype` and `applicationname`. They carry no time or author.
 - **Our choice:** 6% of issues have one or two web links to `docs.example.test`, some with a
   summary, an icon, a relationship phrase and an application's global id.
+
+### Renamed projects (M1-128)
+
+- **Verify:** a project whose key was changed keeps its first key in `originalkey`, and its
+  issues' attachment folders stay under that key [S9]. Its issues' keys use the current key;
+  links and queries with the earlier key still find them in the source.
+- **Our choice:** with the generator option `renamedProjects` set, the first projects get an
+  earlier key: their key followed by `OLD`. No other fixture uses the option, so their data is
+  unchanged.
 
 ### Boards' filters
 

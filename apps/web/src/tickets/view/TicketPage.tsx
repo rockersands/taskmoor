@@ -7,7 +7,7 @@ import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
-import { navigate, routeHref } from '../../routing/router';
+import { navigate, replaceRoute, routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { usePaletteCommands } from '../../shell/paletteCommands';
@@ -327,6 +327,13 @@ export function TicketPage({
   const actions = useRef({ transition, toggleFollow, toggleVote, assignToMe, edit });
   actions.current = { transition, toggleFollow, toggleVote, assignToMe, edit };
   const key = loaded?.key ?? null;
+  // Opened by an earlier key (a moved ticket, a renamed track; M1-128): the address shows the
+  // current one, without a new history entry.
+  useEffect(() => {
+    if (key !== null && !/^\d+$/.test(ticket) && key.toUpperCase() !== ticket.toUpperCase()) {
+      replaceRoute(`#/tickets/${encodeURIComponent(key)}`);
+    }
+  }, [key, ticket]);
   const assigneeId = loaded?.assignee?.id ?? null;
   const commands = useMemo<Command[]>(() => {
     if (key === null) return [];

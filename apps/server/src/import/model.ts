@@ -273,6 +273,12 @@ export interface TrackCommand {
    * actors given in Taskmoor stay.
    */
   roleActors?: { role: Ref; user: Ref | null; group: Ref | null }[];
+  /**
+   * Keys the track had in the source before a rename (M1-128): kept as earlier keys, so its
+   * tickets open and queries find them by those keys too. A key another track holds stays
+   * theirs, with a warning.
+   */
+  formerKeys?: string[];
 }
 
 /** A release of a track, linked by name within the track. */
