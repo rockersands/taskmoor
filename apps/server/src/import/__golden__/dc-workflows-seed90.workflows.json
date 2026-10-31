@@ -1,0 +1,663 @@
+{
+  "maps": [
+    {
+      "default": "Business flow",
+      "entries": [
+        "Step -> Step flow"
+      ],
+      "name": "Business workflows",
+      "tracks": [
+        "EX"
+      ]
+    },
+    {
+      "default": "Delivery flow",
+      "entries": [
+        "Defect -> Defect flow",
+        "Step -> Step flow"
+      ],
+      "name": "Software workflows",
+      "tracks": [
+        "AX",
+        "BX",
+        "CX",
+        "DX",
+        "FX"
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "definition": {
+        "initialStatusId": "Backlog",
+        "statuses": [
+          {
+            "statusId": "Backlog"
+          },
+          {
+            "statusId": "Finished"
+          }
+        ],
+        "transitions": [
+          {
+            "description": "Finish, as people here do it",
+            "from": [
+              "Backlog"
+            ],
+            "guards": {
+              "type": "always-false"
+            },
+            "id": 401,
+            "name": "Finish",
+            "to": "Finished"
+          }
+        ]
+      },
+      "description": "An old flow no project uses",
+      "name": "Archived flow"
+    },
+    {
+      "definition": {
+        "initialStatusId": "Backlog",
+        "statuses": [
+          {
+            "statusId": "Backlog"
+          },
+          {
+            "statusId": "Selected"
+          },
+          {
+            "statusId": "Working"
+          },
+          {
+            "statusId": "In Review"
+          },
+          {
+            "statusId": "Finished"
+          },
+          {
+            "statusId": "Declined"
+          }
+        ],
+        "transitions": [
+          {
+            "description": "Decline, as people here do it",
+            "from": "any",
+            "id": 301,
+            "layout": [
+              "close-reason",
+              "assignee",
+              "target-release",
+              "original-estimate",
+              "remaining-estimate"
+            ],
+            "name": "Decline",
+            "to": "Declined"
+          },
+          {
+            "description": "Plan, as people here do it",
+            "from": [
+              "Backlog"
+            ],
+            "guards": {
+              "roles": [
+                "role:Managers",
+                "role:Contributors"
+              ],
+              "type": "user-in-any-role"
+            },
+            "id": 311,
+            "name": "Plan",
+            "to": "Selected"
+          },
+          {
+            "description": "Start, as people here do it",
+            "effects": [
+              {
+                "type": "assign-to-owner"
+              }
+            ],
+            "from": [
+              "Selected"
+            ],
+            "id": 321,
+            "name": "Start",
+            "to": "Working"
+          },
+          {
+            "description": "Review, as people here do it",
+            "from": [
+              "Working"
+            ],
+            "guards": {
+              "type": "only-assignee"
+            },
+            "id": 331,
+            "name": "Review",
+            "to": "In Review"
+          },
+          {
+            "description": "Complete, as people here do it",
+            "effects": [
+              {
+                "jiraClass": "com.atlassian.jira.workflow.function.issue.UpdateIssueFieldFunction",
+                "type": "placeholder"
+              }
+            ],
+            "from": [
+              "In Review"
+            ],
+            "guards": {
+              "any": [
+                {
+                  "type": "always-false"
+                },
+                {
+                  "group": "group:team-loul-1",
+                  "type": "user-in-group"
+                }
+              ]
+            },
+            "id": 341,
+            "name": "Complete",
+            "to": "Finished"
+          },
+          {
+            "description": "Reopen, as people here do it",
+            "effects": [
+              {
+                "field": "close-reason",
+                "type": "update-system-field",
+                "value": null
+              }
+            ],
+            "from": [
+              "Finished",
+              "Declined"
+            ],
+            "id": 351,
+            "name": "Reopen",
+            "properties": {
+              "opsbar-sequence": "90"
+            },
+            "to": "Backlog"
+          }
+        ]
+      },
+      "description": "Requests in business projects",
+      "name": "Business flow"
+    },
+    {
+      "definition": {
+        "initialStatusId": "Backlog",
+        "statuses": [
+          {
+            "statusId": "Backlog"
+          },
+          {
+            "statusId": "Selected"
+          },
+          {
+            "statusId": "Working"
+          },
+          {
+            "statusId": "In Review"
+          },
+          {
+            "statusId": "Finished"
+          },
+          {
+            "statusId": "Declined"
+          }
+        ],
+        "transitions": [
+          {
+            "description": "Accept, as people here do it",
+            "effects": [
+              {
+                "jiraClass": "com.atlassian.jira.workflow.function.issue.SetIssueSecurityFromRoleFunction",
+                "type": "placeholder"
+              }
+            ],
+            "from": [
+              "Backlog"
+            ],
+            "guards": {
+              "group": "group:team-loul-1",
+              "type": "user-in-group"
+            },
+            "id": 111,
+            "name": "Accept",
+            "to": "Selected"
+          },
+          {
+            "description": "Reject, as people here do it",
+            "effects": [
+              {
+                "type": "assign-to-requester"
+              }
+            ],
+            "from": [
+              "Backlog"
+            ],
+            "id": 112,
+            "layout": [
+              "close-reason",
+              "assignee",
+              "target-release",
+              "original-estimate",
+              "remaining-estimate"
+            ],
+            "name": "Reject",
+            "to": "Declined"
+          },
+          {
+            "description": "Fix, as people here do it",
+            "effects": [
+              {
+                "type": "assign-to-current-user"
+              }
+            ],
+            "from": [
+              "Selected"
+            ],
+            "id": 121,
+            "name": "Fix",
+            "to": "Working"
+          },
+          {
+            "checks": [
+              {
+                "permission": "set_close_reason",
+                "type": "permission"
+              }
+            ],
+            "description": "Verify, as people here do it",
+            "from": [
+              "Working"
+            ],
+            "guards": {
+              "type": "always-false"
+            },
+            "id": 131,
+            "name": "Verify",
+            "to": "In Review"
+          },
+          {
+            "description": "Close, as people here do it",
+            "effects": [
+              {
+                "jiraClass": "com.atlassian.jira.plugins.webhooks.workflow.TriggerWebhookFunction",
+                "type": "placeholder"
+              }
+            ],
+            "from": [
+              "In Review"
+            ],
+            "guards": {
+              "all": [
+                {
+                  "type": "always-false"
+                },
+                {
+                  "permission": "close_tickets",
+                  "type": "permission"
+                }
+              ]
+            },
+            "id": 141,
+            "layout": [
+              "close-reason",
+              "assignee",
+              "target-release",
+              "original-estimate",
+              "remaining-estimate"
+            ],
+            "name": "Close",
+            "to": "Finished"
+          },
+          {
+            "description": "Reopen, as people here do it",
+            "effects": [
+              {
+                "field": "close-reason",
+                "type": "update-system-field",
+                "value": null
+              }
+            ],
+            "from": [
+              "Finished",
+              "Declined"
+            ],
+            "id": 151,
+            "name": "Reopen",
+            "properties": {
+              "opsbar-sequence": "90"
+            },
+            "to": "Backlog"
+          }
+        ]
+      },
+      "description": "Defects from report to fix",
+      "name": "Defect flow"
+    },
+    {
+      "definition": {
+        "initialStatusId": "Backlog",
+        "statusPermissions": {
+          "Finished": {
+            "edit": []
+          },
+          "In Review": {
+            "comment": [
+              {
+                "role": "role:Contributors"
+              }
+            ]
+          }
+        },
+        "statuses": [
+          {
+            "statusId": "Backlog"
+          },
+          {
+            "statusId": "Selected"
+          },
+          {
+            "statusId": "Working"
+          },
+          {
+            "statusId": "In Review"
+          },
+          {
+            "statusId": "Finished"
+          },
+          {
+            "statusId": "Declined"
+          }
+        ],
+        "transitions": [
+          {
+            "description": "Select, as people here do it",
+            "from": [
+              "Backlog"
+            ],
+            "guards": {
+              "any": [
+                {
+                  "role": "role:Managers",
+                  "type": "user-in-role"
+                },
+                {
+                  "group": "group:team-loul-1",
+                  "type": "user-in-group"
+                }
+              ]
+            },
+            "id": 11,
+            "name": "Select",
+            "properties": {
+              "opsbar-sequence": "10"
+            },
+            "to": "Selected"
+          },
+          {
+            "description": "Start work, as people here do it",
+            "effects": [
+              {
+                "type": "assign-to-current-user"
+              }
+            ],
+            "from": [
+              "Selected"
+            ],
+            "guards": {
+              "permission": "transition_tickets",
+              "type": "permission"
+            },
+            "id": 21,
+            "name": "Start work",
+            "properties": {
+              "opsbar-sequence": "20"
+            },
+            "to": "Working"
+          },
+          {
+            "description": "Retire path, as people here do it",
+            "from": [
+              "Selected"
+            ],
+            "guards": {
+              "type": "always-false"
+            },
+            "id": 22,
+            "name": "Retire path",
+            "to": "Backlog"
+          },
+          {
+            "checks": [
+              {
+                "permission": "edit_tickets",
+                "type": "permission"
+              }
+            ],
+            "description": "Send to review, as people here do it",
+            "from": [
+              "Working"
+            ],
+            "guards": {
+              "type": "only-assignee"
+            },
+            "id": 31,
+            "name": "Send to review",
+            "to": "In Review"
+          },
+          {
+            "description": "Approve, as people here do it",
+            "effects": [
+              {
+                "jiraClass": "com.example.reports.ExportToSheetFunction",
+                "type": "placeholder"
+              }
+            ],
+            "from": [
+              "In Review"
+            ],
+            "guards": {
+              "all": [
+                {
+                  "statuses": [
+                    "Finished",
+                    "Declined"
+                  ],
+                  "type": "subticket-blocking"
+                },
+                {
+                  "any": [
+                    {
+                      "role": "role:Managers",
+                      "type": "user-in-role"
+                    },
+                    {
+                      "type": "only-requester"
+                    }
+                  ]
+                }
+              ]
+            },
+            "id": 41,
+            "layout": [
+              "close-reason",
+              "assignee",
+              "target-release",
+              "original-estimate",
+              "remaining-estimate"
+            ],
+            "name": "Approve",
+            "to": "Finished"
+          },
+          {
+            "description": "Rework, as people here do it",
+            "effects": [
+              {
+                "field": "assignee",
+                "type": "update-system-field",
+                "value": null
+              }
+            ],
+            "from": [
+              "In Review"
+            ],
+            "id": 42,
+            "name": "Rework",
+            "to": "Working"
+          },
+          {
+            "description": "Reopen, as people here do it",
+            "effects": [
+              {
+                "field": "close-reason",
+                "type": "update-system-field",
+                "value": null
+              }
+            ],
+            "from": [
+              "Finished",
+              "Declined"
+            ],
+            "id": 51,
+            "name": "Reopen",
+            "properties": {
+              "opsbar-sequence": "90"
+            },
+            "to": "Backlog"
+          },
+          {
+            "description": "Decline, as people here do it",
+            "from": "any",
+            "guards": {
+              "permission": "set_close_reason",
+              "type": "permission"
+            },
+            "id": 61,
+            "layout": [
+              "close-reason",
+              "assignee",
+              "target-release",
+              "original-estimate",
+              "remaining-estimate"
+            ],
+            "name": "Decline",
+            "to": "Declined"
+          },
+          {
+            "description": "Escalate, as people here do it",
+            "event": "escalated",
+            "from": "any",
+            "guards": {
+              "type": "always-false"
+            },
+            "id": 62,
+            "name": "Escalate",
+            "to": "In Review"
+          }
+        ]
+      },
+      "description": "How software work moves from the backlog to done",
+      "name": "Delivery flow"
+    },
+    {
+      "definition": {
+        "initialStatusId": "Backlog",
+        "statuses": [
+          {
+            "statusId": "Backlog"
+          },
+          {
+            "statusId": "Selected"
+          },
+          {
+            "statusId": "Working"
+          },
+          {
+            "statusId": "In Review"
+          },
+          {
+            "statusId": "Finished"
+          },
+          {
+            "statusId": "Declined"
+          }
+        ],
+        "transitions": [
+          {
+            "description": "Start, as people here do it",
+            "effects": [
+              {
+                "type": "assign-to-current-user"
+              }
+            ],
+            "from": "any",
+            "id": 201,
+            "name": "Start",
+            "to": "Working"
+          },
+          {
+            "description": "Done, as people here do it",
+            "from": "any",
+            "id": 202,
+            "name": "Done",
+            "to": "Finished"
+          },
+          {
+            "description": "Drop, as people here do it",
+            "from": "any",
+            "id": 203,
+            "name": "Drop",
+            "to": "Declined"
+          },
+          {
+            "description": "Reset, as people here do it",
+            "effects": [
+              {
+                "field": "close-reason",
+                "type": "update-system-field",
+                "value": null
+              }
+            ],
+            "from": "any",
+            "id": 204,
+            "name": "Reset",
+            "to": "Backlog"
+          },
+          {
+            "description": "Plan, as people here do it",
+            "from": [
+              "Backlog"
+            ],
+            "id": 211,
+            "name": "Plan",
+            "to": "Selected"
+          },
+          {
+            "description": "Review, as people here do it",
+            "effects": [
+              {
+                "jiraClass": "script:beanshell",
+                "type": "placeholder"
+              }
+            ],
+            "from": [
+              "Working"
+            ],
+            "id": 231,
+            "name": "Review",
+            "to": "In Review"
+          }
+        ]
+      },
+      "description": "Small steps of a larger issue",
+      "name": "Step flow"
+    }
+  ]
+}

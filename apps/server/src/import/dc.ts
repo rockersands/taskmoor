@@ -29,6 +29,7 @@ import type {
   StagedSecurityLevel,
   StagedSecurityScheme,
 } from './dc-backup/stage-schemes';
+import type { StagedWorkflow, StagedWorkflowScheme } from './dc-backup/stage-workflows';
 import {
   instantOf,
   mapContext,
@@ -46,6 +47,7 @@ import {
   mapVisibilityLevel,
   mapVisibilityPolicy,
 } from './dc-schemes';
+import { mapWorkflow, mapWorkflowMap } from './dc-workflows';
 import { readJsonLines } from './lines';
 import type {
   Command,
@@ -73,7 +75,8 @@ import type {
  * (to close reasons). M1-089 adds custom fields with their contexts and options, field
  * configurations (to field rule sets), screens (to layout sets) and issues as tickets with their
  * own fields, custom values, labels and parents (`dc-fields.ts`); history, comments, links and
- * the rest of an issue's content follow in M1-091, workflows in M1-090.
+ * the rest of an issue's content follow in M1-091. M1-090 adds workflows and workflow schemes
+ * (to workflows and workflow maps, `dc-workflows.ts`).
  */
 export const DC_SOURCE = 'dc-backup';
 
@@ -354,7 +357,14 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
     const s = d as unknown as StagedStatus;
     const stage = s.category === null ? undefined : STAGES[s.category];
     return {
-      command: { kind: 'status', name: s.name, description: s.description, stage: stage ?? 'new' },
+      command: {
+        kind: 'status',
+        name: s.name,
+        description: s.description,
+        stage: stage ?? 'new',
+        // A workflow of the backup has it (M1-090).
+        ...(s.inWorkflow ? { inWorkflow: true } : {}),
+      },
       warnings:
         stage === undefined ? [{ code: 'unknown_status_category', detail: s.category ?? '' }] : [],
     };
@@ -397,6 +407,8 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
   visibility_level: (d) => mapVisibilityLevel(d as unknown as StagedSecurityLevel),
   notification_policy: (d) => mapNotificationPolicy(d as unknown as StagedNotificationScheme),
   global_grant: (d) => mapGlobalGrant(d as unknown as StagedGlobalPermission),
+  workflow: (d) => mapWorkflow(d as unknown as StagedWorkflow),
+  workflow_map: (d) => mapWorkflowMap(d as unknown as StagedWorkflowScheme),
   ticket: (d) => mapTicket(d as unknown as StagedIssue),
 };
 

@@ -384,7 +384,8 @@ describe('Data Center backup import (M1-088)', () => {
     expect(backlog?.outcome).toBe('linked');
     const declined = realReport.mapping.find((m) => m.kind === 'status' && m.label === 'Declined');
     expect(declined?.outcome).toBe('created');
-    expect(declined?.warnings).toEqual(['status_not_in_workflow: Declined']);
+    // The backup's workflows hold it (M1-090), so it is not reported as outside every workflow.
+    expect(declined?.warnings).toEqual([]);
   });
 
   it('[IMP-009] importing the same backup again changes nothing and reuses the stage', async () => {

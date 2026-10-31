@@ -162,6 +162,36 @@ All on `main`, each push after a green `pnpm verify --e2e`:
   - `SYSTEM_ADMIN` becomes `site_admin`, so those people browse every track (warned). The parity
     golden `import/__golden__/dc-access-seed92.parity.json` expects that for them, and the
     source's model for everyone else.
+- **M1-090 Data Center workflows and workflow maps** (branch `work/m1-090-dc-workflows`, side
+  session 2026-10-31; ADR-093, no migration, so 0070 stays free; M1-090 is done):
+  - Format layer: `dc-backup/workflow-format.ts` holds the new elements (`Workflow`,
+    `WorkflowScheme`, `WorkflowSchemeEntity`, `EventType`, spread into `ENTITIES`), the
+    descriptor model, its writer and reader, and `workflowCases`. The generator's workflows are
+    `dc-backup/workflows.ts`; `generate.ts` only calls `writeWorkflowEntity`, which also adds
+    a transition screen (ids from 10500) and `WorkflowScheme` associations. Issues are
+    unchanged: every workflow in use holds all six statuses, so other fixtures' data is the same.
+  - Stage `dc-backup/stage-workflows.ts` (`STAGE_VERSION` is 4: older stages are redone),
+    validator `dc-backup/validate-workflows.ts` (hooked at the top of `record` and in
+    `crossCheck`), mapper `import/dc-workflows.ts`. The loaders are the existing `workflows`
+    and `workflowMaps` of `load-config.ts`, unchanged.
+  - Unmapped rules: a condition becomes `always-false` (the transition stays closed), a
+    validator is dropped, a function a `placeholder`; each is a warning on the workflow's record
+    naming workflow, transition, id, class and reason. Conditions on custom fields cannot map
+    (workflow guards read system fields only), nor updates that set an id (`remap.ts` does not
+    remap effect values, which is also a gap in Taskmoor's own export round trip).
+  - Small hooks in shared files: `StatusCommand.inWorkflow` (no `status_not_in_workflow` for
+    statuses a workflow holds), `StagedNotificationScheme` notifications carry `eventName`,
+    and `dc-schemes.ts` exports `PERMISSIONS` and `customEventName` (custom events now import as
+    `custom:<name>`). `FieldCollector.screen(id)` is public. M1-091 also edits `generate.ts`,
+    `stage.ts` and the goldens: expect conflicts in `STAGE_VERSION` and the regenerated
+    goldens (rerun with `--update` after merging, and review).
+  - Tests: `import/dc-workflows.test.ts` (goldens `dc-workflows-seed90.workflows.json` and
+    `.report.json`, the oracle of unmapped rules, the transition and refusal end to end) and
+    `dc-backup/workflows.test.ts` (descriptor round trip, damaged backups). A site
+    administrator does not see tickets with a visibility level they are not in: the test picks
+    tickets without one.
+  - Not done: ticket counts per unmapped rule (IMP-005 (2)), webhook functions, drafts, triggers,
+    each issue's workflow state (counted `not_needed`).
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

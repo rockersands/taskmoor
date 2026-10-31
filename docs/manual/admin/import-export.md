@@ -1,7 +1,7 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md
 accessed: 2026-10-31
 attestation: own-words
 jira-names: import sources and field mapping
@@ -18,9 +18,9 @@ everyone who can search.
 A Jira Data Center or Server backup ZIP imports its people, groups, roles, projects (as tracks),
 issue types, statuses, priorities, resolutions, custom fields with their contexts and options,
 field configurations and screens, permission, issue security and notification schemes, global
-permissions, and its issues as tickets with their own fields, custom values and security levels;
-see [Data Center backups](#data-center-backups). Comments, history, time, links between
-issues, attachments, workflows, boards and filters are not imported yet: the report counts each
+permissions, workflows and workflow schemes, and its issues as tickets with their own fields,
+custom values and security levels; see [Data Center backups](#data-center-backups). Comments,
+history, time, links between issues, attachments, boards and filters are not imported yet: the report counts each
 of them under "Not imported". Taskmoor does not yet import a Jira Cloud site. Any CSV file can be imported with
 a mapping of its columns, including one exported from another tracker; see
 [CSV import](#csv-import).
@@ -164,6 +164,12 @@ What the import makes of the backup:
 | Grants to groups, people, project roles, the reporter, the assignee, the project lead, user and group fields, anyone signed in, and anyone | Grants to the same, the reporter as the requester and the lead as the track owner | |
 | Issue security schemes and their levels | Visibility policies and levels, with the same members and the default level, used by the projects' tracks | By name; levels by name within the policy |
 | Notification schemes | Notification policies, used by the projects' tracks, with each event's recipients | By name |
+| Workflows | Published workflows (version 1) with the same statuses, initial status and transitions: global ones from any status, shared ones from every status that offers them, and each status's own. A transition keeps its id, name, description, screen (as its layout), properties and custom event. Identical workflows (whatever their names) become one, and the report names each merge | By name. A workflow of yours with that name is used as it is |
+| Conditions, validators and post functions | Guards, checks and effects of the same kind, with their settings: only the assignee or reporter, never, a permission, sub-tasks done, a group, a role or any of several roles, a people field; permission validators; assign to the current user, the project lead or the reporter, and clearing a field. Groups of conditions keep their all or any nesting | |
+| Step properties that lock editing or limit comments, attachments, assigning or transitions to a role or group | Who may do what in the status | |
+| Workflow schemes | Workflow maps, used by the projects' tracks: each issue type's workflow, and the default for the rest. Schemes that become identical once their workflows merged become one | By name. A map of yours with that name is used as it is |
+| The built-in workflow a scheme names but the backup does not hold | Your default workflow | |
+| Custom events a transition fires | The transition's own event, which notification policies name as `custom:<name>`; a notification scheme's rules for it come along | |
 | Global permissions | Global grants: system administrators become site administrators, administrators configuration administrators; the user picker, shared filters, group subscriptions and bulk change keep their meaning | Linked when the same grant is there |
 | Issues | Tickets with their key, type, status, priority, close reason, assignee, reporter (as requester), creator, summary, description, due date, estimates, labels, parent, custom values and security level | By track and number on a later run |
 
@@ -175,7 +181,7 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `deleted_user`, `placeholder_email`, `no_email` | A person became a deactivated placeholder, or has no address in the backup |
 | `nested_group_not_imported` | A group inside a group: its members are not added yet |
 | `member_not_found` | A membership names a user the backup does not have |
-| `status_not_in_workflow` | A new status is in no workflow until workflows are imported |
+| `status_not_in_workflow` | A new status that no workflow in the backup holds: it is in no workflow |
 | `unknown_status_category` | The status's category is not one Taskmoor knows: it is imported as a new-stage status |
 | `unknown_project_type` | A project type other than software or business: the track is a business track |
 | `original_key_not_kept` | The project was renamed in Jira: its earlier key is not kept yet |
@@ -192,6 +198,16 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `grantee_not_found`, `grantee_not_mapped`, `grantee_not_imported` | A grant or level member whose group, person, role or field is missing, or whose kind Taskmoor does not have. It is left out, so nobody sees more than before |
 | `site_admin_browses_every_track` | System administrators became site administrators, who see every track (visibility levels still apply to them) |
 | `event_not_mapped`, `custom_event_not_imported`, `recipient_not_mapped` | A notification for an event (such as a comment edited) or to a recipient (such as an email address) Taskmoor has no counterpart for |
+| `condition_not_mapped` (kind `workflow`) | A condition Taskmoor cannot hold: an app's or a script, a negated one, or one on a custom field (Taskmoor's workflows read system fields only). The detail names the workflow, the transition and its id, and the class. It stands as "never", so the transition stays closed (or that alternative of an any-group falls away) until you replace it in the workflow editor: nobody can do more than before |
+| `check_not_mapped` | A validator Taskmoor cannot hold, often an app's. It is left out, so check the transition by hand |
+| `effect_not_mapped` | A post function Taskmoor cannot hold: an app's, a script, the webhook function, a security level from a role, or an update that sets another object (a priority, say). It becomes a disabled placeholder that keeps its class, to replace |
+| `conditional_result_not_mapped` | A transition that goes elsewhere when some conditions hold: Taskmoor's transitions have one target, the unconditional one |
+| `create_check_not_mapped`, `create_condition_not_mapped` | A validator or condition on creating an issue (Taskmoor checks "Create tickets" itself) |
+| `layout_field_not_mapped` (kind `workflow`) | A field on a transition's screen that layouts cannot take: custom fields, for now |
+| `status_property_not_mapped` | A step property Taskmoor has no counterpart for, such as who may delete in that status |
+| `system_workflow_linked_to_default` | A scheme names the built-in workflow, which a backup does not hold: those types use your default workflow, whose statuses may differ |
+| `merged_into` (kind `workflow`, `workflow_map`) | A workflow or scheme the same as an earlier one: its tracks use that one |
+| `workflow_not_found`, `issue_type_not_found` | A scheme entity names a workflow or issue type the backup does not have; that type uses the scheme's default |
 
 A ticket whose security level could not be imported fails rather than arriving without one,
 because then everyone who browses its track would see it. People who were inactive are
@@ -203,8 +219,10 @@ not converted yet.
 Under "Not imported", the report counts each part of the backup the importer does not handle
 yet: comments, history, time entries, links between issues (other than a sub-task's to its
 parent), attachments, filters, boards and sprints, by their names in the backup, with the reason
-`not_imported_yet`. The id counters of
-the backup are listed as `not_needed`, because Taskmoor gives its own ids.
+`not_imported_yet`. The id counters of the backup, and each issue's workflow state (its status
+is what counts), are listed as `not_needed`, because Taskmoor gives its own ids.
+
+Projects without a workflow scheme keep your default workflow map. Draft workflows are not read.
 
 Times in a backup carry no time zone. Nothing imported so far depends on them.
 

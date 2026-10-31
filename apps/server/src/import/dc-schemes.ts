@@ -1,4 +1,5 @@
 import type { NotificationRecipient } from '@taskmoor/db';
+import { CUSTOM_PREFIX } from '../notifications/model';
 import type {
   StagedGlobalPermission,
   StagedGrantee,
@@ -27,7 +28,7 @@ import type {
 const ref = (kind: Ref['kind'], id: string): Ref => ({ kind, id });
 
 /** Project permissions (by key) to track permissions (`authz/permissions.ts`). */
-const PERMISSIONS: Readonly<Record<string, string>> = {
+export const PERMISSIONS: Readonly<Record<string, string>> = {
   ADMINISTER_PROJECTS: 'administer_track',
   BROWSE_PROJECTS: 'browse_track',
   MANAGE_SPRINTS_PERMISSION: 'manage_sprints',
@@ -185,6 +186,20 @@ export function mapVisibilityLevel(l: StagedSecurityLevel): Mapped {
   };
 }
 
+/**
+ * A custom event's name as Taskmoor's transitions fire it and policies name it (M1-090): its
+ * name in lower case with dashes, which a transition's event allows; a policy names it as
+ * `custom:<name>` (`notifications/model.ts`).
+ */
+export function customEventName(name: string, id: number): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 90);
+  return slug === '' ? `event-${id}` : /^[a-z]/.test(slug) ? slug : `event-${slug}`;
+}
+
 /** Event type ids to notification events (`notifications/model.ts`). */
 const EVENTS: Readonly<Record<number, string>> = {
   1: 'ticket_created',
@@ -223,7 +238,14 @@ export function mapNotificationPolicy(s: StagedNotificationScheme): Mapped {
   const warnings: Warning[] = [];
   const rules: NotificationPolicyCommand['rules'] = [];
   for (const n of s.notifications) {
-    const event = n.event === null ? undefined : EVENTS[n.event];
+    // A custom event a workflow fires keeps its name (M1-090).
+    const event =
+      n.event === null
+        ? undefined
+        : (EVENTS[n.event] ??
+          (n.eventName === undefined
+            ? undefined
+            : `${CUSTOM_PREFIX}${customEventName(n.eventName, n.event)}`));
     if (!event) {
       warnings.push({
         code:

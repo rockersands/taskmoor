@@ -17,6 +17,7 @@ import { parseXml, type XmlHandlers } from './parse';
 import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
 import { ISSUE_ELEMENTS, IssueCollector } from './stage-issues';
 import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
+import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
 
 /**
  * Stages a Data Center backup ZIP for import (M1-088; IMP-001, IMP-004; ADR-081): one streaming
@@ -33,7 +34,7 @@ import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 3;
+export const STAGE_VERSION = 4;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -59,6 +60,8 @@ export const STAGED_KINDS = {
   visibility_level: 'SchemeIssueSecurityLevels',
   notification_policy: 'NotificationScheme',
   global_grant: 'GlobalPermissionEntry',
+  workflow: 'Workflow',
+  workflow_map: 'WorkflowScheme',
   ticket: 'Issue',
 } as const;
 
@@ -69,6 +72,7 @@ const READ_SCHEMES = new Set([
   'PermissionScheme',
   'IssueSecurityScheme',
   'NotificationScheme',
+  'WorkflowScheme',
 ]);
 export type StagedKind = keyof typeof STAGED_KINDS;
 
@@ -90,13 +94,20 @@ export const CONSUMED = new Set<string>([
   ...FIELD_ELEMENTS,
   ...ISSUE_ELEMENTS,
   ...SCHEME_ELEMENTS,
+  ...WORKFLOW_ELEMENTS,
 ]);
 
 /** Elements only tickets consume: a configuration-only import leaves them out (M1-089). */
 export const CONTENT_ELEMENTS: ReadonlySet<string> = new Set(ISSUE_ELEMENTS);
 
 /** Elements the importer has no use for: ids are Taskmoor's own. */
-export const NOT_NEEDED = new Set<string>(['SequenceValueItem']);
+export const NOT_NEEDED = new Set<string>([
+  'SequenceValueItem',
+  // Each issue's workflow state: its status is the truth (M1-090; Verify).
+  'OSWorkflowEntry',
+  'OSCurrentStep',
+  'OSHistoryStep',
+]);
 
 export interface StagedUser {
   key: string;
@@ -130,6 +141,8 @@ export interface StagedNamed {
 
 export interface StagedStatus extends StagedNamed {
   category: string | null;
+  /** A step of some workflow in the backup names it (M1-090). */
+  inWorkflow?: true;
 }
 
 export interface StagedIssueType extends StagedNamed {
@@ -246,6 +259,7 @@ class Collector {
   readonly personRefs = new Set<string>();
   readonly fieldPart = new FieldCollector();
   readonly schemePart = new SchemeCollector();
+  readonly workflowPart = new WorkflowCollector();
   readonly issuePart: IssueCollector;
   /** Link type ids by style (sub-task links make parents). */
   readonly linkTypeStyles = new Map<string, string>();
@@ -288,6 +302,10 @@ class Collector {
     }
     if ((SCHEME_ELEMENTS as readonly string[]).includes(name)) {
       this.schemePart.row(name, v);
+      return;
+    }
+    if ((WORKFLOW_ELEMENTS as readonly string[]).includes(name)) {
+      this.workflowPart.row(name, v);
       return;
     }
     switch (name) {
@@ -570,6 +588,25 @@ class Collector {
       new Set(this.issueTypes.map((t) => t.id)),
       this.associations,
     );
+    // Workflows and their schemes (M1-090); notifications name custom events by theirs.
+    const workflowRecords = this.workflowPart.resolve(projectIds, this.associations, {
+      statuses: new Set(this.statuses.map((s) => s.id)),
+      types: new Set(this.issueTypes.map((t) => t.id)),
+      roles: new Set(this.roles.keys()),
+      group: (raw) => {
+        const id = raw.toLowerCase();
+        return groups.has(id) ? id : null;
+      },
+      screen: (id) => this.fieldPart.screen(id),
+    });
+    const events = this.workflowPart.eventNames();
+    for (const { data } of schemeRecords.notification_policy) {
+      for (const n of data.notifications) {
+        const name = n.event === null ? undefined : events.get(n.event);
+        if (name !== undefined) n.eventName = name;
+      }
+    }
+    const inWorkflow = this.workflowPart.statusesInWorkflows();
     const records = {
       user: [...people.entries()]
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -584,7 +621,9 @@ class Collector {
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
         .map(([id, g]) => ({ id, label: g.name, data: g })),
       role: named(byId([...this.roles.values()])),
-      status: named(this.statuses),
+      status: named(
+        this.statuses.map((x) => (inWorkflow.has(x.id) ? { ...x, inWorkflow: true } : x)),
+      ),
       priority: named(this.priorities),
       close_reason: named(this.resolutions),
       ticket_type: named(this.issueTypes),
@@ -599,6 +638,7 @@ class Collector {
       }),
       ...fieldRecords,
       ...schemeRecords,
+      ...workflowRecords,
     };
     return {
       records,

@@ -20,6 +20,7 @@ import {
 } from './format';
 import { type Manifest, manifestSchema } from './manifest';
 import { parseXml, type XmlHandlers } from './parse';
+import { WorkflowChecks } from './validate-workflows';
 import type { Written } from './xml';
 
 /**
@@ -138,6 +139,8 @@ class EntitiesState {
   readonly sequences: { name: string; next: number }[] = [];
   /** Scheme rows a project names through `NodeAssociation`, by element (M1-089). */
   readonly associations: { entity: string; id: number; project: number }[] = [];
+  /** Workflows, their schemes and events, and each issue's status in its workflow (M1-090). */
+  readonly workflows = new WorkflowChecks();
   readonly cases: Record<string, number> = {};
   rootSeen = false;
 
@@ -446,6 +449,7 @@ function checkValue(
 /** Keeps what the checks after the pass need, and counts the cases. */
 function record(state: EntitiesState, name: string, v: Record<string, string>): void {
   const id = Number(v.id);
+  state.workflows.row(name, v, (key, by) => state.note(key, by));
   switch (name) {
     case 'User':
       state.userNames.add(v.lowerUserName ?? '');
@@ -791,6 +795,16 @@ function crossCheck(
     const sinks = state.ids.get(a.entity);
     if (!sinks?.has(a.id)) problem(`NodeAssociation names ${a.entity} ${a.id}, which has no row`);
   }
+
+  // Workflows (M1-090).
+  state.workflows.check(
+    {
+      ids: (entity) => state.ids.get(entity),
+      groupNames: state.groupNames,
+      associations: state.associations,
+    },
+    problem,
+  );
 
   // Id sequences: each names an element and is above its highest id.
   for (const s of state.sequences) {

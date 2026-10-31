@@ -589,9 +589,9 @@ const statuses: Loader<StatusCommand> = {
       return { action: 'link', targetId: found.id, fingerprint };
     }
     if (cmd.mustExist) throw new PlanFailure('unknown_status');
-    // A new status is in no workflow yet (M1-090 maps workflows): tickets keep it, and the
-    // report says so.
-    ctx.warn({ code: 'status_not_in_workflow', detail: cmd.name });
+    // A new status is in no workflow unless the source's workflows bring it (M1-090): tickets
+    // keep it, and the report says so.
+    if (!cmd.inWorkflow) ctx.warn({ code: 'status_not_in_workflow', detail: cmd.name });
     return { action: 'create', targetId: null, fingerprint };
   },
   async apply(ctx, cmd, plan) {

@@ -53,7 +53,8 @@ export interface StagedNotificationScheme {
   id: string;
   name: string;
   description: string;
-  notifications: { event: number | null; grantee: StagedGrantee }[];
+  /** A custom event's name comes from its `EventType` row (M1-090). */
+  notifications: { event: number | null; eventName?: string; grantee: StagedGrantee }[];
   tracks: string[];
 }
 

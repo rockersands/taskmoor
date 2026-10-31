@@ -31,6 +31,7 @@
     {
       "name": "Team notifications",
       "rules": [
+        "custom:escalated assignee",
         "generic track_owner",
         "ticket_assigned assignee",
         "ticket_close_reason_set group group:team-keldei-1",

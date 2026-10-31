@@ -1,3 +1,5 @@
+import { WORKFLOW_ENTITIES } from './workflow-format';
+
 /**
  * The shape of a Data Center backup ZIP as Taskmoor reads it (M1-087), from public format
  * descriptions only (ADR-003): `docs/specs/02d-dc-backup-format.md` cites the source of every
@@ -448,6 +450,8 @@ export const ENTITIES = {
       timeworked: int,
     },
   },
+  // Workflows, their schemes and custom events (M1-090).
+  ...WORKFLOW_ENTITIES,
 } as const satisfies Record<string, EntitySpec>;
 export type EntityName = keyof typeof ENTITIES;
 

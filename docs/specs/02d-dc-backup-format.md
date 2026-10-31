@@ -69,11 +69,12 @@ The `cases` counted in the manifest:
 Rows are written in name order, with the id sequences last. So comments and history come before
 the issues they belong to, and a reader must not resolve references in a single pass.
 
-Not generated yet; the M1-089 to M1-094 mappings add them as they need them: custom fields and
-their values, versions, components, followers and votes as rows, key history of moved issues,
-renamed projects, workflows and their per-issue state, rank, the board columns and the issues'
-sprints, permission and notification schemes, filters other than the boards', dashboards, avatars
-and logos, and thumbnails.
+Not generated yet; the M1-089 to M1-094 mappings add them as they need them: versions,
+components, followers and votes as rows, key history of moved issues, renamed projects, each
+issue's workflow state, draft workflows, rank, the board columns and the issues' sprints,
+filters other than the boards', dashboards, avatars and logos, and thumbnails. Custom fields
+(M1-089), permission, security and notification schemes (M1-092) and workflows with their
+schemes (M1-090) are generated.
 
 ### Measured
 
@@ -233,8 +234,8 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   `timeoriginalestimate`, `timeestimate`, `timespent`, `workflowId` and `security`. [S27]
 - **Verify:** the creator, the resolution and resolution date, and the watch count are written
   as `creator`, `resolution`, `resolutiondate` and `watches`.
-- **Our choice:** the generator writes no `workflowId` or `security` (no workflow or security
-  rows yet). Issue numbers skip now and then, as after deleted issues, so a project's `counter`
+- **Our choice:** the generator writes no `workflowId` (no workflow state rows; workflows
+  themselves come with M1-090), and `security` since M1-092. Issue numbers skip now and then, as after deleted issues, so a project's `counter`
   can be above its count of issues. About 12% of issues are sub-tasks. `timespent` is the sum
   of the issue's time entries, and `timeestimate` is what is left of the original estimate.
 - The workflow state of each issue sits in separate workflow-entry and current-step tables,
@@ -402,6 +403,87 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   in turn; two in three projects have an issue security scheme. About 40% of issues there have
   a level.
 
+### Workflows, workflow schemes and custom events (M1-090)
+
+- **Verify:** workflows are `Workflow` rows with `id`, `name`, `creatorname` (a user name),
+  `descriptor` and `islocked`. The descriptor is the whole workflow as one XML document, written
+  as a child element in CDATA. It starts with an XML declaration and a document type
+  declaration of the open-source workflow library the server uses; readers ignore both.
+- **Verify:** the built-in workflow (named `jira`) has no row: the product carries it, and
+  schemes name it. A type whose scheme names no workflow for it uses the built-in one, and so
+  does every type of a project without a workflow scheme.
+- **Verify:** the descriptor's root is `workflow`. It holds `meta` elements (a `name`
+  attribute and text; `jira.description` describes the workflow), then `initial-actions`,
+  `global-actions`, `common-actions` and `steps`. Each of the three action lists holds `action`
+  elements.
+- **Verify:** a `step` has an `id`, a `name`, `meta` elements and an `actions` element. Its
+  meta `jira.status.id` names the step's `Status` row; every step has one, and no two steps of a
+  workflow share a status. A step's `actions` holds its own `action` elements and
+  `common-action` elements whose `id` names an action of `common-actions`.
+- **Verify:** an action is a transition with an `id` (unique in its workflow, and the
+  transition's stable id), a `name`, a `view` (`fieldscreen` when it shows a screen) and `meta`
+  elements: `jira.description`, `jira.fieldscreen.id` (the `FieldScreen` row of its screen),
+  and others such as `opsbar-sequence` that are kept as they are.
+- **Verify:** the initial action (id 1) creates an issue: its result's step is the initial
+  status. A global action is offered from every step. A common action is offered from each step
+  that names it, and a step's own action from that step only.
+- **Verify:** `restrict-to` holds one `conditions` element with `type` `AND` or `OR`, whose
+  items are `condition` elements and nested `conditions` groups. A condition may carry
+  `negate="true"`.
+- **Verify:** `validators` holds `validator` elements, `pre-functions` and `post-functions`
+  hold `function` elements. Each has a `type`: `class` with an `arg` named `class.name` that
+  holds the implementing class, or a script type such as `beanshell` with the script in an
+  argument. Other `arg` elements (a `name` attribute and text) are the rule's settings.
+- **Verify:** `results` holds `result` elements, each with its own conditions, taken when they
+  hold, and one `unconditional-result` taken otherwise. A result has `old-status`, `status` and
+  `step` (the step the issue moves to), and may hold validators and `post-functions`.
+- **Verify:** the built-in conditions, validators and functions are classes under
+  `com.atlassian.jira.workflow.condition.`, `.validator.` and `.function.`. These are the ones
+  the generator writes, with their settings: `AllowOnlyAssignee`, `AllowOnlyReporter`,
+  `AlwaysFalseCondition`, `PermissionCondition` (`permissionKey`), `SubTaskBlockingCondition`
+  (`statuses`, status ids with commas), `UserInGroupCondition` (`group`, a group name),
+  `InProjectRoleCondition` (`jira.projectrole.id`), `InAnyProjectRoleCondition`
+  (`jira.projectrole.ids`), `UserIsInCustomFieldCondition` (`fieldName`), `InGroupCFCondition`
+  (`groupcf`), `PermissionValidator` and `UserPermissionValidator` (`permissionKey`), and the
+  functions `AssignToCurrentUserFunction`, `AssignToLeadFunction`, `AssignToReporterFunction`,
+  `UpdateIssueFieldFunction` (`field.name` and `field.value`, empty to clear),
+  `SetIssueSecurityFromRoleFunction` (`jira.projectrole.id`, `jira.securitylevel.id`),
+  `UpdateIssueStatusFunction`, `CreateCommentFunction`, `GenerateChangeHistoryFunction`,
+  `IssueReindexFunction`, `IssueCreateFunction` and `FireIssueEventFunction` (`eventTypeId`).
+- **Verify:** the webhook post function is
+  `com.atlassian.jira.plugins.webhooks.workflow.TriggerWebhookFunction` and names a webhook
+  by id. Apps add classes of their own.
+- **Verify:** a step's meta can limit what people may do in it: `jira.issue.editable` set to
+  `false` locks the issue's fields, and `jira.permission.<permission>.<grantee type>` (such as
+  `jira.permission.comment.projectrole` with a role's id, or `.group` with a group's name)
+  lets only that grantee do it.
+- **Verify:** workflow schemes are `WorkflowScheme` rows (`id`, `name`, `description`). A
+  `WorkflowSchemeEntity` (`id`, `scheme`, `workflow`, `issuetype`) gives one issue type its
+  workflow, by the workflow's name; `issuetype` `0` stands for every type the scheme does not
+  name. A project uses a scheme through a `NodeAssociation` row like the ones above, with
+  `sinkNodeEntity` `WorkflowScheme`.
+- **Verify:** custom events are `EventType` rows (`id`, `name`, `description`, `type`
+  `jira.custom.event.type`), with ids from 10000. A transition fires one through
+  `FireIssueEventFunction`; event 13 is the generic event.
+- **Verify:** each issue's workflow state is in `OSWorkflowEntry`, `OSCurrentStep` and
+  `OSHistoryStep` rows, joined by the issue's `workflowId`.
+- **Our choice:** six workflows: one for software work, one for defects, one for sub-tasks
+  with global transitions only, one for business projects, a copy of the first that differs
+  only in its name, and an old one no scheme uses. All but the old one hold every status, so
+  every issue's status is a step of its workflow. Between them they use every built-in kind
+  above and, as rules Taskmoor cannot hold, a negated condition, a conditional result, a
+  `beanshell` script, conditions on a user and a group custom field, the webhook, a security
+  level from a role, an update that sets a priority, step properties that delete or lock, and
+  apps' conditions, validators and functions under `com.example`. One transition fires the
+  custom event `Escalated` (10001), which a notification scheme also names.
+- **Our choice:** three workflow schemes: one for software projects (defects and sub-tasks
+  have their own workflows), one for business projects, and a legacy one that repeats the
+  first through the copy. The third project uses the legacy one. Transition screens use a
+  screen of their own (`Close screen`, with ids from 10500 so they stay clear of the M1-089
+  screens) holding the resolution, the assignee, fix versions, time tracking and a custom field.
+- **Our choice:** each issue's workflow state is not generated; the issue's `status` is the
+  truth, and the reader does not need the state rows.
+
 ### Seen, not generated yet
 
 - `Version`, `Component`, `NodeAssociation` rows for an issue's affected and fix versions and
@@ -499,6 +581,13 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 - **Our choice:** a project without a field configuration scheme gets a field rule set of its
   own made from the default field configuration. A screen scheme's default screen stands in for
   each operation it does not name.
+- **Our choice:** the stage reads each descriptor into the model of `workflow-format.ts`, which
+  the generator's writer shares, and resolves what it names (statuses, groups, roles, screens,
+  custom events) against the rest of the backup (M1-090, ADR-093). Workflows that are the same
+  but for their names and descriptions merge into the one with the lowest id, and so do the
+  schemes that become the same with them. A scheme that names the built-in workflow gets a
+  record of it that links to the target's default workflow, with a warning.
+- **Our choice:** a workflow name in a scheme entity is matched exactly, then ignoring case.
 
 ## Sources
 

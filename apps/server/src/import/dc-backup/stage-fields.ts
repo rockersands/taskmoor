@@ -275,6 +275,23 @@ export class FieldCollector {
    * The staged records, with references resolved. `associations` maps each scheme element to
    * the projects naming it; `projects` and `types` are the ids that exist.
    */
+  /** A screen with its tabs and their fields, in order; null when it has no row. */
+  screen(id: string): StagedScreen | null {
+    const screen = this.screens.get(id);
+    if (!screen) return null;
+    const tabs = this.tabs
+      .filter((t) => t.screen === id)
+      .sort((a, b) => a.sequence - b.sequence || Number(a.id) - Number(b.id))
+      .map((t) => ({
+        name: t.name,
+        fields: this.screenItems
+          .filter((i) => i.tab === t.id)
+          .sort((a, b) => a.sequence - b.sequence)
+          .map((i) => i.field),
+      }));
+    return { id, name: screen.name, tabs };
+  }
+
   resolve(
     projects: ReadonlySet<string>,
     types: ReadonlySet<string>,
@@ -417,21 +434,7 @@ export class FieldCollector {
     }
 
     // Layout sets: an issue type screen scheme, each type's screen scheme, each operation's screen.
-    const screenOf = (id: string): StagedScreen | null => {
-      const screen = this.screens.get(id);
-      if (!screen) return null;
-      const tabs = this.tabs
-        .filter((t) => t.screen === id)
-        .sort((a, b) => a.sequence - b.sequence || Number(a.id) - Number(b.id))
-        .map((t) => ({
-          name: t.name,
-          fields: this.screenItems
-            .filter((i) => i.tab === t.id)
-            .sort((a, b) => a.sequence - b.sequence)
-            .map((i) => i.field),
-        }));
-      return { id, name: screen.name, tabs };
-    };
+    const screenOf = (id: string) => this.screen(id);
     const layoutSets = byId(this.typeScreenSchemes.values()).map((s) => {
       const entities: StagedLayoutSet['entities'] = [];
       for (const e of this.typeScreenEntities.filter((x) => x.scheme === s.id)) {

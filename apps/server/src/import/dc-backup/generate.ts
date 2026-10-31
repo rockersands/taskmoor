@@ -34,6 +34,7 @@ import {
 import * as parts from './parts';
 import { Random } from './random';
 import { roleActors, schemeWorldOf, securityOf } from './schemes';
+import { writeWorkflowEntity } from './workflows';
 import { buildWorld, FIRST_ID, type Person, type World, walkIssues } from './world';
 import { escapeAttr, TextOut } from './xml';
 
@@ -504,6 +505,7 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
     default:
       await writeFieldEntity(world, w, name);
       await writeSchemeEntity(world, w, name);
+      await writeWorkflowEntity(world, w, name);
       return;
   }
 }

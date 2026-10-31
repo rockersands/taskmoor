@@ -183,6 +183,8 @@ export interface StatusCommand {
   description?: string;
   /** The target must have it (CSV names statuses): linked, never created. */
   mustExist?: boolean;
+  /** A workflow of the same import names it, so a new status is not left out of workflows. */
+  inWorkflow?: boolean;
 }
 
 /** Priorities and close reasons are linked by name, or added after the target's own. */
