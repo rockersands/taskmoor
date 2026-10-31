@@ -6,5 +6,6 @@ export * from './kits';
 export * from './manifest';
 export * from './project';
 export * from './random';
+export * from './run';
 export * from './secrets';
 export * from './zip';

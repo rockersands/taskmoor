@@ -1,15 +1,11 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import {
-  backendKit,
-  buildKits,
-  frontendKit,
-  generateSecrets,
-  loadProject,
-  seededRandom,
-  systemRandom,
+  KIT_FILE_NAMES,
+  type KitOutput,
+  kitOutputsFromProject,
   type UserSecrets,
-  writeZip,
+  type WebFiles,
 } from '@taskmoor/builder-core';
 
 /**
@@ -34,7 +30,8 @@ export interface BuilderRun {
   image?: string;
 }
 
-function readTree(dir: string, root = dir): Record<string, Uint8Array> {
+/** Every file under a folder, by its path relative to it with forward slashes. */
+export function readTree(dir: string, root = dir): WebFiles {
   return Object.fromEntries(
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const path = join(dir, e.name);
@@ -45,30 +42,24 @@ function readTree(dir: string, root = dir): Record<string, Uint8Array> {
   );
 }
 
-export const OUTPUTS = {
-  backend: 'taskmoor-backend-kit.zip',
-  frontend: 'taskmoor-frontend-kit.zip',
-  single: 'taskmoor-frontend-single.html',
-} as const;
+/** The files a run writes; the Builder page offers the same three as downloads (M1-112). */
+export const OUTPUTS = KIT_FILE_NAMES;
 
-export async function runBuilder(run: BuilderRun): Promise<Record<keyof typeof OUTPUTS, string>> {
-  const project = await loadProject(run.project, run.passphrase);
-  const generated =
-    project.secrets?.generated ??
-    (await generateSecrets(run.seed ? seededRandom(run.seed) : systemRandom));
-  const user = { ...project.secrets?.user, ...run.user };
-  const kits = await buildKits(project.inputs, generated, user, run.versions);
-  const web = readTree(run.webDir);
+/** The core's run with the web build read from disk and the three files written to `outDir`. */
+export async function runBuilder(run: BuilderRun): Promise<Record<KitOutput, string>> {
+  const outputs = await kitOutputsFromProject({
+    project: run.project,
+    web: readTree(run.webDir),
+    versions: run.versions,
+    seed: run.seed,
+    passphrase: run.passphrase,
+    user: run.user,
+    image: run.image,
+  });
   mkdirSync(run.outDir, { recursive: true });
   const out = Object.fromEntries(
     Object.entries(OUTPUTS).map(([k, name]) => [k, join(run.outDir, name)]),
-  ) as Record<keyof typeof OUTPUTS, string>;
-  writeFileSync(
-    out.backend,
-    writeZip(backendKit(kits, project.inputs, run.image ? { image: run.image } : {})),
-  );
-  writeFileSync(out.frontend, writeZip(await frontendKit(kits, web)));
-  const single = await frontendKit(kits, web, { singleFile: true });
-  writeFileSync(out.single, single['index.html'] ?? '');
+  ) as Record<KitOutput, string>;
+  for (const key of Object.keys(OUTPUTS) as KitOutput[]) writeFileSync(out[key], outputs[key]);
   return out;
 }

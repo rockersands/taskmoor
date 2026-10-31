@@ -3571,6 +3571,111 @@ export const messagesEn = {
   'sprints.settings.unknownTimeZone': 'The server does not know this time zone. Pick another.',
   'page.underConstruction': 'This area is under construction.',
   'page.itemCount': '{count, plural, =0 {No items} one {# item} other {# items}}',
+  'builder.title': 'Taskmoor Builder',
+  'builder.intro':
+    'Makes the two kits of a new Taskmoor install on this computer: the backend kit for your server and the frontend kit for any static host. Nothing you type leaves this page. It works offline, and its secrets come from your browser.',
+  'builder.version': 'Makes kits for Taskmoor {version}.',
+  'builder.noBuild':
+    'This page carries no Taskmoor app to put in the frontend kit. Use the Builder page of a release, or build it with pnpm build.',
+  'builder.formName': 'Kit settings',
+  'builder.project.title': 'Project file',
+  'builder.project.hint':
+    'A project file keeps these settings, so you can make the same kits again for an upgrade or a new look. With a passphrase it also keeps the instance secrets, encrypted; without one it holds none, and the next kits get new secrets.',
+  'builder.project.passphrase': 'Passphrase (optional)',
+  'builder.project.passphraseHint':
+    'Used to encrypt the secrets when you save, and to open them when you load. Nobody can recover a lost passphrase.',
+  'builder.project.showPassphrase': 'Show passphrase',
+  'builder.project.load': 'Load a project file',
+  'builder.project.save': 'Save project file',
+  'builder.project.loading': 'Opening the project file…',
+  'builder.project.loaded': 'Loaded {name}. Make the kits to get the same files again.',
+  'builder.project.locked':
+    'Loaded the settings of {name}. Its secrets stay locked: enter its passphrase and load it again to keep them, or the kits get new ones.',
+  'builder.project.saved':
+    'Saved the project file without secrets. Kits made from it get new secrets.',
+  'builder.project.savedWithSecrets':
+    'Saved the project file with the instance secrets, encrypted with your passphrase. Keep both safe.',
+  'builder.project.notAProject': 'That file is not a Taskmoor Builder project file.',
+  'builder.project.invalidInputs':
+    'That project file has settings this Builder cannot use. Check its addresses.',
+  'builder.project.wrongPassphrase':
+    'The passphrase does not open this project’s secrets. Check it, or clear it to load the settings alone.',
+  'builder.addresses': 'Addresses',
+  'builder.backendUrl': 'Backend address',
+  'builder.backendUrlHint':
+    'Where the server answers, such as https://api.example.com. No path: the API lives at its root.',
+  'builder.frontendUrl': 'Frontend address',
+  'builder.frontendUrlHint':
+    'Where people open the app, such as https://tracker.example.com/. It ends with a slash and may name a folder.',
+  'builder.instance': 'Instance',
+  'builder.instanceName': 'Instance name (optional)',
+  'builder.defaultLanguage': 'Default language',
+  'builder.language.en': 'English',
+  'builder.language.es': 'Español',
+  'builder.frontend': 'Frontend',
+  'builder.routing': 'Addresses inside the app',
+  'builder.routing.path': 'Clean addresses (recommended)',
+  'builder.routing.hash': 'Hash addresses (#/…)',
+  'builder.routingHint':
+    'Clean addresses need a host that sends unknown paths to index.html; the kit brings the rules for Apache, Netlify, Cloudflare Pages and nginx. Choose hash addresses for a host without rewrites.',
+  'builder.signIn': 'Sign-in',
+  'builder.signIn.auto': 'Pick from the two addresses',
+  'builder.signIn.session': 'The backend’s cookie',
+  'builder.signIn.oauth': 'OAuth with PKCE',
+  'builder.signInHint':
+    'The cookie works when both addresses are one site; OAuth works across any two sites.',
+  'builder.backend': 'Backend',
+  'builder.target': 'Deployment target',
+  'builder.target.compose': 'Docker Compose on a server',
+  'builder.target.helm': 'Helm values for Kubernetes',
+  'builder.withSmtp': 'Send email through an SMTP server',
+  'builder.smtpHost': 'SMTP host',
+  'builder.smtpPort': 'SMTP port',
+  'builder.smtpUser': 'SMTP user (optional)',
+  'builder.smtpPassword': 'SMTP password (optional)',
+  'builder.showSmtpPassword': 'Show SMTP password',
+  'builder.smtpFrom': 'Sender address (optional)',
+  'builder.aiProvider': 'AI provider',
+  'builder.ai.none': 'None',
+  'builder.ai.anthropic': 'Anthropic API',
+  'builder.ai.bedrock': 'Amazon Bedrock',
+  'builder.ai.vertex': 'Google Vertex AI',
+  'builder.ai.foundry': 'Microsoft Foundry',
+  'builder.ai.openaiCompatible': 'OpenAI-compatible',
+  'builder.aiKey': 'AI provider key (optional)',
+  'builder.showAiKey': 'Show AI provider key',
+  'builder.aiKeyHint': 'The server moves it into encrypted storage the first time it starts.',
+  'builder.secretsHint':
+    'Passwords and keys go into the backend kit only, never into the frontend kit.',
+  'builder.advanced': 'Reproducible secrets',
+  'builder.seed': 'Seed (optional)',
+  'builder.seedHint':
+    'At least {min} characters. The same seed and settings give the same kits on this page and in pnpm builder. The secrets are then only as strong as the seed: use it for tests and rebuilds, never for a first install.',
+  'builder.seed.tooShort': 'The seed is too short.',
+  'builder.problemsIntro': 'Some settings need a change:',
+  'builder.problem.invalid': 'This value is not valid.',
+  'builder.problem.notAUrl': 'Enter a full address such as https://tracker.example.com.',
+  'builder.problem.insecureUrl':
+    'Use https. Plain http is only for a machine of your own (localhost or a .test name).',
+  'builder.problem.hasPath': 'The backend address takes no path: the API lives at its root.',
+  'builder.problem.hasQuery': 'The address takes no query or fragment.',
+  'builder.problem.notADirectory':
+    'End the address with a slash: it names the folder the app is served from.',
+  'builder.problem.instanceName': 'Use at most 100 characters.',
+  'builder.problem.smtpHost': 'Enter the SMTP server’s host name.',
+  'builder.problem.smtpPort': 'Enter a port from 1 to 65535.',
+  'builder.generate': 'Make the kits',
+  'builder.generating': 'Making the kits…',
+  'builder.generated': 'The kits are ready below.',
+  'builder.failed': 'The kits could not be made. Check the settings and try again.',
+  'builder.results': 'Your kits',
+  'builder.resultsHint':
+    'Install the backend kit on your server first, then upload one form of the frontend kit to your static host. The backend kit holds the instance secrets: keep it private.',
+  'builder.result.backend': 'Download the backend kit',
+  'builder.result.frontend': 'Download the frontend kit',
+  'builder.result.single': 'Download the frontend as one file',
+  'builder.result.size': '{kb} KB',
+  'builder.result.sha256': 'SHA-256',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

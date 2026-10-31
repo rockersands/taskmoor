@@ -48,7 +48,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
 | `pnpm conformance <workflow \| query>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`) |
 | `pnpm fuzz query [--minutes N] [--seed N]` | Fuzzes the query parser; report in `.verify/fuzz-query.json`, failing inputs in `.cache/fuzz/` |
-| `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`) and the bundled server (`apps/server/dist/server.mjs`), both stamped with `TASKMOOR_VERSION` (ADR-066) |
+| `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`), the offline Builder page that carries it (`apps/web/dist-builder/index.html`, ADR-088) and the bundled server (`apps/server/dist/server.mjs`), all stamped with `TASKMOOR_VERSION` (ADR-066) |
 | `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |
 | `bash tools/image/smoke.sh` | Builds the Docker image, checks its size and probes `/health` and `/ready` (amd64, then arm64 under emulation) |
 | `bash tools/image/smoke-kits.sh` | Builds the all-in-one image and brings up both Compose kits (`deploy/`) to `/ready` |

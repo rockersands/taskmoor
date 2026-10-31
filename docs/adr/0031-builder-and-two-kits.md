@@ -120,7 +120,7 @@ module, so the web Builder and the CLI share every byte of it.
   backend kit's core and the frontend kit as a zip and as one file. With `--seed`, the bytes
   match any other run of the same project file and build. A passphrase comes from an
   environment variable named on the command line, never from the command line itself. The
-  web Builder page that shares this core is still to come.
+  web Builder page that shares this core came with M1-112 (below).
 - **Checks:**
   - The web-build test project assembles both forms from a real build and runs the
     repository's secret scanner over every file.
@@ -177,3 +177,11 @@ module, so the web Builder and the CLI share every byte of it.
 - Both kit forms carry the app's content security policy in a meta element. The single file
   allows its inline script and style blocks by their SHA-256 hashes, so it no longer gives up a
   strict policy. `frame-ancestors` needs a header from the host, which a meta element cannot set.
+
+## Implementation (M1-112: the Builder page)
+
+ADR-088 records the page. It lives in `apps/web/src/builder` as a second entry of the web app,
+not in the `apps/builder` package named above. It is built into one offline file,
+`apps/web/dist-builder/index.html`, which carries the web build and a policy that allows no
+request. The page and the CLI share one run in `builder-core/src/run.ts`, and the tests compare
+their bytes for one project file and seed.

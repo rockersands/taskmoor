@@ -89,5 +89,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [082](0082-load-tests.md) | Load tests with k6 against the real server, and a sizing table computed from them | Accepted |
 | [083](0083-entity-properties.md) | Entity properties in a table per entity kind, and declared indexes in typed side tables | Accepted |
 | [084](0084-oauth-for-mcp-clients.md) | OAuth for MCP clients through self-registration, consent at the browser and tokens bound to the MCP endpoint | Accepted |
+| [088](0088-builder-page.md) | The Builder page as a second entry of the web app, built into one offline file | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

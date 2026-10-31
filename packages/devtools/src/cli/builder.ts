@@ -1,5 +1,6 @@
 // pnpm builder --project <file> [--web apps/web/dist] [--out kits] [--seed <seed>]
 //               [--passphrase-env <NAME>] [--version <x.y.z>] [--image <repository>]
+//               (--version defaults to the web build's own, from its version.json)
 // pnpm builder --backend-url <url> --frontend-url <url> [...]   (no project file: defaults)
 //
 // The Taskmoor Builder on the command line (OPS-016): the backend kit's core and the frontend
@@ -10,8 +11,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { saveProject, validateInputs } from '@taskmoor/builder-core';
-import { runBuilder } from '../builder';
+import { saveProject, validateInputs, webBuildVersion } from '@taskmoor/builder-core';
+import { readTree, runBuilder } from '../builder';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const { values } = parseArgs({
@@ -21,12 +22,18 @@ const { values } = parseArgs({
     out: { type: 'string', default: 'kits' },
     seed: { type: 'string' },
     'passphrase-env': { type: 'string' },
-    version: { type: 'string', default: process.env.TASKMOOR_VERSION ?? '0.0.0-dev' },
+    version: { type: 'string' },
     image: { type: 'string' },
     'backend-url': { type: 'string' },
     'frontend-url': { type: 'string' },
   },
 });
+// The kits are for the version of the web build they carry, as the Builder page's are (M1-112).
+const version =
+  values.version ??
+  webBuildVersion(readTree(values.web)) ??
+  process.env.TASKMOOR_VERSION ??
+  '0.0.0-dev';
 let project = values.project ? readFileSync(values.project, 'utf8') : '';
 if (!project) {
   const form = validateInputs({
@@ -40,7 +47,7 @@ if (!project) {
     );
     process.exit(2);
   }
-  project = await saveProject(form.inputs, { builderVersion: values.version });
+  project = await saveProject(form.inputs, { builderVersion: version });
 }
 const passphraseEnv = values['passphrase-env'];
 const out = await runBuilder({
@@ -50,6 +57,6 @@ const out = await runBuilder({
   outDir: values.out,
   ...(values.seed ? { seed: values.seed } : {}),
   ...(passphraseEnv ? { passphrase: process.env[passphraseEnv] ?? '' } : {}),
-  versions: { backendVersion: values.version, kitVersion: values.version },
+  versions: { backendVersion: version, kitVersion: version },
 });
 for (const path of Object.values(out)) process.stdout.write(`wrote ${path}\n`);

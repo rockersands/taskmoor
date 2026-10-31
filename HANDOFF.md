@@ -48,6 +48,21 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     Before this, `/api/v1/users` as an admin prefix demanded the admin scope.
   - Not yet: client ID metadata documents (an SSRF-safe fetch is needed first); browser-based
     MCP clients on other origins (the origin policy refuses them).
+- **M1-112 Builder page** (2026-10-31; ADR-088, no migration): M1-112 is done.
+  - The page is a second entry of the web app (`apps/web/src/builder`,
+    `vite.builder.config.ts`). It is built into one file, `apps/web/dist-builder/index.html`,
+    by `pnpm build` or `pnpm --filter @taskmoor/web build:builder`. The web build must exist
+    first: the page carries it in a JSON data block. Its policy allows no request.
+  - The page and the CLI share `builder-core/src/run.ts` (`kitOutputs`,
+    `kitOutputsFromProject`, `runSecrets`). The CLI's `--version` now defaults to the web
+    build's `version.json`.
+  - Tests: `apps/web/build/builder-page.test.ts` (one file, policy, page bytes against
+    `runBuilder`), `src/builder/*.test.ts(x)`, stories, and `e2e/builder-page.spec.ts`. The
+    spec serves the page on 4183 (a new webServer entry), refuses every other request and
+    compares the downloads' SHA-256 with `pnpm builder` run as a process.
+  - Not yet: branding (the kits ignore the accent colour, so the page has no field for it;
+    OPS-016 (3) waits), publishing the page with a release, and a language picker on the page
+    (`?locale=es` works).
 - **Next free numbers:** migration 0068 and ADR-085.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
