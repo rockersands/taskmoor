@@ -1,0 +1,162 @@
+/* The Builder page (M1-112, ADR-088): one column of the form, then the downloads. Desktop first;
+ * on phones the column takes the width and every target is 44px tall. */
+.builder {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-4) var(--space-8);
+  box-sizing: border-box;
+}
+
+.builder > .page-note {
+  margin-bottom: var(--space-2);
+}
+
+.builder-form {
+  max-width: none;
+  margin-top: var(--space-5);
+}
+
+/* A fieldset is as wide as its widest content by default; here it takes the column. */
+.builder-form fieldset {
+  min-width: 0;
+}
+
+.builder-form input:not([type="checkbox"], [type="radio"], [type="color"]),
+.builder-form select {
+  width: 100%;
+  min-width: 0;
+}
+
+.builder-problem {
+  color: var(--color-danger);
+}
+
+/* The file picker is the label, drawn as a button; the input stays focusable for keyboards. */
+.builder-file-actions {
+  position: relative;
+}
+
+.builder-file-input {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.builder-file {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.builder-file-input:focus-visible + .builder-file {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.builder-file-input:disabled + .builder-file {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.builder-advanced {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.builder-advanced summary {
+  min-height: var(--hit-target);
+  line-height: var(--hit-target);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.builder-advanced[open] summary {
+  margin-bottom: var(--space-3);
+}
+
+.builder-results {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.builder-results h2 {
+  margin: 0;
+  font-size: var(--font-size-400);
+}
+
+.builder-results ul {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.builder-results li {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.builder-download {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  box-sizing: border-box;
+  max-width: 100%;
+  text-decoration: none;
+}
+
+.builder-file-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+}
+
+/* Hashes are long words: they wrap anywhere rather than push the page sideways. */
+.builder-hash {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  overflow-wrap: anywhere;
+}
+
+.builder-hash code,
+.builder-file-name code {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+@media (pointer: coarse) {
+  .builder-advanced summary {
+    min-height: var(--hit-target-touch);
+    line-height: var(--hit-target-touch);
+  }
+}
+
+@media (max-width: 40rem) {
+  .builder {
+    padding: var(--space-5) var(--space-3);
+  }
+
+  .builder-form fieldset,
+  .builder-advanced,
+  .builder-results {
+    padding: var(--space-4);
+  }
+}

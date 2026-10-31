@@ -63,7 +63,7 @@ describe('pseudoBidi (M1-116)', () => {
  * taken out, less names, terms the Spanish glossary keeps and words spelled alike in Spanish.
  */
 const KEPT = new Set(
-  'Taskmoor Track Tracks Ticket Tickets Token Tokens Sprint Sprints Backlog Burndown Burnup PostgreSQL Node OpenID Connect SAML Active Directory OpenLDAP Personal Roles Error Total Zoom'.split(
+  'Taskmoor Track Tracks Ticket Tickets Token Tokens Sprint Sprints Backlog Burndown Burnup PostgreSQL Node OpenID Connect SAML Active Directory OpenLDAP Personal Roles Error Total Zoom Builder Frontend Backend English Español Amazon Bedrock Google Vertex Microsoft Foundry'.split(
     ' ',
   ),
 );

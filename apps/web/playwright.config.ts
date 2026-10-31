@@ -104,5 +104,13 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
+    // The Builder page (M1-112): one file built from this run's web build and served alone, as
+    // any host or a USB stick would hand it out (4183). builder-page.spec.ts blocks the rest.
+    {
+      command: `${vite} build --config vite.builder.config.ts --logLevel warn && ${vite} preview --config vite.builder.config.ts`,
+      url: 'http://localhost:4183/',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
   ],
 });

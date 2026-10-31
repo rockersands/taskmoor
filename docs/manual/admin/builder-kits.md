@@ -1,16 +1,16 @@
 ---
 title: "The Builder's kits"
 audience: admins
-sources: packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+sources: apps/web/src/builder/BuilderPage.tsx, apps/web/build/builder-page.ts, apps/web/vite.builder.config.ts, packages/builder-core/src/run.ts, docs/adr/0088-builder-page.md, packages/builder-core/src/inputs.ts, packages/builder-core/src/secrets.ts, packages/builder-core/src/manifest.ts, packages/builder-core/src/project.ts, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, packages/builder-core/src/frontend.ts, packages/devtools/src/builder.ts, packages/devtools/src/cli/builder.ts, packages/webconfig/src/config.ts, packages/webconfig/src/csp.ts, apps/web/src/api/client.ts, apps/web/src/session/oauth.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/web/src/i18n/messages.en.ts, apps/server/src/config.ts, tools/image/smoke-backend-kit.sh, deploy/README.md, docs/adr/0031-builder-and-two-kits.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md
+accessed: 2026-10-31
 attestation: own-words
 ---
 # The Builder's kits
 
 The Builder turns one set of answers (the addresses, a name, mail settings) into the files an
 install needs, with fresh secrets and a signed description of the instance that both halves
-share. Today the Builder is a command in the source repository, `pnpm builder`. Taskmoor does
-not yet have the web page version of the Builder.
+share. It comes in two forms that give the same files: a web page that runs in your browser
+with no network, and a command in the source repository, `pnpm builder`.
 
 ## What the Builder makes
 
@@ -20,7 +20,37 @@ not yet have the web page version of the Builder.
 | `taskmoor-frontend-kit.zip` | The web app for a static host: configured, pinned to its instance, with integrity hashes and the host's fallback files |
 | `taskmoor-frontend-single.html` | The whole web app in one `index.html`, for a host that takes one file |
 
-## Running the Builder
+## The Builder page
+
+The Builder page is one file, `index.html`, that `corepack pnpm build` writes to
+`apps/web/dist-builder/`. It holds the web app of the same build, so it makes kits for that
+version, which it shows under its title. Open it in a browser straight from the disk, or from
+any web host. It works offline, and it can send nothing anywhere: its content security policy
+allows no request, and its secrets come from the browser's own generator.
+
+1. Fill in the two addresses and whatever else you need: the instance name, the default
+   language, clean or hash addresses, how the app signs in, the deployment target, and
+   optionally an SMTP server and an AI provider with their password and key. Each problem
+   shows under its field.
+2. Choose **Make the kits**. Three download links appear, each with its size and its SHA-256,
+   so you can compare a download with a file the command line wrote.
+3. Choose **Save project file** to keep the settings in `taskmoor-project.json`. With a
+   passphrase, the file also keeps the instance secrets of the kits you made, and the SMTP
+   password and AI key, encrypted. Without one it keeps the settings only.
+
+To make the same kits again, open the page, type the passphrase, choose **Load a project
+file**, then **Make the kits**. Loading a project that keeps secrets without its passphrase
+loads its settings only, and the page says so: the next kits then get a new instance. Until
+you reload the page or load another project, every run keeps the instance of the first one, so
+changing a setting and making the kits again does not change the instance.
+
+The **Reproducible secrets** section takes a seed, as `--seed` does on the command line: the
+same project and seed give the same files on the page and in `pnpm builder`. The same warning
+applies.
+
+The page is in English, or in Spanish (a draft) with `?locale=es` after its address.
+
+## Running the Builder on the command line
 
 You need a copy of the source with its dependencies (`corepack pnpm install`), Node.js 22.12
 or later, and a built web app. Build the web app with the version of the backend image you will
@@ -41,7 +71,7 @@ file with `--project taskmoor.json`.
 | `--backend-url <url>`, `--frontend-url <url>` | Without a project file: the two addresses; everything else takes its default |
 | `--web <dir>` | The built web app; `apps/web/dist` by default, or a copy of `/app/web` from the image |
 | `--out <dir>` | Where the files go; `kits` by default |
-| `--version <x.y.z>` | The backend version the kit pins; `TASKMOOR_VERSION`, else `0.0.0-dev` |
+| `--version <x.y.z>` | The backend version the kit pins; by default the web app's own (its `version.json`), else `TASKMOOR_VERSION`, else `0.0.0-dev` |
 | `--image <repository>` | The image repository; `ghcr.io/rockersands/taskmoor` by default |
 | `--seed <seed>` | Derive the secrets from a seed, so a run can be repeated byte for byte |
 | `--passphrase-env <NAME>` | The environment variable holding the passphrase of a project file's encrypted secrets |
@@ -83,16 +113,18 @@ The project file keeps the answers, so you can build the kits again. It is JSON:
 | `signIn` | `auto` (the default), `session` or `oauth`: how the frontend signs in when it is on another origin than the backend ([below](#frontend-and-backend-on-different-origins)) |
 | `smtp` | `host`, `port`, `user`, `from`; port 465 means TLS from the start. Values cannot contain spaces |
 | `ai` | `provider`: `anthropic`, `bedrock`, `vertex`, `foundry` or `openai-compatible` |
-| `defaultLanguage`, `branding.accentColour` | `en` or `es`, and a colour such as `#3366cc`; kept in the file, not yet used by the kits |
+| `defaultLanguage`, `branding.accentColour` | `en` or `es`, and a colour such as `#3366cc`; kept in the file, not yet used by the kits. The page has no field for the colour, but it keeps the colour of a project it loads |
 
 The file holds no secret. It can carry the secrets only encrypted with a passphrase
 (PBKDF2-SHA-256 with 600,000 rounds, then AES-256-GCM), which `--passphrase-env` opens. The
-command line cannot write such a file yet, so every run without a seed makes new secrets and a
-new instance identity: a frontend kit built later does not match a backend installed from an
-earlier run. Keep the zips of the run you installed.
+Builder page writes such a file when you save with a passphrase; the command line cannot. A
+run from a file without secrets and without a seed makes new secrets and a new instance
+identity: a frontend kit built later does not match a backend installed from an earlier run.
+Keep the project file with its passphrase, or the zips of the run you installed.
 
-The command line has no option for the SMTP password or an AI key. When `smtp.user` is set,
-add `TASKMOOR_SMTP_PASSWORD=...` to the backend kit's `.env` before you install: the server
+The command line has no option for the SMTP password or an AI key; it takes them only from a
+project file that keeps them. When `smtp.user` is set and there is no password, add
+`TASKMOOR_SMTP_PASSWORD=...` to the backend kit's `.env` before you install: the server
 refuses to start with a user and no password.
 
 ## The connection manifest
@@ -219,4 +251,7 @@ bucket itself: add a CORS rule to the bucket that allows `GET` from the frontend
   `TASKMOOR_AI_KEY`. They are kept for later releases; today they change nothing.
 - **Allowed origins in the admin area.** The frontend origins come from `.env` and change with
   a restart; an admin page for them is still to come.
-- **The web page Builder**, which runs the same core in a browser with no network access.
+- **Branding in the kits.** Logo, favicon and colours are not in the kits yet, so the page asks
+  for none.
+- **The Builder page in a release.** `pnpm build` makes it; a release that publishes it beside
+  the image is still to come.
