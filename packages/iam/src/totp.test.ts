@@ -78,7 +78,12 @@ describe('one-time passwords (RFC 6238)', () => {
     expect(sealed).not.toContain('JBSWY3DPEHPK3PXP');
     expect(openSecret(sealed, pepperRing(key))).toBe('JBSWY3DPEHPK3PXP');
     expect(openSecret(sealed, pepperRing(other))).toBeNull();
-    expect(openSecret(`${sealed.slice(0, -2)}xx`, pepperRing(key))).toBeNull();
+    // A changed tag is refused. Its first character carries six whole bits of the tag, so
+    // changing it always changes the tag (the last ones carry padding bits that decode away).
+    const parts = sealed.split(':');
+    const tag = parts[4] as string;
+    parts[4] = `${tag[0] === 'A' ? 'B' : 'A'}${tag.slice(1)}`;
+    expect(openSecret(parts.join(':'), pepperRing(key))).toBeNull();
     expect(openSecret(sealSecret('dev', undefined), undefined)).toBe('dev');
   });
 });
