@@ -1,0 +1,17 @@
+{
+  "name": "@taskmoor/api-jira-compat",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Jira-compatible API (ADR-016): its contract in our own words, the conformance cases and their runner (M1-068); the shim itself joins with M1-069.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@taskmoor/testkit": "workspace:*"
+  }
+}

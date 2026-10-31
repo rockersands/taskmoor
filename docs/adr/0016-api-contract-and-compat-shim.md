@@ -28,7 +28,9 @@ review ask that compatibility code stays legally separable from the product.
   imported instances), and removable from the image without touching anything else. It serves
   wiki markup on v2, ADF on v3 and the Agile endpoints; unknown parameters return a Jira-style
   error, never a silent wrong result. A recorded fixture suite of real client traffic is its
-  conformance test.
+  conformance test. (Amended by ADR-085, 2026-10-31: the conformance test is a suite of
+  operations and synthetic cases written from public pages, with recordings only of scripts
+  run against Taskmoor, since the clean room forbids recording a real Jira.)
 
 ## Options considered
 

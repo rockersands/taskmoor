@@ -46,7 +46,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm bench:check [--size 1m] [--e2e]` | Spike results against the performance budgets and the baseline in `docs/spikes/baseline` (fails on a 20% regression), then the tests' speed limits, enforced (ADR-071) |
 | `pnpm status-report [--date D]` | Weekly status report to `docs/status/<date>.md`; copy it to the user's Drive folder |
 | `pnpm gate M0 [--ci]` | The milestone's exit checklist: what is green, failing or waiting on the user |
-| `pnpm conformance <workflow \| query>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`) |
+| `pnpm conformance <workflow \| query \| formula \| compat>` | A conformance suite's pass, fail and unsupported counts per section (`--json`, `--failures=N`); `compat` runs the Jira-compatible API's cases against a running Taskmoor (`--url`, `--project`, token in `TASKMOOR_TOKEN`) |
 | `pnpm fuzz query [--minutes N] [--seed N]` | Fuzzes the query parser; report in `.verify/fuzz-query.json`, failing inputs in `.cache/fuzz/` |
 | `pnpm build` | Production build: the frontend artefact (`apps/web/dist` with `version.json`) and the bundled server (`apps/server/dist/server.mjs`), both stamped with `TASKMOOR_VERSION` (ADR-066) |
 | `bash deploy/compose/upgrade.sh <image> [--dry-run]` | One-command upgrade of a Compose install: pre-upgrade backup, migrations, the previous image back on failure |

@@ -13,6 +13,9 @@
       "path": "../query"
     },
     {
+      "path": "../api-jira-compat"
+    },
+    {
       "path": "../formula"
     },
     {

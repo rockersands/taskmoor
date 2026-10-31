@@ -41,6 +41,9 @@
       "path": "packages/webconfig"
     },
     {
+      "path": "packages/api-jira-compat"
+    },
+    {
       "path": "packages/builder-core"
     },
     {

@@ -14,7 +14,7 @@ This file specifies the programmable surface of Taskmoor and the way customers m
 - **ID**: `MODULE-NNN`, stable and never reused. This file holds API and IMP.
 - **MS**: M1 = release 1.0, Jira Software parity and Data Center exit core; M2 = enterprise, automation and service-desk core; M3 = ITSM, operations and CMDB; M4 = discovery, portfolio, quality and ecosystem.
 - **Pri**: M = Must, S = Should, C = Could.
-- **Source**: parity target. "exceeds Jira" marks a deliberate improvement over a documented Jira limit; "verify" marks a fact the research flagged as unconfirmed. The research did not capture exact Jira endpoint paths and payloads beyond those named below; build the shim from recorded request and response fixtures, not from Atlassian documentation text (clean-room rule).
+- **Source**: parity target. "exceeds Jira" marks a deliberate improvement over a documented Jira limit; "verify" marks a fact the research flagged as unconfirmed. The research did not capture exact Jira endpoint paths and payloads beyond those named below; build the shim from request and response cases written in our own words from public descriptions (the conformance suite, ADR-085), never from Atlassian documentation text or from recordings of an Atlassian product (clean-room rule).
 - **Terms**: ticket (Jira: issue), track (Jira: project), ticket type (Jira: issue type); file 00 lists the full vocabulary. The shim and the importer keep Jira's names.
 
 ## 1. Reference: API catalog

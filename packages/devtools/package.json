@@ -16,6 +16,7 @@
   "dependencies": {
     "@taskmoor/builder-core": "workspace:*",
     "@taskmoor/formula": "workspace:*",
+    "@taskmoor/api-jira-compat": "workspace:*",
     "@taskmoor/query": "workspace:*",
     "@taskmoor/webconfig": "workspace:*",
     "@taskmoor/workflow": "workspace:*",

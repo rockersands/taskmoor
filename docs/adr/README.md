@@ -21,7 +21,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [013](0013-sync-engine.md) | Sync engine: in-house change log with a commit-ordered sequence | Accepted |
 | [014](0014-rich-text-model.md) | Rich text model and collaboration | Accepted |
 | [015](0015-job-queue-and-outbox.md) | Job queue and transactional outbox in Postgres | Accepted |
-| [016](0016-api-contract-and-compat-shim.md) | Contract-first native API and a separate Jira-compatible shim | Accepted |
+| [016](0016-api-contract-and-compat-shim.md) | Contract-first native API and a separate Jira-compatible shim | Accepted (conformance suite amended by ADR-085) |
 | [017](0017-webhooks.md) | Webhooks with signatures, idempotency, replay and no expiry | Accepted |
 | [018](0018-mcp-server.md) | Built-in MCP server over the native API | Accepted |
 | [019](0019-identity.md) | Identity: OIDC, SAML, LDAP, SCIM, TOTP and WebAuthn, all free | Accepted |
@@ -89,5 +89,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [082](0082-load-tests.md) | Load tests with k6 against the real server, and a sizing table computed from them | Accepted |
 | [083](0083-entity-properties.md) | Entity properties in a table per entity kind, and declared indexes in typed side tables | Accepted |
 | [084](0084-oauth-for-mcp-clients.md) | OAuth for MCP clients through self-registration, consent at the browser and tokens bound to the MCP endpoint | Accepted |
+| [085](0085-jira-compat-contract-suite.md) | The Jira-compatible API's contract as our own operations and synthetic cases, with a generated matrix | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
