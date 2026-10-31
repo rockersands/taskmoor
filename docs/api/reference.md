@@ -430,6 +430,7 @@ Needs no sign-in and holds no secret: the backend and API versions, the frontend
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
 | `nonce` | query | string | no | 16 to 128 base64url characters the instance signs, chosen afresh by the caller. |
+| `frontend` | query | string | no | The calling frontend’s version (its `version.json`). A frontend on a registered origin is listed with the version it last reported. |
 
 Responses:
 
@@ -2037,5 +2038,5 @@ Read-only info fields, computed from comments and history. Only comments everyon
 
 ## Internal routes
 
-The document also lists 417 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 421 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

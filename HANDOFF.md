@@ -48,6 +48,29 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     Before this, `/api/v1/users` as an admin prefix demanded the admin scope.
   - Not yet: client ID metadata documents (an SSRF-safe fetch is needed first); browser-based
     MCP clients on other origins (the origin policy refuses them).
+- **M1-108 origin registration** (2026-10-31; migration 0068, ADR-087; branch
+  `work/m1-108-origins`): done.
+  - `OriginPolicy` (`apps/server/src/origins.ts`) now reads `TASKMOOR_ALLOWED_ORIGINS` plus the
+    `frontend_origin` table through `await policy.current()`, cached five seconds per process
+    and refreshed at once by `policy.changed()` after an admin change. Every origin decision
+    goes through it: the CORS hook, both socket handshakes (which also need the row's
+    `websocket` grant), the OAuth authorize redirect URIs, and the OpenID Connect and SAML
+    return addresses. Code that needs a decision without waiting (the sync socket handler,
+    right after the hook) reads `policy.latest`.
+  - Admin API: `routes/frontends.ts` (`/api/v1/admin/frontends`, list, add, `PATCH`, remove;
+    events `frontend_origin.*`, audited). Validation is in `network/frontends.ts`
+    (`frontendOrigin`), which `config.ts` now uses too: a wildcard in the environment stops
+    the server at start.
+  - Versions: a frontend with an `apiUrl` (a kit on another origin) sends
+    `GET /api/meta?frontend=<version>`; the backend writes it for registered origins only.
+  - Web: `apps/web/src/admin/FrontendsPage.tsx` at `#/admin/frontends` (story, tests). The
+    page adds and removes; label, redirect URIs and the socket grant change only through
+    `PATCH`.
+  - E2E: `e2e/frontends.spec.ts`. kit-server.ts serves a third kit at
+    `kit2.taskmoor.localhost:4183` that the 8794 backend does not list; the spec registers it
+    and removes it again (desktop project only, since the list is shared).
+  - Not done: versions of environment-only origins (register them too), closing open sockets
+    and ending OAuth families when a frontend is removed.
 - **Next free numbers:** migration 0068 and ADR-085.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)

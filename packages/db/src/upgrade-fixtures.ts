@@ -1311,6 +1311,19 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM user_session s WHERE s.token_hash = 'seed-hash'`.execute(db);
     },
   },
+  '0068_frontend_origins': {
+    tables: {
+      frontend_origin: "origin = 'https://seed-frontend.example.org' AND last_version = '1.4.0'",
+    },
+    seed: async (db) => {
+      // A registered frontend with its OAuth return address, seen at version 1.4.0.
+      await sql`INSERT INTO frontend_origin (workspace_id, origin, label, redirect_uris,
+          websocket, last_version, last_seen_at, created_by)
+        SELECT 1, 'https://seed-frontend.example.org', 'Seed frontend',
+               ARRAY['https://seed-frontend.example.org/'], false, '1.4.0', now(), min(id)
+          FROM app_user`.execute(db);
+    },
+  },
 };
 
 /**

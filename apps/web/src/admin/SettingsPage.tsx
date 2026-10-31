@@ -79,6 +79,10 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.networkAccessHint')}</p>
             </li>
             <li>
+              <a href={routeHref('#/admin/frontends')}>{t('settings.frontends')}</a>
+              <p className="page-note">{t('settings.frontendsHint')}</p>
+            </li>
+            <li>
               <a href={routeHref('#/admin/identity-providers')}>{t('settings.singleSignOn')}</a>
               <p className="page-note">{t('settings.singleSignOnHint')}</p>
             </li>

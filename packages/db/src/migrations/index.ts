@@ -60,6 +60,7 @@ import * as m0064 from './0064_oauth';
 import * as m0065 from './0065_import_labels';
 import * as m0066 from './0066_entity_properties';
 import * as m0067 from './0067_oauth_clients';
+import * as m0068 from './0068_frontend_origins';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -130,4 +131,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0065_import_labels': m0065,
   '0066_entity_properties': m0066,
   '0067_oauth_clients': m0067,
+  '0068_frontend_origins': m0068,
 };

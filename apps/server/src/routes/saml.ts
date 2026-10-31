@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { recordSsoRefusal } from '../audit/record';
+import type { OriginPolicy } from '../origins';
 import { PROVIDER_COLUMNS, type Provider, returnAddress, safeReturnTo } from '../sso/oidc';
 import {
   authnRequestUrl,
@@ -55,12 +56,12 @@ export async function registerSamlRoutes(
   options: {
     secureCookies: boolean;
     publicUrl: string;
-    /** Frontends a sign-in may return to (M1-107). */
-    allowedOrigins?: readonly string[];
+    /** Frontends a sign-in may return to (M1-107, M1-108). */
+    origins: OriginPolicy;
   },
 ): Promise<void> {
   const base = options.publicUrl.replace(/\/+$/, '');
-  const frontends = new Set(options.allowedOrigins ?? []);
+  const frontends = async () => (await options.origins.current()).frontends;
 
   async function loadSamlProvider(workspaceId: number, providerId: number) {
     const row = (await db
@@ -129,7 +130,7 @@ export async function registerSamlRoutes(
         provider_id: provider.id,
         request_id: requestId,
         browser_hash: tokenHash(browser),
-        return_to: safeReturnTo(query.data.returnTo, frontends),
+        return_to: safeReturnTo(query.data.returnTo, await frontends()),
         expires_at: new Date(Date.now() + LOGIN_TTL_MS),
       })
       .execute();
@@ -240,7 +241,7 @@ export async function registerSamlRoutes(
           .values({
             workspace_id: ws,
             provider_id: provider.id,
-            return_to: safeReturnTo(form.data.RelayState, frontends),
+            return_to: safeReturnTo(form.data.RelayState, await frontends()),
             ...waiting,
           })
           .execute();

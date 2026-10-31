@@ -1,8 +1,8 @@
 ---
 title: "Configuration reference"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
-accessed: 2026-10-30
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, docs/adr/0087-registered-frontend-origins.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
+accessed: 2026-10-31
 attestation: own-words
 ---
 # Configuration reference
@@ -78,7 +78,10 @@ The operator CLI runs as `api` unless told otherwise. Every process answers `/he
 
 Requests that name any other origin are refused (`403 origin_not_allowed`), including
 WebSocket connections; programs, which name none, are not affected. The Builder writes both
-settings ([the Builder's kits](builder-kits.md#frontend-and-backend-on-different-origins)).
+settings ([the Builder's kits](builder-kits.md#frontend-and-backend-on-different-origins)). A
+wildcard such as `https://*.example.com` stops the server at start. Site administrators can add
+more frontends under **Settings > Frontends** without a restart
+([adding frontends](builder-kits.md#adding-frontends-without-a-restart)).
 
 ## Setup and instance identity
 

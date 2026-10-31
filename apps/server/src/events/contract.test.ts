@@ -345,6 +345,35 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () =>
         admin({ method: 'DELETE', url: `/api/v1/admin/oauth-clients/${state.oauthClient}` }),
     },
+    // A frontend on another origin, registered, changed and removed (M1-108).
+    {
+      route: 'POST /api/v1/admin/frontends',
+      expect: 'frontend_origin.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/admin/frontends',
+          payload: { origin: 'https://second.example.net', label: 'Second kit' },
+        });
+        state.frontend = res.json().frontend.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/admin/frontends/:id',
+      expect: 'frontend_origin.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/admin/frontends/${state.frontend}`,
+          payload: { websocket: false },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/admin/frontends/:id',
+      expect: 'frontend_origin.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/admin/frontends/${state.frontend}` }),
+    },
     {
       route: 'PATCH /api/v1/account',
       expect: 'user.updated',

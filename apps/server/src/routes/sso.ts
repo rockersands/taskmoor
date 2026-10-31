@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { recordSsoRefusal } from '../audit/record';
 import { requireSiteAdmin } from '../auth';
 import { diff, emit } from '../events/bus';
+import type { OriginPolicy } from '../origins';
 import {
   emailDomain,
   finishAuthorization,
@@ -184,12 +185,11 @@ export function registerSsoRoutes(
     secureCookies: boolean;
     peppers: PepperRing | undefined;
     publicUrl: string;
-    /** Frontends a sign-in may return to (M1-107). */
-    allowedOrigins?: readonly string[];
+    /** Frontends a sign-in may return to (M1-107, M1-108). */
+    origins: OriginPolicy;
   },
 ): void {
   const base = options.publicUrl.replace(/\/+$/, '');
-  const frontends = new Set(options.allowedOrigins ?? []);
   const redirectUri = `${base}/api/v1/auth/oidc/callback`;
 
   function view(p: Provider, map: GroupMap) {
@@ -308,7 +308,7 @@ export function registerSsoRoutes(
         browser_hash: tokenHash(browser),
         nonce: start.nonce,
         code_verifier_sealed: sealSecret(start.verifier, options.peppers?.active),
-        return_to: safeReturnTo(query.data.returnTo, frontends),
+        return_to: safeReturnTo(query.data.returnTo, (await options.origins.current()).frontends),
         expires_at: new Date(Date.now() + LOGIN_TTL_MS),
       })
       .execute();

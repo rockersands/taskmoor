@@ -1,6 +1,7 @@
 import type { S3StoreConfig } from '@taskmoor/storage';
 import { DEV_VERSION, ROUTING_MODES, type RoutingMode } from '@taskmoor/webconfig';
 import { z } from 'zod';
+import { frontendOrigin } from './network/frontends';
 
 /** Stamped into the bundle by `pnpm build` from TASKMOOR_VERSION, as the frontend artefact is. */
 declare const __TASKMOOR_BUILD_VERSION__: string | undefined;
@@ -220,40 +221,22 @@ export function parseRoles(text: string): Role[] {
   return ROLES.filter((r) => names.includes(r));
 }
 
-/** Hosts where plain http is fine: this machine (ADR-032). */
-function isLocalHost(hostname: string): boolean {
-  return (
-    hostname === 'localhost' ||
-    hostname.endsWith('.localhost') ||
-    hostname === '127.0.0.1' ||
-    hostname === '[::1]'
-  );
-}
-
 /**
  * TASKMOOR_ALLOWED_ORIGINS as origins (scheme, host and port, nothing else): https, or http for
- * this machine. Throws naming the entry that is not one; origins are public, so they may be shown.
+ * this machine, no wildcards. Throws naming the entry that is not one; origins are public, so
+ * they may be shown. The same rule as an administrator's list (M1-108).
  */
 export function parseAllowedOrigins(text: string | undefined): string[] {
   const origins: string[] = [];
   for (const entry of (text ?? '').split(',').map((s) => s.trim())) {
     if (!entry) continue;
-    let url: URL | undefined;
-    try {
-      url = new URL(entry);
-    } catch {
-      url = undefined;
-    }
-    const plain =
-      url && !url.username && !url.password && !url.search && !url.hash && url.pathname === '/';
-    const secure =
-      url && (url.protocol === 'https:' || (url.protocol === 'http:' && isLocalHost(url.hostname)));
-    if (!url || !plain || !secure) {
+    const origin = frontendOrigin(entry);
+    if (!origin) {
       throw new Error(
         `Invalid server configuration:\n- TASKMOOR_ALLOWED_ORIGINS must list origins such as https://tracker.example.com (plain http only for localhost): ${entry}`,
       );
     }
-    if (!origins.includes(url.origin)) origins.push(url.origin);
+    if (!origins.includes(origin)) origins.push(origin);
   }
   return origins;
 }

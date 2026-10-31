@@ -164,6 +164,28 @@ export interface OauthClientTable {
   last_used_at: Timestamp | null;
 }
 
+/**
+ * A frontend on another origin, registered by a site administrator (M1-108; ADR-087), beside
+ * those TASKMOOR_ALLOWED_ORIGINS lists.
+ */
+export interface FrontendOriginTable {
+  id: Generated<number>;
+  workspace_id: number;
+  /** Exact: scheme, host and port. */
+  origin: string;
+  label: ColumnType<string, string | undefined, string>;
+  /** Where OAuth sign-in may return, exact URLs on this origin; none: the cookie only. */
+  redirect_uris: ColumnType<string[], string[] | undefined, string[]>;
+  /** Whether it may open the sync and co-editing sockets. */
+  websocket: ColumnType<boolean, boolean | undefined, boolean>;
+  /** The frontend version it last reported (its version.json), and when. */
+  last_version: string | null;
+  last_seen_at: Timestamp | null;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
 /** An authorization request waiting for sign-in and consent, for ten minutes (M1-072). */
 export interface OauthRequestTable {
   id_hash: string;
@@ -2232,6 +2254,7 @@ export interface Database {
   oauth_code: OauthCodeTable;
   oauth_client: OauthClientTable;
   oauth_request: OauthRequestTable;
+  frontend_origin: FrontendOriginTable;
   oauth_token: OauthTokenTable;
   sign_in_throttle: SignInThrottleTable;
   password_link: PasswordLinkTable;

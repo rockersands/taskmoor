@@ -28,11 +28,12 @@ import {
   revokeToken,
   WEB_CLIENT_ID,
 } from '../oauth/tokens';
+import type { OriginPolicy } from '../origins';
 
 /**
  * The OAuth 2.1 authorization server for frontends on another site (M1-107; IAM-024, API-002,
- * ADR-080). One public client today, the frontend kits (`taskmoor-web`), with the redirect URIs
- * the install lists; M1-108 makes them an admin list.
+ * ADR-080). One public client for the frontend kits (`taskmoor-web`), with the redirect URIs the
+ * install lists and those of the frontends a site administrator registered (M1-108, ADR-087).
  *
  * - `GET /api/v1/oauth/authorize`: code flow with PKCE (S256). A browser signed in at this
  *   backend (its cookie, first-party here) gets a code at once; anyone else goes to this
@@ -61,8 +62,8 @@ import {
  */
 export interface OAuthRouteOptions {
   publicUrl: string;
-  /** Where the web client may be sent back, exact URLs. */
-  redirectUris: readonly string[];
+  /** Where the web client may be sent back, exact URLs: the environment's and the registered. */
+  origins: OriginPolicy;
   /** Access-token lifetime; ten minutes unless a test shortens it. */
   accessTtlMs?: number;
 }
@@ -144,7 +145,6 @@ export async function registerOAuthRoutes(
 ): Promise<void> {
   const base = options.publicUrl.replace(/\/+$/, '');
   const issuer = new URL(options.publicUrl).origin;
-  const redirectUris = new Set(options.redirectUris);
 
   const resource = mcpResource(options.publicUrl);
   /** Only this backend's own cookie session approves anything, never a token. */
@@ -187,7 +187,7 @@ export async function registerOAuthRoutes(
     const known =
       query.success &&
       (query.data.client_id === WEB_CLIENT_ID
-        ? redirectUris.has(query.data.redirect_uri)
+        ? (await options.origins.current()).redirectUris.has(query.data.redirect_uri)
         : client !== null && redirectMatches(client.redirectUris, query.data.redirect_uri));
     // Never redirect to an address that is not registered: answer here instead.
     if (!query.success || !known) {

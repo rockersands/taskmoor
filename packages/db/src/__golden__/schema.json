@@ -617,6 +617,25 @@
       "CREATE UNIQUE INDEX field_rule_set_pkey ON public.field_rule_set USING btree (id)"
     ]
   },
+  "frontend_origin": {
+    "columns": [
+      "id integer not null default nextval('frontend_origin_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "origin text not null",
+      "label text not null default ''::text",
+      "redirect_uris ARRAY not null default '{}'::text[]",
+      "websocket boolean not null default true",
+      "last_version text",
+      "last_seen_at timestamp with time zone",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX frontend_origin_idx ON public.frontend_origin USING btree (workspace_id, origin)",
+      "CREATE UNIQUE INDEX frontend_origin_pkey ON public.frontend_origin USING btree (id)"
+    ]
+  },
   "global_grant": {
     "columns": [
       "id integer not null default nextval('global_grant_id_seq'::regclass)",

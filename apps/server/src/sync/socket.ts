@@ -129,8 +129,10 @@ export function registerSyncSocket(
     }
   }
 
+  // The origin check before this handler read the list just now; the handler must not wait
+  // before it listens, or the bearer socket's first message would be lost.
   const allowed = (request: FastifyRequest) =>
-    options.origins.allows(request.headers.origin, request.headers.host);
+    options.origins.latest.allowsSocket(request.headers.origin, request.headers.host);
   const bearer = (request: FastifyRequest) =>
     (request.query as { auth?: unknown } | undefined)?.auth === 'bearer';
 
