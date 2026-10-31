@@ -7,6 +7,7 @@ import { hashPassword, totpCode, totpStep } from '@taskmoor/iam';
 import { LocalStore } from '@taskmoor/storage';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { aiKeyRing } from '../ai/keyring';
 import { buildApp } from '../app';
 import { processAttachment } from '../attachments/jobs';
 import { type AttachmentStores, storesOf } from '../attachments/stores';
@@ -68,6 +69,8 @@ const EXEMPT: Record<string, string> = {
     'reads only: what a change of a workflow map would do to tickets, stores nothing',
   'POST /api/v1/search': 'reads only: runs a query too long for a URL (M1-037)',
   'DELETE /api/v1/mcp': 'ends an MCP session kept in memory; nothing stored changes (M1-072)',
+  'POST /api/v1/admin/ai/test':
+    'reads only: asks the AI provider for its models with the saved or given settings, stores nothing (M1-076)',
   'POST /api/v1/search/format-rules':
     'reads only: which shown tickets each format rule matches, as the viewer (M1-049)',
   'PUT /api/v1/me/recent-tickets/:id':
@@ -183,6 +186,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       roles: ['api'],
       attachments,
       allowedOrigins: [FRONTEND],
+      aiKeys: aiKeyRing({ masterKey: randomBytes(32).toString('base64url') }),
     });
   });
   afterAll(async () => {
@@ -373,6 +377,43 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       route: 'DELETE /api/v1/admin/frontends/:id',
       expect: 'frontend_origin.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/admin/frontends/${state.frontend}` }),
+    },
+    // An AI provider key, set and removed (M1-075): write-only, made at run time.
+    {
+      route: 'PUT /api/v1/admin/ai/credentials/:slot',
+      expect: 'ai.credential_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/ai/credentials/apiKey',
+          payload: { value: `fake-ai-key-${randomBytes(18).toString('hex')}` },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/admin/ai/credentials/:slot',
+      expect: 'ai.credential_deleted',
+      run: () => admin({ method: 'DELETE', url: '/api/v1/admin/ai/credentials/apiKey' }),
+    },
+    // The AI settings page (M1-076): the workspace switch, strict mode, a track opted in.
+    {
+      route: 'PUT /api/v1/admin/ai',
+      expect: 'ai.settings_updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/ai',
+          payload: { enabled: true, strict: true, provider: { provider: 'anthropic' } },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/admin/ai/tracks/:id',
+      expect: 'ai.track_switched',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/admin/ai/tracks/${state.track}`,
+          payload: { enabled: true },
+        }),
     },
     {
       route: 'PATCH /api/v1/account',

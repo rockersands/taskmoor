@@ -277,9 +277,12 @@ at all: its own origin is always allowed.
 
 ## What is not there yet
 
-- **Settings the server does not read yet.** The backend kit's `.env` also carries
-  `TASKMOOR_TOKEN_SIGNING_KEY`, `TASKMOOR_MASTER_KEY`, `TASKMOOR_AI_PROVIDER` and
-  `TASKMOOR_AI_KEY`. They are kept for later releases; today they change nothing.
+- **A setting the server does not read.** The backend kit's `.env` also carries
+  `TASKMOOR_TOKEN_SIGNING_KEY`, which changes nothing: sign-in tokens need no signing key.
+  `TASKMOOR_MASTER_KEY` protects stored AI keys, and `TASKMOOR_AI_PROVIDER` and
+  `TASKMOOR_AI_KEY` switch AI on at the first start; `install.sh` then removes the key from
+  `.env` ([AI settings](ai.md)). `install.ps1` does not remove it yet: delete the
+  `TASKMOOR_AI_KEY` line yourself after the first start.
 - **Branding in the kits.** Logo, favicon and colours are not in the kits yet, so the page asks
   for none.
 - **The Builder page in a release.** `pnpm build` makes it; a release that publishes it beside

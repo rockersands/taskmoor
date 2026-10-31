@@ -1338,6 +1338,22 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         WHERE source_system = 'seed'`.execute(db);
     },
   },
+  '0074_ai_credentials': {
+    tables: {
+      ai_setting: 'workspace_id = 1 AND version = 2',
+      ai_credential: "slot = 'apiKey' AND last4 = 'seed'",
+    },
+    seed: async (db) => {
+      // AI on with the Anthropic API and a sealed key (the seed's ciphertext opens with nothing).
+      await sql`INSERT INTO ai_setting (workspace_id, value, version, environment_imported_at)
+        VALUES (1, '{"enabled": true, "provider": {"provider": "anthropic",
+          "apiKey": {"secretId": "apiKey"}}}'::jsonb, 2, now())`.execute(db);
+      await sql`INSERT INTO ai_credential (workspace_id, slot, kek_id, wrapped_key, ciphertext,
+          last4, source)
+        VALUES (1, 'apiKey', 'master:seedseedseed', 'v1.seed.seed.seed', 'v1.seed.seed.seed',
+                'seed', 'environment')`.execute(db);
+    },
+  },
 };
 
 /**

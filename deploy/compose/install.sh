@@ -67,6 +67,13 @@ ready || {
   die "the backend did not become ready in 2 minutes; the log above says why"
 }
 
+# The first start moved an AI key given in .env into encrypted storage (IAM-020); from then on
+# the backend ignores it, so it leaves .env. Only once the backend's log says the database holds it.
+if grep -Eq '^TASKMOOR_AI_KEY=.' .env 2>/dev/null && (compose logs --no-log-prefix taskmoor 2>/dev/null || true) | grep -Eq '"msg":"AI settings (moved from|in the environment are ignored)'; then
+  sed -i.bak '/^TASKMOOR_AI_KEY=/d' .env && rm -f .env.bak
+  say "the AI key is in encrypted storage now: removed TASKMOOR_AI_KEY from .env"
+fi
+
 # The link line is absent once setup is complete; an empty match is the normal second run.
 link=$( (compose logs --no-log-prefix taskmoor 2>/dev/null || true) | grep -o '"link":"[^"]*"' | tail -1 | cut -d'"' -f4 || true)
 say ""

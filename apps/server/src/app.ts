@@ -10,6 +10,8 @@ import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/
 import type { RoutingMode } from '@taskmoor/webconfig';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
+import { type AiKeyRing, aiKeyRing } from './ai/keyring';
+import { type AdapterFactory, AiService } from './ai/service';
 import { sweepStorage } from './attachments/cleanup';
 import { type AttachmentStores, NO_STORAGE } from './attachments/stores';
 import { presentedToken, resolveSession } from './auth';
@@ -31,6 +33,7 @@ import { registerRequestScope } from './request-scope';
 import { registerAccountRoutes } from './routes/account';
 import { registerActivityRoutes } from './routes/activity';
 import { registerAdminRoutes } from './routes/admin';
+import { registerAiRoutes } from './routes/ai';
 import { registerAttachmentRoutes } from './routes/attachments';
 import { registerAuditRoutes } from './routes/audit';
 import { registerAuthzRoutes } from './routes/authz';
@@ -105,6 +108,8 @@ declare module 'fastify' {
     routeTable: string[];
     /** Real-time co-editing (M1-017), when this process has the realtime role. */
     collaboration: Collaboration | null;
+    /** The way into AI (M1-075), when this process has the API role. */
+    ai: AiService | null;
   }
 }
 
@@ -113,6 +118,8 @@ export interface AppDeps {
   db?: Kysely<Database>;
   version: string;
   logLevel?: ServerConfig['logLevel'];
+  /** Where log lines go instead of standard output; tests read them (M1-075). */
+  logStream?: { write(line: string): void };
   /** Defaults to the API alone, which is what tests exercise. */
   roles?: readonly Role[];
   /** The frontend artefact to serve under `/` when the web role is on (M1-105). */
@@ -154,6 +161,13 @@ export interface AppDeps {
   authorizer?: Authorizer;
   /** The install's password peppers; they also seal second-factor secrets (M1-084). */
   peppers?: PepperRing;
+  /**
+   * Where AI credentials' data keys are wrapped (M1-075, ADR-098): the master key, a key
+   * service, or the peppers. Built from `peppers` alone when left out.
+   */
+  aiKeys?: AiKeyRing;
+  /** Builds AI provider clients; tests pass fakes. The gateway's own when left out. */
+  aiAdapterFactory?: AdapterFactory;
   /** Request latency goes here (ADR-023). */
   metrics?: Metrics;
   /** Requests open server spans with it (ADR-023); absent when tracing is off. */
@@ -186,7 +200,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const level = deps.logLevel ?? 'silent';
   const roles = deps.roles ?? ['api'];
   const app = Fastify({
-    logger: level === 'silent' ? false : { level },
+    logger:
+      level === 'silent' ? false : { level, ...(deps.logStream ? { stream: deps.logStream } : {}) },
     // A property key is up to 255 characters (M1-129), percent-encoded in the path: up to 12
     // characters each for a 4-byte character.
     routerOptions: { maxParamLength: 3072 },
@@ -195,6 +210,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // Every route as "METHOD /path", for fitness tests (every mutation emits one event).
   const routes: string[] = [];
   app.decorate('routeTable', routes);
+  app.decorate('ai', null);
   app.addHook('onRoute', (route) => {
     for (const method of [route.method].flat()) routes.push(`${method} ${route.url}`);
   });
@@ -515,6 +531,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       servesFrontend: roles.includes('web') && deps.webDir !== undefined,
     });
     registerBackupRoutes(app, db);
+    // AI provider settings and sealed credentials (M1-075; IAM-020; ADR-098).
+    const aiKeys = deps.aiKeys ?? aiKeyRing({ peppers: deps.peppers });
+    const ai = new AiService(db, {
+      ring: aiKeys.ring,
+      ...(deps.aiAdapterFactory ? { adapterFactory: deps.aiAdapterFactory } : {}),
+      logger: { warn: (data, message) => app.log.warn(data, message) },
+    });
+    app.ai = ai;
+    registerAiRoutes(app, db, { ai, keyStorage: aiKeys.storage });
     registerTokenRoutes(app, db);
     registerRateLimitRoutes(app, db, {
       policies,

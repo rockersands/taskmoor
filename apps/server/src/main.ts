@@ -1,5 +1,8 @@
 import { createDb, migrateToLatest, poolStats } from '@taskmoor/db';
 import { passwordHasher } from '@taskmoor/iam';
+import { rewrapCredentials } from './ai/credentials';
+import { importAiEnvironment } from './ai/environment';
+import { aiKeyRing } from './ai/keyring';
 import { buildApp } from './app';
 import { scheduleSweep } from './attachments/cleanup';
 import { registerAttachmentJobs } from './attachments/jobs';
@@ -87,6 +90,29 @@ if (!peppers?.active && config.roles.includes('api')) {
   );
 }
 
+// AI provider credentials (M1-075, ADR-098): data keys wrapped by the master key, else the
+// pepper. The API role re-wraps what an earlier key wrapped, then moves the environment's AI
+// settings in on the first start. Log lines name variables and counts, never a value.
+const aiKeys = aiKeyRing({
+  masterKey: config.masterKey,
+  previousMasterKeys: config.previousMasterKeys,
+  peppers,
+});
+if (db && config.roles.includes('api')) {
+  const log = (entry: Record<string, unknown>) => console.log(JSON.stringify(entry));
+  const moved = await rewrapCredentials(db, aiKeys.ring);
+  if (moved.rewrapped > 0) {
+    log({ msg: 'AI credentials re-wrapped under the active key', count: moved.rewrapped });
+  }
+  if (moved.unreadable > 0) {
+    log({
+      msg: 'AI credentials are wrapped by a key this server does not have: set TASKMOOR_MASTER_KEY_PREVIOUS',
+      count: moved.unreadable,
+    });
+  }
+  await importAiEnvironment(db, aiKeys.ring, config.aiEnvironment, log);
+}
+
 // Attachments (M1-016, ADR-040): local disk under TASKMOOR_DATA/files, or an S3 bucket.
 const attachments = await attachmentStores(config);
 if (config.roles.includes('api') && !attachments.active) {
@@ -112,6 +138,7 @@ const app = await buildApp({
   rateLimits: {},
   passwords: passwordHasher(peppers),
   ...(peppers ? { peppers } : {}),
+  aiKeys,
   ...(db ? { db } : {}),
   version: config.version,
   logLevel: config.logLevel,

@@ -8,6 +8,9 @@ process.env.TASKMOOR_E2E_LDAP_BIND_PASSWORD ??= `bind-${randomBytes(18).toString
 process.env.TASKMOOR_E2E_LDAP_USER_PASSWORD ??= `user-${randomBytes(18).toString('base64url')}`;
 // The attachments administrator's password (M1-016), made the same way.
 process.env.TASKMOOR_E2E_ATTACH_PASSWORD ??= `files-${randomBytes(18).toString('base64url')}`;
+// The AI key the fake provider of api-server.ts accepts (M1-076), made per run the same way and
+// shaped so that no secret scanner mistakes it for a real key.
+process.env.TASKMOOR_E2E_AI_KEY ??= `fake-ai-key-${randomBytes(18).toString('hex')}`;
 
 const PORT = 4173;
 const API_PORT = 8787;

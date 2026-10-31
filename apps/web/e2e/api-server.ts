@@ -10,12 +10,14 @@
 // Bulk changes (M1-021) use that database and its administrator too: a job loop here runs
 // their jobs, and only theirs, as a worker would. So do notifications (M1-058): the worker's
 // event loop runs there, and the inbox test reads what it writes.
+import { randomBytes } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb, migrateToLatest } from '@taskmoor/db';
 import {
   Authorizer,
+  aiKeyRing,
   BULK_TASK,
   buildApp,
   EventBus,
@@ -29,7 +31,7 @@ import {
   startWorker,
   storesOf,
 } from '@taskmoor/server';
-import { FakeIdp, FakeLdap, FakeSamlIdp } from '@taskmoor/server/testing';
+import { FakeIdp, FakeLdap, FakeProviderServer, FakeSamlIdp } from '@taskmoor/server/testing';
 import { LocalStore, S3Store } from '@taskmoor/storage';
 import { FakeS3 } from '@taskmoor/storage/testing';
 import { createDatabase } from '@taskmoor/testkit/pg';
@@ -44,6 +46,7 @@ export const E2E_ATTACH_LOCAL_PORT = 8791;
 export const E2E_ATTACH_S3_PORT = 8792;
 export const E2E_FAKE_S3_PORT = 8793;
 export const E2E_ATTACH_ADMIN = 'ada@attach.test';
+export const E2E_AI_PROVIDER_PORT = 8796;
 
 // Always signs in the same synthetic person; the tests register it as a provider first.
 const idp = new FakeIdp('taskmoor-e2e', 'e2e-client-secret-0123456789');
@@ -104,6 +107,13 @@ const s3 = new S3Store({
   prefix: '',
   credentials: bucket.credentials,
 });
+// AI (M1-076): both share one master key, made per run, so a key stored through one opens in
+// the other; and a provider on 8796 that answers like the Anthropic API from the recorded
+// fixtures and accepts the run's key (ai-settings.spec.ts).
+const aiKeys = aiKeyRing({ masterKey: randomBytes(32).toString('base64url') });
+const aiProvider = new FakeProviderServer();
+aiProvider.accepted.add(process.env.TASKMOOR_E2E_AI_KEY as string);
+await aiProvider.start(E2E_AI_PROVIDER_PORT);
 // Both also co-edit rich text (the realtime role, M1-017); the rich text tests use the first.
 const attachApps = [
   await buildApp({
@@ -116,6 +126,7 @@ const attachApps = [
     // origins, as an install lists a host that proxies to it (M1-107).
     allowedOrigins: ['http://localhost:4178', 'http://localhost:4179'],
     attachments: storesOf(local, { others: [s3] }),
+    aiKeys,
   }),
   await buildApp({
     db: attachDb,
@@ -124,6 +135,7 @@ const attachApps = [
     logLevel: 'warn',
     publicUrl: 'http://localhost:4175',
     attachments: storesOf(s3, { others: [local] }),
+    aiKeys,
   }),
 ];
 {
@@ -202,6 +214,7 @@ async function stop(): Promise<void> {
   await eventWorker.stop();
   await app.close();
   for (const attachApp of attachApps) await attachApp.close();
+  await aiProvider.stop();
   s3.destroy();
   await bucket.stop();
   rmSync(files, { recursive: true, force: true });

@@ -307,6 +307,39 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     rank, releases, areas, a second run; about 60 s alone, longer under load).
   - Not done: swimlanes, card colours and layout, estimation field, working days, board admins and
     owner, sprint and rank changes in history; boards keep a copy of their filter's query.
+- **M1-075 AI key storage** (branch `work/m1-075-ai-keys`, side agent 2026-10-31; migration
+  0074, ADR-098; M1-075 is done):
+  - Envelope encryption is generic, in `packages/iam/src/envelope.ts` (`sealEnvelope`,
+    `openEnvelope`, `rewrapEnvelope`, `KeyRing`, `LocalKek`, `ExternalKek`); `FakeKeyService` is
+    in `@taskmoor/iam/testing`. The server's ring is `apps/server/src/ai/keyring.ts`: a key
+    service, else `TASKMOOR_MASTER_KEY`, else the pepper. TOTP seeds and LDAP passwords still use
+    `sealSecret`; moving them is a separate change.
+  - `apps/server/src/ai/`: `settings.ts` (the `ai_setting` JSON; M1-076 extends
+    `storedAiSettings`), `credentials.ts` (sealed slots, last four), `environment.ts` (first-start
+    import, called from `main.ts` with the re-wrap), `service.ts` (`AiService`, on `app.ai`).
+    **Every AI call goes through `app.ai.use(workspaceId, fn)`**: that is where M1-076's switches
+    and M1-077's spend limits and audit belong. `buildApp` takes `aiKeys` and
+    `aiAdapterFactory` (tests) and `logStream` (log capture).
+  - The server now depends on `@taskmoor/ai` (the Anthropic SDKs go into `server.mjs`).
+  - Tests: `ai/keys.test.ts`, `iam/src/envelope.test.ts`, the build test in
+    `apps/web/build/artefact.test.ts`. The "Product gaps the manual found" note about
+    `MASTER_KEY` and `AI_*` is closed; `TOKEN_SIGNING_KEY` is still not read (not needed).
+  - Not done: a real KMS or Vault adapter and a setting to choose one; `install.ps1` does not
+    remove `TASKMOOR_AI_KEY` from `.env` after the first start.
+- **M1-076 AI settings page** (same branch, second commit; ADR-099, no migration; M1-076 is
+  done):
+  - Page `apps/web/src/admin/AiSettingsPage.tsx` at `#/admin/ai`, linked from Settings. Routes in
+    `apps/server/src/routes/ai.ts`: `PUT /api/v1/admin/ai`, `PUT /api/v1/admin/ai/tracks/:id`,
+    `POST /api/v1/admin/ai/test` (exempt: stores nothing), `GET /api/v1/ai/features`.
+  - **Product AI calls go through `app.ai.call({ workspaceId, trackId, feature }, fn)`**, and
+    every AI control inside `<AiFeature feature trackId>` (`apps/web/src/ai/AiFeature.tsx`).
+    `scopeBlock` in `ai/settings.ts` holds the workspace, track and strict-mode rule.
+  - `FakeProviderServer` (`@taskmoor/ai/testing`, re-exported from `@taskmoor/server/testing`)
+    answers like the Anthropic API from the recorded fixtures. The e2e runs it on **port 8796**
+    for the attachments backend (4174), whose two processes now share a per-run master key; the
+    accepted key is `TASKMOOR_E2E_AI_KEY`, made by `playwright.config.ts`.
+  - M1-077 (spend limits, in parallel on another branch) will meet these files: its checks
+    belong in `AiService.call`, next to `scopeBlock`.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

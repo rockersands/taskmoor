@@ -51,8 +51,9 @@ construction and model-ID spelling differ.
 ### Credentials
 
 Configuration holds only `{ secretId }` references. A `SecretStore` reveals values at client
-construction; the gateway scrubs every revealed value from provider error messages. M1 adds the
-envelope-encrypted store (master key from the environment, ciphertext in Postgres). Nothing
+construction; the gateway scrubs every revealed value from provider error messages. The
+envelope-encrypted store (data keys wrapped by the master key, a KMS or Vault key, or the pepper;
+ciphertext in Postgres) is ADR-098 (M1-075). Nothing
 about the provider reaches the frontend bundle; the Builder (ADR-031) bakes no AI settings.
 
 ### Testing

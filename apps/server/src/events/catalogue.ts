@@ -1414,6 +1414,34 @@ export const EVENT_TYPES = {
     subject: 'frontend_origin',
     payload: z.object({ origin: z.string() }),
   },
+  // AI provider credentials (M1-075; IAM-020; ADR-098): which slot, and only its last four
+  // characters; the key itself never enters an event. `environment`: moved in at first start.
+  'ai.credential_set': {
+    subject: 'workspace',
+    payload: z.object({
+      slot: z.enum(['apiKey', 'accessKeyId', 'secretAccessKey', 'sessionToken', 'accessToken']),
+      last4: z.string().max(4),
+      replaced: z.boolean(),
+      source: z.enum(['admin', 'environment']),
+    }),
+  },
+  'ai.credential_deleted': {
+    subject: 'workspace',
+    payload: z.object({
+      slot: z.enum(['apiKey', 'accessKeyId', 'secretAccessKey', 'sessionToken', 'accessToken']),
+    }),
+  },
+  // The AI settings page (M1-076; AI-001, IAM-019; ADR-099): the workspace switch, strict mode,
+  // the provider's settings (never a key) and each feature's switch, model and effort.
+  'ai.settings_updated': {
+    subject: 'workspace',
+    payload: z.object({ changes }),
+  },
+  /** A track's AI switch: true opts it in under strict mode, false turns AI off, null default. */
+  'ai.track_switched': {
+    subject: 'track',
+    payload: z.object({ key: z.string(), enabled: z.boolean().nullable() }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;

@@ -1,0 +1,24 @@
+/* The AI settings page (M1-076): one group per feature, its switch, model and effort. */
+.ai-features {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.ai-feature {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+  margin: 0;
+  padding: var(--space-3) 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  min-width: 0;
+}
+
+.ai-key {
+  margin-block: var(--space-3);
+}

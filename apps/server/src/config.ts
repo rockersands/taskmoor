@@ -1,6 +1,8 @@
 import type { S3StoreConfig } from '@taskmoor/storage';
 import { DEV_VERSION, ROUTING_MODES, type RoutingMode } from '@taskmoor/webconfig';
 import { z } from 'zod';
+import type { AiEnvironment } from './ai/environment';
+import { PROVIDER_IDS } from './ai/settings';
 import { frontendOrigin } from './network/frontends';
 
 /** Stamped into the bundle by `pnpm build` from TASKMOOR_VERSION, as the frontend artefact is. */
@@ -141,6 +143,25 @@ const envSchema = z.object({
   TASKMOOR_QUERY_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).default(30_000),
   /** The Jira-compatible API under /rest (M1-069, ADR-086): on unless `off`. */
   TASKMOOR_JIRA_COMPAT: z.enum(['on', 'off']).default('on'),
+  /**
+   * The key AI credentials' data keys are wrapped with (M1-075, IAM-020, ADR-098): the Builder's
+   * backend kit writes 32 random bytes in base64url; any secret of 32 characters or more works.
+   * Unset, the install's password pepper wraps them.
+   */
+  TASKMOOR_MASTER_KEY: z.string().min(32).optional(),
+  /** Earlier master keys, comma-separated, after a change: data keys move at the next start. */
+  TASKMOOR_MASTER_KEY_PREVIOUS: z.string().min(32).optional(),
+  /**
+   * AI for a headless install (AI-001 (3)): the provider and its key, as the backend kit writes
+   * them, plus what the platforms need. Moved into the database on the first start; ignored after.
+   */
+  TASKMOOR_AI_PROVIDER: z.enum(PROVIDER_IDS).optional(),
+  TASKMOOR_AI_KEY: z.string().trim().min(1).max(8000).optional(),
+  TASKMOOR_AI_REGION: z.string().min(1).max(100).optional(),
+  TASKMOOR_AI_PROJECT: z.string().min(1).max(200).optional(),
+  TASKMOOR_AI_RESOURCE: z.string().min(1).max(200).optional(),
+  TASKMOOR_AI_BASE_URL: z.string().url().optional(),
+  TASKMOOR_AI_MODEL: z.string().min(1).max(200).optional(),
 });
 
 export interface ServerConfig {
@@ -190,6 +211,11 @@ export interface ServerConfig {
   queryTimeoutMs: number;
   /** Whether the Jira-compatible API is served (M1-069). */
   jiraCompat: boolean;
+  /** The master key and the ones before it (M1-075, ADR-098). */
+  masterKey: string | undefined;
+  previousMasterKeys: string[];
+  /** AI settings from the environment, moved into the database on the first start. */
+  aiEnvironment: AiEnvironment;
 }
 
 export interface SmtpConfig {
@@ -306,6 +332,15 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       'Invalid server configuration:\n- TASKMOOR_SMTP_USER and TASKMOOR_SMTP_PASSWORD go together',
     );
   }
+  if (
+    (e.TASKMOOR_MASTER_KEY_PREVIOUS ?? '')
+      .split(',')
+      .some((k) => k.trim() !== '' && k.trim().length < 32)
+  ) {
+    throw new Error(
+      'Invalid server configuration:\n- TASKMOOR_MASTER_KEY_PREVIOUS must list keys of 32 characters or more',
+    );
+  }
   if (e.TASKMOOR_STORAGE === 's3' && !e.TASKMOOR_S3_BUCKET) {
     throw new Error(
       'Invalid server configuration:\n- TASKMOOR_STORAGE=s3 needs TASKMOOR_S3_BUCKET',
@@ -388,5 +423,19 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
         }
       : undefined,
     smtpPassword: e.TASKMOOR_SMTP_PASSWORD,
+    masterKey: e.TASKMOOR_MASTER_KEY,
+    previousMasterKeys: (e.TASKMOOR_MASTER_KEY_PREVIOUS ?? '')
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean),
+    aiEnvironment: {
+      provider: e.TASKMOOR_AI_PROVIDER,
+      key: e.TASKMOOR_AI_KEY,
+      region: e.TASKMOOR_AI_REGION,
+      project: e.TASKMOOR_AI_PROJECT,
+      resource: e.TASKMOOR_AI_RESOURCE,
+      baseUrl: e.TASKMOOR_AI_BASE_URL,
+      model: e.TASKMOOR_AI_MODEL,
+    },
   };
 }

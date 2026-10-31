@@ -1,7 +1,7 @@
 ---
 title: "Configuration reference"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/server/src/compat/register.ts, docs/adr/0087-registered-frontend-origins.md
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/server/src/compat/register.ts, docs/adr/0087-registered-frontend-origins.md, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, docs/adr/0098-ai-key-storage.md
 accessed: 2026-10-31
 attestation: own-words
 ---
@@ -95,10 +95,15 @@ more frontends under **Settings > Frontends** without a restart
 | Variable | Default | Meaning |
 |---|---|---|
 | `TASKMOOR_PASSWORD_PEPPER` | The keyring in `TASKMOOR_DATA/secrets/password-peppers` | The secret key mixed into every password hash, 32 characters or more. Unset, the server creates a keyring file on first start; without either, passwords are hashed without a pepper and the log says so |
+| `TASKMOOR_MASTER_KEY` | none | The key that protects stored AI provider keys, 32 characters or more; the Builder's backend kit writes one. Unset, the password pepper protects them; without either, AI keys cannot be stored ([AI settings](ai.md#how-keys-are-kept)) |
+| `TASKMOOR_MASTER_KEY_PREVIOUS` | none | After changing the master key: the earlier key or keys, comma-separated. At start the server moves every stored AI key over to the new master key and logs how many; then remove this setting |
 
-The Builder's backend kit also writes `TASKMOOR_TOKEN_SIGNING_KEY` and `TASKMOOR_MASTER_KEY`.
-The server does not read them yet: its sign-in tokens are random and kept as hashes, so they
-need no signing key.
+The Builder's backend kit also writes `TASKMOOR_TOKEN_SIGNING_KEY`. The server does not read it:
+its sign-in tokens are random and kept as hashes, so they need no signing key.
+
+Keep the master key with your other secrets and out of backups of the database: a backup holds
+AI keys only in encrypted form, and restoring it needs the same master key (or, without one,
+the pepper keyring that the backup carries).
 
 ## Data, backups and imports
 
@@ -177,8 +182,24 @@ the rule off and belong only on test networks:
 
 ## AI providers
 
-Taskmoor does not yet read AI provider settings. The Builder records `TASKMOOR_AI_PROVIDER`
-and `TASKMOOR_AI_KEY` in its backend kit for a later release; today they change nothing.
+These let an install switch AI on without opening the settings page. On the **first start**
+with them set, the server moves them into the database, the key encrypted, and switches AI on
+when they are complete. On every later start it ignores them and its log says so: from then on
+the [AI settings](ai.md) page and its API are where they change. The install scripts remove
+`TASKMOOR_AI_KEY` from `.env` once the server has moved it.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `TASKMOOR_AI_PROVIDER` | none | `anthropic`, `bedrock`, `vertex`, `foundry` or `openai-compatible` |
+| `TASKMOOR_AI_KEY` | none | The provider's key: an Anthropic API key, a Bedrock API key, a Vertex AI access token, a Foundry key, or an OpenAI-compatible server's key |
+| `TASKMOOR_AI_REGION` | none | The region, for Bedrock and Vertex AI (both need one) |
+| `TASKMOOR_AI_PROJECT` | none | The Google Cloud project, for Vertex AI |
+| `TASKMOOR_AI_RESOURCE` | none | The Foundry resource name |
+| `TASKMOOR_AI_BASE_URL` | none | The server's address for an OpenAI-compatible provider, or another address for the Anthropic API |
+| `TASKMOOR_AI_MODEL` | none | The model an OpenAI-compatible server serves |
+
+When the settings are incomplete (for example Bedrock without a region), the key is still
+stored, AI stays off and the log lists what is missing, by name. Log lines never show a key.
 
 ## Kit and tool variables
 

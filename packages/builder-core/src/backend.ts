@@ -155,6 +155,13 @@ for _ in $(seq 1 180); do
 done
 ready || { docker compose logs --tail 40 taskmoor; die "the backend did not become ready in 3 minutes; the log above says why"; }
 
+# The first start moved the AI key into encrypted storage (IAM-020); from then on the backend
+# ignores it, so it leaves .env. Only once the backend's log says the database holds it.
+if [ -n "$(setting TASKMOOR_AI_KEY)" ] && docker compose logs --no-log-prefix taskmoor 2>/dev/null | grep -Eq '"msg":"AI settings (moved from|in the environment are ignored)'; then
+  sed -i.bak '/^TASKMOOR_AI_KEY=/d' .env && rm -f .env.bak
+  say "the AI key is in encrypted storage now: removed TASKMOOR_AI_KEY from .env"
+fi
+
 needed=$(docker compose exec -T taskmoor node -e "fetch('http://127.0.0.1:8080/api/v1/setup').then(r=>r.json()).then(s=>process.stdout.write(String(s.needed)))" 2>/dev/null || true)
 say ""
 say "Taskmoor is running at $PUBLIC_URL"
@@ -293,6 +300,9 @@ extraEnv:
     valueFrom: { secretKeyRef: { name: taskmoor-kit, key: TASKMOOR_INSTANCE_ID } }
   - name: TASKMOOR_INSTANCE_KEY
     valueFrom: { secretKeyRef: { name: taskmoor-kit, key: TASKMOOR_INSTANCE_KEY } }
+  # Wraps the AI provider keys the backend stores (M1-075, ADR-098).
+  - name: TASKMOOR_MASTER_KEY
+    valueFrom: { secretKeyRef: { name: taskmoor-kit, key: TASKMOOR_MASTER_KEY } }
   - name: TASKMOOR_ALLOWED_ORIGINS
     value: "${frontendOrigin(inputs)}"
   - name: TASKMOOR_OAUTH_REDIRECT_URIS

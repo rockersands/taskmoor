@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -28,6 +28,17 @@ import {
 const WEB = fileURLToPath(new URL('../', import.meta.url));
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const VERSION = '9.9.9-artefact';
+/**
+ * AI secrets present in the build's environment (M1-075; IAM-020 (1)), made at run time and
+ * shaped so no scanner mistakes them for real keys: the bundle must carry none of them, under
+ * any of the names a build tool might expose.
+ */
+const BUILD_SECRETS = {
+  TASKMOOR_AI_KEY: `fake-ai-key-${randomBytes(18).toString('hex')}`,
+  VITE_TASKMOOR_AI_KEY: `fake-ai-key-${randomBytes(18).toString('hex')}`,
+  TASKMOOR_MASTER_KEY: randomBytes(32).toString('base64url'),
+  VITE_TASKMOOR_MASTER_KEY: randomBytes(32).toString('base64url'),
+};
 
 /** Every file under a folder, relative, with forward slashes. */
 const filesOf = (dir: string) =>
@@ -47,6 +58,7 @@ describe('the frontend build', () => {
   beforeAll(async () => {
     outDir = mkdtempSync(join(tmpdir(), 'taskmoor-web-artefact-'));
     vi.stubEnv('TASKMOOR_VERSION', VERSION);
+    for (const [name, value] of Object.entries(BUILD_SECRETS)) vi.stubEnv(name, value);
     // Notes every module of the graph, to show the guard sees the workspace packages too.
     const capture: Plugin = {
       name: 'capture-modules',
@@ -99,6 +111,15 @@ describe('the frontend build', () => {
           expect(text).not.toContain(s);
       }
       expect(kitText(kit['index.html'])).toContain(secrets.instanceId);
+    }
+  });
+
+  it('[IAM-020] (1) carries no AI key or master key from the build environment', () => {
+    const shipped = filesOf(outDir).map((f) => readFileSync(join(outDir, f), 'utf8'));
+    expect(shipped.length).toBeGreaterThan(3);
+    for (const [name, value] of Object.entries(BUILD_SECRETS)) {
+      const found = shipped.filter((text) => text.includes(value));
+      expect(found.length, `${name} is in the bundle`).toBe(0);
     }
   });
 
