@@ -5,6 +5,7 @@ import type { Database } from '@taskmoor/db';
 import {
   contentSecurityPolicy,
   fillRuntimeConfig,
+  importedLinkRoute,
   MANIFEST_FILE,
   parseManifest,
   type RoutingMode,
@@ -68,7 +69,9 @@ export function checkArtefact(webDir: string, version: string): { template: stri
  * setup). Every other GET for a page is a deep link: with clean URLs it gets the app shell, so
  * /boards/7 loads; with hash routing it is redirected to its hash route, /#/boards/7. API and
  * probe paths, and requests that do not want HTML, keep their JSON 404. The page goes out with
- * the app's content security policy (M1-107, IAM-025), framing by other pages refused.
+ * the app's content security policy (M1-107, IAM-025), framing by other pages refused. Links
+ * from the tracker an import came from (`/browse/ABC-42` and the rest, M1-128) redirect to their
+ * app routes in either mode.
  */
 export async function serveFrontend(app: FastifyInstance, options: FrontendOptions): Promise<void> {
   const { template } = checkArtefact(options.webDir, options.version);
@@ -117,6 +120,16 @@ export async function serveFrontend(app: FastifyInstance, options: FrontendOptio
     const at = request.url.indexOf('?');
     const path = at < 0 ? request.url : request.url.slice(0, at);
     const query = at < 0 ? '' : request.url.slice(at);
+    // Links from the tracker an import came from (M1-128): /browse/ABC-42, old filter, board
+    // and dashboard links, for any client. Their app routes resolve the rest (ADR-097).
+    const link =
+      request.method === 'GET' && !path.startsWith('/api/') ? importedLinkRoute(path, query) : null;
+    if (link !== null) {
+      return reply.redirect(
+        routing === 'path' ? `${basePath}${link.slice(2)}` : `${basePath}${link}`,
+        302,
+      );
+    }
     const isPage =
       request.method === 'GET' &&
       !path.startsWith('/api/') &&

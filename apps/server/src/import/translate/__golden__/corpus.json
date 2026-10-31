@@ -1,0 +1,901 @@
+[
+  {
+    "id": "project-key",
+    "native": "track = ABC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project = ABC",
+    "title": "A project by key"
+  },
+  {
+    "id": "project-id",
+    "native": "track = ABC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project = 10000",
+    "title": "A project by id"
+  },
+  {
+    "id": "project-name",
+    "native": "track = ABC AND status != \"Done\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project = \"Alpha Billing\" AND status != \"Done\"",
+    "title": "A project by name"
+  },
+  {
+    "id": "project-list",
+    "native": "track IN (ABC, OPS) ORDER BY created DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project in (ABC, 10001) ORDER BY created DESC",
+    "title": "Projects in a list, mixed"
+  },
+  {
+    "id": "issuetype-id",
+    "native": "type = \"Defect\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issuetype = 10400",
+    "title": "A type by id"
+  },
+  {
+    "id": "issuetype-name",
+    "native": "type IN (\"Defect\") OR type IN subticketTypes()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issuetype in (\"Defect\") OR issuetype in subTaskIssueTypes()",
+    "title": "Types by name and function"
+  },
+  {
+    "id": "standard-types",
+    "native": "type IN standardTicketTypes()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issuetype in standardIssueTypes()",
+    "title": "Standard types"
+  },
+  {
+    "id": "status-id",
+    "native": "status = \"In Progress\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "status = 10100",
+    "title": "A status by id"
+  },
+  {
+    "id": "status-names",
+    "native": "status IN (\"In Progress\", \"Done\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "status in (\"In Progress\", \"Done\")",
+    "title": "Statuses by name"
+  },
+  {
+    "id": "status-category",
+    "native": "stage = closed OR stage = \"In Progress\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "statusCategory = 3 OR statusCategory = \"In Progress\"",
+    "title": "A status category by number and name"
+  },
+  {
+    "id": "priority-id",
+    "native": "priority = \"High\" ORDER BY priority DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "priority = 10200 ORDER BY priority DESC",
+    "title": "A priority by id, ordered by priority"
+  },
+  {
+    "id": "priority-order",
+    "native": "priority >= \"High\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "priority >= \"High\"",
+    "title": "Priorities above one"
+  },
+  {
+    "id": "resolution-id",
+    "native": "closeReason = \"Fixed\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "resolution = 10300",
+    "title": "A resolution by id"
+  },
+  {
+    "id": "unresolved",
+    "native": "closeReason IS EMPTY OR closeReason IS EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "resolution = Unresolved OR resolution is EMPTY",
+    "title": "Unresolved work"
+  },
+  {
+    "id": "resolved-date",
+    "native": "closed >= -1w AND closed <= now()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "resolved >= -1w AND resolutiondate <= now()",
+    "title": "Resolved in the last week"
+  },
+  {
+    "id": "level-id",
+    "native": "visibilityLevel = \"Staff only\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "level = 10900",
+    "title": "A security level by id"
+  },
+  {
+    "id": "level-name",
+    "native": "visibilityLevel IN (\"Staff only\") OR visibilityLevel IS EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "level in (\"Staff only\") OR level is EMPTY",
+    "title": "A security level by name"
+  },
+  {
+    "id": "assignee-user",
+    "native": "assignee = \"ada@example.test\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "assignee = ada.l",
+    "title": "An assignee by user name"
+  },
+  {
+    "id": "assignee-key",
+    "native": "assignee = \"ada@example.test\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "assignee = \"JIRAUSER10500\"",
+    "title": "An assignee by key"
+  },
+  {
+    "id": "current-user",
+    "native": "assignee = currentUser() AND closeReason = EMPTY ORDER BY updated DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "assignee = currentUser() AND resolution = EMPTY ORDER BY updated DESC",
+    "title": "Mine, unresolved"
+  },
+  {
+    "id": "reporter-in",
+    "native": "requester IN (\"ada@example.test\", \"grace@example.test\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "reporter in (ada.l, grace.h)",
+    "title": "Reporters in a list"
+  },
+  {
+    "id": "reporter-group",
+    "native": "requester IN membersOf(\"release-managers\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "reporter in membersOf(\"release-managers\")",
+    "title": "Reporters in a group"
+  },
+  {
+    "id": "creator",
+    "native": "creator = \"grace@example.test\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "creator = grace.h",
+    "title": "A creator"
+  },
+  {
+    "id": "watcher",
+    "native": "follower = currentUser() OR key IN followedTickets()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "watcher = currentUser() OR issue in watchedIssues()",
+    "title": "Watched by me, or watched"
+  },
+  {
+    "id": "voter",
+    "native": "voter = \"ada@example.test\" OR key IN votedTickets() ORDER BY votes DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "voter = ada.l OR issue in votedIssues() ORDER BY votes DESC",
+    "title": "Voted for"
+  },
+  {
+    "id": "watchers-count",
+    "native": "followers > 2 ORDER BY followers DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "watchers > 2 ORDER BY watchers DESC",
+    "title": "Many watchers"
+  },
+  {
+    "id": "unassigned",
+    "native": "assignee IS EMPTY AND requester IS NOT EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "assignee is EMPTY AND reporter is not EMPTY",
+    "title": "Unassigned"
+  },
+  {
+    "id": "unknown-user",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_person",
+        "detail": "nobody.here",
+        "message": "Nobody in the source is called \"nobody.here\""
+      }
+    ],
+    "query": "assignee = nobody.here",
+    "title": "A person the source does not have"
+  },
+  {
+    "id": "created-relative",
+    "native": "created >= -2w ORDER BY created ASC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "created >= -2w ORDER BY created ASC",
+    "title": "Created in the last two weeks"
+  },
+  {
+    "id": "updated-absolute",
+    "native": "updated > \"2025-06-01\" AND updated < \"2025-07-01 12:00\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "updated > \"2025-06-01\" AND updated < \"2025-07-01 12:00\"",
+    "title": "Updated since a date"
+  },
+  {
+    "id": "due-functions",
+    "native": "due >= startOfMonth() AND due <= endOfMonth()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "duedate >= startOfMonth() AND duedate <= endOfMonth()",
+    "title": "Due this month"
+  },
+  {
+    "id": "date-increments",
+    "native": "created > startOfWeek(-1w) AND created < endOfDay(-1d) OR updated > startOfYear() AND updated < endOfYear() OR created > startOfDay() AND created < endOfWeek()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "created > startOfWeek(-1w) AND created < endOfDay(-1d) OR updated > startOfYear() AND updated < endOfYear() OR created > startOfDay() AND created < endOfWeek()",
+    "title": "Date functions with increments"
+  },
+  {
+    "id": "logins",
+    "native": "updated > lastLogin() OR created > currentLogin()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "updated > lastLogin() OR created > currentLogin()",
+    "title": "Since my last login"
+  },
+  {
+    "id": "summary-text",
+    "native": "summary ~ \"export failed\" AND description !~ \"duplicate\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "summary ~ \"export failed\" AND description !~ \"duplicate\"",
+    "title": "Words in the summary"
+  },
+  {
+    "id": "text-wildcard",
+    "native": "text ~ \"invoic*\" AND comment ~ \"customer\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "text ~ \"invoic*\" AND comment ~ \"customer\"",
+    "title": "Text with a wildcard"
+  },
+  {
+    "id": "environment",
+    "native": "environment ~ \"staging\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "environment ~ \"staging\"",
+    "title": "Environment words"
+  },
+  {
+    "id": "labels",
+    "native": "labels IN (urgent, \"needs-review\") AND labels IS NOT EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "labels in (urgent, \"needs-review\") AND labels is not EMPTY",
+    "title": "Labels"
+  },
+  {
+    "id": "key-list",
+    "native": "key IN (ABC-12, 912)",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issuekey in (ABC-12, 11000)",
+    "title": "Issues by key and id"
+  },
+  {
+    "id": "key-range",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "refused",
+        "detail": "\"key\" cannot be compared with >; its values have no order",
+        "message": "\"key\" cannot be compared with >; its values have no order at position 1"
+      }
+    ],
+    "query": "key > ABC-12 ORDER BY key ASC",
+    "title": "Keys after one (Taskmoor does not order keys)"
+  },
+  {
+    "id": "parent",
+    "native": "parent = ABC-12",
+    "notes": [],
+    "outcome": "translated",
+    "query": "parent = ABC-12",
+    "title": "Children of an issue"
+  },
+  {
+    "id": "epic-link",
+    "native": "parent = ABC-12",
+    "notes": [],
+    "outcome": "translated",
+    "query": "\"Epic Link\" = ABC-12",
+    "title": "An epic link"
+  },
+  {
+    "id": "linked-issues",
+    "native": "key IN linkedTickets(ABC-12, \"blocks\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issue in linkedIssues(ABC-12, \"blocks\")",
+    "title": "Issues linked to one"
+  },
+  {
+    "id": "issue-link-type",
+    "native": "ticketLinkType = \"is blocked by\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issueLinkType = \"is blocked by\"",
+    "title": "By link type"
+  },
+  {
+    "id": "remote-links",
+    "native": "key IN ticketsWithWebLinksByGlobalId(\"app=docs&id=1\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issue in issuesWithRemoteLinksByGlobalId(\"app=docs&id=1\")",
+    "title": "Issues with a remote link"
+  },
+  {
+    "id": "issue-history",
+    "native": "key IN ticketHistory() ORDER BY lastViewed DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issue in issueHistory() ORDER BY lastViewed DESC",
+    "title": "Recently viewed"
+  },
+  {
+    "id": "attachments",
+    "native": "attachments IS NOT EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "attachments is not EMPTY",
+    "title": "With attachments"
+  },
+  {
+    "id": "estimates",
+    "native": "originalEstimate > 3600 AND remainingEstimate > 0 AND timeSpent IS EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "originalEstimate > 3600 AND remainingEstimate > 0 AND timeSpent is EMPTY",
+    "title": "Estimates and time spent"
+  },
+  {
+    "id": "work-ratio",
+    "native": "effortRatio > 75 ORDER BY effortRatio DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "workRatio > 75 ORDER BY workRatio DESC",
+    "title": "Work ratio"
+  },
+  {
+    "id": "worklog",
+    "native": "timeEntryComment ~ \"deploy\" AND timeEntryDate >= -30d",
+    "notes": [],
+    "outcome": "translated",
+    "query": "worklogComment ~ \"deploy\" AND worklogDate >= -30d",
+    "title": "Work log comments and dates"
+  },
+  {
+    "id": "projects-lead",
+    "native": "track IN tracksOwnedByUser()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project in projectsLeadByUser()",
+    "title": "Projects I lead"
+  },
+  {
+    "id": "projects-lead-user",
+    "native": "track IN tracksOwnedByUser(\"ada@example.test\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project in projectsLeadByUser(ada.l)",
+    "title": "Projects another person leads"
+  },
+  {
+    "id": "projects-permission",
+    "native": "track IN tracksWhereUserHasPermission(\"Browse Projects\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project in projectsWhereUserHasPermission(\"Browse Projects\")",
+    "title": "Projects where I may browse"
+  },
+  {
+    "id": "projects-role",
+    "native": "track IN tracksWhereUserHasRole(\"Developers\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project in projectsWhereUserHasRole(\"Developers\")",
+    "title": "Projects where I have a role"
+  },
+  {
+    "id": "components-lead",
+    "native": "area IN areasOwnedByUser()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "component in componentsLeadByUser()",
+    "title": "Components I lead"
+  },
+  {
+    "id": "updated-by",
+    "native": "key IN updatedBy(\"ada@example.test\", \"-30d\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "issue in updatedBy(ada.l, \"-30d\")",
+    "title": "Updated by a person"
+  },
+  {
+    "id": "versions",
+    "native": "targetRelease IN upcomingReleases(ABC) OR foundInRelease IN shippedReleases()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "fixVersion in unreleasedVersions(ABC) OR affectedVersion in releasedVersions()",
+    "title": "Unreleased versions of a project"
+  },
+  {
+    "id": "version-latest",
+    "native": "targetRelease = latestShippedRelease(ABC) OR targetRelease = earliestUpcomingRelease(ABC)",
+    "notes": [],
+    "outcome": "translated",
+    "query": "fixVersion = latestReleasedVersion(ABC) OR fixVersion = earliestUnreleasedVersion(ABC)",
+    "title": "Latest released version"
+  },
+  {
+    "id": "open-sprints",
+    "native": "sprint IN openSprints() AND sprint NOT IN futureSprints()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "sprint in openSprints() AND sprint not in futureSprints()",
+    "title": "Open sprints"
+  },
+  {
+    "id": "closed-sprints",
+    "native": "sprint IN closedSprints()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "sprint in closedSprints()",
+    "title": "Closed sprints"
+  },
+  {
+    "id": "sprint-name",
+    "native": "sprint = \"ABC sprint 3\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "sprint = \"ABC sprint 3\"",
+    "title": "A sprint by name"
+  },
+  {
+    "id": "sprint-id",
+    "native": "sprint = 3",
+    "notes": [],
+    "outcome": "translated",
+    "query": "sprint = 7",
+    "title": "A sprint by id"
+  },
+  {
+    "id": "cf-number",
+    "native": "cf[3] > 3 ORDER BY cf[3] DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "cf[10600] > 3 ORDER BY cf[10600] DESC",
+    "title": "A number field by id"
+  },
+  {
+    "id": "cf-number-name",
+    "native": "cf[3] >= 5 AND cf[3] IS NOT EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "\"Effort\" >= 5 AND \"Effort\" is not EMPTY",
+    "title": "A number field by name"
+  },
+  {
+    "id": "cf-text",
+    "native": "cf[4] ~ \"Acme\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "\"Customer\" ~ \"Acme\"",
+    "title": "A text field"
+  },
+  {
+    "id": "cf-date",
+    "native": "cf[5] <= endOfMonth(1M)",
+    "notes": [],
+    "outcome": "translated",
+    "query": "cf[10602] <= endOfMonth(1M)",
+    "title": "A date field"
+  },
+  {
+    "id": "cf-select-name",
+    "native": "cf[6] = \"Major\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "\"Severity\" = \"Major\"",
+    "title": "An option by value"
+  },
+  {
+    "id": "cf-select-id",
+    "native": "cf[6] = \"Major\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "cf[10603] = 10700",
+    "title": "An option by id"
+  },
+  {
+    "id": "cf-multi",
+    "native": "cf[7] IN (\"Web\", \"Web\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "cf[10604] in (10710, \"Web\")",
+    "title": "Several options"
+  },
+  {
+    "id": "cf-cascade",
+    "native": "cf[8] IN cascadeOption(\"Europe\", \"North\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "cf[10605] in cascadeOption(10720, 10721)",
+    "title": "A cascading option by ids"
+  },
+  {
+    "id": "cf-cascade-name",
+    "native": "cf[8] IN cascadeOption(\"Europe\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "\"Region\" in cascadeOption(\"Europe\")",
+    "title": "A cascading option by names"
+  },
+  {
+    "id": "cf-user",
+    "native": "cf[9] = \"grace@example.test\" OR cf[9] = currentUser()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "cf[10606] = grace.h OR cf[10606] = currentUser()",
+    "title": "A person field"
+  },
+  {
+    "id": "cf-labels",
+    "native": "cf[10] IN (exports)",
+    "notes": [],
+    "outcome": "translated",
+    "query": "\"Topics\" in (exports)",
+    "title": "A labels field"
+  },
+  {
+    "id": "cf-empty",
+    "native": "cf[6] IS EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "cf[10603] is EMPTY",
+    "title": "An empty custom field"
+  },
+  {
+    "id": "cf-unknown-id",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_field",
+        "detail": "cf[99999]",
+        "message": "No custom field cf[99999]"
+      }
+    ],
+    "query": "cf[99999] = 1",
+    "title": "A custom field id the source does not have"
+  },
+  {
+    "id": "cf-app-compare",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "refused",
+        "detail": "\"Rating\" (cf[11]) cannot be compared with >; its values have no order",
+        "message": "\"Rating\" (cf[11]) cannot be compared with >; its values have no order at position 1"
+      }
+    ],
+    "query": "\"Rating\" > 3",
+    "title": "An app field compared like a number"
+  },
+  {
+    "id": "status-was",
+    "native": "status WAS \"In Progress\" BY \"ada@example.test\" AFTER -30d",
+    "notes": [],
+    "outcome": "translated",
+    "query": "status was \"In Progress\" BY ada.l AFTER -30d",
+    "title": "A status it had"
+  },
+  {
+    "id": "status-was-id",
+    "native": "status WAS IN (\"In Progress\", \"Done\") DURING (\"2025-01-01\", \"2025-12-31\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "status was in (10100, 10101) DURING (\"2025-01-01\", \"2025-12-31\")",
+    "title": "A status it had, by id"
+  },
+  {
+    "id": "status-changed",
+    "native": "status CHANGED FROM \"In Progress\" TO \"Done\" BY \"grace@example.test\" BEFORE now()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "status changed FROM 10100 TO \"Done\" BY grace.h BEFORE now()",
+    "title": "A status change"
+  },
+  {
+    "id": "assignee-was",
+    "native": "assignee WAS NOT \"ada@example.test\" ON \"2025-03-01\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "assignee was not ada.l ON \"2025-03-01\"",
+    "title": "An assignee it had"
+  },
+  {
+    "id": "priority-changed",
+    "native": "priority CHANGED AFTER startOfWeek()",
+    "notes": [],
+    "outcome": "translated",
+    "query": "priority changed AFTER startOfWeek()",
+    "title": "A priority change"
+  },
+  {
+    "id": "filter-id",
+    "native": "savedSearch = 41 AND closeReason IS EMPTY",
+    "notes": [],
+    "outcome": "translated",
+    "query": "filter = 10800 AND resolution is EMPTY",
+    "title": "Another filter by id"
+  },
+  {
+    "id": "filter-name",
+    "native": "savedSearch = 41 ORDER BY updated DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "filter = \"Open defects\" ORDER BY updated DESC",
+    "title": "Another filter by name"
+  },
+  {
+    "id": "filter-unknown",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_saved_search",
+        "detail": "No such filter",
+        "message": "No saved filter \"No such filter\" in the source"
+      }
+    ],
+    "query": "filter = \"No such filter\"",
+    "title": "A filter the source does not have"
+  },
+  {
+    "id": "board-filter",
+    "native": "track = ABC",
+    "notes": [
+      {
+        "code": "order_term_dropped",
+        "detail": "Rank",
+        "message": "Results cannot be ordered by \"Rank\"; that term was left out"
+      }
+    ],
+    "outcome": "changed",
+    "query": "project = ABC ORDER BY Rank ASC",
+    "title": "A board filter"
+  },
+  {
+    "id": "order-several",
+    "native": "closeReason IS EMPTY ORDER BY priority DESC, updated ASC, key ASC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "resolution is EMPTY ORDER BY priority DESC, updated ASC, key ASC",
+    "title": "Several orderings"
+  },
+  {
+    "id": "order-unknown",
+    "native": "track = ABC ORDER BY created DESC",
+    "notes": [
+      {
+        "code": "order_term_dropped",
+        "detail": "Business Value",
+        "message": "Results cannot be ordered by \"Business Value\"; that term was left out"
+      }
+    ],
+    "outcome": "changed",
+    "query": "project = ABC ORDER BY \"Business Value\" DESC, created DESC",
+    "title": "Ordering by an app field"
+  },
+  {
+    "id": "nested",
+    "native": "(track = ABC OR track = OPS) AND NOT (status = \"Done\" OR priority = \"High\")",
+    "notes": [],
+    "outcome": "translated",
+    "query": "(project = ABC OR project = OPS) AND NOT (status = \"Done\" OR priority = 10200)",
+    "title": "Nested AND, OR and NOT"
+  },
+  {
+    "id": "lower-case",
+    "native": "track = ABC AND assignee != currentUser() OR requester IS EMPTY ORDER BY created DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "project = ABC and assignee != currentUser() or reporter is empty order by created desc",
+    "title": "Keywords in lower case"
+  },
+  {
+    "id": "not-in",
+    "native": "status NOT IN (\"In Progress\", \"Done\") AND type != \"Defect\"",
+    "notes": [],
+    "outcome": "translated",
+    "query": "status not in (10100, 10101) AND issuetype != 10400",
+    "title": "NOT IN with ids"
+  },
+  {
+    "id": "empty-query",
+    "native": "ORDER BY created DESC",
+    "notes": [],
+    "outcome": "translated",
+    "query": "ORDER BY created DESC",
+    "title": "No condition, only an order"
+  },
+  {
+    "id": "service-sla",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_field",
+        "detail": "Time to resolution",
+        "message": "No field \"Time to resolution\""
+      }
+    ],
+    "query": "\"Time to resolution\" = breached()",
+    "title": "A service SLA"
+  },
+  {
+    "id": "service-approvals",
+    "native": "approvals = myPendingApproval()",
+    "notes": [
+      {
+        "code": "module_not_available",
+        "detail": "approvals",
+        "message": "\"approvals\" belongs to service tracks, which this version does not have yet"
+      },
+      {
+        "code": "module_not_available",
+        "detail": "myPendingApproval()",
+        "message": "myPendingApproval() belongs to service tracks, which this version does not have yet"
+      }
+    ],
+    "outcome": "flagged",
+    "query": "approvals = myPendingApproval()",
+    "title": "Approvals waiting for me"
+  },
+  {
+    "id": "service-organization",
+    "native": "customerGroup = \"Acme Corp\"",
+    "notes": [
+      {
+        "code": "module_not_available",
+        "detail": "customerGroup",
+        "message": "\"customerGroup\" belongs to service tracks, which this version does not have yet"
+      }
+    ],
+    "outcome": "flagged",
+    "query": "organization = \"Acme Corp\"",
+    "title": "A customer organisation"
+  },
+  {
+    "id": "app-subtasks",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_field",
+        "detail": "issueFunction",
+        "message": "No field \"issueFunction\""
+      }
+    ],
+    "query": "issueFunction in subtasksOf(\"project = ABC\")",
+    "title": "An app's function over sub-tasks"
+  },
+  {
+    "id": "app-function",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_function",
+        "detail": "linkedIssuesOfAll",
+        "message": "linkedIssuesOfAll() is not a function Taskmoor has (an app's function, perhaps)"
+      }
+    ],
+    "query": "issue in linkedIssuesOfAll(\"project = ABC\")",
+    "title": "An app's function on a known field"
+  },
+  {
+    "id": "app-epics",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_function",
+        "detail": "epicsOf",
+        "message": "epicsOf() is not a function Taskmoor has (an app's function, perhaps)"
+      }
+    ],
+    "query": "issue in epicsOf(\"project = ABC\") AND status = 10100",
+    "title": "An app's epic function"
+  },
+  {
+    "id": "app-team",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_field",
+        "detail": "Team",
+        "message": "No field \"Team\""
+      },
+      {
+        "code": "unknown_field",
+        "detail": "Parent Link",
+        "message": "No field \"Parent Link\""
+      }
+    ],
+    "query": "Team = 12 AND \"Parent Link\" = ABC-1",
+    "title": "An app's team field"
+  },
+  {
+    "id": "app-portfolio",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_function",
+        "detail": "portfolioChildIssuesOf",
+        "message": "portfolioChildIssuesOf() is not a function Taskmoor has (an app's function, perhaps)"
+      }
+    ],
+    "query": "issue in portfolioChildIssuesOf(ABC-12)",
+    "title": "An app's hierarchy function"
+  },
+  {
+    "id": "unknown-project",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "unknown_project",
+        "detail": "NOPE",
+        "message": "No project \"NOPE\" in the source"
+      }
+    ],
+    "query": "project = NOPE",
+    "title": "A project the source does not have"
+  },
+  {
+    "id": "syntax",
+    "outcome": "untranslatable",
+    "problems": [
+      {
+        "code": "syntax_error",
+        "detail": "syntax",
+        "message": "Expected a value, found \"AND\" at position 11"
+      }
+    ],
+    "query": "project = AND (status = Open",
+    "title": "Broken text"
+  }
+]

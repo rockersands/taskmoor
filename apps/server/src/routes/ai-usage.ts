@@ -687,10 +687,7 @@ export function registerAiUsageRoutes(
       ai.summary(workspaceId),
       readPolicy(db, workspaceId),
     ]);
-    return dataStatement(
-      provider,
-      policy,
-    );
+    return dataStatement(provider, policy);
   };
 
   app.get('/api/v1/admin/ai/statement', async (request, reply) => {

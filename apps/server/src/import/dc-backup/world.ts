@@ -75,6 +75,8 @@ export interface Project {
   description: string;
   lead: Person;
   type: 'software' | 'business';
+  /** The key it had before a rename (M1-128); its issues' attachment folders keep it. */
+  originalKey?: string;
   /** The highest issue number used, numbers skipped included. */
   counter: number;
   /** Issues in the project. */
@@ -346,6 +348,7 @@ export function buildWorld(options: GeneratorOptions): World {
       description: paragraphs(random, 1),
       lead: users[random.int(0, users.length - 1)] as Person,
       type: p % 5 === 4 ? 'business' : 'software',
+      ...(p < (options.renamedProjects ?? 0) ? { originalKey: `${projectKey(p)}OLD` } : {}),
       counter: 0,
       issues: 0,
     });

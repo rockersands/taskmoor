@@ -15,6 +15,8 @@ export interface SavedSearch {
   description: string;
   query: string;
   columns: string[] | null;
+  /** Why a query an import brought does not run here (M1-094); absent or null otherwise. */
+  importProblem?: string | null;
   owner: { id: number; name: string };
   shares: SavedSearchShare[];
   starred: boolean;

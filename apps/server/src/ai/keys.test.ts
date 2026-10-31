@@ -97,7 +97,7 @@ describe('AI key storage (M1-075; IAM-020, AI-001; ADR-098)', () => {
     return key;
   };
   const generate = () =>
-    (app.ai?.service as AiService).use(1, (gateway) =>
+    (app.ai as { service: AiService }).service.use(1, (gateway) =>
       gateway.generate({
         feature: 'summarize',
         system: 'Summarise.',
@@ -306,8 +306,8 @@ describe('AI key storage (M1-075; IAM-020, AI-001; ADR-098)', () => {
     expect(rotated.statusCode).toBe(200);
     expect(rotated.json().credential.last4).toBe(ending(next));
     // Calls that started on the old key finish on it; then the provider may revoke it.
-    await (app.ai?.service as AiService).drained(1, version + 1);
-    expect((app.ai?.service as AiService).inFlightOnRetired(1)).toBe(0);
+    await (app.ai as { service: AiService }).service.drained(1, version + 1);
+    expect((app.ai as { service: AiService }).service.inFlightOnRetired(1)).toBe(0);
     provider.accepted.delete(before);
     revokedAt = Date.now();
     await new Promise((r) => setTimeout(r, 150));

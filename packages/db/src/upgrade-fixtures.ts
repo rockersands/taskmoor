@@ -1338,6 +1338,18 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         WHERE source_system = 'seed'`.execute(db);
     },
   },
+  '0073_saved_search_import_problem': {
+    tables: {
+      saved_search: "name = 'Seed imported search' AND import_problem LIKE 'subtasksOf()%'",
+    },
+    seed: async (db) => {
+      // A saved search an import kept with the source's text, flagged with why it cannot run.
+      await sql`INSERT INTO saved_search (workspace_id, owner_id, name, query, import_problem)
+        SELECT 1, id, 'Seed imported search', 'issueFunction in subtasksOf("project = SEED")',
+               'subtasksOf() is not a function Taskmoor has'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+    },
+  },
   '0074_ai_credentials': {
     tables: {
       ai_setting: 'workspace_id = 1 AND version = 2',

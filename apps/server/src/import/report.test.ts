@@ -241,7 +241,7 @@ describe('the synthetic source format (M1-086)', () => {
     expect(a).toContain('"key":"XYSYN"');
     for (const line of a.trim().split('\n').slice(1)) {
       const record = JSON.parse(line);
-      if (record.kind === 'filter' || record.kind === 'dashboard') continue;
+      if (record.kind === 'filter' || record.kind === 'automation') continue;
       expect(
         mapSynthetic({ kind: record.kind, id: record.id, data: record }),
         line,

@@ -286,6 +286,8 @@ export const savedSearch = z
     name: z.string(),
     description: z.string(),
     query: z.string(),
+    /** Why a query an import brought does not run here; null otherwise. */
+    importProblem: z.string().nullable(),
     owner: person,
     shares: z.array(z.unknown()),
     starred: z.boolean(),

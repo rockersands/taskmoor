@@ -72,7 +72,7 @@ describe('AI settings (M1-076)', () => {
     return res.json().features as Record<string, { available: boolean; reason?: string }>;
   };
   const summarize = (trackId?: number) =>
-    (scriptedApp.ai as AiService).call(
+    (scriptedApp.ai as { service: AiService }).service.call(
       { workspaceId: 1, trackId: trackId ?? null, feature: 'summarize' },
       (g) =>
         g.generate({

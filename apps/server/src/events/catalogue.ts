@@ -1441,6 +1441,7 @@ export const EVENT_TYPES = {
   'ai.track_switched': {
     subject: 'track',
     payload: z.object({ key: z.string(), enabled: z.boolean().nullable() }),
+  },
   // AI spend limits, prices and data controls (M1-077; OPS-020, IAM-021, IAM-022; ADR-100).
   // Amounts are tokens, or billionths of a dollar for a cost limit.
   'ai_limit.created': {

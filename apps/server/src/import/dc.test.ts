@@ -585,7 +585,6 @@ and a ]]]]><![CDATA[> in the middle.]]></description>
         reason: null,
         warnings: [
           'unknown_project_type: service_desk',
-          'original_key_not_kept: OLDEDGE',
           'role_actor_unknown_group: no-such-group',
           'role_actor_unknown_role: 9',
         ],
@@ -602,6 +601,17 @@ and a ]]]]><![CDATA[> in the middle.]]></description>
       .executeTakeFirstOrThrow();
     expect(track.type).toBe('business');
     expect(track.description).toBe('Two lines,\nand a ]]> in the middle.');
+    // The project's first key is an earlier key of the track (M1-128).
+    const keys = await database.db
+      .selectFrom('track_key_history')
+      .select(['key', 'replaced_at'])
+      .where('track_id', '=', track.id)
+      .orderBy('key')
+      .execute();
+    expect(keys.map((k) => [k.key, k.replaced_at !== null])).toEqual([
+      ['EDGE', false],
+      ['OLDEDGE', true],
+    ]);
     const actors = await database.db
       .selectFrom('track_role_actor as a')
       .innerJoin('app_user as u', 'u.id', 'a.user_id')

@@ -30,10 +30,10 @@ export interface DataStatement {
 }
 
 const FEATURE_NAMES: Record<string, MessageId> = {
-  summarize: 'ai.feature.summarize',
-  'query-from-text': 'ai.feature.queryFromText',
-  'assisted-creation': 'ai.feature.assistedCreation',
-  duplicates: 'ai.feature.duplicates',
+  summarize: 'ai.statement.feature.summarize',
+  'query-from-text': 'ai.statement.feature.queryFromText',
+  'assisted-creation': 'ai.statement.feature.assistedCreation',
+  duplicates: 'ai.statement.feature.duplicates',
 };
 
 const DATA_NAMES: Record<DataKind, MessageId> = {
@@ -63,11 +63,11 @@ const PATTERN_NAMES: Record<string, MessageId> = {
 };
 
 const PROVIDER_NAMES: Record<string, MessageId> = {
-  anthropic: 'ai.provider.anthropic',
-  bedrock: 'ai.provider.bedrock',
-  vertex: 'ai.provider.vertex',
-  foundry: 'ai.provider.foundry',
-  'openai-compatible': 'ai.provider.openaiCompatible',
+  anthropic: 'ai.statement.provider.anthropic',
+  bedrock: 'ai.statement.provider.bedrock',
+  vertex: 'ai.statement.provider.vertex',
+  foundry: 'ai.statement.provider.foundry',
+  'openai-compatible': 'ai.statement.provider.openaiCompatible',
 };
 
 /** A feature's name in the reader's language; an unknown one by its ID. */

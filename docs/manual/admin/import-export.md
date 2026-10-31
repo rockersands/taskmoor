@@ -2,6 +2,7 @@
 title: "Importing and exporting"
 audience: admins
 sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx
 accessed: 2026-10-31
 attestation: own-words
 jira-names: import sources and field mapping
@@ -186,6 +187,7 @@ What the import makes of the backup:
 | Issues | Tickets with their key, type, status, priority, close reason, assignee, reporter (as requester), creator, summary, description, due date, estimates, labels, parent, custom values and security level | By track and number on a later run |
 | Watchers and voters | Followers and voters of the ticket | |
 | Earlier keys of issues moved between projects | Earlier keys of the ticket: opening or searching for the old key finds it | |
+| A renamed project's first key | An earlier key of the track: its tickets open, and queries find them, by either key | A key another track has stays theirs (`former_key_taken`) |
 | Comments, with group or role restrictions and edits | Comments by the same author at the same time, restricted to the same group or role, marked edited when they were | |
 | Change history | History entries with their original author and time: status, resolution (as close reason), priority, type, assignee, reporter, project (as track), key, summary, description, environment, due date, labels, estimates, time spent and custom fields. The ticket's starting values are worked out from the first change of each field | |
 | Work logs, with group or role restrictions | Time entries by the same person, started at the same time, with the same duration and text | |
@@ -203,6 +205,11 @@ What the import makes of the backup:
 | The sprint field's values | The tickets in each sprint. A closed sprint keeps its tickets in its history; a ticket is in one open sprint at most | |
 | Rank | Every ticket's rank, so boards and backlogs show tickets in the same order as the backup | |
 | The agile plugin's sprint and rank fields | Not fields here: they are skipped with the reasons `sprint_field_as_sprints` and `rank_field_as_rank`, since sprints and rank carry them | |
+| Saved filters (the boards' own included) | Saved searches with the same owner and name, the query translated (below), the people who made it a favourite as stars | Never matched: a name the owner already has gets " (imported)" |
+| Filter and dashboard shares | Shares of the same reach: everyone (anonymous visitors included) becomes public, everyone signed in any user, a group or a project (with or without a role) the same. Change rights are not kept, only viewing | |
+| Filter subscriptions | Search subscriptions to the same person or group, daily, weekly, monthly or on a cron schedule, in UTC; "send when empty" becomes the opposite of "only if results" | |
+| Dashboards | Dashboards with the same owner, name, layout (one to three columns, a wide one first or last) and shares | Never matched |
+| Gadgets: results of a filter, assigned to me, watched, pie chart, created against resolved, recently created, average age, resolution time, statistics, two-dimensional table, text, sprint burndown, sprint days remaining | Widgets of the same kind over the same saved search or track, with their settings (rows, days, period, what they count by); text loses its formatting | |
 
 The report's mapping names each of these objects with its outcome. The warnings to look for:
 
@@ -215,7 +222,7 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `status_not_in_workflow` | A new status that no workflow in the backup holds: it is in no workflow |
 | `unknown_status_category` | The status's category is not one Taskmoor knows: it is imported as a new-stage status |
 | `unknown_project_type` | A project type other than software or business: the track is a business track |
-| `original_key_not_kept` | The project was renamed in Jira: its earlier key is not kept yet |
+| `former_key_taken` (kind `track`) | The project was renamed in Jira, and its earlier key belongs to another track here: that track keeps it |
 | `role_actor_unknown_group`, `role_actor_unknown_role`, `role_actor_not_imported` | A project role member that could not be added |
 | `app_field_as_read_only_text` | A field of an app became read-only text with the raw values |
 | `context_scope_not_imported` | A context named a project category, or a project or type the backup does not have. A context with nothing left fails rather than applying everywhere |
@@ -253,6 +260,15 @@ The report's mapping names each of these objects with its outcome. The warnings 
 | `rank_not_kept`, `rank_changed` | An issue's rank could not be read, or another ticket already holds it: the ticket goes to the bottom of the order |
 | `ticket_in_another_open_sprint` | A ticket was in more than one sprint that is not closed: it stays in the first |
 | `closed_sprint_never_started` | A sprint that is closed without having started |
+| `query_not_translated` (kind `saved_search`) | The filter's query cannot run here. The detail names the reason and the function, field, person or value: `unknown_function` (often an app's, such as `subtasksOf`), `unknown_field` (an app's field, or one the backup does not have), `unknown_person`, `unknown_project`, `unknown_saved_search`, `ambiguous_field`, `field_not_imported`, `value_not_imported` (a sprint, release or option that did not come), `syntax_error`, or `refused` with Taskmoor's own words (an operator a field does not take here, such as `>` on keys). The saved search keeps the query as Jira had it and says why on the search page; change the query and save it to fix it |
+| `query_flagged` | The query translated but names something of a module this version does not have yet (approvals, SLAs, customer organisations): it is kept, and says so when run |
+| `query_changed` | An ORDER BY term was left out because Taskmoor does not sort by it (`Rank`, an app's field): the same tickets come back, in another order |
+| `share_not_imported`, `edit_share_not_imported` | A share naming a group, project or role the backup does not have was left out, so nobody sees more than before; a share that also let people change the filter keeps only the view |
+| `name_taken` | The owner already had a saved search of that name: the imported one is called "... (imported)" |
+| `schedule_not_imported`, `schedule_time_zone_utc` | A subscription's schedule Taskmoor's cron cannot say (the last day of a month, the first Monday, a year): it is skipped with the reason, and the detail gives the expression. Schedules are read in UTC |
+| `gadget_not_mapped` (kind `dashboard`) | A gadget with no widget counterpart, named by its module (activity streams, apps' gadgets) |
+| `gadget_setting_not_imported`, `gadget_period_changed`, `widget_reference_not_imported`, `widget_not_imported` | A gadget without the filter or project it shows, a chart period Taskmoor rounds to a day, week or month, or a widget whose saved search, track, board or field did not import (boards come with the board import) |
+| `dashboard_favourites_not_imported` | Dashboards cannot be starred in Taskmoor |
 
 Records that fail rather than arrive changed, each with its reason in the report: a comment or
 time entry restricted to a group or role that did not import (`visibility_group_missing`,
@@ -274,9 +290,18 @@ Links between issues and web links carry no time in the backup: a link takes the
 two tickets' creation time, and a web link the time of the import. Followers and voters do not
 keep when they started following or voted.
 
+**Saved filters' queries.** Each query is read in the Jira-compatible language and written
+back in Taskmoor's own: `project = 10000` becomes `track = ABC`, `status = 10001` the status by
+name, `assignee = jsmith` the person by address, `cf[10010]` (or the field by name) the imported
+field's `cf[<id>]`, an option's id its value, `filter = 10020` the imported saved search, and
+`resolution = Unresolved` `closeReason IS EMPTY`. A saved search that imports clean has been
+prepared as its owner would run it, so it runs. The translation is tested against a corpus of
+about a hundred queries as people and scripts write them; the backup's fixture uses them all.
+
 Under "Not imported", the report counts each part of the backup the importer does not handle
 yet: saved filters, other kinds of associations, rows of the agile plugin that name a board,
 column or issue the backup does not hold, and attachment files
+yet: boards and sprints, other kinds of associations and scheduled jobs, and attachment files
 no attachment row names (`no_attachment_row`), by their names in the backup, with the reason
 `not_imported_yet`. The id counters of the backup, and each issue's workflow state (its status
 is what counts), are listed as `not_needed`, because Taskmoor gives its own ids.
@@ -292,6 +317,25 @@ two tracks finds the `1.2` of both, as in the backup.
 Times in a backup carry no time zone. They are read as UTC, so history, comments and time
 entries from a server in another zone are shifted by its offset; a setting for the source's
 zone is still to come.
+
+### Old links keep working
+
+Point the old tracker's host name at Taskmoor (or add a redirect from it) and the links people
+kept go on working. When the backend serves the app, these addresses redirect to the page they
+stand for, in either routing mode; a static frontend kit reads them too:
+
+| Old link | Opens |
+|---|---|
+| `/browse/ABC-42`, with anything after it, and `/projects/ABC/issues/ABC-42` | Ticket ABC-42, also by an earlier key: a ticket moved from OLD-5 to NEW-9 opens by both, and the address then shows NEW-9 |
+| `/browse/ABC` | The track's summary |
+| `/issues/?filter=10010`, `/secure/IssueNavigator.jspa?requestId=10010` | The saved search the import made of filter 10010 |
+| `/issues/?jql=...` | The search page with that query |
+| `/secure/RapidBoard.jspa?rapidView=12` | The board the import made of board 12 |
+| `/secure/Dashboard.jspa?selectPageId=10100` | The dashboard the import made of it |
+
+Filters, boards and dashboards are found through the import's external ids, once the person has
+signed in and only when they may see the result; otherwise the page says that nothing imported
+matches the link. When you imported several instances, the latest import of that id wins.
 
 ## Jira Cloud sites
 
@@ -365,7 +409,7 @@ statuses in them, and a sprint its state, dates, goal and issues; other board se
 new board's defaults.
 
 **Not imported yet:** links between issues, attachments, watchers and votes, filters and
-dashboards, issue type and permission schemes (tickets of a type the track does not offer keep
+dashboards (the Data Center backup brings them), issue type and permission schemes (tickets of a type the track does not offer keep
 it and warn `type_not_offered`), comment visibility (warned), and changes since the last run
 only (delta runs, planned).
 

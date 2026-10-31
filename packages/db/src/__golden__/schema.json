@@ -1,0 +1,3001 @@
+{
+  "access_grant": {
+    "columns": [
+      "id integer not null default nextval('access_grant_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "policy_id integer not null",
+      "permission text not null",
+      "grantee text not null",
+      "role_id integer",
+      "group_id integer",
+      "user_id integer",
+      "field_key text"
+    ],
+    "indexes": [
+      "CREATE INDEX access_grant_permission_idx ON public.access_grant USING btree (permission, grantee)",
+      "CREATE UNIQUE INDEX access_grant_pkey ON public.access_grant USING btree (id)",
+      "CREATE UNIQUE INDEX access_grant_unique_idx ON public.access_grant USING btree (policy_id, permission, grantee, COALESCE(role_id, 0), COALESCE(group_id, 0), COALESCE(user_id, 0), COALESCE(field_key, ''::text))"
+    ]
+  },
+  "access_policy": {
+    "columns": [
+      "id integer not null default nextval('access_policy_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()",
+      "is_default boolean not null default false",
+      "owner_track_id integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX access_policy_default_idx ON public.access_policy USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX access_policy_owner_track_idx ON public.access_policy USING btree (owner_track_id) WHERE (owner_track_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX access_policy_pkey ON public.access_policy USING btree (id)",
+      "CREATE UNIQUE INDEX access_policy_workspace_name_idx ON public.access_policy USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "ai_call": {
+    "columns": [
+      "id bigint not null default nextval('ai_call_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "occurred_at timestamp with time zone not null default now()",
+      "user_id integer",
+      "track_id integer",
+      "run_id uuid",
+      "feature text not null",
+      "provider text not null",
+      "model text not null",
+      "served_model text not null",
+      "mode text not null",
+      "outcome text not null",
+      "error_kind text",
+      "limit_id integer",
+      "input_tokens integer not null default 0",
+      "output_tokens integer not null default 0",
+      "cache_read_tokens integer not null default 0",
+      "cache_write_tokens integer not null default 0",
+      "cost_nanos bigint not null default 0",
+      "priced boolean not null",
+      "latency_ms integer not null default 0",
+      "retries smallint not null default 0",
+      "fell_back boolean not null default false",
+      "content jsonb",
+      "content_expires_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX ai_call_content_idx ON public.ai_call USING btree (content_expires_at) WHERE (content IS NOT NULL)",
+      "CREATE UNIQUE INDEX ai_call_pkey ON public.ai_call USING btree (id)",
+      "CREATE INDEX ai_call_run_idx ON public.ai_call USING btree (run_id) WHERE (run_id IS NOT NULL)",
+      "CREATE INDEX ai_call_time_idx ON public.ai_call USING btree (workspace_id, occurred_at DESC, id DESC)",
+      "CREATE INDEX ai_call_user_idx ON public.ai_call USING btree (workspace_id, user_id, occurred_at DESC)"
+    ]
+  },
+  "ai_credential": {
+    "columns": [
+      "workspace_id integer not null",
+      "slot text not null",
+      "kek_id text not null",
+      "wrapped_key text not null",
+      "ciphertext text not null",
+      "last4 text not null",
+      "source text not null",
+      "updated_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_credential_pkey ON public.ai_credential USING btree (workspace_id, slot)"
+    ]
+  },
+  "ai_limit_alert": {
+    "columns": [
+      "workspace_id integer not null",
+      "limit_id integer not null",
+      "period_start date not null",
+      "user_id integer not null default 0",
+      "percent smallint not null",
+      "used bigint not null",
+      "raised_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_limit_alert_pkey ON public.ai_limit_alert USING btree (limit_id, period_start, user_id, percent)"
+    ]
+  },
+  "ai_notice_ack": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "acknowledged_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_notice_ack_pkey ON public.ai_notice_ack USING btree (workspace_id, user_id)"
+    ]
+  },
+  "ai_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "content_days integer not null default 0",
+      "redact_patterns ARRAY not null default '{card-number,iban,us-ssn}'::text[]",
+      "redact_terms ARRAY not null default '{}'::text[]",
+      "redacted_fields ARRAY not null default '{}'::text[]",
+      "updated_by integer",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_policy_pkey ON public.ai_policy USING btree (workspace_id)"
+    ]
+  },
+  "ai_price": {
+    "columns": [
+      "workspace_id integer not null",
+      "provider text not null",
+      "model text not null",
+      "input_nanos bigint not null",
+      "output_nanos bigint not null",
+      "cache_read_nanos bigint not null",
+      "cache_write_nanos bigint not null",
+      "long_above_tokens integer",
+      "long_input_nanos bigint",
+      "long_output_nanos bigint",
+      "updated_by integer",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_price_pkey ON public.ai_price USING btree (workspace_id, provider, model)"
+    ]
+  },
+  "ai_setting": {
+    "columns": [
+      "workspace_id integer not null",
+      "value jsonb not null default '{}'::jsonb",
+      "version integer not null default 1",
+      "environment_imported_at timestamp with time zone",
+      "updated_by integer",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_setting_pkey ON public.ai_setting USING btree (workspace_id)"
+    ]
+  },
+  "ai_spend_counter": {
+    "columns": [
+      "workspace_id integer not null",
+      "period text not null",
+      "period_start date not null",
+      "key text not null",
+      "tokens bigint not null default 0",
+      "cost_nanos bigint not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_spend_counter_pkey ON public.ai_spend_counter USING btree (workspace_id, period, period_start, key)"
+    ]
+  },
+  "ai_spend_limit": {
+    "columns": [
+      "id integer not null default nextval('ai_spend_limit_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "scope text not null",
+      "feature text",
+      "user_id integer",
+      "period text not null",
+      "metric text not null",
+      "amount bigint not null",
+      "alert_percents ARRAY not null default '{80,100}'::smallint[]",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_spend_limit_pkey ON public.ai_spend_limit USING btree (id)",
+      "CREATE INDEX ai_spend_limit_workspace_idx ON public.ai_spend_limit USING btree (workspace_id)"
+    ]
+  },
+  "ai_usage_day": {
+    "columns": [
+      "workspace_id integer not null",
+      "day date not null",
+      "feature text not null",
+      "user_id integer not null",
+      "provider text not null",
+      "model text not null",
+      "calls integer not null default 0",
+      "limited integer not null default 0",
+      "failed integer not null default 0",
+      "unpriced integer not null default 0",
+      "input_tokens bigint not null default 0",
+      "output_tokens bigint not null default 0",
+      "cache_read_tokens bigint not null default 0",
+      "cache_write_tokens bigint not null default 0",
+      "cost_nanos bigint not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ai_usage_day_pkey ON public.ai_usage_day USING btree (workspace_id, day, feature, user_id, provider, model)"
+    ]
+  },
+  "api_token": {
+    "columns": [
+      "id integer not null default nextval('api_token_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "name text not null",
+      "token_hash text not null",
+      "scopes ARRAY not null",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "last_used_at timestamp with time zone",
+      "last_used_ip text",
+      "revoked_at timestamp with time zone",
+      "revoked_by integer",
+      "replaced_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX api_token_live_expiry_idx ON public.api_token USING btree (workspace_id, expires_at) WHERE (revoked_at IS NULL)",
+      "CREATE UNIQUE INDEX api_token_pkey ON public.api_token USING btree (id)",
+      "CREATE UNIQUE INDEX api_token_token_hash_key ON public.api_token USING btree (token_hash)",
+      "CREATE INDEX api_token_user_idx ON public.api_token USING btree (user_id)",
+      "CREATE INDEX api_token_workspace_created_idx ON public.api_token USING btree (workspace_id, created_at, id)"
+    ]
+  },
+  "api_usage": {
+    "columns": [
+      "workspace_id integer not null",
+      "client_kind text not null",
+      "client text not null",
+      "minute timestamp with time zone not null",
+      "requests integer not null default 0",
+      "errors integer not null default 0",
+      "throttled integer not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX api_usage_pkey ON public.api_usage USING btree (workspace_id, minute, client_kind, client)"
+    ]
+  },
+  "app_user": {
+    "columns": [
+      "id integer not null default nextval('app_user_id_seq'::regclass)",
+      "email text not null",
+      "name text not null",
+      "password_hash text",
+      "is_site_admin boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "deactivated_at timestamp with time zone",
+      "workspace_id integer not null",
+      "time_zone text",
+      "locale text",
+      "password_changed_at timestamp with time zone",
+      "last_sign_in_at timestamp with time zone",
+      "updated_at timestamp with time zone not null default now()",
+      "kind text not null default 'person'::text",
+      "description text not null default ''::text",
+      "break_glass boolean not null default false",
+      "appearance text not null default 'system'::text"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)",
+      "CREATE UNIQUE INDEX app_user_workspace_email_idx ON public.app_user USING btree (workspace_id, lower(email))"
+    ]
+  },
+  "area": {
+    "columns": [
+      "id integer not null default nextval('area_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "owner_id integer",
+      "default_assignee text not null default 'unassigned'::text",
+      "archived_at timestamp with time zone",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "owner_team_id integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX area_name_idx ON public.area USING btree (track_id, lower(name))",
+      "CREATE INDEX area_owner_idx ON public.area USING btree (owner_id) WHERE (owner_id IS NOT NULL)",
+      "CREATE INDEX area_owner_team_idx ON public.area USING btree (owner_team_id) WHERE (owner_team_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX area_pkey ON public.area USING btree (id)"
+    ]
+  },
+  "attachment": {
+    "columns": [
+      "id integer not null default nextval('attachment_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "name text not null",
+      "declared_type text not null",
+      "sniffed_type text",
+      "size bigint not null",
+      "sha256 text not null",
+      "storage text not null",
+      "storage_key text not null",
+      "scan_state text not null default 'pending'::text",
+      "scan_detail text",
+      "scanned_at timestamp with time zone",
+      "thumbnail_state text not null default 'none'::text",
+      "thumbnail_key text",
+      "width integer",
+      "height integer",
+      "author_id integer",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX attachment_pending_idx ON public.attachment USING btree (id) WHERE ((scan_state = 'pending'::text) OR (thumbnail_state = 'pending'::text))",
+      "CREATE UNIQUE INDEX attachment_pkey ON public.attachment USING btree (id)",
+      "CREATE UNIQUE INDEX attachment_storage_key_idx ON public.attachment USING btree (storage, storage_key)",
+      "CREATE UNIQUE INDEX attachment_thumbnail_key_idx ON public.attachment USING btree (storage, thumbnail_key)",
+      "CREATE INDEX attachment_ticket_idx ON public.attachment USING btree (ticket_id, id)"
+    ]
+  },
+  "attachment_setting": {
+    "columns": [
+      "workspace_id integer not null",
+      "max_file_size bigint not null default 1073741824",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX attachment_setting_pkey ON public.attachment_setting USING btree (workspace_id)"
+    ]
+  },
+  "audit_chain": {
+    "columns": [
+      "workspace_id integer not null",
+      "head_seq bigint not null default 0",
+      "head_hash text not null default repeat('0'::text, 64)",
+      "head_recorded_at timestamp with time zone",
+      "checkpoint_seq bigint not null default 0",
+      "checkpoint_hash text not null default repeat('0'::text, 64)",
+      "checkpoint_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX audit_chain_pkey ON public.audit_chain USING btree (workspace_id)"
+    ]
+  },
+  "audit_event": {
+    "columns": [
+      "workspace_id integer not null",
+      "seq bigint not null",
+      "recorded_at timestamp with time zone not null",
+      "occurred_at timestamp with time zone not null",
+      "actor_id integer",
+      "action text not null",
+      "subject_type text",
+      "subject_id text",
+      "details jsonb not null default '{}'::jsonb",
+      "ip text",
+      "source_event_id bigint",
+      "prev_hash text not null",
+      "hash text not null"
+    ],
+    "indexes": [
+      "CREATE INDEX audit_event_action_idx ON ONLY public.audit_event USING btree (workspace_id, action text_pattern_ops, seq)",
+      "CREATE INDEX audit_event_actor_idx ON ONLY public.audit_event USING btree (workspace_id, actor_id, seq)",
+      "CREATE UNIQUE INDEX audit_event_pkey ON ONLY public.audit_event USING btree (workspace_id, seq, recorded_at)",
+      "CREATE INDEX audit_event_source_idx ON ONLY public.audit_event USING btree (workspace_id, source_event_id) WHERE (source_event_id IS NOT NULL)",
+      "CREATE INDEX audit_event_subject_idx ON ONLY public.audit_event USING btree (workspace_id, subject_type, subject_id, seq)"
+    ]
+  },
+  "audit_syslog": {
+    "columns": [
+      "workspace_id integer not null",
+      "enabled boolean not null default false",
+      "host text not null",
+      "port integer not null",
+      "transport text not null",
+      "last_seq bigint not null default 0",
+      "last_sent_at timestamp with time zone",
+      "last_error text",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX audit_syslog_pkey ON public.audit_syslog USING btree (workspace_id)"
+    ]
+  },
+  "authz_epoch": {
+    "columns": [
+      "workspace_id integer not null",
+      "epoch bigint not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX authz_epoch_pkey ON public.authz_epoch USING btree (workspace_id)"
+    ]
+  },
+  "backup_run": {
+    "columns": [
+      "id bigint not null default nextval('backup_run_id_seq'::regclass)",
+      "kind text not null",
+      "state text not null default 'running'::text",
+      "started_at timestamp with time zone not null default now()",
+      "heartbeat_at timestamp with time zone not null default now()",
+      "finished_at timestamp with time zone",
+      "path text",
+      "size_bytes bigint",
+      "details jsonb not null default '{}'::jsonb",
+      "error text",
+      "pruned_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX backup_run_kind_idx ON public.backup_run USING btree (kind, started_at DESC)",
+      "CREATE UNIQUE INDEX backup_run_pkey ON public.backup_run USING btree (id)",
+      "CREATE UNIQUE INDEX backup_run_running_idx ON public.backup_run USING btree (((kind = 'drill'::text))) WHERE (state = 'running'::text)"
+    ]
+  },
+  "board": {
+    "columns": [
+      "id integer not null default nextval('board_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "kind text not null",
+      "location_track_id integer",
+      "location_user_id integer",
+      "filter_query text",
+      "sub_filter_query text",
+      "columns jsonb not null",
+      "swimlanes jsonb not null",
+      "board_filters jsonb not null default '[]'::jsonb",
+      "board_filter_display text not null default 'buttons'::text",
+      "card_rules jsonb not null",
+      "version integer not null default 1",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "saved_search_id integer",
+      "sprint_settings jsonb not null default '{\"estimation\": {\"statistic\": \"originalEstimate\"}, \"timeTracking\": \"remainingEstimate\", \"parallelSprints\": false}'::jsonb",
+      "team_id integer",
+      "manages_workflow boolean not null default false"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX board_manages_workflow_idx ON public.board USING btree (location_track_id) WHERE manages_workflow",
+      "CREATE UNIQUE INDEX board_pkey ON public.board USING btree (id)",
+      "CREATE INDEX board_saved_search_idx ON public.board USING btree (saved_search_id) WHERE (saved_search_id IS NOT NULL)",
+      "CREATE INDEX board_team_idx ON public.board USING btree (team_id) WHERE (team_id IS NOT NULL)",
+      "CREATE INDEX board_track_idx ON public.board USING btree (location_track_id) WHERE (location_track_id IS NOT NULL)",
+      "CREATE INDEX board_user_idx ON public.board USING btree (location_user_id) WHERE (location_user_id IS NOT NULL)",
+      "CREATE INDEX board_workspace_name_idx ON public.board USING btree (workspace_id, lower(name), id)"
+    ]
+  },
+  "board_admin": {
+    "columns": [
+      "workspace_id integer not null",
+      "board_id integer not null",
+      "user_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX board_admin_pkey ON public.board_admin USING btree (board_id, user_id)",
+      "CREATE INDEX board_admin_user_idx ON public.board_admin USING btree (user_id)"
+    ]
+  },
+  "board_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "board_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX board_property_key_idx ON public.board_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX board_property_pkey ON public.board_property USING btree (board_id, key)"
+    ]
+  },
+  "bulk_item": {
+    "columns": [
+      "operation_id bigint not null",
+      "workspace_id integer not null",
+      "position integer not null",
+      "ref text not null",
+      "ticket_id integer",
+      "outcome text",
+      "status_code smallint",
+      "error jsonb",
+      "finished_at timestamp with time zone",
+      "result_ticket_id integer",
+      "result jsonb"
+    ],
+    "indexes": [
+      "CREATE INDEX bulk_item_failed_idx ON public.bulk_item USING btree (operation_id, \"position\") WHERE (outcome = 'failed'::text)",
+      "CREATE INDEX bulk_item_pending_idx ON public.bulk_item USING btree (operation_id, \"position\") WHERE (outcome IS NULL)",
+      "CREATE UNIQUE INDEX bulk_item_pkey ON public.bulk_item USING btree (operation_id, \"position\")",
+      "CREATE INDEX bulk_item_ticket_idx ON public.bulk_item USING btree (operation_id, ticket_id)"
+    ]
+  },
+  "bulk_operation": {
+    "columns": [
+      "id bigint not null default nextval('bulk_operation_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "action text not null",
+      "params jsonb not null default '{}'::jsonb",
+      "status text not null default 'queued'::text",
+      "cancel_requested boolean not null default false",
+      "total integer not null",
+      "succeeded integer not null default 0",
+      "failed integer not null default 0",
+      "skipped integer not null default 0",
+      "created_at timestamp with time zone not null default now()",
+      "started_at timestamp with time zone",
+      "finished_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX bulk_operation_pkey ON public.bulk_operation USING btree (id)",
+      "CREATE INDEX bulk_operation_user_idx ON public.bulk_operation USING btree (workspace_id, user_id, created_at DESC)"
+    ]
+  },
+  "change_log": {
+    "columns": [
+      "id bigint not null default nextval('change_log_id_seq'::regclass)",
+      "seq bigint",
+      "workspace_id integer not null",
+      "track_id integer",
+      "entity text not null",
+      "entity_id integer not null",
+      "op text not null",
+      "data jsonb",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX change_log_created_idx ON public.change_log USING btree (created_at)",
+      "CREATE INDEX change_log_group_idx ON public.change_log USING btree (workspace_id, track_id, seq) WHERE (seq IS NOT NULL)",
+      "CREATE UNIQUE INDEX change_log_pkey ON public.change_log USING btree (id)",
+      "CREATE INDEX change_log_position_idx ON public.change_log USING btree (workspace_id, seq) WHERE (seq IS NOT NULL)",
+      "CREATE UNIQUE INDEX change_log_seq_key ON public.change_log USING btree (seq)"
+    ]
+  },
+  "change_log_floor": {
+    "columns": [
+      "workspace_id integer not null",
+      "floor_seq bigint not null default 0",
+      "retention_days integer not null default 30"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX change_log_floor_pkey ON public.change_log_floor USING btree (workspace_id)"
+    ]
+  },
+  "close_reason": {
+    "columns": [
+      "id integer not null default nextval('close_reason_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "sort_order integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX close_reason_name_idx ON public.close_reason USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX close_reason_order_key ON public.close_reason USING btree (workspace_id, sort_order)",
+      "CREATE UNIQUE INDEX close_reason_pkey ON public.close_reason USING btree (id)"
+    ]
+  },
+  "dashboard": {
+    "columns": [
+      "id integer not null default nextval('dashboard_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "owner_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "layout text not null default 'two'::text",
+      "widgets jsonb not null default '[]'::jsonb",
+      "is_default boolean not null default false",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX dashboard_default_idx ON public.dashboard USING btree (workspace_id) WHERE is_default",
+      "CREATE INDEX dashboard_owner_idx ON public.dashboard USING btree (workspace_id, owner_id)",
+      "CREATE UNIQUE INDEX dashboard_pkey ON public.dashboard USING btree (id)"
+    ]
+  },
+  "dashboard_share": {
+    "columns": [
+      "id integer not null default nextval('dashboard_share_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "dashboard_id integer not null",
+      "scope text not null",
+      "user_id integer",
+      "group_id integer",
+      "track_id integer",
+      "role_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX dashboard_share_dashboard_idx ON public.dashboard_share USING btree (dashboard_id)",
+      "CREATE INDEX dashboard_share_group_idx ON public.dashboard_share USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX dashboard_share_pkey ON public.dashboard_share USING btree (id)",
+      "CREATE INDEX dashboard_share_track_idx ON public.dashboard_share USING btree (track_id) WHERE (track_id IS NOT NULL)",
+      "CREATE INDEX dashboard_share_user_idx ON public.dashboard_share USING btree (user_id) WHERE (user_id IS NOT NULL)"
+    ]
+  },
+  "domain_event": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "type text not null",
+      "version smallint not null default 1",
+      "actor_id integer",
+      "subject_type text not null",
+      "subject_id text not null",
+      "payload jsonb not null default '{}'::jsonb",
+      "occurred_at timestamp with time zone not null default clock_timestamp()",
+      "published_at timestamp with time zone",
+      "ip text"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX domain_event_pkey ON public.domain_event USING btree (id)",
+      "CREATE INDEX domain_event_subject_idx ON public.domain_event USING btree (workspace_id, subject_type, subject_id, id)",
+      "CREATE INDEX domain_event_unpublished_idx ON public.domain_event USING btree (id) WHERE (published_at IS NULL)"
+    ]
+  },
+  "email_delivery": {
+    "columns": [
+      "id bigint not null default nextval('email_delivery_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "kind text not null",
+      "ticket_id integer",
+      "notification_count integer not null",
+      "subject text not null",
+      "message_id text",
+      "error text",
+      "sent_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX email_delivery_pkey ON public.email_delivery USING btree (id)",
+      "CREATE INDEX email_delivery_user_idx ON public.email_delivery USING btree (user_id, sent_at DESC)"
+    ]
+  },
+  "email_setting": {
+    "columns": [
+      "workspace_id integer not null",
+      "batch_window_seconds integer not null default 120",
+      "digest_hour smallint not null default 8",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX email_setting_pkey ON public.email_setting USING btree (workspace_id)"
+    ]
+  },
+  "email_unsubscribe": {
+    "columns": [
+      "token_hash bytea not null",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "event text",
+      "created_at timestamp with time zone not null default now()",
+      "used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX email_unsubscribe_created_idx ON public.email_unsubscribe USING btree (created_at)",
+      "CREATE UNIQUE INDEX email_unsubscribe_pkey ON public.email_unsubscribe USING btree (token_hash)"
+    ]
+  },
+  "field": {
+    "columns": [
+      "id integer not null default nextval('field_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer",
+      "name text not null",
+      "description text not null default ''::text",
+      "type text not null",
+      "multiple boolean not null default false",
+      "config jsonb not null default '{}'::jsonb",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX field_name_idx ON public.field USING btree (workspace_id, COALESCE(track_id, 0), lower(name))",
+      "CREATE UNIQUE INDEX field_pkey ON public.field USING btree (id)",
+      "CREATE INDEX field_track_idx ON public.field USING btree (track_id) WHERE (track_id IS NOT NULL)"
+    ]
+  },
+  "field_context": {
+    "columns": [
+      "id integer not null default nextval('field_context_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "field_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "default_value jsonb",
+      "config jsonb not null default '{}'::jsonb",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX field_context_name_idx ON public.field_context USING btree (field_id, lower(name))",
+      "CREATE UNIQUE INDEX field_context_pkey ON public.field_context USING btree (id)"
+    ]
+  },
+  "field_context_scope": {
+    "columns": [
+      "workspace_id integer not null",
+      "field_id integer not null",
+      "context_id integer not null",
+      "track_id integer",
+      "ticket_type_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX field_context_scope_context_idx ON public.field_context_scope USING btree (context_id)",
+      "CREATE UNIQUE INDEX field_context_scope_idx ON public.field_context_scope USING btree (field_id, COALESCE(track_id, 0), COALESCE(ticket_type_id, 0))",
+      "CREATE INDEX field_context_scope_track_idx ON public.field_context_scope USING btree (track_id)",
+      "CREATE INDEX field_context_scope_type_idx ON public.field_context_scope USING btree (ticket_type_id)"
+    ]
+  },
+  "field_epoch": {
+    "columns": [
+      "workspace_id integer not null",
+      "epoch bigint not null default 1"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX field_epoch_pkey ON public.field_epoch USING btree (workspace_id)"
+    ]
+  },
+  "field_label": {
+    "columns": [
+      "workspace_id integer not null",
+      "field_id integer not null",
+      "name text not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX field_label_pkey ON public.field_label USING btree (field_id, name)"
+    ]
+  },
+  "field_option": {
+    "columns": [
+      "id integer not null default nextval('field_option_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "field_id integer not null",
+      "context_id integer not null",
+      "parent_id integer",
+      "value text not null",
+      "sort_order integer not null",
+      "disabled boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX field_option_field_idx ON public.field_option USING btree (field_id)",
+      "CREATE INDEX field_option_parent_idx ON public.field_option USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX field_option_pkey ON public.field_option USING btree (id)",
+      "CREATE UNIQUE INDEX field_option_value_idx ON public.field_option USING btree (context_id, COALESCE(parent_id, 0), lower(value))"
+    ]
+  },
+  "field_rule": {
+    "columns": [
+      "workspace_id integer not null",
+      "rule_set_id integer not null",
+      "ticket_type_id integer",
+      "field text not null",
+      "required boolean not null default false",
+      "hidden boolean not null default false",
+      "description text",
+      "editable_by jsonb"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX field_rule_idx ON public.field_rule USING btree (rule_set_id, COALESCE(ticket_type_id, 0), field)"
+    ]
+  },
+  "field_rule_set": {
+    "columns": [
+      "id integer not null default nextval('field_rule_set_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer",
+      "name text not null",
+      "description text not null default ''::text",
+      "is_default boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX field_rule_set_default_idx ON public.field_rule_set USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX field_rule_set_name_idx ON public.field_rule_set USING btree (workspace_id, COALESCE(track_id, 0), lower(name))",
+      "CREATE UNIQUE INDEX field_rule_set_pkey ON public.field_rule_set USING btree (id)"
+    ]
+  },
+  "frontend_origin": {
+    "columns": [
+      "id integer not null default nextval('frontend_origin_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "origin text not null",
+      "label text not null default ''::text",
+      "redirect_uris ARRAY not null default '{}'::text[]",
+      "websocket boolean not null default true",
+      "last_version text",
+      "last_seen_at timestamp with time zone",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX frontend_origin_idx ON public.frontend_origin USING btree (workspace_id, origin)",
+      "CREATE UNIQUE INDEX frontend_origin_pkey ON public.frontend_origin USING btree (id)"
+    ]
+  },
+  "global_grant": {
+    "columns": [
+      "id integer not null default nextval('global_grant_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "permission text not null",
+      "grantee text not null",
+      "group_id integer",
+      "user_id integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX global_grant_pkey ON public.global_grant USING btree (id)",
+      "CREATE UNIQUE INDEX global_grant_unique_idx ON public.global_grant USING btree (workspace_id, permission, grantee, COALESCE(group_id, 0), COALESCE(user_id, 0))"
+    ]
+  },
+  "group_member": {
+    "columns": [
+      "workspace_id integer not null",
+      "group_id integer not null",
+      "user_id integer not null",
+      "added_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX group_member_pkey ON public.group_member USING btree (group_id, user_id)",
+      "CREATE INDEX group_member_user_idx ON public.group_member USING btree (user_id)"
+    ]
+  },
+  "group_nesting": {
+    "columns": [
+      "workspace_id integer not null",
+      "parent_id integer not null",
+      "child_id integer not null"
+    ],
+    "indexes": [
+      "CREATE INDEX group_nesting_child_idx ON public.group_nesting USING btree (child_id)",
+      "CREATE UNIQUE INDEX group_nesting_pkey ON public.group_nesting USING btree (parent_id, child_id)"
+    ]
+  },
+  "guardrail_limit": {
+    "columns": [
+      "workspace_id integer not null",
+      "name text not null",
+      "value integer not null",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX guardrail_limit_pkey ON public.guardrail_limit USING btree (workspace_id, name)"
+    ]
+  },
+  "hierarchy_level": {
+    "columns": [
+      "id integer not null default nextval('hierarchy_level_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "kind text not null",
+      "rank integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX hierarchy_level_builtin_idx ON public.hierarchy_level USING btree (workspace_id, kind) WHERE (kind <> 'custom'::text)",
+      "CREATE UNIQUE INDEX hierarchy_level_name_idx ON public.hierarchy_level USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX hierarchy_level_pkey ON public.hierarchy_level USING btree (id)",
+      "CREATE UNIQUE INDEX hierarchy_level_rank_key ON public.hierarchy_level USING btree (workspace_id, rank)"
+    ]
+  },
+  "identity_provider": {
+    "columns": [
+      "id integer not null default nextval('identity_provider_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "kind text not null default 'oidc'::text",
+      "issuer text not null",
+      "client_id text",
+      "client_secret_sealed text",
+      "scopes text not null default 'openid email profile'::text",
+      "group_claim text",
+      "domains ARRAY not null default '{}'::text[]",
+      "enforce_sso boolean not null default false",
+      "jit boolean not null default true",
+      "enabled boolean not null default true",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "saml_sso_url text",
+      "saml_certificates ARRAY not null default '{}'::text[]",
+      "saml_sp_entity_id text",
+      "saml_email_attribute text",
+      "saml_idp_initiated boolean not null default false"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX identity_provider_pkey ON public.identity_provider USING btree (id)",
+      "CREATE UNIQUE INDEX identity_provider_workspace_name_idx ON public.identity_provider USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "identity_provider_group": {
+    "columns": [
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "claim_value text not null",
+      "group_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX identity_provider_group_pkey ON public.identity_provider_group USING btree (provider_id, claim_value, group_id)"
+    ]
+  },
+  "import_external_id": {
+    "columns": [
+      "workspace_id integer not null",
+      "import_source text not null",
+      "source_system text not null",
+      "entity_kind text not null",
+      "source_id text not null",
+      "target_id bigint not null",
+      "checksum text not null",
+      "first_run_id bigint",
+      "last_run_id bigint",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX import_external_id_pkey ON public.import_external_id USING btree (workspace_id, import_source, source_system, entity_kind, source_id)",
+      "CREATE INDEX import_external_id_target_idx ON public.import_external_id USING btree (workspace_id, entity_kind, target_id)"
+    ]
+  },
+  "import_record": {
+    "columns": [
+      "run_id bigint not null",
+      "workspace_id integer not null",
+      "entity_kind text not null",
+      "source_id text not null",
+      "outcome text not null",
+      "target_id bigint",
+      "checksum text",
+      "sampled boolean not null default false",
+      "error jsonb",
+      "label text"
+    ],
+    "indexes": [
+      "CREATE INDEX import_record_failed_idx ON public.import_record USING btree (run_id, entity_kind) WHERE (outcome = 'failed'::text)",
+      "CREATE UNIQUE INDEX import_record_pkey ON public.import_record USING btree (run_id, entity_kind, source_id)",
+      "CREATE INDEX import_record_sampled_idx ON public.import_record USING btree (run_id, entity_kind) WHERE sampled"
+    ]
+  },
+  "import_run": {
+    "columns": [
+      "id bigint not null default nextval('import_run_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer",
+      "import_source text not null",
+      "source_system text not null",
+      "name text not null default ''::text",
+      "source jsonb not null",
+      "dry_run boolean not null default false",
+      "status text not null default 'queued'::text",
+      "cancel_requested boolean not null default false",
+      "checkpoint jsonb not null default '{}'::jsonb",
+      "tallies jsonb not null default '{}'::jsonb",
+      "warnings jsonb not null default '{}'::jsonb",
+      "unsupported jsonb not null default '{}'::jsonb",
+      "batches integer not null default 0",
+      "report jsonb",
+      "last_error text",
+      "created_at timestamp with time zone not null default now()",
+      "started_at timestamp with time zone",
+      "updated_at timestamp with time zone not null default now()",
+      "finished_at timestamp with time zone",
+      "fetch_state jsonb not null default '{}'::jsonb"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX import_run_pkey ON public.import_run USING btree (id)",
+      "CREATE INDEX import_run_workspace_idx ON public.import_run USING btree (workspace_id, created_at DESC)"
+    ]
+  },
+  "import_staged": {
+    "columns": [
+      "run_id bigint not null",
+      "workspace_id integer not null",
+      "kind text not null",
+      "source_id text not null",
+      "depth integer not null default 0",
+      "ordinal bigint not null",
+      "label text",
+      "data jsonb not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX import_staged_order_idx ON public.import_staged USING btree (run_id, kind, depth, ordinal)",
+      "CREATE UNIQUE INDEX import_staged_pkey ON public.import_staged USING btree (run_id, kind, source_id)"
+    ]
+  },
+  "inbox_state": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "version bigint not null default 0",
+      "changed_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX inbox_state_pkey ON public.inbox_state USING btree (user_id)"
+    ]
+  },
+  "instance_setting": {
+    "columns": [
+      "key text not null",
+      "value jsonb not null",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX instance_setting_pkey ON public.instance_setting USING btree (key)"
+    ]
+  },
+  "ip_allowlist": {
+    "columns": [
+      "workspace_id integer not null",
+      "enabled boolean not null default false",
+      "exempt_group_ids ARRAY not null default '{}'::integer[]",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ip_allowlist_pkey ON public.ip_allowlist USING btree (workspace_id)"
+    ]
+  },
+  "ip_allowlist_entry": {
+    "columns": [
+      "id integer not null default nextval('ip_allowlist_entry_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "range inet not null",
+      "note text not null default ''::text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ip_allowlist_entry_pkey ON public.ip_allowlist_entry USING btree (id)",
+      "CREATE UNIQUE INDEX ip_allowlist_entry_workspace_id_range_key ON public.ip_allowlist_entry USING btree (workspace_id, range)"
+    ]
+  },
+  "job": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "task text not null",
+      "payload jsonb not null default '{}'::jsonb",
+      "key text",
+      "run_at timestamp with time zone not null default now()",
+      "attempts integer not null default 0",
+      "max_attempts integer not null default 25",
+      "locked_at timestamp with time zone",
+      "locked_by text",
+      "last_error text",
+      "created_at timestamp with time zone not null default clock_timestamp()",
+      "started_at timestamp with time zone",
+      "done_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX job_key_key ON public.job USING btree (key)",
+      "CREATE INDEX job_locked_idx ON public.job USING btree (locked_at) WHERE ((locked_at IS NOT NULL) AND (done_at IS NULL))",
+      "CREATE UNIQUE INDEX job_pkey ON public.job USING btree (id)",
+      "CREATE INDEX job_ready_idx ON public.job USING btree (run_at, id) WHERE ((done_at IS NULL) AND (locked_at IS NULL))"
+    ]
+  },
+  "label": {
+    "columns": [
+      "workspace_id integer not null",
+      "name text not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX label_pkey ON public.label USING btree (workspace_id, name)",
+      "CREATE INDEX label_prefix_idx ON public.label USING btree (workspace_id, lower(name) text_pattern_ops)"
+    ]
+  },
+  "layout": {
+    "columns": [
+      "id integer not null default nextval('layout_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "layout_set_id integer not null",
+      "ticket_type_id integer",
+      "operation text not null",
+      "definition jsonb not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX layout_idx ON public.layout USING btree (layout_set_id, COALESCE(ticket_type_id, 0), operation)",
+      "CREATE UNIQUE INDEX layout_pkey ON public.layout USING btree (id)"
+    ]
+  },
+  "layout_set": {
+    "columns": [
+      "id integer not null default nextval('layout_set_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer",
+      "name text not null",
+      "description text not null default ''::text",
+      "is_default boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX layout_set_default_idx ON public.layout_set USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX layout_set_name_idx ON public.layout_set USING btree (workspace_id, COALESCE(track_id, 0), lower(name))",
+      "CREATE UNIQUE INDEX layout_set_pkey ON public.layout_set USING btree (id)"
+    ]
+  },
+  "ldap_directory": {
+    "columns": [
+      "id integer not null default nextval('ldap_directory_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "kind text not null",
+      "url text not null",
+      "start_tls boolean not null default false",
+      "ca_certificates ARRAY not null default '{}'::text[]",
+      "bind_dn text not null",
+      "bind_password_sealed text not null",
+      "base_dn text not null",
+      "user_base_dn text",
+      "user_filter text not null",
+      "group_base_dn text",
+      "group_filter text not null",
+      "attribute_map jsonb not null default '{}'::jsonb",
+      "mode text not null default 'read_only'::text",
+      "position integer not null",
+      "enabled boolean not null default true",
+      "sync_interval_minutes integer not null default 60",
+      "full_sync_hours integer not null default 24",
+      "next_sync_at timestamp with time zone",
+      "last_full_sync_at timestamp with time zone",
+      "sync_cursor jsonb",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX ldap_directory_next_sync_idx ON public.ldap_directory USING btree (next_sync_at) WHERE enabled",
+      "CREATE UNIQUE INDEX ldap_directory_pkey ON public.ldap_directory USING btree (id)",
+      "CREATE UNIQUE INDEX ldap_directory_workspace_name_idx ON public.ldap_directory USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "ldap_group": {
+    "columns": [
+      "group_id integer not null",
+      "workspace_id integer not null",
+      "directory_id integer not null",
+      "external_id text not null",
+      "dn text not null",
+      "synced_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX ldap_group_directory_dn_idx ON public.ldap_group USING btree (directory_id, lower(dn))",
+      "CREATE UNIQUE INDEX ldap_group_directory_id_external_id_key ON public.ldap_group USING btree (directory_id, external_id)",
+      "CREATE UNIQUE INDEX ldap_group_pkey ON public.ldap_group USING btree (group_id)"
+    ]
+  },
+  "ldap_sync_run": {
+    "columns": [
+      "id integer not null default nextval('ldap_sync_run_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "directory_id integer not null",
+      "mode text not null",
+      "trigger text not null",
+      "requested_by integer",
+      "confirm_removals boolean not null default false",
+      "status text not null default 'queued'::text",
+      "worker text",
+      "created_at timestamp with time zone not null default now()",
+      "started_at timestamp with time zone",
+      "heartbeat_at timestamp with time zone",
+      "finished_at timestamp with time zone",
+      "stats jsonb not null default '{}'::jsonb",
+      "warnings jsonb not null default '[]'::jsonb",
+      "error text"
+    ],
+    "indexes": [
+      "CREATE INDEX ldap_sync_run_directory_idx ON public.ldap_sync_run USING btree (directory_id, id DESC)",
+      "CREATE UNIQUE INDEX ldap_sync_run_pkey ON public.ldap_sync_run USING btree (id)",
+      "CREATE UNIQUE INDEX ldap_sync_run_queued_idx ON public.ldap_sync_run USING btree (directory_id) WHERE (status = 'queued'::text)",
+      "CREATE UNIQUE INDEX ldap_sync_run_running_idx ON public.ldap_sync_run USING btree (directory_id) WHERE (status = 'running'::text)"
+    ]
+  },
+  "ldap_user": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "directory_id integer not null",
+      "external_id text not null",
+      "dn text not null",
+      "username text not null",
+      "disabled boolean not null default false",
+      "deactivated_by_sync boolean not null default false",
+      "removed_at timestamp with time zone",
+      "synced_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX ldap_user_directory_dn_idx ON public.ldap_user USING btree (directory_id, lower(dn))",
+      "CREATE UNIQUE INDEX ldap_user_directory_id_external_id_key ON public.ldap_user USING btree (directory_id, external_id)",
+      "CREATE UNIQUE INDEX ldap_user_pkey ON public.ldap_user USING btree (user_id)"
+    ]
+  },
+  "link_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "enabled boolean not null default true",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX link_policy_pkey ON public.link_policy USING btree (workspace_id)"
+    ]
+  },
+  "link_type": {
+    "columns": [
+      "id integer not null default nextval('link_type_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "outward text not null",
+      "inward text not null",
+      "is_copy boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX link_type_copy_idx ON public.link_type USING btree (workspace_id) WHERE is_copy",
+      "CREATE UNIQUE INDEX link_type_name_idx ON public.link_type USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX link_type_pkey ON public.link_type USING btree (id)"
+    ]
+  },
+  "mutation_receipt": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "client_id text not null",
+      "mutation_id text not null",
+      "method text not null",
+      "path text not null",
+      "status text not null",
+      "status_code smallint",
+      "body jsonb",
+      "position bigint",
+      "created_at timestamp with time zone not null default now()",
+      "finished_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX mutation_receipt_created_idx ON public.mutation_receipt USING btree (created_at)",
+      "CREATE UNIQUE INDEX mutation_receipt_pkey ON public.mutation_receipt USING btree (user_id, client_id, mutation_id)"
+    ]
+  },
+  "notification": {
+    "columns": [
+      "id bigint not null default nextval('notification_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "channel text not null",
+      "event text not null",
+      "ticket_id integer",
+      "domain_event_id bigint not null",
+      "actor_id integer",
+      "payload jsonb not null default '{}'::jsonb",
+      "created_at timestamp with time zone not null default now()",
+      "read_at timestamp with time zone",
+      "delivered_at timestamp with time zone",
+      "email_delivery_id bigint",
+      "snoozed_until timestamp with time zone",
+      "direct boolean not null default false"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX notification_event_recipient_idx ON public.notification USING btree (domain_event_id, user_id, channel)",
+      "CREATE INDEX notification_inbox_idx ON public.notification USING btree (user_id, COALESCE(snoozed_until, created_at) DESC, id DESC) WHERE (channel = 'inbox'::text)",
+      "CREATE INDEX notification_inbox_unread_idx ON public.notification USING btree (user_id) WHERE ((channel = 'inbox'::text) AND (read_at IS NULL))",
+      "CREATE UNIQUE INDEX notification_pkey ON public.notification USING btree (id)",
+      "CREATE INDEX notification_ticket_idx ON public.notification USING btree (ticket_id)",
+      "CREATE INDEX notification_undelivered_idx ON public.notification USING btree (created_at) WHERE ((channel = 'email'::text) AND (delivered_at IS NULL))",
+      "CREATE INDEX notification_user_idx ON public.notification USING btree (user_id, channel, created_at DESC)"
+    ]
+  },
+  "notification_policy": {
+    "columns": [
+      "id integer not null default nextval('notification_policy_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer",
+      "name text not null",
+      "description text not null default ''::text",
+      "is_default boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX notification_policy_default_idx ON public.notification_policy USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX notification_policy_name_idx ON public.notification_policy USING btree (workspace_id, COALESCE(track_id, 0), lower(name))",
+      "CREATE UNIQUE INDEX notification_policy_pkey ON public.notification_policy USING btree (id)"
+    ]
+  },
+  "notification_preference": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "event text not null",
+      "channel text not null",
+      "enabled boolean not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX notification_preference_pkey ON public.notification_preference USING btree (user_id, event, channel)"
+    ]
+  },
+  "notification_rule": {
+    "columns": [
+      "id integer not null default nextval('notification_rule_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "policy_id integer not null",
+      "event text not null",
+      "recipient text not null",
+      "user_id integer",
+      "group_id integer",
+      "role_id integer",
+      "field_key text"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX notification_rule_pkey ON public.notification_rule USING btree (id)",
+      "CREATE UNIQUE INDEX notification_rule_unique_idx ON public.notification_rule USING btree (policy_id, event, recipient, COALESCE(user_id, 0), COALESCE(group_id, 0), COALESCE(role_id, 0), COALESCE(field_key, ''::text))"
+    ]
+  },
+  "oauth_client": {
+    "columns": [
+      "id text not null",
+      "workspace_id integer not null",
+      "name text not null",
+      "redirect_uris ARRAY not null",
+      "client_uri text",
+      "software_id text",
+      "software_version text",
+      "registered_ip text",
+      "created_at timestamp with time zone not null default now()",
+      "last_used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX oauth_client_pkey ON public.oauth_client USING btree (id)",
+      "CREATE INDEX oauth_client_workspace_idx ON public.oauth_client USING btree (workspace_id, created_at)"
+    ]
+  },
+  "oauth_code": {
+    "columns": [
+      "code_hash text not null",
+      "workspace_id integer not null",
+      "session_id integer not null",
+      "client_id text not null",
+      "redirect_uri text not null",
+      "code_challenge text not null",
+      "expires_at timestamp with time zone not null",
+      "used_at timestamp with time zone",
+      "family_id integer",
+      "created_at timestamp with time zone not null default now()",
+      "scope text"
+    ],
+    "indexes": [
+      "CREATE INDEX oauth_code_expires_idx ON public.oauth_code USING btree (expires_at)",
+      "CREATE UNIQUE INDEX oauth_code_pkey ON public.oauth_code USING btree (code_hash)"
+    ]
+  },
+  "oauth_request": {
+    "columns": [
+      "id_hash text not null",
+      "workspace_id integer not null",
+      "client_id text not null",
+      "redirect_uri text not null",
+      "code_challenge text not null",
+      "state text",
+      "scope text not null",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX oauth_request_expires_idx ON public.oauth_request USING btree (expires_at)",
+      "CREATE UNIQUE INDEX oauth_request_pkey ON public.oauth_request USING btree (id_hash)"
+    ]
+  },
+  "oauth_token": {
+    "columns": [
+      "token_hash text not null",
+      "workspace_id integer not null",
+      "session_id integer not null",
+      "kind text not null",
+      "expires_at timestamp with time zone not null",
+      "used_at timestamp with time zone",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX oauth_token_expires_idx ON public.oauth_token USING btree (expires_at)",
+      "CREATE UNIQUE INDEX oauth_token_pkey ON public.oauth_token USING btree (token_hash)",
+      "CREATE INDEX oauth_token_session_idx ON public.oauth_token USING btree (session_id)"
+    ]
+  },
+  "oidc_login": {
+    "columns": [
+      "id integer not null default nextval('oidc_login_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "state_hash text not null",
+      "browser_hash text not null",
+      "nonce text not null",
+      "code_verifier_sealed text not null",
+      "return_to text not null default '/'::text",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX oidc_login_pkey ON public.oidc_login USING btree (id)",
+      "CREATE UNIQUE INDEX oidc_login_state_hash_key ON public.oidc_login USING btree (state_hash)"
+    ]
+  },
+  "organization_domain": {
+    "columns": [
+      "workspace_id integer not null",
+      "domain text not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX organization_domain_pkey ON public.organization_domain USING btree (workspace_id, domain)"
+    ]
+  },
+  "p_number": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value numeric not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_number_field_created_idx ON public.p_number USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_number_field_value_idx ON public.p_number USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_number_pkey ON public.p_number USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_number_track_field_value_idx ON public.p_number USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "p_text": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value text not null",
+      "sort_key text not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_text_field_created_idx ON public.p_text USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_text_field_sort_idx ON public.p_text USING btree (field_id, sort_key, ticket_id)",
+      "CREATE INDEX p_text_field_value_idx ON public.p_text USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_text_pkey ON public.p_text USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_text_track_field_value_idx ON public.p_text USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE INDEX p_text_words_idx ON public.p_text USING gin (to_tsvector('taskmoor_search'::regconfig, value))"
+    ]
+  },
+  "p_time": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value timestamp with time zone not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_time_field_created_idx ON public.p_time USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_time_field_value_idx ON public.p_time USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_time_pkey ON public.p_time USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_time_track_field_value_idx ON public.p_time USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "p_user": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value integer not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX p_user_field_created_idx ON public.p_user USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX p_user_field_value_idx ON public.p_user USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX p_user_pkey ON public.p_user USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX p_user_track_field_value_idx ON public.p_user USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "password_link": {
+    "columns": [
+      "id integer not null default nextval('password_link_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "token_hash text not null",
+      "purpose text not null",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX password_link_pkey ON public.password_link USING btree (id)",
+      "CREATE UNIQUE INDEX password_link_token_hash_key ON public.password_link USING btree (token_hash)",
+      "CREATE INDEX password_link_user_idx ON public.password_link USING btree (user_id)"
+    ]
+  },
+  "priority": {
+    "columns": [
+      "id integer not null default nextval('priority_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "icon text",
+      "color text",
+      "sort_order integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX priority_name_idx ON public.priority USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX priority_order_key ON public.priority USING btree (workspace_id, sort_order)",
+      "CREATE UNIQUE INDEX priority_pkey ON public.priority USING btree (id)"
+    ]
+  },
+  "priority_set": {
+    "columns": [
+      "id integer not null default nextval('priority_set_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "is_default boolean not null default false",
+      "default_priority_id integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX priority_set_default_idx ON public.priority_set USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX priority_set_name_idx ON public.priority_set USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX priority_set_pkey ON public.priority_set USING btree (id)"
+    ]
+  },
+  "priority_set_member": {
+    "columns": [
+      "workspace_id integer not null",
+      "priority_set_id integer not null",
+      "priority_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX priority_set_member_pkey ON public.priority_set_member USING btree (priority_set_id, priority_id)",
+      "CREATE INDEX priority_set_member_priority_idx ON public.priority_set_member USING btree (priority_id)"
+    ]
+  },
+  "property_index": {
+    "columns": [
+      "id integer not null default nextval('property_index_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "key text not null",
+      "path text not null default ''::text",
+      "type text not null",
+      "alias text",
+      "created_at timestamp with time zone not null default now()",
+      "created_by integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX property_index_alias_idx ON public.property_index USING btree (workspace_id, lower(alias)) WHERE (alias IS NOT NULL)",
+      "CREATE UNIQUE INDEX property_index_pkey ON public.property_index USING btree (id)",
+      "CREATE UNIQUE INDEX property_index_workspace_id_key_path_key ON public.property_index USING btree (workspace_id, key, path)"
+    ]
+  },
+  "rate_limit_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "token_rate integer not null default 50",
+      "token_burst integer not null default 200",
+      "user_rate integer not null default 50",
+      "user_burst integer not null default 200",
+      "address_rate integer not null default 20",
+      "address_burst integer not null default 100",
+      "ticket_write_rate integer not null default 10",
+      "ticket_write_burst integer not null default 40",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX rate_limit_policy_pkey ON public.rate_limit_policy USING btree (workspace_id)"
+    ]
+  },
+  "recovery_code": {
+    "columns": [
+      "id integer not null default nextval('recovery_code_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "code_hash text not null",
+      "used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX recovery_code_pkey ON public.recovery_code USING btree (id)",
+      "CREATE INDEX recovery_code_user_idx ON public.recovery_code USING btree (user_id)"
+    ]
+  },
+  "release": {
+    "columns": [
+      "id integer not null default nextval('release_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "start_date date",
+      "release_date date",
+      "sort_order integer not null",
+      "shipped_at timestamp with time zone",
+      "archived_at timestamp with time zone",
+      "require_approvals boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX release_name_idx ON public.release USING btree (track_id, lower(name))",
+      "CREATE UNIQUE INDEX release_order_key ON public.release USING btree (track_id, sort_order)",
+      "CREATE UNIQUE INDEX release_pkey ON public.release USING btree (id)"
+    ]
+  },
+  "release_approver": {
+    "columns": [
+      "workspace_id integer not null",
+      "release_id integer not null",
+      "user_id integer not null",
+      "decision text",
+      "comment text not null default ''::text",
+      "decided_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX release_approver_pkey ON public.release_approver USING btree (release_id, user_id)"
+    ]
+  },
+  "role": {
+    "columns": [
+      "id integer not null default nextval('role_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX role_pkey ON public.role USING btree (id)",
+      "CREATE UNIQUE INDEX role_workspace_name_idx ON public.role USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "saml_assertion": {
+    "columns": [
+      "workspace_id integer not null",
+      "assertion_id text not null",
+      "provider_id integer not null",
+      "expires_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX saml_assertion_expires_idx ON public.saml_assertion USING btree (expires_at)",
+      "CREATE UNIQUE INDEX saml_assertion_pkey ON public.saml_assertion USING btree (workspace_id, assertion_id)"
+    ]
+  },
+  "saml_login": {
+    "columns": [
+      "id integer not null default nextval('saml_login_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "request_id text",
+      "browser_hash text",
+      "return_to text not null default '/'::text",
+      "handle_hash text",
+      "identity jsonb",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX saml_login_expires_idx ON public.saml_login USING btree (expires_at)",
+      "CREATE UNIQUE INDEX saml_login_handle_hash_key ON public.saml_login USING btree (handle_hash)",
+      "CREATE UNIQUE INDEX saml_login_pkey ON public.saml_login USING btree (id)",
+      "CREATE UNIQUE INDEX saml_login_request_id_key ON public.saml_login USING btree (request_id)"
+    ]
+  },
+  "saved_search": {
+    "columns": [
+      "id integer not null default nextval('saved_search_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "owner_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "query text not null",
+      "columns jsonb",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "import_problem text"
+    ],
+    "indexes": [
+      "CREATE INDEX saved_search_name_idx ON public.saved_search USING btree (workspace_id, lower(name), id)",
+      "CREATE UNIQUE INDEX saved_search_owner_name_idx ON public.saved_search USING btree (workspace_id, owner_id, lower(name))",
+      "CREATE UNIQUE INDEX saved_search_pkey ON public.saved_search USING btree (id)"
+    ]
+  },
+  "saved_search_share": {
+    "columns": [
+      "id integer not null default nextval('saved_search_share_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "saved_search_id integer not null",
+      "scope text not null",
+      "user_id integer",
+      "group_id integer",
+      "track_id integer",
+      "role_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX saved_search_share_group_idx ON public.saved_search_share USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX saved_search_share_pkey ON public.saved_search_share USING btree (id)",
+      "CREATE INDEX saved_search_share_search_idx ON public.saved_search_share USING btree (saved_search_id)",
+      "CREATE INDEX saved_search_share_track_idx ON public.saved_search_share USING btree (track_id) WHERE (track_id IS NOT NULL)",
+      "CREATE INDEX saved_search_share_user_idx ON public.saved_search_share USING btree (user_id) WHERE (user_id IS NOT NULL)"
+    ]
+  },
+  "saved_search_star": {
+    "columns": [
+      "workspace_id integer not null",
+      "saved_search_id integer not null",
+      "user_id integer not null",
+      "starred_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX saved_search_star_pkey ON public.saved_search_star USING btree (user_id, saved_search_id)",
+      "CREATE INDEX saved_search_star_search_idx ON public.saved_search_star USING btree (saved_search_id)"
+    ]
+  },
+  "saved_search_subscription": {
+    "columns": [
+      "id integer not null default nextval('saved_search_subscription_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "saved_search_id integer not null",
+      "created_by integer not null",
+      "recipient_user_id integer",
+      "recipient_group_id integer",
+      "schedule text not null",
+      "hour integer not null default 8",
+      "minute integer not null default 0",
+      "weekday integer",
+      "day_of_month integer",
+      "cron text",
+      "time_zone text not null default 'UTC'::text",
+      "only_if_results boolean not null default false",
+      "next_run_at timestamp with time zone not null",
+      "last_run_at timestamp with time zone",
+      "last_sent integer",
+      "last_error text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX saved_search_subscription_due_idx ON public.saved_search_subscription USING btree (next_run_at)",
+      "CREATE UNIQUE INDEX saved_search_subscription_pkey ON public.saved_search_subscription USING btree (id)",
+      "CREATE INDEX saved_search_subscription_search_idx ON public.saved_search_subscription USING btree (saved_search_id)"
+    ]
+  },
+  "schema_migration": {
+    "columns": [
+      "name character varying not null",
+      "timestamp character varying not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX schema_migration_pkey ON public.schema_migration USING btree (name)"
+    ]
+  },
+  "schema_migration_lock": {
+    "columns": [
+      "id character varying not null",
+      "is_locked integer not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX schema_migration_lock_pkey ON public.schema_migration_lock USING btree (id)"
+    ]
+  },
+  "scim_group": {
+    "columns": [
+      "group_id integer not null",
+      "workspace_id integer not null",
+      "external_id text",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX scim_group_pkey ON public.scim_group USING btree (group_id)",
+      "CREATE INDEX scim_group_workspace_external_id_idx ON public.scim_group USING btree (workspace_id, external_id) WHERE (external_id IS NOT NULL)"
+    ]
+  },
+  "scim_user": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "user_name text not null",
+      "external_id text",
+      "attributes jsonb not null default '{}'::jsonb",
+      "removed_at timestamp with time zone",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX scim_user_pkey ON public.scim_user USING btree (user_id)",
+      "CREATE INDEX scim_user_workspace_external_id_idx ON public.scim_user USING btree (workspace_id, external_id) WHERE (external_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX scim_user_workspace_user_name_idx ON public.scim_user USING btree (workspace_id, lower(user_name)) WHERE (removed_at IS NULL)"
+    ]
+  },
+  "sign_in_challenge": {
+    "columns": [
+      "id integer not null default nextval('sign_in_challenge_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "token_hash text not null",
+      "purpose text not null",
+      "webauthn_challenge text",
+      "attempts integer not null default 0",
+      "expires_at timestamp with time zone not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sign_in_challenge_pkey ON public.sign_in_challenge USING btree (id)",
+      "CREATE UNIQUE INDEX sign_in_challenge_token_hash_key ON public.sign_in_challenge USING btree (token_hash)",
+      "CREATE INDEX sign_in_challenge_user_idx ON public.sign_in_challenge USING btree (user_id)"
+    ]
+  },
+  "sign_in_throttle": {
+    "columns": [
+      "workspace_id integer not null",
+      "key text not null",
+      "failures integer not null",
+      "window_started_at timestamp with time zone not null default now()",
+      "locked_until timestamp with time zone",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sign_in_throttle_pkey ON public.sign_in_throttle USING btree (workspace_id, key)"
+    ]
+  },
+  "sprint": {
+    "columns": [
+      "id integer not null default nextval('sprint_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "board_id integer not null",
+      "name text not null",
+      "goal text not null default ''::text",
+      "state text not null default 'future'::text",
+      "sequence integer not null",
+      "start_at timestamp with time zone",
+      "end_at timestamp with time zone",
+      "started_at timestamp with time zone",
+      "completed_at timestamp with time zone",
+      "started_by integer",
+      "completed_by integer",
+      "created_by integer",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "deleted_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX sprint_board_idx ON public.sprint USING btree (board_id, sequence) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX sprint_open_idx ON public.sprint USING btree (workspace_id, state) WHERE (state <> 'closed'::text)",
+      "CREATE UNIQUE INDEX sprint_pkey ON public.sprint USING btree (id)"
+    ]
+  },
+  "sprint_change": {
+    "columns": [
+      "id bigint not null default nextval('sprint_change_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "sprint_id integer not null",
+      "ticket_id integer not null",
+      "kind text not null",
+      "after_start boolean not null default false",
+      "at timestamp with time zone not null default now()",
+      "actor_id integer",
+      "original_estimate integer",
+      "remaining_estimate integer",
+      "points numeric",
+      "to_sprint_id integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sprint_change_pkey ON public.sprint_change USING btree (id)",
+      "CREATE INDEX sprint_change_sprint_idx ON public.sprint_change USING btree (sprint_id, at, id)",
+      "CREATE INDEX sprint_change_ticket_idx ON public.sprint_change USING btree (ticket_id)"
+    ]
+  },
+  "sprint_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "sprint_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX sprint_property_key_idx ON public.sprint_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX sprint_property_pkey ON public.sprint_property USING btree (sprint_id, key)"
+    ]
+  },
+  "sprint_ticket": {
+    "columns": [
+      "workspace_id integer not null",
+      "sprint_id integer not null",
+      "ticket_id integer not null",
+      "open boolean not null default true",
+      "added_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX sprint_ticket_open_idx ON public.sprint_ticket USING btree (ticket_id) WHERE open",
+      "CREATE UNIQUE INDEX sprint_ticket_pkey ON public.sprint_ticket USING btree (sprint_id, ticket_id)",
+      "CREATE INDEX sprint_ticket_ticket_idx ON public.sprint_ticket USING btree (ticket_id)"
+    ]
+  },
+  "status": {
+    "columns": [
+      "id integer not null default nextval('status_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "stage text not null",
+      "sort_order integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX status_name_idx ON public.status USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX status_order_key ON public.status USING btree (workspace_id, sort_order)",
+      "CREATE UNIQUE INDEX status_pkey ON public.status USING btree (id)"
+    ]
+  },
+  "storage_cleanup": {
+    "columns": [
+      "id bigint not null default nextval('storage_cleanup_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "storage text not null",
+      "storage_key text not null",
+      "reason text not null",
+      "not_before timestamp with time zone not null default now()",
+      "attempts integer not null default 0",
+      "last_error text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX storage_cleanup_due_idx ON public.storage_cleanup USING btree (not_before)",
+      "CREATE UNIQUE INDEX storage_cleanup_key_unique ON public.storage_cleanup USING btree (storage, storage_key)",
+      "CREATE UNIQUE INDEX storage_cleanup_pkey ON public.storage_cleanup USING btree (id)"
+    ]
+  },
+  "team": {
+    "columns": [
+      "id integer not null default nextval('team_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "lead_id integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX team_lead_idx ON public.team USING btree (lead_id) WHERE (lead_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX team_name_idx ON public.team USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX team_pkey ON public.team USING btree (id)"
+    ]
+  },
+  "team_member": {
+    "columns": [
+      "workspace_id integer not null",
+      "team_id integer not null",
+      "user_id integer not null",
+      "added_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX team_member_pkey ON public.team_member USING btree (team_id, user_id)",
+      "CREATE INDEX team_member_user_idx ON public.team_member USING btree (user_id)"
+    ]
+  },
+  "ticket": {
+    "columns": [
+      "id integer not null default nextval('ticket_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "number integer not null",
+      "ticket_type_id integer not null",
+      "parent_id integer",
+      "summary text not null",
+      "description jsonb",
+      "environment jsonb",
+      "assignee_id integer",
+      "requester_id integer",
+      "creator_id integer",
+      "start_date date",
+      "due_date date",
+      "rank text not null",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "deleted_at timestamp with time zone",
+      "deleted_by integer",
+      "trashed_with integer",
+      "priority_id integer",
+      "close_reason_id integer",
+      "closed_at timestamp with time zone",
+      "labels ARRAY not null default '{}'::text[]",
+      "original_estimate integer",
+      "remaining_estimate integer",
+      "time_spent integer not null default 0",
+      "status_id integer not null",
+      "fields jsonb not null default '{}'::jsonb",
+      "visibility_level_id integer",
+      "summary_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, summary)) stored",
+      "description_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(description), 200000))) stored",
+      "environment_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(environment), 200000))) stored",
+      "first_response_at timestamp with time zone",
+      "last_comment_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_assignee_idx ON public.ticket USING btree (assignee_id) WHERE (assignee_id IS NOT NULL)",
+      "CREATE INDEX ticket_close_reason_idx ON public.ticket USING btree (close_reason_id) WHERE (close_reason_id IS NOT NULL)",
+      "CREATE INDEX ticket_closed_idx ON public.ticket USING btree (closed_at DESC, id DESC) WHERE ((closed_at IS NOT NULL) AND (deleted_at IS NULL))",
+      "CREATE INDEX ticket_created_idx ON public.ticket USING btree (created_at DESC, id DESC) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_description_words_idx ON public.ticket USING gin (description_words) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_due_idx ON public.ticket USING btree (due_date, id) WHERE ((due_date IS NOT NULL) AND (deleted_at IS NULL))",
+      "CREATE INDEX ticket_environment_words_idx ON public.ticket USING gin (environment_words) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_first_response_idx ON public.ticket USING btree (first_response_at DESC, id DESC)",
+      "CREATE INDEX ticket_labels_idx ON public.ticket USING gin (labels)",
+      "CREATE INDEX ticket_last_comment_idx ON public.ticket USING btree (last_comment_at DESC, id DESC)",
+      "CREATE INDEX ticket_parent_idx ON public.ticket USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX ticket_pkey ON public.ticket USING btree (id)",
+      "CREATE INDEX ticket_priority_created_idx ON public.ticket USING btree (priority_id, created_at DESC, id DESC) WHERE (priority_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX ticket_rank_key ON public.ticket USING btree (workspace_id, rank)",
+      "CREATE INDEX ticket_requester_idx ON public.ticket USING btree (requester_id) WHERE (requester_id IS NOT NULL)",
+      "CREATE INDEX ticket_status_idx ON public.ticket USING btree (status_id)",
+      "CREATE INDEX ticket_summary_trigram_idx ON public.ticket USING gin (summary gin_trgm_ops) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_summary_words_idx ON public.ticket USING gin (summary_words) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_track_created_idx ON public.ticket USING btree (track_id, created_at DESC, id DESC) WHERE (deleted_at IS NULL)",
+      "CREATE UNIQUE INDEX ticket_track_number_key ON public.ticket USING btree (track_id, number)",
+      "CREATE INDEX ticket_track_rank_idx ON public.ticket USING btree (track_id, rank) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_track_updated_idx ON public.ticket USING btree (track_id, updated_at DESC, id DESC) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_trash_idx ON public.ticket USING btree (workspace_id, deleted_at) WHERE (deleted_at IS NOT NULL)",
+      "CREATE INDEX ticket_trashed_with_idx ON public.ticket USING btree (trashed_with) WHERE (trashed_with IS NOT NULL)",
+      "CREATE INDEX ticket_type_idx ON public.ticket USING btree (ticket_type_id)",
+      "CREATE INDEX ticket_updated_idx ON public.ticket USING btree (updated_at DESC, id DESC) WHERE (deleted_at IS NULL)",
+      "CREATE INDEX ticket_visibility_level_idx ON public.ticket USING btree (visibility_level_id) WHERE (visibility_level_id IS NOT NULL)"
+    ]
+  },
+  "ticket_area": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "area_id integer not null"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_area_area_idx ON public.ticket_area USING btree (area_id)",
+      "CREATE UNIQUE INDEX ticket_area_pkey ON public.ticket_area USING btree (ticket_id, area_id)"
+    ]
+  },
+  "ticket_change": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "change_set bigint not null",
+      "at timestamp with time zone not null default now()",
+      "actor_id integer",
+      "field text not null",
+      "from_value text",
+      "to_value text",
+      "from_display text",
+      "to_display text",
+      "transition_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_change_actor_idx ON ONLY public.ticket_change USING btree (actor_id, at) WHERE (actor_id IS NOT NULL)",
+      "CREATE INDEX ticket_change_field_at_idx ON ONLY public.ticket_change USING btree (field, at)",
+      "CREATE INDEX ticket_change_from_idx ON ONLY public.ticket_change USING btree (field, \"left\"(from_value, 200), at)",
+      "CREATE UNIQUE INDEX ticket_change_pkey ON ONLY public.ticket_change USING btree (ticket_id, id)",
+      "CREATE INDEX ticket_change_ticket_field_idx ON ONLY public.ticket_change USING btree (ticket_id, field, at, id)",
+      "CREATE INDEX ticket_change_to_idx ON ONLY public.ticket_change USING btree (field, \"left\"(to_value, 200), at)",
+      "CREATE INDEX ticket_change_to_name_idx ON ONLY public.ticket_change USING btree (field, lower(\"left\"(to_display, 200)), at)"
+    ]
+  },
+  "ticket_comment": {
+    "columns": [
+      "id integer not null default nextval('ticket_comment_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "author_id integer",
+      "body jsonb not null",
+      "visible_role_id integer",
+      "visible_group_id integer",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "edited_at timestamp with time zone",
+      "edited_by integer",
+      "deleted_at timestamp with time zone",
+      "deleted_by integer",
+      "body_words tsvector generated always as (to_tsvector('taskmoor_search'::regconfig, \"left\"(taskmoor_document_text(body), 200000))) stored"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_comment_author_idx ON public.ticket_comment USING btree (author_id, created_at)",
+      "CREATE UNIQUE INDEX ticket_comment_pkey ON public.ticket_comment USING btree (id)",
+      "CREATE INDEX ticket_comment_ticket_idx ON public.ticket_comment USING btree (ticket_id, id)",
+      "CREATE INDEX ticket_comment_words_idx ON public.ticket_comment USING gin (body_words) WHERE (deleted_at IS NULL)"
+    ]
+  },
+  "ticket_comment_reaction": {
+    "columns": [
+      "comment_id integer not null",
+      "emoji text not null",
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_comment_reaction_pkey ON public.ticket_comment_reaction USING btree (comment_id, emoji, user_id)",
+      "CREATE INDEX ticket_comment_reaction_user_idx ON public.ticket_comment_reaction USING btree (user_id)"
+    ]
+  },
+  "ticket_comment_version": {
+    "columns": [
+      "comment_id integer not null",
+      "version integer not null",
+      "workspace_id integer not null",
+      "body jsonb not null",
+      "visible_role_id integer",
+      "visible_group_id integer",
+      "written_by integer",
+      "written_at timestamp with time zone not null",
+      "replaced_by integer",
+      "replaced_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_comment_version_pkey ON public.ticket_comment_version USING btree (comment_id, version)"
+    ]
+  },
+  "ticket_counter": {
+    "columns": [
+      "track_id integer not null",
+      "workspace_id integer not null",
+      "last_number integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_counter_pkey ON public.ticket_counter USING btree (track_id)"
+    ]
+  },
+  "ticket_detached_parent": {
+    "columns": [
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "parent_id integer not null",
+      "detached_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_detached_parent_parent_idx ON public.ticket_detached_parent USING btree (parent_id)",
+      "CREATE UNIQUE INDEX ticket_detached_parent_pkey ON public.ticket_detached_parent USING btree (ticket_id)"
+    ]
+  },
+  "ticket_follower": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "user_id integer not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_follower_pkey ON public.ticket_follower USING btree (ticket_id, user_id)",
+      "CREATE INDEX ticket_follower_user_idx ON public.ticket_follower USING btree (user_id)"
+    ]
+  },
+  "ticket_key_history": {
+    "columns": [
+      "id integer not null default nextval('ticket_key_history_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "number integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "replaced_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_key_history_current_idx ON public.ticket_key_history USING btree (ticket_id) WHERE (replaced_at IS NULL)",
+      "CREATE UNIQUE INDEX ticket_key_history_key ON public.ticket_key_history USING btree (track_id, number)",
+      "CREATE UNIQUE INDEX ticket_key_history_pkey ON public.ticket_key_history USING btree (id)",
+      "CREATE INDEX ticket_key_history_ticket_idx ON public.ticket_key_history USING btree (ticket_id)"
+    ]
+  },
+  "ticket_link": {
+    "columns": [
+      "id integer not null default nextval('ticket_link_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "link_type_id integer not null",
+      "source_id integer not null",
+      "target_id integer not null",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_link_pkey ON public.ticket_link USING btree (id)",
+      "CREATE INDEX ticket_link_target_idx ON public.ticket_link USING btree (target_id)",
+      "CREATE INDEX ticket_link_type_idx ON public.ticket_link USING btree (link_type_id)",
+      "CREATE UNIQUE INDEX ticket_link_unique_idx ON public.ticket_link USING btree (source_id, link_type_id, target_id)"
+    ]
+  },
+  "ticket_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_property_key_idx ON public.ticket_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX ticket_property_pkey ON public.ticket_property USING btree (ticket_id, key)"
+    ]
+  },
+  "ticket_release": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "release_id integer not null",
+      "role text not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_release_pkey ON public.ticket_release USING btree (ticket_id, role, release_id)",
+      "CREATE INDEX ticket_release_release_idx ON public.ticket_release USING btree (release_id, role)"
+    ]
+  },
+  "ticket_text_original": {
+    "columns": [
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "field text not null",
+      "format text not null",
+      "source jsonb not null",
+      "doc_sha256 text not null",
+      "written_by integer",
+      "written_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_text_original_pkey ON public.ticket_text_original USING btree (ticket_id, field)"
+    ]
+  },
+  "ticket_text_state": {
+    "columns": [
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "field text not null",
+      "state bytea not null",
+      "doc_sha256 text not null",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_text_state_pkey ON public.ticket_text_state USING btree (ticket_id, field)"
+    ]
+  },
+  "ticket_type": {
+    "columns": [
+      "id integer not null default nextval('ticket_type_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "icon text",
+      "color text",
+      "level_id integer not null",
+      "owner_track_id integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX ticket_type_level_idx ON public.ticket_type USING btree (level_id)",
+      "CREATE UNIQUE INDEX ticket_type_name_idx ON public.ticket_type USING btree (workspace_id, COALESCE(owner_track_id, 0), lower(name))",
+      "CREATE INDEX ticket_type_owner_track_idx ON public.ticket_type USING btree (owner_track_id) WHERE (owner_track_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX ticket_type_pkey ON public.ticket_type USING btree (id)"
+    ]
+  },
+  "ticket_visit": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "ticket_id integer not null",
+      "visited_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_visit_pkey ON public.ticket_visit USING btree (user_id, ticket_id)",
+      "CREATE INDEX ticket_visit_recent_idx ON public.ticket_visit USING btree (user_id, visited_at DESC, ticket_id DESC)",
+      "CREATE INDEX ticket_visit_ticket_idx ON public.ticket_visit USING btree (ticket_id)"
+    ]
+  },
+  "ticket_vote": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "user_id integer not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_vote_pkey ON public.ticket_vote USING btree (ticket_id, user_id)",
+      "CREATE INDEX ticket_vote_user_idx ON public.ticket_vote USING btree (user_id)"
+    ]
+  },
+  "ticket_web_link": {
+    "columns": [
+      "id integer not null default nextval('ticket_web_link_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "url text not null",
+      "title text not null",
+      "summary text not null default ''::text",
+      "icon_url text",
+      "relationship text not null default ''::text",
+      "global_id text",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_web_link_global_idx ON public.ticket_web_link USING btree (ticket_id, global_id) WHERE (global_id IS NOT NULL)",
+      "CREATE INDEX ticket_web_link_global_lookup_idx ON public.ticket_web_link USING btree (workspace_id, global_id) WHERE (global_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX ticket_web_link_pkey ON public.ticket_web_link USING btree (id)",
+      "CREATE INDEX ticket_web_link_ticket_idx ON public.ticket_web_link USING btree (ticket_id)"
+    ]
+  },
+  "time_entry": {
+    "columns": [
+      "id integer not null default nextval('time_entry_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "author_id integer not null",
+      "started_at timestamp with time zone not null",
+      "duration integer not null",
+      "description text not null default ''::text",
+      "visible_role_id integer",
+      "visible_group_id integer",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX time_entry_author_idx ON public.time_entry USING btree (author_id, started_at)",
+      "CREATE UNIQUE INDEX time_entry_pkey ON public.time_entry USING btree (id)",
+      "CREATE INDEX time_entry_ticket_idx ON public.time_entry USING btree (ticket_id, started_at, id)"
+    ]
+  },
+  "time_tracking_setting": {
+    "columns": [
+      "workspace_id integer not null",
+      "enabled boolean not null default true",
+      "hours_per_day numeric not null default 8",
+      "days_per_week numeric not null default 5",
+      "display_format text not null default 'pretty'::text",
+      "default_unit text not null default 'minute'::text",
+      "copy_transition_comments boolean not null default false",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX time_tracking_setting_pkey ON public.time_tracking_setting USING btree (workspace_id)"
+    ]
+  },
+  "token_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "max_lifetime_days integer not null default 365",
+      "reminder_days integer not null default 14",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX token_policy_pkey ON public.token_policy USING btree (workspace_id)"
+    ]
+  },
+  "totp_credential": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "secret_sealed text not null",
+      "last_step bigint",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX totp_credential_pkey ON public.totp_credential USING btree (user_id)"
+    ]
+  },
+  "track": {
+    "columns": [
+      "id integer not null default nextval('track_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "key text not null",
+      "name text not null",
+      "owner_id integer",
+      "access_policy_id integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "description text not null default ''::text",
+      "type text not null default 'software'::text",
+      "mode text not null default 'shared'::text",
+      "category_id integer",
+      "icon text",
+      "color text",
+      "feature_board boolean not null default true",
+      "feature_backlog boolean not null default true",
+      "feature_sprints boolean not null default true",
+      "feature_releases boolean not null default true",
+      "feature_development boolean not null default true",
+      "feature_forms boolean not null default true",
+      "feature_approvals boolean not null default true",
+      "feature_calendar boolean not null default true",
+      "feature_timeline boolean not null default true",
+      "archived_at timestamp with time zone",
+      "archived_by integer",
+      "updated_at timestamp with time zone not null default now()",
+      "type_set_id integer",
+      "priority_set_id integer",
+      "deleted_at timestamp with time zone",
+      "deleted_by integer",
+      "purge_started_at timestamp with time zone",
+      "field_rule_set_id integer",
+      "layout_set_id integer",
+      "visibility_policy_id integer",
+      "notification_policy_id integer",
+      "workflow_map_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX track_archived_idx ON public.track USING btree (workspace_id) WHERE (archived_at IS NOT NULL)",
+      "CREATE INDEX track_category_idx ON public.track USING btree (category_id) WHERE (category_id IS NOT NULL)",
+      "CREATE INDEX track_field_rule_set_idx ON public.track USING btree (field_rule_set_id)",
+      "CREATE INDEX track_layout_set_idx ON public.track USING btree (layout_set_id)",
+      "CREATE INDEX track_notification_policy_idx ON public.track USING btree (notification_policy_id)",
+      "CREATE INDEX track_owner_idx ON public.track USING btree (owner_id)",
+      "CREATE UNIQUE INDEX track_pkey ON public.track USING btree (id)",
+      "CREATE INDEX track_policy_idx ON public.track USING btree (access_policy_id)",
+      "CREATE INDEX track_priority_set_idx ON public.track USING btree (priority_set_id) WHERE (priority_set_id IS NOT NULL)",
+      "CREATE INDEX track_trash_idx ON public.track USING btree (workspace_id, deleted_at) WHERE (deleted_at IS NOT NULL)",
+      "CREATE INDEX track_type_set_idx ON public.track USING btree (type_set_id)",
+      "CREATE INDEX track_visibility_policy_idx ON public.track USING btree (visibility_policy_id)",
+      "CREATE INDEX track_workflow_map_idx ON public.track USING btree (workflow_map_id) WHERE (workflow_map_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX track_workspace_key_idx ON public.track USING btree (workspace_id, upper(key))"
+    ]
+  },
+  "track_category": {
+    "columns": [
+      "id integer not null default nextval('track_category_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX track_category_pkey ON public.track_category USING btree (id)",
+      "CREATE UNIQUE INDEX track_category_workspace_name_idx ON public.track_category USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "track_key_history": {
+    "columns": [
+      "id integer not null default nextval('track_key_history_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "key text not null",
+      "created_at timestamp with time zone not null default now()",
+      "replaced_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX track_key_history_current_idx ON public.track_key_history USING btree (track_id) WHERE (replaced_at IS NULL)",
+      "CREATE UNIQUE INDEX track_key_history_key_idx ON public.track_key_history USING btree (workspace_id, upper(key))",
+      "CREATE UNIQUE INDEX track_key_history_pkey ON public.track_key_history USING btree (id)",
+      "CREATE INDEX track_key_history_track_idx ON public.track_key_history USING btree (track_id)"
+    ]
+  },
+  "track_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX track_property_key_idx ON public.track_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX track_property_pkey ON public.track_property USING btree (track_id, key)"
+    ]
+  },
+  "track_role_actor": {
+    "columns": [
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "role_id integer not null",
+      "user_id integer",
+      "group_id integer"
+    ],
+    "indexes": [
+      "CREATE INDEX track_role_actor_group_idx ON public.track_role_actor USING btree (group_id) WHERE (group_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX track_role_actor_unique_idx ON public.track_role_actor USING btree (track_id, role_id, COALESCE(user_id, 0), COALESCE(group_id, 0))",
+      "CREATE INDEX track_role_actor_user_idx ON public.track_role_actor USING btree (user_id) WHERE (user_id IS NOT NULL)"
+    ]
+  },
+  "trash_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "retention_days integer not null default 30",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX trash_policy_pkey ON public.trash_policy USING btree (workspace_id)"
+    ]
+  },
+  "two_factor_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "required text not null default 'none'::text",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX two_factor_policy_pkey ON public.two_factor_policy USING btree (workspace_id)"
+    ]
+  },
+  "two_factor_policy_group": {
+    "columns": [
+      "workspace_id integer not null",
+      "group_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX two_factor_policy_group_pkey ON public.two_factor_policy_group USING btree (workspace_id, group_id)"
+    ]
+  },
+  "type_set": {
+    "columns": [
+      "id integer not null default nextval('type_set_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "default_type_id integer",
+      "owner_track_id integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX type_set_name_idx ON public.type_set USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX type_set_owner_track_idx ON public.type_set USING btree (owner_track_id) WHERE (owner_track_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX type_set_pkey ON public.type_set USING btree (id)"
+    ]
+  },
+  "type_set_default": {
+    "columns": [
+      "workspace_id integer not null",
+      "track_type text not null",
+      "type_set_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX type_set_default_pkey ON public.type_set_default USING btree (workspace_id, track_type)",
+      "CREATE INDEX type_set_default_set_idx ON public.type_set_default USING btree (type_set_id)"
+    ]
+  },
+  "type_set_member": {
+    "columns": [
+      "workspace_id integer not null",
+      "type_set_id integer not null",
+      "ticket_type_id integer not null",
+      "sort_order integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX type_set_member_order_key ON public.type_set_member USING btree (type_set_id, sort_order)",
+      "CREATE UNIQUE INDEX type_set_member_pkey ON public.type_set_member USING btree (type_set_id, ticket_type_id)",
+      "CREATE INDEX type_set_member_type_idx ON public.type_set_member USING btree (ticket_type_id)"
+    ]
+  },
+  "user_group": {
+    "columns": [
+      "id integer not null default nextval('user_group_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX user_group_pkey ON public.user_group USING btree (id)",
+      "CREATE UNIQUE INDEX user_group_workspace_name_idx ON public.user_group USING btree (workspace_id, lower(name))"
+    ]
+  },
+  "user_identity": {
+    "columns": [
+      "id integer not null default nextval('user_identity_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "provider_id integer not null",
+      "subject text not null",
+      "user_id integer not null",
+      "email text",
+      "created_at timestamp with time zone not null default now()",
+      "last_sign_in_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX user_identity_pkey ON public.user_identity USING btree (id)",
+      "CREATE UNIQUE INDEX user_identity_provider_id_subject_key ON public.user_identity USING btree (provider_id, subject)",
+      "CREATE INDEX user_identity_user_idx ON public.user_identity USING btree (user_id)"
+    ]
+  },
+  "user_preference": {
+    "columns": [
+      "user_id integer not null",
+      "workspace_id integer not null",
+      "auto_follow boolean not null default true",
+      "updated_at timestamp with time zone not null default now()",
+      "notify_own_changes boolean not null default false",
+      "email_delivery text not null default 'instant'::text",
+      "quiet_start smallint",
+      "quiet_end smallint"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX user_preference_pkey ON public.user_preference USING btree (user_id)"
+    ]
+  },
+  "user_property": {
+    "columns": [
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "key text not null",
+      "value jsonb not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "updated_by integer"
+    ],
+    "indexes": [
+      "CREATE INDEX user_property_key_idx ON public.user_property USING btree (workspace_id, key)",
+      "CREATE UNIQUE INDEX user_property_pkey ON public.user_property USING btree (user_id, key)"
+    ]
+  },
+  "user_session": {
+    "columns": [
+      "id integer not null default nextval('user_session_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "token_hash text",
+      "created_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "last_seen_at timestamp with time zone not null default now()",
+      "ip text",
+      "user_agent text",
+      "client_id text",
+      "parent_id integer",
+      "scope text"
+    ],
+    "indexes": [
+      "CREATE INDEX user_session_expires_idx ON public.user_session USING btree (expires_at)",
+      "CREATE INDEX user_session_parent_idx ON public.user_session USING btree (parent_id) WHERE (parent_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX user_session_pkey ON public.user_session USING btree (id)",
+      "CREATE UNIQUE INDEX user_session_token_hash_key ON public.user_session USING btree (token_hash)",
+      "CREATE INDEX user_session_user_idx ON public.user_session USING btree (user_id)"
+    ]
+  },
+  "v_date": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value date not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_date_field_created_idx ON public.v_date USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_date_field_value_idx ON public.v_date USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_date_pkey ON public.v_date USING btree (ticket_id, field_id)",
+      "CREATE INDEX v_date_track_field_value_idx ON public.v_date USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_number": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value numeric not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_number_field_created_idx ON public.v_number USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_number_field_value_idx ON public.v_number USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_number_pkey ON public.v_number USING btree (ticket_id, field_id)",
+      "CREATE INDEX v_number_track_field_value_idx ON public.v_number USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_option": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value integer not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_option_field_created_idx ON public.v_option USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_option_field_value_idx ON public.v_option USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_option_pkey ON public.v_option USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX v_option_track_field_value_idx ON public.v_option USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_text": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value text not null",
+      "sort_key text not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_text_field_created_idx ON public.v_text USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_text_field_sort_idx ON public.v_text USING btree (field_id, sort_key, ticket_id)",
+      "CREATE INDEX v_text_field_value_idx ON public.v_text USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_text_pkey ON public.v_text USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX v_text_track_field_value_idx ON public.v_text USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE INDEX v_text_trigram_idx ON public.v_text USING gin (value gin_trgm_ops)",
+      "CREATE INDEX v_text_words_idx ON public.v_text USING gin (to_tsvector('taskmoor_search'::regconfig, value))"
+    ]
+  },
+  "v_time": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value timestamp with time zone not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_time_field_created_idx ON public.v_time USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_time_field_value_idx ON public.v_time USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_time_pkey ON public.v_time USING btree (ticket_id, field_id)",
+      "CREATE INDEX v_time_track_field_value_idx ON public.v_time USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "v_user": {
+    "columns": [
+      "workspace_id integer not null",
+      "ticket_id integer not null",
+      "track_id integer not null",
+      "field_id integer not null",
+      "value integer not null",
+      "created_at timestamp with time zone not null"
+    ],
+    "indexes": [
+      "CREATE INDEX v_user_field_created_idx ON public.v_user USING btree (field_id, created_at DESC) INCLUDE (value, ticket_id)",
+      "CREATE INDEX v_user_field_value_idx ON public.v_user USING btree (field_id, value, created_at DESC) INCLUDE (ticket_id)",
+      "CREATE UNIQUE INDEX v_user_pkey ON public.v_user USING btree (ticket_id, field_id, value)",
+      "CREATE INDEX v_user_track_field_value_idx ON public.v_user USING btree (track_id, field_id, value, created_at DESC) INCLUDE (ticket_id)"
+    ]
+  },
+  "visibility_level": {
+    "columns": [
+      "id integer not null default nextval('visibility_level_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "policy_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "position integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX visibility_level_name_idx ON public.visibility_level USING btree (policy_id, lower(name))",
+      "CREATE UNIQUE INDEX visibility_level_pkey ON public.visibility_level USING btree (id)"
+    ]
+  },
+  "visibility_member": {
+    "columns": [
+      "id integer not null default nextval('visibility_member_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "level_id integer not null",
+      "grantee text not null",
+      "role_id integer",
+      "group_id integer",
+      "user_id integer",
+      "field_key text"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX visibility_member_pkey ON public.visibility_member USING btree (id)",
+      "CREATE UNIQUE INDEX visibility_member_unique_idx ON public.visibility_member USING btree (level_id, grantee, COALESCE(role_id, 0), COALESCE(group_id, 0), COALESCE(user_id, 0), COALESCE(field_key, ''::text))"
+    ]
+  },
+  "visibility_policy": {
+    "columns": [
+      "id integer not null default nextval('visibility_policy_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer",
+      "name text not null",
+      "description text not null default ''::text",
+      "default_level_id integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX visibility_policy_name_idx ON public.visibility_policy USING btree (workspace_id, COALESCE(track_id, 0), lower(name))",
+      "CREATE UNIQUE INDEX visibility_policy_pkey ON public.visibility_policy USING btree (id)"
+    ]
+  },
+  "webauthn_credential": {
+    "columns": [
+      "id integer not null default nextval('webauthn_credential_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "credential_id text not null",
+      "public_key text not null",
+      "counter bigint not null default 0",
+      "transports ARRAY not null default '{}'::text[]",
+      "name text not null",
+      "created_at timestamp with time zone not null default now()",
+      "last_used_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX webauthn_credential_credential_id_key ON public.webauthn_credential USING btree (credential_id)",
+      "CREATE UNIQUE INDEX webauthn_credential_pkey ON public.webauthn_credential USING btree (id)",
+      "CREATE INDEX webauthn_credential_user_idx ON public.webauthn_credential USING btree (user_id)"
+    ]
+  },
+  "webhook": {
+    "columns": [
+      "id integer not null default nextval('webhook_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "url text not null",
+      "format text not null default 'json'::text",
+      "events ARRAY not null",
+      "filter_query text",
+      "secret_sealed text",
+      "enabled boolean not null default true",
+      "owner_id integer not null",
+      "version integer not null default 1",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX webhook_name_idx ON public.webhook USING btree (workspace_id, lower(name))",
+      "CREATE UNIQUE INDEX webhook_pkey ON public.webhook USING btree (id)"
+    ]
+  },
+  "webhook_delivery": {
+    "columns": [
+      "id uuid not null",
+      "workspace_id integer not null",
+      "webhook_id integer not null",
+      "event_id bigint not null",
+      "event_type text not null",
+      "body jsonb not null",
+      "state text not null default 'pending'::text",
+      "attempts integer not null default 0",
+      "last_status integer",
+      "last_error text",
+      "last_attempt_at timestamp with time zone",
+      "duration_ms integer",
+      "delivered_at timestamp with time zone",
+      "replays integer not null default 0",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE INDEX webhook_delivery_list_idx ON public.webhook_delivery USING btree (webhook_id, state, created_at DESC)",
+      "CREATE UNIQUE INDEX webhook_delivery_pkey ON public.webhook_delivery USING btree (id)",
+      "CREATE INDEX webhook_delivery_trim_idx ON public.webhook_delivery USING btree (delivered_at) WHERE (state = 'delivered'::text)",
+      "CREATE UNIQUE INDEX webhook_delivery_webhook_id_event_id_key ON public.webhook_delivery USING btree (webhook_id, event_id)"
+    ]
+  },
+  "workflow": {
+    "columns": [
+      "id integer not null default nextval('workflow_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "is_default boolean not null default false",
+      "published_version integer not null default 1",
+      "draft_version integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "owner_track_id integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_default_idx ON public.workflow USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX workflow_name_idx ON public.workflow USING btree (workspace_id, COALESCE(owner_track_id, 0), lower(name))",
+      "CREATE INDEX workflow_owner_track_idx ON public.workflow USING btree (owner_track_id) WHERE (owner_track_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX workflow_pkey ON public.workflow USING btree (id)"
+    ]
+  },
+  "workflow_map": {
+    "columns": [
+      "id integer not null default nextval('workflow_map_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "name text not null",
+      "description text not null default ''::text",
+      "default_workflow_id integer not null",
+      "owner_track_id integer",
+      "is_default boolean not null default false",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_map_default_idx ON public.workflow_map USING btree (workspace_id) WHERE is_default",
+      "CREATE UNIQUE INDEX workflow_map_name_idx ON public.workflow_map USING btree (workspace_id, COALESCE(owner_track_id, 0), lower(name))",
+      "CREATE UNIQUE INDEX workflow_map_owner_track_idx ON public.workflow_map USING btree (owner_track_id) WHERE (owner_track_id IS NOT NULL)",
+      "CREATE UNIQUE INDEX workflow_map_pkey ON public.workflow_map USING btree (id)",
+      "CREATE INDEX workflow_map_workflow_idx ON public.workflow_map USING btree (default_workflow_id)"
+    ]
+  },
+  "workflow_map_entry": {
+    "columns": [
+      "workspace_id integer not null",
+      "map_id integer not null",
+      "ticket_type_id integer not null",
+      "workflow_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_map_entry_pkey ON public.workflow_map_entry USING btree (map_id, ticket_type_id)",
+      "CREATE INDEX workflow_map_entry_type_idx ON public.workflow_map_entry USING btree (ticket_type_id)",
+      "CREATE INDEX workflow_map_entry_workflow_idx ON public.workflow_map_entry USING btree (workflow_id)"
+    ]
+  },
+  "workflow_migration": {
+    "columns": [
+      "id bigint not null default nextval('workflow_migration_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "user_id integer",
+      "reason text not null",
+      "map_id integer",
+      "track_id integer",
+      "status text not null default 'queued'::text",
+      "total integer not null",
+      "migrated integer not null default 0",
+      "change_set bigint not null",
+      "created_at timestamp with time zone not null default now()",
+      "started_at timestamp with time zone",
+      "finished_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX workflow_migration_pending_idx ON public.workflow_migration USING btree (workspace_id) WHERE (status <> 'done'::text)",
+      "CREATE UNIQUE INDEX workflow_migration_pkey ON public.workflow_migration USING btree (id)"
+    ]
+  },
+  "workflow_migration_step": {
+    "columns": [
+      "migration_id bigint not null",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "ticket_type_id integer not null",
+      "from_status_id integer not null",
+      "to_status_id integer not null",
+      "ticket_count integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_migration_step_pkey ON public.workflow_migration_step USING btree (migration_id, track_id, ticket_type_id, from_status_id)",
+      "CREATE INDEX workflow_migration_step_ticket_idx ON public.workflow_migration_step USING btree (track_id, ticket_type_id, from_status_id)"
+    ]
+  },
+  "workflow_version": {
+    "columns": [
+      "workspace_id integer not null",
+      "workflow_id integer not null",
+      "version integer not null",
+      "definition jsonb not null",
+      "created_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "published_at timestamp with time zone",
+      "published_by integer"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workflow_version_pkey ON public.workflow_version USING btree (workflow_id, version)"
+    ]
+  },
+  "workflow_version_status": {
+    "columns": [
+      "workspace_id integer not null",
+      "workflow_id integer not null",
+      "version integer not null",
+      "status_id integer not null"
+    ],
+    "indexes": [
+      "CREATE INDEX workflow_version_status_idx ON public.workflow_version_status USING btree (status_id)",
+      "CREATE UNIQUE INDEX workflow_version_status_pkey ON public.workflow_version_status USING btree (workflow_id, version, status_id)"
+    ]
+  },
+  "workspace": {
+    "columns": [
+      "id integer not null default nextval('workspace_id_seq'::regclass)",
+      "key text not null",
+      "name text not null",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX workspace_key_key ON public.workspace USING btree (key)",
+      "CREATE UNIQUE INDEX workspace_pkey ON public.workspace USING btree (id)"
+    ]
+  }
+}

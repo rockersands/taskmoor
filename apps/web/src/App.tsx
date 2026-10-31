@@ -46,6 +46,7 @@ import { PermissionsPage } from './permissions/PermissionsPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
+import { ImportedLinkPage, sourceLinkRoute } from './routing/ImportedLinkPage';
 import { currentRoute, navigate, useRoute } from './routing/router';
 import { runtimeConfig } from './runtime/config';
 import { queryFromHash, SearchPage } from './search/SearchPage';
@@ -171,6 +172,8 @@ const UNSUBSCRIBE = '#/unsubscribe';
 /** An MCP client's OAuth request waiting for the person's answer (M1-072). */
 const OAUTH_CONSENT = '#/oauth/consent';
 const HOME = '#/home';
+/** A filter, board or dashboard of the tracker an import came from, by its id (M1-128). */
+const IMPORTED_LINK = '#/imported';
 
 /** A path segment of the hash, decoded; as it is when it is not valid percent-encoding. */
 function decodedSegment(segment: string): string {
@@ -448,7 +451,11 @@ function Pages() {
   let guarded = true;
   let content: ReactNode;
   let wallboard = false;
-  if (hash.startsWith(ADMIN_SYSTEM)) {
+  if (isRoute(hash, IMPORTED_LINK) || sourceLinkRoute(hash) !== null) {
+    // A link from the tracker an import came from (M1-128): to the page it stands for.
+    active = '';
+    content = <ImportedLinkPage key={hash} route={hash} />;
+  } else if (hash.startsWith(ADMIN_SYSTEM)) {
     content = <SystemPage />;
   } else if (isRoute(hash, ADMIN_TOKENS)) {
     content = <AdminTokensPage />;

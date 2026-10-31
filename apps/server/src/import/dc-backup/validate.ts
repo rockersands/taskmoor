@@ -21,6 +21,7 @@ import {
 import { type Manifest, manifestSchema } from './manifest';
 import { parseXml, type XmlHandlers } from './parse';
 import { AgileChecks } from './validate-agile';
+import { FilterChecks } from './validate-filters';
 import { WorkflowChecks } from './validate-workflows';
 import type { Written } from './xml';
 
@@ -151,6 +152,8 @@ class EntitiesState {
   readonly workflows = new WorkflowChecks();
   /** Boards, sprints, rank, versions and components (M1-093). */
   readonly agile = new AgileChecks();
+  /** Saved filters' shares and favourites, dashboards and subscriptions (M1-094). */
+  readonly filters = new FilterChecks();
   readonly cases: Record<string, number> = {};
   rootSeen = false;
 
@@ -462,6 +465,7 @@ function record(state: EntitiesState, name: string, v: Record<string, string>): 
   const id = Number(v.id);
   state.workflows.row(name, v, (key, by) => state.note(key, by));
   state.agile.row(name, v, (key, by) => state.note(key, by));
+  state.filters.row(name, v, (key, by) => state.note(key, by));
   switch (name) {
     case 'User':
       state.userNames.add(v.lowerUserName ?? '');
@@ -878,6 +882,12 @@ function crossCheck(
   state.agile.check(
     { ids: (entity) => state.ids.get(entity), issueProject: (id) => state.issueProject.get(id) },
     (key, by) => state.note(key, by),
+    problem,
+  );
+
+  // Saved filters, dashboards and subscriptions (M1-094).
+  state.filters.check(
+    { ids: (entity) => state.ids.get(entity), groupNames: state.groupNames },
     problem,
   );
 

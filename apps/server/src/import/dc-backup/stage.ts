@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import yauzl from 'yauzl';
 import { sniff } from '../../attachments/sniff';
+import { queryType } from '../../search/catalogue';
+import { targetShape } from '../dc-fields';
 import { AGILE_ELEMENTS } from './agile-format';
 import type { CleanStats } from './clean';
 import {
@@ -19,6 +21,7 @@ import { parseXml, type XmlHandlers } from './parse';
 import { readLines as readLinesOf } from './spill';
 import { AGILE_STAGED_KINDS, AgileCollector } from './stage-agile';
 import { FIELD_ELEMENTS, FieldCollector } from './stage-fields';
+import { FILTER_ELEMENTS, FilterCollector } from './stage-filters';
 import { CONTENT_KINDS, ISSUE_ELEMENTS, IssueCollector, type StagedFile } from './stage-issues';
 import { SCHEME_ELEMENTS, SchemeCollector } from './stage-schemes';
 import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
@@ -38,7 +41,7 @@ import { WORKFLOW_ELEMENTS, WorkflowCollector } from './stage-workflows';
  * configuration only, never with issues, comments or history.
  */
 export const STAGE_FORMAT = 'taskmoor-dc-stage';
-export const STAGE_VERSION = 5;
+export const STAGE_VERSION = 6;
 export const STAGED = '.staged';
 const SUMMARY = 'stage.json';
 
@@ -70,6 +73,10 @@ export const STAGED_KINDS = {
   ...CONTENT_KINDS,
   // Releases, areas, boards and sprints (M1-093).
   ...AGILE_STAGED_KINDS,
+  // Saved filters, their subscriptions and dashboards (M1-094).
+  saved_search: 'SearchRequest',
+  subscription: 'FilterSubscription',
+  dashboard: 'PortalPage',
 } as const;
 
 /** The schemes a project's `NodeAssociation` rows may name that the mapping reads. */
@@ -103,6 +110,7 @@ export const CONSUMED = new Set<string>([
   ...SCHEME_ELEMENTS,
   ...WORKFLOW_ELEMENTS,
   ...AGILE_ELEMENTS,
+  ...FILTER_ELEMENTS,
 ]);
 
 /** Elements only tickets consume: a configuration-only import leaves them out (M1-089). */
@@ -291,6 +299,7 @@ class Collector {
   readonly workflowPart = new WorkflowCollector();
   /** Versions, components, boards, sprints and rank (M1-093). */
   readonly agilePart = new AgileCollector();
+  readonly filterPart = new FilterCollector();
   readonly issuePart: IssueCollector;
   /** Link types by id (sub-task links make parents). */
   readonly linkTypes = new Map<
@@ -352,6 +361,10 @@ class Collector {
       return;
     }
     if (this.agilePart.row(name, v, (issue, r) => this.issuePart.extra(issue, r))) return;
+    if (name === 'SearchRequest' || (FILTER_ELEMENTS as readonly string[]).includes(name)) {
+      this.filterPart.row(name, v);
+      return;
+    }
     switch (name) {
       case 'IssueLinkType':
         this.linkTypes.set(id, {
@@ -658,6 +671,26 @@ class Collector {
       }
     }
     const inWorkflow = this.workflowPart.statusesInWorkflows();
+    // Saved filters, dashboards and subscriptions (M1-094), queries analysed for translation.
+    const filterRecords = this.filterPart.resolve({
+      fields: this.fieldPart.fields,
+      fieldType: (typeKey) => {
+        const shape = targetShape(typeKey);
+        return shape ? queryType(shape) : null;
+      },
+      person: (raw) => {
+        const id = person(raw);
+        return people.has(id) ? id : undefined;
+      },
+      group: (raw) => {
+        const id = raw.toLowerCase();
+        return groups.has(id) ? id : null;
+      },
+      projects: this.projects,
+      role: (id) => this.roles.has(id),
+    });
+    const otherJobs = this.filterPart.otherJobs();
+    if (otherJobs > 0) this.partial.ClusteredJob = otherJobs;
     const records = {
       user: [...people.entries()]
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -690,6 +723,7 @@ class Collector {
       ...fieldRecords,
       ...schemeRecords,
       ...workflowRecords,
+      ...filterRecords,
     };
     return {
       records,

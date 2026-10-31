@@ -969,6 +969,11 @@ export interface SavedSearchTable {
   query: string;
   /** The result columns chosen for it; null for the default set. */
   columns: ColumnType<JsonValue | null, string | null | undefined, string | null>;
+  /**
+   * Why a query an import brought could not be translated (M1-094); null otherwise, and again
+   * once its query is saved.
+   */
+  import_problem: ColumnType<string | null, string | null | undefined, string | null>;
   version: Generated<number>;
   created_at: DefaultTimestamp;
   updated_at: DefaultTimestamp;

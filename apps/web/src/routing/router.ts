@@ -22,6 +22,8 @@ export interface Router {
   navigate(route: string): void;
   /** Rewrites the address without a new entry or a change event, as history.replaceState does. */
   replace(route: string): void;
+  /** Goes to the route in place of the current entry, with a change event (M1-128). */
+  redirect(route: string): void;
   /** Calls the listener after every route change; returns the unsubscribe. */
   subscribe(listener: () => void): () => void;
   /** Clean URLs: rewrites a hash route in the address and takes over links. Returns the stop. */
@@ -68,6 +70,11 @@ export function createRouter(
       replace: (route) => {
         const here = `${win.location.pathname}${win.location.search}`;
         win.history.replaceState(win.history.state, '', route ? `${here}${route}` : here);
+      },
+      redirect: (route) => {
+        const here = `${win.location.pathname}${win.location.search}`;
+        win.history.replaceState(win.history.state, '', route ? `${here}${route}` : here);
+        notify();
       },
       subscribe: (listener) => {
         win.addEventListener('hashchange', listener);
@@ -127,6 +134,10 @@ export function createRouter(
     url: (route) => new URL(href(route), win.location.origin).href,
     navigate,
     replace: (route) => win.history.replaceState(win.history.state, '', href(route)),
+    redirect: (route) => {
+      win.history.replaceState(win.history.state, '', href(route));
+      notify();
+    },
     subscribe: (listener) => {
       win.addEventListener('popstate', listener);
       win.addEventListener('hashchange', listener);
@@ -157,6 +168,7 @@ export const routeHref = (route: string): string => router.href(route);
 export const routeUrl = (route: string): string => router.url(route);
 export const navigate = (route: string): void => router.navigate(route);
 export const replaceRoute = (route: string): void => router.replace(route);
+export const redirectRoute = (route: string): void => router.redirect(route);
 export const onRouteChange = (listener: () => void): (() => void) => router.subscribe(listener);
 
 /** The current route, re-rendered on every change. */

@@ -7,6 +7,7 @@ import { finished } from 'node:stream/promises';
 import yazl from 'yazl';
 import { addedFilters, agileCases, agileRows, agileWorldOf, writeAgileEntity } from './agile';
 import { customValues, fieldWorldOf } from './fields';
+import { writeFilterEntity } from './filters';
 import {
   ACTIVE_OBJECTS_FILE,
   AO_NAMESPACE,
@@ -275,7 +276,7 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           id: p.id,
           name: p.name,
           key: p.key,
-          originalkey: p.key,
+          originalkey: p.originalKey ?? p.key,
           lead: w.user(p.lead),
           description: { text: p.description },
           counter: p.counter,
@@ -340,6 +341,8 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
           request: { text: f.request },
         });
       }
+      // Saved filters of their own (M1-094).
+      await writeFilterEntity(world, w, name);
       return;
     case 'Issue':
       for (const issue of walkIssues(world)) {
@@ -580,6 +583,7 @@ async function writeEntity(world: World, w: EntityWriter, name: EntityName): Pro
       await writeSchemeEntity(world, w, name);
       await writeWorkflowEntity(world, w, name);
       await writeAgileEntity(world, w, name);
+      await writeFilterEntity(world, w, name);
       return;
   }
 }
@@ -968,7 +972,12 @@ function* attachmentFiles(world: World): Generator<{ id: number; path: string; s
     for (const a of parts.attachments(world, issue)) {
       yield {
         id,
-        path: attachmentPath(issue.project.key, issue.number, issue.key, id),
+        path: attachmentPath(
+          issue.project.originalKey ?? issue.project.key,
+          issue.number,
+          issue.key,
+          id,
+        ),
         size: a.size,
       };
       id++;

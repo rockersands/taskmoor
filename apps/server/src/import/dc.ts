@@ -43,6 +43,7 @@ import type {
   StagedOption,
   StagedRuleSet,
 } from './dc-backup/stage-fields';
+import type { StagedDashboard, StagedFilter, StagedSubscription } from './dc-backup/stage-filters';
 import type {
   StagedAttachment,
   StagedChange,
@@ -78,6 +79,7 @@ import {
   mapRuleSet,
   storedValues,
 } from './dc-fields';
+import { mapDashboard, mapSavedSearch, mapSubscription } from './dc-filters';
 import {
   mapAccessPolicy,
   mapGlobalGrant,
@@ -390,10 +392,11 @@ function mapTrack(p: StagedProject): Mapped {
     warnings.push({ code: 'unknown_project_type', detail: p.type ?? '' });
     trackType = 'business';
   }
-  // Earlier keys become key aliases with the tickets (M1-128).
-  if (p.originalKey !== null && p.originalKey !== p.key) {
-    warnings.push({ code: 'original_key_not_kept', detail: p.originalKey });
-  }
+  // A renamed project's first key stays an earlier key of the track (M1-128).
+  const formerKeys =
+    p.originalKey !== null && p.originalKey.toUpperCase() !== p.key.toUpperCase()
+      ? [p.originalKey]
+      : [];
   const roleActors: NonNullable<Extract<Command, { kind: 'track' }>['roleActors']> = [];
   for (const a of p.actors) {
     if (!a.roleKnown) {
@@ -418,6 +421,7 @@ function mapTrack(p: StagedProject): Mapped {
       trackType,
       ...(p.counter !== null ? { lastNumber: p.counter } : {}),
       roleActors,
+      ...(formerKeys.length > 0 ? { formerKeys } : {}),
     },
     warnings,
   };
@@ -561,6 +565,10 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
   area: (d) => mapArea(d as unknown as StagedComponent),
   board: (d) => mapBoard(d as unknown as StagedBoard),
   sprint: (d) => mapSprint(d as unknown as StagedSprint),
+  // Saved filters, subscriptions and dashboards (M1-094).
+  saved_search: (d) => mapSavedSearch(d as unknown as StagedFilter),
+  subscription: (d) => mapSubscription(d as unknown as StagedSubscription),
+  dashboard: (d) => mapDashboard(d as unknown as StagedDashboard),
 };
 
 /** Kinds whose records carry no name of their own. */
@@ -575,6 +583,7 @@ const UNNAMED = new Set([
   'link',
   'web_link',
   'attachment',
+  'subscription',
 ]);
 
 /** Maps a staged record; a name the target cannot hold fails the record. */

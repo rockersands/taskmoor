@@ -1,4 +1,5 @@
 import { AGILE_AO_TABLES, AGILE_ENTITIES } from './agile-format';
+import { FILTER_ENTITIES } from './filter-format';
 import { WORKFLOW_ENTITIES } from './workflow-format';
 
 /**
@@ -423,7 +424,17 @@ export const ENTITIES = {
     },
   },
   Resolution: { attrs: { id, sequence: int, name: text, description: optText } },
-  SearchRequest: { attrs: { id, name: text, author: optUser, request: longText } },
+  SearchRequest: {
+    attrs: {
+      id,
+      name: text,
+      author: optUser,
+      request: longText,
+      // Saved filters' own (M1-094).
+      description: longText,
+      favCount: optInt,
+    },
+  },
   SequenceValueItem: { attrs: { seqName: text, seqId: int } },
   Status: {
     attrs: {
@@ -482,6 +493,8 @@ export const ENTITIES = {
   ...WORKFLOW_ENTITIES,
   // Versions and components (M1-093).
   ...AGILE_ENTITIES,
+  // Saved filters' shares and favourites, dashboards and subscriptions (M1-094).
+  ...FILTER_ENTITIES,
 } as const satisfies Record<string, EntitySpec>;
 export type EntityName = keyof typeof ENTITIES;
 

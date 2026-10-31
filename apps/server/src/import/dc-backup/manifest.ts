@@ -26,6 +26,8 @@ export const generatorOptions = z
     exportedAt: z.iso.datetime(),
     /** zlib level for the ZIP's entries (0 stores them). */
     compressionLevel: z.number().int().min(0).max(9),
+    /** Projects renamed in the source, the first ones: their earlier key is `originalkey` (M1-128). */
+    renamedProjects: z.number().int().min(0).max(100).optional(),
   })
   .strict();
 export type GeneratorOptions = z.infer<typeof generatorOptions>;

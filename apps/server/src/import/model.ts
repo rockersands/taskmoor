@@ -1,12 +1,15 @@
 import type {
   AreaDefaultAssignee,
+  DashboardLayout,
   Database,
   GranteeKind,
   JsonValue,
   NotificationRecipient,
+  SavedSearchShareScope,
   TrackType,
 } from '@taskmoor/db';
 import type { Kysely } from 'kysely';
+import type { WidgetKind } from '../dashboards/model';
 import type { FieldType } from '../fields/types';
 
 /**
@@ -66,6 +69,10 @@ export const ENTITY_KINDS = [
   'time_entry',
   'attachment',
   'history',
+  // Saved searches, their subscriptions and dashboards (M1-094): queries name everything above.
+  'saved_search',
+  'subscription',
+  'dashboard',
 ] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
@@ -266,6 +273,12 @@ export interface TrackCommand {
    * actors given in Taskmoor stay.
    */
   roleActors?: { role: Ref; user: Ref | null; group: Ref | null }[];
+  /**
+   * Keys the track had in the source before a rename (M1-128): kept as earlier keys, so its
+   * tickets open and queries find them by those keys too. A key another track holds stays
+   * theirs, with a warning.
+   */
+  formerKeys?: string[];
 }
 
 /** A release of a track, linked by name within the track. */
@@ -735,7 +748,93 @@ export type Command =
   | WebLinkCommand
   | TimeEntryCommand
   | AttachmentCommand
-  | HistoryCommand;
+  | HistoryCommand
+  | SavedSearchCommand
+  | SubscriptionCommand
+  | DashboardCommand;
+
+// --- Saved searches, subscriptions and dashboards (M1-094; ADR-096) ---------------------------
+
+/** Why a saved query cannot translate, or what to know about it (`translate/jql.ts`). */
+export interface QueryNote {
+  code: string;
+  detail: string;
+  /** A sentence for people, naming what was found. */
+  message: string;
+}
+
+/** Who besides the owner sees a saved search or a dashboard (the scopes of ADR-053). */
+export interface ShareCommand {
+  scope: SavedSearchShareScope;
+  user?: Ref;
+  group?: Ref;
+  track?: Ref;
+  /** With a track: only that role's actors. */
+  role?: Ref | null;
+}
+
+export interface SavedQueryCommand {
+  /** The query as the source wrote it. */
+  source: string;
+  /** Step 1's template (a query tree with references); null when it cannot translate. */
+  template: JsonValue | null;
+  /** Why it cannot translate. */
+  problems: QueryNote[];
+  /** It translates but names a module this version lacks. */
+  flags: QueryNote[];
+}
+
+export interface SavedSearchCommand {
+  kind: 'saved_search';
+  name: string;
+  description: string;
+  owner: Ref;
+  query: SavedQueryCommand;
+  shares: ShareCommand[];
+  /** People who starred it. */
+  stars: Ref[];
+}
+
+export interface SubscriptionCommand {
+  kind: 'subscription';
+  savedSearch: Ref;
+  /** Who made it; the recipient when it goes to no group. */
+  creator: Ref;
+  group: Ref | null;
+  schedule: 'daily' | 'weekly' | 'monthly' | 'cron';
+  hour: number;
+  minute: number;
+  weekday: number | null;
+  dayOfMonth: number | null;
+  cron: string | null;
+  timeZone: string;
+  onlyIfResults: boolean;
+  lastRunAt: string | null;
+}
+
+/** A widget: its settings, and the references that finish them on load. */
+export interface WidgetCommand {
+  kind: WidgetKind;
+  column: number;
+  title: string;
+  config: Record<string, JsonValue>;
+  /** `config.query` from a saved search (`savedSearch = <id>`) or a track (`track = KEY`). */
+  query?: { savedSearch: Ref } | { track: Ref };
+  /** `config.boardId`. */
+  board?: Ref;
+  /** `config.field`, a custom field (`cf[<id>]`). */
+  field?: Ref;
+}
+
+export interface DashboardCommand {
+  kind: 'dashboard';
+  name: string;
+  description: string;
+  owner: Ref;
+  layout: DashboardLayout;
+  widgets: WidgetCommand[];
+  shares: ShareCommand[];
+}
 
 /** What the map stage makes of a record. */
 export type Mapped =

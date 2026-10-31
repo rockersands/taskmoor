@@ -224,6 +224,11 @@ export function SavedSearchBar({
           </button>
         )}
       </div>
+      {opened?.importProblem && (
+        <p role="note" className="page-note">
+          {t('saved.importProblem', { problem: opened.importProblem })}
+        </p>
+      )}
       {panel === 'saveAs' && (
         <form
           className="saved-panel"

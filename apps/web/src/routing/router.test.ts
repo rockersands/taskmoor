@@ -41,6 +41,18 @@ describe('hash routing', () => {
     expect(address()).toBe('/');
   });
 
+  it('[IMP-011] redirects in place of the current entry and tells listeners', () => {
+    at('/#/browse/ABC-42');
+    const listener = vi.fn();
+    const stop = router.subscribe(listener);
+    const before = window.history.length;
+    router.redirect('#/tickets/ABC-42');
+    expect(address()).toBe('/#/tickets/ABC-42');
+    expect(window.history.length).toBe(before);
+    expect(listener).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
   it('[OPS-013] tells listeners about a new route', () => {
     const listener = vi.fn();
     const stop = router.subscribe(listener);
@@ -88,6 +100,10 @@ describe('clean URLs', () => {
     router.replace('#/boards/7?quick=mine');
     expect(address()).toBe('/boards/7?quick=mine');
     expect(listener).toHaveBeenCalledTimes(1);
+    router.redirect('#/tickets/ABC-42');
+    expect(address()).toBe('/tickets/ABC-42');
+    expect(window.history.length).toBe(before + 1);
+    expect(listener).toHaveBeenCalledTimes(2);
     unsubscribe();
   });
 

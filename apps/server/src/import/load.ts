@@ -865,6 +865,28 @@ function roleActors(ctx: LoadContext, cmd: TrackCommand): TrackData['actors'] {
   return out;
 }
 
+/**
+ * Keeps a track's earlier keys (M1-128) as replaced rows of its key history, which ticket
+ * lookups and the query catalogue read; one any track holds or held already is left alone.
+ */
+async function addFormerKeys(ctx: LoadContext, trackId: number, keys: readonly string[]) {
+  for (const key of keys) {
+    const { rows } = await sql`
+      INSERT INTO track_key_history (workspace_id, track_id, key, replaced_at)
+      VALUES (${ctx.workspaceId}, ${trackId}, ${key}, now())
+      ON CONFLICT DO NOTHING RETURNING id`.execute(ctx.trx);
+    const mine = await ctx.trx
+      .selectFrom('track_key_history')
+      .select('track_id')
+      .where('workspace_id', '=', ctx.workspaceId)
+      .where(sql<string>`upper(key)`, '=', key.toUpperCase())
+      .executeTakeFirst();
+    if (rows.length === 0 && mine?.track_id !== trackId) {
+      ctx.warn({ code: 'former_key_taken', detail: key });
+    }
+  }
+}
+
 /** Adds a track's role actors; the ones it has already stay. */
 async function addRoleActors(ctx: LoadContext, trackId: number, actors: TrackData['actors']) {
   if (actors.length === 0) return;
@@ -881,6 +903,13 @@ async function addRoleActors(ctx: LoadContext, trackId: number, actors: TrackDat
     )
     .onConflict((oc) => oc.doNothing())
     .execute();
+}
+
+/** The valid earlier keys of a track command other than its key. */
+function formerKeysOf(cmd: TrackCommand, key: string): string[] {
+  return [...new Set((cmd.formerKeys ?? []).map((k) => k.trim().toUpperCase()))].filter(
+    (k) => k !== key.toUpperCase() && checkKey(k, 'import').ok,
+  );
 }
 
 const tracks: Loader<TrackCommand> = {
@@ -931,6 +960,7 @@ const tracks: Loader<TrackCommand> = {
         .where('id', '=', plan.targetId as number)
         .execute();
       await addRoleActors(ctx, plan.targetId as number, actors);
+      await addFormerKeys(ctx, plan.targetId as number, formerKeysOf(cmd, key));
       return plan.targetId as number;
     }
     const policy = await ctx.trx
@@ -975,6 +1005,7 @@ const tracks: Loader<TrackCommand> = {
       );
     }
     await addRoleActors(ctx, row.id, actors);
+    await addFormerKeys(ctx, row.id, formerKeysOf(cmd, key));
     return row.id;
   },
   async read(db, ws, ids) {
