@@ -167,9 +167,9 @@ describe('Jira-compatible API conformance (M1-068)', () => {
   it('[API-014] reports each operation’s state as the generated matrix', async () => {
     const report = await runCompatContract({ project: 'CMP', issueType: 'Chore', boardId, call });
     expect(report.operations.length).toBeGreaterThan(60);
-    // M1-069's core: every operation outside the Agile API is complete, but bulk label edits,
-    // which add labels per issue (native bulk edits set them; ADR-086).
-    const core = report.operations.filter((o) => o.family !== 'agile' && o.id !== 'bulkEditFields');
+    // Every operation is complete (M1-069, M1-070) but bulk label edits, which add labels per
+    // issue (native bulk edits set them; ADR-086).
+    const core = report.operations.filter((o) => o.id !== 'bulkEditFields');
     expect(core.filter((o) => o.state !== 'complete').map((o) => `${o.id}: ${o.state}`)).toEqual(
       [],
     );

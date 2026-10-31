@@ -1,7 +1,7 @@
 ---
 title: "The REST API"
 audience: admins
-sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md
+sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts
 accessed: 2026-10-31
 attestation: own-words
 ---
@@ -353,13 +353,18 @@ token can search and read but not change anything.
   permissions; server information.
 - **Webhooks:** registering and listing them under `/rest/webhooks/1.0/webhook`, with the
   Jira-compatible event names.
+- **The Agile API** under `/rest/agile/1.0`:
+  - boards, with their configuration, issues and backlog;
+  - sprints: created, read, renamed and given dates; started by setting `state` to `active`,
+    completed with `closed` (open issues go to the backlog);
+  - issues moved into a sprint or back to the backlog;
+  - ranking issues before or after another.
 
 Everything runs as the person the token belongs to, through Taskmoor's own API, so their
 permissions, field rules, history and notifications apply as in the app.
 
 **Not yet:**
 
-- the Agile API (`/rest/agile/1.0`: boards, sprints, backlog, rank);
 - attachments;
 - bulk label changes that add or remove labels issue by issue (they answer an error);
 - wiki markup on version 2. Version 2 carries Markdown for now; plain text reads the same.

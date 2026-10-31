@@ -73,8 +73,9 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     process with the caller's token. The sign-in is Bearer or Basic (email plus API token);
     cookies and passwords are refused.
   - The matrix reads 57 of 72 complete.
-  - **M1-070 (Agile)** adds routes in a `shim/agile.ts` next to the others; its cases are
-    already in `cases.ts` and the suite's board is set up by the test.
+  - **M1-070 (Agile, done)**: `shim/agile.ts` on the native board and sprint API, plus a new
+    native `GET /api/v1/sprints/:id`. "Back to the backlog" searches the open sprints of the
+    boards the caller sees. The matrix now reads 71 of 72.
   - **M1-071** replaces the Markdown stand-in on v2 with wiki markup:
     - `nativeFormat` in `shim/map.ts` and `richText` for search results;
     - the native API needs a `wiki` format first.

@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-31
-- Backlog: M1-069
+- Backlog: M1-069, M1-070
 
 ## Context
 
@@ -67,12 +67,33 @@ or a bearer token (API-002).
 - **Not done yet:**
   - Bulk label edits that add or remove per issue, since native bulk edits set values. They
     answer a clear 400, never a wrong result.
-  - The Agile API (M1-070).
   - Wiki markup (M1-071).
   - Attachments.
   - `expand` sections beyond what the issue already carries.
   - The link direction (`inwardIssue` takes the outward phrase) is marked `verify` until a
     script confirms it.
+
+## The Agile API (M1-070)
+
+`shim/agile.ts` serves `/rest/agile/1.0` on the native board and sprint API, the same way:
+- boards, their configuration (columns with their statuses, the filter), their issues (the
+  board's own query) and their backlog;
+- a board's sprints by state;
+- sprints created, read and changed. A `state` of `active` starts a future sprint, and `closed`
+  completes an active one, moving open issues to the backlog;
+- issues moved into a sprint, and back to the backlog;
+- rank before or after an issue, in the order given;
+- an issue read through the Agile API.
+
+Issues there have the version 2 shape. Three choices:
+
+- The native API gained `GET /api/v1/sprints/:id`, with the sprint's board rules, since the
+  Agile API reads a sprint by its id alone.
+- "Back to the backlog" names no sprint, so the shim finds each issue's open sprint among the
+  scrum boards the caller sees, one search per open sprint. That is enough for M1 instances. A
+  native "remove from any sprint" would make it one call if a large instance needs it.
+- Agile estimation fields and epics (the parent of an issue at the level above) are left to the
+  issue's own fields: `parent` and `timetracking`.
 
 ## Options considered
 
@@ -85,8 +106,8 @@ or a bearer token (API-002).
 
 ## Consequences
 
-- The compatibility matrix reads 57 of 72 operations complete. Every family outside the Agile
-  API is complete except bulk label edits.
+- The compatibility matrix reads 71 of 72 operations complete (57 after M1-069, the Agile API
+  with M1-070). Only bulk label edits that add or remove per issue are missing.
 - Each new native capability makes its compatible operation a few lines. When a script needs
   more, the contract gets the case first (ADR-085).
 - Costs are visible: a compatible create makes three native calls (the project, its ticket

@@ -280,6 +280,14 @@ export function registerSprintRoutes(
     return { sprints: rows.map(sprintView), settings: board.settings, mayManage: board.manage };
   });
 
+  // One sprint by its id (M1-070): what the compatible Agile API reads; its board's rules.
+  app.get('/api/v1/sprints/:id', async (request, reply) => {
+    if (!requireUser(request, reply)) return reply;
+    const found = await sprintAndBoard(request, reply);
+    if (!found) return reply;
+    return { sprint: sprintView(found.sprint), mayManage: found.board.manage };
+  });
+
   app.get('/api/v1/boards/:id/backlog', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = idParam.safeParse(request.params);
