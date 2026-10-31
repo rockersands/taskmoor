@@ -1,0 +1,476 @@
+[
+  {
+    "boardFilters": [
+      {
+        "name": "Only my issues",
+        "query": "assignee = currentUser()"
+      },
+      {
+        "name": "Recently updated",
+        "query": "updated >= -1d"
+      },
+      {
+        "name": "Defects",
+        "query": "type = Defect"
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "To do",
+        "statuses": [
+          "Backlog",
+          "Selected"
+        ]
+      },
+      {
+        "max": 8,
+        "min": null,
+        "name": "In progress",
+        "statuses": [
+          "Working"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "In review",
+        "statuses": [
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished",
+          "Declined"
+        ]
+      }
+    ],
+    "kind": "scrum",
+    "name": "AX board",
+    "query": "track = AX",
+    "subFilter": null,
+    "track": "AX"
+  },
+  {
+    "boardFilters": [
+      {
+        "name": "Urgent",
+        "query": "priority IN (Critical, High)"
+      },
+      {
+        "name": "Area: Violet",
+        "query": "area = \"Violet\""
+      },
+      {
+        "name": "Next release",
+        "query": "targetRelease = \"1.1\""
+      },
+      {
+        "name": "No estimate",
+        "query": "originalEstimate IS EMPTY"
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "To do",
+        "statuses": [
+          "Backlog",
+          "Selected"
+        ]
+      },
+      {
+        "max": 5,
+        "min": null,
+        "name": "In progress",
+        "statuses": [
+          "Working"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "In review",
+        "statuses": [
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished",
+          "Declined"
+        ]
+      }
+    ],
+    "kind": "scrum",
+    "name": "BX board",
+    "query": "track = BX",
+    "subFilter": null,
+    "track": "BX"
+  },
+  {
+    "boardFilters": [
+      {
+        "name": "No estimate",
+        "query": "originalEstimate IS EMPTY"
+      },
+      {
+        "name": "Has a reviewer",
+        "query": "cf[11] IS NOT EMPTY"
+      },
+      {
+        "name": "Current sprints",
+        "query": "sprint IN openSprints()"
+      },
+      {
+        "name": "Only my issues",
+        "query": "assignee = currentUser()"
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "To do",
+        "statuses": [
+          "Backlog",
+          "Selected"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "In progress",
+        "statuses": [
+          "Working"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "In review",
+        "statuses": [
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished",
+          "Declined"
+        ]
+      }
+    ],
+    "kind": "scrum",
+    "name": "CX board",
+    "query": "track = CX",
+    "subFilter": null,
+    "track": "CX"
+  },
+  {
+    "boardFilters": [
+      {
+        "name": "Only my issues",
+        "query": "assignee = currentUser()"
+      },
+      {
+        "name": "Recently updated",
+        "query": "updated >= -1d"
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "To do",
+        "statuses": [
+          "Backlog",
+          "Selected"
+        ]
+      },
+      {
+        "max": 8,
+        "min": null,
+        "name": "In progress",
+        "statuses": [
+          "Working"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "In review",
+        "statuses": [
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished",
+          "Declined"
+        ]
+      }
+    ],
+    "kind": "scrum",
+    "name": "DX board",
+    "query": "track = DX",
+    "subFilter": null,
+    "track": "DX"
+  },
+  {
+    "boardFilters": [
+      {
+        "name": "Defects",
+        "query": "type = Defect"
+      },
+      {
+        "name": "Urgent",
+        "query": "priority IN (Critical, High)"
+      },
+      {
+        "name": "Area: Filter",
+        "query": "area = \"Filter\""
+      },
+      {
+        "name": "Next release",
+        "query": "targetRelease = \"2.0\""
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "To do",
+        "statuses": [
+          "Backlog",
+          "Selected"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "In progress",
+        "statuses": [
+          "Working"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "In review",
+        "statuses": [
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished",
+          "Declined"
+        ]
+      }
+    ],
+    "kind": "scrum",
+    "name": "FX board",
+    "query": "track = FX",
+    "subFilter": null,
+    "track": "FX"
+  },
+  {
+    "boardFilters": [
+      {
+        "name": "Next release",
+        "query": "targetRelease = \"1.0\""
+      },
+      {
+        "name": "No estimate",
+        "query": "originalEstimate IS EMPTY"
+      },
+      {
+        "name": "Has a reviewer",
+        "query": "cf[11] IS NOT EMPTY"
+      },
+      {
+        "name": "Current sprints",
+        "query": "sprint IN openSprints()"
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "To do",
+        "statuses": [
+          "Backlog"
+        ]
+      },
+      {
+        "max": 3,
+        "min": null,
+        "name": "In progress",
+        "statuses": [
+          "Selected",
+          "Working",
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished",
+          "Declined"
+        ]
+      }
+    ],
+    "kind": "scrum",
+    "name": "AX and BX delivery",
+    "query": "track IN (AX, BX)",
+    "subFilter": null,
+    "track": "AX"
+  },
+  {
+    "boardFilters": [
+      {
+        "name": "No estimate",
+        "query": "originalEstimate IS EMPTY"
+      },
+      {
+        "name": "Only my issues",
+        "query": "assignee = currentUser()"
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "Backlog",
+        "statuses": [
+          "Backlog"
+        ]
+      },
+      {
+        "max": null,
+        "min": 2,
+        "name": "Selected",
+        "statuses": [
+          "Selected"
+        ]
+      },
+      {
+        "max": 4,
+        "min": null,
+        "name": "Working",
+        "statuses": [
+          "Working"
+        ]
+      },
+      {
+        "max": 4,
+        "min": null,
+        "name": "Review",
+        "statuses": [
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished"
+        ]
+      }
+    ],
+    "kind": "kanban",
+    "name": "AX Cache flow",
+    "query": "track = AX AND area = \"Cache\"",
+    "subFilter": "targetRelease IN upcomingReleases() OR targetRelease IS EMPTY",
+    "track": "AX"
+  },
+  {
+    "boardFilters": [
+      {
+        "name": "Recently updated",
+        "query": "updated >= -1d"
+      },
+      {
+        "name": "Defects",
+        "query": "type = Defect"
+      },
+      {
+        "name": "Urgent",
+        "query": "priority IN (Critical, High)"
+      },
+      {
+        "name": "Area: Größe",
+        "query": "area = \"Größe\""
+      }
+    ],
+    "columns": [
+      {
+        "max": null,
+        "min": null,
+        "name": "Backlog",
+        "statuses": [
+          "Backlog"
+        ]
+      },
+      {
+        "max": null,
+        "min": 2,
+        "name": "Selected",
+        "statuses": [
+          "Selected"
+        ]
+      },
+      {
+        "max": 3,
+        "min": null,
+        "name": "Working",
+        "statuses": [
+          "Working"
+        ]
+      },
+      {
+        "max": 2,
+        "min": null,
+        "name": "Review",
+        "statuses": [
+          "In Review"
+        ]
+      },
+      {
+        "max": null,
+        "min": null,
+        "name": "Done",
+        "statuses": [
+          "Finished",
+          "Declined"
+        ]
+      }
+    ],
+    "kind": "kanban",
+    "name": "EX kanban",
+    "query": "track = EX",
+    "subFilter": "targetRelease IN upcomingReleases() OR targetRelease IS EMPTY",
+    "track": "EX"
+  }
+]

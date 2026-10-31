@@ -1,14 +1,26 @@
-import { parseQuery } from '@taskmoor/query';
+import { parseQuery, printQuery, QueryError } from '@taskmoor/query';
 import { sql } from 'kysely';
+import { bindCondition, type Scope } from '../boards/data';
 import {
+  type BoardFilter,
   type Column,
   DEFAULT_BOARD_FILTERS,
   DEFAULT_CARD_RULES,
   DEFAULT_SWIMLANES,
 } from '../boards/model';
+import { SearchError } from '../search/bind';
+import { queryCatalogue } from '../search/catalogue';
 import { DEFAULT_SPRINT_SETTINGS } from '../sprints/model';
-import { existingTarget, type Loader, lower, PENDING, real, required } from './load';
-import type { BoardCommand, SprintCommand } from './model';
+import {
+  existingTarget,
+  type LoadContext,
+  type Loader,
+  lower,
+  PENDING,
+  real,
+  required,
+} from './load';
+import type { BoardCommand, Ref, SprintCommand } from './model';
 
 /**
  * Boards and sprints (M1-095; IMP-002; ADR-094). They are written with SQL like the other
@@ -21,19 +33,102 @@ interface BoardData {
   track: number;
   query: string;
   columns: Column[];
+  /** Given by the command (M1-093): written on create and update. */
+  subQuery?: string | null;
+  boardFilters?: BoardFilter[];
 }
+
+/**
+ * A query with the backup's custom field ids (`cf[<source id>]`) in the target's (M1-093);
+ * null when a field it names did not import. A dry run keeps the source ids.
+ */
+function withTargetFields(ctx: LoadContext, text: string, fields: readonly Ref[]): string | null {
+  if (fields.length === 0) return text;
+  const query = parseQuery(text);
+  let missing = false;
+  const map = (custom: number): number => {
+    const target = ctx.refs.get({ kind: 'field', id: String(custom) });
+    if (target === null) missing = true;
+    return target === null || target === PENDING ? custom : target;
+  };
+  const visit = (e: NonNullable<typeof query.where>): typeof e => {
+    switch (e.kind) {
+      case 'and':
+      case 'or':
+        return { ...e, items: e.items.map(visit) };
+      case 'not':
+        return { ...e, expr: visit(e.expr) };
+      default:
+        return e.field.custom === undefined
+          ? e
+          : { ...e, field: { ...e.field, custom: map(e.field.custom) } };
+    }
+  };
+  const out = printQuery({ where: query.where && visit(query.where), orderBy: [] });
+  return missing ? null : out;
+}
+
+/**
+ * Why a query does not resolve against the target as a board would read it, with no viewer
+ * (M1-093): a field, function or value it names; null when it does. A dry run only parses it,
+ * since what it names may not exist yet.
+ */
+async function unresolved(ctx: LoadContext, text: string): Promise<string | null> {
+  try {
+    if (ctx.dryRun) {
+      parseQuery(text);
+      return null;
+    }
+    let scope = scopes.get(ctx);
+    if (!scope) {
+      scope = {
+        ws: ctx.workspaceId,
+        filter: { sql: sql<boolean>`true`, tracks: 'all' },
+        catalog: ctx.catalog,
+        catalogue: await queryCatalogue(ctx.trx, ctx.workspaceId, ctx.catalog, 'all'),
+        userId: null,
+        person: {
+          // Nobody has id 0: queries about the viewer resolve, and find no one (M1-093).
+          currentUserId: 0,
+          timeZone: null,
+          sessionId: null,
+          allowedTracks: async () => 'all' as const,
+        },
+      };
+      scopes.set(ctx, scope);
+    }
+    await bindCondition(ctx.trx, scope, text, new Date(ctx.now));
+    return null;
+  } catch (error) {
+    if (error instanceof QueryError) return error.detail.slice(0, 160);
+    if (error instanceof SearchError) return error.message.slice(0, 160);
+    throw error;
+  }
+}
+/** The batch's scope for checking queries, kept per batch (tracks made in it included). */
+const scopes = new WeakMap<LoadContext, Scope>();
 
 export const boards: Loader<BoardCommand> = {
   table: { name: 'board', id: 'id' },
   async plan(ctx, cmd, existing) {
     const track = required(ctx, cmd.track, 'track');
+    const fields = cmd.fields ?? [];
+    // Queries a source gives in full (M1-093) are checked against the target.
+    const checked = cmd.boardFilters !== undefined;
     let query = cmd.query;
     if (query !== null) {
+      let problem: string | null = null;
       try {
         parseQuery(query);
+        query = withTargetFields(ctx, query, fields);
+        if (query === null) problem = 'field_not_imported';
+        else if (checked) problem = await unresolved(ctx, query);
       } catch {
-        ctx.warn({ code: 'board_query_not_imported' });
+        problem = 'not_parsed';
+      }
+      if (problem !== null) {
         query = null;
+        ctx.warn({ code: 'board_query_not_imported', ...(checked ? { detail: problem } : {}) });
       }
     }
     if (query === null) {
@@ -61,6 +156,35 @@ export const boards: Loader<BoardCommand> = {
       max: c.max,
     }));
     const data: BoardData = { track, query, columns };
+    if (cmd.subQuery !== undefined) {
+      const sub = cmd.subQuery === null ? null : withTargetFields(ctx, cmd.subQuery, fields);
+      const problem =
+        cmd.subQuery === null
+          ? null
+          : sub === null
+            ? 'field_not_imported'
+            : await unresolved(ctx, sub);
+      if (problem !== null) ctx.warn({ code: 'board_sub_query_not_imported', detail: problem });
+      data.subQuery = problem === null ? sub : null;
+    }
+    if (cmd.boardFilters !== undefined) {
+      data.boardFilters = [];
+      for (const f of cmd.boardFilters) {
+        // IMP-006 (2): the filter is named with what it uses that does not translate.
+        const text = withTargetFields(ctx, f.query, fields);
+        const problem = text === null ? 'field_not_imported' : await unresolved(ctx, text);
+        if (text === null || problem !== null) {
+          ctx.warn({ code: 'board_filter_not_imported', detail: `${f.name}: ${problem}` });
+          continue;
+        }
+        data.boardFilters.push({
+          id: `f${data.boardFilters.length + 1}`,
+          name: f.name,
+          query: text,
+          description: f.description,
+        });
+      }
+    }
     const fingerprint = {
       name: cmd.name,
       kind: cmd.boardKind,
@@ -94,6 +218,14 @@ export const boards: Loader<BoardCommand> = {
           name: cmd.name,
           description: cmd.description,
           columns: JSON.stringify(d.columns),
+          ...(d.boardFilters !== undefined
+            ? {
+                filter_query: d.query,
+                saved_search_id: null,
+                sub_filter_query: d.subQuery ?? null,
+                board_filters: JSON.stringify(d.boardFilters),
+              }
+            : {}),
           updated_at: new Date(),
           version: sql`version + 1`,
         })
@@ -111,10 +243,10 @@ export const boards: Loader<BoardCommand> = {
         location_track_id: d.track,
         location_user_id: null,
         filter_query: d.query,
-        sub_filter_query: null,
+        sub_filter_query: d.subQuery ?? null,
         columns: JSON.stringify(d.columns),
         swimlanes: JSON.stringify(DEFAULT_SWIMLANES),
-        board_filters: JSON.stringify(DEFAULT_BOARD_FILTERS),
+        board_filters: JSON.stringify(d.boardFilters ?? DEFAULT_BOARD_FILTERS),
         card_rules: JSON.stringify(DEFAULT_CARD_RULES),
         sprint_settings: JSON.stringify(DEFAULT_SPRINT_SETTINGS),
         created_by: null,

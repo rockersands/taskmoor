@@ -9,6 +9,7 @@ import {
   WATCH_ISSUE,
 } from './format';
 import { Buckets, byId, SpillFile } from './spill';
+import type { StagedIssueAgile } from './stage-agile';
 import type { StagedField } from './stage-fields';
 
 /**
@@ -86,6 +87,8 @@ export interface StagedIssue {
   followers: string[];
   voters: string[];
   formerKeys: StagedFormerKey[];
+  /** Versions, components and rank (M1-093). */
+  agile?: StagedIssueAgile;
 }
 
 /** A comment (M1-091): visibility by group (staged id) or role, as the backup restricts it. */
@@ -245,7 +248,9 @@ type TicketRow =
   | ['I', Record<string, string>]
   | ValueRow
   | LabelRow
-  | ['W' | 'O', issue: string, person: string];
+  | ['W' | 'O', issue: string, person: string]
+  /** Another part's row of the issue (M1-093), folded in by `IssueResolve.extend`. */
+  | ['X', issue: string, payload: unknown];
 
 /** History bucket rows: a change group or an item. */
 type HistoryRow =
@@ -264,6 +269,8 @@ export interface IssueResolve {
   projectByKey: ReadonlyMap<string, string>;
   /** Attachment files of the ZIP by attachment id. */
   files: ReadonlyMap<string, StagedFile>;
+  /** Folds other parts' rows of an issue (`extra`) into its record (M1-093). */
+  extend?: (issue: StagedIssue, extras: readonly unknown[]) => void;
 }
 
 type RawElement = 'Action' | 'Worklog' | 'FileAttachment' | 'RemoteIssueLink' | 'IssueLink';
@@ -387,6 +394,11 @@ export class IssueCollector {
     }
   }
 
+  /** A row of another part that belongs to an issue, joined with it later (M1-093). */
+  extra(issue: string, payload: unknown): void {
+    this.tickets.add(issue, ['X', issue, payload] satisfies TicketRow);
+  }
+
   get issueCount(): number {
     return this.issues;
   }
@@ -499,9 +511,13 @@ export class IssueCollector {
       const values = new Map<string, ValueRow[]>();
       const labels = new Map<string, LabelRow[]>();
       const people = new Map<string, { followers: string[]; voters: string[] }>();
+      const extras = new Map<string, unknown[]>();
       for await (const row of bucket.read()) {
         const r = row as TicketRow;
         switch (r[0]) {
+          case 'X':
+            listOf(extras, r[1]).push(r[2]);
+            break;
           case 'I':
             issues.push(r[1]);
             break;
@@ -576,6 +592,7 @@ export class IssueCollector {
         for (const [, , field, label] of labels.get(id) ?? []) {
           if (field === null) record.labels.push(label);
         }
+        resolve.extend?.(record, extras.get(id) ?? []);
         if (parent === null) await roots.write(id, record);
         else children.add({ id, label: '', data: record });
       }

@@ -1,3 +1,4 @@
+import { AGILE_AO_TABLES, AGILE_ENTITIES } from './agile-format';
 import { WORKFLOW_ENTITIES } from './workflow-format';
 
 /**
@@ -479,6 +480,8 @@ export const ENTITIES = {
   },
   // Workflows, their schemes and custom events (M1-090).
   ...WORKFLOW_ENTITIES,
+  // Versions and components (M1-093).
+  ...AGILE_ENTITIES,
 } as const satisfies Record<string, EntitySpec>;
 export type EntityName = keyof typeof ENTITIES;
 
@@ -568,7 +571,10 @@ const VARCHAR = 12;
 const BOOLEAN = 16;
 const CLOB = 2005;
 
-/** The tables the generator writes: the boards and sprints of the agile plugin. */
+/**
+ * The tables the generator writes: the boards and sprints of the agile plugin, then its columns,
+ * quick filters, sub-queries and rank (M1-093, `agile-format.ts`).
+ */
 export const AO_TABLES: Readonly<Record<string, readonly AoColumn[]>> = {
   AO_60DB71_RAPIDVIEW: [
     {
@@ -603,6 +609,7 @@ export const AO_TABLES: Readonly<Record<string, readonly AoColumn[]>> = {
     { name: 'GOAL', type: 'string', sqlType: CLOB, precision: 2_147_483_647 },
     { name: 'SEQUENCE', type: 'integer', sqlType: INTEGER, precision: 10 },
   ],
+  ...AGILE_AO_TABLES,
 };
 
 export const AO_VALUE_TYPES: readonly AoType[] = [

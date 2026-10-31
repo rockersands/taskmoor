@@ -97,16 +97,40 @@
       "source": 4
     },
     {
-      "kind": "field",
+      "kind": "release",
       "outcomes": {
-        "created": 18,
+        "created": 15,
         "failed": 0,
         "linked": 0,
         "skipped": 0,
         "unchanged": 0,
         "updated": 0
       },
-      "source": 18
+      "source": 15
+    },
+    {
+      "kind": "area",
+      "outcomes": {
+        "created": 9,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 9
+    },
+    {
+      "kind": "field",
+      "outcomes": {
+        "created": 18,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 2,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 20
     },
     {
       "kind": "field_context",
@@ -239,6 +263,18 @@
         "updated": 0
       },
       "source": 3
+    },
+    {
+      "kind": "board",
+      "outcomes": {
+        "created": 6,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 6
     }
   ],
   "mapping": [
@@ -905,6 +941,198 @@
       "warnings": []
     },
     {
+      "kind": "release",
+      "label": "AX: 1.0",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "AX: 1.1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "BX: 1.0",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "BX: 1.1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "BX: 1.2",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "BX: 2.0",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "BX: 2.1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10006",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "CX: 1.0",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10007",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "CX: 1.1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10008",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "CX: 1.2",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10009",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "CX: 2.0",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10010",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "DX: 1.0",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10011",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "DX: 1.1",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10012",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "DX: 1.2",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10013",
+      "warnings": []
+    },
+    {
+      "kind": "release",
+      "label": "DX: 2.0",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10014",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "AX: Upload",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10000",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "AX: Ledger",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10001",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "AX: Größe",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10002",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "AX: Timber",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10003",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "BX: Meadow",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10004",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "BX: Layout",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10005",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "BX: Ñandú",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10006",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "CX: Cache",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10007",
+      "warnings": []
+    },
+    {
+      "kind": "area",
+      "label": "DX: Harbour",
+      "outcome": "created",
+      "reason": null,
+      "sourceId": "10008",
+      "warnings": []
+    },
+    {
       "kind": "field",
       "label": "Effort",
       "outcome": "created",
@@ -1049,6 +1277,22 @@
       "warnings": [
         "app_field_as_read_only_text: com.example.ratings:stars"
       ]
+    },
+    {
+      "kind": "field",
+      "label": "Sprint",
+      "outcome": "skipped",
+      "reason": "sprint_field_as_sprints",
+      "sourceId": "10100",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Rank",
+      "outcome": "skipped",
+      "reason": "rank_field_as_rank",
+      "sourceId": "10101",
+      "warnings": []
     },
     {
       "kind": "field_context",
@@ -1537,14 +1781,14 @@
       "reason": "configuration_only"
     },
     {
-      "count": 4,
-      "kind": "AO_60DB71_RAPIDVIEW",
-      "reason": "not_imported_yet"
+      "count": 10000,
+      "kind": "AO_60DB71_LEXORANK",
+      "reason": "configuration_only"
     },
     {
-      "count": 15,
+      "count": 19,
       "kind": "AO_60DB71_SPRINT",
-      "reason": "not_imported_yet"
+      "reason": "configuration_only"
     },
     {
       "count": 28401,
@@ -1557,7 +1801,7 @@
       "reason": "configuration_only"
     },
     {
-      "count": 52204,
+      "count": 57458,
       "kind": "CustomFieldValue",
       "reason": "configuration_only"
     },
@@ -1592,17 +1836,22 @@
       "reason": "configuration_only"
     },
     {
+      "count": 9115,
+      "kind": "NodeAssociation",
+      "reason": "configuration_only"
+    },
+    {
       "count": 872,
       "kind": "RemoteIssueLink",
       "reason": "configuration_only"
     },
     {
-      "count": 4,
+      "count": 6,
       "kind": "SearchRequest",
       "reason": "not_imported_yet"
     },
     {
-      "count": 55,
+      "count": 57,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -1629,6 +1878,12 @@
       "count": 3,
       "detail": "com.example.reviews:APPROVE",
       "kind": "access_policy"
+    },
+    {
+      "code": "board_filter_not_imported",
+      "count": 3,
+      "detail": "Commented (app): Unknown field \"issueFunction\"",
+      "kind": "board"
     },
     {
       "code": "app_field_as_read_only_text",

@@ -49,11 +49,17 @@ Sizes scale with `--issues`:
 - 1 project per 2,500 issues (2 to 400).
 - 1 person per 200 issues (20 to 5,000), plus 1 deleted person per 40.
 - 1 group per 25 people (3 to 200).
-- 1 board per software project (up to 200), with 0 to 6 sprints each.
+- 1 board per software project (up to 200), with 0 to 6 sprints each. M1-093 adds a Scrum
+  board across the first two projects with four sprints of its own, a Kanban board of the first
+  project narrowed to one component, and a Kanban board per business project.
+- 2 to 5 versions and 1 to 4 components per project (M1-093).
 
 Per issue there are about 1.2 comments, 2.8 change groups (3.3 change items), 0.47 labels,
 0.37 time entries, 0.2 links, 1.6 watchers, 0.3 votes and 0.09 web links; about 1 issue in 300
-was moved from another project (M1-091). Attachments come at `--attachment-rate` (5% of issues
+was moved from another project (M1-091). About 0.38 fix versions, 0.08 affected versions and
+0.44 components; issues that are not sub-tasks sit in closed sprints (some carried over into the
+next) and in at most one open sprint, about 0.5 sprint values per issue; every issue has a rank
+(M1-093). Attachments come at `--attachment-rate` (5% of issues
 have 1 to 3 files by default), and `--forbidden-rate` sets the share of text values that carry
 a forbidden character (0.2% by default).
 
@@ -66,18 +72,24 @@ The `cases` counted in the manifest:
 - **Time entries:** restricted to a group or to a role (M1-091).
 - **History:** anonymous changes, changes of a custom field.
 - **Issues' people and keys:** watches, votes, moved issues, web links (M1-091).
-- **Sprints:** closed, active, future.
+- **Sprints:** closed, active, future; issues in closed and in open sprints, issues in more
+  than one (M1-093).
+- **Boards (M1-093):** Scrum, Kanban, across projects; columns, columns with a limit, quick
+  filters, sub-queries.
+- **Versions and components (M1-093):** released and archived versions, issues' fix and affected
+  versions and components; ranked issues.
 - **Text:** values written as child elements, and CDATA sections split at `]]>`.
 
 Rows are written in name order, with the id sequences last. So comments and history come before
 the issues they belong to, and a reader must not resolve references in a single pass.
 
-Not generated yet; the M1-093 and M1-094 mappings add them as they need them: versions,
-components, renamed projects, each issue's workflow state, draft workflows, rank, the board
-columns and the issues' sprints, filters other than the boards', dashboards, avatars and logos,
-and thumbnails. Custom fields (M1-089), permission, security and notification schemes (M1-092),
-workflows with their schemes (M1-090), and issue content with watchers, voters and the keys of
-moved issues (M1-091) are generated.
+Not generated yet; the M1-094 mapping adds them as it needs them: renamed projects, each issue's
+workflow state, draft workflows, filters other than the boards', dashboards, swimlanes, card
+colours, board administrators, avatars and logos, and thumbnails. Custom fields (M1-089),
+permission, security and notification schemes (M1-092), workflows with their schemes (M1-090),
+issue content with watchers, voters and the keys of moved issues (M1-091), and versions,
+components, boards with their columns, quick filters, sub-queries and sprints, the issues'
+sprints and rank (M1-093) are generated.
 
 ### Measured
 
@@ -325,6 +337,37 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 - **Verify:** saved filters are `SearchRequest` rows with `id`, `name`, `author` (a user key)
   and `request` (the query text). The generator writes one filter per board,
   `project = KEY ORDER BY Rank ASC`.
+- **Our choice:** the board across two projects reads `project in (A, B) ORDER BY Rank ASC`,
+  and the component board `project = A AND component = "Name" ORDER BY Rank ASC`. The filters
+  of the boards M1-093 adds have ids from 12000, clear of the others.
+
+### Versions and components (M1-093)
+
+- **Verify:** versions are `Version` rows with `id`, `project`, `name`, `description`,
+  `sequence` (their order in the project), `released` and `archived` (`true` when set, left out
+  otherwise), `startdate` and `releasedate`.
+- **Verify:** components are `Component` rows with `id`, `project`, `name`, `description`,
+  `lead` (a user key) and `assigneetype`: `0` the project's default, `1` the component lead, `2`
+  the project lead, `3` unassigned.
+- **Verify:** an issue names its versions and components through `NodeAssociation` rows from
+  the issue (`sourceNodeEntity` `Issue`) to the `Version` or `Component`, with the
+  `associationType` `IssueFixVersion`, `IssueVersion` (affected) or `IssueComponent`.
+- **Verify:** the backup keeps no moment a version was released or archived, only its dates.
+- **Our choice:** versions are named `1.0`, `1.1`, `1.2`, `2.0` ... in each project; the older
+  ones are released, the oldest of four or more archived, the last two upcoming (the last one
+  sometimes without a date). Components are named after words of the generator's list, and an
+  issue names versions and components of its own project only.
+
+### The agile plugin's fields (M1-093)
+
+- **Verify:** an issue's sprints are values of the plugin's sprint custom field (type
+  `com.pyxis.greenhopper.jira:gh-sprint`): one `CustomFieldValue` per sprint, the sprint's id
+  in `numbervalue`. The reader also takes the id from `stringvalue`.
+- **Verify:** the rank is the plugin's rank custom field (type
+  `com.pyxis.greenhopper.jira:gh-lexo-rank`); its values are rows of `AO_60DB71_LEXORANK`, not
+  custom values.
+- **Our choice:** the two fields are `CustomField` rows 10100 and 10101, with no contexts.
+  Sub-tasks are in no sprint.
 
 ### Custom fields and their values (M1-089)
 
@@ -522,8 +565,8 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 
 ### Seen, not generated yet
 
-- `Version`, `Component`, `NodeAssociation` rows for an issue's affected and fix versions and
-  its components, `OSPropertyEntry` and `EntityProperty` are elements too. [S13] [S24] [S52]
+- `OSPropertyEntry` and `EntityProperty` are elements too, as `Version`, `Component` and
+  `NodeAssociation` rows for an issue's versions and components are. [S13] [S24] [S52]
 
 ## 4. activeobjects.xml
 
@@ -559,7 +602,27 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
 - **Verify:** `AO_60DB71_RAPIDVIEW` has `ID`, `NAME`, `OWNER_USER_NAME`, `SAVED_FILTER_ID`
   (a `SearchRequest` id) and `SPRINTS_ENABLED`.
 - `AO_60DB71_LEXORANK` holds the rank and has a foreign key to the issue table. [S39]
-  **Our choice:** not generated yet (M1-093).
+- **Verify:** `AO_60DB71_LEXORANK` has `ID`, `BUCKET`, `FIELD_ID` (the rank field),
+  `ISSUE_ID`, `LOCK_HASH`, `LOCK_TIME`, `RANK` and `TYPE`; a row of `TYPE` `0` is an issue's
+  rank, other types are the table's own markers. Ranks order issues when compared as plain
+  text: a bucket digit, `|`, six characters of `0` to `9` and `a` to `z`, `:`, and sometimes
+  more of those characters.
+- **Verify:** a board's columns are `AO_60DB71_COLUMN` rows (`ID`, `NAME`, `POS`,
+  `RAPID_VIEW_ID`, and the limits `MINIM` and `MAXIM` as doubles), each column's statuses
+  `AO_60DB71_COLUMNSTATUS` rows (`ID`, `COLUMN_ID`, `POS`, `STATUS_ID` as text).
+- **Verify:** quick filters are `AO_60DB71_QUICKFILTER` rows (`ID`, `NAME`, `QUERY`,
+  `DESCRIPTION`, `POS`, `RAPID_VIEW_ID`), and a Kanban board's sub-query an
+  `AO_60DB71_SUBQUERY` row (`ID`, `QUERY`, `RAPID_VIEW_ID`).
+- **Verify:** `SPRINTS_ENABLED` set means a Scrum board, unset a Kanban board.
+- **Verify:** the sprint's `START_DATE` of a started sprint is when it started; no other column
+  says so.
+- **Our choice:** Scrum columns are "To do", "In progress", "In review" and "Done" (or the
+  middle two as one), Kanban columns "Backlog", "Selected", "Working", "Review" and "Done" with
+  limits; one board in five leaves "Declined" out of every column. Each board has three to five
+  quick filters, taken in turn from a list, among them one an app's function needs
+  (`issueFunction in hasComments()`), and Kanban boards have the sub-query
+  `fixVersion in unreleasedVersions() OR fixVersion is EMPTY`. Ranks are unique per issue and
+  ordered unlike issue ids.
 - Backing up and restoring large plugin tables can run out of memory. [S40]
 
 ## 5. Attachments
@@ -630,6 +693,13 @@ number of attachment files. The 10,000-issue test in the gate takes about 2 s.
   each bucket is joined on its own, so memory holds one bucket, the sub-task links, the earlier
   keys of moved issues and an index of the attachment files (their place in the ZIP, size, hash
   and type, read once). Tickets are written in issue id order, parents first.
+- **Our choice:** versions, components, boards with their columns, quick filters and
+  sub-queries, and sprints are small, so the stage keeps them (M1-093, ADR-095). An issue's
+  version and component associations and its rank row go into its ticket bucket and onto its
+  ticket record; its sprint values become the members of each sprint, the only part kept per
+  issue. A board lives in the first project its filter names, by key, earlier key, name or id;
+  the rank of the rank field with the lowest id wins. Rows naming a board, column or issue the
+  backup does not hold are counted as not imported.
 - **Our choice:** attachment files are found by the attachment id that names them, under any
   folders (`<project>/<bucket>/<issue key>/<id>` or the older layout without the bucket); the
   import reads each from its place in the ZIP. A file no attachment row names is reported.

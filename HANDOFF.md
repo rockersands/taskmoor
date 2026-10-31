@@ -241,6 +241,33 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     votes, schemes, comment visibility, custom field history, real contexts and options, a
     1M-item rate run (IMP-002 (1)), clearing a finished run's sealed token; M1-096 builds delta
     runs on `fetch_state`, M1-097 the wizard and CLI.
+- **M1-093 Data Center boards, sprints, releases, areas and rank** (branch
+  `work/m1-093-dc-boards`, side agent 2026-10-31; ADR-095, no migration, 0072 unused; M1-093 is
+  done):
+  - Generator: `dc-backup/agile.ts` (the agile world, every part on its own seed stream) and
+    `agile-format.ts` (`Version`, `Component`, the five new `AO_60DB71_*` tables, type keys).
+    `generate.ts` has three hooks: `writeAgileEntity` in the default branch, `addedFilters` in
+    `SearchRequest`, `agileRows` for the active-objects file. The validator's part is
+    `validate-agile.ts`. The 10k manifest and five report goldens changed by new kinds and counts
+    only; issue facts are as before.
+  - Stage: `dc-backup/stage-agile.ts`; `STAGE_VERSION` is 5 (expect a conflict with M1-094 if it
+    bumps too: take the higher and rerun the goldens). Hooks: `IssueCollector.extra` and
+    `IssueResolve.extend` in `stage-issues.ts`; the active-objects reader in `stage.ts` now reads
+    row values and calls `Collector.aoRow`. `SearchRequest` rows are only read for the boards'
+    queries; the element stays M1-094's (still reported `not_imported_yet`).
+  - Mapping: `import/dc-agile.ts` (`translateQuery`, `rankKey`, `mapBoard`, `mapSprint`,
+    `mapRelease`, `mapArea`). `BoardCommand` gained optional `subQuery`, `boardFilters` and
+    `fields`; when `boardFilters` is given, `load-agile.ts` maps `cf[<source id>]` to the target's
+    ids and binds every query against the target (a viewer id 0, so `currentUser()` resolves);
+    Cloud boards (no `boardFilters`) behave as before. M1-094 may want the same query check for
+    saved filters: `unresolved()` and `withTargetFields()` in `load-agile.ts`.
+  - The plugin's sprint and rank custom fields are skipped as fields (`dc.test.ts` now expects 2
+    skipped fields). Note `openSprints()` is the active sprints only, and queries name releases and
+    areas by name, so a cross-track filter for `1.2` finds both tracks' `1.2`.
+  - Tests: `import/dc-agile.test.ts` (golden boards and sprints, the board and backlog routes,
+    rank, releases, areas, a second run; about 60 s alone, longer under load).
+  - Not done: swimlanes, card colours and layout, estimation field, working days, board admins and
+    owner, sprint and rank changes in history; boards keep a copy of their filter's query.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

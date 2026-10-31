@@ -97,16 +97,40 @@
       "source": 6
     },
     {
-      "kind": "field",
+      "kind": "release",
       "outcomes": {
-        "created": 18,
+        "created": 29,
         "failed": 0,
         "linked": 0,
         "skipped": 0,
         "unchanged": 0,
         "updated": 0
       },
-      "source": 18
+      "source": 29
+    },
+    {
+      "kind": "area",
+      "outcomes": {
+        "created": 15,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 15
+    },
+    {
+      "kind": "field",
+      "outcomes": {
+        "created": 18,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 2,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 20
     },
     {
       "kind": "field_context",
@@ -241,6 +265,18 @@
       "source": 3
     },
     {
+      "kind": "board",
+      "outcomes": {
+        "created": 8,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 8
+    },
+    {
       "kind": "ticket",
       "outcomes": {
         "created": 4000,
@@ -251,6 +287,18 @@
         "updated": 0
       },
       "source": 4000
+    },
+    {
+      "kind": "sprint",
+      "outcomes": {
+        "created": 14,
+        "failed": 0,
+        "linked": 0,
+        "skipped": 0,
+        "unchanged": 0,
+        "updated": 0
+      },
+      "source": 14
     }
   ],
   "mapping": [
@@ -399,6 +447,22 @@
       "warnings": [
         "app_field_as_read_only_text: com.example.ratings:stars"
       ]
+    },
+    {
+      "kind": "field",
+      "label": "Sprint",
+      "outcome": "skipped",
+      "reason": "sprint_field_as_sprints",
+      "sourceId": "10100",
+      "warnings": []
+    },
+    {
+      "kind": "field",
+      "label": "Rank",
+      "outcome": "skipped",
+      "reason": "rank_field_as_rank",
+      "sourceId": "10101",
+      "warnings": []
     },
     {
       "kind": "field_context",
@@ -604,16 +668,6 @@
       "reason": "tickets_only"
     },
     {
-      "count": 5,
-      "kind": "AO_60DB71_RAPIDVIEW",
-      "reason": "not_imported_yet"
-    },
-    {
-      "count": 10,
-      "kind": "AO_60DB71_SPRINT",
-      "reason": "not_imported_yet"
-    },
-    {
       "count": 11399,
       "kind": "ChangeGroup",
       "reason": "tickets_only"
@@ -644,12 +698,12 @@
       "reason": "tickets_only"
     },
     {
-      "count": 5,
+      "count": 8,
       "kind": "SearchRequest",
       "reason": "not_imported_yet"
     },
     {
-      "count": 55,
+      "count": 57,
       "kind": "SequenceValueItem",
       "reason": "not_needed"
     },
@@ -671,6 +725,12 @@
       "count": 3,
       "detail": "com.example.reviews:APPROVE",
       "kind": "access_policy"
+    },
+    {
+      "code": "board_filter_not_imported",
+      "count": 4,
+      "detail": "Commented (app): Unknown field \"issueFunction\"",
+      "kind": "board"
     },
     {
       "code": "app_field_as_read_only_text",
