@@ -8,7 +8,7 @@ import {
 } from './agile-format';
 import { byId } from './spill';
 import type { StagedField } from './stage-fields';
-import type { StagedIssue } from './stage-issues';
+import type { StagedIssue, StagedIssueAgile } from './stage-issues';
 
 /**
  * The agile part of the stage (M1-093; IMP-004; ADR-095): versions and components as records
@@ -103,15 +103,6 @@ export interface StagedSprint {
   sequence: number | null;
   /** The issues whose sprint field names the sprint, by id. */
   issues: string[];
-}
-
-/** What an issue holds of this part, on its ticket record. */
-export interface StagedIssueAgile {
-  fixVersions: string[];
-  affectsVersions: string[];
-  components: string[];
-  /** The rank row's value for the rank field; null when the issue has none. */
-  rank: string | null;
 }
 
 /** Rows of an issue this part puts in the ticket buckets. */

@@ -1,5 +1,4 @@
 import { clauses, parseQuery } from '@taskmoor/query';
-import type { AoColumn } from './format';
 
 /**
  * Boards, sprints, rank, versions and components as a Data Center backup holds them (M1-093;
@@ -86,6 +85,16 @@ export const RANK_FIELD_TYPE = 'com.pyxis.greenhopper.jira:gh-lexo-rank';
 export const RANK_ROW_ISSUE = 0;
 
 // --- Active objects -----------------------------------------------------------------------
+
+/** A column as `format.ts`'s `AoColumn` has it, repeated so the two files stay acyclic. */
+interface AoColumn {
+  name: string;
+  type: 'integer' | 'string' | 'boolean' | 'timestamp' | 'double';
+  sqlType: number;
+  precision?: number;
+  primaryKey?: true;
+  autoIncrement?: true;
+}
 
 const BIGINT = -5;
 const INTEGER = 4;

@@ -209,7 +209,7 @@ describe('Data Center backup import (M1-088)', () => {
     expect(await Promise.all(tables.map(countRows))).toEqual(counts);
     for (const [kind, n] of Object.entries(expected())) {
       const e = entity(dryReport, kind);
-      expect(e?.source, kind).toBe(n + skippedOf(kind));
+      expect(e?.source, kind).toBe((n ?? 0) + skippedOf(kind));
       expect((e?.outcomes.created ?? 0) + (e?.outcomes.linked ?? 0), kind).toBe(n);
       expect(e?.target, kind).toBeNull();
     }
@@ -227,7 +227,7 @@ describe('Data Center backup import (M1-088)', () => {
     // Every kind: all records read, none failed or skipped, each with its target (100%).
     for (const [kind, n] of Object.entries(expected())) {
       const e = entity(r, kind);
-      expect(e?.source, kind).toBe(n + skippedOf(kind));
+      expect(e?.source, kind).toBe((n ?? 0) + skippedOf(kind));
       expect(e?.outcomes.failed, kind).toBe(0);
       expect(e?.outcomes.skipped, kind).toBe(skippedOf(kind));
       expect((e?.outcomes.created ?? 0) + (e?.outcomes.linked ?? 0), kind).toBe(n);

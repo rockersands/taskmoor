@@ -9,7 +9,6 @@ import {
   WATCH_ISSUE,
 } from './format';
 import { Buckets, byId, SpillFile } from './spill';
-import type { StagedIssueAgile } from './stage-agile';
 import type { StagedField } from './stage-fields';
 
 /**
@@ -89,6 +88,15 @@ export interface StagedIssue {
   formerKeys: StagedFormerKey[];
   /** Versions, components and rank (M1-093). */
   agile?: StagedIssueAgile;
+}
+
+/** What an issue holds of this part, on its ticket record (M1-093, `stage-agile.ts`). */
+export interface StagedIssueAgile {
+  fixVersions: string[];
+  affectsVersions: string[];
+  components: string[];
+  /** The rank row's value for the rank field; null when the issue has none. */
+  rank: string | null;
 }
 
 /** A comment (M1-091): visibility by group (staged id) or role, as the backup restricts it. */
