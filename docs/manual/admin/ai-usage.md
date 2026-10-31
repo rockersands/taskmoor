@@ -1,7 +1,7 @@
 ---
 title: "AI usage, spend limits and data controls"
 audience: admins
-sources: packages/ai/src/spend.ts, packages/ai/src/redact.ts, packages/ai/src/gateway.ts, apps/server/src/ai/usage.ts, apps/server/src/ai/service.ts, apps/server/src/ai/context.ts, apps/server/src/ai/statement.ts, apps/server/src/routes/ai-usage.ts, apps/web/src/admin/AiUsagePage.tsx, apps/web/src/ai/AiNotice.tsx, apps/web/src/ai/DataStatement.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0075_ai_spend.ts, docs/adr/0100-ai-spend-audit-redaction.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md
+sources: packages/ai/src/spend.ts, packages/ai/src/agent.ts, apps/server/src/ai/agent-runs.ts, docs/adr/0101-agent-runs-with-budgets.md, packages/ai/src/redact.ts, packages/ai/src/gateway.ts, apps/server/src/ai/usage.ts, apps/server/src/ai/service.ts, apps/server/src/ai/context.ts, apps/server/src/ai/statement.ts, apps/server/src/routes/ai-usage.ts, apps/web/src/admin/AiUsagePage.tsx, apps/web/src/ai/AiNotice.tsx, apps/web/src/ai/DataStatement.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0075_ai_spend.ts, docs/adr/0100-ai-spend-audit-redaction.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md
 accessed: 2026-10-31
 attestation: own-words
 ---
@@ -112,3 +112,23 @@ Not yet: redaction by data classification waits for classification levels (a lat
 Before a person first uses an AI feature, Taskmoor shows them what leaves the instance and where
 it goes, and the feature appears once they choose **I understand**. Their answer is recorded
 once (`ai_notice.acknowledged` in the audit log).
+
+## Agent runs and their budgets
+
+Some AI work takes several steps: the model calls tools (searching tickets, reading one), reads
+what they return and decides the next step. Each such run has its own limits on steps, tokens,
+cost and time, besides the spend limits above.
+
+- A run never goes past its limits. Before each step Taskmoor counts what it is about to send
+  and caps the length of the answer so that even the most expensive outcome stays within the
+  limits. When too little room is left for a useful step, the run stops instead.
+- A run stops at its time limit: a step or tool still running is cancelled.
+- A run that stops at a limit says "budget reached", names the limit, and hands back what it
+  completed so far. Each run is one entry in the audit log (`ai_run.finished`) with how it ended,
+  what it used and which tools it called; each of its steps is an entry in the AI audit log.
+- With Claude on the Anthropic API, the model is also told the run's token budget, so it plans
+  its work to fit.
+- A run's cost limit needs a price for its model; without one the run is not started.
+
+Not yet: no feature in this release starts agent runs; the AI features that will use them show
+their results where they are used.

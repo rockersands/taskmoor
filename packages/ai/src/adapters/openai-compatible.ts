@@ -290,6 +290,7 @@ export class OpenAiCompatibleAdapter implements ProviderAdapter {
       tokenCounting: false,
       modelListing: true,
       batches: false,
+      taskBudget: false,
       refusalFallback: 'none',
     };
   }

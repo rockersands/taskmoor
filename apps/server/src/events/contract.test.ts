@@ -91,6 +91,8 @@ const JOB_EVENTS: readonly EventType[] = [
 const SCAN_JOB_EVENTS: readonly EventType[] = ['attachment.quarantined'];
 /** A spend limit's alert (M1-077), raised by the AI meter after a call: checked below. */
 const AI_METER_EVENTS: readonly EventType[] = ['ai_limit.threshold_reached'];
+/** The end of an agent run (M1-131), recorded by the agent service: checked below. */
+const AI_RUN_EVENTS: readonly EventType[] = ['ai_run.finished'];
 /** The end of an import (M1-086), emitted by its job: checked by its own test below. */
 const IMPORT_JOB_EVENTS: readonly EventType[] = ['import_run.finished'];
 /** A copy's links and files (M1-124), emitted by the clone's job: checked below. */
@@ -3600,6 +3602,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         !IMPORT_JOB_EVENTS.includes(t) &&
         !CLONE_JOB_EVENTS.includes(t) &&
         !AI_METER_EVENTS.includes(t) &&
+        !AI_RUN_EVENTS.includes(t) &&
         !EXPORT_EVENTS.includes(t),
     );
     expect(missing, 'event types no route produces').toEqual([]);
@@ -3774,6 +3777,35 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     expect(event?.subject_type).toBe(spec.subject);
     expect(() => spec.payload.parse(event?.payload)).not.toThrow();
     expect(event?.actor_id).toBeNull();
+    await database.db.deleteFrom('ai_spend_limit').execute();
+    app.ai?.service.settings.changed(1);
+  });
+
+  it('[AI-011] an agent run records one valid event when it ends, as the person', async () => {
+    const before = await database.db
+      .selectFrom('domain_event')
+      .select((eb) => eb.fn.max('id').as('max'))
+      .executeTakeFirstOrThrow();
+    await app.ai?.agents.run({
+      workspaceId: 1,
+      userId: Number(state.adminId),
+      feature: 'assisted-creation',
+      system: 'Draft tickets.',
+      task: 'A login bug',
+      tools: [],
+      limits: { maxSteps: 2, maxWallMs: 60_000 },
+    });
+    const events = await database.db
+      .selectFrom('domain_event')
+      .select(['type', 'payload', 'subject_type', 'actor_id'])
+      .where('id', '>', String(before.max ?? 0))
+      .execute();
+    expect(events.map((e) => e.type)).toEqual(AI_RUN_EVENTS);
+    const [event] = events;
+    const spec = EVENT_TYPES['ai_run.finished'];
+    expect(event?.subject_type).toBe(spec.subject);
+    expect(() => spec.payload.parse(event?.payload)).not.toThrow();
+    expect(event?.actor_id).toBe(Number(state.adminId));
   });
 
   it('[IMP-009] an import emits one valid event when it ends, with no actor', async () => {

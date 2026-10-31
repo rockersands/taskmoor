@@ -10,6 +10,7 @@ import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/
 import type { RoutingMode } from '@taskmoor/webconfig';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
+import { AgentRuns } from './ai/agent-runs';
 import { AiContext } from './ai/context';
 import { AiService, type AiServiceOptions } from './ai/service';
 import { purgeAiContent } from './ai/usage';
@@ -110,10 +111,10 @@ declare module 'fastify' {
     /** Real-time co-editing (M1-017), when this process has the realtime role. */
     collaboration: Collaboration | null;
     /**
-     * AI with spend limits, redaction and the AI audit log (M1-077), and tickets as prompts
-     * see them; null without the API role.
+     * AI with spend limits, redaction and the AI audit log (M1-077), tickets as prompts see
+     * them, and agent runs with budgets (M1-131); null without the API role.
      */
-    ai: { service: AiService; context: AiContext } | null;
+    ai: { service: AiService; context: AiContext; agents: AgentRuns } | null;
   }
 }
 
@@ -536,6 +537,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     app.ai = {
       service: aiService,
       context: new AiContext(db, authorizer, fieldCatalogs, aiService.settings),
+      // Agent runs with budgets (M1-131), for the AI features to use.
+      agents: new AgentRuns(db, aiService),
     };
     registerAiUsageRoutes(app, db, {
       ai: aiService,

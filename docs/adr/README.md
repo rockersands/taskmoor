@@ -100,5 +100,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [093](0093-dc-workflows.md) | The Data Center import of workflows and workflow schemes, with every rule mapped or held and reported | Accepted |
 | [094](0094-cloud-rest-import.md) | The Cloud REST importer: a resumable fetch into a staging table, throttled as the source asks | Accepted |
 | [100](0100-ai-spend-audit-redaction.md) | AI spend limits, the AI audit log and redaction, in the gateway's call path | Accepted |
+| [101](0101-agent-runs-with-budgets.md) | Agent runs with budgets that are enforced before they can be passed | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

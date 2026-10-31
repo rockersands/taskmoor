@@ -7,6 +7,23 @@ export {
 export { buildClaudeParams, echoableContent, fromClaudeMessage } from './adapters/claude-request';
 export { OpenAiCompatibleAdapter } from './adapters/openai-compatible';
 export {
+  AGENT_LIMITS,
+  type AgentClock,
+  type AgentLimit,
+  type AgentLimits,
+  type AgentReport,
+  type AgentRunOptions,
+  type AgentStatus,
+  type AgentStep,
+  type AgentTool,
+  type AgentToolContext,
+  type AgentToolResult,
+  MIN_TASK_BUDGET,
+  runAgent,
+  SYSTEM_CLOCK,
+  ToolRegistry,
+} from './agent';
+export {
   type AiSettings,
   aiSettingsSchema,
   CLAUDE_MODELS,
@@ -53,7 +70,13 @@ export {
   type GenerateResult,
   type StreamEvent,
 } from './gateway';
-export { assertClaudeRequestPolicy, SERVER_FALLBACK_BETA, SERVER_FALLBACK_MODELS } from './policy';
+export {
+  assertClaudeRequestPolicy,
+  SERVER_FALLBACK_BETA,
+  SERVER_FALLBACK_MODELS,
+  TASK_BUDGET_BETA,
+  TASK_BUDGET_MODELS,
+} from './policy';
 export {
   DEFAULT_REDACTION_PATTERNS,
   MIN_VALUE_LENGTH,

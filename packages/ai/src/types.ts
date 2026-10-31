@@ -69,6 +69,11 @@ export interface AdapterRequest {
   jsonSchema?: Record<string, unknown>;
   /** Offered with automatic tool choice; the model decides whether to call one. */
   tools?: ToolSpec[];
+  /**
+   * The token budget of the agent run this call is a step of (M1-131), for a model that paces
+   * itself against one (`taskBudget` capability). The same total on every step of a run.
+   */
+  taskBudget?: number;
 }
 
 export interface AdapterResponse {
@@ -108,6 +113,8 @@ export interface ModelCapabilities {
   tokenCounting: boolean;
   modelListing: boolean;
   batches: boolean;
+  /** Takes the token budget of an agent run and paces itself against it (M1-131). */
+  taskBudget: boolean;
   /** Where a refused request is retried on another model, if anywhere. */
   refusalFallback: 'server' | 'client' | 'none';
 }

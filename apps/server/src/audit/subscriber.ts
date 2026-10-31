@@ -245,6 +245,7 @@ export const AUDITED_EVENTS = [
   'ai_price.reset',
   'ai_policy.updated',
   'ai_notice.acknowledged',
+  'ai_run.finished',
 ] as const satisfies readonly EventType[];
 
 const TICKET_ACTIVITY = 'ticket activity: the ticket history keeps it (M1-009), not the audit log';

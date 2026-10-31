@@ -70,6 +70,11 @@ export interface GenerateRequest<T = unknown> {
   /** Who the call is for: the spend limits and the AI audit log count it there (M1-077). */
   tag?: CallTag;
   /**
+   * The token budget of the agent run this call is a step of (M1-131). Sent only to models
+   * that take one; others are held to the run's limits by the loop alone.
+   */
+  taskBudget?: number;
+  /**
    * Values of fields marked sensitive that the prompt was built from: they are replaced
    * wherever they appear in what is sent, besides the workspace's redaction rules (IAM-022).
    */
@@ -668,6 +673,9 @@ export class AiGateway {
                 inputSchema: strictJsonSchema(tool.input),
               })),
             }
+          : {}),
+        ...(request.taskBudget !== undefined && capabilities.taskBudget
+          ? { taskBudget: request.taskBudget }
           : {}),
       },
     };

@@ -286,6 +286,7 @@ export const FULL_CAPABILITIES: ModelCapabilities = {
   tokenCounting: true,
   modelListing: true,
   batches: false,
+  taskBudget: true,
   refusalFallback: 'none',
 };
 
@@ -454,5 +455,49 @@ export class MemoryMeter implements AiMeter {
       ? callCost(outcome.usage, price.price, { batch: call.mode === 'batch' })
       : 0;
     this.booked.push({ call, outcome, costNanos, at: this.now() });
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// A virtual clock for agent runs (M1-131): time passes only when a fake says so.
+
+/** An `AgentClock` whose time moves only through `pass`, firing timers as it goes. */
+export class VirtualClock {
+  private time: number;
+  private timers: { at: number; fire: () => void }[] = [];
+
+  constructor(start = 0) {
+    this.time = start;
+  }
+
+  now(): number {
+    return this.time;
+  }
+
+  after(ms: number, fire: () => void): () => void {
+    const timer = { at: this.time + ms, fire };
+    this.timers.push(timer);
+    return () => {
+      this.timers = this.timers.filter((t) => t !== timer);
+    };
+  }
+
+  /**
+   * Lets `ms` pass, firing the timers that fall due. Stops at the moment `signal` is aborted;
+   * answers whether the whole time passed.
+   */
+  pass(ms: number, signal?: AbortSignal): boolean {
+    const end = this.time + ms;
+    for (;;) {
+      if (signal?.aborted) return false;
+      const due = this.timers.filter((t) => t.at <= end).sort((a, b) => a.at - b.at)[0];
+      if (!due) {
+        this.time = end;
+        return true;
+      }
+      this.time = Math.max(this.time, due.at);
+      this.timers = this.timers.filter((t) => t !== due);
+      due.fire();
+    }
   }
 }

@@ -262,6 +262,22 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     unpriced until an administrator enters a rate.
   - Not done: alert email (no administrator channel yet; alerts are audited events), the partial
     usage of cancelled streams, redaction by classification (IAM-016, M2).
+- **M1-131 agent runs with budgets** (same branch, second commit; ADR-101, no migration;
+  M1-131 is done):
+  - `runAgent(gateway, options)` and `ToolRegistry` in `packages/ai/src/agent.ts`. Limits are
+    enforced before a step, not after: the prompt is counted (`countTokens`) and `max_tokens`
+    capped to the tightest limit's room. A new step needs 1,024 tokens of room
+    (`minStepOutputTokens`). Tools get the run's abort signal and should honour it.
+  - New capability `taskBudget` (in `ModelCapabilities`) and `AdapterRequest.taskBudget`; the
+    Claude adapter sends `output_config.task_budget` with beta `task-budgets-2026-03-13` on the
+    Anthropic API only. M1-076's capability display may want to show it.
+  - Server: `app.ai.agents.run({ workspaceId, userId, feature, system, task, tools, limits,
+    post })`. Tools act as the person: build them on the person's `Caller`. The report goes to
+    `post`; where it appears (a comment, the page) is the feature's choice (M1-079).
+  - Tests: `agent.test.ts` (property test; `VirtualClock` from `@taskmoor/ai/testing`),
+    `adapters/agent.contract.test.ts` with fixtures `anthropic/agent-run.json` and
+    `agent-budget.json` (request bodies written from our adapter against a fake server, then
+    checked by hand; responses synthetic), `apps/server/src/ai/agent-runs.test.ts`.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

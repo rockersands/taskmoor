@@ -1468,6 +1468,34 @@ export const EVENT_TYPES = {
   'ai_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
   /** A person read the data-egress notice before their first AI use. */
   'ai_notice.acknowledged': { subject: 'user', payload: z.object({}) },
+  /**
+   * An agent run ended (M1-131; AI-011; ADR-101): how, which limit stopped it, what it used
+   * against which limits, and the tools it called by name and count. No content.
+   */
+  'ai_run.finished': {
+    subject: 'ai_run',
+    payload: z.object({
+      feature: z.string(),
+      status: z.enum(['completed', 'budget_reached', 'refused', 'failed', 'cancelled']),
+      limit: z
+        .enum(['steps', 'tokens', 'input_tokens', 'output_tokens', 'cost', 'time', 'spend_limit'])
+        .nullable(),
+      steps: z.number().int().min(0),
+      inputTokens: z.number().int().min(0),
+      outputTokens: z.number().int().min(0),
+      costNanos: z.number().int().min(0),
+      elapsedMs: z.number().min(0),
+      tools: z.record(z.string(), z.number().int().min(1)),
+      limits: z.object({
+        maxSteps: z.number().int(),
+        maxWallMs: z.number(),
+        maxTokens: z.number().int().nullable(),
+        maxInputTokens: z.number().int().nullable(),
+        maxOutputTokens: z.number().int().nullable(),
+        maxCostNanos: z.number().int().nullable(),
+      }),
+    }),
+  },
 } as const satisfies Record<string, { subject: string; payload: z.ZodType }>;
 
 export type EventType = keyof typeof EVENT_TYPES;
