@@ -44,7 +44,9 @@ async function tokenSearch(ctx: ShimContext, input: Any) {
   return {
     status: 200,
     body: {
-      issues: (page.tickets as Any[]).map((t) => issue(t, ctx.version, ctx.baseUrl, only)),
+      issues: (page.tickets as Any[]).map((t) =>
+        issue(t, ctx.version, ctx.baseUrl, only, ctx.richText),
+      ),
       isLast: !page.next,
       ...(page.next ? { nextPageToken: page.next } : {}),
     },
@@ -78,7 +80,7 @@ async function offsetSearch(ctx: ShimContext, input: Any) {
       startAt,
       maxResults,
       total: Math.max(total, seen),
-      issues: tickets.map((t) => issue(t, ctx.version, ctx.baseUrl, only)),
+      issues: tickets.map((t) => issue(t, ctx.version, ctx.baseUrl, only, ctx.richText)),
     },
   };
 }

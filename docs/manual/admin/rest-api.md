@@ -1,6 +1,7 @@
 ---
 title: "The REST API"
 audience: admins
+jira-names: the Jira-compatible API's paths, and the scripts written for Jira that call them
 sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts, packages/richtext/src/wiki.ts, docs/adr/0091-wiki-markup-converter.md
 accessed: 2026-10-31
 attestation: own-words

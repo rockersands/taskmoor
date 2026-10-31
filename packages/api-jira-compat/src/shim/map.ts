@@ -1,4 +1,3 @@
-import { type PmJson, toAdfFromJson, toWiki } from '@taskmoor/richtext';
 import type { Version } from '../operations';
 import { type NativeAnswer, ShimError, type ShimReply } from './types';
 
@@ -131,18 +130,24 @@ const named = (x: Any, base: string, kind: string) =>
 
 /**
  * Rich text in the version's form. Native reads that took `?format=` are already in it; search
- * answers the stored document, which becomes wiki markup on v2 and the document format on v3.
+ * answers the stored document (`type: 'doc'` without `version`), which `convert` (the server's
+ * `ShimContext.richText`) turns into the version's form.
  */
-export function richText(value: unknown, version: Version): unknown {
+export function richText(value: unknown, convert?: (doc: unknown) => unknown): unknown {
   if (value === null || value === undefined) return null;
-  if (typeof value !== 'object') return value;
+  if (typeof value !== 'object' || !convert) return value;
   const doc = value as { type?: string; version?: number };
-  if (doc.type !== 'doc' || doc.version !== undefined) return value;
-  return version === '3' ? toAdfFromJson(value as PmJson) : toWiki(value as PmJson);
+  return doc.type === 'doc' && doc.version === undefined ? convert(value) : value;
 }
 
 /** A native ticket as a Jira-compatible issue; `only` narrows `fields` (the `fields` parameter). */
-export function issue(t: Any, version: Version, base: string, only?: readonly string[]): Json {
+export function issue(
+  t: Any,
+  version: Version,
+  base: string,
+  only?: readonly string[],
+  convert?: (doc: unknown) => unknown,
+): Json {
   const custom: Json = {};
   for (const [id, value] of Object.entries((t.fields ?? {}) as Json)) {
     custom[`customfield_${id}`] = value ?? null;
@@ -158,8 +163,8 @@ export function issue(t: Any, version: Version, base: string, only?: readonly st
     created: instant(t.createdAt),
     updated: instant(t.updatedAt),
     labels: t.labels ?? [],
-    description: richText(t.description, version),
-    environment: richText(t.environment, version),
+    description: richText(t.description, convert),
+    environment: richText(t.environment, convert),
     priority: named(t.priority, base, 'priority'),
     resolution: named(t.closeReason, base, 'resolution'),
     resolutiondate: instant(t.closedAt),

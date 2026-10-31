@@ -82,7 +82,9 @@ async function issuesBy(ctx: ShimContext, query: string, keys?: readonly string[
     startAt,
     maxResults,
     total: keys ? ordered.length : Math.max(total, found.length),
-    issues: ordered.slice(startAt, startAt + maxResults).map((t) => issue(t, '2', ctx.baseUrl)),
+    issues: ordered
+      .slice(startAt, startAt + maxResults)
+      .map((t) => issue(t, '2', ctx.baseUrl, undefined, ctx.richText)),
   };
 }
 

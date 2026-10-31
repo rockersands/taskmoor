@@ -28,6 +28,8 @@ export interface ShimContext {
   native: Native;
   /** The server's public address, for `self` links. */
   baseUrl: string;
+  /** A stored rich-text document in this version's form: Markdown on v2, the document format on v3. */
+  richText: (doc: unknown) => unknown;
 }
 
 export interface ShimReply {
