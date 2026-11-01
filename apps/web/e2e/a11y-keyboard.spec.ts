@@ -87,6 +87,8 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
   // The first Tab reaches the skip link, which moves focus to the content.
   await page.goto(`${BASE}/#/home`);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  // Signed in again after the reload: until then the start page offers its own sign-in link.
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' })).toHaveCount(0);
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
   expect(await focusShown(page)).toBe(true);
