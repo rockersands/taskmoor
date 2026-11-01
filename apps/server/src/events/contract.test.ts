@@ -69,6 +69,8 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/workflow-maps/:id/impact':
     'reads only: what a change of a workflow map would do to tickets, stores nothing',
   'POST /api/v1/search': 'reads only: runs a query too long for a URL (M1-037)',
+  'POST /api/v1/tickets/similar':
+    'reads only: the tickets most similar to a text being written, stores nothing (M1-078)',
   'DELETE /api/v1/mcp': 'ends an MCP session kept in memory; nothing stored changes (M1-072)',
   'POST /api/v1/admin/ai/test':
     'reads only: asks the AI provider for its models with the saved or given settings, stores nothing (M1-076)',

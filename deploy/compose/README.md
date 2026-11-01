@@ -6,7 +6,7 @@ front for anything beyond a trial (the Builder's backend kit adds Caddy with aut
 
 | File | Database | Start |
 |---|---|---|
-| `docker-compose.yml` | Bundled PostgreSQL 16 in the `postgres-data` volume | `cp .env.example .env`, set `POSTGRES_PASSWORD`, `docker compose up -d` |
+| `docker-compose.yml` | Bundled PostgreSQL 16 with pgvector (for similar tickets, ADR-106) in the `postgres-data` volume | `cp .env.example .env`, set `POSTGRES_PASSWORD`, `docker compose up -d` |
 | `docker-compose.external.yml` | A PostgreSQL 16+ server you run | set `DATABASE_URL` in `.env`, `docker compose -f docker-compose.external.yml up -d` |
 
 Check: `curl http://localhost:8080/ready` returns `{"status":"ready"}` once migrations have run

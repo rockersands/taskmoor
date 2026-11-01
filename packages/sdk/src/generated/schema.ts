@@ -780,6 +780,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tickets/{id}/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tickets most similar in meaning to a ticket
+         * @description Nearest first by the vectors of the bundled embedding model, which needs no AI provider or key; a ticket matches by its summary and description or by one of its comments. Only tickets the caller may see, and comments the caller may read, take part. Tickets changed in the last seconds may not be indexed yet.
+         */
+        get: operations["similarTickets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tickets/{id}/time-entries": {
         parameters: {
             query?: never;
@@ -813,6 +833,26 @@ export interface paths {
          * @description With the values its form asks for, such as a close reason.
          */
         post: operations["transitionTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tickets/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tickets similar to a text being written
+         * @description Duplicate suggestions while a ticket is created: the same lookup as `GET /api/v1/tickets/{id}/similar` for a text, optionally in one track. It changes nothing.
+         */
+        post: operations["similarToText"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1585,6 +1625,26 @@ export interface components {
             locale: string | null;
             name: string;
             timeZone: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        SimilarTickets: {
+            /** @description What made the vectors, such as `local:all-MiniLM-L6-v2` (the bundled model); null when the server has embeddings off. */
+            model: string | null;
+            similar: ({
+                /** @description The comment that matched, one the caller may read; never its text. */
+                commentId?: number;
+                /**
+                 * @description Whether the ticket’s summary and description or one of its comments matched best.
+                 * @enum {string}
+                 */
+                match: "ticket" | "comment";
+                /** @description Cosine similarity, -1 to 1: higher is closer. */
+                score: number;
+                ticket: components["schemas"]["SearchTicket"];
+            } & {
+                [key: string]: unknown;
+            })[];
         } & {
             [key: string]: unknown;
         };
@@ -5902,6 +5962,70 @@ export interface operations {
             };
         };
     };
+    similarTickets: {
+        parameters: {
+            query?: {
+                /** @description How many tickets, at most 50. */
+                limit?: number;
+                /** @description Leave out tickets less similar than this (cosine similarity, -1 to 1). */
+                minScore?: number;
+            };
+            header?: never;
+            path: {
+                /** @description The ticket: its id or its key, such as `PAY-12`. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The similar tickets, best first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarTickets"];
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description There is no such resource, or the caller may not see it. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listTimeEntries: {
         parameters: {
             query?: {
@@ -6190,6 +6314,76 @@ export interface operations {
             };
             /** @description There is no such resource, or the caller may not see it. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The resource changed or is in a state that refuses this; read it again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    similarToText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description A ticket to leave out (its key or id), such as the one being edited. */
+                    excludeTicket?: number | string;
+                    /** @default 10 */
+                    limit?: number;
+                    minScore?: number;
+                    /** @description What is being written: a summary, with the description after it if any. */
+                    text: string;
+                    /** @description Only tickets of this track (its key or id), such as the one being created in. */
+                    track?: number | string;
+                };
+            };
+        };
+        responses: {
+            /** @description The similar tickets, best first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarTickets"];
+                };
+            };
+            /** @description The request is not valid: see `error` and, for fields, `fields`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No session or token, or an expired one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The session or token may not do this (its scope, or the person’s permissions). */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

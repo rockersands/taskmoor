@@ -2,10 +2,12 @@
 # The air-gap test (M1-100, OPS-005): build a bundle signed with a throwaway key, show that a
 # changed file and a wrong key are both refused, then install from the bundle on an internal
 # Docker network that has no route out. The images are removed from the local Docker first,
-# so they can only come from the bundle's archives.
+# so they can only come from the bundle's archives. There, the bundled embedding model embeds
+# new tickets and finds a similar one (M1-078, AI-012 (1)).
 #   TAG=taskmoor:dev bash tools/airgap/test-offline.sh
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+ROOT=$(pwd)
 # Git Bash: docker must see container paths as written, other tools need path conversion.
 docker() { MSYS_NO_PATHCONV=1 command docker "$@"; }
 host() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else echo "$1"; fi; }
@@ -68,4 +70,11 @@ if COMPOSE_PROJECT_NAME=$PROJECT docker compose exec -T taskmoor node -e \
   exit 1
 fi
 echo "the running instance has no route to the internet"
+
+echo "== embeddings offline (M1-078)"
+# The bundled model embeds new tickets and finds a similar one, with no AI key and no route out.
+token=$(sed -n 's/.*setup?token=\([A-Za-z0-9_-]*\).*/\1/p' "$log" | head -1)
+COMPOSE_PROJECT_NAME=$PROJECT docker compose exec -T taskmoor node --input-type=module - "$token" \
+  < "$ROOT/tools/airgap/check-embeddings.mjs"
+COMPOSE_PROJECT_NAME=$PROJECT docker compose logs taskmoor 2>/dev/null | grep -o '"msg":"similar tickets[^"]*"' | head -1
 echo "== air-gap test passed"

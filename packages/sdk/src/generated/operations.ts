@@ -76,6 +76,8 @@ export const OPERATIONS = {
   setUserProperty: { method: 'PUT', path: '/api/v1/users/{id}/properties/{key}', paged: false },
   signIn: { method: 'POST', path: '/api/v1/session', paged: false },
   signOut: { method: 'DELETE', path: '/api/v1/session', paged: false },
+  similarTickets: { method: 'GET', path: '/api/v1/tickets/{id}/similar', paged: false },
+  similarToText: { method: 'POST', path: '/api/v1/tickets/similar', paged: false },
   startSprint: { method: 'POST', path: '/api/v1/sprints/{id}/start', paged: false },
   transitionTicket: { method: 'POST', path: '/api/v1/tickets/{id}/transitions', paged: false },
   updateComment: { method: 'PATCH', path: '/api/v1/tickets/{id}/comments/{commentId}', paged: false },

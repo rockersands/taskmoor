@@ -5,6 +5,7 @@ import type { Duplex } from 'node:stream';
 import fastifyCookie from '@fastify/cookie';
 import fastifyWebsocket from '@fastify/websocket';
 import type { Tracer } from '@opentelemetry/api';
+import type { Embedder } from '@taskmoor/ai';
 import type { Database } from '@taskmoor/db';
 import { type PasswordHasher, type PepperRing, passwordHasher } from '@taskmoor/iam';
 import type { RoutingMode } from '@taskmoor/webconfig';
@@ -22,6 +23,8 @@ import { Authorizer } from './authz/authorizer';
 import { Collaboration } from './collab/server';
 import { registerJiraCompat } from './compat/register';
 import type { Role, ServerConfig } from './config';
+import { EmbeddingService, sharedLocalEmbedder } from './embeddings/service';
+import type { VectorSearch } from './embeddings/vector';
 import { FieldCatalogs } from './fields/catalog';
 import { serveFrontend } from './frontend';
 import { GuardrailExceeded } from './guardrails/model';
@@ -82,6 +85,7 @@ import { registerSearchExportRoutes } from './routes/search-export';
 import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
+import { registerSimilarRoutes } from './routes/similar';
 import { registerSsoRoutes } from './routes/sso';
 import { registerSyncRoutes } from './routes/sync';
 import { registerTeamRoutes } from './routes/teams';
@@ -208,6 +212,12 @@ export interface AppDeps {
    * (M1-077). Without a source the stored keys and settings decide (M1-075).
    */
   ai?: Pick<AiServiceOptions, 'source' | 'now' | 'gateway'>;
+  /**
+   * Embeddings for similar tickets (M1-078, ADR-106): the bundled local model unless given;
+   * null turns them off (TASKMOOR_EMBEDDINGS=off). `vectorSearch: 'exact'` skips pgvector.
+   */
+  embedder?: Embedder | null;
+  vectorSearch?: VectorSearch;
 }
 
 /** Builds the HTTP app without listening, so tests can call it in-process with app.inject(). */
@@ -478,6 +488,18 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // The full export (M1-098): the workspace as NDJSON and files, a streamed ZIP.
     registerExportRoutes(app, db, fieldCatalogs, deps.attachments ?? NO_STORAGE);
     registerHomeRoutes(app, db, fieldCatalogs);
+    // Similar tickets and duplicate suggestions from the local model (M1-078): no AI key needed.
+    const embedder = deps.embedder === undefined ? sharedLocalEmbedder() : deps.embedder;
+    registerSimilarRoutes(
+      app,
+      db,
+      fieldCatalogs,
+      embedder
+        ? new EmbeddingService(db, embedder, {
+            ...(deps.vectorSearch ? { search: deps.vectorSearch } : {}),
+          })
+        : null,
+    );
     registerGuardrailRoutes(app, db);
     // Boards (M1-043): reads go through the search compiler, moves through the ticket routes.
     const boardRoutes = registerBoardRoutes(app, db, authorizer, fieldCatalogs, {

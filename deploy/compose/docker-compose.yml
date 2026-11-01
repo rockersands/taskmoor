@@ -5,7 +5,10 @@ name: taskmoor
 
 services:
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:16}
+    # PostgreSQL 16 with pgvector, for the similar-ticket index (M1-078, ADR-106): the official
+    # postgres:16 image plus the extension, on the same Debian release, so it takes over an
+    # existing data volume as it is. Plain postgres:16 works too; lookups then scan exactly.
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:0.8.1-pg16-trixie}
     environment:
       POSTGRES_DB: taskmoor
       POSTGRES_USER: taskmoor

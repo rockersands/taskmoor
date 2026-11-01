@@ -75,6 +75,9 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/search']).toBe('read');
     expect(classes['POST /api/v1/search']).toBe('read');
     expect(classes['GET /api/v1/admin/search/explain']).toBe('admin');
+    // Similar tickets (M1-078): both reads, the text being written in a POST body.
+    expect(classes['GET /api/v1/tickets/:id/similar']).toBe('read');
+    expect(classes['POST /api/v1/tickets/similar']).toBe('read');
     // Track configuration: read and write, so local-mode track administrators keep theirs.
     expect(classes['GET /api/v1/hierarchy-levels']).toBe('read');
     expect(classes['GET /api/v1/hierarchy-levels/impact']).toBe('read');

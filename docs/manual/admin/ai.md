@@ -1,8 +1,8 @@
 ---
 title: "AI settings"
 audience: admins
-sources: apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-10-31
+sources: apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md
+accessed: 2026-11-01
 attestation: own-words
 ---
 # AI settings
@@ -115,7 +115,9 @@ enter the provider keys again.
 ## What is not there yet
 
 - **AI features themselves.** Summaries, search in plain language, drafting and duplicates
-  arrive in a later release; the settings here already apply to them.
+  arrive in a later release; the settings here already apply to them. Similar tickets from the
+  bundled embedding model need none of this and work already, with AI off and no key: see
+  [similar tickets](similar-tickets.md).
 
 - **A key service.** Wrapping keys with a cloud KMS or HashiCorp Vault instead of the master
   key is designed for, but no setting turns it on yet.

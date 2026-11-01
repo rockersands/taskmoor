@@ -39,6 +39,21 @@ export {
   providerConfigSchema,
 } from './config';
 export {
+  bundledModelDir,
+  dot,
+  type Embedder,
+  EndpointEmbedder,
+  type EndpointEmbedderOptions,
+  LOCAL_DIMENSIONS,
+  LOCAL_MAX_TOKENS,
+  LOCAL_MODEL_ID,
+  LOCAL_MODEL_NAME,
+  LocalEmbedder,
+  type LocalEmbedderOptions,
+  normalize,
+  WordPieceTokenizer,
+} from './embed';
+export {
   AiAbortedError,
   AiCircuitOpenError,
   AiError,

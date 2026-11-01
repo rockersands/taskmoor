@@ -40,7 +40,8 @@ describe('the backend kit (M1-110)', () => {
     expect(files[ENV_FILE]).toContain('TASKMOOR_DOMAIN=api.acme.example\n');
     expect(files['docker-compose.yml']).toContain('image: caddy:2');
     expect(files['docker-compose.yml']).toContain('image: ${TASKMOOR_IMAGE:?');
-    expect(files['docker-compose.yml']).toContain('image: postgres:16');
+    // PostgreSQL 16 with pgvector, for the similar-ticket index (M1-078, ADR-106).
+    expect(files['docker-compose.yml']).toContain('image: pgvector/pgvector:0.8.1-pg16-trixie');
     expect(files['docker-compose.yml']).toContain('env_file: [.env]');
     expect(files.Caddyfile).toContain('api.acme.example {');
     expect(files.Caddyfile).not.toContain('tls internal');

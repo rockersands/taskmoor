@@ -8,8 +8,9 @@
 // (M1-105, ADR-066); `pnpm build` runs this after the frontend build and stops when the two
 // disagree, so a server never ships next to a frontend of another version.
 
-import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 
@@ -36,6 +37,30 @@ for (const [entry, name] of [
   await bundle(join(ROOT, 'apps', 'server', 'src', entry), join(dist, name));
 }
 
+// The bundled embedding model (M1-078, ADR-106): its inference thread with ONNX Runtime's
+// WebAssembly build inlined, the runtime's two files it loads, and the model's weights,
+// vocabulary and licence. Nothing else of the 150 MB package ships; nothing is downloaded.
+await bundle(
+  join(ROOT, 'packages', 'ai', 'src', 'embed', 'ort-worker.mjs'),
+  join(dist, 'embed-worker.mjs'),
+);
+const ortDist = dirname(
+  createRequire(join(ROOT, 'packages', 'ai', 'package.json')).resolve(
+    'onnxruntime-web/ort-wasm-simd-threaded.wasm',
+  ),
+);
+mkdirSync(join(dist, 'ort'), { recursive: true });
+for (const file of ['ort-wasm-simd-threaded.wasm', 'ort-wasm-simd-threaded.mjs']) {
+  copyFileSync(join(ortDist, file), join(dist, 'ort', file));
+}
+const model = 'all-MiniLM-L6-v2';
+const modelSource = join(ROOT, 'packages', 'ai', 'models', model);
+mkdirSync(join(dist, 'models', model), { recursive: true });
+for (const file of ['model_qint8.onnx', 'vocab.txt', 'LICENSE', 'SOURCE.md']) {
+  copyFileSync(join(modelSource, file), join(dist, 'models', model, file));
+}
+console.log(`${join(dist, 'models', model)}: the embedding model and its licence`);
+
 async function bundle(entry, outfile) {
   await build({
     entryPoints: [entry],
@@ -45,6 +70,9 @@ async function bundle(entry, outfile) {
     format: 'esm',
     target: 'node22',
     sourcemap: true,
+    // Maps give stack traces their source lines; the sources themselves are in the repository
+    // (leaving them out keeps the image under its 400 MB budget, M1-078).
+    sourcesContent: false,
     legalComments: 'linked',
     external: ['pg-native'],
     define: { __TASKMOOR_BUILD_VERSION__: JSON.stringify(version) },

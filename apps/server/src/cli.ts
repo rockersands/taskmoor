@@ -40,6 +40,11 @@
 //                                       too many warnings, 64 usage, 65 refused, 69 server
 //                                       unreachable, 75 not finished, 77 not allowed
 //                                       (`node cli.mjs import help`; import/cli.ts)
+//   node cli.mjs embeddings [--rebuild] embeds every ticket and comment without a current vector
+//                                       (M1-078) with the bundled model (or the configured
+//                                       endpoint), and sets pgvector's index up where offered;
+//                                       --rebuild drops every vector first. One JSON line per
+//                                       workspace with the counts and coverage
 //   node cli.mjs report-verify          replays every ticket's report events (M1-059, RPT-003)
 //                                       and compares them with the tickets; exit 1 when one
 //                                       differs. Tickets older than the change history
@@ -56,6 +61,8 @@ import { BackupBusyError } from './backups/runs';
 import { backupDirectory, recordedBackup } from './backups/schedule';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
+import { backfillEmbeddings } from './embeddings/backfill';
+import { EmbeddingService, embedderFor } from './embeddings/service';
 import { emit } from './events/bus';
 import { folderSink } from './export/sinks';
 import { exportWorkspace } from './export/write';
@@ -98,6 +105,7 @@ const { positionals, values } = parseArgs({
     wait: { type: 'boolean', default: false },
     keep: { type: 'boolean', default: false },
     repair: { type: 'boolean', default: false },
+    rebuild: { type: 'boolean', default: false },
     'dry-run': { type: 'boolean', default: false },
     tracks: { type: 'string' },
     'no-backup': { type: 'boolean', default: false },
@@ -106,7 +114,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | mcp | import <start|follow|report|status|list|cancel>>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | embeddings [--rebuild] | mcp | import <start|follow|report|status|list|cancel>>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -246,6 +254,29 @@ try {
       if (!report.migrationsMatch) say('  the restored migrations differ from the backup');
       say(JSON.stringify(report));
       if (!report.ok) process.exitCode = 1;
+      break;
+    }
+    case 'embeddings': {
+      const embedder = embedderFor(config.embeddings);
+      if (!embedder) {
+        process.stderr.write('embeddings are off (TASKMOOR_EMBEDDINGS=off)\n');
+        process.exitCode = 2;
+        break;
+      }
+      const service = new EmbeddingService(
+        db,
+        embedder,
+        config.vectorSearch === 'exact' ? { search: 'exact' } : {},
+      );
+      try {
+        const reports = await backfillEmbeddings(db, service, {
+          rebuild: values.rebuild,
+          progress: say,
+        });
+        for (const report of reports) say(JSON.stringify(report));
+      } finally {
+        await embedder.close();
+      }
       break;
     }
     case 'purge-trash': {

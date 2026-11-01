@@ -424,6 +424,27 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     recovery); the second one had one failure, `apps/web/build/artefact.test.ts` "fails a build
     that would bundle a server package", which names `node:crypto` before `packages/db/src` under
     load and passes alone (twice). It is order-dependent, not caused by this branch.
+- **M1-078 bundled embeddings and similar tickets** (branch `work/m1-078-embeddings`, from
+  `claude/api-key-upload-prevention-9ucz4x` for the model commit; migration 0079, ADR-106;
+  M1-078 is done):
+  - Runtime: `packages/ai/src/embed` (our WordPiece tokenizer, `LocalEmbedder` on a worker
+    thread with `onnxruntime-web`, `EndpointEmbedder`). `tools/build/server.mjs` now also writes
+    `dist/embed-worker.mjs`, `dist/ort/` and `dist/models/`, and maps without `sourcesContent`
+    (the image was 404 MB with them; now 365 MB). `.dockerignore` keeps the model's `*.md`.
+  - Server: `apps/server/src/embeddings` (indexer, subscriber and sweep job, lookups, pgvector
+    set-up) and `routes/similar.ts`. The embeddings subscriber is registered only when
+    `registerSubscribers` gets `embeddings` (main.ts passes it): other tests never load the
+    model. `buildApp` takes `embedder` (default: the shared local model) and `vectorSearch`.
+  - pgvector's extension and HNSW indexes are made at start, not by a migration: the schema
+    golden is the same with or without pgvector; the upgrade check sees them as allowed
+    extras. Tests force the exact scan and run the pgvector path where the server has it (this
+    sandbox's Postgres 16 has 0.6.0; the Mac's embedded Postgres has none, so that test skips).
+  - The Compose kit and the Builder backend kit now use `pgvector/pgvector:0.8.1-pg16-trixie`.
+    `CLAUDE.md`'s CLI list does not name `embeddings` yet (the manual's CLI page does).
+  - The Dockerfile carries M1-113's build-secret change (same lines as `ad68952`), so the
+    merge with that branch should be clean.
+  - Next (M1-079): the duplicate-suggestion and similar-ticket UI on these two routes, and
+    model re-ranking when a provider is set (AI-016).
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

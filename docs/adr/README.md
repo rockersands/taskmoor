@@ -110,5 +110,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [103](0103-import-wizard-and-cli.md) | The import wizard and the import CLI: one API, an imports folder you can upload into | Accepted |
 | [104](0104-security-hardening.md) | Security hardening for 1.0: threat model, ASVS level 2, fuzzing, prompt injection, scans | Accepted |
 | [105](0105-fresh-machine-harness.md) | The fresh-machine harness: both kits on an empty Docker host, the full journey in a browser | Accepted |
+| [106](0106-local-embeddings-and-vector-search.md) | Local embeddings on ONNX Runtime WebAssembly, `real[]` vectors and optional pgvector | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

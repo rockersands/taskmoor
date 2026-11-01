@@ -2252,6 +2252,58 @@
         ],
         "type": "object"
       },
+      "SimilarTickets": {
+        "additionalProperties": {},
+        "properties": {
+          "model": {
+            "description": "What made the vectors, such as `local:all-MiniLM-L6-v2` (the bundled model); null when the server has embeddings off.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "similar": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "commentId": {
+                  "description": "The comment that matched, one the caller may read; never its text.",
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer"
+                },
+                "match": {
+                  "description": "Whether the ticket’s summary and description or one of its comments matched best.",
+                  "enum": [
+                    "ticket",
+                    "comment"
+                  ],
+                  "type": "string"
+                },
+                "score": {
+                  "description": "Cosine similarity, -1 to 1: higher is closer.",
+                  "type": "number"
+                },
+                "ticket": {
+                  "$ref": "#/components/schemas/SearchTicket"
+                }
+              },
+              "required": [
+                "ticket",
+                "score",
+                "match"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "model",
+          "similar"
+        ],
+        "type": "object"
+      },
       "Sprint": {
         "additionalProperties": {},
         "properties": {
@@ -20824,6 +20876,143 @@
         "x-taskmoor-stability": "stable"
       }
     },
+    "/api/v1/tickets/similar": {
+      "post": {
+        "description": "Duplicate suggestions while a ticket is created: the same lookup as `GET /api/v1/tickets/{id}/similar` for a text, optionally in one track. It changes nothing.",
+        "operationId": "similarToText",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "excludeTicket": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "maximum": 2147483647,
+                        "type": "integer"
+                      },
+                      {
+                        "maxLength": 300,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    ],
+                    "description": "A ticket to leave out (its key or id), such as the one being edited."
+                  },
+                  "limit": {
+                    "default": 10,
+                    "maximum": 50,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "minScore": {
+                    "maximum": 1,
+                    "minimum": -1,
+                    "type": "number"
+                  },
+                  "text": {
+                    "description": "What is being written: a summary, with the description after it if any.",
+                    "maxLength": 10000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "track": {
+                    "anyOf": [
+                      {
+                        "exclusiveMinimum": 0,
+                        "maximum": 2147483647,
+                        "type": "integer"
+                      },
+                      {
+                        "maxLength": 300,
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Only tickets of this track (its key or id), such as the one being created in."
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarTickets"
+                }
+              }
+            },
+            "description": "The similar tickets, best first."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The resource changed or is in a state that refuses this; read it again."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Tickets similar to a text being written",
+        "tags": [
+          "Search"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
+      }
+    },
     "/api/v1/tickets/{id}": {
       "delete": {
         "operationId": "deleteTicket",
@@ -24386,6 +24575,114 @@
         ],
         "x-taskmoor-access": "read",
         "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/tickets/{id}/similar": {
+      "get": {
+        "description": "Nearest first by the vectors of the bundled embedding model, which needs no AI provider or key; a ticket matches by its summary and description or by one of its comments. Only tickets the caller may see, and comments the caller may read, take part. Tickets changed in the last seconds may not be indexed yet.",
+        "operationId": "similarTickets",
+        "parameters": [
+          {
+            "description": "The ticket: its id or its key, such as `PAY-12`.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "How many tickets, at most 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Leave out tickets less similar than this (cosine similarity, -1 to 1).",
+            "in": "query",
+            "name": "minScore",
+            "required": false,
+            "schema": {
+              "maximum": 1,
+              "minimum": -1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilarTickets"
+                }
+              }
+            },
+            "description": "The similar tickets, best first."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The request is not valid: see `error` and, for fields, `fields`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No session or token, or an expired one."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The session or token may not do this (its scope, or the person’s permissions)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "There is no such resource, or the caller may not see it."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "The tickets most similar in meaning to a ticket",
+        "tags": [
+          "Search"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "stable"
       }
     },
     "/api/v1/tickets/{id}/time-entries": {

@@ -1,8 +1,8 @@
 ---
 title: "The operator CLI"
 audience: admins
-sources: apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/backup.ts, apps/server/src/backups/drill.ts, apps/server/src/backups/schedule.ts, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/directory.ts, apps/server/src/audit/chain.ts, apps/server/src/fields/jobs.ts, apps/server/src/reports/events.ts, apps/server/src/trash/purge.ts, apps/server/src/export/write.ts, Dockerfile, deploy/README.md, deploy/compose/upgrade.sh, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, docs/adr/0022-upgrades-and-migrations.md
-accessed: 2026-10-30
+sources: apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/backup.ts, apps/server/src/backups/drill.ts, apps/server/src/backups/schedule.ts, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/directory.ts, apps/server/src/audit/chain.ts, apps/server/src/fields/jobs.ts, apps/server/src/reports/events.ts, apps/server/src/trash/purge.ts, apps/server/src/export/write.ts, Dockerfile, deploy/README.md, deploy/compose/upgrade.sh, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, docs/adr/0022-upgrades-and-migrations.md, apps/server/src/embeddings/backfill.ts, docs/adr/0106-local-embeddings-and-vector-search.md
+accessed: 2026-11-01
 attestation: own-words
 ---
 # The operator CLI
@@ -49,6 +49,7 @@ links. See [Configuration reference](configuration.md).
 | `purge-trash` | Deletes for good what outlived the trash retention | 1 failed |
 | `field-values [--repair]` | Checks the custom field search tables | 1 differences left unrepaired |
 | `report-verify` | Replays every ticket's report events | 1 a ticket differs |
+| `embeddings [--rebuild]` | Embeds every ticket and comment that lacks an embedding, for similar tickets | 2 embeddings are off |
 | `password-link <email>` | A one-time link to set a password | 1 no active account, 2 no email |
 | `audit-verify` | Checks the audit log's hash chains | 1 a chain is broken |
 | `allowlist-off` | Turns the IP allowlist off, for an administrator locked out by it | |
@@ -157,6 +158,16 @@ Replays every ticket's report events and compares the result with the tickets as
 reports can be trusted to rebuild from their events. It prints one JSON line per workspace with
 `ok`, the number of differences and the first 20. Tickets older than the change history report
 as having no history.
+
+### embeddings
+
+Embeds, with the bundled model (or the endpoint `TASKMOOR_EMBEDDINGS` names), every ticket and
+comment whose embedding is missing, made by another model or older than its text, and sets up
+pgvector's index where the database has the extension. It prints progress, then one JSON line
+per workspace: what it embedded, how lookups run (`pgvector` or `exact`) and how many tickets
+and comments have an embedding. `--rebuild` deletes the workspace's embeddings first and makes
+them all again. The worker does the same in the background on its own; see
+[similar tickets](similar-tickets.md).
 
 ## Accounts and security
 

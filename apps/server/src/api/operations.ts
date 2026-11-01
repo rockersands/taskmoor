@@ -19,6 +19,7 @@ import {
 } from '../routes/saved-searches';
 import { checkQuery, searchInput } from '../routes/search';
 import { signInBody } from '../routes/session';
+import { similarQuery, similarTextBody } from '../routes/similar';
 import { backlogQuery, listQuery as sprintListQuery } from '../routes/sprints';
 import {
   historyQuery,
@@ -615,6 +616,33 @@ export const OPERATIONS: readonly Operation[] = [
           })
           .loose(),
       },
+    },
+  }),
+  op({
+    method: 'GET',
+    path: '/api/v1/tickets/:id/similar',
+    id: 'similarTickets',
+    tag: 'Search',
+    summary: 'The tickets most similar in meaning to a ticket',
+    description:
+      'Nearest first by the vectors of the bundled embedding model, which needs no AI provider or key; a ticket matches by its summary and description or by one of its comments. Only tickets the caller may see, and comments the caller may read, take part. Tickets changed in the last seconds may not be indexed yet.',
+    params: ticketParam,
+    query: similarQuery,
+    responses: {
+      200: { description: 'The similar tickets, best first.', schema: s.similarTickets },
+    },
+  }),
+  op({
+    method: 'POST',
+    path: '/api/v1/tickets/similar',
+    id: 'similarToText',
+    tag: 'Search',
+    summary: 'Tickets similar to a text being written',
+    description:
+      'Duplicate suggestions while a ticket is created: the same lookup as `GET /api/v1/tickets/{id}/similar` for a text, optionally in one track. It changes nothing.',
+    body: similarTextBody,
+    responses: {
+      200: { description: 'The similar tickets, best first.', schema: s.similarTickets },
     },
   }),
   op({

@@ -103,6 +103,32 @@ export const next = nullable(z.string()).meta({
   description: 'The cursor of the next page; null on the last one.',
 });
 
+/** Tickets similar in meaning to a ticket or a text (M1-078; AI-012, AI-016; ADR-106). */
+export const similarTickets = z
+  .object({
+    model: nullable(z.string()).meta({
+      description:
+        'What made the vectors, such as `local:all-MiniLM-L6-v2` (the bundled model); null when the server has embeddings off.',
+    }),
+    similar: z.array(
+      z
+        .object({
+          ticket: searchTicket,
+          score: z.number().meta({ description: 'Cosine similarity, -1 to 1: higher is closer.' }),
+          match: z.enum(['ticket', 'comment']).meta({
+            description:
+              'Whether the ticket’s summary and description or one of its comments matched best.',
+          }),
+          commentId: id.optional().meta({
+            description: 'The comment that matched, one the caller may read; never its text.',
+          }),
+        })
+        .loose(),
+    ),
+  })
+  .loose()
+  .meta({ id: 'SimilarTickets' });
+
 /** How many tickets a query finds (M1-040, ADR-069). */
 export const searchTotal = z
   .object({

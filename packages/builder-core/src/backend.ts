@@ -26,7 +26,8 @@ function compose(): string {
 name: taskmoor
 services:
   postgres:
-    image: postgres:16
+    # PostgreSQL 16 with pgvector for the similar-ticket index (ADR-106).
+    image: pgvector/pgvector:0.8.1-pg16-trixie
     environment:
       POSTGRES_USER: taskmoor
       POSTGRES_DB: taskmoor

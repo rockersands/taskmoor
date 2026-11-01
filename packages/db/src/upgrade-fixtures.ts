@@ -1426,6 +1426,24 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM import_run WHERE name = 'Seed delta'`.execute(db);
     },
   },
+  '0079_embeddings': {
+    tables: {
+      ticket_embedding:
+        "model = 'local:all-MiniLM-L6-v2' AND cardinality(embedding) = 3 AND source_hash = md5('Seed ticket')",
+      comment_embedding: "model = 'local:all-MiniLM-L6-v2' AND embedding = '{0,1,0}'",
+    },
+    seed: async (db) => {
+      // The seed ticket's vector (a short one: the shape, not the model, is what is carried)
+      // and its comment's.
+      await sql`INSERT INTO ticket_embedding (ticket_id, workspace_id, model, source_hash, embedding)
+        SELECT id, 1, 'local:all-MiniLM-L6-v2', md5('Seed ticket'), '{1,0,0}'
+          FROM ticket WHERE summary = 'Seed ticket'`.execute(db);
+      await sql`INSERT INTO comment_embedding (comment_id, ticket_id, workspace_id, model,
+          source_hash, embedding)
+        SELECT c.id, c.ticket_id, 1, 'local:all-MiniLM-L6-v2', md5('Seed comment'), '{0,1,0}'
+          FROM ticket_comment c WHERE c.version = 2`.execute(db);
+    },
+  },
 };
 
 /**
