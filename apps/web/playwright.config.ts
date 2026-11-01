@@ -13,6 +13,8 @@ process.env.TASKMOOR_E2E_ATTACH_PASSWORD ??= `files-${randomBytes(18).toString('
 // The AI key the fake provider of api-server.ts accepts (M1-076), made per run the same way and
 // shaped so that no secret scanner mistakes it for a real key.
 process.env.TASKMOOR_E2E_AI_KEY ??= `fake-ai-key-${randomBytes(18).toString('hex')}`;
+// The AI features backend's administrator (M1-079, api-server.ts on 8797), made the same way.
+process.env.TASKMOOR_E2E_AI_PASSWORD ??= `ai-${randomBytes(18).toString('base64url')}`;
 
 const PORT = 4173;
 const API_PORT = 8787;
@@ -90,9 +92,12 @@ export default defineConfig({
     },
     // Attachments (M1-016) on local disk and on S3: the same build, proxied to the two APIs
     // the API server starts on 8791 and 8792. Servers start in order, so the build is there.
+    // The AI features backends (M1-079): with the fake provider (4186) and with none (4187).
     ...[
       [4174, 8791],
       [4175, 8792],
+      [4186, 8797],
+      [4187, 8798],
     ].map(([port, api]) => ({
       command: `${vite} preview --port ${port} --strictPort`,
       url: `http://localhost:${port}`,

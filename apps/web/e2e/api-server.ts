@@ -20,13 +20,19 @@ import {
   aiKeyRing,
   BULK_TASK,
   buildApp,
+  EMBEDDING_SUBSCRIBER,
+  EmbeddingService,
   EventBus,
+  embeddingSubscriber,
   eventTask,
   FieldCatalogs,
   issueSetupToken,
   JobRunner,
   registerBulkJobs,
+  registerEmbeddingJobs,
   registerSubscribers,
+  SWEEP_TASK,
+  sharedLocalEmbedder,
   startDirectorySync,
   startWorker,
   storesOf,
@@ -47,6 +53,11 @@ export const E2E_ATTACH_S3_PORT = 8792;
 export const E2E_FAKE_S3_PORT = 8793;
 export const E2E_ATTACH_ADMIN = 'ada@attach.test';
 export const E2E_AI_PROVIDER_PORT = 8796;
+/** The AI features backends (M1-079): AI set up on the fake provider, and no provider at all. */
+export const E2E_AI_API_PORT = 8797;
+export const E2E_AI_ADMIN = 'ada@ai.test';
+export const E2E_NO_AI_API_PORT = 8798;
+export const E2E_NO_AI_ADMIN = 'ada@no-ai.test';
 
 // Always signs in the same synthetic person; the tests register it as a provider first.
 const idp = new FakeIdp('taskmoor-e2e', 'e2e-client-secret-0123456789');
@@ -113,6 +124,50 @@ const s3 = new S3Store({
 const aiKeys = aiKeyRing({ masterKey: randomBytes(32).toString('base64url') });
 const aiProvider = new FakeProviderServer();
 aiProvider.accepted.add(process.env.TASKMOOR_E2E_AI_KEY as string);
+// A scripted model for the AI features (M1-079, ai-features-fake.spec.ts): it answers each
+// feature by the instructions it was sent, in the shape the feature asks for.
+aiProvider.answer = ({ system, prompt }) => {
+  if (system.startsWith('You summarise')) {
+    const comment = /<comment id="c(\d+)"/.exec(prompt)?.[1];
+    const key = /ticket (\S+)\./.exec(prompt)?.[1] ?? 'the ticket';
+    return `${key} is about a blank checkout page with an expired card${comment ? ` [c${comment}]` : ''}. The next step is a fix in the payment form, then a test for every card state.`;
+  }
+  if (system.includes('query language')) {
+    return JSON.stringify({
+      query: 'assignee = currentUser() AND stage != closed',
+      explanation: 'Open tickets assigned to you.',
+    });
+  }
+  if (system.startsWith('You help a person break')) {
+    return JSON.stringify({
+      children: [
+        { summary: 'Store cards securely', description: 'Use the payment vault.', type: 'Feature' },
+        { summary: 'Pick a saved card at checkout', description: 'A list.', type: 'Feature' },
+        { summary: 'Remove a saved card', description: 'From the account page.', type: 'Feature' },
+      ],
+    });
+  }
+  if (system.startsWith('You help a person turn')) {
+    return JSON.stringify({
+      drafts: [
+        {
+          summary: 'Refund button does nothing on Safari',
+          description: 'Clicking Refund on Safari does nothing.',
+          type: 'Bug',
+          priority: 'High',
+          labels: [],
+        },
+      ],
+    });
+  }
+  if (system.startsWith('A person is writing')) {
+    const keys = [...prompt.matchAll(/<ticket key="([^"]+)">/g)].map((m) => m[1]);
+    return JSON.stringify({
+      ranked: keys.map((key) => ({ key, likely: true, reason: 'The same blank checkout page.' })),
+    });
+  }
+  return undefined;
+};
 await aiProvider.start(E2E_AI_PROVIDER_PORT);
 // Both also co-edit rich text (the realtime role, M1-017); the rich text tests use the first.
 const attachApps = [
@@ -198,6 +253,116 @@ const eventRunner = new JobRunner(attachDb, 'e2e-events', {
 eventBus.attach(eventRunner);
 const eventWorker = startWorker({ bus: eventBus, runner: eventRunner, db: attachDb });
 
+// The AI features (M1-079) get two backends of their own, so ai-settings.spec.ts, which switches
+// AI on and off on 8791, touches neither: one with AI set up on the fake provider through the
+// admin API (8797, preview 4186), one with no provider at all (8798, preview 4187) whose
+// embeddings are indexed as a worker would, for duplicate suggestions without a key.
+async function aiFeaturesBackend(options: {
+  port: number;
+  preview: number;
+  email: string;
+  withProvider: boolean;
+}) {
+  const database = await createDatabase(server.adminUrl);
+  const backendDb = createDb({ connectionString: database.url, maxConnections: 5 });
+  await migrateToLatest(backendDb);
+  const backend = await buildApp({
+    db: backendDb,
+    version: 'e2e',
+    roles: ['api'],
+    logLevel: 'warn',
+    publicUrl: `http://localhost:${options.preview}`,
+    aiKeys,
+  });
+  const setup = await backend.inject({
+    method: 'POST',
+    url: '/api/v1/setup',
+    payload: {
+      token: await issueSetupToken(backendDb),
+      instanceName: 'AI features',
+      admin: {
+        name: 'Ada Ai',
+        email: options.email,
+        password: process.env.TASKMOOR_E2E_AI_PASSWORD as string,
+      },
+    },
+  });
+  const cookie =
+    [setup.headers['set-cookie'] ?? []]
+      .flat()
+      .find((c) => c.startsWith('taskmoor_session=') && !c.startsWith('taskmoor_session=;'))
+      ?.split(';')[0] ?? '';
+  if (!cookie) throw new Error(`AI e2e setup failed: ${setup.body}`);
+  await backendDb.updateTable('two_factor_policy').set({ required: 'none' }).execute();
+  const steps = [
+    {
+      method: 'POST' as const,
+      url: '/api/v1/tracks',
+      payload: { key: 'AIF', name: 'AI features', mode: 'shared' },
+    },
+    ...(options.withProvider
+      ? [
+          {
+            method: 'PUT' as const,
+            url: '/api/v1/admin/ai/credentials/apiKey',
+            payload: { value: process.env.TASKMOOR_E2E_AI_KEY as string },
+          },
+          {
+            method: 'PUT' as const,
+            url: '/api/v1/admin/ai',
+            payload: {
+              enabled: true,
+              strict: false,
+              provider: {
+                provider: 'anthropic',
+                baseUrl: `http://127.0.0.1:${E2E_AI_PROVIDER_PORT}`,
+              },
+              features: {},
+            },
+          },
+        ]
+      : []),
+  ];
+  for (const step of steps) {
+    const res = await backend.inject({ ...step, headers: { cookie } });
+    if (res.statusCode >= 300) throw new Error(`AI e2e setup: ${step.url}: ${res.body}`);
+  }
+  // The worker's embedding jobs, and nothing else, so what a test writes is found.
+  const embeddings = new EmbeddingService(backendDb, sharedLocalEmbedder());
+  await embeddings.prepare();
+  const bus = new EventBus(backendDb);
+  bus.subscribe(embeddingSubscriber(backendDb, embeddings.indexer));
+  const runner = new JobRunner(backendDb, `e2e-embeddings-${options.port}`, {
+    tasks: [eventTask(EMBEDDING_SUBSCRIBER), SWEEP_TASK],
+  });
+  bus.attach(runner);
+  registerEmbeddingJobs(runner, backendDb, embeddings.indexer);
+  const worker = startWorker({ bus, runner, db: backendDb });
+  await backend.listen({ port: options.port, host: '127.0.0.1' });
+  return {
+    stop: async () => {
+      await worker.stop();
+      await backend.close();
+      await backendDb.destroy();
+      await database.drop();
+    },
+  };
+}
+const aiBackends = [
+  await aiFeaturesBackend({
+    port: E2E_AI_API_PORT,
+    preview: 4186,
+    email: E2E_AI_ADMIN,
+    withProvider: true,
+  }),
+  await aiFeaturesBackend({
+    port: E2E_NO_AI_API_PORT,
+    preview: 4187,
+    email: E2E_NO_AI_ADMIN,
+    withProvider: false,
+  }),
+];
+
 const app = await buildApp({
   db,
   version: 'e2e',
@@ -207,12 +372,14 @@ const app = await buildApp({
   publicUrl: 'http://localhost:4173',
 });
 await app.listen({ port: E2E_API_PORT, host: '127.0.0.1' });
+
 // The worker's directory loop, so a sync asked for on the page runs.
 const directories = startDirectorySync(db, { worker: 'e2e', pollMs: 500 });
 process.stdout.write(`e2e API listening on http://127.0.0.1:${E2E_API_PORT}\n`);
 
 async function stop(): Promise<void> {
   await directories.stop();
+  for (const backend of aiBackends) await backend.stop();
   bulkRunning = false;
   await bulkLoop;
   await eventWorker.stop();

@@ -1,7 +1,7 @@
 ---
 title: "AI settings"
 audience: admins
-sources: apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md
+sources: apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, apps/server/src/routes/ai-features.ts, docs/adr/0108-ai-v1-features.md, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md
 accessed: 2026-11-01
 attestation: own-words
 ---
@@ -112,12 +112,32 @@ not have, the old key is missing from the list.
 **Losing the master key** loses the stored AI keys, nothing else: set a new master key and
 enter the provider keys again.
 
+## What people get
+
+With a provider set up and AI on, people see the features where they apply: summaries on the
+ticket page, **Ask in plain language** on the search page, **Draft from text** in the create
+dialog, **Break down** on a ticket, and AI reasons beside the duplicate suggestions of the
+create dialog. [Using AI features](../use/ai.md) describes them. The settings above decide where
+each one shows: a feature switched off, a track switched off or kept out by strict mode hides
+its control, and the server refuses the call anyway.
+
+- Every feature reads as the person using it: only tickets, comments and fields they may see go
+  to the provider, and fields marked sensitive are replaced first.
+- Nothing is changed by AI on its own. Drafts and breakdowns are proposals; tickets are created
+  only when the person confirms, with their own rights.
+- Every call is counted against the spend limits and recorded in the AI audit log
+  ([AI usage](ai-usage.md)).
+- Duplicate suggestions come from the bundled embedding model and work with no provider; the
+  AI only re-orders them, within 2 seconds, and is skipped when it is slower.
+
+The routes are `POST /api/v1/tickets/{id}/ai/summary` (streamed), `POST /api/v1/ai/query`,
+`POST /api/v1/ai/drafts`, `POST /api/v1/tickets/{id}/ai/breakdown` and
+`POST /api/v1/tickets/similar` with `"reasons": true`. A read token reaches them, since none
+of them changes anything.
+
 ## What is not there yet
 
-- **AI features themselves.** Summaries, search in plain language, drafting and duplicates
-  arrive in a later release; the settings here already apply to them. Similar tickets from the
-  bundled embedding model need none of this and work already, with AI off and no key: see
-  [similar tickets](similar-tickets.md).
+- **Images in drafts.** Drafting reads pasted text only; images wait for a later release.
 
 - **A key service.** Wrapping keys with a cloud KMS or HashiCorp Vault instead of the master
   key is designed for, but no setting turns it on yet.

@@ -49,8 +49,11 @@ The REST API has two read operations (see the [REST API](rest-api.md) reference)
   similar to a text being written, for duplicate suggestions while a ticket is created.
   `track` (optional) keeps to one track; `excludeTicket` leaves one ticket out.
 
-Both need only a read token. The web app's duplicate suggestions and similar-ticket panel come
-with the AI features of a later release.
+Both need only a read token. The create dialog uses the second for its duplicate suggestions,
+with no AI provider needed. With `"reasons": true` and an AI provider set up for the track, the
+first eight are re-ordered by the AI with a reason each (`likely`, `reason`, `reranked: true`),
+within 2 seconds of the request; when the AI is slower, off or not set up, the answer is the
+embedding order with `reranked: false`. A similar-ticket panel on the ticket page comes later.
 
 ## The vector index (pgvector)
 

@@ -5,6 +5,13 @@ export { type AttachmentStores, attachmentStores, storesOf } from './attachments
 export { Authorizer } from './authz/authorizer';
 export { BULK_TASK, registerBulkJobs } from './bulk/jobs';
 export { loadConfig, type ServerConfig } from './config';
+export {
+  EMBEDDING_SUBSCRIBER,
+  embeddingSubscriber,
+  registerEmbeddingJobs,
+  SWEEP_TASK,
+} from './embeddings/jobs';
+export { EmbeddingService, sharedLocalEmbedder } from './embeddings/service';
 export { EventBus, eventTask, startWorker } from './events/bus';
 export { JobRunner } from './events/queue';
 export { registerSubscribers } from './events/subscribers';

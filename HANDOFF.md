@@ -475,6 +475,31 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     keys per pair); review the diff. `pnpm eval` needs no key and calls no model; CLAUDE.md's
     command table does not list it yet.
 
+- **M1-079 AI v1 features** (branch `work/m1-079-ai-features`, side agent 2026-11-01; ADR-108,
+  no migration; **in progress**: only the measured thresholds are left, and they wait for a key):
+  - Server: `routes/ai-features.ts` (summary as server-sent events with cancel, query from text
+    checked with `prepareSearch` and never run, drafts and breakdown as proposals) and
+    `reasons: true` on `POST /api/v1/tickets/similar` (a model re-ranks within 2 s, else the
+    embedding order). Prompts and parsing in `ai/features/`; `AiContext` gained `comments`
+    (readable ones only, set-based) and `changes`. All read-only token class; contract
+    exemptions; no domain events (the AI audit log books every call).
+  - Web: `SummaryPanel`, `AskQuery`, `DraftFromText`, `BreakdownAction` (in `apps/web/src/ai/`),
+    `DuplicateSuggestions` (tickets, not an AI control). `useFirstUse` shows `AiNotice` before the
+    first call. Pages take an `ai` prop for stories and tests.
+  - Evals: `pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts` with
+    `TASKMOOR_AI_EVAL_KEY` (or `TASKMOOR_AI_TEST_KEY`) measures the thresholds, judges summaries
+    with `judge-prompt.md` (calibration printed first) and runs the injection corpus through every
+    feature. Without a key it stops with exit 2. `candidates/replay.ts` proves the wiring
+    (query 125/125, summary 12/12 automatic, duplicates recall@3 100%, injection 40/40). Record
+    the live numbers in ADR-108 and set M1-079 to done when they meet `THRESHOLDS`.
+  - e2e: two new backends in `api-server.ts`, AI on the fake provider (8797, preview 4186) and no
+    provider (8798, preview 4187), each with an embedding worker; `FakeProviderServer.answer`
+    scripts the model per feature. `ai-features.spec.ts` and `ai-features-fake.spec.ts`.
+  - Targeted vitest runs: `node node_modules/vitest/vitest.mjs run --project=<name> <file>`
+    from the root; `pnpm verify --update --only=tests -- <one file>` once ran the whole suite here.
+  - Left for later: images in drafts (the gateway has no image content parts), a similar-ticket
+    panel on the ticket page.
+
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 
 Everything below is on `main` and passed `pnpm verify --e2e` before each push. In order:
