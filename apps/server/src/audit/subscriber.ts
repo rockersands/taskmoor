@@ -16,6 +16,8 @@ export const AUDITED_EVENTS = [
   'bulk_operation.created',
   'bulk_operation.cancelled',
   'import_run.created',
+  // A file put on the server for an import (M1-097): what may be imported is an admin event.
+  'import_file.uploaded',
   'import_run.cancelled',
   'import_run.finished',
   'workspace.exported',

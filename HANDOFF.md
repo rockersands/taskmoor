@@ -349,6 +349,38 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     external ids on the 4176 and 4177 instances.
   - When M1-093 lands, check that its boards write external ids of kind `board` with the
     source's rapid view id: the board link and the sprint gadgets of M1-094 resolve through it.
+- **M1-096 delta runs** (branch `work/m1-096-delta-wizard`, side agent 2026-10-31; migration
+  0076, ADR-102; M1-096 is done):
+  - `deltaFrom` on `POST /api/v1/admin/imports` (Cloud REST and Data Center runs only). Cloud:
+    `fetch_state.startedAt` is the mark, the delta's settings carry `since`, the search adds
+    `updated >= -<n>m` (15-minute overlap; tests set `deltaOverlapMs: 0` and backdate the source),
+    then a `listing` step stages every issue id as `listed:ticket`. Full runs send the same
+    requests as before (the replay fixture is unchanged).
+  - Deletions: `ImportSource.coverage` per kind; the run's last phase (checkpoint
+    `{ deleted: <index> }`) writes `deleted` records and the `deleted_in_source` warning, and
+    removes nothing. Acting on them (trash) is the obvious next step if the user wants it.
+  - `ImportFormat.sourceHistory` (DC, Cloud): a ticket update writes no history of its own except
+    for fields edited in Taskmoor since the import last wrote it (`edited_in_target`). The
+    external id's `updated_at` now moves only on writes: that is how target edits are found.
+  - An attachment's checksum no longer covers its locator: the first re-run after this reports
+    attachments `updated` once, writing nothing.
+  - Tests: `import/cloud/delta.test.ts`, `import/dc-delta.test.ts` (edits a generated backup's
+    `entities.xml` in place: a pattern for other later-backup tests).
+- **M1-097 import wizard and CLI** (same branch, second commit; ADR-103, no migration; M1-097
+  is done):
+  - Web: `apps/web/src/admin/imports/` at `#/admin/imports` (Settings > Imports). New routes:
+    `GET`/`POST /api/v1/admin/imports/files` (the folder listing and a raw-body upload; event
+    `import_file.uploaded`). People mode `map` for Cloud and Data Center (`cloud/people.ts`,
+    `dc.ts` `people` setting by user key).
+  - CLI: `node cli.mjs import ...` goes through the API (`import/cli.ts`, `TASKMOOR_URL`,
+    `TASKMOOR_TOKEN`); it is handled before the CLI's own option parsing. CLAUDE.md's command
+    table does not list it yet (left for the main session).
+  - E2E: `e2e/import-wizard.spec.ts` uses a fourth instance in `web-server.ts` on 4185 (its own
+    imports folder and import worker loop; it starts before 4177, which Playwright waits for).
+    The 10,000-issue backup is generated once into `.cache/e2e/dc-backup-10000-seed97.zip`
+    (about 10 s); the admin's password comes from `TASKMOOR_E2E_IMPORT_PASSWORD`
+    (playwright.config.ts). Desktop runs the import (the spec took 3.0 minutes with the servers'
+    start); mobile checks the layout.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

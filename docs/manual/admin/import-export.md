@@ -1,7 +1,7 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx
+sources: apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, docs/adr/0102-delta-import-runs.md, docs/adr/0103-import-wizard-and-cli.md, apps/server/src/import/cli.ts, apps/server/src/import/files.ts, apps/web/src/admin/imports/ImportsPage.tsx, apps/web/src/admin/imports/ImportWizard.tsx, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx
 accessed: 2026-10-31
 attestation: own-words
 jira-names: import sources and field mapping
@@ -45,7 +45,8 @@ Every import, whatever its source, runs the same way:
   its own report. Its counts, warnings and problems are those a real run would have.
 - **Safe to run again.** Every imported object is remembered by its source system and its id
   there. Importing the same source again leaves unchanged records alone and updates the ones that
-  changed instead of adding copies.
+  changed instead of adding copies. A [delta run](#delta-runs-for-a-cutover) brings only what
+  changed since an earlier run.
 - **One record at a time.** A record that cannot be imported fails alone, with its reason; the
   rest go on.
 - **Kept facts.** Authors, times, numbers and statuses come from the source. Imported records
@@ -54,8 +55,78 @@ Every import, whatever its source, runs the same way:
 A run's state is `queued`, `running`, `done`, `failed` or `cancelled`. Starting, cancelling and
 finishing an import are recorded in the audit log.
 
-Taskmoor does not yet have a page for imports in the web app. Site administrators use the API
+Site administrators import from **Settings > Imports** (see [The import wizard](#the-import-wizard)),
+from the command line (see [The import command](#the-import-command)), or through the API
 below (an API token needs the admin scope; see [The REST API](rest-api.md)).
+
+### The import wizard
+
+**Settings > Imports** takes you through one import at a time:
+
+1. **Source.** A Jira Data Center backup, a Taskmoor export or a CSV file from the imports
+   folder (see [Files on the server](#files-on-the-server)), or a Jira Cloud site with its
+   address, the account's email address, an API token and, if you like, the project keys. A
+   file of up to 4 GB can be uploaded into the folder from here; larger backups are copied into
+   the folder on the server, and then appear in the list.
+2. **Options.** A name for the import. For a backup: what to bring (everything; configuration
+   and tickets without their comments, history, time, links and files; or configuration only),
+   and whether the backup's system administrators become site administrators (the default) or
+   configuration administrators. For a CSV file: the column mapping as JSON (see
+   [CSV import](#csv-import)).
+3. **Dry run.** It reads everything and writes nothing. Its report appears when it ends, with
+   the people of the source: who matches someone here by email address, who would be added, and
+   who becomes an inactive placeholder. To link a person to someone who is already here (a
+   colleague whose address changed, or someone who left), type that person's address next to
+   them. Everyone else is matched by address.
+4. **Import.** The real run, with your people mapping. The page follows it: what it is on, the
+   records read and what became of them per kind, and a button to cancel it. Then it shows the
+   report: the totals, each kind, every warning with what its code means, what was not imported
+   and why, failures, how each configuration object was mapped, and the report to download as a
+   page.
+
+Earlier imports are listed below the wizard with their reports. A finished import of a backup or
+a Cloud site offers **Delta run**, which brings only what changed since; see
+[Delta runs for a cutover](#delta-runs-for-a-cutover).
+
+### The import command
+
+On the server, or on any machine that reaches it, `cli.mjs` starts and follows imports through
+the API. It needs the server's address in `TASKMOOR_URL` and an API token of a site
+administrator with the admin scope in `TASKMOOR_TOKEN`:
+
+```bash
+docker compose exec -e TASKMOOR_URL=http://localhost:8080 -e TASKMOOR_TOKEN taskmoor \
+  node cli.mjs import start --dc-backup jira-backup.zip --scope tickets --dry-run --follow
+```
+
+| Command | Does |
+|---|---|
+| `import start <source> [--dry-run] [--name N] [--delta-from ID] [--follow] [--max-warnings N]` | Starts an import; with `--follow`, follows it to its report |
+| `import follow <id>` | Follows a run: a line whenever its progress changes, then its report |
+| `import report <id> [--json] [--html FILE]` | The report as text, as JSON, or written to a page |
+| `import status <id>`, `import list`, `import cancel <id>` | One run, the latest 50, or cancel one |
+
+The source is one of `--dc-backup PATH` (with `--scope all|tickets|configuration`,
+`--system-admins site_admin|configuration_admin` and `--system NAME`), `--export PATH`,
+`--csv PATH --mapping FILE` (the mapping as JSON), `--cloud URL` (with `--email`, `--projects
+A,B` and `--jql`; the site's API token goes in `TASKMOOR_SOURCE_TOKEN`, never on the command
+line), or `--source FILE`, a file with the whole `source` object of the API. `--people-map FILE`
+links people as the wizard does: a CSV of two columns, the person in the source (user key,
+account id or address) and the address of the person here. Paths are inside the imports folder.
+A delta run takes `--delta-from ID` alone for a Cloud site, or with the later backup.
+
+The command's **exit code** says how it went, for scripts:
+
+| Code | Meaning |
+|---|---|
+| 0 | Done: nothing failed, and no more warnings than `--max-warnings` when it is given (also: started, without `--follow`) |
+| 1 | The run failed or was cancelled |
+| 2 | Done, but some records failed, or there were more warnings than `--max-warnings` |
+| 64 | Bad usage: an unknown command or option, a missing value |
+| 65 | The server refused the request: a bad source, a file outside the imports folder, no such run |
+| 69 | The server could not be reached, or answered with an error of its own |
+| 75 | The report was asked for before the run finished |
+| 77 | The token is not a site administrator's with the admin scope |
 
 ### Starting an import
 
@@ -78,7 +149,7 @@ with a seeded generator, for trying the importer on a scratch instance.
 | Request | Answers |
 |---|---|
 | `GET /api/v1/admin/imports` | The latest 50 runs |
-| `GET /api/v1/admin/imports/<id>` | One run: state, the kind it is on, batches, and per kind the records read, created, updated, unchanged, linked to an existing object, failed and skipped; the number of warnings and the last error |
+| `GET /api/v1/admin/imports/<id>` | One run: state, the kind it is on, batches, and per kind the records read, created, updated, unchanged, linked to an existing object, failed and skipped; the number of warnings, the last error, and the run a delta started from (`deltaFrom`) |
 | `GET /api/v1/admin/imports/<id>/report` | The fidelity report as JSON; `?format=html` downloads it as a standalone page. `409` until the run has finished |
 | `GET /api/v1/admin/imports/<id>/problems` | Every record with a failure or warnings, 100 a page |
 | `GET /api/v1/admin/imports/<id>/records` | Every record with its name in the source and what became of it, 100 a page |
@@ -95,7 +166,9 @@ workflows. For each it gives the name the object had in the source, and whether 
 created it, linked it to your object of the same name (people by email address), found it
 unchanged since the last run, or left it out, with the reason. It lists up to 500 objects of a
 kind. The **records** list has them all and takes `kind`, `outcome` (`created`, `updated`,
-`unchanged`, `linked`, `failed` or `skipped`), `limit` and `after`, like the problems list.
+`unchanged`, `linked`, `failed`, `skipped`, or `deleted` for what a
+[delta run](#delta-runs-for-a-cutover) found gone from the source), `limit` and `after`, like the
+problems list.
 
 The **problems** list takes `outcome` (`failed`, `skipped` or `warned`), `kind` (such as
 `ticket`), `limit` (up to 1000) and `after` (the `next` value of the previous page). Each entry
@@ -104,7 +177,10 @@ gives the kind, the source id, the outcome, the target's id and the reasons.
 ### Files on the server
 
 Small files go in the request itself (up to 16 MB). Larger files, and Taskmoor exports, are named
-by a path inside the imports folder: `TASKMOOR_IMPORT_DIR`, by default `imports` in
+by a path inside the imports folder, where the wizard also uploads them
+(`POST /api/v1/admin/imports/files?name=<file name>` with the file as an
+`application/octet-stream` body, up to 4 GB; `GET /api/v1/admin/imports/files` lists the
+folder): `TASKMOOR_IMPORT_DIR`, by default `imports` in
 `TASKMOOR_DATA` (`/data/imports` in the image). A path outside it is refused, and
 `TASKMOOR_IMPORT_DIR=off` refuses every path. Create the folder first:
 
@@ -397,6 +473,10 @@ again. The report counts the slow-downs under `source_throttled` and the retried
   leaves out, or maps to an address nobody here has, is **unmapped**.
 - `scim`: the person your identity provider provisioned over SCIM with the same address. Everyone
   else is unmapped.
+- `map`: by email address, except the people `rows` names (`[{"source": "<account id or
+  address>", "target": "<address here>"}]`), who are linked to that person here. The wizard
+  sends this. A Data Center backup takes the same `people` setting, its people named by user
+  key.
 
 An unmapped person becomes a deactivated placeholder, so their comments, time and history keep
 an author, and their record warns `person_unmapped`. Run a dry run first: the `records` list for
@@ -416,8 +496,51 @@ new board's defaults.
 
 **Not imported yet:** links between issues, attachments, watchers and votes, filters and
 dashboards (the Data Center backup brings them), issue type and permission schemes (tickets of a type the track does not offer keep
-it and warn `type_not_offered`), comment visibility (warned), and changes since the last run
-only (delta runs, planned).
+it and warn `type_not_offered`), and comment visibility (warned).
+
+## Delta runs for a cutover
+
+While people still work in the old tracker, import once, check the result, and then bring over
+only what changed since with a **delta run**, as often as you like, until the day you switch.
+Give the earlier run it starts from:
+
+```http
+POST /api/v1/admin/imports
+Content-Type: application/json
+
+{"name": "Friday evening", "deltaFrom": 41}
+```
+
+- **A Jira Cloud site** needs nothing else: the delta uses the earlier run's settings and token.
+  To use a new token, give the same `source` as before with it (another site is refused). The
+  delta asks the site only for the issues updated since the earlier run's fetch began, less 15
+  minutes in case the two clocks differ, and fetches their changelog, comments and worklogs.
+  Configuration, boards and sprints are read whole again. It then lists the id of every issue
+  the run's projects or query still find, so it knows which ones the site no longer has.
+- **A Jira Data Center backup**: copy the later backup into the imports folder and give it as
+  `source` (`{"format": "dc-backup", "path": "jira-backup-friday.zip"}`). The delta reads the
+  whole backup; only what changed is written.
+- The delta keeps the earlier run's importer and `system`. It can start from any finished run
+  that was not a dry run; a dry run of a delta (`"dryRun": true`) says what it would do. A second
+  run of the same source while one is queued or running is refused (`409 run_in_progress`).
+
+**What a delta does:**
+
+- Records that did not change are counted `unchanged` and not written. The report's counts per
+  kind show what was created and updated.
+- **Changes in the source win.** A ticket the source changed is written as the source has it;
+  its history gets the source's own entries for the change, as a fresh import would.
+- **Edits made in Taskmoor stay**, as long as the source did not change the same ticket. If it
+  did, the source's version replaces the ticket's fields, the record warns `edited_in_target`, and
+  the ticket's history shows each field you had changed going back. Comments, time, links and
+  files added in Taskmoor are never touched.
+- **What the source deleted is reported, not deleted here.** Each record an earlier run brought
+  that the source no longer has counts in the warning `deleted_in_source`, and the records list
+  names them all (`GET /api/v1/admin/imports/<id>/records?outcome=deleted`). Taskmoor keeps the
+  object: move the tickets you no longer want to the trash yourself. A record the token can no
+  longer see looks the same as a deleted one, which is why nothing is removed for you. From a
+  Cloud site, deletions are found for tickets, configuration, boards and sprints, and for the
+  comments, time and history of the tickets the delta read; not for people or select options.
 
 ## CSV import
 

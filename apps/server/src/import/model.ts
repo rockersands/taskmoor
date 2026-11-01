@@ -136,7 +136,22 @@ export interface ImportSource {
    * it goes. 'more' when `until` passed first: the job's next part goes on from where it got to.
    */
   prepare?(until: number): Promise<'ready' | 'more'>;
+  /**
+   * How a delta run (M1-096) tells which records of a kind the source no longer holds:
+   *
+   * - `all`: the run reads every record of the kind the source has (a backup), so one an earlier
+   *   run imported that this run did not read is gone;
+   * - `listed`: the run reads only what changed, but the source stages the ids it still holds as
+   *   `import_staged` rows of kind `listed:<kind>` (a Cloud site's ticket ids);
+   * - `within_tickets`: the run reads every record of the kind under each ticket it reads (a
+   *   changed ticket's comments), so one under those tickets it did not read is gone;
+   * - null, or no such method: it cannot tell, and nothing of the kind is reported.
+   */
+  coverage?(kind: string): Promise<Coverage>;
 }
+
+/** What a source can say about records it no longer holds (`ImportSource.coverage`). */
+export type Coverage = 'all' | 'listed' | 'within_tickets' | null;
 
 /** What a format may need to open a source: the run it reads for and the database. */
 export interface OpenContext {
@@ -857,4 +872,11 @@ export interface ImportFormat {
    * spent and formulas are kept rather than computed.
    */
   verbatim?: boolean;
+  /**
+   * The source records every change to a ticket in its own history (a backup's change groups, a
+   * Cloud site's changelog), which arrives as `history` records: a re-run that updates a ticket
+   * writes no history entries of its own for the difference (M1-096), so a delta run ends with
+   * the history a fresh import of the same source would write.
+   */
+  sourceHistory?: boolean;
 }

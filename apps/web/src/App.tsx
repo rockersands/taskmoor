@@ -6,6 +6,7 @@ import { AiUsagePage } from './admin/AiUsagePage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
 import { AuditPage } from './admin/audit/AuditPage';
 import { FrontendsPage } from './admin/FrontendsPage';
+import { ImportsPage } from './admin/imports/ImportsPage';
 import { McpPage } from './admin/McpPage';
 import { NetworkAccessPage } from './admin/NetworkAccessPage';
 import { SecurityPage } from './admin/SecurityPage';
@@ -147,6 +148,7 @@ const ADMIN_FIELDS = '#/admin/fields';
 const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ADMIN_SETS = '#/admin/configuration-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
+const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
@@ -410,6 +412,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-imports',
+              labelId: 'admin.imports.title' as const,
+              keywords: ['import', 'migrate', 'backup', 'csv', 'cloud', 'delta'],
+              run: () => {
+                navigate(ADMIN_IMPORTS);
+              },
+            },
+            {
               id: 'go-guardrails',
               labelId: 'guardrails.title' as const,
               keywords: ['limits', 'guardrail', 'usage', 'quota'],
@@ -499,6 +509,8 @@ function Pages() {
     content = <PermissionsPage />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
+  } else if (isRoute(hash, ADMIN_IMPORTS)) {
+    content = <ImportsPage />;
   } else if (isRoute(hash, ADMIN_GUARDRAILS)) {
     content = <GuardrailsPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {

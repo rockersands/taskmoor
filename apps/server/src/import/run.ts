@@ -18,6 +18,7 @@ import { LOADERS } from './loaders';
 import {
   type Command,
   ENTITY_KINDS,
+  type EntityKind,
   type ImportFormat,
   type ImportSource,
   isEntityKind,
@@ -74,7 +75,27 @@ const SAMPLE_FIRST = 10;
 const SAMPLE_MAX = 50;
 
 type RunRow = NonNullable<Awaited<ReturnType<typeof loadRun>>>;
-type Checkpoint = { kind?: string; after?: string | null; done?: boolean };
+/**
+ * Where a run is: the kind and the cursor after its last committed batch, then (a delta run,
+ * M1-096) the index in `ENTITY_KINDS` of the next kind to check for records the source no
+ * longer holds, then done.
+ */
+type Checkpoint = { kind?: string; after?: string | null; done?: boolean; deleted?: number };
+
+/** The column that names a content record's ticket, for `within_tickets` coverage. */
+const TICKET_COLUMN: Partial<Record<EntityKind, string>> = {
+  comment: 'ticket_id',
+  time_entry: 'ticket_id',
+  history: 'ticket_id',
+  attachment: 'ticket_id',
+  web_link: 'ticket_id',
+};
+
+/** History fields of a ticket's content, which a source's update of the ticket leaves alone. */
+const CONTENT_FIELDS = ['comment', 'link', 'attachment', 'worklog', 'time', 'web_link'];
+
+/** The warning a delta run gives each record the source no longer holds (M1-096). */
+export const DELETED_IN_SOURCE = 'deleted_in_source';
 
 const loadRun = (db: Kysely<Database> | Transaction<Database>, runId: string) =>
   db.selectFrom('import_run').selectAll().where('id', '=', runId).executeTakeFirst();
@@ -86,6 +107,14 @@ export function kindOrder(kinds: readonly string[]): string[] {
     ...ENTITY_KINDS.filter((k) => present.has(k)),
     ...[...present].filter((k) => !isEntityKind(k)).sort(),
   ];
+}
+
+/**
+ * What tells a record changed: its command, less where the source keeps an attachment's bytes
+ * (a later backup puts the same file at another offset; M1-096). The bytes' SHA-256 is in it.
+ */
+function recordChecksum(command: Command): string {
+  return checksum(command.kind === 'attachment' ? { ...command, file: null } : command);
 }
 
 /** Whether a record is in the report's sample: the first few, then about one in sixteen. */
@@ -125,11 +154,14 @@ export async function createRun(
     name: string;
     source: unknown;
     dryRun: boolean;
+    /** The earlier run a delta run starts from (M1-096). */
+    deltaFrom?: string | null;
   },
 ) {
   return db
     .insertInto('import_run')
     .values({
+      delta_from: values.deltaFrom ?? null,
       workspace_id: values.workspaceId,
       user_id: values.userId,
       import_source: values.importSource,
@@ -172,8 +204,21 @@ async function step(
   };
   const warnings = run.warnings as unknown as Record<string, WarningTally>;
   const unsupported = run.unsupported as Record<string, UnsupportedTally>;
+  // After the last kind, a delta run looks for what the source no longer holds (M1-096).
   const startOf = (k: string | undefined): Checkpoint =>
-    k === undefined ? { done: true } : { kind: k, after: null };
+    k !== undefined
+      ? { kind: k, after: null }
+      : run.delta_from !== null
+        ? { deleted: 0 }
+        : { done: true };
+  if (checkpoint.deleted !== undefined) {
+    await deletions(trx, run, source, checkpoint.deleted, warnings);
+    const next = checkpoint.deleted + 1;
+    await save(next >= ENTITY_KINDS.length ? { done: true } : { deleted: next }, {
+      warnings: JSON.stringify(warnings),
+    });
+    return 'continue';
+  }
 
   // The source's own notes (characters it removed, say) join the warnings once, first.
   if (checkpoint.kind === undefined && source.notes) {
@@ -196,7 +241,11 @@ async function step(
     await save(startOf(kinds[0]), { warnings: JSON.stringify(warnings) });
     return 'continue';
   }
-  if (kinds.length === 0) return 'complete';
+  if (kinds.length === 0) {
+    if (run.delta_from === null) return 'complete';
+    await save({ deleted: 0 });
+    return 'continue';
+  }
   const index = checkpoint.kind === undefined ? 0 : kinds.indexOf(checkpoint.kind);
   if (index < 0) throw new Error(`the source no longer has kind ${checkpoint.kind}`);
   const kind = kinds[index] as string;
@@ -277,6 +326,29 @@ async function step(
        AND e.source_system = ${scope.system} AND e.entity_kind = ${kind}
        AND e.source_id = ANY(${items.map((i) => i.id)}::text[])`.execute(trx);
   const existing = new Map(known.map((k) => [k.source_id, k]));
+  // Tickets changed in Taskmoor since an import last wrote them (M1-096), with the fields
+  // changed: if the source changed them too, its version replaces those edits, the record says
+  // so, and the ticket's history shows each field going back.
+  const editedInTarget = new Map<number, Set<string>>();
+  const editedSources = new Set<string>();
+  if (kind === 'ticket' && existing.size > 0) {
+    const { rows: edited } = await sql<{ source_id: string; target_id: string; field: string }>`
+      SELECT DISTINCT e.source_id, e.target_id, c.field
+        FROM import_external_id e
+        JOIN ticket_change c
+          ON c.ticket_id = e.target_id AND c.at > e.updated_at AND c.actor_id IS NOT NULL
+         AND c.field <> ALL(${CONTENT_FIELDS}::text[])
+       WHERE e.workspace_id = ${scope.workspaceId} AND e.import_source = ${scope.importSource}
+         AND e.source_system = ${scope.system} AND e.entity_kind = 'ticket'
+         AND e.source_id = ANY(${[...existing.keys()]}::text[])`.execute(trx);
+    for (const r of edited) {
+      editedSources.add(r.source_id);
+      const id = Number(r.target_id);
+      const fields = editedInTarget.get(id) ?? new Set<string>();
+      editedInTarget.set(id, fields);
+      fields.add(r.field);
+    }
+  }
 
   const catalog = await deps.catalogs.get(run.workspace_id, trx);
   const ctx: LoadContext = {
@@ -287,6 +359,8 @@ async function step(
     importSource: run.import_source,
     dryRun: run.dry_run,
     verbatim: format.verbatim === true,
+    sourceHistory: format.sourceHistory === true,
+    editedInTarget,
     now: new Date().toISOString(),
     refs: resolver,
     catalog,
@@ -342,7 +416,7 @@ async function step(
       continue;
     }
     const command = result.command;
-    const sum = checksum(command);
+    const sum = recordChecksum(command);
     const known = existing.get(item.id);
     const knownId = known ? Number(known.target_id) : null;
     await sql`SAVEPOINT import_record`.execute(trx);
@@ -358,6 +432,7 @@ async function step(
         outcome = 'linked';
       } else {
         if (known && kind === 'history') warn({ code: 'history_changed' });
+        if (known && editedSources.has(item.id)) warn({ code: 'edited_in_target' });
         if (!ctx.dryRun) targetId = await loader.apply(ctx, command, plan);
         outcome = known
           ? 'updated'
@@ -435,7 +510,12 @@ async function step(
                     ${externals.map((e) => e.checksum)}::text[]) AS e (source_id, target_id, checksum)
       ON CONFLICT (workspace_id, import_source, source_system, entity_kind, source_id) DO UPDATE
         SET target_id = EXCLUDED.target_id, checksum = EXCLUDED.checksum,
-            last_run_id = EXCLUDED.last_run_id, updated_at = now()`.execute(trx);
+            last_run_id = EXCLUDED.last_run_id,
+            -- When an import last wrote the object (M1-096: edits in Taskmoor after it show).
+            updated_at = CASE
+              WHEN import_external_id.checksum = EXCLUDED.checksum
+               AND import_external_id.target_id = EXCLUDED.target_id
+              THEN import_external_id.updated_at ELSE now() END`.execute(trx);
   }
   await save(
     { kind, after: last },
@@ -446,6 +526,72 @@ async function step(
     },
   );
   return 'continue';
+}
+
+/**
+ * A delta run's check of one kind (M1-096; ADR-102): the records an earlier run of the same
+ * source imported that the source no longer holds, by the source's coverage of the kind, whose
+ * target is still there. Each gets a `deleted` record and the warning `deleted_in_source`; the
+ * target keeps the object (the administrator decides), so a source that only hides a record
+ * from the token, or a scope that changed, never removes anything.
+ */
+async function deletions(
+  trx: Transaction<Database>,
+  run: RunRow,
+  source: ImportSource,
+  index: number,
+  warnings: Record<string, WarningTally>,
+): Promise<void> {
+  const kind = ENTITY_KINDS[index];
+  if (kind === undefined) return;
+  const coverage = (await source.coverage?.(kind)) ?? null;
+  const ticketColumn = TICKET_COLUMN[kind];
+  if (coverage === null || (coverage === 'within_tickets' && !ticketColumn)) return;
+  const table = LOADERS[kind].table;
+  const runId = Number(run.id);
+  const still =
+    coverage === 'within_tickets'
+      ? sql`AND x.${sql.ref(ticketColumn as string)} IN (
+              SELECT t.target_id FROM import_record t
+               WHERE t.run_id = ${runId} AND t.entity_kind = 'ticket'
+                 AND t.outcome <> 'deleted' AND t.target_id IS NOT NULL)`
+      : sql``;
+  const listed =
+    coverage === 'listed'
+      ? sql`AND NOT EXISTS (
+              SELECT 1 FROM import_staged s
+               WHERE s.run_id = ${runId} AND s.kind = ${`listed:${kind}`}
+                 AND s.source_id = e.source_id)`
+      : sql``;
+  const { rows } = await sql<{ n: number; examples: string[] | null }>`
+    WITH gone AS (
+      INSERT INTO import_record (run_id, workspace_id, entity_kind, source_id, outcome, target_id)
+      SELECT ${runId}, e.workspace_id, e.entity_kind, e.source_id, 'deleted', e.target_id
+        FROM import_external_id e
+       WHERE e.workspace_id = ${run.workspace_id} AND e.import_source = ${run.import_source}
+         AND e.source_system = ${run.source_system} AND e.entity_kind = ${kind}
+         AND NOT EXISTS (
+           SELECT 1 FROM import_record r
+            WHERE r.run_id = ${runId} AND r.entity_kind = ${kind} AND r.source_id = e.source_id)
+         ${listed}
+         AND EXISTS (
+           SELECT 1 FROM ${sql.table(table.name)} x
+            WHERE x.${sql.ref(table.id)} = e.target_id ${still})
+      ON CONFLICT (run_id, entity_kind, source_id) DO NOTHING
+      RETURNING source_id
+    )
+    SELECT count(*)::int AS n,
+           (array_agg(source_id ORDER BY source_id))[1:5] AS examples
+      FROM gone`.execute(trx);
+  const n = rows[0]?.n ?? 0;
+  if (n === 0) return;
+  warnings[`${kind}|${DELETED_IN_SOURCE}|`] = {
+    kind,
+    code: DELETED_IN_SOURCE,
+    detail: null,
+    count: n,
+    examples: rows[0]?.examples ?? [],
+  };
 }
 
 /** Ends a run: builds its report and emits `import_run.finished`, once. */
@@ -570,7 +716,15 @@ export function runView(row: RunRow) {
     dryRun: row.dry_run,
     status: row.status,
     cancelRequested: row.cancel_requested,
-    currentKind: checkpoint.done ? null : (checkpoint.kind ?? null),
+    currentKind: checkpoint.done
+      ? null
+      : checkpoint.deleted !== undefined
+        ? (ENTITY_KINDS[checkpoint.deleted] ?? null)
+        : (checkpoint.kind ?? null),
+    /** The earlier run a delta run starts from (M1-096). */
+    deltaFrom: row.delta_from === null ? null : Number(row.delta_from),
+    /** A delta run is checking what the source no longer holds. */
+    checkingDeletions: checkpoint.deleted !== undefined,
     batches: row.batches,
     progress: ENTITY_KINDS.filter((k) => tallies[k]).map((k) => {
       const t = tallies[k] as Tally;

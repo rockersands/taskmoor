@@ -1408,6 +1408,24 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         SELECT 1, min(id) FROM app_user`.execute(db);
     },
   },
+  '0076_import_delta': {
+    tables: {
+      import_run: "source_system = 'seed' AND name = 'Seed delta' AND delta_from IS NOT NULL",
+      import_record: "outcome = 'deleted' AND source_id = 'seed-gone'",
+    },
+    seed: async (db) => {
+      // A delta run from the seed import (cancelled, so the 0045 seed's row stays the only done
+      // one) that had found a ticket the source no longer holds.
+      await sql`INSERT INTO import_run (workspace_id, import_source, source_system, name, source,
+          status, delta_from)
+        SELECT 1, import_source, source_system, 'Seed delta', source, 'cancelled', id
+          FROM import_run WHERE source_system = 'seed' ORDER BY id LIMIT 1`.execute(db);
+      await sql`INSERT INTO import_record (run_id, workspace_id, entity_kind, source_id, outcome,
+          target_id)
+        SELECT id, 1, 'ticket', 'seed-gone', 'deleted', NULL
+          FROM import_run WHERE name = 'Seed delta'`.execute(db);
+    },
+  },
 };
 
 /**

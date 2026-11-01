@@ -1254,6 +1254,17 @@ export const EVENT_TYPES = {
       sourceSystem: z.string(),
       name: z.string(),
       dryRun: z.boolean(),
+      /** A delta run (M1-096): the earlier run it starts from. */
+      deltaFrom: id.optional(),
+    }),
+  },
+  /** A file uploaded into the imports folder for the import wizard (M1-097). */
+  'import_file.uploaded': {
+    subject: 'workspace',
+    payload: z.object({
+      name: z.string(),
+      size: z.number().int().min(0),
+      kind: z.enum(['dc-backup', 'taskmoor', 'csv']).nullable(),
     }),
   },
   'import_run.cancelled': {

@@ -22,6 +22,12 @@ import { type ClientStats, type CloudClient, CloudRequestError, withQuery } from
  *    hides it.
  * 6. `order`: each issue's depth below its parent, so parents load first.
  *
+ * A delta run (M1-096; ADR-102) searches only the issues updated since the earlier run's fetch
+ * began, less an overlap for clocks that differ (`since`, `overlapMs`), so only those get their
+ * details fetched; configuration, boards and sprints are read whole again, as they are small.
+ * After its search it lists the ids of every issue the query still finds (`listing`, ids only),
+ * which is how the run tells which tickets the site no longer has.
+ *
  * People are staged as they are seen (leads, issue people, authors, people values), the first
  * sighting kept. Options of select fields are staged from the values the issues hold, since
  * the compatible API this reads has no option listing.
@@ -30,7 +36,15 @@ import { type ClientStats, type CloudClient, CloudRequestError, withQuery } from
 type Any = any;
 type Db = Kysely<Database>;
 
-export const STEPS = ['config', 'search', 'details', 'agile', 'people', 'order'] as const;
+export const STEPS = [
+  'config',
+  'search',
+  'listing',
+  'details',
+  'agile',
+  'people',
+  'order',
+] as const;
 export type FetchStep = (typeof STEPS)[number];
 
 export interface FetchSettings {
@@ -42,14 +56,31 @@ export interface FetchSettings {
   pageSize: number;
   /** Issues whose details are fetched per committed chunk. */
   detailChunk?: number;
+  /**
+   * A delta run (M1-096): when the earlier run's fetch began (ISO). Only issues updated since
+   * then, less `overlapMs`, are fetched.
+   */
+  since?: string | null;
+  /** How far before `since` a delta search reaches; 15 minutes unless set. */
+  overlapMs?: number;
 }
+
+/** A delta search reaches this far before the earlier fetch began: clocks differ. */
+export const DELTA_OVERLAP_MS = 15 * 60_000;
+
+/** Staged ids of every issue the query still finds, for a delta run (M1-096). */
+export const LISTED_TICKETS = 'listed:ticket';
 
 export interface FetchState {
   step?: FetchStep;
   done?: boolean;
   /** The next ordinal to give a staged row. */
   seq?: number;
-  search?: { token: string | null; pages: number; restarts: number };
+  search?: { token: string | null; pages: number; restarts: number; jql?: string };
+  /** A delta run's listing of every issue id the query finds (M1-096). */
+  listing?: { token: string | null; pages: number; restarts: number; listed?: number };
+  /** When this fetch began, on this server's clock: a later delta run starts from it. */
+  startedAt?: string;
   /** The last staged ticket (by ordinal) whose details are staged. */
   details?: { after: number };
   /** The last board (by id) staged; the agile API's absence. */
@@ -299,10 +330,13 @@ export class CloudFetcher {
   async run(until: number): Promise<'ready' | 'more'> {
     const state = await this.state();
     this.committed = { ...this.client.stats };
+    // Before the first request: an edit made while this fetch runs is in the next delta.
+    state.startedAt ??= new Date().toISOString();
     while (!state.done) {
       const step = state.step ?? 'config';
       if (step === 'config') await this.config(state);
       else if (step === 'search') await this.search(state, until);
+      else if (step === 'listing') await this.listing(state, until);
       else if (step === 'details') await this.details(state, until);
       else if (step === 'agile') await this.agile(state, until);
       else if (step === 'people') await this.people(state, until);
@@ -422,12 +456,87 @@ export class CloudFetcher {
     return `project in (${keys.join(', ')}) ORDER BY key ASC`;
   }
 
-  private async search(state: FetchState, until: number): Promise<void> {
+  /**
+   * A delta run's query (M1-096): the run's issues updated since the earlier fetch began, less
+   * the overlap. The time is relative (`-90m`), so the site reads it the same in any time zone;
+   * it is worked out when the search starts from its first page.
+   */
+  private async deltaQuery(since: string): Promise<string | null> {
+    const base = await this.query();
+    if (base === null) return null;
+    const overlap = this.settings.overlapMs ?? DELTA_OVERLAP_MS;
+    const minutes = Math.max(1, Math.ceil((Date.now() - Date.parse(since) + overlap) / 60_000));
+    const order = /\s+ORDER\s+BY\s+[^"']*$/i.exec(base);
+    const where = order ? base.slice(0, order.index) : base;
+    const clause = where.trim() === '' ? '' : `(${where.trim()}) AND `;
+    return `${clause}updated >= -${minutes}m ${order ? order[0].trim() : 'ORDER BY key ASC'}`;
+  }
+
+  /**
+   * A delta run's listing (M1-096): the ids of every issue the run's query finds, a page at a
+   * time, staged as `listed:ticket` rows. A page token the server no longer takes starts over.
+   */
+  private async listing(state: FetchState, until: number): Promise<void> {
     const jql = await this.query();
-    const fields = await this.customFields();
-    const search = state.search ?? { token: null, pages: 0, restarts: 0 };
+    const listing = state.listing ?? { token: null, pages: 0, restarts: 0, listed: 0 };
     if (jql === null) {
       this.next(state, 'details');
+      await this.commit(state, []);
+      return;
+    }
+    for (let i = 0; i < MAX_PAGES; i++) {
+      let page: Any;
+      try {
+        page = await this.post(`${API}/search/jql`, {
+          jql,
+          maxResults: 100,
+          fields: ['id'],
+          ...(listing.token ? { nextPageToken: listing.token } : {}),
+        });
+      } catch (error) {
+        if (
+          error instanceof CloudRequestError &&
+          error.status === 400 &&
+          listing.token !== null &&
+          listing.restarts < 3
+        ) {
+          state.listing = { token: null, pages: 0, restarts: listing.restarts + 1, listed: 0 };
+          await this.commit(state, []);
+          return;
+        }
+        throw error;
+      }
+      const rows: Staged[] = ((page.issues ?? []) as Any[]).map((x) => ({
+        kind: LISTED_TICKETS,
+        id: String(x.id),
+        data: {},
+        keep: true,
+      }));
+      listing.token = page.nextPageToken ? String(page.nextPageToken) : null;
+      listing.pages += 1;
+      listing.listed = (listing.listed ?? 0) + rows.length;
+      state.listing = listing;
+      if (listing.token === null || page.isLast === true) this.next(state, 'details');
+      await this.commit(state, rows);
+      if (state.step !== 'listing' || Date.now() >= until) return;
+    }
+  }
+
+  private async search(state: FetchState, until: number): Promise<void> {
+    const search = state.search ?? { token: null, pages: 0, restarts: 0 };
+    const since = this.settings.since ?? null;
+    // A page token belongs to the query it came from: a delta run keeps the query it started.
+    const jql =
+      since === null
+        ? await this.query()
+        : search.token !== null && search.jql
+          ? search.jql
+          : await this.deltaQuery(since);
+    if (since !== null && jql !== null) search.jql = jql;
+    const fields = await this.customFields();
+    const after: FetchStep = since === null ? 'details' : 'listing';
+    if (jql === null) {
+      this.next(state, after);
       await this.commit(state, []);
       return;
     }
@@ -488,7 +597,7 @@ export class CloudFetcher {
       search.token = token;
       search.pages += 1;
       state.search = search;
-      if (token === null || page.isLast === true) this.next(state, 'details');
+      if (token === null || page.isLast === true) this.next(state, after);
       await this.commit(state, rows);
       if (state.step !== 'search' || Date.now() >= until) return;
     }

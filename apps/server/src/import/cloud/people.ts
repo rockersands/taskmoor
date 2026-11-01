@@ -12,6 +12,9 @@ import { CsvFormatError, records } from '../csv';
  *   for, are left unmapped.
  * - `scim`: the person the identity provider provisioned over SCIM with the same address;
  *   anyone else is left unmapped.
+ * - `map` (M1-097, the import wizard): by address, except the people the rows name, who are
+ *   linked to the Taskmoor person of the row's address. The Data Center importer takes the
+ *   same settings, its people named by user key.
  *
  * An unmapped person becomes a deactivated placeholder, so attribution stays, and the report
  * lists them (`person_unmapped`) for mapping before the final run.
@@ -27,6 +30,15 @@ export const peopleSettings = z.discriminatedUnion('mode', [
     .object({
       mode: z.literal('csv'),
       /** Source account id or address (lower case) to the Taskmoor person's address. */
+      rows: z
+        .array(z.object({ source: z.string().min(1).max(320), target: address }).strict())
+        .max(MAX_PEOPLE_ROWS),
+    })
+    .strict(),
+  z
+    .object({
+      mode: z.literal('map'),
+      /** Source people (id or lower-case address) linked to these Taskmoor addresses. */
       rows: z
         .array(z.object({ source: z.string().min(1).max(320), target: address }).strict())
         .max(MAX_PEOPLE_ROWS),
@@ -78,5 +90,7 @@ export function personMapping(
   if (settings.mode === 'scim') return { email, link: 'scim' };
   const target =
     lookup?.get(accountId) ?? (email === null ? undefined : lookup?.get(email.toLowerCase()));
+  if (settings.mode === 'map')
+    return target === undefined ? { email } : { email: target, link: 'existing' };
   return { email: target ?? null, link: 'existing' };
 }

@@ -812,6 +812,268 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.network.failed': 'No se pudo guardar la lista de permitidos. Inténtalo de nuevo.',
   'admin.network.saved': 'Lista de permitidos guardada.',
   'admin.network.save': 'Guardar',
+  'settings.imports': 'Importaciones',
+  'settings.importsHint':
+    'Trae el trabajo de una copia de seguridad de Jira Data Center, un sitio de Jira Cloud, una exportación de Taskmoor o un archivo CSV, con una prueba antes.',
+  'admin.imports.title': 'Importaciones',
+  'admin.imports.forbidden': 'Solo los administradores del sitio pueden importar.',
+  'admin.imports.intro':
+    'Las importaciones se ejecutan en segundo plano. Empieza con una prueba: no escribe nada y muestra lo que haría la importación.',
+  'admin.imports.loading': 'Cargando las importaciones…',
+  'admin.imports.loadFailed': 'No se pudieron cargar las importaciones.',
+  'admin.imports.none': 'Todavía no hay importaciones.',
+  'admin.imports.new': 'Empezar otra importación',
+  'admin.imports.runs': 'Importaciones anteriores',
+  'admin.imports.unnamed': 'Importación {id}',
+  'admin.imports.runName': '{id}. {name}',
+  'admin.imports.runLine': '{format} de {system}: {status}, iniciada el {when}.',
+  'admin.imports.runLineDry': '{format} de {system}, una prueba: {status}, iniciada el {when}.',
+  'admin.imports.show': 'Mostrar la importación {id}',
+  'admin.imports.hide': 'Ocultar la importación {id}',
+  'admin.imports.delta': 'Ejecución delta desde la importación {id}',
+  'admin.imports.wizard.title': 'Nueva importación',
+  'admin.imports.wizard.deltaTitle': 'Ejecución delta desde la importación {id}',
+  'admin.imports.wizard.deltaName': 'Cambios desde la importación {id}',
+  'admin.imports.wizard.deltaCloud':
+    'Solo se trae lo que cambió en {system} desde la importación {id}, con el mismo sitio, la misma configuración y el mismo token.',
+  'admin.imports.wizard.deltaBackup':
+    'Elige la copia de seguridad posterior de {system}: solo se escribe lo que cambió desde la importación {id}.',
+  'admin.imports.wizard.source': '1. Origen',
+  'admin.imports.wizard.format': 'Qué importar',
+  'admin.imports.wizard.options': '2. Opciones',
+  'admin.imports.wizard.name': 'Nombre de la importación',
+  'admin.imports.wizard.dryRun': 'Prueba',
+  'admin.imports.wizard.dryRunAgain': 'Repetir la prueba',
+  'admin.imports.wizard.run': 'Importar',
+  'admin.imports.wizard.dryRunHint':
+    'Una prueba lo lee todo y no escribe nada; después asigna las personas e importa.',
+  'admin.imports.wizard.afterDryRun':
+    'Revisa el informe y las personas de arriba, y después importa. Importar otra vez el mismo origen actualiza en lugar de duplicar.',
+  'admin.imports.format.dc-backup': 'Copia de seguridad de Jira Data Center',
+  'admin.imports.format.taskmoor': 'Exportación de Taskmoor',
+  'admin.imports.format.csv': 'Archivo CSV',
+  'admin.imports.format.cloud-rest': 'Sitio de Jira Cloud',
+  'admin.imports.format.synthetic': 'Datos de prueba sintéticos',
+  'admin.imports.format.other': 'Otro origen',
+  'admin.imports.files.choose': 'Archivo de la carpeta de importaciones',
+  'admin.imports.files.none': 'Elige un archivo',
+  'admin.imports.files.option': '{name} ({size} MB)',
+  'admin.imports.files.hint':
+    'Las copias grandes se copian en la carpeta de importaciones del servidor; después aparecen aquí.',
+  'admin.imports.files.loadFailed': 'No se pudo leer la carpeta de importaciones.',
+  'admin.imports.files.noFolder':
+    'Este servidor no tiene carpeta de importaciones (TASKMOOR_IMPORT_DIR está desactivado).',
+  'admin.imports.upload.label': 'Subir un archivo a la carpeta',
+  'admin.imports.upload.hint': 'Un archivo ZIP o CSV de hasta {max} GB.',
+  'admin.imports.upload.button': 'Subir',
+  'admin.imports.upload.busy': 'Subiendo…',
+  'admin.imports.upload.done': '{name} está en la carpeta de importaciones.',
+  'admin.imports.upload.exists': 'Ya hay un archivo con ese nombre en la carpeta.',
+  'admin.imports.upload.invalidName':
+    'El nombre debe tener solo letras, cifras, espacios, puntos o guiones y terminar en .zip o .csv.',
+  'admin.imports.upload.tooLarge':
+    'El archivo es demasiado grande para subirlo; cópialo en la carpeta de importaciones del servidor.',
+  'admin.imports.upload.failed': 'No se pudo subir el archivo.',
+  'admin.imports.cloud.url': 'Dirección del sitio',
+  'admin.imports.cloud.email': 'Correo electrónico de la cuenta',
+  'admin.imports.cloud.token': 'Token de API',
+  'admin.imports.cloud.tokenHint':
+    'Se sella antes de guardarlo y no se vuelve a mostrar. Sin correo electrónico se envía como token Bearer.',
+  'admin.imports.cloud.projects': 'Claves de proyecto',
+  'admin.imports.cloud.projectsHint':
+    'Separadas por comas; vacío para todos los proyectos que ve la cuenta.',
+  'admin.imports.scope.label': 'Qué traer',
+  'admin.imports.scope.all': 'Todo: configuración, tickets y su contenido',
+  'admin.imports.scope.tickets':
+    'Configuración y tickets, sin comentarios, historial, tiempo, enlaces ni archivos',
+  'admin.imports.scope.configuration':
+    'Solo configuración: personas, grupos, tracks, tipos, estados, campos y flujos de trabajo',
+  'admin.imports.admins.label': 'Los administradores del sistema de la copia pasan a ser',
+  'admin.imports.admins.site_admin': 'Administradores del sitio (ven todos los tracks)',
+  'admin.imports.admins.configuration_admin': 'Administradores de configuración',
+  'admin.imports.csv.mapping': 'Asignación de columnas (JSON)',
+  'admin.imports.csv.mappingHint':
+    'Qué columna va a qué campo, como describe la sección de importación CSV del manual.',
+  'admin.imports.people.title': '3. Personas',
+  'admin.imports.people.intro':
+    'Las personas se emparejan por correo electrónico. Para vincular a alguien con una persona de aquí, escribe su dirección.',
+  'admin.imports.people.none': 'La prueba no encontró personas.',
+  'admin.imports.people.more':
+    'Hay más personas de las que se muestran: el resto se empareja por dirección.',
+  'admin.imports.people.person': '{name} ({id})',
+  'admin.imports.people.matched': 'Coincide con una persona de aquí por dirección.',
+  'admin.imports.people.created': 'Se añadirá como persona nueva.',
+  'admin.imports.people.placeholder':
+    'No tiene dirección: pasa a ser un marcador inactivo que conserva la autoría.',
+  'admin.imports.people.unmapped':
+    'Nadie de aquí tiene esa dirección: pasa a ser un marcador inactivo.',
+  'admin.imports.people.left': 'Queda fuera de la importación.',
+  'admin.imports.people.mapTo': 'Persona de Taskmoor para {name}',
+  'admin.imports.problem.chooseFile': 'Elige primero un archivo.',
+  'admin.imports.problem.mappingJson': 'La asignación de columnas no es JSON válido.',
+  'admin.imports.problem.cloud': 'Indica la dirección del sitio y un token de API.',
+  'admin.imports.problem.notFound': 'Ese archivo no está en la carpeta de importaciones.',
+  'admin.imports.problem.folder': 'El archivo debe estar dentro de la carpeta de importaciones.',
+  'admin.imports.problem.invalidSource':
+    'El origen no se puede leer como ese tipo de archivo, o se rechazó la dirección.',
+  'admin.imports.problem.mapping': 'Una importación CSV necesita una asignación de columnas.',
+  'admin.imports.problem.people': 'La asignación de personas no es válida.',
+  'admin.imports.problem.busy':
+    'Ya se está ejecutando una importación de este origen; espera a que termine.',
+  'admin.imports.problem.delta':
+    'Una ejecución delta necesita una importación terminada, que no sea una prueba, del mismo origen.',
+  'admin.imports.problem.fields': 'Algunos ajustes no son válidos; revísalos.',
+  'admin.imports.problem.forbidden': 'Solo los administradores del sitio pueden importar.',
+  'admin.imports.problem.failed': 'No se pudo iniciar la importación.',
+  'admin.imports.run.loading': 'Cargando la importación…',
+  'admin.imports.run.loadFailed': 'No se pudo cargar la importación.',
+  'admin.imports.run.title': 'Importación {id}: {format}',
+  'admin.imports.run.titleDry': 'Prueba {id}: {format}',
+  'admin.imports.run.on': 'Ahora: {kind}.',
+  'admin.imports.run.checkingDeletions': 'Comprobando lo que el origen ya no tiene.',
+  'admin.imports.run.counts': '{read} registros leídos de {system}, {warnings} avisos.',
+  'admin.imports.run.deltaFrom': 'Una ejecución delta desde la importación {id}.',
+  'admin.imports.run.error': 'Último error: {error}',
+  'admin.imports.run.cancel': 'Cancelar la importación',
+  'admin.imports.run.cancelAsked': 'Se detiene tras este lote…',
+  'admin.imports.run.progress': 'Registros hasta ahora, por tipo',
+  'admin.imports.status.queued': 'Esperando para empezar.',
+  'admin.imports.status.running': 'En curso.',
+  'admin.imports.status.done': 'Terminada.',
+  'admin.imports.status.failed': 'Fallida.',
+  'admin.imports.status.cancelled': 'Cancelada.',
+  'admin.imports.column.kind': 'Tipo',
+  'admin.imports.column.read': 'Leídos',
+  'admin.imports.outcome.created': 'Creados',
+  'admin.imports.outcome.updated': 'Actualizados',
+  'admin.imports.outcome.unchanged': 'Sin cambios',
+  'admin.imports.outcome.linked': 'Vinculados',
+  'admin.imports.outcome.failed': 'Fallidos',
+  'admin.imports.outcome.skipped': 'Omitidos',
+  'admin.imports.outcome.deleted': 'Ya no están en el origen',
+  'admin.imports.report.title': 'Informe de la importación {id}',
+  'admin.imports.report.totals':
+    '{source} registros leídos, {target} en Taskmoor ahora, {failed} fallidos. Fidelidad {fidelity}.',
+  'admin.imports.report.totalsDry':
+    'Una prueba: {source} registros leídos, {failed} fallarían y no se escribió nada.',
+  'admin.imports.report.delta':
+    'Una ejecución delta desde la importación {from}: {deleted} registros que el origen ya no tiene se conservaron aquí y se listan abajo.',
+  'admin.imports.report.samples':
+    '{matched} de {compared} registros de muestra coinciden exactamente con el origen.',
+  'admin.imports.report.download': 'Descargar el informe como página',
+  'admin.imports.report.kinds': 'Qué pasó con cada tipo',
+  'admin.imports.report.warnings': 'Avisos ({count})',
+  'admin.imports.report.noWarnings': 'Sin avisos.',
+  'admin.imports.report.warningCount': '× {count}',
+  'admin.imports.report.code': 'Código {code}.',
+  'admin.imports.report.codeDetail': 'Código {code}: {detail}.',
+  'admin.imports.report.examples': 'Por ejemplo {examples}.',
+  'admin.imports.report.unsupported': 'No importado',
+  'admin.imports.report.unsupportedItem': '{kind}: {count} ({reason})',
+  'admin.imports.report.failures': 'Fallos',
+  'admin.imports.report.failure': '{kind} {id}: {error}',
+  'admin.imports.report.moreFailures':
+    'Hay más fallos de los que se muestran: la lista de problemas los tiene todos.',
+  'admin.imports.report.mapping': 'Asignación de la configuración ({count} objetos)',
+  'admin.imports.report.mapped': '{kind} {name}: {outcome}',
+  'admin.imports.report.reason': '({reason})',
+  'admin.imports.report.moreMapping': 'Solo se listan los primeros objetos de algunos tipos.',
+  'admin.imports.kind.other': 'Otros',
+  'admin.imports.kind.source': 'El origen',
+  'admin.imports.kind.user': 'Personas',
+  'admin.imports.kind.group': 'Grupos',
+  'admin.imports.kind.team': 'Equipos',
+  'admin.imports.kind.role': 'Roles',
+  'admin.imports.kind.status': 'Estados',
+  'admin.imports.kind.priority': 'Prioridades',
+  'admin.imports.kind.close_reason': 'Motivos de cierre',
+  'admin.imports.kind.ticket_type': 'Tipos de ticket',
+  'admin.imports.kind.link_type': 'Tipos de enlace',
+  'admin.imports.kind.track': 'Tracks',
+  'admin.imports.kind.release': 'Versiones',
+  'admin.imports.kind.area': 'Áreas',
+  'admin.imports.kind.field': 'Campos',
+  'admin.imports.kind.field_context': 'Contextos de campo',
+  'admin.imports.kind.field_option': 'Opciones de campo',
+  'admin.imports.kind.field_rule_set': 'Conjuntos de reglas de campo',
+  'admin.imports.kind.layout_set': 'Conjuntos de diseños',
+  'admin.imports.kind.access_policy': 'Políticas de acceso',
+  'admin.imports.kind.visibility_policy': 'Políticas de visibilidad',
+  'admin.imports.kind.visibility_level': 'Niveles de visibilidad',
+  'admin.imports.kind.notification_policy': 'Políticas de notificación',
+  'admin.imports.kind.global_grant': 'Permisos globales',
+  'admin.imports.kind.workflow': 'Flujos de trabajo',
+  'admin.imports.kind.workflow_map': 'Mapas de flujos',
+  'admin.imports.kind.board': 'Tableros',
+  'admin.imports.kind.ticket': 'Tickets',
+  'admin.imports.kind.sprint': 'Sprints',
+  'admin.imports.kind.comment': 'Comentarios',
+  'admin.imports.kind.link': 'Enlaces',
+  'admin.imports.kind.web_link': 'Enlaces web',
+  'admin.imports.kind.time_entry': 'Registros de tiempo',
+  'admin.imports.kind.attachment': 'Adjuntos',
+  'admin.imports.kind.history': 'Entradas del historial',
+  'admin.imports.kind.saved_search': 'Búsquedas guardadas',
+  'admin.imports.kind.subscription': 'Suscripciones',
+  'admin.imports.kind.dashboard': 'Paneles',
+  'admin.imports.warning.other':
+    'Taskmoor cambió o dejó fuera parte de estos registros; el código dice qué. La página de importación del manual lista lo que trae cada importador.',
+  'admin.imports.warning.deleted_in_source':
+    'El origen ya no tiene estos registros. Taskmoor los conservó; mueve a la papelera los que ya no quieras.',
+  'admin.imports.warning.edited_in_target':
+    'Cambiaron aquí y en el origen desde la última ejecución: la versión del origen sustituyó lo editado aquí, y el historial lo muestra.',
+  'admin.imports.warning.person_unmapped':
+    'Nadie de aquí coincide con estas personas: pasaron a ser marcadores inactivos que conservan la autoría.',
+  'admin.imports.warning.no_email':
+    'Estas personas no tienen correo electrónico en el origen: pasaron a ser marcadores.',
+  'admin.imports.warning.placeholder_email':
+    'Estas personas recibieron una dirección provisional, porque el origen oculta la suya.',
+  'admin.imports.warning.deleted_user':
+    'Eliminadas en el origen: se conservan como personas inactivas para que su trabajo tenga autor.',
+  'admin.imports.warning.type_not_offered':
+    'El track del ticket no ofrece su tipo: el ticket lo conserva, pero los tickets nuevos no pueden usarlo hasta que un administrador lo añada.',
+  'admin.imports.warning.missing_reference':
+    'Un registro mencionaba algo que el origen no tiene; esa parte quedó vacía.',
+  'admin.imports.warning.unmapped_reference':
+    'Un valor guardado mencionaba algo que no se importó; esa parte quedó fuera.',
+  'admin.imports.warning.unknown_priority':
+    'Una prioridad que Taskmoor no tiene: el ticket no tiene ninguna.',
+  'admin.imports.warning.history_changed':
+    'El origen cambió historial que ya se había importado; aquí el historial nunca se reescribe.',
+  'admin.imports.warning.history_field_not_imported':
+    'Los cambios de campos que Taskmoor no importa quedan fuera del historial.',
+  'admin.imports.warning.query_not_translated':
+    'Una consulta guardada no se pudo reescribir con los términos de Taskmoor; conserva su texto y una nota con el motivo.',
+  'admin.imports.warning.query_flagged':
+    'Una consulta guardada menciona algo que esta versión todavía no tiene.',
+  'admin.imports.warning.query_changed':
+    'Una consulta guardada se reescribió y puede encontrar tickets ligeramente distintos.',
+  'admin.imports.warning.removed_character': 'Se quitaron caracteres que XML no permite al leer.',
+  'admin.imports.warning.source_throttled':
+    'El origen pidió a la importación que fuera más despacio; esperó como se le pidió.',
+  'admin.imports.warning.source_failures_retried':
+    'Las peticiones que fallaron se repitieron y salieron bien.',
+  'admin.imports.warning.agile_api_unavailable':
+    'El sitio no tiene API de tableros, así que no se importaron tableros ni sprints.',
+  'admin.imports.warning.site_admin_browses_every_track':
+    'Los administradores del sistema del origen pasaron a ser administradores del sitio, que ven todos los tracks.',
+  'admin.imports.warning.system_admin_as_configuration_admin':
+    'Los administradores del sistema del origen pasaron a ser administradores de configuración.',
+  'admin.imports.warning.link_type_created': 'Se añadió un tipo de enlace que Taskmoor no tenía.',
+  'admin.imports.warning.parent_wrong_level':
+    'Un padre en el mismo nivel que su hijo o en uno inferior: el vínculo quedó fuera.',
+  'admin.imports.warning.app_field_as_read_only_text':
+    'Un campo de una aplicación pasó a ser texto de solo lectura.',
+  'admin.imports.warning.comment_visibility_not_imported':
+    'No se pudo importar quién puede ver un comentario; lo ve todo el que ve el ticket.',
+  'admin.imports.warning.rich_text_as_plain_text':
+    'El texto enriquecido llegó como texto sin formato.',
+  'admin.imports.warning.merged_into': 'Objetos idénticos se fusionaron en uno.',
+  'admin.imports.warning.name_taken': 'El nombre ya existía aquí: el objeto se renombró.',
+  'admin.imports.warning.former_key_taken':
+    'Una clave anterior pertenece aquí a otra cosa y sigue siendo suya.',
+  'admin.imports.warning.ticket_in_another_open_sprint':
+    'Un ticket estaba en dos sprints abiertos; se queda en el primero.',
   'admin.frontends.title': 'Frontends web',
   'admin.frontends.forbidden':
     'Solo los administradores del sitio cambian qué frontends pueden usar este servidor.',
