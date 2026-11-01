@@ -1,6 +1,8 @@
 import type { Database } from '@taskmoor/db';
 import type { Kysely } from 'kysely';
 import { auditSubscriber } from '../audit/subscriber';
+import type { EmbeddingIndexer } from '../embeddings/indexer';
+import { embeddingSubscriber } from '../embeddings/jobs';
 import { notificationSubscriber } from '../notifications/subscriber';
 import { webhookSubscriber } from '../webhooks/subscriber';
 import type { EventBus } from './bus';
@@ -12,7 +14,7 @@ import type { EventBus } from './bus';
  */
 export function registerSubscribers(
   bus: EventBus,
-  deps: { db: Kysely<Database>; publicUrl?: string },
+  deps: { db: Kysely<Database>; publicUrl?: string; embeddings?: EmbeddingIndexer },
 ): void {
   // Notifications (M1-056): who hears of a change, written for email and the inbox to deliver.
   // First, so a worker runs an event's notification job before its audit job: an open inbox
@@ -24,4 +26,7 @@ export function registerSubscribers(
   bus.subscribe(
     webhookSubscriber(deps.db, deps.publicUrl !== undefined ? { publicUrl: deps.publicUrl } : {}),
   );
+  // Embeddings (M1-078, ADR-106): tickets and comments embedded after they change. Only where
+  // the process has an embedder: tests that do not look at similar tickets skip the model.
+  if (deps.embeddings) bus.subscribe(embeddingSubscriber(deps.db, deps.embeddings));
 }

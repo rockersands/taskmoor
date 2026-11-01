@@ -1151,6 +1151,30 @@ export interface TicketCommentVersionTable {
   replaced_at: DefaultTimestamp;
 }
 
+/**
+ * The vector of a ticket's summary and description (M1-078, AI-012; ADR-106): a unit vector of
+ * `model`, made from the text whose MD5 is `source_hash` (`taskmoor_embedding_text`).
+ */
+export interface TicketEmbeddingTable {
+  ticket_id: number;
+  workspace_id: number;
+  model: string;
+  source_hash: string;
+  embedding: number[];
+  embedded_at: DefaultTimestamp;
+}
+
+/** The vector of a comment's body (M1-078); its ticket's for the permission filter. */
+export interface CommentEmbeddingTable {
+  comment_id: number;
+  ticket_id: number;
+  workspace_id: number;
+  model: string;
+  source_hash: string;
+  embedding: number[];
+  embedded_at: DefaultTimestamp;
+}
+
 /** One person's emoji reaction to a comment (CORE-020 (2)). */
 export interface TicketCommentReactionTable {
   comment_id: number;
@@ -2506,6 +2530,8 @@ export interface Database {
   ticket_comment: TicketCommentTable;
   ticket_comment_version: TicketCommentVersionTable;
   ticket_comment_reaction: TicketCommentReactionTable;
+  ticket_embedding: TicketEmbeddingTable;
+  comment_embedding: CommentEmbeddingTable;
   attachment_setting: AttachmentSettingTable;
   attachment: AttachmentTable;
   storage_cleanup: StorageCleanupTable;

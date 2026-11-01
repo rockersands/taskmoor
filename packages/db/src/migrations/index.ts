@@ -65,6 +65,7 @@ import * as m0071 from './0071_import_staged';
 import * as m0073 from './0073_saved_search_import_problem';
 import * as m0074 from './0074_ai_credentials';
 import * as m0075 from './0075_ai_spend';
+import * as m0079 from './0079_embeddings';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -140,4 +141,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0073_saved_search_import_problem': m0073,
   '0074_ai_credentials': m0074,
   '0075_ai_spend': m0075,
+  '0079_embeddings': m0079,
 };

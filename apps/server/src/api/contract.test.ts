@@ -6,6 +6,8 @@ import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { Authorizer } from '../authz/authorizer';
 import { runBulkOperation } from '../bulk/run';
+import { EmbeddingIndexer } from '../embeddings/indexer';
+import { sharedLocalEmbedder } from '../embeddings/service';
 import { FieldCatalogs } from '../fields/catalog';
 import { ticketRoutes } from '../routes/tickets';
 
@@ -240,6 +242,19 @@ describe('API v1 contract (M1-065)', () => {
     expect(copyKey).toMatch(/^API-\d+$/);
     await call('GET', '/api/v1/search', '/api/v1/search?q=track%20%3D%20API&limit=2');
     await call('POST', '/api/v1/search', '/api/v1/search', { q: 'track = API', limit: 2 });
+    // Similar tickets (M1-078) over vectors the indexer made, so the answer has items.
+    await new EmbeddingIndexer(database.db, sharedLocalEmbedder()).sweep(1);
+    const near = await call(
+      'GET',
+      '/api/v1/tickets/:id/similar',
+      `/api/v1/tickets/${copyKey}/similar?limit=3`,
+    );
+    expect(near.similar.length).toBeGreaterThan(0);
+    await call('POST', '/api/v1/tickets/similar', '/api/v1/tickets/similar', {
+      text: 'A ticket like the others',
+      track: 'API',
+      limit: 2,
+    });
     await call('GET', '/api/v1/search/check', '/api/v1/search/check?q=track%20%3D%20API');
     await call('GET', '/api/v1/search/check', '/api/v1/search/check?q=nope%20%3D%201');
     const saved = (

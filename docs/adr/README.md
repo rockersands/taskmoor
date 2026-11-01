@@ -104,6 +104,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [099](0099-ai-settings-page.md) | The AI settings page: provider, write-only keys, live test connection, per-feature model and effort, and switches enforced at one choke point | Accepted |
 | [100](0100-ai-spend-audit-redaction.md) | AI spend limits, the AI audit log and redaction, in the gateway's call path | Accepted |
 | [101](0101-agent-runs-with-budgets.md) | Agent runs with budgets that are enforced before they can be passed | Accepted |
+| [106](0106-local-embeddings-and-vector-search.md) | Local embeddings on ONNX Runtime WebAssembly, `real[]` vectors and optional pgvector | Accepted |
 | [096](0096-dc-filters-and-query-translation.md) | Translating saved filters, dashboards and subscriptions from a Data Center backup | Accepted |
 | [097](0097-imported-keys-and-links.md) | Keys and links from the tracker an import came from | Accepted |
 

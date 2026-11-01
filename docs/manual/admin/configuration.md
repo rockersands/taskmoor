@@ -1,8 +1,8 @@
 ---
 title: "Configuration reference"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/server/src/compat/register.ts, docs/adr/0087-registered-frontend-origins.md, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, docs/adr/0098-ai-key-storage.md
-accessed: 2026-10-31
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/server/src/compat/register.ts, docs/adr/0087-registered-frontend-origins.md, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, docs/adr/0098-ai-key-storage.md, apps/server/src/embeddings/service.ts, deploy/compose/docker-compose.yml, docs/adr/0106-local-embeddings-and-vector-search.md
+accessed: 2026-11-01
 attestation: own-words
 ---
 # Configuration reference
@@ -201,6 +201,21 @@ the [AI settings](ai.md) page and its API are where they change. The install scr
 When the settings are incomplete (for example Bedrock without a region), the key is still
 stored, AI stays off and the log lists what is missing, by name. Log lines never show a key.
 
+## Similar tickets
+
+The bundled embedding model needs no setting: similar tickets work with no AI provider or key.
+These choose another source of embeddings or turn them off; see
+[similar tickets](similar-tickets.md#settings).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `TASKMOOR_EMBEDDINGS` | `local` | `local` (the bundled model), `endpoint` (an OpenAI-compatible embeddings server) or `off` |
+| `TASKMOOR_EMBEDDINGS_URL` | none | The endpoint's address; required with `endpoint` |
+| `TASKMOOR_EMBEDDINGS_MODEL` | none | The endpoint's model; required with `endpoint` |
+| `TASKMOOR_EMBEDDINGS_KEY` | none | The endpoint's key, if it needs one |
+| `TASKMOOR_EMBEDDINGS_DIMENSIONS` | from the first answer | The length of the endpoint's embeddings |
+| `TASKMOOR_VECTOR_SEARCH` | `auto` | `exact` never uses pgvector |
+
 ## Kit and tool variables
 
 These are read by the install scripts, the Compose files or the operator CLI, not by the server.
@@ -208,7 +223,7 @@ These are read by the install scripts, the Compose files or the operator CLI, no
 | Variable | Read by | Meaning |
 |---|---|---|
 | `POSTGRES_PASSWORD` | Compose with bundled PostgreSQL, Builder backend kit | The bundled database's password; `install.sh` writes a fresh one |
-| `POSTGRES_IMAGE` | Compose kit | The PostgreSQL image; `postgres:16` by default |
+| `POSTGRES_IMAGE` | Compose kit | The PostgreSQL image; `pgvector/pgvector:0.8.1-pg16-trixie` (PostgreSQL 16 with pgvector) by default |
 | `TASKMOOR_IMAGE` | Compose kits, Builder backend kit, `upgrade.sh` | The Taskmoor image; `taskmoor:dev` in the Compose kit, the pinned version in a Builder kit |
 | `TASKMOOR_PORT` | Compose kits | The host port; `8080` by default |
 | `TASKMOOR_PULL` | `install.sh`, `upgrade.sh` | `missing` by default; `never` installs from images already loaded |

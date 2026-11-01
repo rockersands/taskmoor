@@ -1154,6 +1154,50 @@ Responses:
 - 401: No session or token, or an expired one.
 - 403: The session or token may not do this (its scope, or the person’s permissions).
 
+### The tickets most similar in meaning to a ticket
+
+`GET /api/v1/tickets/{id}/similar`, operation `similarTickets`, access: read.
+
+Nearest first by the vectors of the bundled embedding model, which needs no AI provider or key; a ticket matches by its summary and description or by one of its comments. Only tickets the caller may see, and comments the caller may read, take part. Tickets changed in the last seconds may not be indexed yet.
+
+| Parameter | In | Type | Required | Meaning |
+| --- | --- | --- | --- | --- |
+| `id` | path | string | yes | The ticket: its id or its key, such as `PAY-12`. |
+| `limit` | query | integer | no | How many tickets, at most 50. |
+| `minScore` | query | number | no | Leave out tickets less similar than this (cosine similarity, -1 to 1). |
+
+Responses:
+
+- 200: The similar tickets, best first. Body: [SimilarTickets](#schema-similartickets).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 404: There is no such resource, or the caller may not see it.
+
+### Tickets similar to a text being written
+
+`POST /api/v1/tickets/similar`, operation `similarToText`, access: read.
+
+Duplicate suggestions while a ticket is created: the same lookup as `GET /api/v1/tickets/{id}/similar` for a text, optionally in one track. It changes nothing.
+
+Body:
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `text` | string | yes | What is being written: a summary, with the description after it if any. |
+| `track` | integer or string | no | Only tickets of this track (its key or id), such as the one being created in. |
+| `excludeTicket` | integer or string | no | A ticket to leave out (its key or id), such as the one being edited. |
+| `limit` | integer | no |  |
+| `minScore` | number | no |  |
+
+Responses:
+
+- 200: The similar tickets, best first. Body: [SimilarTickets](#schema-similartickets).
+- 400: The request is not valid: see `error` and, for fields, `fields`.
+- 401: No session or token, or an expired one.
+- 403: The session or token may not do this (its scope, or the person’s permissions).
+- 409: The resource changed or is in a state that refuses this; read it again.
+
 ## Session
 
 ### Sign out
@@ -1906,6 +1950,13 @@ Exact up to 10,000; beyond, an estimate from a sample, or "more than 10,000" whe
 | `isSiteAdmin` | boolean | yes |  |
 | `timeZone` | string or null | yes |  |
 | `locale` | string or null | yes |  |
+
+### Schema: SimilarTickets
+
+| Name | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `model` | string or null | yes | What made the vectors, such as `local:all-MiniLM-L6-v2` (the bundled model); null when the server has embeddings off. |
+| `similar` | array of object | yes |  |
 
 ### Schema: Sprint
 

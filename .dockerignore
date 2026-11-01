@@ -13,5 +13,7 @@
 docs
 *.md
 !LICENSE
+# The bundled model's provenance ships with it (M1-078).
+!packages/ai/models/**/*.md
 .env
 .env.*

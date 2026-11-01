@@ -570,6 +570,22 @@
       "CREATE UNIQUE INDEX close_reason_pkey ON public.close_reason USING btree (id)"
     ]
   },
+  "comment_embedding": {
+    "columns": [
+      "comment_id integer not null",
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "model text not null",
+      "source_hash text not null",
+      "embedding ARRAY not null",
+      "embedded_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX comment_embedding_pkey ON public.comment_embedding USING btree (comment_id)",
+      "CREATE INDEX comment_embedding_ticket_idx ON public.comment_embedding USING btree (ticket_id)",
+      "CREATE INDEX comment_embedding_workspace_idx ON public.comment_embedding USING btree (workspace_id, model)"
+    ]
+  },
   "dashboard": {
     "columns": [
       "id integer not null default nextval('dashboard_id_seq'::regclass)",
@@ -2163,6 +2179,20 @@
     "indexes": [
       "CREATE INDEX ticket_detached_parent_parent_idx ON public.ticket_detached_parent USING btree (parent_id)",
       "CREATE UNIQUE INDEX ticket_detached_parent_pkey ON public.ticket_detached_parent USING btree (ticket_id)"
+    ]
+  },
+  "ticket_embedding": {
+    "columns": [
+      "ticket_id integer not null",
+      "workspace_id integer not null",
+      "model text not null",
+      "source_hash text not null",
+      "embedding ARRAY not null",
+      "embedded_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX ticket_embedding_pkey ON public.ticket_embedding USING btree (ticket_id)",
+      "CREATE INDEX ticket_embedding_workspace_idx ON public.ticket_embedding USING btree (workspace_id, model)"
     ]
   },
   "ticket_follower": {

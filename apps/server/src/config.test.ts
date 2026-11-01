@@ -29,7 +29,45 @@ describe('loadConfig', () => {
       storage: { urlTtl: 300 },
       previousMasterKeys: [],
       aiEnvironment: {},
+      embeddings: { mode: 'local' },
+      vectorSearch: 'auto',
     });
+  });
+
+  it('[AI-012] uses the bundled embedding model unless an endpoint is configured or they are off', () => {
+    const key = `fake-embed-key-${randomBytes(12).toString('hex')}`;
+    expect(loadConfig({ DATABASE_URL: DB, TASKMOOR_EMBEDDINGS: 'off' }).embeddings).toEqual({
+      mode: 'off',
+    });
+    const endpoint = loadConfig({
+      DATABASE_URL: DB,
+      TASKMOOR_EMBEDDINGS: 'endpoint',
+      TASKMOOR_EMBEDDINGS_URL: 'http://ollama:11434/v1',
+      TASKMOOR_EMBEDDINGS_MODEL: 'nomic-embed-text',
+      TASKMOOR_EMBEDDINGS_KEY: key,
+      TASKMOOR_EMBEDDINGS_DIMENSIONS: '768',
+      TASKMOOR_VECTOR_SEARCH: 'exact',
+    });
+    expect(endpoint.embeddings).toEqual({
+      mode: 'endpoint',
+      url: 'http://ollama:11434/v1',
+      model: 'nomic-embed-text',
+      apiKey: key,
+      dimensions: 768,
+    });
+    expect(endpoint.vectorSearch).toBe('exact');
+    let message = '';
+    try {
+      loadConfig({
+        DATABASE_URL: DB,
+        TASKMOOR_EMBEDDINGS: 'endpoint',
+        TASKMOOR_EMBEDDINGS_KEY: key,
+      });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toContain('TASKMOOR_EMBEDDINGS=endpoint needs TASKMOOR_EMBEDDINGS_URL');
+    expect(message).not.toContain(key);
   });
 
   it('[IAM-020] reads the master key and the AI settings of a backend kit, and names no value when they are wrong', () => {

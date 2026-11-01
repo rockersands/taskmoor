@@ -17,7 +17,14 @@ import { loadConfig } from './config';
 import { deliverEmail, type MailerOptions } from './email/deliver';
 import { effectiveSmtp } from './email/smtp';
 import { smtpTransport } from './email/transport';
-import { EventBus, startWorker } from './events/bus';
+import {
+  EMBEDDING_SUBSCRIBER,
+  registerEmbeddingJobs,
+  SWEEP_TASK,
+  scheduleBootSweeps,
+} from './embeddings/jobs';
+import { EmbeddingService, embedderFor } from './embeddings/service';
+import { EventBus, eventTask, startWorker } from './events/bus';
 import { JobRunner } from './events/queue';
 import { registerSubscribers } from './events/subscribers';
 import { FieldCatalogs } from './fields/catalog';
@@ -134,7 +141,35 @@ function bucketOrigin(s3: NonNullable<typeof config.storage.s3>): string {
   return s3.forcePathStyle ? url.origin : `${url.protocol}//${s3.bucket}.${url.host}`;
 }
 
+// Embeddings for similar tickets and duplicate suggestions (M1-078, ADR-106): the bundled
+// local model by default, no AI key needed. pgvector and its HNSW index are set up where the
+// database offers them; otherwise lookups scan exactly.
+const embedder = embedderFor(config.embeddings);
+const vectorSearch = config.vectorSearch === 'exact' ? ('exact' as const) : undefined;
+const embeddings =
+  db && embedder
+    ? new EmbeddingService(db, embedder, vectorSearch ? { search: vectorSearch } : {})
+    : null;
+if (embeddings && (config.roles.includes('api') || config.roles.includes('worker'))) {
+  const status = await embeddings.prepare();
+  console.log(
+    JSON.stringify({
+      msg:
+        status.search === 'pgvector'
+          ? 'similar tickets: pgvector with an HNSW index'
+          : 'similar tickets: exact scan (no pgvector)',
+      model: embedder?.model,
+      ...(status.version ? { pgvector: status.version } : {}),
+      ...(status.reason ? { reason: status.reason } : {}),
+    }),
+  );
+} else if (!embedder && config.roles.includes('api')) {
+  console.log(JSON.stringify({ msg: 'similar tickets are off (TASKMOOR_EMBEDDINGS=off)' }));
+}
+
 const app = await buildApp({
+  embedder,
+  ...(vectorSearch ? { vectorSearch } : {}),
   rateLimits: {},
   passwords: passwordHasher(peppers),
   ...(peppers ? { peppers } : {}),
@@ -170,9 +205,27 @@ if (config.roles.includes('worker') && db) {
   // The domain event bus and job queue (ADR-015, M1-005): relay new events to subscribers'
   // queues and run their jobs.
   const bus = new EventBus(db);
-  registerSubscribers(bus, { db, publicUrl: config.publicUrl });
+  registerSubscribers(bus, {
+    db,
+    publicUrl: config.publicUrl,
+    ...(embeddings ? { embeddings: embeddings.indexer } : {}),
+  });
   const runner = new JobRunner(db, `worker-${process.pid}`);
   bus.attach(runner);
+  // Embeddings (M1-078): what events name, and a sweep per workspace the first time a model
+  // runs (an upgrade embeds what was there before). With embeddings off, jobs left from
+  // before finish without doing anything.
+  if (embeddings) {
+    registerEmbeddingJobs(runner, db, embeddings.indexer, {
+      log: (msg, details) => app.log.info(details, msg),
+    });
+    void scheduleBootSweeps(db, embeddings.model).catch((error) =>
+      app.log.warn({ error }, 'embedding sweep not queued'),
+    );
+  } else {
+    runner.handle(eventTask(EMBEDDING_SUBSCRIBER), async () => {});
+    runner.handle(SWEEP_TASK, async () => {});
+  }
   // Audit retention (M1-003): one run a day across all workers, keyed by the date; it also
   // makes next month's partition ahead.
   registerAuditJobs(runner, db, (blocked) =>
@@ -355,6 +408,7 @@ async function shutdown(signal: string): Promise<void> {
   for (const t of timers) clearInterval(t);
   await worker?.stop();
   await closeApp(config.shutdownDrainMs);
+  await embedder?.close();
   await metricsServer?.close();
   await tracing?.shutdown();
   await db?.destroy();

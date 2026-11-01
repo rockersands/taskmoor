@@ -3,6 +3,7 @@ import { DEV_VERSION, ROUTING_MODES, type RoutingMode } from '@taskmoor/webconfi
 import { z } from 'zod';
 import type { AiEnvironment } from './ai/environment';
 import { PROVIDER_IDS } from './ai/settings';
+import type { EmbeddingsSetting } from './embeddings/service';
 import { frontendOrigin } from './network/frontends';
 
 /** Stamped into the bundle by `pnpm build` from TASKMOOR_VERSION, as the frontend artefact is. */
@@ -162,6 +163,19 @@ const envSchema = z.object({
   TASKMOOR_AI_RESOURCE: z.string().min(1).max(200).optional(),
   TASKMOOR_AI_BASE_URL: z.string().url().optional(),
   TASKMOOR_AI_MODEL: z.string().min(1).max(200).optional(),
+  /**
+   * Embeddings for similar tickets and duplicate suggestions (M1-078, ADR-106): the bundled
+   * local model (`local`, the default; no key, nothing leaves the server), an OpenAI-compatible
+   * endpoint (`endpoint`, with the URL and model below), or `off`.
+   */
+  TASKMOOR_EMBEDDINGS: z.enum(['local', 'endpoint', 'off']).default('local'),
+  TASKMOOR_EMBEDDINGS_URL: z.string().url().optional(),
+  TASKMOOR_EMBEDDINGS_MODEL: z.string().min(1).max(200).optional(),
+  /** The endpoint's key, if it needs one; from the environment only. */
+  TASKMOOR_EMBEDDINGS_KEY: z.string().trim().min(1).max(8000).optional(),
+  TASKMOOR_EMBEDDINGS_DIMENSIONS: z.coerce.number().int().min(1).max(2000).optional(),
+  /** `exact` never uses pgvector, even where it is installed (ADR-106). */
+  TASKMOOR_VECTOR_SEARCH: z.enum(['auto', 'exact']).default('auto'),
 });
 
 export interface ServerConfig {
@@ -216,6 +230,10 @@ export interface ServerConfig {
   previousMasterKeys: string[];
   /** AI settings from the environment, moved into the database on the first start. */
   aiEnvironment: AiEnvironment;
+  /** Where embeddings come from (M1-078). */
+  embeddings: EmbeddingsSetting;
+  /** Whether lookups may use pgvector (`auto`) or always scan exactly. */
+  vectorSearch: 'auto' | 'exact';
 }
 
 export interface SmtpConfig {
@@ -341,6 +359,14 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       'Invalid server configuration:\n- TASKMOOR_MASTER_KEY_PREVIOUS must list keys of 32 characters or more',
     );
   }
+  if (
+    e.TASKMOOR_EMBEDDINGS === 'endpoint' &&
+    !(e.TASKMOOR_EMBEDDINGS_URL && e.TASKMOOR_EMBEDDINGS_MODEL)
+  ) {
+    throw new Error(
+      'Invalid server configuration:\n- TASKMOOR_EMBEDDINGS=endpoint needs TASKMOOR_EMBEDDINGS_URL and TASKMOOR_EMBEDDINGS_MODEL',
+    );
+  }
   if (e.TASKMOOR_STORAGE === 's3' && !e.TASKMOOR_S3_BUCKET) {
     throw new Error(
       'Invalid server configuration:\n- TASKMOOR_STORAGE=s3 needs TASKMOOR_S3_BUCKET',
@@ -437,5 +463,18 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       baseUrl: e.TASKMOOR_AI_BASE_URL,
       model: e.TASKMOOR_AI_MODEL,
     },
+    embeddings:
+      e.TASKMOOR_EMBEDDINGS === 'endpoint'
+        ? {
+            mode: 'endpoint',
+            url: e.TASKMOOR_EMBEDDINGS_URL as string,
+            model: e.TASKMOOR_EMBEDDINGS_MODEL as string,
+            ...(e.TASKMOOR_EMBEDDINGS_KEY ? { apiKey: e.TASKMOOR_EMBEDDINGS_KEY } : {}),
+            ...(e.TASKMOOR_EMBEDDINGS_DIMENSIONS
+              ? { dimensions: e.TASKMOOR_EMBEDDINGS_DIMENSIONS }
+              : {}),
+          }
+        : { mode: e.TASKMOOR_EMBEDDINGS },
+    vectorSearch: e.TASKMOOR_VECTOR_SEARCH,
   };
 }

@@ -53,7 +53,8 @@
         "admin/rest-api.md",
         "admin/mcp.md",
         "admin/ai.md",
-        "admin/ai-usage.md"
+        "admin/ai-usage.md",
+        "admin/similar-tickets.md"
       ]
     },
     {

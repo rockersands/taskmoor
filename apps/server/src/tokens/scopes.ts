@@ -90,6 +90,8 @@ export const READ_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/search',
   // Which shown tickets format rules match (M1-049): a read.
   'POST /api/v1/search/format-rules',
+  // Tickets similar to a text being written (M1-078): a read, with the text in the body.
+  'POST /api/v1/tickets/similar',
   // The MCP server (M1-072): its read tools need only read; its other tools call the REST API
   // with the same token, where write routes still need write.
   'POST /api/v1/mcp',
