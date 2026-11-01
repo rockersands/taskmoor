@@ -615,6 +615,14 @@ function Pages() {
         <InboxPage />
       ) : active === 'home' && signedIn ? (
         <HomePage />
+      ) : active === 'home' ? (
+        // Signed out, as on a fresh install's first visit: say where to start (M1-113).
+        <>
+          <h1 className="page-title">{t('nav.home')}</h1>
+          <p className="page-note">
+            {t('home.signedOut')} <a href="#/sign-in">{t('auth.signIn')}</a>
+          </p>
+        </>
       ) : active === 'search' && signedIn ? (
         <SearchPage
           key={queryFromHash(hash) || String(savedSearchFromHash(hash) ?? '')}

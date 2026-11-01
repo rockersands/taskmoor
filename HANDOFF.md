@@ -46,6 +46,13 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   `SIGNING_KEY=<file> PUBLIC_KEY=tools/airgap/taskmoor-release.pub bash tools/airgap/bundle.sh
   <version>`, delete the file. `.gitignore` refuses `*.pem` and `*.key`. Publishing images on
   ghcr.io is still the user's call.
+- **M1-113 is done** (ADR-105): `bash tools/image/fresh-vm.sh` (needs the image from
+  `tools/image/smoke.sh`; behind this sandbox's proxy run the image build with
+  `--network host --secret id=build_ca,src=/root/.ccr/ca-bundle.crt --build-arg HTTPS_PROXY=...`
+  and set `BUILD_CA` for the harness). It found and fixed: live updates were never shown on open
+  tickets and boards (NTF-008), the create dialog lost its ticket types when the same track was
+  chosen again, and the signed-out start page said "under construction". Docker Hub and
+  dl-cdn.alpinelinux.org must stay in the network access.
 - **The 1M-issue import run (M1-091) goes last**, after every other M1 task (the user, 2026-10-31).
 
 ## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 to M1-071, M1-108, M1-112, M1-089 to M1-092, M1-095 and three fixes

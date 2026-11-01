@@ -557,6 +557,9 @@ export function CreateTicketPage({
                 id={`${prefix}-track`}
                 value={track}
                 onChange={(e) => {
+                  // The same track again changes nothing: its types are already here and
+                  // would not load again (found by the fresh-install run, M1-113).
+                  if (e.target.value === track) return;
                   setTrack(e.target.value);
                   clearForm();
                   // The old track's types until the new ones arrive would let a choice made

@@ -155,6 +155,38 @@ export function TicketPage({
   const loaded = state.status === 'loaded' && !state.partial ? state.ticket : null;
   const ticketId = state.status === 'loaded' ? state.ticket.id : null;
 
+  // A change made elsewhere reaches the local copy through the socket (NTF-008): when this
+  // ticket's row there moves on, the page reads the ticket again, so the open view follows
+  // without a reload. Its own edits come back the same way, which changes nothing.
+  useEffect(() => {
+    if (!engine || ticketId === null) return;
+    let live = true;
+    let seen: string | null = null;
+    const print = (row: Record<string, unknown> | null) => (row ? JSON.stringify(row) : '');
+    void engine.ticketByKey(ticket).then((row) => {
+      if (live) seen = print(row);
+    });
+    const unsubscribe = engine.subscribe(() => {
+      void engine.ticketByKey(ticket).then((row) => {
+        const now = print(row);
+        if (!live || seen === null || now === seen) return;
+        seen = now;
+        client.get(ticket).then(
+          (found) => {
+            if (!live) return;
+            setState((s) => (s.status === 'loaded' ? { status: 'loaded', ticket: found } : s));
+            setRevision((r) => r + 1);
+          },
+          () => {},
+        );
+      });
+    });
+    return () => {
+      live = false;
+      unsubscribe();
+    };
+  }, [engine, ticket, ticketId, client]);
+
   // What the ticket offers this person: transitions, following and votes. Each fails quietly.
   // A follow or vote made while a refresh is on its way wins over that refresh's older answer.
   const followSeq = useRef(0);
