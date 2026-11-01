@@ -13,7 +13,8 @@
       "!**/pnpm-lock.yaml",
       "!docs/**/*.csv",
       "!docs/api/**/*.json",
-      "!packages/sdk/src/generated"
+      "!packages/sdk/src/generated",
+      "!packages/ai/models"
     ]
   },
   "formatter": {

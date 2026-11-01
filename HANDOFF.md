@@ -35,6 +35,13 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   `mapGlobalGrant`, `regrant` in `load-access.ts`, the route passes it on), ADR-090 Changes, the
   manual's import page; tested by the last case of `dc-access.test.ts`. The import wizard
   (M1-097) should offer it.
+- **Bundled embedding model (M1-078, started):** `packages/ai/models/all-MiniLM-L6-v2/`
+  (int8 ONNX, 23 MB, Apache 2.0) from huggingface.co, commit `1110a24`, every file verified
+  against the source's hashes; provenance in its `SOURCE.md`, `SHA256SUMS` checked by
+  `packages/ai/src/models.test.ts`. Nothing downloads a model at build or run time: the user
+  may remove the Hugging Face hosts from the environment's network access again. Still to
+  build for M1-078: the runtime (onnxruntime-node or -web, tokenizer), pgvector, the index and
+  permission-filtered retrieval.
 - **AI provider key:** not yet. M1-073 and M1-074's live tests stay skipped.
 - **Spanish review:** the user does it once every M1 task is finished.
 - **Release signing key** (M1-100): the user asked Claude to make it. A cloud container cannot
