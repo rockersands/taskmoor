@@ -1,5 +1,6 @@
-import { realpath, stat } from 'node:fs/promises';
+import { mkdir, realpath, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
+import type { Readable } from 'node:stream';
 import type { Database } from '@taskmoor/db';
 import { type PepperRing, sealSecret } from '@taskmoor/iam';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -14,6 +15,13 @@ import { CLOUD_SOURCE, type CloudSettings } from '../import/cloud/source';
 import { CSV_SOURCE, CsvFormatError, CsvSource, csvMapping, csvSource } from '../import/csv';
 import { DC_SOURCE, dcBackupSource } from '../import/dc';
 import { checkDcBackup, DcBackupError } from '../import/dc-backup/stage';
+import {
+  listImportFiles,
+  MAX_IMPORT_UPLOAD,
+  saveImportFile,
+  UploadRefused,
+  uploadName,
+} from '../import/files';
 import { importJob } from '../import/jobs';
 import { type FidelityReport, reportHtml } from '../import/report';
 import { createRun, runView } from '../import/run';
@@ -80,6 +88,22 @@ const cloudInput = z
         z.object({ mode: z.literal('email') }).strict(),
         z.object({ mode: z.literal('scim') }).strict(),
         z.object({ mode: z.literal('csv'), data: z.string().min(1).max(8_000_000) }).strict(),
+        // The wizard's mapping (M1-097): by address except the people it names.
+        z
+          .object({
+            mode: z.literal('map'),
+            rows: z
+              .array(
+                z
+                  .object({
+                    source: z.string().min(1).max(320),
+                    target: z.string().trim().toLowerCase().email().max(320),
+                  })
+                  .strict(),
+              )
+              .max(100_000),
+          })
+          .strict(),
       ])
       .optional(),
   })
@@ -142,6 +166,7 @@ function cloudBaseUrl(text: string): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
 }
 const idParam = z.object({ id: z.string().regex(/^[1-9][0-9]{0,17}$/) });
+const uploadQuery = z.object({ name: z.string().min(1).max(200) }).strict();
 const reportQuery = z.object({ format: z.enum(['json', 'html']).optional() }).strict();
 const problemsQuery = z
   .object({
@@ -380,6 +405,7 @@ export function registerImportRoutes(
           system,
           scope: body.source.scope,
           systemAdmins: body.source.systemAdmins,
+          people: body.source.people,
         };
       } else {
         importSource = EXPORT_SOURCE;
@@ -464,6 +490,58 @@ export function registerImportRoutes(
       return reply.code(409).send({ error: 'run_in_progress', importRunId: row.busy });
     }
     return reply.code(202).send({ importRun: runView(row.created) });
+  });
+
+  // The imports folder (M1-097): the files an import can read, for the wizard to offer.
+  app.get('/api/v1/admin/imports/files', async (request, reply) => {
+    if (!(await admin(request, reply))) return reply;
+    if (!options.importDir) return { folder: false, files: [], maxUpload: 0 };
+    const files = await listImportFiles(options.importDir).catch(() => []);
+    return { folder: true, files, maxUpload: MAX_IMPORT_UPLOAD };
+  });
+
+  // An upload into the imports folder (M1-097): the file as the body, its name in the query.
+  // Only this route takes a raw body; the folder is made when it is missing.
+  app.register(async (scope) => {
+    scope.addContentTypeParser('application/octet-stream', (_request, payload, done) =>
+      done(null, payload),
+    );
+    scope.post('/api/v1/admin/imports/files', async (request, reply) => {
+      const user = await admin(request, reply);
+      if (!user) return reply;
+      const q = uploadQuery.safeParse(request.query);
+      const name = q.success ? uploadName(q.data.name) : null;
+      if (!name) return reply.code(400).send({ error: 'invalid_name' });
+      if (!options.importDir) return reply.code(400).send({ error: 'no_import_folder' });
+      if (!request.headers['content-type']?.startsWith('application/octet-stream')) {
+        return reply.code(415).send({ error: 'unsupported_media_type' });
+      }
+      await mkdir(options.importDir, { recursive: true });
+      let saved: Awaited<ReturnType<typeof saveImportFile>>;
+      try {
+        saved = await saveImportFile(options.importDir, name, request.body as Readable);
+      } catch (error) {
+        if (error instanceof UploadRefused) {
+          return reply.code(error.message === 'too_large' ? 413 : 409).send({
+            error: error.message,
+            ...(error.message === 'too_large' ? { max: MAX_IMPORT_UPLOAD } : {}),
+          });
+        }
+        throw error;
+      }
+      await db.transaction().execute((trx) =>
+        emit(
+          trx,
+          { workspaceId: request.workspaceId, actorId: user.id },
+          {
+            type: 'import_file.uploaded',
+            subjectId: request.workspaceId,
+            payload: { name: saved.name, size: saved.size, kind: saved.kind },
+          },
+        ),
+      );
+      return reply.code(201).send({ file: saved });
+    });
   });
 
   app.get('/api/v1/admin/imports', async (request, reply) => {

@@ -59,6 +59,10 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.securityHint')}</p>
             </li>
             <li>
+              <a href={routeHref('#/admin/imports')}>{t('settings.imports')}</a>
+              <p className="page-note">{t('settings.importsHint')}</p>
+            </li>
+            <li>
               <a href={routeHref('#/admin/trash')}>{t('settings.trash')}</a>
               <p className="page-note">{t('settings.trashHint')}</p>
             </li>

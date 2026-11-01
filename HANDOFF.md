@@ -355,6 +355,21 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     attachments `updated` once, writing nothing.
   - Tests: `import/cloud/delta.test.ts`, `import/dc-delta.test.ts` (edits a generated backup's
     `entities.xml` in place: a pattern for other later-backup tests).
+- **M1-097 import wizard and CLI** (same branch, second commit; ADR-103, no migration; M1-097
+  is done):
+  - Web: `apps/web/src/admin/imports/` at `#/admin/imports` (Settings > Imports). New routes:
+    `GET`/`POST /api/v1/admin/imports/files` (the folder listing and a raw-body upload; event
+    `import_file.uploaded`). People mode `map` for Cloud and Data Center (`cloud/people.ts`,
+    `dc.ts` `people` setting by user key).
+  - CLI: `node cli.mjs import ...` goes through the API (`import/cli.ts`, `TASKMOOR_URL`,
+    `TASKMOOR_TOKEN`); it is handled before the CLI's own option parsing. CLAUDE.md's command
+    table does not list it yet (left for the main session).
+  - E2E: `e2e/import-wizard.spec.ts` uses a fourth instance in `web-server.ts` on 4185 (its own
+    imports folder and import worker loop; it starts before 4177, which Playwright waits for).
+    The 10,000-issue backup is generated once into `.cache/e2e/dc-backup-10000-seed97.zip`
+    (about 10 s); the admin's password comes from `TASKMOOR_E2E_IMPORT_PASSWORD`
+    (playwright.config.ts). Desktop runs the import (the spec took 3.0 minutes with the servers'
+    start); mobile checks the layout.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

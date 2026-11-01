@@ -7,10 +7,25 @@
 // at api.taskmoor.localhost:8794, which Chromium keeps on this machine. It allows two frontend
 // kits that kit-server.ts serves: app.taskmoor.localhost:4181 (a sibling subdomain, same site:
 // the backend's cookie) and 127.0.0.1:4182 (another site: OAuth with PKCE, sent back to its root).
+//
+// A fourth serves the import wizard (M1-097, import-wizard.spec.ts) on 4185, with an imports
+// folder of its own and the import job's worker loop; its administrator's password is made per
+// run by playwright.config.ts.
 // Started with: tsx apps/web/e2e/web-server.ts
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createDb, migrateToLatest } from '@taskmoor/db';
-import { buildApp, issueSetupToken } from '@taskmoor/server';
+import {
+  buildApp,
+  FieldCatalogs,
+  IMPORT_TASK,
+  issueSetupToken,
+  JobRunner,
+  registerImportJobs,
+} from '@taskmoor/server';
+import { defaultOptions, generateDcBackup } from '@taskmoor/server/testing';
 import { createDatabase } from '@taskmoor/testkit/pg';
 import { startEmbeddedPostgres } from '@taskmoor/testkit/server';
 import { buildVersion, type RoutingMode } from '@taskmoor/webconfig';
@@ -23,6 +38,11 @@ export const E2E_TOPOLOGY_API_PORT = 8794;
 export const E2E_TOPOLOGY_API = `http://api.taskmoor.localhost:${E2E_TOPOLOGY_API_PORT}`;
 export const E2E_SIBLING_APP = 'http://app.taskmoor.localhost:4181';
 export const E2E_CROSS_SITE_APP = 'http://127.0.0.1:4182';
+export const E2E_IMPORT_PORT = 4185;
+export const E2E_IMPORT_ADMIN = 'iris@imports.test';
+export const E2E_IMPORT_BACKUP = fileURLToPath(
+  new URL('../../../.cache/e2e/dc-backup-10000-seed97.zip', import.meta.url),
+);
 
 const webDir = fileURLToPath(new URL('../dist', import.meta.url));
 const external = process.env.TASKMOOR_TEST_DATABASE_URL;
@@ -160,6 +180,8 @@ async function importedLeftovers(
   }
 }
 
+// Before 4177, which Playwright waits for: the import wizard's spec needs it and its backup.
+const imports = await importInstance();
 const instances = [
   // First, so it listens before Playwright sees 4177 and starts the kit server that needs it.
   await instance(E2E_TOPOLOGY_API_PORT, 'hash', {
@@ -170,11 +192,73 @@ const instances = [
   await instance(E2E_WEB_HASH_PORT, 'hash'),
   await instance(E2E_WEB_PATH_PORT, 'path'),
 ];
+
+/** The import wizard's instance (M1-097): an imports folder and a worker loop for imports. */
+async function importInstance() {
+  const database = await createDatabase(server.adminUrl);
+  const db = createDb({ connectionString: database.url, maxConnections: 5 });
+  await migrateToLatest(db);
+  const importDir = mkdtempSync(join(tmpdir(), 'taskmoor-e2e-imports-'));
+  // The spec uploads the 10,000-issue backup: made once, kept in .cache/e2e.
+  if (!existsSync(E2E_IMPORT_BACKUP)) {
+    mkdirSync(dirname(E2E_IMPORT_BACKUP), { recursive: true });
+    await generateDcBackup(defaultOptions(10_000, 97), E2E_IMPORT_BACKUP);
+  }
+  const app = await buildApp({
+    db,
+    version: buildVersion(process.env),
+    roles: ['api', 'web'],
+    logLevel: 'warn',
+    webDir,
+    webRouting: 'hash',
+    publicUrl: `http://localhost:${E2E_IMPORT_PORT}`,
+    importDir,
+  });
+  const setup = await app.inject({
+    method: 'POST',
+    url: '/api/v1/setup',
+    payload: {
+      token: await issueSetupToken(db),
+      instanceName: 'Imports',
+      admin: {
+        name: 'Iris Imports',
+        email: E2E_IMPORT_ADMIN,
+        password: process.env.TASKMOOR_E2E_IMPORT_PASSWORD as string,
+      },
+    },
+  });
+  if (setup.statusCode !== 201 && setup.statusCode !== 200) {
+    throw new Error(`import e2e setup answered ${setup.statusCode} ${setup.body}`);
+  }
+  await app.listen({ port: E2E_IMPORT_PORT, host: '127.0.0.1' });
+  const runner = new JobRunner(db, 'e2e-imports', { tasks: [IMPORT_TASK] });
+  registerImportJobs(runner, db, new FieldCatalogs(db));
+  let running = true;
+  const loop = (async () => {
+    while (running) {
+      const ran = await runner.runOnce().catch(() => 0);
+      if (ran === 0) await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  })();
+  return {
+    app,
+    db,
+    database,
+    stop: async () => {
+      running = false;
+      await loop;
+      rmSync(importDir, { recursive: true, force: true });
+    },
+  };
+}
+instances.push({ app: imports.app, db: imports.db, database: imports.database });
+
 process.stdout.write(
-  `e2e frontend servers on ${E2E_WEB_HASH_PORT} and ${E2E_WEB_PATH_PORT}, a cross-origin backend on ${E2E_TOPOLOGY_API_PORT}\n`,
+  `e2e frontend servers on ${E2E_WEB_HASH_PORT} and ${E2E_WEB_PATH_PORT}, a cross-origin backend on ${E2E_TOPOLOGY_API_PORT}, imports on ${E2E_IMPORT_PORT}\n`,
 );
 
 async function stop(): Promise<void> {
+  await imports.stop();
   for (const { app, db, database } of instances) {
     await app.close();
     await db.destroy();

@@ -6,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
 // again and keep the values they inherited.
 process.env.TASKMOOR_E2E_LDAP_BIND_PASSWORD ??= `bind-${randomBytes(18).toString('base64url')}`;
 process.env.TASKMOOR_E2E_LDAP_USER_PASSWORD ??= `user-${randomBytes(18).toString('base64url')}`;
+// The import wizard's administrator (M1-097, web-server.ts on 4185), made the same way.
+process.env.TASKMOOR_E2E_IMPORT_PASSWORD ??= `wizard-${randomBytes(18).toString('base64url')}`;
 // The attachments administrator's password (M1-016), made the same way.
 process.env.TASKMOOR_E2E_ATTACH_PASSWORD ??= `files-${randomBytes(18).toString('base64url')}`;
 // The AI key the fake provider of api-server.ts accepts (M1-076), made per run the same way and

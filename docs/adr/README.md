@@ -105,6 +105,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [100](0100-ai-spend-audit-redaction.md) | AI spend limits, the AI audit log and redaction, in the gateway's call path | Accepted |
 | [101](0101-agent-runs-with-budgets.md) | Agent runs with budgets that are enforced before they can be passed | Accepted |
 | [102](0102-delta-import-runs.md) | Delta runs for cutover windows: the changes since an earlier run, deletions reported | Accepted |
+| [103](0103-import-wizard-and-cli.md) | The import wizard and the import CLI: one API, an imports folder you can upload into | Accepted |
 | [096](0096-dc-filters-and-query-translation.md) | Translating saved filters, dashboards and subscriptions from a Data Center backup | Accepted |
 | [097](0097-imported-keys-and-links.md) | Keys and links from the tracker an import came from | Accepted |
 

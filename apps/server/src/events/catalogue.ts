@@ -1258,6 +1258,15 @@ export const EVENT_TYPES = {
       deltaFrom: id.optional(),
     }),
   },
+  /** A file uploaded into the imports folder for the import wizard (M1-097). */
+  'import_file.uploaded': {
+    subject: 'workspace',
+    payload: z.object({
+      name: z.string(),
+      size: z.number().int().min(0),
+      kind: z.enum(['dc-backup', 'taskmoor', 'csv']).nullable(),
+    }),
+  },
   'import_run.cancelled': {
     subject: 'import_run',
     payload: z.object({ importSource: z.string(), sourceSystem: z.string(), dryRun: z.boolean() }),

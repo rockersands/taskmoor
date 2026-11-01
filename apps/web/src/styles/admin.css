@@ -407,3 +407,121 @@
 .frontend-confirm legend {
   padding: 0 var(--space-1);
 }
+
+/* Imports: the wizard, runs and reports (M1-097). */
+.imports-page {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  max-width: 60rem;
+}
+
+.import-wizard,
+.import-form,
+.import-run,
+.import-report {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.import-form fieldset,
+.import-people {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-3);
+}
+
+.import-form legend,
+.import-people legend {
+  padding: 0 var(--space-1);
+  font-weight: 650;
+}
+
+.import-choices {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.import-choices-title,
+.import-subtitle {
+  margin: 0;
+  font-weight: 600;
+}
+
+.import-form textarea {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.import-form select,
+.import-form input:not([type="checkbox"], [type="radio"]) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.import-run,
+.import-run-item {
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.import-run-list,
+.import-people-list,
+.import-warnings {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-run-list {
+  gap: var(--space-3);
+}
+
+.import-run-name,
+.import-person-name {
+  margin: 0;
+  font-size: var(--font-size-300);
+  overflow-wrap: anywhere;
+}
+
+.import-warnings li,
+.import-person {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.import-warnings p,
+.import-person p {
+  margin: 0;
+}
+
+.import-code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.import-kinds td,
+.import-kinds th {
+  white-space: nowrap;
+}
+
+.import-mapping summary {
+  min-height: var(--hit-target);
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .import-form input[type="file"],
+  .import-mapping summary {
+    min-height: 44px;
+  }
+}

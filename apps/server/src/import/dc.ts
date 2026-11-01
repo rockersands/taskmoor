@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { createInflateRaw } from 'node:zlib';
 import { z } from 'zod';
+import { type PersonMapping, peopleSettings, personMapping } from './cloud/people';
 import {
   agileField,
   agileTableLeftOut,
@@ -142,6 +143,12 @@ export const dcBackupSource = z
      * or configuration administrators, who manage the configuration but not the site.
      */
     systemAdmins: z.enum(['site_admin', 'configuration_admin']).default('site_admin'),
+    /**
+     * How people are found (M1-097): by address (the default), or by address except the ones
+     * the wizard mapped to an existing person (`map`, rows by user key), or as the Cloud REST
+     * importer's `csv` and `scim` modes.
+     */
+    people: peopleSettings.default({ mode: 'email' }),
   })
   .strict();
 export type DcBackupSettings = z.infer<typeof dcBackupSource>;
@@ -160,8 +167,25 @@ export class DcBackupSource implements ImportSource {
   readonly system: string;
   private staged: Promise<{ dir: string; summary: StageSummary }> | null = null;
 
+  private readonly lookup: Map<string, string> | null;
+
   constructor(private readonly settings: DcBackupSettings) {
     this.system = settings.system;
+    const people = settings.people;
+    this.lookup =
+      people.mode === 'csv' || people.mode === 'map'
+        ? new Map(people.rows.map((r) => [r.source, r.target]))
+        : null;
+  }
+
+  /** A person's data with how to find them, unless people go by address (M1-097). */
+  private withMapping(data: Record<string, unknown>): Record<string, unknown> {
+    if (this.settings.people.mode === 'email') return data;
+    const u = data as unknown as StagedUser;
+    return {
+      ...data,
+      mapping: personMapping(this.settings.people, u.key, u.email ?? null, this.lookup),
+    };
   }
 
   /** The stage of the backup, made on first use. */
@@ -270,7 +294,9 @@ export class DcBackupSource implements ImportSource {
                 ...(value.data as Record<string, unknown>),
                 systemAdmins: this.settings.systemAdmins,
               }
-            : (value.data as Record<string, unknown>),
+            : kind === 'user'
+              ? this.withMapping(value.data as Record<string, unknown>)
+              : (value.data as Record<string, unknown>),
         cursor,
       }),
     );
@@ -363,6 +389,21 @@ const USER_ROLE_ACTOR = 'atlassian-user-role-actor';
 const GROUP_ROLE_ACTOR = 'atlassian-group-role-actor';
 
 function mapUser(u: StagedUser): Mapped {
+  // A person the import maps to someone the target has (M1-097), deleted in the source or not,
+  // or looks up as the setting says.
+  const mapping = (u as StagedUser & { mapping?: PersonMapping }).mapping;
+  if (mapping?.link) {
+    return {
+      command: {
+        kind: 'user',
+        email: mapping.email,
+        name: u.displayName || u.userName || u.key,
+        active: u.active && !u.deleted,
+        timeZone: null,
+        link: mapping.link,
+      },
+    };
+  }
   if (u.deleted) {
     // A deleted person keeps their attribution as an inactive placeholder (IMP-007), if anything
     // names them.

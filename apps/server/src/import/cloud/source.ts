@@ -116,7 +116,7 @@ export class CloudSource implements ImportSource {
   ) {
     this.system = settings.system;
     this.lookup =
-      settings.people.mode === 'csv'
+      settings.people.mode === 'csv' || settings.people.mode === 'map'
         ? new Map(settings.people.rows.map((r) => [r.source, r.target]))
         : null;
   }

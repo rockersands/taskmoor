@@ -33,11 +33,18 @@
 //   node cli.mjs mcp                    MCP over stdio for local MCP clients (M1-072): each line
 //                                       is a JSON-RPC message sent to TASKMOOR_URL with the API
 //                                       token in TASKMOOR_TOKEN; answers on stdout, logs on stderr
+//   node cli.mjs import <command>       imports through a running server's API (M1-097):
+//                                       start, follow, report, status, list, cancel, with
+//                                       TASKMOOR_URL and TASKMOOR_TOKEN (admin scope). Exit 0
+//                                       done, 1 failed or cancelled, 2 done with failures or
+//                                       too many warnings, 64 usage, 65 refused, 69 server
+//                                       unreachable, 75 not finished, 77 not allowed
+//                                       (`node cli.mjs import help`; import/cli.ts)
 //   node cli.mjs report-verify          replays every ticket's report events (M1-059, RPT-003)
 //                                       and compares them with the tickets; exit 1 when one
 //                                       differs. Tickets older than the change history
 //                                       (migration 0015) report as without history
-import { mkdir, readdir } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createDb, migrateToLatest, migrationStatus } from '@taskmoor/db';
@@ -54,12 +61,34 @@ import { folderSink } from './export/sinks';
 import { exportWorkspace } from './export/write';
 import { FieldCatalogs } from './fields/catalog';
 import { checkFieldValues } from './fields/jobs';
+import { httpRequest, IMPORT_EXIT, importCommand } from './import/cli';
 import { bridgeStdio } from './mcp/stdio';
 import { replayCheck } from './reports/events';
 import { purgeExpired } from './trash/purge';
 import { formatOutcome, upgrade, upgradeExitCode } from './upgrade';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 import { defaultWorkspaceId } from './workspace';
+
+// Imports go through a running server's API (M1-097), with options of their own.
+if (process.argv[2] === 'import') {
+  const url = process.env.TASKMOOR_URL;
+  const token = process.env.TASKMOOR_TOKEN;
+  const args = process.argv.slice(3);
+  if ((!url || !token) && args[0] !== 'help') {
+    process.stderr.write('TASKMOOR_URL and TASKMOOR_TOKEN (admin scope) are required\n');
+    process.exit(IMPORT_EXIT.usage);
+  }
+  const code = await importCommand(args, {
+    request: httpRequest(url ?? '', token ?? ''),
+    out: (line) => process.stdout.write(`${line}\n`),
+    err: (line) => process.stderr.write(`${line}\n`),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    readFile: (path) => readFile(path, 'utf8'),
+    writeFile: (path, data) => writeFile(path, data),
+    env: process.env,
+  });
+  process.exit(code);
+}
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -77,7 +106,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | mcp>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | mcp | import <start|follow|report|status|list|cancel>>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);

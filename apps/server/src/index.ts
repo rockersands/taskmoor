@@ -9,5 +9,6 @@ export { EventBus, eventTask, startWorker } from './events/bus';
 export { JobRunner } from './events/queue';
 export { registerSubscribers } from './events/subscribers';
 export { FieldCatalogs } from './fields/catalog';
+export { IMPORT_TASK, registerImportJobs } from './import/jobs';
 export { startDirectorySync } from './ldap/scheduler';
 export { issueSetupToken, setupLink, setupState } from './setup';

@@ -190,6 +190,8 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       version: 'test',
       roles: ['api'],
       attachments,
+      // The imports folder the wizard uploads into (M1-097).
+      importDir: join(files, 'imports'),
       allowedOrigins: [FRONTEND],
       aiKeys: aiKeyRing({ masterKey: randomBytes(32).toString('base64url') }),
       // A fake provider for the AI meter's own event (M1-077); nothing calls a network.
@@ -1191,6 +1193,17 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       route: 'POST /api/v1/admin/imports/:id/cancel',
       expect: 'import_run.cancelled',
       run: () => admin({ method: 'POST', url: `/api/v1/admin/imports/${state.importRun}/cancel` }),
+    },
+    {
+      route: 'POST /api/v1/admin/imports/files',
+      expect: 'import_file.uploaded',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: '/api/v1/admin/imports/files?name=backlog.csv',
+          headers: { 'content-type': 'application/octet-stream' },
+          payload: Buffer.from('Summary\nFirst\n'),
+        }),
     },
     {
       route: 'POST /api/v1/tickets/:id/purge',
