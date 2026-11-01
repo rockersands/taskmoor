@@ -3724,6 +3724,8 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.settings.timeZoneHint':
     'Los días se cuentan con este reloj, así que un sprint que termina a las 09:00 lo sigue haciendo tras un cambio de horario de verano.',
   'sprints.settings.unknownTimeZone': 'El servidor no conoce esta zona horaria. Elige otra.',
+  'home.signedOut':
+    'Inicia sesión para ver tu trabajo, los tickets que sigues y lo que abriste hace poco.',
   'page.underConstruction': 'Esta área está en construcción.',
   'page.itemCount': '{count, plural, =0 {Ningún elemento} one {# elemento} other {# elementos}}',
   'builder.title': 'Taskmoor Builder',

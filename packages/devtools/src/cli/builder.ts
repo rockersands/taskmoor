@@ -1,7 +1,8 @@
 // pnpm builder --project <file> [--web apps/web/dist] [--out kits] [--seed <seed>]
 //               [--passphrase-env <NAME>] [--version <x.y.z>] [--image <repository>]
 //               (--version defaults to the web build's own, from its version.json)
-// pnpm builder --backend-url <url> --frontend-url <url> [...]   (no project file: defaults)
+// pnpm builder --backend-url <url> --frontend-url <url> [--routing path|hash] [...]
+//               (no project file: defaults; hash routing for a host without rewrites)
 //
 // The Taskmoor Builder on the command line (OPS-016): the backend kit's core and the frontend
 // kit (zip and single file) from a project file. A seed makes the run reproducible; a
@@ -26,6 +27,8 @@ const { values } = parseArgs({
     image: { type: 'string' },
     'backend-url': { type: 'string' },
     'frontend-url': { type: 'string' },
+    /** `hash` for a plain static host that cannot send deep links to index.html (M1-113). */
+    routing: { type: 'string' },
   },
 });
 // The kits are for the version of the web build they carry, as the Builder page's are (M1-112).
@@ -39,6 +42,7 @@ if (!project) {
   const form = validateInputs({
     backendUrl: values['backend-url'],
     frontendUrl: values['frontend-url'],
+    ...(values.routing ? { routing: values.routing } : {}),
   });
   if (!form.ok) {
     for (const p of form.problems) process.stderr.write(`${p.field}: ${p.message}\n`);

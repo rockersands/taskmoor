@@ -3635,6 +3635,7 @@ export const messagesEn = {
   'sprints.settings.timeZoneHint':
     'Days count on this clock, so a sprint that ends at 09:00 still does after a change of summer time.',
   'sprints.settings.unknownTimeZone': 'The server does not know this time zone. Pick another.',
+  'home.signedOut': 'Sign in to see your work, the tickets you follow and what you opened lately.',
   'page.underConstruction': 'This area is under construction.',
   'page.itemCount': '{count, plural, =0 {No items} one {# item} other {# items}}',
   'builder.title': 'Taskmoor Builder',

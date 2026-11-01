@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { useSyncEngine } from '../sync/SyncProvider';
 import {
   type Board,
   type BoardCard,
@@ -131,6 +132,39 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   useEffect(() => {
     void load(filters);
   }, [load, filters]);
+
+  // Changes made elsewhere reach the local copy through the socket (NTF-008 (1): on the board
+  // within a second): the board reads its data again, at most once in 100 ms, and
+  // not while a card is being moved here.
+  const engine = useSyncEngine();
+  const moving = useRef(false);
+  moving.current = busy || dragging !== null;
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  useEffect(() => {
+    if (!engine) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = engine.subscribe(() => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        if (moving.current) return;
+        // Only the cards: the board itself (columns, kind) does not move with a ticket.
+        const mine = ++generation.current;
+        const kind = boardRef.current?.kind;
+        client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined).then(
+          (d) => {
+            if (mine === generation.current) setData(d);
+          },
+          () => {},
+        );
+      }, 100);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
+  }, [engine, client, boardId, filters]);
 
   useEffect(() => {
     if (focusAfter.current === null || !data) return;

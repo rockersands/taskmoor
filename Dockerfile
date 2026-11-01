@@ -4,6 +4,11 @@
 # per-architecture, so a multi-arch build does not compile under emulation.
 ARG NODE_VERSION=22
 
+# Behind a proxy that re-signs TLS (a company's, or a sandbox's), pass its CA as the build
+# secret `build_ca` and the proxy as the usual HTTPS_PROXY build argument:
+#   docker build --network host --secret id=build_ca,src=<ca.pem> --build-arg HTTPS_PROXY=... .
+# The secret is only mounted for the steps that download, never written to a layer, and the
+# proxy arguments are left out of the image's history (docker treats them so).
 FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine AS builder
 WORKDIR /src
 RUN corepack enable
@@ -26,7 +31,9 @@ COPY packages/storage/package.json packages/storage/
 COPY packages/testkit/package.json packages/testkit/
 COPY packages/webconfig/package.json packages/webconfig/
 COPY packages/workflow/package.json packages/workflow/
-RUN pnpm install --frozen-lockfile --ignore-scripts \
+RUN --mount=type=secret,id=build_ca,required=false \
+    if [ -s /run/secrets/build_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/build_ca; fi; \
+    pnpm install --frozen-lockfile --ignore-scripts \
       --filter @taskmoor/server... --filter @taskmoor/web...
 COPY . .
 # Stamped into the frontend artefact and the server bundle alike (M1-105): the server refuses
@@ -39,7 +46,13 @@ ARG TASKMOOR_VERSION=0.0.0-dev
 # pg_dump and pg_restore for `node cli.mjs backup` and `restore` (OPS-008, OPS-009), one client
 # per supported server major (3 MB each): a dump is taken and loaded with the server's own
 # version, since a newer pg_restore emits settings an older server rejects.
-RUN apk add --no-cache postgresql16-client postgresql17-client postgresql18-client
+RUN --mount=type=secret,id=build_ca,required=false \
+    if [ -s /run/secrets/build_ca ]; then \
+      cat /etc/ssl/certs/ca-certificates.crt /run/secrets/build_ca > /tmp/build-ca.pem; \
+      export SSL_CERT_FILE=/tmp/build-ca.pem; \
+    fi; \
+    apk add --no-cache postgresql16-client postgresql17-client postgresql18-client \
+    && rm -f /tmp/build-ca.pem
 ENV NODE_ENV=production \
     TASKMOOR_VERSION=${TASKMOOR_VERSION} \
     TASKMOOR_ROLE=all \

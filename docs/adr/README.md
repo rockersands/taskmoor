@@ -106,5 +106,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [101](0101-agent-runs-with-budgets.md) | Agent runs with budgets that are enforced before they can be passed | Accepted |
 | [096](0096-dc-filters-and-query-translation.md) | Translating saved filters, dashboards and subscriptions from a Data Center backup | Accepted |
 | [097](0097-imported-keys-and-links.md) | Keys and links from the tracker an import came from | Accepted |
+| [105](0105-fresh-machine-harness.md) | The fresh-machine harness: both kits on an empty Docker host, the full journey in a browser | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

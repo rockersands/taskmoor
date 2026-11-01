@@ -29,12 +29,23 @@ database on its own machine.
 
 ## Getting the image
 
-The kits name the image `ghcr.io/rockersands/taskmoor:<version>`. Taskmoor does not yet publish
-release images there, so build the image from a copy of the source:
+The kits name the image `ghcr.io/rockersands/taskmoor:<version>`. Release images will be
+published there, publicly, from release 1.0; until then, build the image from a copy of the
+source:
 
 ```bash
 docker build --build-arg TASKMOOR_VERSION=1.0.0 -t taskmoor:dev .
 docker build -f deploy/allinone/Dockerfile --build-arg BASE=taskmoor:dev -t taskmoor-allinone:dev .
+```
+
+Behind a company proxy that re-signs TLS, give the build the proxy and its certificate
+authority. The certificate is mounted only for the download steps and is never written into the
+image:
+
+```bash
+docker build --network host --secret id=build_ca,src=/path/to/proxy-ca.pem \
+  --build-arg HTTPS_PROXY=http://proxy.example.com:3128 \
+  --build-arg TASKMOOR_VERSION=1.0.0 -t taskmoor:dev .
 ```
 
 The first command builds the main image (`taskmoor:dev` is the name the Compose files use when

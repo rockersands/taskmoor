@@ -93,6 +93,19 @@ describe('the create form (M1-012)', () => {
     expect(screen.queryByRole('region', { name: 'More fields' })).toBeNull();
   });
 
+  it('[CORE-013] choosing the track already chosen keeps its ticket types', async () => {
+    const user = userEvent.setup();
+    openCreate();
+    await screen.findByLabelText('Severity (required)');
+    const track = screen.getByLabelText('Track') as HTMLSelectElement;
+    await user.selectOptions(track, track.value);
+    // The list stays filled and a type stays chosen: found by the fresh-install run (M1-113).
+    const type = screen.getByLabelText('Ticket type') as HTMLSelectElement;
+    expect(type.options.length).toBeGreaterThan(0);
+    expect(type.value).not.toBe('');
+    expect(await screen.findByLabelText('Severity (required)')).toBeVisible();
+  });
+
   it('[WF-007] [CORE-013] shows the fields a person may not set read-only, and says who may', async () => {
     const user = userEvent.setup();
     const calls = openCreate({
