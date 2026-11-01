@@ -63,6 +63,8 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
         '^packages/spikes/',
         // The load-test runner (M1-104): benchmark tooling the server never imports.
         '^apps/server/src/load/',
+        // The AI eval runner (M1-133): eval tooling the server never imports.
+        '^apps/server/src/ai/evals/cli\\.ts$',
         '/testing\\.ts$',
         '^apps/web/src/test/',
       ],
