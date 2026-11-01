@@ -89,6 +89,10 @@ async function instance(
       .flat()
       .find((c) => c.startsWith('taskmoor_session=') && !c.startsWith('taskmoor_session=;'))
       ?.split(';')[0] ?? '';
+  // A fresh install requires a second factor for site administrators (the user's decision of
+  // 2026-11-01); these test servers sign in with passwords only, so they turn it off.
+  // setup.spec.ts and the fresh-install run (e2e-fresh) cover the default.
+  await db.updateTable('two_factor_policy').set({ required: 'none' }).execute();
   const track = await call('/api/v1/tracks', { key: 'RT', name: 'Routes', mode: 'shared' }, cookie);
   await call(
     '/api/v1/tickets',
@@ -230,6 +234,10 @@ async function importInstance() {
   if (setup.statusCode !== 201 && setup.statusCode !== 200) {
     throw new Error(`import e2e setup answered ${setup.statusCode} ${setup.body}`);
   }
+  // A fresh install requires a second factor for site administrators (the user's decision of
+  // 2026-11-01); these test servers sign in with passwords only, so they turn it off.
+  // setup.spec.ts and the fresh-install run (e2e-fresh) cover the default.
+  await db.updateTable('two_factor_policy').set({ required: 'none' }).execute();
   await app.listen({ port: E2E_IMPORT_PORT, host: '127.0.0.1' });
   const runner = new JobRunner(db, 'e2e-imports', { tasks: [IMPORT_TASK] });
   registerImportJobs(runner, db, new FieldCatalogs(db));

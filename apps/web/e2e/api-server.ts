@@ -159,6 +159,10 @@ const attachApps = [
       .find((c) => c.startsWith('taskmoor_session=') && !c.startsWith('taskmoor_session=;'))
       ?.split(';')[0] ?? '';
   if (!cookie) throw new Error(`attachments e2e setup failed: ${setup?.body}`);
+  // A fresh install requires a second factor for site administrators (the user's decision of
+  // 2026-11-01); these test servers sign in with passwords only, so they turn it off.
+  // setup.spec.ts and the fresh-install run (e2e-fresh) cover the default.
+  await attachDb.updateTable('two_factor_policy').set({ required: 'none' }).execute();
   const track = await first?.inject({
     method: 'POST',
     url: '/api/v1/tracks',
