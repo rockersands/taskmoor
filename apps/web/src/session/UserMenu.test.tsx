@@ -158,7 +158,10 @@ describe('user menu', () => {
 
   it('[IAM-001] offers a sign-in link to visitors who are not signed in', async () => {
     render(<App session={{ status: 'anonymous' }} />);
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '#/sign-in');
+    // The top bar's link (the start page offers one too, M1-113).
+    expect(
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' }),
+    ).toHaveAttribute('href', '#/sign-in');
     expect(screen.queryByRole('button', { name: /Kalo/ })).toBeNull();
   });
 

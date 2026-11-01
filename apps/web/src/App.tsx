@@ -627,8 +627,9 @@ function Pages() {
         <InboxPage />
       ) : active === 'home' && signedIn ? (
         <HomePage />
-      ) : active === 'home' ? (
-        // Signed out, as on a fresh install's first visit: say where to start (M1-113).
+      ) : active === 'home' && session.status === 'anonymous' ? (
+        // Signed out, as on a fresh install's first visit: say where to start (M1-113). Not
+        // while the session is still being checked, or a signed-in person would see it flash.
         <>
           <h1 className="page-title">{t('nav.home')}</h1>
           <p className="page-note">
