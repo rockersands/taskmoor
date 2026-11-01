@@ -63,7 +63,9 @@ say an operation does, restated in our own words with a link to the page.
 - **This amends ADR-016:** the conformance test is this suite of written cases, not recorded
   Jira traffic.
   - Recordings may join later, but only of scripts run against Taskmoor, such as the design
-    partners' scripts in the beta (M1-119). They then become cases like the others.
+    partners' scripts in the beta (M1-119, dropped by the user on 2026-11-01: there is no design
+    partner, so recordings come from whoever first runs their own scripts). They then become
+    cases like the others.
   - API-003 (1) asks for at least 500 request and response pairs. Its count is of planned
     runs: about 160 today. It grows with M1-069 and M1-070 as each operation gets the cases its
     shim needs.

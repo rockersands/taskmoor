@@ -75,8 +75,8 @@ and its counts must be known without counting the file afterwards.
   maps: custom fields and values, versions, components, followers and votes, key history,
   workflows, rank, board columns, sprint membership, schemes, filters and dashboards. Each
   addition changes the golden manifest; review it.
-- Every **Verify** line in the notes is a question for the first design partner's backup
-  (M1-119). If a real backup disagrees, the notes, `format.ts`, the generator and the reader
+- Every **Verify** line in the notes is a question for the first real backup imported (the
+  design-partner beta, M1-119, was dropped on 2026-11-01). If a real backup disagrees, the notes, `format.ts`, the generator and the reader
   change together, and the golden manifest shows the change.
 - Measured (the notes, "Measured"): 1,000,000 issues give 9,490,567 rows, a 343 MB ZIP holding a
   1.85 GB entities file and 100,104 attachment files. Writing took 281 s with a live heap of at
