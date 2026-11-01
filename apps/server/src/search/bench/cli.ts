@@ -239,6 +239,48 @@ try {
     return true;
   });
   void conn;
+
+  // Opening a ticket (NFR budget: under 100 ms p95 warm, server response plus render): the
+  // ticket and the requests the ticket page sends with it, in parallel as the browser does, as
+  // the member, for tickets they may see. Each ticket is opened once to warm, then timed.
+  const openRuns = Math.max(20, endpointRuns * 2);
+  const visible =
+    browse.length === 0 ? sql`TRUE` : sql`track_id IN (${sql.join(browse.map((t) => sql`${t}`))})`;
+  const sample = (
+    await sql<{ key: string }>`SELECT key FROM ticket TABLESAMPLE SYSTEM (1)
+      WHERE ${visible} AND deleted_at IS NULL LIMIT ${openRuns}`.execute(db)
+  ).rows.map((r) => r.key);
+  const parts = ['', '/info', '/comments', '/history?limit=20', '/transitions', '/links'];
+  const get = async (url: string) => {
+    const res = await app.inject({
+      method: 'GET',
+      url,
+      headers: { cookie: viewers[0]?.cookie ?? '' },
+      remoteAddress: '127.0.0.1',
+    });
+    if (res.statusCode !== 200) throw new Error(`${url}: ${res.statusCode} ${res.body}`);
+  };
+  const single: number[] = [];
+  const page: number[] = [];
+  for (const key of sample) {
+    const base = `/api/v1/tickets/${encodeURIComponent(key)}`;
+    await Promise.all(parts.map((p) => get(`${base}${p}`)));
+    const t0 = performance.now();
+    await get(base);
+    single.push(performance.now() - t0);
+    const t1 = performance.now();
+    await Promise.all(parts.map((p) => get(`${base}${p}`)));
+    page.push(performance.now() - t1);
+  }
+  const open = {
+    tickets: sample.length,
+    requests: parts.length,
+    ticket: timed(single),
+    page: timed(page),
+  };
+  log(
+    `  open a ticket: ${open.ticket.p95} ms p95; with the page's ${parts.length} requests ${open.page.p95} ms p95`,
+  );
   await app.close();
 
   const server = (await sql<{ v: string }>`SELECT version() AS v`.execute(db)).rows[0]?.v ?? '';
@@ -256,6 +298,7 @@ try {
     },
     names,
     queries: results,
+    open,
   };
   const dataDir = join(ROOT, 'docs', 'spikes', 'data');
   mkdirSync(dataDir, { recursive: true });
@@ -284,6 +327,7 @@ function renderReport(r: {
     count?: number;
     plan: string[];
   }[];
+  open?: { tickets: number; requests: number; ticket: Timed; page: Timed };
 }): string {
   const member = r.queries.filter((q) => q.viewer === 'member');
   const admin = new Map(r.queries.filter((q) => q.viewer === 'admin').map((q) => [q.id, q]));
@@ -294,7 +338,7 @@ function renderReport(r: {
     '',
     `Generated ${r.at.slice(0, 16).replace('T', ' ')} UTC on ${r.machine.cpu} (${r.machine.cores} cores, ${r.machine.memoryGb} GB), ${r.machine.postgres}. ${r.runs} timed runs of each statement after 2 warm-up runs, ${r.endpointRuns} of each request; latency from the client. The 50 queries of \`apps/server/src/search/bench/perf.ts\`, compiled by the production compiler (M1-037) and run as an ordinary member (the person at the tenth percentile of assignments, a member of every other track, one ticket in a hundred at a visibility level they are not in) and as a site administrator.`,
     '',
-    `Budget: p95 under 300 ms at 10M tickets. Slowest statement p95 here: ${worst(member, (q) => q.statement.p95)} ms (member), ${Math.max(...[...admin.values()].map((q) => q.statement.p95))} ms (administrator); slowest request p95: ${worst(member, (q) => q.endpoint?.p95 ?? 0)} ms.`,
+    `Budget: p95 under 300 ms at 1M tickets (10M is an estimate from these runs: decisions.csv, 2026-11-01). Slowest statement p95 here: ${worst(member, (q) => q.statement.p95)} ms (member), ${Math.max(...[...admin.values()].map((q) => q.statement.p95))} ms (administrator); slowest request p95: ${worst(member, (q) => q.endpoint?.p95 ?? 0)} ms.`,
     '',
     '| Query | Text | Rows | Walk | Member p50 | Member p95 | Admin p95 | Request p95 | Count (capped 10,000) |',
     '|---|---|---:|---|---:|---:|---:|---:|---:|',
@@ -303,6 +347,19 @@ function renderReport(r: {
       return `| ${q.id} | \`${q.text.replace(/\|/g, '\\|') || '(all)'}\` | ${q.rows} | ${q.anchored ? 'side table' : 'ticket'} | ${q.statement.p50} | ${q.statement.p95} | ${a?.statement.p95 ?? ''} | ${q.endpoint?.p95 ?? ''} | ${q.count} in ${q.countMs} ms |`;
     }),
     '',
+    ...(r.open
+      ? [
+          '## Opening a ticket (member)',
+          '',
+          `Budget: under 100 ms p95, warm. ${r.open.tickets} tickets the member may see, each opened once to warm and then timed: the ticket alone, and the ticket with the ${r.open.requests - 1} requests the ticket page sends with it (info, comments, history, transitions, links), in parallel.`,
+          '',
+          '| Request | p50 | p95 | Max |',
+          '|---|---:|---:|---:|',
+          `| The ticket | ${r.open.ticket.p50} | ${r.open.ticket.p95} | ${r.open.ticket.max} |`,
+          `| The ticket page's ${r.open.requests} requests | ${r.open.page.p50} | ${r.open.page.p95} | ${r.open.page.max} |`,
+          '',
+        ]
+      : []),
     '## Plans (member)',
     '',
     ...member.flatMap((q) => [`- **${q.id}**: ${q.plan.map((l) => l.trim()).join(' / ')}`]),

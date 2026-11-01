@@ -1,7 +1,7 @@
 {
   "spike": "search",
-  "at": "2026-10-29T07:39:03.296Z",
-  "tickets": 999450,
+  "at": "2026-11-01T23:54:59.932Z",
+  "tickets": 1000491,
   "runs": 20,
   "endpointRuns": 10,
   "machine": {
@@ -14,11 +14,11 @@
     "A": "AA",
     "B": "AC",
     "other": "1",
-    "label": "backend",
-    "label2": "docs",
+    "label": "tech-debt",
+    "label2": "a11y",
     "word": "audit",
-    "word2": "region",
-    "rare": "dark",
+    "word2": "upgrade",
+    "rare": "script",
     "number": "Ethhal number 8",
     "option": "Lovin select 53",
     "optionValue": "Darsol 3",
@@ -31,7 +31,7 @@
     "labelsField": "Tamtor labels 15",
     "labelsValue": "tech-debt",
     "text": "Piris text 6",
-    "textWord": "page",
+    "textWord": "limit",
     "parent": "BK-5",
     "k1": "CG-7",
     "k2": "AC-234",
@@ -46,24 +46,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.2,
-        "p95": 3.02,
-        "max": 3.3
+        "p50": 1.38,
+        "p95": 1.64,
+        "max": 1.73
       },
       "endpoint": {
         "runs": 10,
-        "p50": 29.52,
-        "p95": 36.03,
-        "max": 36.03
+        "p50": 43.79,
+        "p95": 63.39,
+        "max": 63.39
       },
-      "countMs": 20.83,
+      "countMs": 38.98,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -74,24 +72,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.22,
-        "p95": 1.32,
-        "max": 1.47
+        "p50": 1.85,
+        "p95": 2.01,
+        "max": 2.23
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.71,
-        "p95": 36.04,
-        "max": 36.04
+        "p50": 38.59,
+        "p95": 47.41,
+        "max": 47.41
       },
-      "countMs": 10.41,
+      "countMs": 16.03,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -102,24 +98,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.15,
-        "p95": 1.42,
-        "max": 1.45
+        "p50": 1.25,
+        "p95": 1.59,
+        "max": 2.09
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.87,
-        "p95": 46.83,
-        "max": 46.83
+        "p50": 36,
+        "p95": 41.21,
+        "max": 41.21
       },
-      "countMs": 11.54,
+      "countMs": 14.82,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -130,24 +124,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.19,
-        "p95": 1.33,
-        "max": 1.34
+        "p50": 1.32,
+        "p95": 1.47,
+        "max": 1.86
       },
       "endpoint": {
         "runs": 10,
-        "p50": 26.5,
-        "p95": 30.19,
-        "max": 30.19
+        "p50": 36.42,
+        "p95": 38.61,
+        "max": 38.61
       },
-      "countMs": 11.4,
+      "countMs": 15.58,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -158,24 +150,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.96,
-        "p95": 1.17,
-        "max": 1.19
+        "p50": 1.17,
+        "p95": 1.5,
+        "max": 1.53
       },
       "endpoint": {
         "runs": 10,
-        "p50": 27.03,
-        "p95": 36.61,
-        "max": 36.61
+        "p50": 34.25,
+        "p95": 41.73,
+        "max": 41.73
       },
-      "countMs": 8.53,
+      "countMs": 10.77,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -186,24 +176,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.89,
-        "p95": 1.03,
-        "max": 2.88
+        "p50": 1.42,
+        "p95": 1.76,
+        "max": 3.33
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.76,
-        "p95": 55.51,
-        "max": 55.51
+        "p50": 38.41,
+        "p95": 43.13,
+        "max": 43.13
       },
-      "countMs": 9.05,
+      "countMs": 14.3,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan Backward using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -214,24 +202,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.58,
-        "p95": 2.07,
-        "max": 3.4
+        "p50": 1.62,
+        "p95": 1.98,
+        "max": 2.18
       },
       "endpoint": {
         "runs": 10,
-        "p50": 30.59,
-        "p95": 32.19,
-        "max": 32.19
+        "p50": 35.75,
+        "p95": 40.11,
+        "max": 40.11
       },
-      "countMs": 177.62,
+      "countMs": 173.62,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -242,24 +228,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.42,
-        "p95": 1.93,
-        "max": 2.28
+        "p50": 1.62,
+        "p95": 2.39,
+        "max": 2.44
       },
       "endpoint": {
         "runs": 10,
-        "p50": 26.92,
-        "p95": 36.47,
-        "max": 36.47
+        "p50": 34.46,
+        "p95": 42.8,
+        "max": 42.8
       },
-      "countMs": 139.81,
+      "countMs": 173.18,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -270,17 +254,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.09,
-        "p95": 1.23,
-        "max": 1.28
+        "p50": 1.79,
+        "p95": 2.08,
+        "max": 4.76
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.39,
-        "p95": 32.41,
-        "max": 32.41
+        "p50": 41.48,
+        "p95": 50.69,
+        "max": 50.69
       },
-      "countMs": 18.62,
+      "countMs": 28.27,
       "count": 10001,
       "plan": [
         "Limit",
@@ -290,31 +274,29 @@
         "              ->  Incremental Sort",
         "                    Sort Key: k.number, k.id",
         "                    ->  Index Scan using ticket_track_number_key on ticket k",
-        "                            ->  Bitmap Heap Scan on track_role_actor a",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                            ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "mine-open",
       "text": "assignee = currentUser() AND stage != closed ORDER BY priority DESC, created DESC",
       "viewer": "member",
-      "rows": 40,
+      "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 3.33,
-        "p95": 3.93,
-        "max": 4.16
+        "p50": 3.74,
+        "p95": 4.9,
+        "max": 5.55
       },
       "endpoint": {
         "runs": 10,
-        "p50": 27.84,
-        "p95": 34.67,
-        "max": 34.67
+        "p50": 49.84,
+        "p95": 54.65,
+        "max": 54.65
       },
-      "countMs": 1.11,
-      "count": 40,
+      "countMs": 1.42,
+      "count": 53,
       "plan": [
         "Limit",
         "  ->  Sort",
@@ -323,90 +305,72 @@
         "                    ->  Sort",
         "                          Sort Key: k.created_at DESC, k.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k",
-        "                                  ->  Index Scan using track_role_actor_unique_idx on track_role_actor a",
+        "                                  ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_1.created_at DESC, k_1.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_1",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_1",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_2.created_at DESC, k_2.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_2",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_2",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_2",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_3.created_at DESC, k_3.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_3",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_3",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_3",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_4.created_at DESC, k_4.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_4",
-        "                                  ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_4"
+        "                                  ->  Seq Scan on track_role_actor a_4"
       ]
     },
     {
       "id": "mine-open-p2",
       "text": "assignee = currentUser() AND stage != closed ORDER BY priority DESC, created DESC",
       "viewer": "member",
-      "rows": 40,
+      "rows": 3,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 3.41,
-        "p95": 4.69,
-        "max": 6.04
+        "p50": 2.54,
+        "p95": 2.84,
+        "max": 2.85
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.84,
-        "p95": 47.34,
-        "max": 47.34
+        "p50": 30.67,
+        "p95": 33.1,
+        "max": 33.1
       },
-      "countMs": 1.2,
-      "count": 40,
+      "countMs": 1.68,
+      "count": 53,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key:",
         "              ->  Limit",
         "                    ->  Sort",
+        "                          Sort Key: created_at DESC, id DESC",
+        "              ->  Limit",
+        "                    ->  Sort",
+        "                          Sort Key: created_at DESC, id DESC",
+        "              ->  Limit",
+        "                    ->  Sort",
+        "                          Sort Key: created_at DESC, id DESC",
+        "              ->  Limit",
+        "                    ->  Sort",
         "                          Sort Key: k.created_at DESC, k.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k",
-        "                                  ->  Index Scan using track_role_actor_unique_idx on track_role_actor a",
+        "                                  ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_1.created_at DESC, k_1.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_1",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
-        "              ->  Limit",
-        "                    ->  Sort",
-        "                          Sort Key: k_2.created_at DESC, k_2.id DESC",
-        "                          ->  Index Scan using ticket_assignee_idx on ticket k_2",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_2",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
-        "              ->  Limit",
-        "                    ->  Sort",
-        "                          Sort Key: k_3.created_at DESC, k_3.id DESC",
-        "                          ->  Index Scan using ticket_assignee_idx on ticket k_3",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_3",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
-        "              ->  Limit",
-        "                    ->  Sort",
-        "                          Sort Key: k_4.created_at DESC, k_4.id DESC",
-        "                          ->  Index Scan using ticket_assignee_idx on ticket k_4",
-        "                                  ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_4"
+        "                                  ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -417,26 +381,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.19,
-        "p95": 2.58,
-        "max": 5.51
+        "p50": 1.65,
+        "p95": 1.95,
+        "max": 2.07
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.66,
-        "p95": 33.09,
-        "max": 33.09
+        "p50": 34.91,
+        "p95": 47.49,
+        "max": 47.49
       },
-      "countMs": 1.02,
-      "count": 97,
+      "countMs": 1.6,
+      "count": 110,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.updated_at DESC, k.id DESC",
         "        ->  Index Scan using ticket_assignee_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -447,26 +409,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.08,
-        "p95": 1.36,
-        "max": 1.55
+        "p50": 1.36,
+        "p95": 1.61,
+        "max": 2.38
       },
       "endpoint": {
         "runs": 10,
-        "p50": 26.37,
-        "p95": 53.45,
-        "max": 53.45
+        "p50": 31.84,
+        "p95": 44.19,
+        "max": 44.19
       },
-      "countMs": 1.04,
-      "count": 118,
+      "countMs": 1.55,
+      "count": 139,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at DESC, k.id DESC",
         "        ->  Index Scan using ticket_requester_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -477,18 +437,18 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.49,
-        "p95": 1.77,
-        "max": 2.27
+        "p50": 1.7,
+        "p95": 2.78,
+        "max": 4.39
       },
       "endpoint": {
         "runs": 10,
-        "p50": 24.78,
-        "p95": 27.36,
-        "max": 27.36
+        "p50": 41.98,
+        "p95": 49.57,
+        "max": 49.57
       },
-      "countMs": 1.67,
-      "count": 94,
+      "countMs": 2.53,
+      "count": 123,
       "plan": [
         "Limit",
         "  ->  Sort",
@@ -496,9 +456,7 @@
         "        ->  Bitmap Heap Scan on ticket k",
         "                    ->  Bitmap Index Scan on ticket_assignee_idx",
         "                    ->  Bitmap Index Scan on ticket_requester_idx",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -509,24 +467,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.3,
-        "p95": 1.89,
-        "max": 2.31
+        "p50": 1.77,
+        "p95": 2.04,
+        "max": 2.12
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.41,
-        "p95": 32.08,
-        "max": 32.08
+        "p50": 40.91,
+        "p95": 46.93,
+        "max": 46.93
       },
-      "countMs": 279.35,
+      "countMs": 369.05,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -537,24 +493,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.8,
-        "p95": 2.78,
-        "max": 2.96
+        "p50": 2.6,
+        "p95": 3.41,
+        "max": 4.44
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.41,
-        "p95": 31.22,
-        "max": 31.22
+        "p50": 39.08,
+        "p95": 56.44,
+        "max": 56.44
       },
-      "countMs": 285.3,
+      "countMs": 332.04,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -565,24 +519,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.46,
-        "p95": 1.69,
-        "max": 2.48
+        "p50": 1.94,
+        "p95": 3.78,
+        "max": 3.81
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.82,
-        "p95": 32.41,
-        "max": 32.41
+        "p50": 38.39,
+        "p95": 52.97,
+        "max": 52.97
       },
-      "countMs": 350.14,
+      "countMs": 372.82,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -593,24 +545,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.07,
-        "p95": 1.19,
-        "max": 1.33
+        "p50": 1.4,
+        "p95": 1.62,
+        "max": 1.82
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.8,
-        "p95": 28.1,
-        "max": 28.1
+        "p50": 40.06,
+        "p95": 48.43,
+        "max": 48.43
       },
-      "countMs": 49.58,
+      "countMs": 66.61,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -621,24 +571,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.99,
-        "p95": 1.37,
-        "max": 1.53
+        "p50": 1.78,
+        "p95": 2.01,
+        "max": 2.06
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.49,
-        "p95": 31.3,
-        "max": 31.3
+        "p50": 34.9,
+        "p95": 52.99,
+        "max": 52.99
       },
-      "countMs": 154.85,
+      "countMs": 209.07,
       "count": 8003,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_priority_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -649,17 +597,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.64,
-        "p95": 4.05,
-        "max": 4.24
+        "p50": 3.74,
+        "p95": 5.69,
+        "max": 6.13
       },
       "endpoint": {
         "runs": 10,
-        "p50": 31.21,
-        "p95": 37,
-        "max": 37
+        "p50": 38.57,
+        "p95": 42.73,
+        "max": 42.73
       },
-      "countMs": 162.18,
+      "countMs": 206.75,
       "count": 10001,
       "plan": [
         "Limit",
@@ -667,14 +615,10 @@
         "        Sort Key:",
         "              ->  Limit",
         "                    ->  Index Scan using ticket_track_updated_idx on ticket k",
-        "                            ->  Bitmap Heap Scan on track_role_actor a",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                            ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Index Scan using ticket_track_updated_idx on ticket k_1",
-        "                            ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                            ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -685,17 +629,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 4.4,
-        "p95": 4.93,
-        "max": 5.58
+        "p50": 4.29,
+        "p95": 6.32,
+        "max": 6.85
       },
       "endpoint": {
         "runs": 10,
-        "p50": 29.02,
-        "p95": 33.03,
-        "max": 33.03
+        "p50": 42.06,
+        "p95": 54.08,
+        "max": 54.08
       },
-      "countMs": 396.43,
+      "countMs": 537.08,
       "count": 10001,
       "plan": [
         "Limit",
@@ -703,70 +647,62 @@
         "        Sort Key:",
         "              ->  Limit",
         "                    ->  Index Scan Backward using ticket_priority_created_idx on ticket k",
-        "                            ->  Bitmap Heap Scan on track_role_actor a",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                            ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Index Scan Backward using ticket_priority_created_idx on ticket k_1",
-        "                            ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                            ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
       "id": "labels-in",
-      "text": "labels IN (backend, docs) ORDER BY created DESC",
+      "text": "labels IN (tech-debt, a11y) ORDER BY created DESC",
       "viewer": "member",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.43,
-        "p95": 1.85,
-        "max": 1.98
+        "p50": 1.53,
+        "p95": 2.04,
+        "max": 2.12
       },
       "endpoint": {
         "runs": 10,
-        "p50": 27.41,
-        "p95": 34.28,
-        "max": 34.28
+        "p50": 33.6,
+        "p95": 37.64,
+        "max": 37.64
       },
-      "countMs": 135.31,
+      "countMs": 190.9,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "label-track",
-      "text": "labels = backend AND track = AA",
+      "text": "labels = tech-debt AND track = AA",
       "viewer": "member",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.23,
-        "p95": 2.55,
-        "max": 2.58
+        "p50": 2.05,
+        "p95": 2.43,
+        "max": 2.43
       },
       "endpoint": {
         "runs": 10,
-        "p50": 39.24,
-        "p95": 47.88,
-        "max": 47.88
+        "p50": 32.83,
+        "p95": 42.55,
+        "max": 42.55
       },
-      "countMs": 119.44,
-      "count": 8132,
+      "countMs": 135.2,
+      "count": 8150,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -777,24 +713,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.34,
-        "p95": 1.5,
-        "max": 3.68
+        "p50": 1.19,
+        "p95": 1.39,
+        "max": 1.46
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.69,
-        "p95": 34.33,
-        "max": 34.33
+        "p50": 33.21,
+        "p95": 42.93,
+        "max": 42.93
       },
-      "countMs": 51.85,
+      "countMs": 57.38,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -805,46 +739,44 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 3.38,
-        "p95": 3.87,
-        "max": 4.26
+        "p50": 1.65,
+        "p95": 2.01,
+        "max": 2.13
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.24,
-        "p95": 33.39,
-        "max": 33.39
+        "p50": 31.14,
+        "p95": 35.61,
+        "max": 35.61
       },
-      "countMs": 161.03,
+      "countMs": 164.8,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "summary-two-words",
-      "text": "summary ~ \"audit region\" ORDER BY created DESC",
+      "text": "summary ~ \"audit upgrade\" ORDER BY created DESC",
       "viewer": "member",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 86.87,
-        "p95": 116.21,
-        "max": 116.95
+        "p50": 84.94,
+        "p95": 113.08,
+        "max": 115.82
       },
       "endpoint": {
         "runs": 10,
-        "p50": 120.75,
-        "p95": 178.67,
-        "max": 178.67
+        "p50": 131.58,
+        "p95": 170.58,
+        "max": 170.58
       },
-      "countMs": 89.51,
-      "count": 3473,
+      "countMs": 84.66,
+      "count": 3387,
       "plan": [
         "Limit",
         "  ->  Sort",
@@ -852,37 +784,33 @@
         "        ->  Bitmap Heap Scan on ticket k",
         "                    ->  Bitmap Index Scan on ticket_summary_words_idx",
         "                    ->  Bitmap Index Scan on ticket_track_number_key",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "summary-rare",
-      "text": "summary ~ dark ORDER BY created DESC",
+      "text": "summary ~ script ORDER BY created DESC",
       "viewer": "member",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 7.03,
-        "p95": 9.79,
-        "max": 9.89
+        "p50": 2.45,
+        "p95": 2.68,
+        "max": 2.79
       },
       "endpoint": {
         "runs": 10,
-        "p50": 34.25,
-        "p95": 44.04,
-        "max": 44.04
+        "p50": 35.56,
+        "p95": 38.72,
+        "max": 38.72
       },
-      "countMs": 160.42,
+      "countMs": 144.55,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -893,17 +821,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.97,
-        "p95": 1.17,
-        "max": 1.18
+        "p50": 0.95,
+        "p95": 1.2,
+        "max": 1.42
       },
       "endpoint": {
         "runs": 10,
-        "p50": 6.87,
-        "p95": 7.95,
-        "max": 7.95
+        "p50": 10.97,
+        "p95": 12.7,
+        "max": 12.7
       },
-      "countMs": 0.87,
+      "countMs": 1.08,
       "count": 0,
       "plan": [
         "Limit",
@@ -912,9 +840,7 @@
         "        ->  Bitmap Heap Scan on ticket k",
         "                    ->  Bitmap Index Scan on ticket_description_words_idx",
         "                    ->  Bitmap Index Scan on ticket_track_number_key",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -925,24 +851,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.24,
-        "p95": 1.44,
-        "max": 1.88
+        "p50": 1.22,
+        "p95": 1.48,
+        "max": 1.51
       },
       "endpoint": {
         "runs": 10,
-        "p50": 23.14,
-        "p95": 26.65,
-        "max": 26.65
+        "p50": 10.81,
+        "p95": 13.87,
+        "max": 13.87
       },
-      "countMs": 27.12,
+      "countMs": 43.87,
       "count": 1146,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -953,24 +877,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.83,
-        "p95": 0.98,
-        "max": 0.99
+        "p50": 0.96,
+        "p95": 1.26,
+        "max": 1.69
       },
       "endpoint": {
         "runs": 10,
-        "p50": 7.6,
-        "p95": 11.47,
-        "max": 11.47
+        "p50": 11.31,
+        "p95": 13.86,
+        "max": 13.86
       },
-      "countMs": 1.85,
+      "countMs": 2.39,
       "count": 1235,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -981,24 +903,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.88,
-        "p95": 3.84,
-        "max": 5.82
+        "p50": 1.06,
+        "p95": 1.39,
+        "max": 1.43
       },
       "endpoint": {
         "runs": 10,
-        "p50": 8.64,
-        "p95": 14.02,
-        "max": 14.02
+        "p50": 12.18,
+        "p95": 15.93,
+        "max": 15.93
       },
-      "countMs": 7.93,
+      "countMs": 10.85,
       "count": 3708,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1009,24 +929,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.15,
-        "p95": 2.04,
-        "max": 2.05
+        "p50": 1.6,
+        "p95": 1.9,
+        "max": 1.91
       },
       "endpoint": {
         "runs": 10,
-        "p50": 24.02,
-        "p95": 28.33,
-        "max": 28.33
+        "p50": 32.46,
+        "p95": 38.75,
+        "max": 38.75
       },
-      "countMs": 41.08,
+      "countMs": 54.17,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan Backward using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1037,26 +955,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.59,
-        "p95": 4.67,
-        "max": 6.53
+        "p50": 4.38,
+        "p95": 5.63,
+        "max": 7.76
       },
       "endpoint": {
         "runs": 10,
-        "p50": 8.83,
-        "p95": 14.22,
-        "max": 14.22
+        "p50": 10.96,
+        "p95": 12.56,
+        "max": 12.56
       },
-      "countMs": 2.42,
+      "countMs": 3.83,
       "count": 1402,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.closed_at DESC NULLS LAST, k.id DESC",
         "        ->  Index Scan using ticket_closed_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1067,24 +983,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.16,
-        "p95": 1.53,
-        "max": 1.77
+        "p50": 1.4,
+        "p95": 1.5,
+        "max": 1.57
       },
       "endpoint": {
         "runs": 10,
-        "p50": 29.47,
-        "p95": 44.43,
-        "max": 44.43
+        "p50": 33.82,
+        "p95": 46.47,
+        "max": 46.47
       },
-      "countMs": 3.01,
-      "count": 326,
+      "countMs": 3.71,
+      "count": 331,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_due_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1095,17 +1009,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 1.79,
-        "p95": 4.38,
-        "max": 4.63
+        "p50": 1.82,
+        "p95": 2.12,
+        "max": 2.14
       },
       "endpoint": {
         "runs": 10,
-        "p50": 29.95,
-        "p95": 35.2,
-        "max": 35.2
+        "p50": 31.66,
+        "p95": 40.13,
+        "max": 40.13
       },
-      "countMs": 86.54,
+      "countMs": 99.07,
       "count": 2138,
       "plan": [
         "Limit",
@@ -1114,7 +1028,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan Backward using v_number_track_field_value_idx on v_number a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_1"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -1125,25 +1039,23 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.66,
-        "p95": 1.74,
-        "max": 1.77
+        "p50": 1.64,
+        "p95": 1.88,
+        "max": 1.93
       },
       "endpoint": {
         "runs": 10,
-        "p50": 29.43,
-        "p95": 37.07,
-        "max": 37.07
+        "p50": 32.4,
+        "p95": 40.28,
+        "max": 40.28
       },
-      "countMs": 121.41,
+      "countMs": 147.69,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Nested Loop Anti Join",
         "        ->  Index Scan using ticket_track_created_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                ->  Seq Scan on track_role_actor a",
         "        ->  Index Only Scan using v_number_pkey on v_number v"
       ]
     },
@@ -1155,17 +1067,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 1.93,
-        "p95": 4.46,
-        "max": 4.77
+        "p50": 2.39,
+        "p95": 3.16,
+        "max": 3.79
       },
       "endpoint": {
         "runs": 10,
-        "p50": 33.49,
-        "p95": 37.13,
-        "max": 37.13
+        "p50": 37.16,
+        "p95": 41.01,
+        "max": 41.01
       },
-      "countMs": 8.99,
+      "countMs": 11.57,
       "count": 272,
       "plan": [
         "Limit",
@@ -1174,7 +1086,7 @@
         "        ->  Nested Loop",
         "              ->  Index Scan using v_number_field_value_idx on v_number a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_1"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -1185,17 +1097,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 6.22,
-        "p95": 8.07,
-        "max": 12.04
+        "p50": 7.24,
+        "p95": 9.8,
+        "max": 9.84
       },
       "endpoint": {
         "runs": 10,
-        "p50": 33.53,
-        "p95": 48.39,
-        "max": 48.39
+        "p50": 42.53,
+        "p95": 51.18,
+        "max": 51.18
       },
-      "countMs": 12.68,
+      "countMs": 11.93,
       "count": 132,
       "plan": [
         "Limit",
@@ -1204,7 +1116,7 @@
         "        ->  Nested Loop",
         "              ->  Index Scan using v_option_field_value_idx on v_option a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_1"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -1215,27 +1127,28 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 9.88,
-        "p95": 13.99,
-        "max": 15.73
+        "p50": 12.67,
+        "p95": 16.83,
+        "max": 18.3
       },
       "endpoint": {
         "runs": 10,
-        "p50": 34.22,
-        "p95": 42.96,
-        "max": 42.96
+        "p50": 41.98,
+        "p95": 45.97,
+        "max": 45.97
       },
-      "countMs": 8.65,
+      "countMs": 12.17,
       "count": 838,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.updated_at DESC, k.id DESC",
         "        ->  Nested Loop",
-        "              ->  HashAggregate",
-        "                    ->  Index Only Scan using v_option_field_value_idx on v_option v",
+        "                    ->  Sort",
+        "                          Sort Key: v.ticket_id",
+        "                          ->  Index Only Scan using v_option_field_value_idx on v_option v",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1246,17 +1159,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 3.74,
-        "p95": 7.28,
-        "max": 9.27
+        "p50": 7.29,
+        "p95": 7.99,
+        "max": 8.02
       },
       "endpoint": {
         "runs": 10,
-        "p50": 10.64,
-        "p95": 15.58,
-        "max": 15.58
+        "p50": 19.84,
+        "p95": 21.73,
+        "max": 21.73
       },
-      "countMs": 16.06,
+      "countMs": 30.3,
       "count": 658,
       "plan": [
         "Limit",
@@ -1265,29 +1178,29 @@
         "        ->  Nested Loop",
         "              ->  Index Scan using v_date_field_value_idx on v_date a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_1"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
       "id": "user-field-mine",
       "text": "\"Juneth user 11\" = currentUser() ORDER BY updated DESC",
       "viewer": "member",
-      "rows": 2,
+      "rows": 4,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 3.61,
-        "p95": 3.93,
-        "max": 5.01
+        "p50": 6.45,
+        "p95": 7.4,
+        "max": 7.51
       },
       "endpoint": {
         "runs": 10,
-        "p50": 15.4,
-        "p95": 23.88,
-        "max": 23.88
+        "p50": 24.47,
+        "p95": 28.35,
+        "max": 28.35
       },
-      "countMs": 3.1,
-      "count": 2,
+      "countMs": 3.65,
+      "count": 4,
       "plan": [
         "Limit",
         "  ->  Sort",
@@ -1295,7 +1208,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_user_field_value_idx on v_user v",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1306,17 +1219,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 9.7,
-        "p95": 12.88,
-        "max": 38.27
+        "p50": 11.35,
+        "p95": 12.51,
+        "max": 14.14
       },
       "endpoint": {
         "runs": 10,
-        "p50": 38.79,
-        "p95": 44.7,
-        "max": 44.7
+        "p50": 40.63,
+        "p95": 43.6,
+        "max": 43.6
       },
-      "countMs": 26.31,
+      "countMs": 32.47,
       "count": 1383,
       "plan": [
         "Limit",
@@ -1326,7 +1239,7 @@
         "              ->  Nested Loop",
         "                    ->  Index Scan using v_option_field_created_idx on v_option a",
         "                    ->  Index Scan using ticket_pkey on ticket k",
-        "                            ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_1",
+        "                            ->  Seq Scan on track_role_actor a_1",
         "              ->  Index Only Scan using v_option_pkey on v_option b"
       ]
     },
@@ -1338,17 +1251,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 5.76,
-        "p95": 8.81,
-        "max": 10.22
+        "p50": 8.58,
+        "p95": 10.76,
+        "max": 10.8
       },
       "endpoint": {
         "runs": 10,
-        "p50": 35.53,
-        "p95": 47.72,
-        "max": 47.72
+        "p50": 42.07,
+        "p95": 44.52,
+        "max": 44.52
       },
-      "countMs": 9.38,
+      "countMs": 10.88,
       "count": 286,
       "plan": [
         "Limit",
@@ -1357,7 +1270,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_option_track_field_value_idx on v_option a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_1"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -1368,17 +1281,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 2.55,
-        "p95": 3.44,
-        "max": 3.54
+        "p50": 2.69,
+        "p95": 3.14,
+        "max": 3.21
       },
       "endpoint": {
         "runs": 10,
-        "p50": 29.54,
-        "p95": 41.31,
-        "max": 41.31
+        "p50": 33.52,
+        "p95": 42.32,
+        "max": 42.32
       },
-      "countMs": 21.95,
+      "countMs": 22.27,
       "count": 1477,
       "plan": [
         "Limit",
@@ -1387,38 +1300,40 @@
         "        ->  Nested Loop",
         "              ->  Index Scan using v_text_field_value_idx on v_text a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a_1"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
       "id": "text-field",
-      "text": "\"Piris text 6\" ~ page ORDER BY created DESC",
+      "text": "\"Piris text 6\" ~ limit ORDER BY created DESC",
       "viewer": "member",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 39.94,
-        "p95": 59.71,
-        "max": 87.21
+        "p50": 59.54,
+        "p95": 78.12,
+        "max": 81.62
       },
       "endpoint": {
         "runs": 10,
-        "p50": 74.16,
-        "p95": 114.51,
-        "max": 114.51
+        "p50": 105.07,
+        "p95": 141.37,
+        "max": 141.37
       },
-      "countMs": 37.71,
-      "count": 804,
+      "countMs": 58.88,
+      "count": 362,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at DESC, k.id DESC",
         "        ->  Nested Loop",
         "              ->  HashAggregate",
-        "                          ->  Parallel Index Only Scan using v_text_field_created_idx on v_text v",
+        "                    ->  Bitmap Heap Scan on v_text v",
+        "                                ->  Bitmap Index Scan on v_text_field_sort_idx",
+        "                                ->  Bitmap Index Scan on v_text_words_idx",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1429,26 +1344,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.95,
-        "p95": 1.13,
-        "max": 1.43
+        "p50": 1.63,
+        "p95": 1.86,
+        "max": 3.41
       },
       "endpoint": {
         "runs": 10,
-        "p50": 23.29,
-        "p95": 29.75,
-        "max": 29.75
+        "p50": 37.47,
+        "p95": 43.66,
+        "max": 43.66
       },
-      "countMs": 0.94,
+      "countMs": 1.4,
       "count": 67,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at, k.id",
         "        ->  Index Scan using ticket_parent_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1459,26 +1372,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.98,
-        "p95": 1.28,
-        "max": 1.64
+        "p50": 1.09,
+        "p95": 1.57,
+        "max": 6.25
       },
       "endpoint": {
         "runs": 10,
-        "p50": 13.86,
-        "p95": 17.17,
-        "max": 17.17
+        "p50": 21.51,
+        "p95": 37.39,
+        "max": 37.39
       },
-      "countMs": 0.98,
+      "countMs": 1.76,
       "count": 3,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at DESC, k.id DESC",
         "        ->  Index Scan using ticket_pkey on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1489,24 +1400,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.7,
-        "p95": 3.75,
-        "max": 5.62
+        "p50": 2.15,
+        "p95": 3.64,
+        "max": 4.12
       },
       "endpoint": {
         "runs": 10,
-        "p50": 22.88,
-        "p95": 30.45,
-        "max": 30.45
+        "p50": 25.87,
+        "p95": 34.41,
+        "max": 34.41
       },
-      "countMs": 116.54,
+      "countMs": 150.96,
       "count": 7808,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1517,18 +1426,18 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.59,
-        "p95": 2.99,
-        "max": 3.4
+        "p50": 2.34,
+        "p95": 2.71,
+        "max": 3.42
       },
       "endpoint": {
         "runs": 10,
-        "p50": 27.91,
-        "p95": 36.43,
-        "max": 36.43
+        "p50": 28.89,
+        "p95": 30.72,
+        "max": 30.72
       },
-      "countMs": 2.09,
-      "count": 151,
+      "countMs": 1.83,
+      "count": 180,
       "plan": [
         "Limit",
         "  ->  Sort",
@@ -1537,35 +1446,33 @@
         "              ->  HashAggregate",
         "                    ->  Index Scan using ticket_follower_user_idx on ticket_follower r",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Index Scan using track_role_actor_unique_idx on track_role_actor a"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "not-or-tracks",
-      "text": "NOT (labels IN (backend) OR type = Subticket) AND track IN (AA, AC) ORDER BY created DESC",
+      "text": "NOT (labels IN (tech-debt) OR type = Subticket) AND track IN (AA, AC) ORDER BY created DESC",
       "viewer": "member",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.44,
-        "p95": 1.66,
-        "max": 2
+        "p50": 1.43,
+        "p95": 1.86,
+        "max": 1.89
       },
       "endpoint": {
         "runs": 10,
-        "p50": 24.63,
-        "p95": 37.03,
-        "max": 37.03
+        "p50": 28.07,
+        "p95": 31.22,
+        "max": 31.22
       },
-      "countMs": 77.49,
+      "countMs": 74.84,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1576,24 +1483,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.77,
-        "p95": 1.09,
-        "max": 1.14
+        "p50": 0.75,
+        "p95": 1.06,
+        "max": 1.09
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.76,
-        "p95": 24.95,
-        "max": 24.95
+        "p50": 27.4,
+        "p95": 38.2,
+        "max": 38.2
       },
-      "countMs": 5.45,
+      "countMs": 7.1,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1604,24 +1509,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.74,
-        "p95": 1.05,
-        "max": 1.2
+        "p50": 0.83,
+        "p95": 1.07,
+        "max": 1.23
       },
       "endpoint": {
         "runs": 10,
-        "p50": 21.22,
-        "p95": 28.83,
-        "max": 28.83
+        "p50": 27.02,
+        "p95": 30.16,
+        "max": 30.16
       },
-      "countMs": 5.44,
+      "countMs": 7.03,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1632,24 +1535,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.74,
-        "p95": 0.9,
-        "max": 1.12
+        "p50": 0.58,
+        "p95": 0.82,
+        "max": 1.22
       },
       "endpoint": {
         "runs": 10,
-        "p50": 24.17,
-        "p95": 32.1,
-        "max": 32.1
+        "p50": 23.34,
+        "p95": 25.01,
+        "max": 25.01
       },
-      "countMs": 8.49,
+      "countMs": 7.02,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1660,24 +1561,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.82,
-        "p95": 1.05,
-        "max": 2.73
+        "p50": 0.6,
+        "p95": 1.11,
+        "max": 1.11
       },
       "endpoint": {
         "runs": 10,
-        "p50": 17.88,
-        "p95": 25.19,
-        "max": 25.19
+        "p50": 24.31,
+        "p95": 27.44,
+        "max": 27.44
       },
-      "countMs": 25.71,
+      "countMs": 23.99,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1688,24 +1587,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.95,
-        "p95": 1.07,
-        "max": 1.16
+        "p50": 1.35,
+        "p95": 1.61,
+        "max": 3.32
       },
       "endpoint": {
         "runs": 10,
-        "p50": 26.34,
-        "p95": 35.39,
-        "max": 35.39
+        "p50": 24.09,
+        "p95": 29.46,
+        "max": 29.46
       },
-      "countMs": 13.03,
+      "countMs": 13.76,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1716,24 +1613,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.53,
-        "p95": 0.75,
-        "max": 0.75
+        "p50": 0.83,
+        "p95": 1.16,
+        "max": 1.4
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.23,
-        "p95": 24.62,
-        "max": 24.62
+        "p50": 24.05,
+        "p95": 30.46,
+        "max": 30.46
       },
-      "countMs": 8.73,
+      "countMs": 11.43,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan Backward using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1744,24 +1639,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.04,
-        "p95": 1.23,
-        "max": 3.84
+        "p50": 1.15,
+        "p95": 1.6,
+        "max": 1.6
       },
       "endpoint": {
         "runs": 10,
-        "p50": 22.76,
-        "p95": 30.52,
-        "max": 30.52
+        "p50": 27.82,
+        "p95": 35.15,
+        "max": 35.15
       },
-      "countMs": 126.3,
+      "countMs": 175.76,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1772,24 +1665,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.03,
-        "p95": 1.52,
-        "max": 1.67
+        "p50": 1.56,
+        "p95": 1.91,
+        "max": 1.99
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.04,
-        "p95": 22.18,
-        "max": 22.18
+        "p50": 25.27,
+        "p95": 31.01,
+        "max": 31.01
       },
-      "countMs": 131.17,
+      "countMs": 168.42,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1800,17 +1691,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.79,
-        "p95": 1.01,
-        "max": 1.5
+        "p50": 1,
+        "p95": 1.12,
+        "max": 1.14
       },
       "endpoint": {
         "runs": 10,
-        "p50": 22.18,
-        "p95": 29.6,
-        "max": 29.6
+        "p50": 28.47,
+        "p95": 32.97,
+        "max": 32.97
       },
-      "countMs": 16.9,
+      "countMs": 29.01,
       "count": 10001,
       "plan": [
         "Limit",
@@ -1820,9 +1711,7 @@
         "              ->  Incremental Sort",
         "                    Sort Key: k.number, k.id",
         "                    ->  Index Scan using ticket_track_number_key on ticket k",
-        "                            ->  Bitmap Heap Scan on track_role_actor a",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                            ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1833,17 +1722,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.45,
-        "p95": 3.72,
-        "max": 15.21
+        "p50": 1.83,
+        "p95": 4.05,
+        "max": 5.93
       },
       "endpoint": {
         "runs": 10,
-        "p50": 8.16,
-        "p95": 11.8,
-        "max": 11.8
+        "p50": 13.61,
+        "p95": 26.03,
+        "max": 26.03
       },
-      "countMs": 0.9,
+      "countMs": 1.02,
       "count": 0,
       "plan": [
         "Limit",
@@ -1853,37 +1742,27 @@
         "                    ->  Sort",
         "                          Sort Key: k.created_at DESC, k.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_1.created_at DESC, k_1.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_1",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_1",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_2.created_at DESC, k_2.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_2",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_2",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_2",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_3.created_at DESC, k_3.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_3",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_3",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_3",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_4.created_at DESC, k_4.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_4",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_4",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                                  ->  Seq Scan on track_role_actor a_4"
       ]
     },
     {
@@ -1894,17 +1773,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.74,
-        "p95": 1.98,
-        "max": 2.03
+        "p50": 1.91,
+        "p95": 3.17,
+        "max": 3.22
       },
       "endpoint": {
         "runs": 10,
-        "p50": 6.67,
-        "p95": 8.7,
-        "max": 8.7
+        "p50": 10.67,
+        "p95": 12.84,
+        "max": 12.84
       },
-      "countMs": 0.7,
+      "countMs": 0.97,
       "count": 0,
       "plan": [
         "Limit",
@@ -1914,37 +1793,27 @@
         "                    ->  Sort",
         "                          Sort Key: k.created_at DESC, k.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_1.created_at DESC, k_1.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_1",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_1",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_2.created_at DESC, k_2.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_2",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_2",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_2",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_3.created_at DESC, k_3.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_3",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_3",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                                  ->  Seq Scan on track_role_actor a_3",
         "              ->  Limit",
         "                    ->  Sort",
         "                          Sort Key: k_4.created_at DESC, k_4.id DESC",
         "                          ->  Index Scan using ticket_assignee_idx on ticket k_4",
-        "                                  ->  Bitmap Heap Scan on track_role_actor a_4",
-        "                                              ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                              ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                                  ->  Seq Scan on track_role_actor a_4"
       ]
     },
     {
@@ -1955,26 +1824,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.46,
-        "p95": 0.57,
-        "max": 0.72
+        "p50": 0.54,
+        "p95": 0.76,
+        "max": 0.97
       },
       "endpoint": {
         "runs": 10,
-        "p50": 4.88,
-        "p95": 8.8,
-        "max": 8.8
+        "p50": 9.51,
+        "p95": 11.26,
+        "max": 11.26
       },
-      "countMs": 0.39,
+      "countMs": 0.73,
       "count": 0,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.updated_at DESC, k.id DESC",
         "        ->  Index Scan using ticket_assignee_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -1985,26 +1852,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.54,
-        "p95": 2.03,
-        "max": 3.9
+        "p50": 0.81,
+        "p95": 4.36,
+        "max": 69.87
       },
       "endpoint": {
         "runs": 10,
-        "p50": 4.96,
-        "p95": 5.88,
-        "max": 5.88
+        "p50": 8.18,
+        "p95": 34.35,
+        "max": 34.35
       },
-      "countMs": 0.55,
+      "countMs": 0.67,
       "count": 0,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at DESC, k.id DESC",
         "        ->  Index Scan using ticket_requester_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2015,17 +1880,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.74,
-        "p95": 0.97,
-        "max": 1.56
+        "p50": 0.99,
+        "p95": 1.12,
+        "max": 1.14
       },
       "endpoint": {
         "runs": 10,
-        "p50": 6.76,
-        "p95": 8.06,
-        "max": 8.06
+        "p50": 9.45,
+        "p95": 11.68,
+        "max": 11.68
       },
-      "countMs": 0.49,
+      "countMs": 1.06,
       "count": 0,
       "plan": [
         "Limit",
@@ -2034,9 +1899,7 @@
         "        ->  Bitmap Heap Scan on ticket k",
         "                    ->  Bitmap Index Scan on ticket_assignee_idx",
         "                    ->  Bitmap Index Scan on ticket_requester_idx",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2047,24 +1910,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.26,
-        "p95": 1.63,
-        "max": 4.3
+        "p50": 1.16,
+        "p95": 1.34,
+        "max": 1.7
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.62,
-        "p95": 25.54,
-        "max": 25.54
+        "p50": 26.77,
+        "p95": 34.9,
+        "max": 34.9
       },
-      "countMs": 192.91,
+      "countMs": 216.42,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2075,24 +1936,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.27,
-        "p95": 1.56,
-        "max": 2.61
+        "p50": 1.55,
+        "p95": 1.89,
+        "max": 1.95
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.79,
-        "p95": 25.78,
-        "max": 25.78
+        "p50": 27.63,
+        "p95": 38.3,
+        "max": 38.3
       },
-      "countMs": 171.66,
+      "countMs": 187.81,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2103,24 +1962,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.87,
-        "p95": 1.42,
-        "max": 1.51
+        "p50": 1.11,
+        "p95": 1.37,
+        "max": 7.79
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.82,
-        "p95": 24.15,
-        "max": 24.15
+        "p50": 29.42,
+        "p95": 34.98,
+        "max": 34.98
       },
-      "countMs": 162.11,
+      "countMs": 195.91,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2131,24 +1988,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.02,
-        "p95": 1.13,
-        "max": 1.14
+        "p50": 0.98,
+        "p95": 1.12,
+        "max": 1.19
       },
       "endpoint": {
         "runs": 10,
-        "p50": 17.74,
-        "p95": 21.37,
-        "max": 21.37
+        "p50": 25.25,
+        "p95": 29.6,
+        "max": 29.6
       },
-      "countMs": 31.1,
+      "countMs": 33.29,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2159,24 +2014,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.63,
-        "p95": 0.75,
-        "max": 0.85
+        "p50": 0.97,
+        "p95": 1.25,
+        "max": 1.34
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.73,
-        "p95": 22.58,
-        "max": 22.58
+        "p50": 24.33,
+        "p95": 31.33,
+        "max": 31.33
       },
-      "countMs": 59.23,
+      "countMs": 70.25,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_priority_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2187,17 +2040,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.23,
-        "p95": 2.98,
-        "max": 3.39
+        "p50": 2.76,
+        "p95": 3.19,
+        "max": 3.32
       },
       "endpoint": {
         "runs": 10,
-        "p50": 27,
-        "p95": 31.21,
-        "max": 31.21
+        "p50": 29.3,
+        "p95": 33.19,
+        "max": 33.19
       },
-      "countMs": 153.36,
+      "countMs": 189.44,
       "count": 10001,
       "plan": [
         "Limit",
@@ -2205,14 +2058,10 @@
         "        Sort Key:",
         "              ->  Limit",
         "                    ->  Index Scan using ticket_track_updated_idx on ticket k",
-        "                            ->  Bitmap Heap Scan on track_role_actor a",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                            ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Index Scan using ticket_track_updated_idx on ticket k_1",
-        "                            ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                            ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -2223,17 +2072,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.09,
-        "p95": 2.75,
-        "max": 2.89
+        "p50": 2.37,
+        "p95": 3.57,
+        "max": 3.96
       },
       "endpoint": {
         "runs": 10,
-        "p50": 27.71,
-        "p95": 31.65,
-        "max": 31.65
+        "p50": 31.18,
+        "p95": 40.98,
+        "max": 40.98
       },
-      "countMs": 275.68,
+      "countMs": 330.8,
       "count": 10001,
       "plan": [
         "Limit",
@@ -2241,70 +2090,62 @@
         "        Sort Key:",
         "              ->  Limit",
         "                    ->  Index Scan Backward using ticket_priority_created_idx on ticket k",
-        "                            ->  Bitmap Heap Scan on track_role_actor a",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                            ->  Seq Scan on track_role_actor a",
         "              ->  Limit",
         "                    ->  Index Scan Backward using ticket_priority_created_idx on ticket k_1",
-        "                            ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                            ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
       "id": "labels-in",
-      "text": "labels IN (backend, docs) ORDER BY created DESC",
+      "text": "labels IN (tech-debt, a11y) ORDER BY created DESC",
       "viewer": "admin",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.26,
-        "p95": 1.37,
-        "max": 1.37
+        "p50": 1.08,
+        "p95": 1.48,
+        "max": 1.54
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.3,
-        "p95": 22.98,
-        "max": 22.98
+        "p50": 24.81,
+        "p95": 32.09,
+        "max": 32.09
       },
-      "countMs": 66.4,
+      "countMs": 70.33,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "label-track",
-      "text": "labels = backend AND track = AA",
+      "text": "labels = tech-debt AND track = AA",
       "viewer": "admin",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.44,
+        "p50": 1.58,
         "p95": 1.89,
-        "max": 1.99
+        "max": 2.5
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.32,
-        "p95": 21.45,
-        "max": 21.45
+        "p50": 25.26,
+        "p95": 32.88,
+        "max": 32.88
       },
-      "countMs": 117.19,
-      "count": 8132,
+      "countMs": 125.33,
+      "count": 8150,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2315,24 +2156,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.51,
-        "p95": 0.68,
-        "max": 0.71
+        "p50": 0.97,
+        "p95": 1.09,
+        "max": 1.17
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.57,
-        "p95": 31.61,
-        "max": 31.61
+        "p50": 22.39,
+        "p95": 30.05,
+        "max": 30.05
       },
-      "countMs": 221.69,
+      "countMs": 53.86,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2343,83 +2182,74 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.87,
-        "p95": 3.71,
-        "max": 3.78
+        "p50": 0.98,
+        "p95": 1.32,
+        "max": 1.49
       },
       "endpoint": {
         "runs": 10,
-        "p50": 22.31,
-        "p95": 24.52,
-        "max": 24.52
+        "p50": 31.88,
+        "p95": 44.91,
+        "max": 44.91
       },
-      "countMs": 49.6,
+      "countMs": 75.72,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "summary-two-words",
-      "text": "summary ~ \"audit region\" ORDER BY created DESC",
+      "text": "summary ~ \"audit upgrade\" ORDER BY created DESC",
       "viewer": "admin",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 17.5,
-        "p95": 18.6,
-        "max": 18.76
+        "p50": 8.73,
+        "p95": 9.92,
+        "max": 10.29
       },
       "endpoint": {
         "runs": 10,
-        "p50": 35.56,
-        "p95": 44.4,
-        "max": 44.4
+        "p50": 49.62,
+        "p95": 58.6,
+        "max": 58.6
       },
-      "countMs": 15.37,
-      "count": 6064,
+      "countMs": 23.26,
+      "count": 6013,
       "plan": [
         "Limit",
-        "  ->  Sort",
-        "        Sort Key: k.created_at DESC, k.id DESC",
-        "        ->  Bitmap Heap Scan on ticket k",
-        "              ->  Bitmap Index Scan on ticket_summary_words_idx",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "  ->  Index Scan using ticket_created_idx on ticket k",
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "summary-rare",
-      "text": "summary ~ dark ORDER BY created DESC",
+      "text": "summary ~ script ORDER BY created DESC",
       "viewer": "admin",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 4.91,
-        "p95": 6.5,
-        "max": 6.92
+        "p50": 1.61,
+        "p95": 1.83,
+        "max": 1.91
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.45,
-        "p95": 30.31,
-        "max": 30.31
+        "p50": 30.63,
+        "p95": 36.53,
+        "max": 36.53
       },
-      "countMs": 43.86,
+      "countMs": 52.56,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2430,17 +2260,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.75,
-        "p95": 0.92,
-        "max": 0.94
+        "p50": 0.64,
+        "p95": 0.83,
+        "max": 1.03
       },
       "endpoint": {
         "runs": 10,
-        "p50": 4.2,
-        "p95": 7.44,
-        "max": 7.44
+        "p50": 11.73,
+        "p95": 13.82,
+        "max": 13.82
       },
-      "countMs": 0.87,
+      "countMs": 0.54,
       "count": 0,
       "plan": [
         "Limit",
@@ -2449,9 +2279,7 @@
         "        ->  Bitmap Heap Scan on ticket k",
         "                    ->  Bitmap Index Scan on ticket_description_words_idx",
         "                    ->  Bitmap Index Scan on ticket_track_number_key",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2462,24 +2290,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.71,
-        "p95": 1,
-        "max": 1.73
+        "p50": 1.1,
+        "p95": 1.32,
+        "max": 1.99
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.3,
-        "p95": 23.04,
-        "max": 23.04
+        "p50": 7.23,
+        "p95": 10.79,
+        "max": 10.79
       },
-      "countMs": 21.07,
+      "countMs": 38.69,
       "count": 1931,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2490,24 +2316,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.96,
-        "p95": 1.1,
-        "max": 1.56
+        "p50": 0.81,
+        "p95": 1.15,
+        "max": 1.67
       },
       "endpoint": {
         "runs": 10,
-        "p50": 5.35,
-        "p95": 7.36,
-        "max": 7.36
+        "p50": 6.92,
+        "p95": 8.26,
+        "max": 8.26
       },
-      "countMs": 2.66,
+      "countMs": 2.09,
       "count": 2170,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2518,24 +2342,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.89,
-        "p95": 1.05,
-        "max": 1.34
+        "p50": 0.81,
+        "p95": 1.08,
+        "max": 1.14
       },
       "endpoint": {
         "runs": 10,
-        "p50": 5.86,
-        "p95": 6.97,
-        "max": 6.97
+        "p50": 8.28,
+        "p95": 12.51,
+        "max": 12.51
       },
-      "countMs": 10.6,
+      "countMs": 9,
       "count": 6519,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2546,24 +2368,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.1,
-        "p95": 1.62,
-        "max": 2.42
+        "p50": 1.14,
+        "p95": 1.35,
+        "max": 1.35
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.8,
-        "p95": 24.85,
-        "max": 24.85
+        "p50": 31.58,
+        "p95": 87.57,
+        "max": 87.57
       },
-      "countMs": 32.09,
+      "countMs": 34.91,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan Backward using ticket_updated_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2574,26 +2394,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 2.61,
-        "p95": 3.11,
-        "max": 3.81
+        "p50": 3.78,
+        "p95": 4.77,
+        "max": 5.1
       },
       "endpoint": {
         "runs": 10,
-        "p50": 5.02,
-        "p95": 7.19,
-        "max": 7.19
+        "p50": 9.64,
+        "p95": 11.71,
+        "max": 11.71
       },
-      "countMs": 2.16,
+      "countMs": 2.74,
       "count": 2480,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.closed_at DESC NULLS LAST, k.id DESC",
         "        ->  Index Scan using ticket_closed_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2604,24 +2422,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.79,
-        "p95": 0.89,
-        "max": 1.43
+        "p50": 0.98,
+        "p95": 1.3,
+        "max": 1.39
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.48,
-        "p95": 26.8,
-        "max": 26.8
+        "p50": 33.38,
+        "p95": 42.95,
+        "max": 42.95
       },
-      "countMs": 2.58,
-      "count": 588,
+      "countMs": 3.75,
+      "count": 599,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_due_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2632,17 +2448,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 1.41,
-        "p95": 2.38,
-        "max": 4.07
+        "p50": 1.54,
+        "p95": 2.53,
+        "max": 2.61
       },
       "endpoint": {
         "runs": 10,
-        "p50": 23.18,
-        "p95": 30.24,
-        "max": 30.24
+        "p50": 33.6,
+        "p95": 48.1,
+        "max": 48.1
       },
-      "countMs": 85.74,
+      "countMs": 104.4,
       "count": 2138,
       "plan": [
         "Limit",
@@ -2651,9 +2467,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan Backward using v_number_track_field_value_idx on v_number a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -2664,25 +2478,23 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.99,
-        "p95": 1.16,
-        "max": 1.16
+        "p50": 1.12,
+        "p95": 1.71,
+        "max": 1.73
       },
       "endpoint": {
         "runs": 10,
-        "p50": 21.1,
-        "p95": 24.16,
-        "max": 24.16
+        "p50": 31.57,
+        "p95": 37.66,
+        "max": 37.66
       },
-      "countMs": 37.33,
+      "countMs": 46.87,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Nested Loop Anti Join",
         "        ->  Index Scan using ticket_track_created_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                ->  Seq Scan on track_role_actor a",
         "        ->  Index Only Scan using v_number_pkey on v_number v"
       ]
     },
@@ -2694,17 +2506,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 1.5,
-        "p95": 1.72,
-        "max": 1.8
+        "p50": 1.76,
+        "p95": 2.16,
+        "max": 2.36
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.36,
-        "p95": 23.7,
-        "max": 23.7
+        "p50": 28.85,
+        "p95": 33.08,
+        "max": 33.08
       },
-      "countMs": 8.61,
+      "countMs": 9.37,
       "count": 504,
       "plan": [
         "Limit",
@@ -2713,9 +2525,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_number_field_value_idx on v_number a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -2726,17 +2536,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 4.71,
-        "p95": 5.35,
-        "max": 5.52
+        "p50": 5.56,
+        "p95": 6.4,
+        "max": 7.06
       },
       "endpoint": {
         "runs": 10,
-        "p50": 25.13,
-        "p95": 30.92,
-        "max": 30.92
+        "p50": 33.03,
+        "p95": 36.37,
+        "max": 36.37
       },
-      "countMs": 9.04,
+      "countMs": 10.35,
       "count": 218,
       "plan": [
         "Limit",
@@ -2745,9 +2555,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_option_field_value_idx on v_option a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -2758,29 +2566,28 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 8.19,
-        "p95": 11.02,
-        "max": 12.23
+        "p50": 14.47,
+        "p95": 16.09,
+        "max": 16.29
       },
       "endpoint": {
         "runs": 10,
-        "p50": 35.16,
-        "p95": 41.36,
-        "max": 41.36
+        "p50": 41.03,
+        "p95": 48.4,
+        "max": 48.4
       },
-      "countMs": 7.96,
+      "countMs": 15.8,
       "count": 1505,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.updated_at DESC, k.id DESC",
         "        ->  Nested Loop",
-        "              ->  HashAggregate",
-        "                    ->  Index Only Scan using v_option_field_value_idx on v_option v",
+        "                    ->  Sort",
+        "                          Sort Key: v.ticket_id",
+        "                          ->  Index Only Scan using v_option_field_value_idx on v_option v",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2791,17 +2598,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 3.03,
-        "p95": 3.19,
-        "max": 4.05
+        "p50": 4.6,
+        "p95": 5.13,
+        "max": 5.35
       },
       "endpoint": {
         "runs": 10,
-        "p50": 8.53,
-        "p95": 13.33,
-        "max": 13.33
+        "p50": 12.34,
+        "p95": 15.38,
+        "max": 15.38
       },
-      "countMs": 17.16,
+      "countMs": 21.35,
       "count": 1194,
       "plan": [
         "Limit",
@@ -2810,9 +2617,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_date_field_value_idx on v_date a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -2823,17 +2628,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 3.56,
-        "p95": 4.61,
-        "max": 6.07
+        "p50": 3.86,
+        "p95": 4.15,
+        "max": 4.18
       },
       "endpoint": {
         "runs": 10,
-        "p50": 8.43,
-        "p95": 47.1,
-        "max": 47.1
+        "p50": 14.2,
+        "p95": 15.81,
+        "max": 15.81
       },
-      "countMs": 3.07,
+      "countMs": 4.5,
       "count": 0,
       "plan": [
         "Limit",
@@ -2842,9 +2647,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_user_field_value_idx on v_user v",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2855,17 +2658,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 8.18,
-        "p95": 11,
-        "max": 11.18
+        "p50": 9.03,
+        "p95": 9.37,
+        "max": 9.43
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.15,
-        "p95": 34.1,
-        "max": 34.1
+        "p50": 44.48,
+        "p95": 57.13,
+        "max": 57.13
       },
-      "countMs": 30.67,
+      "countMs": 33.9,
       "count": 2450,
       "plan": [
         "Limit",
@@ -2875,9 +2678,7 @@
         "              ->  Nested Loop",
         "                    ->  Index Only Scan using v_option_field_created_idx on v_option a",
         "                    ->  Index Scan using ticket_pkey on ticket k",
-        "                            ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                        ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                        ->  Bitmap Index Scan on track_role_actor_group_idx",
+        "                            ->  Seq Scan on track_role_actor a_1",
         "              ->  Index Only Scan using v_option_pkey on v_option b"
       ]
     },
@@ -2889,17 +2690,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 5.34,
-        "p95": 6.09,
-        "max": 7.35
+        "p50": 5.92,
+        "p95": 6.95,
+        "max": 7.39
       },
       "endpoint": {
         "runs": 10,
-        "p50": 28.49,
-        "p95": 30.15,
-        "max": 30.15
+        "p50": 35.6,
+        "p95": 40.12,
+        "max": 40.12
       },
-      "countMs": 10.1,
+      "countMs": 11.12,
       "count": 286,
       "plan": [
         "Limit",
@@ -2908,9 +2709,7 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_option_track_field_value_idx on v_option a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
@@ -2921,17 +2720,17 @@
       "anchored": true,
       "statement": {
         "runs": 20,
-        "p50": 1.98,
-        "p95": 3.8,
-        "max": 3.91
+        "p50": 2.74,
+        "p95": 2.96,
+        "max": 3.01
       },
       "endpoint": {
         "runs": 10,
-        "p50": 19.38,
-        "p95": 24.81,
-        "max": 24.81
+        "p50": 29.77,
+        "p95": 36.97,
+        "max": 36.97
       },
-      "countMs": 18.12,
+      "countMs": 23.89,
       "count": 2592,
       "plan": [
         "Limit",
@@ -2940,42 +2739,40 @@
         "        ->  Nested Loop",
         "              ->  Index Only Scan using v_text_field_value_idx on v_text a",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a_1",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a_1"
       ]
     },
     {
       "id": "text-field",
-      "text": "\"Piris text 6\" ~ page ORDER BY created DESC",
+      "text": "\"Piris text 6\" ~ limit ORDER BY created DESC",
       "viewer": "admin",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 35.64,
-        "p95": 38.18,
-        "max": 39.38
+        "p50": 65.1,
+        "p95": 91.83,
+        "max": 94.1
       },
       "endpoint": {
         "runs": 10,
-        "p50": 50.54,
-        "p95": 65.99,
-        "max": 65.99
+        "p50": 123.12,
+        "p95": 133.98,
+        "max": 133.98
       },
-      "countMs": 34.35,
-      "count": 1394,
+      "countMs": 99.11,
+      "count": 652,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at DESC, k.id DESC",
         "        ->  Nested Loop",
         "              ->  HashAggregate",
-        "                          ->  Parallel Index Only Scan using v_text_field_created_idx on v_text v",
+        "                    ->  Bitmap Heap Scan on v_text v",
+        "                                ->  Bitmap Index Scan on v_text_field_sort_idx",
+        "                                ->  Bitmap Index Scan on v_text_words_idx",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -2986,26 +2783,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.8,
-        "p95": 1.01,
-        "max": 1.08
+        "p50": 0.93,
+        "p95": 1.43,
+        "max": 1.56
       },
       "endpoint": {
         "runs": 10,
-        "p50": 18.8,
-        "p95": 51.69,
-        "max": 51.69
+        "p50": 28.85,
+        "p95": 40.45,
+        "max": 40.45
       },
-      "countMs": 0.66,
+      "countMs": 0.9,
       "count": 67,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at, k.id",
         "        ->  Index Scan using ticket_parent_idx on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -3016,26 +2811,24 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 0.5,
-        "p95": 0.83,
-        "max": 0.98
+        "p50": 0.85,
+        "p95": 1.01,
+        "max": 1.01
       },
       "endpoint": {
         "runs": 10,
-        "p50": 10.74,
-        "p95": 13.14,
-        "max": 13.14
+        "p50": 17.88,
+        "p95": 24.43,
+        "max": 24.43
       },
-      "countMs": 0.56,
+      "countMs": 0.99,
       "count": 3,
       "plan": [
         "Limit",
         "  ->  Sort",
         "        Sort Key: k.created_at DESC, k.id DESC",
         "        ->  Index Scan using ticket_pkey on ticket k",
-        "                ->  Bitmap Heap Scan on track_role_actor a",
-        "                            ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                            ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -3046,24 +2839,22 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.43,
-        "p95": 1.92,
-        "max": 3.63
+        "p50": 2.12,
+        "p95": 2.67,
+        "max": 3.15
       },
       "endpoint": {
         "runs": 10,
-        "p50": 22.85,
-        "p95": 26.09,
-        "max": 26.09
+        "p50": 29.46,
+        "p95": 33.9,
+        "max": 33.9
       },
-      "countMs": 110.99,
+      "countMs": 161.06,
       "count": 7808,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_track_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     },
     {
@@ -3074,17 +2865,17 @@
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.09,
-        "p95": 1.43,
-        "max": 1.46
+        "p50": 1.22,
+        "p95": 1.4,
+        "max": 1.41
       },
       "endpoint": {
         "runs": 10,
-        "p50": 5.96,
-        "p95": 6.8,
-        "max": 6.8
+        "p50": 9.04,
+        "p95": 12,
+        "max": 12
       },
-      "countMs": 1.1,
+      "countMs": 1.18,
       "count": 0,
       "plan": [
         "Limit",
@@ -3094,37 +2885,33 @@
         "              ->  HashAggregate",
         "                    ->  Index Scan using ticket_follower_user_idx on ticket_follower r",
         "              ->  Index Scan using ticket_pkey on ticket k",
-        "                      ->  Bitmap Heap Scan on track_role_actor a",
-        "                                  ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                                  ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "                      ->  Seq Scan on track_role_actor a"
       ]
     },
     {
       "id": "not-or-tracks",
-      "text": "NOT (labels IN (backend) OR type = Subticket) AND track IN (AA, AC) ORDER BY created DESC",
+      "text": "NOT (labels IN (tech-debt) OR type = Subticket) AND track IN (AA, AC) ORDER BY created DESC",
       "viewer": "admin",
       "rows": 50,
       "anchored": false,
       "statement": {
         "runs": 20,
-        "p50": 1.14,
-        "p95": 1.45,
-        "max": 1.49
+        "p50": 1.48,
+        "p95": 2.33,
+        "max": 2.57
       },
       "endpoint": {
         "runs": 10,
-        "p50": 22.07,
-        "p95": 23.33,
-        "max": 23.33
+        "p50": 27.17,
+        "p95": 30.86,
+        "max": 30.86
       },
-      "countMs": 74.11,
+      "countMs": 87.79,
       "count": 10001,
       "plan": [
         "Limit",
         "  ->  Index Scan using ticket_created_idx on ticket k",
-        "          ->  Bitmap Heap Scan on track_role_actor a",
-        "                      ->  Bitmap Index Scan on track_role_actor_user_idx",
-        "                      ->  Bitmap Index Scan on track_role_actor_group_idx"
+        "          ->  Seq Scan on track_role_actor a"
       ]
     }
   ]

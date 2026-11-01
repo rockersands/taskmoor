@@ -44,7 +44,8 @@ export const BUDGETS: readonly Budget[] = [
       r.queries.map((q) => ({ name: `${q.id} p95`, value: q.p95 })),
   },
   {
-    // M1-037: the 50-query search perf set, p95 under 300 ms at 10M tickets, for the compiled
+    // M1-037: the 50-query search perf set, p95 under 300 ms at 1M tickets (M1-117; 10M is an
+    // estimate, the user's decision of 2026-11-01), for the compiled
     // statement and the whole request, as a member and as an administrator.
     spike: 'search',
     unit: 'ms',
@@ -56,6 +57,20 @@ export const BUDGETS: readonly Budget[] = [
         { name: `${q.viewer} ${q.id} p95`, value: q.statement.p95 },
         ...(q.endpoint ? [{ name: `${q.viewer} ${q.id} request p95`, value: q.endpoint.p95 }] : []),
       ]),
+  },
+  {
+    // NFR (05b): opening a ticket under 100 ms p95 warm, through the app at the search set's
+    // size: the ticket alone and with the requests the ticket page sends with it (M1-117).
+    spike: 'search',
+    unit: 'ms',
+    max: 100,
+    select: (r: { open?: { ticket: Timed; page: Timed } }) =>
+      r.open
+        ? [
+            { name: 'open a ticket p95', value: r.open.ticket.p95 },
+            { name: 'open a ticket with its page p95', value: r.open.page.p95 },
+          ]
+        : [],
   },
   {
     // CORE: field edit p95 under 50 ms and item open under 100 ms, on the chosen candidate.
