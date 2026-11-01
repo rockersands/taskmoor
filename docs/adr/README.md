@@ -111,5 +111,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [104](0104-security-hardening.md) | Security hardening for 1.0: threat model, ASVS level 2, fuzzing, prompt injection, scans | Accepted |
 | [105](0105-fresh-machine-harness.md) | The fresh-machine harness: both kits on an empty Docker host, the full journey in a browser | Accepted |
 | [106](0106-local-embeddings-and-vector-search.md) | Local embeddings on ONNX Runtime WebAssembly, `real[]` vectors and optional pgvector | Accepted |
+| [107](0107-ai-eval-sets.md) | AI eval sets and their runner, on a seeded synthetic dataset: query pairs scored by exact result, a summary rubric with an automatic grader, duplicate clusters | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

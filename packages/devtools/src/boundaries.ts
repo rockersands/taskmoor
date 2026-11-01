@@ -65,6 +65,8 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
         '^apps/server/src/load/',
         // The fuzz targets (M1-118): run by \`pnpm fuzz\` and their tests, never by the server.
         '^apps/server/src/fuzz/',
+        // The AI eval runner (M1-133): eval tooling the server never imports.
+        '^apps/server/src/ai/evals/cli\\.ts$',
         '/testing\\.ts$',
         '^apps/web/src/test/',
       ],

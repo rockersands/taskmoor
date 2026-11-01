@@ -445,6 +445,25 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     merge with that branch should be clean.
   - Next (M1-079): the duplicate-suggestion and similar-ticket UI on these two routes, and
     model re-ranking when a provider is set (AI-016).
+- **M1-133 AI eval sets** (branch `work/m1-133-evals`, side agent 2026-11-01; ADR-107, no
+  migration; M1-133 is done):
+  - Everything is in `apps/server/src/ai/evals/`: `dataset.ts` and `seed.ts` (the synthetic
+    dataset, seeded through the API, fixed now 2026-09-16 10:00 UTC), `query-corpus.ts` and
+    `query-eval.ts` (125 pairs, exact-result scoring as the asking person), `summary-corpus.ts`,
+    `rubric.md`, `judge-prompt.md` and `summary-eval.ts` (12 cases, 39 graded examples, the
+    automatic grader), `duplicates-corpus.ts` and `duplicates-eval.ts` (46 queries, recall@3),
+    `runner.ts` and `cli.ts` (`pnpm eval <query|summary|duplicates|all> [--candidate <module>]
+    [--json]`). The CLI is allowed to use testkit (`packages/devtools/src/boundaries.ts`).
+  - **For M1-079:** export `{ name, query?, summary?, embed?, rerank? }` from a module and run
+    `pnpm eval all --candidate <module>`; thresholds are in `THRESHOLDS` (query 85%, summaries
+    all pass, duplicates recall@3 80%, the last one proposed). Calibrate the judge prompt on the
+    graded examples before trusting it. A summariser gets a `request` function that acts as the
+    reader: read through it, never through the database, or the leak checks mean nothing.
+  - **For M1-078:** once the runtime is on main, pass its `embed` as a candidate and record the
+    score in ADR-107 (the bag-of-words stand-in scores recall@3 67.4%).
+  - Changing the dataset or the query engine changes `__golden__/query-expected.json` (expected
+    keys per pair); review the diff. `pnpm eval` needs no key and calls no model; CLAUDE.md's
+    command table does not list it yet.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 
