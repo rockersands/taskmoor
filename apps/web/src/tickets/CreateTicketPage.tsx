@@ -1,11 +1,16 @@
-import type { PmJson } from '@taskmoor/richtext';
+import { fromMarkdown, type PmJson } from '@taskmoor/richtext';
 import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { type AiFeatures, loadAiFeatures, useAiFeatures } from '../ai/AiFeature';
+import { type AiNoticeClient, aiNoticeClient } from '../ai/AiNotice';
+import type { AiClient, TicketDraft } from '../ai/client';
+import { DraftFromText } from '../ai/DraftFromText';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { lockOfField, useLockText } from '../locks/useLockText';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
+import { type DuplicateLookup, DuplicateSuggestions } from './DuplicateSuggestions';
 import {
   type CustomField,
   createBody,
@@ -114,6 +119,13 @@ export interface CreateTicketPageProps {
   variant?: 'page' | 'dialog';
   titleId?: string;
   onClose?: () => void;
+  /** Drafts from text and duplicate suggestions (M1-079); the API's by default. */
+  ai?: {
+    client?: AiClient;
+    notice?: AiNoticeClient;
+    features?: (trackId?: number) => Promise<AiFeatures>;
+    duplicates?: DuplicateLookup;
+  };
 }
 
 /**
@@ -127,6 +139,7 @@ export function CreateTicketPage({
   variant = 'page',
   titleId: givenTitleId,
   onClose,
+  ai = {},
 }: CreateTicketPageProps) {
   const t = useT();
   const lockText = useLockText();
@@ -152,6 +165,43 @@ export function CreateTicketPage({
   /** The ticket just created, to open it (M1-051). */
   const [created, setCreated] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const trackId =
+    tracks.status === 'loaded' ? tracks.value.find((k) => k.key === track)?.id : undefined;
+  // Re-ranked duplicates with reasons only where the feature is on and the AI notice was read:
+  // the summary goes to the provider then. Embedding suggestions need neither (NFR-011).
+  const aiFeatures = useAiFeatures(trackId, ai.features ?? loadAiFeatures);
+  const noticeClient = ai.notice ?? aiNoticeClient;
+  const [noticeRead, setNoticeRead] = useState(false);
+  const rerankable = aiFeatures.duplicates?.available === true;
+  useEffect(() => {
+    if (!rerankable) return;
+    let live = true;
+    noticeClient.notice().then(
+      (n) => live && setNoticeRead(n.acknowledgedAt !== null),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [rerankable, noticeClient]);
+
+  /** Fills the form with an AI draft; the person reviews it and presses Create (AI-015). */
+  const applyDraft = (draft: TicketDraft) => {
+    if (draft.ticketType && types.some((k) => k.id === draft.ticketType?.id)) {
+      setTypeId(draft.ticketType.id);
+    }
+    const next: FormValues = { ...values, summary: draft.summary };
+    if (draft.priority) next.priority = String(draft.priority.id);
+    if (draft.labels.length > 0) next.labels = draft.labels.join(' ');
+    setValues(next);
+    if (draft.description.trim()) {
+      const doc = fromMarkdown(draft.description);
+      setDocs((d) => ({ ...d, description: doc }));
+      setSeed((d) => ({ ...d, description: doc }));
+    }
+    setFormKey((k) => k + 1);
+    setMessage(t('ai.draft.used'));
+  };
 
   useEffect(() => {
     let live = true;
@@ -480,6 +530,14 @@ export function CreateTicketPage({
             {help ?? hint}
           </p>
         )}
+        {field.key === 'summary' && (
+          <DuplicateSuggestions
+            text={typeof values.summary === 'string' ? values.summary : ''}
+            track={track}
+            reasons={rerankable && noticeRead}
+            {...(ai.duplicates ? { lookup: ai.duplicates } : {})}
+          />
+        )}
         {lock && (
           <p id={lockId} className="form-hint">
             {lockText(lock)}
@@ -592,6 +650,14 @@ export function CreateTicketPage({
               </select>
             </div>
           </div>
+          <DraftFromText
+            track={track}
+            {...(trackId !== undefined ? { trackId } : {})}
+            onUse={applyDraft}
+            {...(ai.client ? { client: ai.client } : {})}
+            {...(ai.notice ? { notice: ai.notice } : {})}
+            {...(ai.features ? { features: ai.features } : {})}
+          />
           {form?.status === 'loading' && (
             <p role="status" className="page-note">
               {t('tickets.create.loading')}

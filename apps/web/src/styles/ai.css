@@ -22,3 +22,150 @@
 .ai-key {
   margin-block: var(--space-3);
 }
+
+/* The AI features (M1-079): summaries, plain-language search, drafts and breakdowns. */
+.ai-panel {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.ai-summary-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-cite {
+  margin-inline-start: 0.15em;
+  font-size: 0.85em;
+  vertical-align: super;
+}
+
+@media (pointer: coarse) {
+  /* A citation is a link of its own: room enough for a finger. */
+  .ai-cite {
+    display: inline-block;
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+    text-align: center;
+    vertical-align: middle;
+  }
+}
+
+.ai-ask {
+  margin-block-end: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.ai-ask-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+.ai-ask-form .form-field {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.ai-ask-answer {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ai-ask-answer textarea {
+  width: 100%;
+  font-family: var(--font-mono, monospace);
+}
+
+.ai-draft {
+  margin-block: var(--space-3);
+}
+
+.ai-draft textarea,
+.ai-breakdown textarea {
+  width: 100%;
+}
+
+.ai-proposals {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-proposal {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  min-width: 0;
+}
+
+.ai-proposal-summary {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ticket-dialog.ai-breakdown {
+  width: min(44rem, 100%);
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+}
+
+.ai-gate {
+  flex-basis: 100%;
+}
+
+/* Likely duplicates under the summary while a ticket is written (AI-016). */
+.duplicate-suggestions {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-start: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 3px solid var(--color-border);
+}
+
+.duplicate-list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.duplicate-item {
+  overflow-wrap: anywhere;
+}
+
+.duplicate-item a {
+  display: inline-block;
+  min-height: var(--hit-target);
+  line-height: var(--hit-target);
+}
+
+@media (pointer: coarse) {
+  .duplicate-item a {
+    min-height: var(--hit-target-touch);
+    line-height: var(--hit-target-touch);
+  }
+}
+
+.duplicate-item .form-hint {
+  margin: 0;
+}

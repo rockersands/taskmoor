@@ -7,6 +7,10 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { AiFeatures } from '../ai/AiFeature';
+import type { AiNoticeClient } from '../ai/AiNotice';
+import { AskQuery } from '../ai/AskQuery';
+import type { AiClient } from '../ai/client';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { replaceRoute } from '../routing/router';
@@ -45,6 +49,12 @@ export interface SearchPageProps {
   savedClient?: SavedSearchClient;
   /** A saved search to open at once (from the address, `#/search?savedSearch=12`). */
   initialSavedSearch?: number | null;
+  /** Asking in plain language (M1-079): its endpoint, the AI notice and what is available. */
+  ai?: {
+    client?: AiClient;
+    notice?: AiNoticeClient;
+    features?: (trackId?: number) => Promise<AiFeatures>;
+  };
 }
 
 type Results =
@@ -71,6 +81,7 @@ export function SearchPage({
   initialQuery,
   savedClient = savedSearchClient,
   initialSavedSearch = null,
+  ai = {},
 }: SearchPageProps) {
   const t = useT();
   const expired = useSessionExpiry();
@@ -178,6 +189,18 @@ export function SearchPage({
       <h1 id={titleId} className="page-title">
         {t('search.title')}
       </h1>
+      <AskQuery
+        {...(ai.client ? { client: ai.client } : {})}
+        {...(ai.notice ? { notice: ai.notice } : {})}
+        {...(ai.features ? { features: ai.features } : {})}
+        onRun={(query) => {
+          // The query as the person left it, in the advanced mode where it can be edited again.
+          setText(query);
+          setTooMuch(false);
+          setMode('advanced');
+          searchFor(query);
+        }}
+      />
       <fieldset className="search-modes">
         <legend className="visually-hidden">{t('search.mode')}</legend>
         <button

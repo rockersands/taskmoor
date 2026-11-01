@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import type { AiFeatures } from '../../ai/AiFeature';
+import type { AiNoticeClient } from '../../ai/AiNotice';
+import { BreakdownAction } from '../../ai/BreakdownAction';
+import type { AiClient } from '../../ai/client';
+import { SummaryPanel } from '../../ai/SummaryPanel';
 import { ApiError } from '../../api/client';
 import { AttachmentPanel } from '../../attachments/AttachmentPanel';
 import type { AttachmentClient } from '../../attachments/client';
@@ -41,6 +46,12 @@ export interface TicketPageProps {
   connect?: Connect;
   /** Where "@" finds people; the backend's list for the ticket by default. */
   mentions?: (ticketId: number) => MentionSource;
+  /** The AI features (M1-079): their endpoints, the first-use notice and what is available. */
+  ai?: {
+    client?: AiClient;
+    notice?: AiNoticeClient;
+    features?: (trackId?: number) => Promise<AiFeatures>;
+  };
 }
 
 /** Layout fields the page can fill in itself when a transition asks for them (WF-006). */
@@ -82,6 +93,7 @@ export function TicketPage({
   clone,
   connect,
   mentions = (ticketId) => mentionSource({ ticket: ticketId }),
+  ai = {},
 }: TicketPageProps) {
   const t = useT();
   const intl = useIntl();
@@ -550,6 +562,14 @@ export function TicketPage({
             >
               {t('clone.action')}
             </button>
+            <BreakdownAction
+              ticket={{ id: loaded.id, key: loaded.key }}
+              trackId={loaded.track.id}
+              {...(ai.client ? { client: ai.client } : {})}
+              {...(ai.notice ? { notice: ai.notice } : {})}
+              {...(ai.features ? { features: ai.features } : {})}
+              onCreated={() => setRevision((r) => r + 1)}
+            />
             <button
               ref={helpButton}
               type="button"
@@ -594,6 +614,15 @@ export function TicketPage({
               {...(connect ? { connect } : {})}
             />
           </section>
+          {loaded && (
+            <SummaryPanel
+              ticket={{ id: loaded.id, key: loaded.key }}
+              trackId={loaded.track.id}
+              {...(ai.client ? { client: ai.client } : {})}
+              {...(ai.notice ? { notice: ai.notice } : {})}
+              {...(ai.features ? { features: ai.features } : {})}
+            />
+          )}
           {loaded && <LinksPanel ticketId={loaded.id} client={client} revision={revision} />}
           <AttachmentPanel ticket={shown.id} {...(attachments ? { client: attachments } : {})} />
           <ActivityPanel
