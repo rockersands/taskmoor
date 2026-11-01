@@ -63,6 +63,8 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
         '^packages/spikes/',
         // The load-test runner (M1-104): benchmark tooling the server never imports.
         '^apps/server/src/load/',
+        // The fuzz targets (M1-118): run by \`pnpm fuzz\` and their tests, never by the server.
+        '^apps/server/src/fuzz/',
         '/testing\\.ts$',
         '^apps/web/src/test/',
       ],

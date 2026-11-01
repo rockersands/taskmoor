@@ -99,6 +99,7 @@ import { registerVisibilityRoutes } from './routes/visibility';
 import { registerWebhookRoutes } from './routes/webhooks';
 import { registerWorkflowMapRoutes } from './routes/workflow-maps';
 import { registerWorkflowRoutes } from './routes/workflows';
+import { securityHeaders } from './security-headers';
 import { registerMutationReceipts } from './sync/mutations';
 import { registerSyncSocket } from './sync/socket';
 import { pruneIdentityData } from './throttle';
@@ -233,6 +234,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     ...(deps.tracer ? { tracer: deps.tracer } : {}),
   });
   await app.register(fastifyCookie);
+  securityHeaders(app, { https: deps.secureCookies ?? false });
   // A guardrail refusal thrown inside a route's transaction (M1-055): the transaction has rolled
   // back; the answer names the guardrail and its limit. Everything else goes on as before.
   app.setErrorHandler((error, _request, reply) => {

@@ -57,7 +57,7 @@ const SCHEME = 'v1';
 /** AES-256-GCM, written `v1.<iv>.<ciphertext>.<tag>` in base64url, bound to `aad`. */
 function gcmSeal(key: Buffer, plain: Buffer, aad: string): string {
   const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
   cipher.setAAD(Buffer.from(aad, 'utf8'));
   const body = Buffer.concat([cipher.update(plain), cipher.final()]);
   return [SCHEME, iv, body, cipher.getAuthTag()]
@@ -71,7 +71,10 @@ function gcmOpen(key: Buffer, sealed: string, aad: string): Buffer {
     throw new EnvelopeError('unreadable', 'The sealed value is not in a known format');
   }
   try {
-    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'));
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'), {
+      // Only a whole tag: a truncated one is easier to forge (M1-118, scan triage).
+      authTagLength: 16,
+    });
     decipher.setAAD(Buffer.from(aad, 'utf8'));
     decipher.setAuthTag(Buffer.from(tag, 'base64url'));
     return Buffer.concat([decipher.update(Buffer.from(body, 'base64url')), decipher.final()]);

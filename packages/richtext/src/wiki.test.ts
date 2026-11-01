@@ -4,6 +4,7 @@ import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import { canonicalAdf } from './adf';
 import { fromAdfJson, type PmJson, toAdfFromJson } from './convert';
+import { toMarkdown } from './markdown';
 import { schema } from './schema';
 import { generateAdfDocument } from './testing';
 import { fromWiki, toPlainText, toWiki } from './wiki';
@@ -260,6 +261,28 @@ describe('Wiki markup round trip (properties)', () => {
 });
 
 describe('Wiki markup details', () => {
+  it("[API-011] finds a macro's end after letters that change length in lower case (M1-118)", () => {
+    // `İ` lowercases to two characters; indexes into the lowered text drifted past the end tag.
+    const doc = fromWiki(
+      '{quote}\nThe cache is warm İafter the first read\n\n* cold\n{quote}\nafter',
+    );
+    expect(doc.content?.map((n) => n.type)).toEqual(['blockquote', 'paragraph']);
+    expect(fromWiki(toWiki(doc))).toEqual(doc);
+  });
+
+  it('[API-011] keeps only a code language the markup can write back (M1-118)', () => {
+    const doc = fromWiki('{code:[~someone]sql}\nSELECT 1\n{code}');
+    expect(doc.content?.[0]?.attrs?.language).toBeNull();
+    expect(fromWiki(toWiki(doc))).toEqual(doc);
+    expect(fromWiki('{code:sql}\nSELECT 1\n{code}').content?.[0]?.attrs?.language).toBe('sql');
+  });
+
+  it('[API-011] writes a mention whose id holds a lone surrogate (M1-118)', () => {
+    const doc = fromWiki(`ping [~accountid:a${String.fromCharCode(0xd800)}b]`);
+    expect(() => toMarkdown(doc)).not.toThrow();
+    expect(() => toWiki(doc)).not.toThrow();
+  });
+
   it('[API-011] reads wiki markup into content that exports to the document format', () => {
     const doc = fromWiki('h2. Plan\n\n* [x] ship *it*\n\nPing [~accountid:12].');
     expect(toAdfFromJson(doc)).toEqual({

@@ -1,0 +1,35 @@
+# gitleaks configuration (M1-118, ADR-104): the default rules, plus the false positives the
+# history scan of 2026-10-31 found and docs/security/scan-triage.md explains. Each allowlist
+# names the file and the line's shape; a new finding anywhere else still fails.
+title = "Taskmoor"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Page cursors of the compatible API, recorded from Taskmoor's own synthetic server"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/server/src/import/cloud/__fixtures__/compat-source\.json$''']
+regexes = ['''"nextPageToken": "''']
+
+[[allowlists]]
+description = "Storage keys of the upgrade seed (hex object names, not secrets)"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^packages/db/src/upgrade-fixtures\.ts$''']
+regexes = ['''storage_key = 'w1/''']
+
+[[allowlists]]
+description = "The synthetic authenticator setup of the account stories (ASCII text in base32)"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/web/src/account/fixtures\.ts$''']
+regexes = ['''^\s*(secret|uri): ''']
+
+[[allowlists]]
+description = "A common password the password policy must refuse"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^apps/server/src/routes/identity\.test\.ts$''']
+regexes = ['''change\(PASSWORD, ''']

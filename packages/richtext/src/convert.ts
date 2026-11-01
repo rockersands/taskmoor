@@ -1,5 +1,5 @@
 import type { Node as PmNode } from '@tiptap/pm/model';
-import type { AdfMark, AdfNode } from './adf';
+import { type AdfMark, type AdfNode, adfShapeProblem } from './adf';
 import { schema } from './schema';
 
 /** ProseMirror's JSON form, which the schema can parse. */
@@ -20,6 +20,8 @@ const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Builds a document from the Jira-compatible format. Unknown nodes and marks are kept whole. */
 export function fromAdf(doc: AdfNode): PmNode {
+  const problem = adfShapeProblem(doc);
+  if (problem) throw new Error(`Not a document in the format: ${problem}`);
   if (doc.type !== 'doc') throw new Error(`Expected a doc node, got "${doc.type}"`);
   return schema.nodeFromJSON({ type: 'doc', content: blocks(doc.content) });
 }

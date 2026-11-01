@@ -381,6 +381,49 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     (about 10 s); the admin's password comes from `TASKMOOR_E2E_IMPORT_PASSWORD`
     (playwright.config.ts). Desktop runs the import (the spec took 3.0 minutes with the servers'
     start); mobile checks the layout.
+- **M1-118 security hardening** (branch `work/m1-118-security`, side agent 2026-10-31; ADR-104,
+  no migration; **in progress**: the 24-hour fuzz runs, the live-model injection run and the
+  full image scan are left):
+  - Documents in `docs/security/`: `threat-model.md`, `asvs-l2.md` (258 requirements, 16 gaps,
+    none high), `scan-triage.md`, and the records `scan-results.json` and `fuzz-results.json`
+    that `pnpm gate M1` reads (new: `m1SecurityChecks` in `packages/devtools/src/gate.ts`; M1-120
+    adds the rest of the M1 gate). The gate waits while a row of `asvs-l2.md` says Gap.
+  - Fuzzing: `pnpm fuzz <target>|all --minutes N`. Harness `@taskmoor/testkit/fuzz` (targets,
+    mutation helpers, reproducible inputs) and `fuzz-run` (a worker with a heartbeat: a hang is
+    stopped and reported with its input). Targets in `packages/devtools/src/fuzz/targets.ts` and
+    `apps/server/src/fuzz/targets.ts`, listed by path in `packages/devtools/src/fuzz/registry.ts`
+    (devtools may not import the server; `apps/server/src/fuzz/` is exempt from the test-helper
+    rule). For the 24-hour bar run one lane per target, `pnpm fuzz <t> --minutes 1440 --seed <n>`,
+    and copy the summaries into `fuzz-results.json`.
+  - **For M1-079** (ADR-104 "What M1-079 adds"): mark write tools `effect: 'write'` and pass a
+    `confirm` to `runAgent` (no confirm: no write runs); fence every ticket, comment and field
+    with `fenceUntrusted` (`AiContext` does for tickets); screen every answer with
+    `screenAnswer`; run `packages/ai/src/injection/corpus.ts` (exported from
+    `@taskmoor/ai/testing`) against a live model.
+  - Behaviour changes others may meet: every answer gets `nosniff` and `Referrer-Policy:
+    same-origin`, HTTPS instances HSTS, API JSON `Cache-Control: no-store` and
+    `Content-Disposition: attachment; filename="api.json"` unless the route set its own
+    (`apps/server/src/security-headers.ts`); rich text with non-object attributes, non-list
+    content, nesting deeper than 128 or a table span outside 1 to 1,000 is refused as `invalid`
+    (`adfShapeProblem`, `docShapeProblem`; a `colspan` of `1e308` used to kill the server when
+    the ticket was written as Markdown); workflow regex validators with nested repetition are refused as
+    `invalid_pattern` and never run (`packages/workflow/src/pattern.ts`); the image has no npm,
+    corepack or yarn. Dependencies bumped (Storybook 10.6.5, Vitest 4.1.12, Fastify 5.12.7,
+    Nodemailer 10.1.4; overrides for follow-redirects, fast-uri, nodemailer).
+  - Scanners used here, none committed: Semgrep (pip) with rules cloned from their repository,
+    osv-scanner and gitleaks (`go install`), Trivy from its container image. The secret scan of
+    the whole history found no real secret. `scan-triage.md` has the commands for the gate.
+  - The user decides: the session lifetime (ASVS 3.3.2 asks 12 hours, or 30 minutes idle; today
+    14 days, 3 idle) and whether a second factor is required for site administrators by default
+    (4.3.1). Both are in `asvs-l2.md` as gaps.
+  - Do not add `../richtext` to `packages/devtools/tsconfig.json` references: `apps/web`
+    references devtools, and through it the web program would read richtext's `.d.ts`, which
+    lacks the Tiptap command augmentations (`toggleBold` and the rest stop typechecking).
+    devtools imports `@taskmoor/richtext` by source, as the web app does.
+  - The first full verify of this branch failed because the disk filled up (PostgreSQL went into
+    recovery); the second one had one failure, `apps/web/build/artefact.test.ts` "fails a build
+    that would bundle a server package", which names `node:crypto` before `packages/db/src` under
+    load and passes alone (twice). It is order-dependent, not caused by this branch.
 
 ## Start here: 2026-10-30, overnight and day (Mac, main session)
 

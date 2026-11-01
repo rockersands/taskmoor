@@ -12,7 +12,9 @@
     "./property": "./src/property.ts",
     "./budget": "./src/budget.ts",
     "./gen": "./src/gen/index.ts",
-    "./server": "./src/pg/bench.ts"
+    "./server": "./src/pg/bench.ts",
+    "./fuzz": "./src/fuzz.ts",
+    "./fuzz-run": "./src/fuzz-run.ts"
   },
   "dependencies": {
     "embedded-postgres": "16.14.0-beta.17",
@@ -26,6 +28,6 @@
     "@types/pg-copy-streams": "^1.2.5"
   },
   "peerDependencies": {
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

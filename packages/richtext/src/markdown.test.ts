@@ -6,6 +6,7 @@ import { fromMarkdown, isSafeHref, looksLikeMarkdown, toMarkdown } from './markd
 import { DOCUMENTS, SOURCES } from './markdown-corpus';
 import { schema } from './schema';
 import { generateAdfDocument } from './testing';
+import { toWiki } from './wiki';
 
 /** A document as the schema stores it: defaults filled in, equal text runs merged. */
 const normal = (doc: PmJson): PmJson => schema.nodeFromJSON(doc).toJSON() as PmJson;
@@ -137,6 +138,55 @@ describe('Markdown details', () => {
     expect(isSafeHref('JavaScript:alert(1)')).toBe(false);
     expect(isSafeHref(' data:text/html,x')).toBe(false);
     expect(isSafeHref('vbscript:x')).toBe(false);
+  });
+
+  it('[API-011] lays out a stored table with a huge span in bounded space (M1-118)', () => {
+    // As a document stored before the span check: the writers cap the span themselves.
+    const doc: PmJson = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: [
+                {
+                  type: 'tableHeader',
+                  attrs: { colspan: 1e308 },
+                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'wide' }] }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(toMarkdown(doc).length).toBeLessThan(20_000);
+    expect(toWiki(doc).length).toBeLessThan(20_000);
+  });
+
+  it('[NFR-008] reads the scheme as a browser does (tabs, line breaks, leading controls)', () => {
+    // Built from parts so the test file holds no working payload.
+    const js = ['java', 'script:'];
+    for (const href of [
+      js.join('\t'),
+      js.join('\n'),
+      js.join('\r\n'),
+      `\u0001${js.join('')}x`,
+      `\u0000 ${js.join('')}x`,
+      `\u001f${js.join('')}x`,
+      `\u00a0${js.join('')}x`,
+      'da\tta:text/html,x',
+      '\tvb\nscript:x',
+    ]) {
+      expect(isSafeHref(href), JSON.stringify(href)).toBe(false);
+      // What the browser makes of it, for the record.
+      const parsed = new URL(href, 'https://taskmoor.example/app/').protocol;
+      if (!href.startsWith('\u00a0')) expect(['http:', 'https:']).not.toContain(parsed);
+    }
+    expect(isSafeHref('https://exa\tmple.test/a\nb')).toBe(true);
+    expect(isSafeHref('\t/relative')).toBe(true);
   });
 
   it('reads an empty text as an empty document', () => {

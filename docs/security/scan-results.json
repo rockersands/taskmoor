@@ -1,0 +1,57 @@
+[
+  {
+    "scan": "SAST",
+    "tool": "semgrep 1.183.0, community rules (javascript, typescript, dockerfile, bash, html, generic, yaml, json)",
+    "ran": true,
+    "at": "2026-10-31",
+    "open": { "critical": 0, "high": 0, "medium": 31, "low": 3 },
+    "note": "2,538 findings on the tracked tree and 30 on this task's files, triaged in scan-triage.md; the 31 medium open are GitHub Actions pinned by tag, which wait for CI; the 3 low are confirm dialogs"
+  },
+  {
+    "scan": "Dependencies",
+    "tool": "osv-scanner 2 (offline database) and pnpm audit",
+    "ran": true,
+    "at": "2026-10-31",
+    "open": { "critical": 0, "high": 0, "medium": 3, "low": 0 },
+    "note": "Fixed: Storybook (critical, high), follow-redirects (high), Vitest, fast-uri, Nodemailer, Fastify; open: glob and minimatch (moderate, need major versions)"
+  },
+  {
+    "scan": "Container image",
+    "tool": "Trivy 0.76.1 (vuln, secret, misconfig)",
+    "ran": true,
+    "at": "2026-10-31",
+    "open": { "critical": 0, "high": 0, "medium": 0, "low": 0 },
+    "note": "The runtime stage built from host artefacts; the PostgreSQL client packages were not installed (the proxy refused the Alpine CDN), see the next record"
+  },
+  {
+    "scan": "Container image, PostgreSQL client layer",
+    "tool": "Trivy",
+    "ran": false,
+    "open": { "critical": 0, "high": 0, "medium": 0, "low": 0 },
+    "note": "Build the full image with tools/image/smoke.sh where the Alpine CDN is reachable and run trivy image taskmoor:dev (M1 gate)"
+  },
+  {
+    "scan": "Deployment configuration",
+    "tool": "Trivy 0.76.1 config (Dockerfiles, Helm chart, Compose)",
+    "ran": true,
+    "at": "2026-10-31",
+    "open": { "critical": 0, "high": 0, "medium": 2, "low": 9 },
+    "note": "Open: images from any registry (KSV-0125) and resource limits left to the operator"
+  },
+  {
+    "scan": "Secrets, whole git history and working tree",
+    "tool": "gitleaks 8 (default rules plus .gitleaks.toml)",
+    "ran": true,
+    "at": "2026-10-31",
+    "open": { "critical": 0, "high": 0, "medium": 0, "low": 0 },
+    "note": "11 findings in the history, all false positives (page cursors, a synthetic TOTP sample, a hex storage key, a common password the policy refuses)"
+  },
+  {
+    "scan": "ASVS level 2 review",
+    "tool": "docs/security/asvs-l2.md",
+    "ran": true,
+    "at": "2026-10-31",
+    "open": { "critical": 0, "high": 0, "medium": 10, "low": 6 },
+    "note": "16 gaps of 258 requirements, listed with their fixes"
+  }
+]

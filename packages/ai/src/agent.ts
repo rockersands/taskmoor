@@ -46,6 +46,12 @@ export interface AgentTool<I = unknown> {
   name: string;
   description: string;
   input: z.ZodType<I>;
+  /**
+   * `write` for a tool that changes anything (M1-118; AI v1 "writes need user confirmation"):
+   * the loop runs it only when the run's `confirm` approves that call, so text in a ticket
+   * cannot make the model change data on its own. Tools that only read leave it out.
+   */
+  effect?: 'read' | 'write';
   run(input: I, context: AgentToolContext): Promise<AgentToolResult>;
 }
 
@@ -175,7 +181,16 @@ export interface AgentRunOptions {
   clock?: AgentClock;
   /** The fewest output tokens worth a step (1,024): with less room the run stops. */
   minStepOutputTokens?: number;
+  /**
+   * Asks the person whether a `write` tool may run with this input. Without it, no write tool
+   * runs: the model is told the call needs the person's confirmation.
+   */
+  confirm?: (call: { name: string; input: unknown }) => Promise<boolean>;
 }
+
+/** What the model reads when a write was not confirmed. */
+export const NOT_CONFIRMED = (name: string) =>
+  `${name} changes data and needs the person's confirmation; it was not run.`;
 
 function addUsage(a: Usage, b: Usage): Usage {
   return {
@@ -385,8 +400,25 @@ export async function runAgent(gateway: AiGateway, options: AgentRunOptions): Pr
       for (const call of result.toolCalls) {
         const tool = registry.get(call.name);
         let outcome: AgentToolResult;
+        // A write runs only with the person's yes (M1-118); a confirm that fails is a no.
+        let approved = true;
+        if (tool?.effect === 'write') {
+          try {
+            approved = options.confirm
+              ? await Promise.race([
+                  options.confirm({ name: call.name, input: call.input }),
+                  aborted,
+                ])
+              : false;
+          } catch (error) {
+            if (error instanceof AiAbortedError || controller.signal.aborted) throw stopped();
+            approved = false;
+          }
+        }
         if (!tool) {
           outcome = { content: `No tool is named ${call.name}.`, isError: true };
+        } else if (!approved) {
+          outcome = { content: NOT_CONFIRMED(call.name), isError: true };
         } else {
           try {
             outcome = await Promise.race([

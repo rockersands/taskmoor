@@ -135,7 +135,7 @@ function sealKey(pepper: Pepper): Buffer {
 export function sealSecret(plain: string, pepper: Pepper | undefined): string {
   if (!pepper) return `plain:${plain}`;
   const iv = randomBytes(12);
-  const cipher = createCipheriv('aes-256-gcm', sealKey(pepper), iv);
+  const cipher = createCipheriv('aes-256-gcm', sealKey(pepper), iv, { authTagLength: 16 });
   const body = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return [
@@ -154,7 +154,15 @@ export function openSecret(sealed: string, peppers: PepperRing | undefined): str
   const pepper = peppers?.find(id);
   if (!pepper) return null;
   try {
-    const decipher = createDecipheriv('aes-256-gcm', sealKey(pepper), Buffer.from(iv, 'base64url'));
+    const decipher = createDecipheriv(
+      'aes-256-gcm',
+      sealKey(pepper),
+      Buffer.from(iv, 'base64url'),
+      {
+        // Only a whole tag: a truncated one is easier to forge (M1-118, scan triage).
+        authTagLength: 16,
+      },
+    );
     decipher.setAuthTag(Buffer.from(tag, 'base64url'));
     return Buffer.concat([
       decipher.update(Buffer.from(body, 'base64url')),

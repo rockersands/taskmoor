@@ -34,6 +34,34 @@ export interface GateInputs {
   ci?: { conclusion: string; title: string };
   workflows: string[];
   ciBaselineFiles: number;
+  /** M1-118's records in docs/security, when present. */
+  security?: SecurityRecords;
+}
+
+/** One scanner's last run, as `docs/security/scan-results.json` records it (M1-118). */
+export interface ScanRecord {
+  scan: string;
+  tool: string;
+  ran: boolean;
+  at?: string;
+  /** Findings left open after triage, by severity. */
+  open: { critical: number; high: number; medium: number; low: number };
+  /** Why it did not run here, when it did not. */
+  note?: string;
+}
+
+/** One fuzz target's longest clean run, as `docs/security/fuzz-results.json` records it. */
+export interface FuzzRecord {
+  target: string;
+  seconds: number;
+  inputs: number;
+  failures: number;
+}
+
+export interface SecurityRecords {
+  scans: ScanRecord[];
+  fuzz: FuzzRecord[];
+  asvs: string;
 }
 
 export function loadGateInputs(root: string, milestone: string, ci?: GateInputs['ci']): GateInputs {
@@ -59,7 +87,70 @@ export function loadGateInputs(root: string, milestone: string, ci?: GateInputs[
     ciBaselineFiles: existsSync(baselineDir)
       ? readdirSync(baselineDir).filter((f) => f.endsWith('.json')).length
       : 0,
+    ...(existsSync(join(root, 'docs', 'security', 'scan-results.json'))
+      ? {
+          security: {
+            scans: JSON.parse(read('docs', 'security', 'scan-results.json')) as ScanRecord[],
+            fuzz: JSON.parse(read('docs', 'security', 'fuzz-results.json')) as FuzzRecord[],
+            asvs: read('docs', 'security', 'asvs-l2.md'),
+          },
+        }
+      : {}),
   };
+}
+
+/** A day: the fuzzers' bar for M1 (M1-118, "fuzzers 24 h clean"). */
+export const FUZZ_GATE_SECONDS = 24 * 3600;
+
+/**
+ * The security part of the M1 gate (M1-118; ADR-104): the scans with nothing high or critical
+ * left open (a scan that could not run waits), every fuzz target clean for 24 hours, and the
+ * ASVS level 2 checklist without an open gap. M1-120 adds the rest of the M1 gate.
+ */
+export function m1SecurityChecks(input: GateInputs): GateCheck[] {
+  const records = input.security;
+  if (!records) {
+    return [{ name: 'Security records (docs/security)', state: 'fail', detail: 'missing' }];
+  }
+  const checks: GateCheck[] = [];
+  for (const scan of records.scans) {
+    const blocking = scan.open.critical + scan.open.high;
+    checks.push({
+      name: `${scan.scan} scan (${scan.tool}): 0 high or critical`,
+      state: !scan.ran ? 'waiting' : blocking === 0 ? 'ok' : 'fail',
+      detail: !scan.ran
+        ? (scan.note ?? 'not run yet')
+        : `${scan.at}: ${scan.open.critical} critical, ${scan.open.high} high, ${scan.open.medium} medium, ${scan.open.low} low open`,
+    });
+  }
+  const short = records.fuzz.filter((f) => f.failures > 0 || f.seconds < FUZZ_GATE_SECONDS);
+  const failing = records.fuzz.filter((f) => f.failures > 0);
+  checks.push({
+    name: 'Fuzzers 24 h clean (pnpm fuzz <target> --minutes 1440)',
+    state: failing.length > 0 ? 'fail' : short.length === 0 ? 'ok' : 'waiting',
+    detail:
+      failing.length > 0
+        ? `failing: ${failing.map((f) => f.target).join(', ')}`
+        : short.length === 0
+          ? `${records.fuzz.length} targets`
+          : `${short.length} of ${records.fuzz.length} targets ran less than 24 h (longest clean run: ${Math.max(...records.fuzz.map((f) => f.seconds))} s)`,
+  });
+  const gaps = [...records.asvs.matchAll(/^\| (\d+\.\d+\.\d+) \|[^\n]*\| Gap \|/gm)].map(
+    (m) => m[1],
+  );
+  checks.push({
+    name: 'ASVS 4.0.3 level 2 checklist without an open gap (docs/security/asvs-l2.md)',
+    state: gaps.length === 0 ? 'ok' : 'waiting',
+    detail:
+      gaps.length === 0 ? 'every requirement met or not applicable' : `gaps: ${gaps.join(', ')}`,
+  });
+  const live = input.progress.some((p) => p.id === 'M1-079' && p.state === 'done');
+  checks.push({
+    name: 'Prompt-injection corpus green against a live model (M1-079)',
+    state: live ? 'ok' : 'waiting',
+    detail: live ? 'M1-079 done' : 'M1-079 runs packages/ai/src/injection against a live model',
+  });
+  return checks;
 }
 
 /** ADR numbers whose row in the index must say Accepted. */
@@ -165,6 +256,7 @@ export function m0Gate(input: GateInputs): GateCheck[] {
 }
 
 export function runGate(input: GateInputs): GateCheck[] {
+  if (input.milestone === 'M1') return m1SecurityChecks(input);
   if (input.milestone !== 'M0') throw new Error(`No gate defined for ${input.milestone} yet.`);
   return m0Gate(input);
 }

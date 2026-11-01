@@ -1048,7 +1048,8 @@ describe('attachments (M1-016)', () => {
     const missing = await get('alice', contentUrl(ticket, a));
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toEqual({ error: 'file_missing' });
-    expect(missing.headers['content-disposition']).toBeUndefined();
+    // Not the file's own disposition: only the generic one of every JSON answer (M1-118).
+    expect(missing.headers['content-disposition']).toBe('attachment; filename="api.json"');
     // The archive breaks off rather than the server; the next request is served.
     await as(apps.local, 'alice', {
       method: 'GET',

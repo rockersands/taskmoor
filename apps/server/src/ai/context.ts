@@ -1,4 +1,4 @@
-import { placeholder, type SensitiveValue } from '@taskmoor/ai';
+import { fenceUntrusted, placeholder, type SensitiveValue } from '@taskmoor/ai';
 import type { Database } from '@taskmoor/db';
 import type { Kysely } from 'kysely';
 import type { Authorizer } from '../authz/authorizer';
@@ -17,7 +17,8 @@ import type { AiSettingsCache } from './usage';
  * - Fields an administrator marked sensitive in the AI policy, and fields the ticket's field
  *   rules hide, appear as a placeholder; their values are returned as `sensitive`, for the
  *   gateway to replace wherever a copy of them sits in free text.
- * - The ticket is wrapped as data, so instructions inside it are not taken as the caller's.
+ * - The ticket is wrapped as data, so instructions inside it are not taken as the caller's;
+ *   its text cannot end the wrapping early (`fenceUntrusted`).
  */
 export interface TicketContext {
   key: string;
@@ -64,8 +65,6 @@ function pieces(value: unknown): string[] {
   const text = valueText(value).trim();
   return text ? [text] : [];
 }
-
-const tag = (text: string) => text.replace(/<\/?ticket[^>]*>/gi, '');
 
 export class AiContext {
   private readonly read: TicketRoute;
@@ -133,7 +132,9 @@ export class AiContext {
     return {
       key: view.key,
       sensitive,
-      text: `<ticket key="${view.key}">\n${tag(lines.join('\n'))}\n</ticket>`,
+      // One fence the ticket's text cannot close or reopen (M1-118: removing the tags let
+      // `</tic<ticket>ket>` through).
+      text: fenceUntrusted('ticket', { key: view.key }, lines.join('\n')),
     };
   }
 }

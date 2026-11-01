@@ -100,14 +100,15 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [093](0093-dc-workflows.md) | The Data Center import of workflows and workflow schemes, with every rule mapped or held and reported | Accepted |
 | [094](0094-cloud-rest-import.md) | The Cloud REST importer: a resumable fetch into a staging table, throttled as the source asks | Accepted |
 | [095](0095-dc-boards-and-sprints.md) | The Data Center import of boards, sprints, rank, releases and areas: queries translated and checked, rank keys that keep the order | Accepted |
+| [096](0096-dc-filters-and-query-translation.md) | Translating saved filters, dashboards and subscriptions from a Data Center backup | Accepted |
+| [097](0097-imported-keys-and-links.md) | Keys and links from the tracker an import came from | Accepted |
 | [098](0098-ai-key-storage.md) | AI provider keys under envelope encryption, write-only, moved in from the environment, rotated without failed calls | Accepted |
 | [099](0099-ai-settings-page.md) | The AI settings page: provider, write-only keys, live test connection, per-feature model and effort, and switches enforced at one choke point | Accepted |
 | [100](0100-ai-spend-audit-redaction.md) | AI spend limits, the AI audit log and redaction, in the gateway's call path | Accepted |
 | [101](0101-agent-runs-with-budgets.md) | Agent runs with budgets that are enforced before they can be passed | Accepted |
 | [102](0102-delta-import-runs.md) | Delta runs for cutover windows: the changes since an earlier run, deletions reported | Accepted |
 | [103](0103-import-wizard-and-cli.md) | The import wizard and the import CLI: one API, an imports folder you can upload into | Accepted |
-| [096](0096-dc-filters-and-query-translation.md) | Translating saved filters, dashboards and subscriptions from a Data Center backup | Accepted |
-| [097](0097-imported-keys-and-links.md) | Keys and links from the tracker an import came from | Accepted |
+| [104](0104-security-hardening.md) | Security hardening for 1.0: threat model, ASVS level 2, fuzzing, prompt injection, scans | Accepted |
 | [105](0105-fresh-machine-harness.md) | The fresh-machine harness: both kits on an empty Docker host, the full journey in a browser | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
