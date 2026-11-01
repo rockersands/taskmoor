@@ -2007,6 +2007,14 @@ export interface TwoFactorPolicyTable {
   updated_at: DefaultTimestamp;
 }
 
+/** How long a sign-in lasts in a workspace (ASVS 3.3.2); no row means the defaults. */
+export interface SessionPolicyTable {
+  workspace_id: number;
+  lifetime_minutes: number;
+  idle_minutes: number;
+  updated_at: DefaultTimestamp;
+}
+
 export interface TwoFactorPolicyGroupTable {
   workspace_id: number;
   group_id: number;
@@ -2610,6 +2618,7 @@ export interface Database {
   recovery_code: RecoveryCodeTable;
   sign_in_challenge: SignInChallengeTable;
   two_factor_policy: TwoFactorPolicyTable;
+  session_policy: SessionPolicyTable;
   two_factor_policy_group: TwoFactorPolicyGroupTable;
   identity_provider: IdentityProviderTable;
   identity_provider_group: IdentityProviderGroupTable;

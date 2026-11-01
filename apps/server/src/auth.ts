@@ -4,6 +4,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely, Transaction } from 'kysely';
 import type { AuthzContext } from './authz/authorizer';
 import type { GlobalPermission } from './authz/permissions';
+import { DEFAULT_SESSION_POLICY, minutes, sessionPolicy } from './session-policy';
 import type { ApiTokenScope } from './tokens/scopes';
 
 /**
@@ -18,9 +19,12 @@ export function sessionCookieName(secure: boolean): string {
   return secure ? SECURE_SESSION_COOKIE : SESSION_COOKIE;
 }
 
-/** IAM-004 turns these into policies per group or domain; until then they apply to everyone. */
-export const SESSION_LIFETIME_MS = 14 * 24 * 60 * 60 * 1000;
-export const SESSION_IDLE_MS = 3 * 24 * 60 * 60 * 1000;
+/**
+ * The default lifetime and idle timeout of a sign-in; each workspace's own are in its session
+ * policy (`session-policy.ts`), which a site administrator sets.
+ */
+export const SESSION_LIFETIME_MS = minutes(DEFAULT_SESSION_POLICY.lifetimeMinutes);
+export const SESSION_IDLE_MS = minutes(DEFAULT_SESSION_POLICY.idleMinutes);
 /** `last_seen_at` is written at most once a minute, so ordinary requests stay read-only. */
 const TOUCH_INTERVAL_MS = 60 * 1000;
 
@@ -82,6 +86,7 @@ export async function resolveSession(
   now = new Date(),
 ): Promise<CurrentSession | null> {
   if (!token) return null;
+  const policy = await sessionPolicy(db, workspaceId);
   const row = await db
     .selectFrom('user_session as s')
     .innerJoin('app_user as u', 'u.id', 's.user_id')
@@ -99,7 +104,9 @@ export async function resolveSession(
     .where('s.token_hash', '=', tokenHash(token))
     .where('s.workspace_id', '=', workspaceId)
     .where('s.expires_at', '>', now)
-    .where('s.last_seen_at', '>', new Date(now.getTime() - SESSION_IDLE_MS))
+    .where('s.last_seen_at', '>', new Date(now.getTime() - minutes(policy.idleMinutes)))
+    // A policy made shorter ends the sessions that began under the longer one.
+    .where('s.created_at', '>', new Date(now.getTime() - minutes(policy.lifetimeMinutes)))
     .where('u.deactivated_at', 'is', null)
     // Service accounts never sign in; a session row for one would be a bug, not a session.
     .where('u.kind', '=', 'person')
@@ -134,7 +141,8 @@ export async function startSession(
   options: { userId: number; secure: boolean },
 ): Promise<number> {
   const token = newToken();
-  const expiresAt = new Date(Date.now() + SESSION_LIFETIME_MS);
+  const policy = await sessionPolicy(db, request.workspaceId);
+  const expiresAt = new Date(Date.now() + minutes(policy.lifetimeMinutes));
   const agent = request.headers['user-agent']?.slice(0, 400) || null;
   const row = await db
     .insertInto('user_session')

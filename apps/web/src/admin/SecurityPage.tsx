@@ -3,6 +3,7 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { type SessionPolicyClient, SessionPolicyForm } from './SessionPolicyForm';
 
 /** Who must sign in with a second factor (M1-084), as `/api/v1/security/two-factor` keeps it. */
 export interface TwoFactorPolicy {
@@ -66,14 +67,16 @@ type State =
 export interface SecurityPageProps {
   /** Stories and tests pass their own endpoints; the page calls the backend otherwise. */
   client?: SecurityClient;
+  /** The session part's endpoints (the user's decision of 2026-11-01); none hides it. */
+  sessions?: SessionPolicyClient | null;
 }
 
 /**
- * Security settings for site administrators (#/admin/security): for now the two-factor policy
- * (M1-084): nobody, site administrators or everyone, plus chosen groups. The groups list is a
- * convenience; when it cannot be read the policy still loads and saves.
+ * Security settings for site administrators (#/admin/security): the two-factor policy (M1-084):
+ * nobody, site administrators or everyone, plus chosen groups; and how long a sign-in lasts.
+ * The groups list is a convenience; when it cannot be read the policy still loads and saves.
  */
-export function SecurityPage({ client = securityClient }: SecurityPageProps) {
+export function SecurityPage({ client = securityClient, sessions }: SecurityPageProps) {
   const t = useT();
   const { session } = useSession();
   const titleId = useId();
@@ -226,6 +229,9 @@ export function SecurityPage({ client = securityClient }: SecurityPageProps) {
             {saved}
           </p>
         </form>
+      )}
+      {state.status === 'loaded' && sessions !== null && (
+        <SessionPolicyForm {...(sessions ? { client: sessions } : {})} />
       )}
     </section>
   );

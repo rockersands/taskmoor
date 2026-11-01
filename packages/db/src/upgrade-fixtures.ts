@@ -1444,6 +1444,14 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM ticket_comment c WHERE c.version = 2`.execute(db);
     },
   },
+  '0080_session_policy': {
+    tables: { session_policy: 'workspace_id = 1 AND lifetime_minutes = 720 AND idle_minutes = 30' },
+    seed: async (db) => {
+      // A workspace on the ASVS level-2 values: 12 hours, 30 minutes idle.
+      await sql`INSERT INTO session_policy (workspace_id, lifetime_minutes, idle_minutes)
+        VALUES (1, 720, 30)`.execute(db);
+    },
+  },
 };
 
 /**

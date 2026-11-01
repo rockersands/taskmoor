@@ -1296,6 +1296,20 @@ export const messagesEn = {
   'admin.security.domainsHint':
     'One per line, such as example.com. Once you name one, people whose email is at any other domain are external and must use two-factor authentication. Leave it empty to treat everyone alike.',
   'admin.security.save': 'Save policy',
+  'admin.sessions.title': 'Sign-in sessions',
+  'admin.sessions.intro':
+    'How long people stay signed in. By default a sign-in lasts {days} days and ends after {idleDays} days unused.',
+  'admin.sessions.lifetime': 'A sign-in lasts (hours)',
+  'admin.sessions.idle': 'Sign out after this many minutes unused',
+  'admin.sessions.hint':
+    'Shorter is safer: the security checklist (ASVS level 2) asks for 12 hours and 30 minutes. A change also ends sign-ins older than the new limits.',
+  'admin.sessions.save': 'Save session settings',
+  'admin.sessions.saved': 'Session settings saved.',
+  'admin.sessions.saveFailed': 'The session settings could not be saved. Try again.',
+  'admin.sessions.failed': 'The session settings could not be loaded.',
+  'admin.sessions.outOfRange':
+    'Choose a sign-in of 1 to 2,160 hours and an idle time of 5 minutes or more.',
+  'admin.sessions.idleTooLong': 'The idle time cannot be longer than the sign-in itself.',
   'admin.security.saved': 'Policy saved.',
   'admin.security.saveFailed': 'The policy could not be saved. Try again in a moment.',
   'admin.sso.title': 'Single sign-on',

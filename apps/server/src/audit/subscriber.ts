@@ -36,6 +36,7 @@ export const AUDITED_EVENTS = [
   'user.recovery_codes_regenerated',
   'user.two_factor_reset',
   'two_factor_policy.updated',
+  'session_policy.updated',
   'sso.signed_in',
   'identity_provider.created',
   'identity_provider.updated',

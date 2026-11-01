@@ -1829,6 +1829,17 @@
       "CREATE UNIQUE INDEX scim_user_workspace_user_name_idx ON public.scim_user USING btree (workspace_id, lower(user_name)) WHERE (removed_at IS NULL)"
     ]
   },
+  "session_policy": {
+    "columns": [
+      "workspace_id integer not null",
+      "lifetime_minutes integer not null",
+      "idle_minutes integer not null",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX session_policy_pkey ON public.session_policy USING btree (workspace_id)"
+    ]
+  },
   "sign_in_challenge": {
     "columns": [
       "id integer not null default nextval('sign_in_challenge_id_seq'::regclass)",

@@ -3237,6 +3237,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/security/sessions',
+      expect: 'session_policy.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/security/sessions',
+          payload: { lifetimeMinutes: 14 * 24 * 60, idleMinutes: 3 * 24 * 60 },
+        }),
+    },
+    {
       route: 'POST /api/v1/session/enroll/totp/confirm',
       expect: 'user.two_factor_enabled',
       prepare: async () => {

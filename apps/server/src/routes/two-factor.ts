@@ -23,6 +23,13 @@ import { AUDIT_ACTIONS, recordRefusedAttempt } from '../audit/record';
 import { requireSiteAdmin, requireUser, startSession } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { emit } from '../events/bus';
+import {
+  DEFAULT_SESSION_POLICY,
+  forgetSessionPolicy,
+  SESSION_POLICY_LIMITS,
+  sessionPolicy,
+  sessionPolicyInput,
+} from '../session-policy';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 import {
   checkTotp,
@@ -744,6 +751,60 @@ export function registerTwoFactorRoutes(
       );
     });
     return { required: parsed.data.required, groupIds, organizationDomains: domains };
+  });
+
+  // How long a sign-in lasts (the user's decision of 2026-11-01; ASVS 3.3.2): next to who must
+  // use a second factor, on the same Security page.
+  app.get('/api/v1/security/sessions', async (request, reply) => {
+    if (!(await requireSiteAdmin(request, reply))) return reply;
+    return {
+      ...(await sessionPolicy(db, request.workspaceId)),
+      defaults: DEFAULT_SESSION_POLICY,
+      limits: SESSION_POLICY_LIMITS,
+    };
+  });
+
+  app.put('/api/v1/security/sessions', async (request, reply) => {
+    const admin = await requireSiteAdmin(request, reply);
+    if (!admin) return reply;
+    const parsed = sessionPolicyInput.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'invalid_request',
+        problems: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+      });
+    }
+    const ws = request.workspaceId;
+    const { lifetimeMinutes, idleMinutes } = parsed.data;
+    await db.transaction().execute(async (trx) => {
+      await trx
+        .insertInto('session_policy')
+        .values({
+          workspace_id: ws,
+          lifetime_minutes: lifetimeMinutes,
+          idle_minutes: idleMinutes,
+          updated_at: new Date(),
+        })
+        .onConflict((oc) =>
+          oc.column('workspace_id').doUpdateSet({
+            lifetime_minutes: lifetimeMinutes,
+            idle_minutes: idleMinutes,
+            updated_at: new Date(),
+          }),
+        )
+        .execute();
+      await emit(
+        trx,
+        { workspaceId: ws, actorId: admin.id },
+        {
+          type: 'session_policy.updated',
+          subjectId: ws,
+          payload: { lifetimeMinutes, idleMinutes },
+        },
+      );
+    });
+    forgetSessionPolicy(ws);
+    return { lifetimeMinutes, idleMinutes };
   });
 }
 

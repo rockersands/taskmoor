@@ -8,7 +8,7 @@ reads this file: every row marked Gap keeps the gate waiting.
 
 Paths are relative to the repository root. Tests named here run in `pnpm verify`.
 
-**Counts:** 258 requirements: 217 met, 25 not applicable, 16 gaps. Ten of the met ones were
+**Counts:** 258 requirements: 218 met, 25 not applicable, 1 accepted by the user (3.3.2), 14 gaps. Ten of the met ones were
 fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 14.4.5, 14.4.6.
 
 ## V1 Architecture, design and threat modelling
@@ -48,7 +48,7 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 1.11.2 | High-value flows are safe under concurrency | Met | Transactions with row locks for transitions and rank (`tickets/store.ts`), optimistic versions on edits (`routes/locks.test.ts`) |
 | 1.12.2 | Uploaded files are served as downloads or from another origin | Met | Sandboxing CSP, `nosniff`, CORP same-origin on the app's origin; S3 serves from the bucket's origin (`routes/attachments.ts` `guard`) |
 | 1.14.1 | Components of different trust levels are separated | Met | Roles api, worker, realtime, web in separate processes (ADR-021); the Builder page runs alone with no network (ADR-088) |
-| 1.14.2 | Binaries are signed and verified | Gap | Release signing waits on the key the user's Mac makes (M1-100, HANDOFF); the air-gap bundle verifies a signature once it exists (`tools/airgap/bundle.sh`) |
+| 1.14.2 | Binaries are signed and verified | Gap | The release signing key exists (M1-100; public key `tools/airgap/taskmoor-release.pub`, private key with the user); releases are signed from 1.0 (M1-120), and the air-gap bundle verifies the signature (`tools/airgap/bundle.sh`) |
 | 1.14.3 | The build warns of outdated or insecure components | Met | `pnpm audit` and osv-scanner (`scan-triage.md`); CI scan job (`.github/workflows/ci.yml`) at the M1 gate |
 | 1.14.4 | The build verifies a secure deployment | Met | `tools/image/smoke.sh` (size, health, readiness), Helm chart tests (`packages/devtools/src/helm-chart.test.ts`) |
 | 1.14.5 | Deployments are containerised | Met | One image (`Dockerfile`), Compose and Helm kits (`deploy/`) |
@@ -121,7 +121,7 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 3.2.3 | Tokens only in secure browser storage | Met | `HttpOnly` cookie (`auth.ts`) |
 | 3.2.4 | Tokens from approved randomness | Met | `newToken`: 32 bytes of `randomBytes` (`packages/iam/src/token.ts`) |
 | 3.3.1 | Signing out ends the session on the server | Met | `asvs.test.ts` 3.3.1 |
-| 3.3.2 | Re-authentication after 12 hours, or 30 minutes idle | Gap | Today 14 days absolute, 3 days idle (`SESSION_LIFETIME_MS`, `SESSION_IDLE_MS`, `auth.ts`). Fix: a workspace session policy with level 2 values as an option; the default is the user's decision (`docs/plan/decisions.csv`, M1 gate) |
+| 3.3.2 | Re-authentication after 12 hours, or 30 minutes idle | Accepted | A site administrator sets the lifetime and idle timeout per workspace on the Security page (`session-policy.ts`, `PUT /api/v1/security/sessions`, `session-policy.test.ts`), and a shorter policy ends older sessions at once. The default stays 14 days and 3 days idle: the user's decision of 2026-11-01 (`docs/plan/decisions.csv`); 12 hours and 30 minutes meets level 2 |
 | 3.3.3 | Other sessions can be ended after a password change | Met | A password change signs every other browser out (`routes/account.ts`) |
 | 3.3.4 | People see and end their active sessions | Met | `/api/v1/sessions`, `/api/v1/sessions/others` (`routes/identity.test.ts`) |
 | 3.4.1 | Cookies are Secure | Met | `asvs.test.ts` 3.4.1 |
@@ -144,7 +144,7 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 4.1.5 | Access control fails closed | Met | Unknown or missing grants deny; a ticket one cannot see answers 404 (`authz/visibility.test.ts`) |
 | 4.2.1 | Objects protected against direct reference | Met | Every id is checked against the caller's visibility (`routes/visibility.test.ts`, `search.visibility.test.ts`); the AI reads as the person (`apps/server/src/ai/injection.test.ts`) |
 | 4.2.2 | Protection against cross-site request forgery | Met | Foreign `Origin` refused before routing (`origins.ts` `registerCrossOrigin`; `origins.test.ts`), `SameSite` cookies |
-| 4.3.1 | Administrative interfaces use a second factor | Gap | The two-factor policy can require it for site administrators (`two_factor_policy`, `two-factor.ts`), but the default is `none`. Fix: default `site_admins` is the user's decision (M1 gate) |
+| 4.3.1 | Administrative interfaces use a second factor | Met | First-run setup sets the workspace's two-factor policy to `site_admins` (the user's decision of 2026-11-01; `routes/setup.ts`, `setup.test.ts`): the administrator enrols at the next sign-in (`fresh-install.spec.ts`), and the Security page can change it |
 | 4.3.2 | No directory listing or metadata files served | Met | `@fastify/static` without listing; only the built artefact is served (`apps/server/src/frontend.ts`) |
 | 4.3.3 | Step-up for sensitive actions; segregation where needed | Met | Fresh second factor for its own changes; break-glass accounts audited (`routes/session.ts`); bulk operations and exports audited (`audit/subscriber.ts`) |
 
@@ -346,8 +346,6 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 1.9.1 | Plain TCP to the bundled PostgreSQL inside the Compose network | Low | TLS in the Compose kit, or the private network documented as the boundary |
 | 1.14.2 | Releases not yet signed | Medium | M1-100 (the key from the user's Mac) |
 | 2.2.3, 2.5.5 | No email when a credential changes | Medium | Security notices by email |
-| 3.3.2 | Sessions last 14 days, 3 idle | Medium | Session policy; default is the user's decision |
-| 4.3.1 | Second factor for administrators not required by default | Medium | Default policy `site_admins`; the user's decision |
 | 5.2.6, 12.6.1 | Webhooks may reach private addresses | Medium | Resolver that refuses private ranges |
 | 7.1.3, 7.2.1, 7.2.2 | Failed sign-ins and refusals not audited | Medium | Audit events for failures |
 | 8.3.2 | No per-person export or erasure | Low | Personal data export and anonymisation |

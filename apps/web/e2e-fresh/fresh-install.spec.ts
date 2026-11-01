@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 
@@ -22,6 +22,40 @@ const ADMIN = {
   email: 'admin@fresh.test',
   password: `lantern ${randomBytes(12).toString('base64url')} meadow`,
 };
+
+// An authenticator app, in a few lines: RFC 6238 with HMAC-SHA-1, 6 digits, 30-second steps.
+const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function base32Decode(text: string): Buffer {
+  let bits = 0;
+  let value = 0;
+  const bytes: number[] = [];
+  for (const char of text.replace(/[\s=]/g, '').toUpperCase()) {
+    value = (value << 5) | BASE32.indexOf(char);
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(bytes);
+}
+function totp(secret: string, step: number): string {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const mac = createHmac('sha1', base32Decode(secret)).update(counter).digest();
+  const offset = (mac[mac.length - 1] ?? 0) & 15;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
+/** A code not used yet: each 30-second step works once, and one step ahead is accepted. */
+let lastStep = -1;
+async function freshCode(secret: string): Promise<string> {
+  const now = () => Math.floor(Date.now() / 30_000);
+  const step = Math.max(now(), lastStep + 1);
+  while (step > now() + 1) await new Promise((resolve) => setTimeout(resolve, 500));
+  lastStep = step;
+  return totp(secret, step);
+}
+let secret = '';
 
 test.skip(!SETUP || !BACKEND || !FRONTEND, 'run by tools/image/fresh-vm.sh');
 test.describe.configure({ mode: 'serial' });
@@ -63,6 +97,19 @@ test('[NFR-013] [OPS-013] the frontend at another site: sign in, a ticket, its b
   await page.getByLabel('Email').fill(ADMIN.email);
   await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  // A site administrator sets up a second factor before the first session (ASVS 4.3.1, the
+  // default of a fresh install).
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Set up two-factor authentication' }),
+  ).toBeVisible();
+  const key = page.getByText(/^[A-Z2-7]{4}( [A-Z2-7]{1,4})+$/);
+  secret = ((await key.textContent()) ?? '').replace(/\s/g, '');
+  await page.getByLabel('Code from the app').fill(await freshCode(secret));
+  await page.getByRole('button', { name: 'Verify and continue' }).click();
+  const codes = page.getByRole('region', { name: 'Save your recovery codes' });
+  await expect(codes.getByRole('listitem')).toHaveCount(10);
+  await codes.getByRole('checkbox', { name: 'I have saved these codes' }).check();
+  await codes.getByRole('button', { name: 'Continue' }).click();
   await expect(page).toHaveURL(new RegExp(`^${FRONTEND.replace(/[.]/g, '\\.')}/`));
   await expect(heading(page)).toHaveText('Home');
   if (MARK) writeFileSync(MARK, String(Math.floor(Date.now() / 1000)));
@@ -121,6 +168,13 @@ test('[NFR-013] [OPS-013] the frontend at another site: sign in, a ticket, its b
     data: { email: ADMIN.email, password: ADMIN.password },
   });
   expect(signIn.status()).toBe(200);
+  // The password and then the app's code: the administrator has a second factor now.
+  const step = (await signIn.json()) as { status: string; challenge: string };
+  expect(step.status).toBe('second_factor');
+  const verified = await other.request.post(`${BACKEND}/api/v1/session/second-factor`, {
+    data: { challenge: step.challenge, method: 'totp', code: await freshCode(secret) },
+  });
+  expect(verified.status(), await verified.text()).toBe(200);
   const edited = await other.request.patch(`${BACKEND}/api/v1/tickets/FRESH-1`, {
     data: { summary: 'Lighthouse lamp flickers at night' },
   });

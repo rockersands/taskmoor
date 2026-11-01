@@ -106,6 +106,12 @@ describe('first-run setup and sessions', () => {
     expect((await app.inject({ method: 'GET', url: '/api/v1/setup' })).json()).toEqual({
       needed: false,
     });
+    // Site administrators must use a second factor from the start (ASVS 4.3.1).
+    const policy = await database.db
+      .selectFrom('two_factor_policy')
+      .select('required')
+      .executeTakeFirstOrThrow();
+    expect(policy.required).toBe('site_admins');
   });
 
   it('[OPS-003] rejects the token a second time, and any token after setup', async () => {
@@ -144,9 +150,12 @@ describe('first-run setup and sessions', () => {
       url: '/api/v1/session',
       payload: { email: ADMIN.email, password: ADMIN.password },
     });
+    // The right password is not enough for a site administrator: they enrol a second factor
+    // before the session starts (the setup's default policy, ASVS 4.3.1).
     expect(right.statusCode).toBe(200);
-    expect(right.json().user.isSiteAdmin).toBe(true);
-    expect(right.headers['set-cookie']).toBeDefined();
+    expect(right.json()).toMatchObject({ status: 'enrollment_required' });
+    expect(right.json().challenge).toEqual(expect.any(String));
+    expect(right.headers['set-cookie']).toBeUndefined();
   });
 
   it('[OPS-003] expires a token after 24 hours', async () => {

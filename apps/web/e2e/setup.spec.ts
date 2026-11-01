@@ -125,6 +125,18 @@ test('[OPS-003] the setup link creates the administrator and signs them in', asy
   await expect(heading(page)).toHaveText('Home');
   await page.goto('./#/settings');
   await expect(heading(page)).toHaveText('Settings');
+
+  // Site administrators must use a second factor from the start (ASVS 4.3.1; the user's decision
+  // of 2026-11-01): the Security page shows it. The fresh-install run (tools/image/fresh-vm.sh)
+  // enrols one at the next sign-in; this serial file turns it off for the journeys after it,
+  // and its two-factor tests set the policy they need.
+  await page.goto('./#/admin/security');
+  const form = page.getByRole('form', { name: 'Two-factor authentication' });
+  await expect(form.getByRole('radio', { name: 'Site administrators' })).toBeChecked();
+  const off = await page.request.put('/api/v1/security/two-factor', {
+    data: { required: 'none', groupIds: [] },
+  });
+  expect(off.status()).toBe(200);
 });
 
 test('[OPS-003] the token is rejected once used', async ({ page }) => {

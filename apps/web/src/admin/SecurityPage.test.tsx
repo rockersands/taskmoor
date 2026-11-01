@@ -12,10 +12,13 @@ const GROUPS = [
   { id: 7, name: 'Platform team', description: '', memberCount: 9, childCount: 1 },
 ];
 
+const DEFAULTS = { lifetimeMinutes: 14 * 24 * 60, idleMinutes: 3 * 24 * 60 };
+
 function openSecurity(handlers: Record<string, Handler> = {}, session = ADMIN) {
   const calls = stubBackend({
     'GET /security/two-factor': () => jsonResponse(200, { required: 'site_admins', groupIds: [7] }),
     'GET /groups': () => jsonResponse(200, { groups: GROUPS }),
+    'GET /security/sessions': () => jsonResponse(200, { ...DEFAULTS, defaults: DEFAULTS }),
     ...handlers,
   });
   window.location.hash = '#/admin/security';
@@ -165,5 +168,50 @@ describe('security settings: two-factor policy', () => {
     expect(texts.length).toBeGreaterThan(10);
     expect(untranslated(texts)).toEqual([]);
     expect(errors).toEqual([]);
+  });
+});
+
+describe('security settings: sign-in sessions', () => {
+  it('[IAM-001] shows the defaults and saves the ASVS level-2 values', async () => {
+    const user = userEvent.setup();
+    const saved: unknown[] = [];
+    openSecurity({
+      'PUT /security/sessions': (body) => {
+        saved.push(body);
+        return jsonResponse(200, body);
+      },
+    });
+    const form = await screen.findByRole('form', { name: 'Sign-in sessions' });
+    expect(within(form).getByText(/lasts 14 days and ends after 3 days unused/)).toBeVisible();
+    const lifetime = within(form).getByLabelText('A sign-in lasts (hours)');
+    const idle = within(form).getByLabelText('Sign out after this many minutes unused');
+    expect(lifetime).toHaveValue(336);
+    expect(idle).toHaveValue(4320);
+    await user.clear(lifetime);
+    await user.type(lifetime, '12');
+    await user.clear(idle);
+    await user.type(idle, '30');
+    await user.click(within(form).getByRole('button', { name: 'Save session settings' }));
+    expect(await within(form).findByText('Session settings saved.')).toBeVisible();
+    expect(saved).toEqual([{ lifetimeMinutes: 720, idleMinutes: 30 }]);
+  });
+
+  it('[IAM-001] refuses an idle time longer than the sign-in, before asking the server', async () => {
+    const user = userEvent.setup();
+    const calls = openSecurity();
+    const form = await screen.findByRole('form', { name: 'Sign-in sessions' });
+    const lifetime = within(form).getByLabelText('A sign-in lasts (hours)');
+    const idle = within(form).getByLabelText('Sign out after this many minutes unused');
+    await user.clear(lifetime);
+    await user.type(lifetime, '1');
+    await user.clear(idle);
+    await user.type(idle, '90');
+    await user.click(within(form).getByRole('button', { name: 'Save session settings' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'The idle time cannot be longer than the sign-in itself.',
+    );
+    expect(calls.some((c) => c.method === 'PUT' && c.path.startsWith('/security/sessions'))).toBe(
+      false,
+    );
   });
 });

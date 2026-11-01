@@ -101,6 +101,14 @@ export function registerSetupRoutes(
       });
       // The token has done its one job.
       await trx.deleteFrom('instance_setting').where('key', '=', SETUP_TOKEN_KEY).execute();
+      // Site administrators sign in with a second factor from the start (the user's decision of
+      // 2026-11-01; ASVS 4.3.1): the administrator enrols at their next sign-in, and the
+      // Security page can change it. A workspace that already has a policy keeps it.
+      await trx
+        .insertInto('two_factor_policy')
+        .values({ workspace_id: request.workspaceId, required: 'site_admins' })
+        .onConflict((oc) => oc.column('workspace_id').doNothing())
+        .execute();
       await startSession(trx, request, reply, {
         userId: created.id,
         secure: options.secureCookies,

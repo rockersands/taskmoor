@@ -68,7 +68,17 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   and set `BUILD_CA` for the harness). It found and fixed: live updates were never shown on open
   tickets and boards (NTF-008), the create dialog lost its ticket types when the same track was
   chosen again, and the signed-out start page said "under construction". Docker Hub and
-  dl-cdn.alpinelinux.org must stay in the network access.
+  dl-cdn.alpinelinux.org must stay in the network access. The harness loads the images the kit's Compose
+  file names (now `pgvector/pgvector:0.8.1-pg16-trixie`). When Docker Hub answers 429 (rate
+  limit), pull it from `mirror.gcr.io/pgvector/pgvector:0.8.1-pg16-trixie` and tag it.
+- **Security defaults (the user, 2026-11-01):** how long a sign-in lasts is a workspace setting
+  (`session-policy.ts`, migration 0080, Settings > Security > Sign-in sessions; default 14 days
+  and 3 days idle; a shorter value ends older sessions at once). First-run setup sets the
+  two-factor policy to site administrators, so a fresh install's administrator enrols at the
+  next sign-in. `e2e/setup.spec.ts` checks that and turns it off for its later journeys; the
+  fresh-install run enrols through the frontend. Right after a page reload the session check can
+  answer "signed out" for a moment before the signed-in state arrives (seen in the keyboard
+  journey); not traced yet, harmless so far.
 - **The 1M-issue import run (M1-091) goes last**, after every other M1 task (the user, 2026-10-31).
 
 ## Start here: 2026-10-30 evening (cloud session): M1-129, M1-072 OAuth, M1-068 to M1-071, M1-108, M1-112, M1-089 to M1-092, M1-095 and three fixes

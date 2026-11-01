@@ -104,4 +104,16 @@ of the history, so a rerun shows only new findings.
 
 ## Changes
 
-None yet.
+- **2026-11-01, the user's decisions on the two gaps left to them.**
+  - **Sessions (ASVS 3.3.2):** a workspace setting with today's values as the default (14 days,
+    3 days idle). `session_policy` (migration 0080), `apps/server/src/session-policy.ts` (read on
+    every use, cached 15 s per process, dropped on change), `GET`/`PUT /api/v1/security/sessions`
+    (event `session_policy.updated`, audited), the Security page's Sign-in sessions form. The
+    lifetime is checked against each session's start, so a shorter policy ends older sessions
+    at once; the idle timeout covers frontends on another site too. 3.3.2 is recorded as
+    accepted: 12 hours and 30 minutes meets level 2 when an administrator sets it.
+  - **Second factor for site administrators (ASVS 4.3.1):** first-run setup writes the
+    two-factor policy `site_admins`, so the administrator enrols at the next sign-in; an existing
+    policy is kept. The e2e setup file turns it off after checking it, for the journeys that
+    follow; the fresh-install run (`fresh-install.spec.ts`) enrols an authenticator through the
+    frontend's sign-in and signs in with a code. 4.3.1 is met.

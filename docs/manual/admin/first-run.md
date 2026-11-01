@@ -2,7 +2,7 @@
 title: "First-run setup"
 audience: admins
 sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
-accessed: 2026-10-30
+accessed: 2026-11-01
 attestation: own-words
 ---
 # First-run setup
@@ -114,7 +114,9 @@ administrators see.
    restart. Until then, notifications reach each
    person's inbox in the app and email waits unsent ([email and notification
    policies](notifications.md)).
-3. **Decide how people sign in.** **Security** sets who must use two-factor authentication.
+3. **Decide how people sign in.** **Security** sets who must use two-factor authentication
+   (site administrators from the start, so you set one up at your next sign-in) and how long a
+   sign-in lasts.
    **Single sign-on**, **LDAP and Active Directory** and SCIM provisioning connect your
    directory ([single sign-on](sso.md), [LDAP directories](ldap.md), [SCIM
    provisioning](scim.md)).

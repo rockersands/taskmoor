@@ -1,8 +1,8 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx
+accessed: 2026-11-01
 attestation: own-words
 ---
 # People, groups and teams
@@ -22,7 +22,7 @@ administrators.
 | **People** | `#/admin/users` | Add people, make site administrators, deactivate and reactivate, password links |
 | **Groups** | `#/admin/groups` | Create and delete groups, members, groups inside groups |
 | **Teams** | `#/admin/teams` | Create, rename and delete teams, their members and lead |
-| **Security** | `#/admin/security` | Who must use two-factor authentication |
+| **Security** | `#/admin/security` | Who must use two-factor authentication, and how long sign-ins last |
 | **Service accounts** | `#/admin/service-accounts` | Accounts for programs: see [API tokens and service accounts](api-tokens.md) |
 | **Single sign-on** | `#/admin/identity-providers` | See [Single sign-on](sso.md) |
 | **LDAP and Active Directory** | `#/admin/directories` | See [LDAP directories](ldap.md) |
@@ -140,6 +140,8 @@ per line (`example.com`), and a person whose email is at any other domain must u
 factor, whatever the choice above. Leave the list empty to treat everyone alike. Service
 accounts are never external. Select **Save policy**.
 
+- A fresh install starts with **Site administrators**: the administrator that setup creates
+  sets up a second factor at their next sign-in. Choose another option here to change it.
 - A person the policy covers who has no second factor sets one up the next time they sign in.
   Sessions that are already open stay open.
 - A person the policy covers cannot switch off their last factor.
@@ -151,8 +153,11 @@ accounts are never external. Select **Save policy**.
 
 ## Sessions
 
-A session lasts 14 days, and ends earlier after 3 days without use. These limits are not
-configurable yet. On HTTPS the browser cookie is `__Host-taskmoor_session`; the database keeps
+By default a session lasts 14 days, and ends earlier after 3 days without use. On **Settings** >
+**Security**, under **Sign-in sessions**, set **A sign-in lasts (hours)** and **Sign out after this
+many minutes unused**, then select **Save session settings**. The security checklist (ASVS level
+2) asks for 12 hours and 30 minutes. A shorter setting also ends the sessions that are older or
+idler than the new limits; it applies to frontends on another site too. On HTTPS the browser cookie is `__Host-taskmoor_session`; the database keeps
 only a hash of it.
 
 People see their sessions on their Account page under **Sessions**, and can **Sign out** one or

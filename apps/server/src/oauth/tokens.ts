@@ -2,7 +2,8 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Database } from '@taskmoor/db';
 import { newToken, tokenHash } from '@taskmoor/iam';
 import type { Kysely, Transaction } from 'kysely';
-import { type CurrentSession, SESSION_IDLE_MS } from '../auth';
+import type { CurrentSession } from '../auth';
+import { minutes, sessionPolicy } from '../session-policy';
 
 /**
  * OAuth 2.1 for frontends on another site (M1-107; IAM-024, ADR-080): authorization codes with
@@ -159,6 +160,7 @@ export type GrantOutcome =
 
 /** A live browser session at this backend, by id: the parent a code names. */
 async function liveParent(db: Db, workspaceId: number, sessionId: number, now: Date) {
+  const idle = minutes((await sessionPolicy(db, workspaceId)).idleMinutes);
   return db
     .selectFrom('user_session as s')
     .innerJoin('app_user as u', 'u.id', 's.user_id')
@@ -167,7 +169,7 @@ async function liveParent(db: Db, workspaceId: number, sessionId: number, now: D
     .where('s.workspace_id', '=', workspaceId)
     .where('s.client_id', 'is', null)
     .where('s.expires_at', '>', now)
-    .where('s.last_seen_at', '>', new Date(now.getTime() - SESSION_IDLE_MS))
+    .where('s.last_seen_at', '>', new Date(now.getTime() - idle))
     .where('u.deactivated_at', 'is', null)
     .where('u.kind', '=', 'person')
     .executeTakeFirst();
@@ -267,6 +269,7 @@ export async function refreshTokens(
   },
 ): Promise<GrantOutcome> {
   const now = options.now ?? new Date();
+  const idle = minutes((await sessionPolicy(db, options.workspaceId)).idleMinutes);
   const row = await db
     .selectFrom('oauth_token as t')
     .innerJoin('user_session as s', 's.id', 't.session_id')
@@ -298,7 +301,7 @@ export async function refreshTokens(
     row.client_id !== options.clientId ||
     row.expires_at <= now ||
     // A registered client's family is bounded by its lifetime, not by idleness (M1-072).
-    (row.scope === null && row.last_seen_at.getTime() <= now.getTime() - SESSION_IDLE_MS) ||
+    (row.scope === null && row.last_seen_at.getTime() <= now.getTime() - idle) ||
     row.deactivated_at !== null ||
     row.userKind !== 'person'
   ) {
@@ -363,6 +366,7 @@ export async function resolveAccessToken(
 ): Promise<
   (CurrentSession & { parentId: number | null; scope: string | null; clientId: string }) | null
 > {
+  const idle = minutes((await sessionPolicy(db, workspaceId)).idleMinutes);
   const row = await db
     .selectFrom('oauth_token as t')
     .innerJoin('user_session as s', 's.id', 't.session_id')
@@ -389,7 +393,7 @@ export async function resolveAccessToken(
     .where((eb) =>
       eb.or([
         eb('s.scope', 'is not', null),
-        eb('s.last_seen_at', '>', new Date(now.getTime() - SESSION_IDLE_MS)),
+        eb('s.last_seen_at', '>', new Date(now.getTime() - idle)),
       ]),
     )
     .where('u.deactivated_at', 'is', null)

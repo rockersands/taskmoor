@@ -56,14 +56,17 @@ node node_modules/tsx/dist/cli.mjs packages/devtools/src/cli/builder.ts \
   --backend-url "$BACKEND" --frontend-url "$FRONTEND" --routing hash \
   --web "$WORK/web" --out "$WORK/kits" --version "$VERSION" >/dev/null
 ls "$WORK/kits"
-docker image inspect caddy:2 postgres:16 >/dev/null 2>&1 || {
-  docker pull -q caddy:2 >/dev/null
-  docker pull -q postgres:16 >/dev/null
-}
+# The images the kit's Compose file names besides Taskmoor's own (its database and Caddy).
+others=$(unzip -p "$WORK/kits/taskmoor-backend-kit.zip" docker-compose.yml |
+  sed -n 's/^ *image: *\([^$ ]*\) *$/\1/p' | sort -u)
+for image in $others; do
+  docker image inspect "$image" >/dev/null 2>&1 || docker pull -q "$image" >/dev/null
+done
 # The kit names the image it was made for; this run's image stands in for it.
 pinned=$(unzip -p "$WORK/kits/taskmoor-backend-kit.zip" .env | sed -n 's/^TASKMOOR_IMAGE=//p')
 docker tag "$TAG" "$pinned"
-docker save "$TAG" "$pinned" caddy:2 postgres:16 -o "$WORK/images.tar"
+# shellcheck disable=SC2086
+docker save "$TAG" "$pinned" $others -o "$WORK/images.tar"
 
 echo "== a fresh machine starts"
 started=$(date +%s)

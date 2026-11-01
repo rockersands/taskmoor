@@ -116,6 +116,11 @@ export const EVENT_TYPES = {
       organizationDomains: z.array(z.string()).optional(),
     }),
   },
+  /** How long a sign-in lasts in the workspace (ASVS 3.3.2): lifetime and idle timeout. */
+  'session_policy.updated': {
+    subject: 'workspace',
+    payload: z.object({ lifetimeMinutes: z.number().int(), idleMinutes: z.number().int() }),
+  },
 
   // Single sign-on
   'sso.signed_in': {
