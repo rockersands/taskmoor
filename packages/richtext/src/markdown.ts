@@ -28,7 +28,7 @@ import { gfmAutolinkLiteral } from 'micromark-extension-gfm-autolink-literal';
 import { gfmStrikethrough } from 'micromark-extension-gfm-strikethrough';
 import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTaskListItem } from 'micromark-extension-gfm-task-list-item';
-import type { AdfNode } from './adf';
+import { type AdfNode, layoutSpan } from './adf';
 import { fromAdfJson, type PmJson } from './convert';
 import { schema } from './schema';
 
@@ -108,12 +108,30 @@ const ADF_INLINE = new Set([
 const PANEL_TYPES = ['info', 'note', 'tip', 'warning', 'error', 'success', 'custom'];
 const ALERT_ALIASES: Record<string, string> = { important: 'info', caution: 'error' };
 
+/** The text with each lone surrogate replaced by U+FFFD, so it can be URI-encoded. */
+export const wellFormed = (text: string): string =>
+  text.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, '\ufffd');
+
 /** Only colours we can write back safely: hex values or plain colour names. */
 export const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$/;
 
-/** Link targets a document may hold; anything else (javascript:, data:, ...) keeps only its text. */
+/**
+ * Link targets a document may hold; anything else (javascript:, data:, ...) keeps only its text.
+ * The scheme is read as a browser reads it (the WHATWG URL parser): tabs and line breaks
+ * anywhere are dropped and so are control characters and spaces in front, so `java\tscript:`
+ * and `\u0001javascript:` are `javascript:` (M1-118; `pnpm fuzz href` checks this against the
+ * URL parser). Other leading white space is dropped too, which can only refuse more.
+ */
 export function isSafeHref(href: string): boolean {
-  const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(href.trim())?.[1]?.toLowerCase();
+  const noBreaks = href.replace(/[\t\n\r]/g, '');
+  let start = 0;
+  while (
+    start < noBreaks.length &&
+    (noBreaks.charCodeAt(start) <= 0x20 || /\s/u.test(noBreaks[start] as string))
+  ) {
+    start++;
+  }
+  const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(noBreaks.slice(start))?.[1]?.toLowerCase();
   return scheme === undefined || ['http', 'https', 'mailto', 'tel'].includes(scheme);
 }
 
@@ -267,7 +285,7 @@ function tableOut(table: PmJson): Table {
     for (const cell of row.content ?? []) {
       cells.push(cell);
       // A merged cell is written once; the columns it covers get empty cells.
-      const span = Math.max(1, Number(cell.attrs?.colspan ?? 1));
+      const span = layoutSpan(cell.attrs?.colspan);
       for (let i = 1; i < span; i++) cells.push({ type: cell.type });
     }
     return cells;
@@ -557,7 +575,8 @@ function leafOut(n: PmJson): PhrasingContent[] {
       return [
         {
           type: 'link',
-          url: `${MENTION_SCHEME}${encodeURIComponent(id)}`,
+          // A lone surrogate cannot be encoded; it becomes U+FFFD (M1-118, `pnpm fuzz wiki`).
+          url: `${MENTION_SCHEME}${encodeURIComponent(wellFormed(id))}`,
           title: null,
           children: [{ type: 'text', value: `@${label}` }],
         },

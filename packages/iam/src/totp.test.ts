@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
 import { pepperFromSecret, pepperRing } from './password';
@@ -68,6 +69,17 @@ describe('one-time passwords (RFC 6238)', () => {
     expect(new Set(codes).size).toBe(10);
     for (const code of codes) expect(code).toMatch(/^[A-Z2-7]{5}-[A-Z2-7]{5}$/);
     expect(normaliseRecoveryCode(' abcde-fghij ')).toBe('ABCDEFGHIJ');
+  });
+
+  it('[IAM-001] refuses a sealed secret whose tag was cut short (M1-118)', () => {
+    const key = pepperFromSecret('a pepper for sealing, long enough to use');
+    const plain = randomBytes(10).toString('hex');
+    const parts = sealSecret(plain, key).split(':');
+    const tag = Buffer.from(parts[4] as string, 'base64url');
+    for (const length of [4, 8, 12]) {
+      parts[4] = tag.subarray(0, length).toString('base64url');
+      expect(openSecret(parts.join(':'), pepperRing(key)), `${length} bytes`).toBeNull();
+    }
   });
 
   it('[IAM-001] seals secrets under the pepper and opens them with the right key only', () => {

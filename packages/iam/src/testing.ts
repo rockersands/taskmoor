@@ -33,7 +33,9 @@ export class FakeKeyService implements ExternalKeyService {
     if (this.down) throw new Error('key service unreachable');
     this.decryptions += 1;
     const raw = Buffer.from(ciphertext.replace(/^fake:/, ''), 'base64url');
-    const decipher = createDecipheriv('aes-256-gcm', this.key, raw.subarray(0, 12));
+    const decipher = createDecipheriv('aes-256-gcm', this.key, raw.subarray(0, 12), {
+      authTagLength: 16,
+    });
     decipher.setAuthTag(raw.subarray(12, 28));
     return Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]);
   }

@@ -1,5 +1,5 @@
 import type { JsonValue } from '@taskmoor/db';
-import { schema } from '@taskmoor/richtext';
+import { docShapeProblem, schema } from '@taskmoor/richtext';
 import { looksLikeKey, normalizeKey } from '../tracks/model';
 
 /**
@@ -59,6 +59,8 @@ export function checkRichText(
 ): { ok: true; doc: JsonValue | null } | { ok: false; problem: RichTextProblem } {
   if (value === null) return { ok: true, doc: null };
   if (typeof value !== 'object' || Array.isArray(value)) return { ok: false, problem: 'invalid' };
+  // Shape first, without recursion: a tree too deep would exhaust the stack below (M1-118).
+  if (docShapeProblem(value) !== null) return { ok: false, problem: 'invalid' };
   if (JSON.stringify(value).length > RICH_TEXT_MAX_BYTES) return { ok: false, problem: 'too_long' };
   try {
     const node = schema.nodeFromJSON(value);

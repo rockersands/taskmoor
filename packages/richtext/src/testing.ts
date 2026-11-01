@@ -303,3 +303,10 @@ export function generateAdfDocument(seed: number): AdfNode {
 export function generateAdfDocuments(count: number, seed = 1): AdfNode[] {
   return Array.from({ length: count }, (_, i) => generateAdfDocument(seed * 100_003 + i));
 }
+
+/** The round-trip corpora, as seeds for the fuzzers (`pnpm fuzz wiki|markdown`, M1-118). */
+export {
+  DOCUMENTS as MARKDOWN_DOCUMENTS,
+  SOURCES as MARKDOWN_SOURCES,
+} from './markdown-corpus';
+export { DOCUMENTS as WIKI_DOCUMENTS, SOURCES as WIKI_SOURCES } from './wiki-corpus';

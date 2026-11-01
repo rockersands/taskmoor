@@ -1,4 +1,4 @@
-import type { AdfNode } from './adf';
+import { type AdfNode, layoutSpan } from './adf';
 import type { PmJson } from './convert';
 import { dayOf, isSafeHref, readableBlocks, SAFE_COLOR } from './markdown';
 import { schema } from './schema';
@@ -85,6 +85,13 @@ const PANEL_COLORS: Record<string, string> = {
 };
 const MAX_LIST_DEPTH = 20;
 const LANGUAGE = /^[A-Za-z0-9_+#.-]+$/;
+
+/**
+ * Lower case for ASCII letters only, so every index into the result is an index into the text
+ * (`İ` lowercases to two characters; M1-118, found by `pnpm fuzz wiki`). Macro names are ASCII,
+ * and the readers' case-insensitive patterns fold ASCII only too.
+ */
+const asciiLower = (s: string): string => s.replace(/[A-Z]+/g, (c) => c.toLowerCase());
 /** Ids a mention can carry in `[~accountid:...]`. */
 const MENTION_ID = /^[^\s[\]|\\{}]+$/;
 
@@ -199,7 +206,7 @@ function codeOut(n: PmJson): string {
   const text = (n.content ?? []).map((t) => t.text ?? '').join('');
   const language = typeof n.attrs?.language === 'string' ? n.attrs.language : null;
   const lang = language && LANGUAGE.test(language) ? language : null;
-  const lower = text.toLowerCase();
+  const lower = asciiLower(text);
   if (lang && !lower.includes('{code}')) return `{code:${lang}}\n${text}\n{code}`;
   if (!lower.includes('{noformat}')) return `{noformat}\n${text}\n{noformat}`;
   if (!lower.includes('{code}')) return `{code}\n${text}\n{code}`;
@@ -295,7 +302,7 @@ function tableOut(table: PmJson): string {
       });
       line += delim + (body === '' ? ' ' : body);
       // A merged cell is written once; the columns it covers get empty cells.
-      const span = Math.max(1, Number(cell.attrs?.colspan ?? 1) || 1);
+      const span = layoutSpan(cell.attrs?.colspan);
       for (let i = 1; i < span; i++) line += `${delim} `;
       last = delim;
     }
@@ -885,7 +892,7 @@ function macroIn(src: string, m: RegExpExecArray): { blocks: PmJson[]; end: numb
   const name = (m[1] as string).toLowerCase();
   const bodyStart = m.index + m[0].length;
   const tag = `{${name}}`;
-  const lower = src.toLowerCase();
+  const lower = asciiLower(src);
   if (name === 'code' || name === 'noformat') {
     const close = lower.indexOf(tag, bodyStart);
     const bodyEnd = close === -1 ? src.length : close;
@@ -894,15 +901,17 @@ function macroIn(src: string, m: RegExpExecArray): { blocks: PmJson[]; end: numb
       .replace(/^[ \t]*\n/, '')
       .replace(/\n[ \t]*$/, '');
     const p = params(m[2]);
-    const language =
+    const given =
       name === 'code'
         ? (p.named.get('language') ?? p.named.get('lang') ?? p.list[0] ?? null)
         : null;
+    // Only a language the writer can carry, so the block writes back as it was read (M1-118).
+    const language = given && LANGUAGE.test(given) ? given : null;
     return {
       blocks: [
         {
           type: 'codeBlock',
-          attrs: { language: language || null },
+          attrs: { language },
           ...(body ? { content: [{ type: 'text', text: body }] } : {}),
         },
       ],

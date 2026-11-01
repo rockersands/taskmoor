@@ -19,6 +19,7 @@ export {
   type AgentToolContext,
   type AgentToolResult,
   MIN_TASK_BUDGET,
+  NOT_CONFIRMED,
   runAgent,
   SYSTEM_CLOCK,
   ToolRegistry,
@@ -140,3 +141,9 @@ export type {
   ToolCall,
   Usage,
 } from './types';
+export {
+  fenceUntrusted,
+  neutraliseTags,
+  type ScreenedAnswer,
+  screenAnswer,
+} from './untrusted';

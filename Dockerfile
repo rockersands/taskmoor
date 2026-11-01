@@ -40,6 +40,11 @@ ARG TASKMOOR_VERSION=0.0.0-dev
 # per supported server major (3 MB each): a dump is taken and loaded with the server's own
 # version, since a newer pg_restore emits settings an older server rejects.
 RUN apk add --no-cache postgresql16-client postgresql17-client postgresql18-client
+# The server runs `node` alone: the package managers the base image ships (npm, npx, corepack,
+# yarn) are removed, with the known vulnerabilities of their own dependencies (M1-118 scan).
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn \
+      /usr/local/bin/yarnpkg
 ENV NODE_ENV=production \
     TASKMOOR_VERSION=${TASKMOOR_VERSION} \
     TASKMOOR_ROLE=all \

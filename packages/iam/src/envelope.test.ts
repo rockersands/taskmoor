@@ -49,6 +49,17 @@ describe('envelope encryption (IAM-020, ADR-098)', () => {
     });
   });
 
+  it('[IAM-020] refuses a sealed value whose tag was cut short (M1-118)', async () => {
+    const ring = new KeyRing(LocalKek.fromSecret(masterKey()));
+    const sealed = await sealEnvelope(fakeKey(), ring, 'ws1:apiKey');
+    const parts = sealed.ciphertext.split('.');
+    const tag = Buffer.from(parts[3] as string, 'base64url');
+    parts[3] = tag.subarray(0, 4).toString('base64url');
+    await expect(
+      openEnvelope({ ...sealed, ciphertext: parts.join('.') }, ring, 'ws1:apiKey'),
+    ).rejects.toThrow(EnvelopeError);
+  });
+
   it('[IAM-020] names keys by a fingerprint that reveals nothing, the same for the same key', () => {
     const key = masterKey();
     const kek = LocalKek.fromSecret(key);

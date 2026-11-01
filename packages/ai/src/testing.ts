@@ -502,3 +502,12 @@ export class VirtualClock {
     }
   }
 }
+
+/** The prompt-injection corpus (M1-118), for the server's harness and M1-079's live run. */
+export {
+  fill as fillInjection,
+  INJECTION_CASES,
+  INJECTION_GOALS,
+  type InjectionCase,
+  type InjectionGoal,
+} from './injection/corpus';

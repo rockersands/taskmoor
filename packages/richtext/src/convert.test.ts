@@ -1,6 +1,13 @@
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
-import { type AdfNode, adfDoc, canonicalAdf, countNodes } from './adf';
+import {
+  type AdfNode,
+  adfDoc,
+  adfShapeProblem,
+  canonicalAdf,
+  countNodes,
+  docShapeProblem,
+} from './adf';
 import { fromAdf, fromAdfJson, toAdf, toAdfFromJson } from './convert';
 import { generateAdfDocument, generateAdfDocuments } from './testing';
 
@@ -232,6 +239,75 @@ describe('document format round trip', () => {
       type: 'mention',
       attrs: { id: '7', text: '@Mi' },
     });
+  });
+
+  it('[API-011] refuses trees the readers and writers cannot rely on (M1-118)', () => {
+    const p = (extra: Record<string, unknown>) =>
+      adfDoc([{ type: 'paragraph', ...extra } as AdfNode]);
+    for (const bad of [
+      p({ attrs: 'x' }),
+      p({ content: 'x' }),
+      p({ content: [null] }),
+      p({ content: [{ type: 'text', text: 1 }] }),
+      p({ content: [{ type: 'text', text: 'a', marks: 'strong' }] }),
+      p({ content: [{ type: 'text', text: 'a', marks: [{ type: 'link', attrs: 'x' }] }] }),
+      adfDoc([
+        { type: 'inlineExtension', attrs: { id: 1 }, content: { a: 1 } } as unknown as AdfNode,
+      ]),
+    ]) {
+      expect(adfShapeProblem(bad), JSON.stringify(bad)).not.toBeNull();
+      expect(() => fromAdfJson(bad)).toThrow();
+    }
+    let deep: AdfNode = { type: 'text', text: 'x' };
+    for (let i = 0; i < 50_000; i++) deep = { type: 'blockquote', content: [deep] };
+    expect(adfShapeProblem(adfDoc([deep]))).toMatch(/deeper/);
+    expect(() => fromAdfJson(adfDoc([deep]))).toThrow(/deeper/);
+    expect(adfShapeProblem(generateAdfDocument(3))).toBeNull();
+  });
+
+  it('[API-011] refuses table spans the writers cannot lay out (M1-118)', () => {
+    const cell = (attrs: Record<string, unknown>) =>
+      adfDoc([
+        {
+          type: 'table',
+          content: [{ type: 'tableRow', content: [{ type: 'tableCell', attrs, content: [] }] }],
+        },
+      ]);
+    for (const attrs of [
+      { colspan: 1e308 },
+      { colspan: 0 },
+      { rowspan: 1.5 },
+      { colspan: '2' },
+      { rowspan: 1001 },
+    ]) {
+      expect(adfShapeProblem(cell(attrs)), JSON.stringify(attrs)).toMatch(/span/);
+    }
+    expect(adfShapeProblem(cell({ colspan: 3, rowspan: 2 }))).toBeNull();
+  });
+
+  it('[API-011] checks the kept attributes of a stored document too (M1-118)', () => {
+    const stored = (node: Record<string, unknown>) => ({ type: 'doc', content: [node] });
+    expect(docShapeProblem(stored({ type: 'paragraph', attrs: { adfAttrs: 'x' } }))).not.toBeNull();
+    expect(
+      docShapeProblem(
+        stored({ type: 'unknownBlock', attrs: { adf: { type: 'x', content: 'y' } } }),
+      ),
+    ).not.toBeNull();
+    expect(
+      docShapeProblem(
+        stored({
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'a',
+              marks: [{ type: 'unknownMark', attrs: { type: 'x', attrs: 1 } }],
+            },
+          ],
+        }),
+      ),
+    ).not.toBeNull();
+    expect(docShapeProblem(fromAdfJson(generateAdfDocument(4)))).toBeNull();
   });
 
   it('rejects a root that is not a document', () => {

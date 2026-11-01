@@ -1,0 +1,185 @@
+[
+  {
+    "target": "query",
+    "seconds": 600,
+    "inputs": 2244265,
+    "failures": 0,
+    "perSecond": 3740,
+    "slowestMs": 116.01,
+    "seed": 118003,
+    "at": "2026-10-31",
+    "outcomes": {
+      "valid": 232946,
+      "invalid": 2011319
+    }
+  },
+  {
+    "target": "formula",
+    "seconds": 600,
+    "inputs": 3601250,
+    "failures": 0,
+    "perSecond": 6002,
+    "slowestMs": 83.54,
+    "seed": 118003,
+    "at": "2026-10-31",
+    "outcomes": {
+      "valid": 950101,
+      "invalid": 2651149
+    }
+  },
+  {
+    "target": "text",
+    "seconds": 600,
+    "inputs": 10609795,
+    "failures": 0,
+    "perSecond": 17683,
+    "slowestMs": 124.92,
+    "seed": 118001,
+    "at": "2026-10-31",
+    "outcomes": {
+      "valid": 8123216,
+      "refused": 2486579
+    }
+  },
+  {
+    "target": "href",
+    "seconds": 600,
+    "inputs": 87284212,
+    "failures": 0,
+    "perSecond": 145474,
+    "slowestMs": 70.87,
+    "seed": 118001,
+    "at": "2026-10-31",
+    "outcomes": {
+      "safe": 65715044,
+      "unsafe": 18012247,
+      "not-a-url": 3556921
+    }
+  },
+  {
+    "target": "wiki",
+    "seconds": 600,
+    "inputs": 598000,
+    "failures": 0,
+    "perSecond": 997,
+    "slowestMs": 409.27,
+    "seed": 118001,
+    "at": "2026-10-31",
+    "outcomes": {
+      "valid": 597573,
+      "unstable": 427
+    }
+  },
+  {
+    "target": "markdown",
+    "seconds": 600,
+    "inputs": 361003,
+    "failures": 0,
+    "perSecond": 602,
+    "slowestMs": 674.81,
+    "seed": 118001,
+    "at": "2026-10-31",
+    "outcomes": {
+      "valid": 361003
+    }
+  },
+  {
+    "target": "adf",
+    "seconds": 600,
+    "inputs": 417979,
+    "failures": 0,
+    "perSecond": 697,
+    "slowestMs": 138.7,
+    "seed": 118004,
+    "at": "2026-10-31",
+    "outcomes": {
+      "valid": 131780,
+      "refused": 259888,
+      "refused-by-check": 26311
+    }
+  },
+  {
+    "target": "csv",
+    "seconds": 600,
+    "inputs": 1925410,
+    "failures": 0,
+    "perSecond": 3209,
+    "slowestMs": 123.5,
+    "seed": 118002,
+    "at": "2026-10-31",
+    "outcomes": {
+      "bytes": 1868088,
+      "table": 57322
+    }
+  },
+  {
+    "target": "dc-xml",
+    "seconds": 600,
+    "inputs": 452611,
+    "failures": 0,
+    "perSecond": 754,
+    "slowestMs": 165.83,
+    "seed": 118002,
+    "at": "2026-10-31",
+    "outcomes": {
+      "parsed": 57534,
+      "refused": 395077
+    }
+  },
+  {
+    "target": "dc-stage",
+    "seconds": 600,
+    "inputs": 9402,
+    "failures": 0,
+    "perSecond": 16,
+    "slowestMs": 1122.16,
+    "seed": 118002,
+    "at": "2026-10-31",
+    "outcomes": {
+      "malformed": 5084,
+      "staged": 4318
+    }
+  },
+  {
+    "target": "scim",
+    "seconds": 600,
+    "inputs": 6827823,
+    "failures": 0,
+    "perSecond": 11380,
+    "slowestMs": 429.53,
+    "seed": 118002,
+    "at": "2026-10-31",
+    "outcomes": {
+      "parsed": 959176,
+      "refused": 5868647
+    }
+  },
+  {
+    "target": "addresses",
+    "seconds": 600,
+    "inputs": 12619712,
+    "failures": 0,
+    "perSecond": 21033,
+    "slowestMs": 304.93,
+    "seed": 118002,
+    "at": "2026-10-31",
+    "outcomes": {
+      "refused": 10158008,
+      "accepted": 2461704
+    }
+  },
+  {
+    "target": "rich-text",
+    "seconds": 600,
+    "inputs": 1135451,
+    "failures": 0,
+    "perSecond": 1892,
+    "slowestMs": 177.21,
+    "seed": 118001,
+    "at": "2026-10-31",
+    "outcomes": {
+      "stored": 432678,
+      "refused:invalid": 702773
+    }
+  }
+]

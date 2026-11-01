@@ -529,5 +529,9 @@ describe('transitions through the workflow engine (M1-024 to M1-027)', () => {
       transitionId: 1,
       pattern: '(',
     });
+    // A pattern that can backtrack catastrophically on ticket text (M1-118).
+    expect(
+      await bad({ checks: [{ type: 'regex', field: 'summary', pattern: '^(a+)+$' }] }),
+    ).toEqual({ problem: 'invalid_pattern', transitionId: 1, pattern: '^(a+)+$' });
   });
 });

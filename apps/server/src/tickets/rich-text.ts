@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { Database, JsonValue, RichTextField } from '@taskmoor/db';
 import {
   type AdfNode,
+  adfShapeProblem,
   fromAdfJson,
   fromMarkdown,
   fromWiki,
@@ -60,6 +61,8 @@ export function readRichText(
   let doc: unknown = value;
   if (format === 'adf') {
     if (typeof value !== 'object' || Array.isArray(value)) return { ok: false, problem: 'invalid' };
+    // Shape first, without recursion: a tree too deep would exhaust the stack below (M1-118).
+    if (adfShapeProblem(value) !== null) return { ok: false, problem: 'invalid' };
     if (JSON.stringify(value).length > RICH_TEXT_MAX_BYTES) {
       return { ok: false, problem: 'too_long' };
     }

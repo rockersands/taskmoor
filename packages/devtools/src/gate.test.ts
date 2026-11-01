@@ -1,6 +1,14 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { formatGate, type GateInputs, loadGateInputs, m0Gate, runGate } from './gate';
+import {
+  FUZZ_GATE_SECONDS,
+  formatGate,
+  type GateInputs,
+  loadGateInputs,
+  m0Gate,
+  runGate,
+  type ScanRecord,
+} from './gate';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -121,5 +129,44 @@ describe('M0 gate', () => {
     const inputs = loadGateInputs(ROOT, 'M0');
     expect(runGate(inputs).length).toBe(8);
     expect(() => runGate({ ...inputs, milestone: 'M9' })).toThrow(/No gate defined for M9/);
+  });
+
+  it('[NFR-008] gates M1 on the scans, 24 h of fuzzing, the ASVS gaps and the live injection run', () => {
+    const inputs = loadGateInputs(ROOT, 'M1');
+    const security = inputs.security;
+    if (!security) throw new Error('docs/security records are missing');
+    const scan = (open: Partial<ScanRecord['open']>, ran = true): ScanRecord => ({
+      scan: 'SAST',
+      tool: 'semgrep',
+      ran,
+      at: '2026-10-31',
+      open: { critical: 0, high: 0, medium: 0, low: 0, ...open },
+    });
+    const state = (records: Partial<typeof security>) =>
+      Object.fromEntries(
+        runGate({ ...inputs, security: { ...security, ...records } }).map((c) => [
+          c.name.split(' (')[0],
+          c.state,
+        ]),
+      );
+    expect(state({ scans: [scan({ medium: 3 })] })['SAST scan']).toBe('ok');
+    expect(state({ scans: [scan({ high: 1 })] })['SAST scan']).toBe('fail');
+    expect(state({ scans: [scan({}, false)] })['SAST scan']).toBe('waiting');
+    const fuzz = (seconds: number, failures = 0) => [
+      { target: 'wiki', seconds, inputs: 1, failures },
+    ];
+    expect(state({ fuzz: fuzz(600) })['Fuzzers 24 h clean']).toBe('waiting');
+    expect(state({ fuzz: fuzz(FUZZ_GATE_SECONDS) })['Fuzzers 24 h clean']).toBe('ok');
+    expect(state({ fuzz: fuzz(FUZZ_GATE_SECONDS, 1) })['Fuzzers 24 h clean']).toBe('fail');
+    expect(
+      state({ asvs: '| 1.1.1 | x | Gap | y |' })[
+        'ASVS 4.0.3 level 2 checklist without an open gap'
+      ],
+    ).toBe('waiting');
+    expect(
+      state({ asvs: '| 1.1.1 | x | Met | y |' })[
+        'ASVS 4.0.3 level 2 checklist without an open gap'
+      ],
+    ).toBe('ok');
   });
 });

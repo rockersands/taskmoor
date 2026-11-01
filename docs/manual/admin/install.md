@@ -1,8 +1,8 @@
 ---
 title: "Installing Taskmoor"
 audience: admins
-sources: deploy/README.md, deploy/compose/README.md, deploy/compose/docker-compose.yml, deploy/compose/docker-compose.external.yml, deploy/compose/.env.example, deploy/compose/install.sh, deploy/compose/install.ps1, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, Dockerfile, package.json, apps/server/src/config.ts, apps/server/src/frontend.ts, apps/server/src/main.ts, apps/web/src/api/client.ts, packages/webconfig/src/config.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, docs/plan/decisions.csv
-accessed: 2026-10-30
+sources: deploy/README.md, deploy/compose/README.md, deploy/compose/docker-compose.yml, deploy/compose/docker-compose.external.yml, deploy/compose/.env.example, deploy/compose/install.sh, deploy/compose/install.ps1, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, Dockerfile, package.json, apps/server/src/config.ts, apps/server/src/security-headers.ts, apps/server/src/frontend.ts, apps/server/src/main.ts, apps/web/src/api/client.ts, packages/webconfig/src/config.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, docs/plan/decisions.csv
+accessed: 2026-10-31
 attestation: own-words
 ---
 # Installing Taskmoor
@@ -166,7 +166,10 @@ start PostgreSQL on the same files.
 
 Set `PUBLIC_URL` to the address people type. Without it the server assumes
 `http://localhost:8080`. The setup link, the links in emails and the session cookies follow it:
-cookies are marked secure only when `PUBLIC_URL` starts with `https://`.
+cookies are marked secure only when `PUBLIC_URL` starts with `https://`, and only then does
+every answer carry `Strict-Transport-Security` (a year, subdomains included), so browsers stop
+using plain HTTP for the host. Every answer also carries `X-Content-Type-Options: nosniff` and
+`Referrer-Policy: same-origin`; API answers are never cached.
 
 The Compose kits and the all-in-one image answer plain HTTP on port 8080. For anything beyond
 a trial, put a reverse proxy with TLS in front (the Builder's backend kit brings Caddy), and:

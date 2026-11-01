@@ -8,6 +8,7 @@ import type {
   TransitionDef,
   WorkflowDef,
 } from '@taskmoor/workflow';
+import { unsafePattern } from '@taskmoor/workflow';
 import { z } from 'zod';
 import { isKnownField, isWritableField, parseField } from './fields';
 
@@ -391,6 +392,10 @@ export function definitionProblem(
       try {
         new RegExp(c.pattern);
       } catch {
+        return { problem: 'invalid_pattern', transitionId: t.id, pattern: c.pattern };
+      }
+      // A pattern that can backtrack catastrophically on ticket text is refused (M1-118).
+      if (unsafePattern(c.pattern)) {
         return { problem: 'invalid_pattern', transitionId: t.id, pattern: c.pattern };
       }
     }

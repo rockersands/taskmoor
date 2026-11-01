@@ -27,6 +27,7 @@ import {
   type TransitionResult,
   type WorkflowDef,
 } from './model';
+import { unsafePattern } from './pattern';
 import { JIRA_FUNCTION_MAP } from './reference';
 
 /**
@@ -299,6 +300,8 @@ function checkRefusal(
         : `${check.field} must be within ${check.days} days of ${check.other}`;
     }
     case 'regex':
+      // A pattern that could stall the server never runs (saved before M1-118's check).
+      if (unsafePattern(check.pattern)) return `${check.field} has a pattern that cannot run`;
       return new RegExp(check.pattern).test(String(read(check.field) ?? ''))
         ? undefined
         : `${check.field} does not match ${check.pattern}`;

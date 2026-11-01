@@ -70,6 +70,9 @@ export function redirectMatches(registered: readonly string[], requested: string
     return false;
   }
   if (wanted.protocol !== 'http:' || !LOOPBACK_HOSTS.has(wanted.hostname)) return false;
+  // Only the port may differ (RFC 8252 7.3): no user, password or fragment registration would
+  // refuse (M1-118, found by `pnpm fuzz addresses`).
+  if (wanted.username || wanted.password || wanted.hash || requested.includes('#')) return false;
   return registered.some((r) => {
     try {
       const url = new URL(r);
