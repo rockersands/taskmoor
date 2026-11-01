@@ -42,6 +42,8 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   may remove the Hugging Face hosts from the environment's network access again. Still to
   build for M1-078: the runtime (onnxruntime-node or -web, tokenizer), pgvector, the index and
   permission-filtered retrieval.
+- **M1-117 measures at 1M tickets** (the user, 2026-11-01): done when every budget is green at
+  1M (`pnpm bench:check --size 1m`); 10M and 30M are documented estimates, not runs.
 - **AI provider key:** not yet. M1-073 and M1-074's live tests stay skipped.
 - **Spanish review:** the user does it once every M1 task is finished.
 - **Release signing key** (M1-100): the user asked Claude to make it. A cloud container cannot
