@@ -147,7 +147,8 @@ test('[OPS-016] (1) (2) a project file and seed make the CLI bytes with no reque
   const { files, hashes } = await makeKits(page);
   expectWithinBudget(testInfo, Date.now() - started, 15_000, 'Builder page: both kits');
 
-  expect(hashes).toEqual(cli(project, ['--seed', seed]));
+  // One argument: a seed may start with a dash, which the parser would take for an option.
+  expect(hashes).toEqual(cli(project, [`--seed=${seed}`]));
   // The page shows each file's hash, the same as the download's.
   for (const key of OUTPUTS) await expect(page.getByText(hashes[key])).toBeVisible();
   expect(Object.keys(readZip(files.backend))).toContain('install.sh');
