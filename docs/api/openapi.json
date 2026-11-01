@@ -2262,6 +2262,10 @@
               "null"
             ]
           },
+          "reranked": {
+            "description": "Present when `reasons` was asked for: true when an AI model re-ordered the first candidates in time, false for the embedding order alone.",
+            "type": "boolean"
+          },
           "similar": {
             "items": {
               "additionalProperties": {},
@@ -2272,12 +2276,20 @@
                   "minimum": -9007199254740991,
                   "type": "integer"
                 },
+                "likely": {
+                  "description": "With `reasons` and a re-ranking model: whether the model takes it for a duplicate.",
+                  "type": "boolean"
+                },
                 "match": {
                   "description": "Whether the ticket’s summary and description or one of its comments matched best.",
                   "enum": [
                     "ticket",
                     "comment"
                   ],
+                  "type": "string"
+                },
+                "reason": {
+                  "description": "With `reasons` and a re-ranking model: why it may be a duplicate.",
                   "type": "string"
                 },
                 "score": {
@@ -6655,6 +6667,39 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/ai/drafts": {
+      "post": {
+        "operationId": "internal-post-ai-drafts",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/ai/features": {
       "get": {
         "operationId": "internal-get-ai-features",
@@ -6744,6 +6789,39 @@
           "Internal"
         ],
         "x-taskmoor-access": "session",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/ai/query": {
+      "post": {
+        "operationId": "internal-post-ai-query",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
         "x-taskmoor-stability": "internal"
       }
     },
@@ -20976,6 +21054,11 @@
                     "minimum": -1,
                     "type": "number"
                   },
+                  "reasons": {
+                    "default": false,
+                    "description": "Have the configured AI model re-rank the first candidates and give a reason for each, within 2 seconds of the request; without a model, or past the time, the embedding order is answered with `reranked: false`.",
+                    "type": "boolean"
+                  },
                   "text": {
                     "description": "What is being written: a summary, with the description after it if any.",
                     "maxLength": 10000,
@@ -21574,6 +21657,92 @@
     "/api/v1/tickets/{id}/activity": {
       "get": {
         "operationId": "internal-get-tickets-by-id-activity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/tickets/{id}/ai/breakdown": {
+      "post": {
+        "operationId": "internal-post-tickets-by-id-ai-breakdown",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/tickets/{id}/ai/summary": {
+      "post": {
+        "operationId": "internal-post-tickets-by-id-ai-summary",
         "parameters": [
           {
             "in": "path",

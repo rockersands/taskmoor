@@ -1,9 +1,10 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { stableJson } from '@taskmoor/testkit/golden';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { candidate as replay } from './candidates/replay';
 import { QUERY_PAIRS } from './query-corpus';
 import { type QueryCandidate, referenceCandidate, runAs, runQueryEval } from './query-eval';
-import { formatRun, runEvals, THRESHOLDS } from './runner';
+import { FEATURES, formatRun, runEvals, THRESHOLDS } from './runner';
 import { type EvalWorld, seedEvalDataset } from './seed';
 import { SUMMARY_CASES } from './summary-corpus';
 import { readable, runSummaryEval, type SummaryCandidate } from './summary-eval';
@@ -21,6 +22,7 @@ describe('AI evals on the seeded dataset (M1-133)', () => {
     world = await seedEvalDataset(database.db);
   }, 300_000);
   afterAll(async () => {
+    await replay.close?.();
     await world?.close();
   });
 
@@ -195,4 +197,31 @@ describe('AI evals on the seeded dataset (M1-133)', () => {
     expect(scored.pending).toEqual([]);
     expect(formatRun(scored, 0, 'scattered')).toContain('below M1-079');
   });
+  // Last: the injection run adds tickets to the dataset.
+  it('[AI-013] [AI-014] [AI-016] [IAM-023] the product’s features score through the runner with a provider replaying recorded answers (M1-079)', async () => {
+    const run = await runEvals({
+      features: [...FEATURES],
+      candidate: replay,
+      world: async () => world,
+    });
+    expect(run.broken).toEqual([]);
+    // The route's answer is checked and returned as written: every reference comes back.
+    expect(run.query[0]?.score).toBe(1);
+    expect(run.query[0]?.byLanguage.de?.score).toBe(1);
+    expect(run.query[0]?.byLanguage.ja?.score).toBe(1);
+    // Streamed, with the references' citations mapped to comments the reader may read.
+    expect(run.summary[0]?.failures).toEqual([]);
+    expect(run.summary[0]?.score).toBe(THRESHOLDS.summary);
+    // The bundled model with the feature's re-rank wiring (the replay keeps the order).
+    expect(run.duplicates[0]?.queries).toBeGreaterThanOrEqual(40);
+    // Every injection case holds through every feature, the replayed images screened out.
+    expect(run.injection[0]?.failures).toEqual([]);
+    expect(run.injection[0]?.score).toBe(THRESHOLDS.injection);
+    expect(run.pending).toEqual([
+      'summary: the judged criteria (judge-prompt.md) wait for a model (M1-079)',
+    ]);
+    const text = formatRun(run, 3, replay.name);
+    expect(text).toContain('125/125 exact-result match, 100.0%');
+    process.stdout.write(text);
+  }, 900_000);
 });

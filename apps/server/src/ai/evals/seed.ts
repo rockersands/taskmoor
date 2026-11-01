@@ -45,6 +45,15 @@ export interface EvalWorld {
   ticketName(id: number): string | undefined;
   /** A request to the app as this person (their session cookie). */
   as(handle: Handle, options: InjectOptions): Promise<LightMyRequestResponse>;
+  /**
+   * The same request to another app on this database, as this person (their session holds
+   * there too): a candidate's app with AI features (M1-079).
+   */
+  asOn(
+    app: FastifyInstance,
+    handle: Handle,
+    options: InjectOptions,
+  ): Promise<LightMyRequestResponse>;
   close(): Promise<void>;
 }
 
@@ -95,8 +104,8 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
   // Made for this run and never written down.
   const password = `eval-${randomBytes(18).toString('base64url')}`;
   const cookies: Record<string, string> = {};
-  const as = (who: string, options: InjectOptions) =>
-    app.inject({
+  const as = (who: string, options: InjectOptions, on: FastifyInstance = app) =>
+    on.inject({
       ...options,
       remoteAddress: nextAddress(),
       headers: { ...(options.headers ?? {}), cookie: cookies[who] ?? '' },
@@ -347,6 +356,7 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
     tickets,
     ticketName: (id) => byId.get(id),
     as: (handle, options) => as(handle, options),
+    asOn: (other, handle, options) => as(handle, options, other),
     close: () => app.close(),
   };
 }

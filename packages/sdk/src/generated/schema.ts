@@ -1631,14 +1631,20 @@ export interface components {
         SimilarTickets: {
             /** @description What made the vectors, such as `local:all-MiniLM-L6-v2` (the bundled model); null when the server has embeddings off. */
             model: string | null;
+            /** @description Present when `reasons` was asked for: true when an AI model re-ordered the first candidates in time, false for the embedding order alone. */
+            reranked?: boolean;
             similar: ({
                 /** @description The comment that matched, one the caller may read; never its text. */
                 commentId?: number;
+                /** @description With `reasons` and a re-ranking model: whether the model takes it for a duplicate. */
+                likely?: boolean;
                 /**
                  * @description Whether the ticket’s summary and description or one of its comments matched best.
                  * @enum {string}
                  */
                 match: "ticket" | "comment";
+                /** @description With `reasons` and a re-ranking model: why it may be a duplicate. */
+                reason?: string;
                 /** @description Cosine similarity, -1 to 1: higher is closer. */
                 score: number;
                 ticket: components["schemas"]["SearchTicket"];
@@ -6347,6 +6353,11 @@ export interface operations {
                     /** @default 10 */
                     limit?: number;
                     minScore?: number;
+                    /**
+                     * @description Have the configured AI model re-rank the first candidates and give a reason for each, within 2 seconds of the request; without a model, or past the time, the embedding order is answered with `reranked: false`.
+                     * @default false
+                     */
+                    reasons?: boolean;
                     /** @description What is being written: a summary, with the description after it if any. */
                     text: string;
                     /** @description Only tickets of this track (its key or id), such as the one being created in. */

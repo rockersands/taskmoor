@@ -40,6 +40,7 @@ import { registerAccountRoutes } from './routes/account';
 import { registerActivityRoutes } from './routes/activity';
 import { registerAdminRoutes } from './routes/admin';
 import { registerAiRoutes } from './routes/ai';
+import { registerAiFeatureRoutes } from './routes/ai-features';
 import { registerAiUsageRoutes } from './routes/ai-usage';
 import { registerAttachmentRoutes } from './routes/attachments';
 import { registerAuditRoutes } from './routes/audit';
@@ -499,6 +500,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
             ...(deps.vectorSearch ? { search: deps.vectorSearch } : {}),
           })
         : null,
+      // Re-ranking with reasons when a model is set up (M1-079): read at request time.
+      () => app.ai,
     );
     registerGuardrailRoutes(app, db);
     // Boards (M1-043): reads go through the search compiler, moves through the ticket routes.
@@ -587,6 +590,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       agents: new AgentRuns(db, ai),
     };
     registerAiRoutes(app, db, { ai, keyStorage: aiKeys.storage });
+    // The AI features of v1 (M1-079): summaries, query from text, drafts and breakdown.
+    registerAiFeatureRoutes(app, db, {
+      ai: app.ai,
+      catalogs: fieldCatalogs,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      origins: deps.allowedOrigins ?? [],
+      ...(deps.ai?.now ? { now: deps.ai.now } : {}),
+    });
     registerTokenRoutes(app, db);
     registerAiUsageRoutes(app, db, {
       ai,

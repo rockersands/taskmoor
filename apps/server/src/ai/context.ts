@@ -6,7 +6,9 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { customKey, ruleOf } from '../fields/layouts';
 import { ticketRoutes } from '../routes/tickets';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
-import { loadTicket } from '../tickets/store';
+import { commentReadableSql, commentText } from '../tickets/comments';
+import { loadTicket, type TicketRow } from '../tickets/store';
+import { COMMENT_MAX, type SummaryChange, type SummaryComment } from './features/summary';
 import type { AiSettingsCache } from './usage';
 
 /**
@@ -66,8 +68,27 @@ function pieces(value: unknown): string[] {
   return text ? [text] : [];
 }
 
+/** Fields whose changes a summary may mention ("recent changes", AI-013), by history name. */
+const CHANGE_FIELDS = new Set([
+  'status',
+  'assignee',
+  'priority',
+  'type',
+  'labels',
+  'parent',
+  'dueDate',
+  'startDate',
+  'targetRelease',
+  'foundInRelease',
+  'area',
+  'closeReason',
+  'track',
+  'summary',
+]);
+
 export class AiContext {
   private readonly read: TicketRoute;
+  private readonly history: TicketRoute;
 
   constructor(
     private readonly db: Kysely<Database>,
@@ -80,6 +101,88 @@ export class AiContext {
     );
     if (!route) throw new Error('the ticket read route is missing');
     this.read = route;
+    const history = ticketRoutes(db, authorizer, catalogs).find(
+      (r) => r.method === 'GET' && r.url === '/api/v1/tickets/:id/history',
+    );
+    if (!history) throw new Error('the ticket history route is missing');
+    this.history = history;
+  }
+
+  /**
+   * The comments of a ticket the caller sees that they may read, oldest first, as plain text
+   * (M1-079; AI-013 (2)): a comment restricted to a role or group they are not in is never read,
+   * so it cannot reach a prompt. The caller must already see the ticket (`ticket` above).
+   */
+  async comments(caller: Caller, ticket: TicketRow, limit = 1000): Promise<SummaryComment[]> {
+    const rows = await this.db
+      .selectFrom('ticket_comment as c')
+      .innerJoin('ticket as k', 'k.id', 'c.ticket_id')
+      .leftJoin('app_user as u', 'u.id', 'c.author_id')
+      .select(['c.id', 'c.body', 'c.created_at', 'u.name as author'])
+      .where('c.workspace_id', '=', caller.workspaceId)
+      .where('c.ticket_id', '=', ticket.id)
+      .where(commentReadableSql(caller.workspaceId, caller.user?.id ?? null))
+      .orderBy('c.id', 'asc')
+      .limit(limit)
+      .execute();
+    return rows.map((r) => ({
+      id: r.id,
+      author: r.author ?? 'Someone',
+      createdAt: r.created_at.toISOString(),
+      text: commentText(r.body, COMMENT_MAX),
+    }));
+  }
+
+  /**
+   * The latest changes of the ticket's plain fields, newest last, through the history route as
+   * the caller; fields the AI policy or the ticket's field rules hide are left out.
+   */
+  async changes(caller: Caller, ticket: TicketRow, limit = 20): Promise<SummaryChange[]> {
+    const answer = await callRoute(this.history, {
+      ...caller,
+      params: { id: String(ticket.id) },
+      query: { order: 'desc', limit: '100' },
+      body: undefined,
+    });
+    if (answer.statusCode !== 200) return [];
+    const [catalog, policy] = await Promise.all([
+      this.catalogs.get(caller.workspaceId),
+      this.settings.policyOf(caller.workspaceId),
+    ]);
+    const placement = {
+      trackId: ticket.track_id,
+      ticketTypeId: ticket.ticket_type_id,
+      ruleSetId: ticket.rule_set_id,
+      layoutSetId: ticket.layout_set_id,
+    };
+    const marked = new Set(policy.redactedFields);
+    const changes = (
+      answer.payload as {
+        changes: {
+          at: string;
+          actor: { name: string } | null;
+          field: string;
+          from: { display: string | null; value: string | null };
+          to: { display: string | null; value: string | null };
+        }[];
+      }
+    ).changes;
+    return changes
+      .filter(
+        (c) =>
+          CHANGE_FIELDS.has(c.field) &&
+          !marked.has(c.field) &&
+          !ruleOf(catalog, placement, c.field).hidden,
+      )
+      .slice(0, limit)
+      .reverse()
+      .map((c) => ({
+        at: c.at,
+        actor: c.actor?.name ?? 'Someone',
+        field: c.field,
+        from: c.from.display ?? c.from.value ?? '',
+        to: c.to.display ?? c.to.value ?? '',
+      }));
   }
 
   /** The ticket as the caller may see it, ready for a prompt; null when they cannot see it. */

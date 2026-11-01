@@ -40,6 +40,8 @@ export interface QueryContext {
   /** Weeks start on Sunday (`startOfWeek()`). */
   weekStart: 'sunday';
   vocabulary: QueryVocabulary;
+  /** The dataset, for a candidate that asks the product's own route as the person (M1-079). */
+  world: EvalWorld;
 }
 
 export interface QueryVocabulary {
@@ -90,6 +92,7 @@ export function queryContext(world: EvalWorld, pair: QueryPair): QueryContext {
     timeZone: world.timeZone,
     weekStart: 'sunday',
     vocabulary: vocabularyFor(pair.asUser),
+    world,
   };
 }
 

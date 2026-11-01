@@ -140,6 +140,11 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['PUT /api/v1/admin/ai/tracks/:id']).toBe('admin');
     expect(classes['POST /api/v1/admin/ai/test']).toBe('admin');
     expect(classes['GET /api/v1/ai/features']).toBe('read');
+    // The AI features (M1-079): answers and proposals only, so a read token reaches them.
+    expect(classes['POST /api/v1/tickets/:id/ai/summary']).toBe('read');
+    expect(classes['POST /api/v1/ai/query']).toBe('read');
+    expect(classes['POST /api/v1/ai/drafts']).toBe('read');
+    expect(classes['POST /api/v1/tickets/:id/ai/breakdown']).toBe('read');
     const adminOnly = api.filter(
       (r) =>
         /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|directories|audit)/.test(

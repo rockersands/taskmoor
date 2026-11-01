@@ -122,9 +122,20 @@ export const similarTickets = z
           commentId: id.optional().meta({
             description: 'The comment that matched, one the caller may read; never its text.',
           }),
+          likely: z.boolean().optional().meta({
+            description:
+              'With `reasons` and a re-ranking model: whether the model takes it for a duplicate.',
+          }),
+          reason: z.string().optional().meta({
+            description: 'With `reasons` and a re-ranking model: why it may be a duplicate.',
+          }),
         })
         .loose(),
     ),
+    reranked: z.boolean().optional().meta({
+      description:
+        'Present when `reasons` was asked for: true when an AI model re-ordered the first candidates in time, false for the embedding order alone.',
+    }),
   })
   .loose()
   .meta({ id: 'SimilarTickets' });

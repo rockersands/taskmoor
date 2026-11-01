@@ -215,7 +215,8 @@ export interface SummaryReport {
   total: number;
   passed: number;
   score: number;
-  judged: 'pending';
+  /** Whether a model graded the judged criteria too (`judge.ts`), or they wait for one. */
+  judged: 'pending' | 'judged';
   failures: SummaryCaseOutcome[];
   outcomes: SummaryCaseOutcome[];
 }

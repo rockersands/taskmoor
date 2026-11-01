@@ -397,7 +397,7 @@ export class FakeProviderFailure extends Error {
     super(message);
   }
 }
-export { FakeProviderServer } from './fake-server';
+export { type FakeMessagesRequest, FakeProviderServer } from './fake-server';
 
 // ---------------------------------------------------------------------------------------------
 // An in-memory meter: the spend limits and audit rows of M1-077 without a database.

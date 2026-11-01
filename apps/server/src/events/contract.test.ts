@@ -71,6 +71,14 @@ const EXEMPT: Record<string, string> = {
   'POST /api/v1/search': 'reads only: runs a query too long for a URL (M1-037)',
   'POST /api/v1/tickets/similar':
     'reads only: the tickets most similar to a text being written, stores nothing (M1-078)',
+  'POST /api/v1/tickets/:id/ai/summary':
+    'reads only: streams an AI summary of what the caller may read; the call is booked in the AI audit log, not as an event (M1-079)',
+  'POST /api/v1/ai/query':
+    'reads only: an AI-written query, parsed but not run; booked in the AI audit log (M1-079)',
+  'POST /api/v1/ai/drafts':
+    'reads only: AI-drafted ticket proposals; creating them is POST /api/v1/tickets, after the person confirms (M1-079)',
+  'POST /api/v1/tickets/:id/ai/breakdown':
+    'reads only: AI-proposed children; creating them is POST /api/v1/tickets, after the person confirms (M1-079)',
   'DELETE /api/v1/mcp': 'ends an MCP session kept in memory; nothing stored changes (M1-072)',
   'POST /api/v1/admin/ai/test':
     'reads only: asks the AI provider for its models with the saved or given settings, stores nothing (M1-076)',

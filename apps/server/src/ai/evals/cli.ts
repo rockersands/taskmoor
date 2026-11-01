@@ -48,6 +48,11 @@ if (values.candidate) {
     process.stderr.write(`${values.candidate} exports no candidate (default or \`candidate\`)\n`);
     process.exit(2);
   }
+  // A candidate that cannot run here (the live one without a key) says why; no score is made.
+  if (candidate.unavailable) {
+    process.stderr.write(`${candidate.name} cannot run: ${candidate.unavailable}\n`);
+    process.exit(2);
+  }
 }
 
 const cleanup: (() => Promise<void>)[] = [];
@@ -81,5 +86,6 @@ try {
   );
   if (run.broken.length > 0) process.exitCode = 1;
 } finally {
+  await candidate?.close?.();
   for (const step of cleanup) await step();
 }

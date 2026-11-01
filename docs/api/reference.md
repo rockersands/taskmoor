@@ -1189,6 +1189,7 @@ Body:
 | `excludeTicket` | integer or string | no | A ticket to leave out (its key or id), such as the one being edited. |
 | `limit` | integer | no |  |
 | `minScore` | number | no |  |
+| `reasons` | boolean | no | Have the configured AI model re-rank the first candidates and give a reason for each, within 2 seconds of the request; without a model, or past the time, the embedding order is answered with `reranked: false`. |
 
 Responses:
 
@@ -1957,6 +1958,7 @@ Exact up to 10,000; beyond, an estimate from a sample, or "more than 10,000" whe
 | --- | --- | --- | --- |
 | `model` | string or null | yes | What made the vectors, such as `local:all-MiniLM-L6-v2` (the bundled model); null when the server has embeddings off. |
 | `similar` | array of object | yes |  |
+| `reranked` | boolean | no | Present when `reasons` was asked for: true when an AI model re-ordered the first candidates in time, false for the embedding order alone. |
 
 ### Schema: Sprint
 
@@ -2090,5 +2092,5 @@ Read-only info fields, computed from comments and history. Only comments everyon
 
 ## Internal routes
 
-The document also lists 448 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 452 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

@@ -2,10 +2,18 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
+import {
+  DUPLICATE_BUDGET_MS,
+  RERANK_TOP,
+  type RerankCandidate,
+  type Reranked,
+  rerank,
+} from '../ai/features/duplicates';
+import type { AiService } from '../ai/service';
 import type { EmbeddingService } from '../embeddings/service';
 import type { SimilarHit } from '../embeddings/similar';
 import type { FieldCatalogs } from '../fields/catalog';
-import { commentReadableSql } from '../tickets/comments';
+import { commentReadableSql, commentText } from '../tickets/comments';
 import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
 import { project, searchViews } from './search';
 
@@ -43,6 +51,10 @@ export const similarTextBody = z
     }),
     limit: z.number().int().min(1).max(50).default(10),
     minScore: z.number().min(-1).max(1).optional(),
+    reasons: z.boolean().default(false).meta({
+      description:
+        'Have the configured AI model re-rank the first candidates and give a reason for each, within 2 seconds of the request; without a model, or past the time, the embedding order is answered with `reranked: false`.',
+    }),
   })
   .strict();
 
@@ -57,6 +69,8 @@ export function registerSimilarRoutes(
   db: Kysely<Database>,
   catalogs: FieldCatalogs,
   embeddings: EmbeddingService | null,
+  /** The AI features (M1-079), read at request time; null without AI. */
+  ai: () => { service: AiService } | null = () => null,
 ): void {
   const invalid = (reply: FastifyReply, fields: Record<string, string>) =>
     reply.code(400).send({ error: 'invalid_fields', fields });
@@ -122,7 +136,60 @@ export function registerSimilarRoutes(
     return answer(request, hits, filter, q.data.minScore);
   });
 
+  /**
+   * The model's order and reasons for the first answers, or null: no model for the track, the
+   * caller's AI switched off there, a refusal, or no answer within the budget.
+   */
+  async function reranked(
+    request: FastifyRequest,
+    text: string,
+    found: Awaited<ReturnType<typeof answer>>,
+    trackId: number | null,
+    deadline: number,
+  ): Promise<Reranked | null> {
+    const service = ai()?.service;
+    const top = found.similar.slice(0, RERANK_TOP);
+    if (!service || top.length === 0) return null;
+    const ws = request.workspaceId;
+    const ids = top.map((h) => (h.ticket as { id: number }).id);
+    const [policy, rows] = await Promise.all([
+      service.settings.policyOf(ws),
+      db
+        .selectFrom('ticket')
+        .select(['id', 'description'])
+        .where('workspace_id', '=', ws)
+        .where('id', 'in', ids)
+        .execute(),
+    ]);
+    const hideDescription = policy.redactedFields.includes('description');
+    const description = new Map(rows.map((r) => [r.id, r.description]));
+    const candidates: RerankCandidate[] = top.map((h) => {
+      const t = h.ticket as { id: number; key: string; summary?: string };
+      const body = description.get(t.id);
+      return {
+        key: t.key,
+        summary: t.summary ?? '',
+        excerpt: hideDescription || !body ? '' : commentText(body, 300),
+      };
+    });
+    try {
+      return await service.call({ workspaceId: ws, trackId, feature: 'duplicates' }, (gateway) =>
+        rerank(gateway, {
+          text,
+          candidates,
+          deadline,
+          userId: request.user?.id ?? null,
+          trackId,
+        }),
+      );
+    } catch {
+      // AI not available here: the embedding order, without reasons (NFR-011).
+      return null;
+    }
+  }
+
   app.post('/api/v1/tickets/similar', async (request, reply) => {
+    const deadline = Date.now() + DUPLICATE_BUDGET_MS - 100;
     const body = similarTextBody.safeParse(request.body ?? {});
     if (!body.success) return invalid(reply, fieldErrors(body.error));
     const ws = request.workspaceId;
@@ -151,6 +218,18 @@ export function registerSimilarRoutes(
       ...(exclude !== undefined ? { exclude } : {}),
       limit: body.data.limit,
     });
-    return answer(request, hits, filter, body.data.minScore);
+    const found = await answer(request, hits, filter, body.data.minScore);
+    if (!body.data.reasons) return found;
+    const ranked = await reranked(request, body.data.text, found, trackId ?? null, deadline);
+    if (!ranked) return { ...found, reranked: false };
+    const byKey = new Map(found.similar.map((h) => [(h.ticket as { key: string }).key, h]));
+    const head = ranked.order.flatMap((key) => {
+      const hit = byKey.get(key);
+      if (!hit) return [];
+      byKey.delete(key);
+      const why = ranked.reasons.get(key);
+      return [why ? { ...hit, likely: why.likely, reason: why.reason } : hit];
+    });
+    return { ...found, reranked: true, similar: [...head, ...byKey.values()] };
   });
 }
