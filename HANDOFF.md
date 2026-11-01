@@ -46,6 +46,14 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
   1M (`pnpm bench:check --size 1m`); 10M and 30M are documented estimates, not runs.
 - **AI provider key:** not yet. M1-073 and M1-074's live tests stay skipped.
 - **Spanish review:** the user does it once every M1 task is finished.
+- **Images on ghcr.io** (the user, 2026-11-01): public, `ghcr.io/rockersands/taskmoor`, published
+  only at the 1.0 release (M1-120). Until then build locally. To publish: `ghcr.io` in the
+  environment's network access and a token with package write rights as an environment secret
+  (never in the repository or the chat).
+- **M1-119 is dropped** (the user, 2026-11-01): no design partner; the first users are a new
+  company of the user's own. The repository rename to `taskmoor` is the user's to do on
+  github.com; afterwards update the remote, `CLAUDE.md` and the docs that name
+  `Rockersands/tracksmith`.
 - **Release signing key** (M1-100): the user asked Claude to make it. A cloud container cannot
   keep a private key, so the **next session on the Mac** does this, once:
 
