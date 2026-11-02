@@ -348,7 +348,7 @@ ADR-111).
 
 | ID | Gap | Severity | Closes with |
 |---|---|---|---|
-| 1.14.2 | Releases not yet signed | Medium | M1-100 (the key from the user's Mac) |
+| 1.14.2 | Releases not yet signed | Medium | M1-120: signing the 1.0 release with the key in the user's Drive |
 | 2.2.3, 2.5.5 | No email when a credential changes | Medium | Closed: security notices (ADR-109) |
 | 5.2.6, 12.6.1 | Webhooks may reach private addresses | Medium | Closed: the outbound guard (ADR-110) |
 | 7.1.3, 7.2.1, 7.2.2 | Failed sign-ins and refusals not audited | Medium | Closed: audited failures and refusals (ADR-109) |
