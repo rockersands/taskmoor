@@ -46,6 +46,20 @@ export const AddingSomeone: Story = {
   },
 };
 
+/** A person's data (ASVS 8.3.2): the Data panel, and erasing confirmed by their email. */
+export const ErasingSomeone: Story = {
+  args: { client: fakePeopleClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Data of Bo Rivera' }));
+    await expect(await canvas.findByText('Data of Bo Rivera')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase Bo Rivera' }));
+    await userEvent.type(canvas.getByLabelText('Type bo@example.com to confirm'), 'bo@example.com');
+    await userEvent.click(canvas.getByRole('button', { name: 'Erase permanently' }));
+    await expect(await canvas.findByText(/they are Former user 2 from now on/)).toBeVisible();
+  },
+};
+
 export const NotAnAdministrator: Story = {
   decorators: [
     (Story) => (

@@ -1,8 +1,8 @@
 ---
 title: "Installing Taskmoor"
 audience: admins
-sources: deploy/README.md, deploy/compose/README.md, deploy/compose/docker-compose.yml, deploy/compose/docker-compose.external.yml, deploy/compose/.env.example, deploy/compose/install.sh, deploy/compose/install.ps1, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, Dockerfile, package.json, apps/server/src/config.ts, apps/server/src/security-headers.ts, apps/server/src/frontend.ts, apps/server/src/main.ts, apps/web/src/api/client.ts, packages/webconfig/src/config.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, docs/plan/decisions.csv
-accessed: 2026-10-31
+sources: deploy/README.md, deploy/compose/README.md, deploy/compose/docker-compose.yml, deploy/compose/docker-compose.external.yml, deploy/compose/.env.example, deploy/compose/install.sh, deploy/compose/install.ps1, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, Dockerfile, package.json, apps/server/src/config.ts, apps/server/src/security-headers.ts, apps/server/src/frontend.ts, apps/server/src/main.ts, apps/web/src/api/client.ts, packages/webconfig/src/config.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, docs/plan/decisions.csv, packages/builder-core/src/postgres-tls.ts, deploy/compose/upgrade.sh, docs/adr/0111-personal-data-and-database-tls.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Installing Taskmoor
@@ -97,6 +97,28 @@ It is safe to run again: it only starts or updates what is there. On Windows run
 `powershell -ExecutionPolicy Bypass -File install.ps1`, which does the same except the port
 check.
 
+#### Encryption between the backend and PostgreSQL
+
+The backend and the bundled PostgreSQL talk over TLS, also on the kit's private network. A
+small service, `postgres-tls`, runs before PostgreSQL at every start:
+
+- the first time, it makes a private certificate authority for this install and a certificate
+  for the database server (host name `postgres`), on this machine; nothing is downloaded and
+  no key comes with the kit;
+- later it keeps both, and makes a new server certificate only when it is missing, no longer
+  matches the authority, or expires within 90 days (it lasts ten years);
+- it writes the access rules PostgreSQL uses: every network connection must use TLS and a
+  password, plain connections are refused.
+
+PostgreSQL runs with TLS 1.2 or later, and the backend connects with `sslmode=verify-full`,
+which checks the certificate and the host name against the install's authority. The
+authority's key stays in the `postgres-ca` volume, which only `postgres-tls` mounts; the
+certificates are in the `postgres-tls` volume, mounted read-only into PostgreSQL and the
+backend. To see the certificate: `docker compose exec postgres openssl x509 -in
+/tls/server.crt -noout -subject -enddate`. To start over with a new authority, stop the stack,
+remove the two volumes (`docker volume rm taskmoor_postgres-ca taskmoor_postgres-tls`) and
+start it again.
+
 To do it by hand: copy `.env.example` to `.env`, set `POSTGRES_PASSWORD` to a long random
 string, run `docker compose up -d`, and wait until `curl http://localhost:8080/ready` answers
 `{"status":"ready"}`. On its first start the backend waits up to a minute for the database.
@@ -167,8 +189,10 @@ docker run -d --name taskmoor -p 8080:8080 -v taskmoor-data:/data taskmoor-allin
 docker logs taskmoor
 ```
 
-On the first start it creates the database under `/data/postgres`. PostgreSQL listens on
-127.0.0.1 inside the container only. Every start first runs the upgrade, then the server, so
+On the first start it creates the database under `/data/postgres`. PostgreSQL listens on no
+network address, not even inside the container: the backend reaches it on its Unix socket
+(`/run/postgresql`), so the database traffic never travels over a network. Every start first
+runs the upgrade, then the server, so
 starting a newer image on the same volume upgrades it. Give settings with `-e`, for example
 `-e PUBLIC_URL=https://tracker.example.com`. Run only one container per volume: two would
 start PostgreSQL on the same files.
@@ -247,11 +271,11 @@ folder).
 
 | Install | Database | Files, backups and keys |
 |---|---|---|
-| Compose, bundled | Volume `postgres-data` | Volume `taskmoor-data`, mounted at `/data` |
+| Compose, bundled | Volume `postgres-data`; its TLS certificates in `postgres-tls` and `postgres-ca` | Volume `taskmoor-data`, mounted at `/data` |
 | Compose, external | Your PostgreSQL server | Volume `taskmoor-data` |
 | All-in-one | `/data/postgres` in the one volume | The same volume |
 | Helm | Your PostgreSQL server | The `<release>-data` volume claim, or the S3 bucket |
-| Builder's backend kit | Volume `postgres-data` | Volume `taskmoor-data`; `caddy-data` keeps the certificates |
+| Builder's backend kit | Volume `postgres-data`; its TLS certificates in `postgres-tls` and `postgres-ca` | Volume `taskmoor-data`; `caddy-data` keeps the web certificates |
 
 Under `/data`, `files` holds attachments, `backups` holds backups, `imports` holds files for
 imports, and `secrets/password-peppers` holds the password pepper. Keep that file: without it no

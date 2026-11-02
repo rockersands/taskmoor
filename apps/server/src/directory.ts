@@ -18,6 +18,7 @@ export interface UserView {
   createdAt: string;
   deactivatedAt: string | null;
   lastSignInAt: string | null;
+  erased?: true;
 }
 
 export const USER_COLUMNS = [
@@ -32,6 +33,7 @@ export const USER_COLUMNS = [
   'created_at',
   'deactivated_at',
   'last_sign_in_at',
+  'erased_at',
 ] as const;
 
 interface UserRow {
@@ -46,6 +48,7 @@ interface UserRow {
   created_at: Date;
   deactivated_at: Date | null;
   last_sign_in_at: Date | null;
+  erased_at?: Date | null;
 }
 
 export function toUserView(row: UserRow): UserView {
@@ -62,6 +65,8 @@ export function toUserView(row: UserRow): UserView {
     createdAt: row.created_at.toISOString(),
     deactivatedAt: row.deactivated_at?.toISOString() ?? null,
     lastSignInAt: row.last_sign_in_at?.toISOString() ?? null,
+    // An erased person (ADR-111): the account is a placeholder now.
+    ...(row.erased_at ? { erased: true as const } : {}),
   };
 }
 

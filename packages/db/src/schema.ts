@@ -59,6 +59,11 @@ export interface AppUserTable {
   break_glass: Generated<boolean>;
   /** `system` (follow the device) or the name of a skin (M1-122). */
   appearance: Generated<string>;
+  /**
+   * When a site administrator erased the person (ASVS 8.3.2, ADR-111): name and email are a
+   * placeholder from then on and nothing personal is kept; the row stays for attribution.
+   */
+  erased_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
 }
 
 /** Groups of users (IAM-008); names are unique within a workspace, ignoring case. */
@@ -2455,6 +2460,27 @@ export interface AiLimitAlertTable {
   raised_at: DefaultTimestamp;
 }
 
+/**
+ * A download of one person's data (ASVS 8.3.2, ADR-111): a ZIP a background job writes into the
+ * attachment store, kept for a week. `user_id` is whose data it is, `requested_by` who asked.
+ */
+export interface PersonalExportTable {
+  id: Generated<string>;
+  workspace_id: number;
+  user_id: number;
+  requested_by: number | null;
+  state: Generated<'queued' | 'running' | 'ready' | 'failed' | 'expired'>;
+  storage: StorageKindColumn | null;
+  storage_key: string | null;
+  /** Bytes; bigint reads as text. */
+  size: ColumnType<string | null, number | string | null | undefined, number | string | null>;
+  sha256: string | null;
+  error: string | null;
+  created_at: DefaultTimestamp;
+  finished_at: Timestamp | null;
+  expires_at: Timestamp | null;
+}
+
 /** Who has read the AI data-egress notice (M1-077; IAM-022). */
 export interface AiNoticeAckTable {
   workspace_id: number;
@@ -2467,6 +2493,7 @@ export interface Database {
   instance_setting: InstanceSettingTable;
   workspace: WorkspaceTable;
   app_user: AppUserTable;
+  personal_export: PersonalExportTable;
   user_group: UserGroupTable;
   group_member: GroupMemberTable;
   team: TeamTable;

@@ -17,8 +17,8 @@ cleanup() {
   docker rm -f "$AIO_NAME" "$PG" >/dev/null 2>&1 || true
   docker volume rm "$VOL" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
-  docker rm -f "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
-  docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_taskmoor-data" "ts-smoke-ext-${ID}_taskmoor-data" >/dev/null 2>&1 || true
+  docker rm -f "ts-smoke-$ID-taskmoor-1" "ts-smoke-$ID-postgres-1" "ts-smoke-$ID-postgres-tls-1" "ts-smoke-ext-$ID-taskmoor-1" >/dev/null 2>&1 || true
+  docker volume rm "ts-smoke-${ID}_postgres-data" "ts-smoke-${ID}_postgres-ca" "ts-smoke-${ID}_postgres-tls" "ts-smoke-${ID}_taskmoor-data" "ts-smoke-ext-${ID}_taskmoor-data" >/dev/null 2>&1 || true
   docker network rm "ts-smoke-${ID}_default" "ts-smoke-ext-${ID}_default" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -53,6 +53,13 @@ docker run -d --name "$AIO_NAME" -v "$VOL:/data" -p 18090:8080 "$AIO" >/dev/null
 wait_for http://127.0.0.1:18090/ready 90 "$AIO_NAME"
 curl -fsS http://127.0.0.1:18090/ready; echo
 deep_links http://127.0.0.1:18090
+# ASVS 1.9.1 (ADR-111): PostgreSQL listens on no address; the backend is on the Unix socket.
+listen=$(docker exec "$AIO_NAME" su-exec postgres psql -U postgres -tAc "SHOW listen_addresses")
+[ -z "$(echo "$listen" | tr -d '[:space:]')" ] || { echo "all-in-one PostgreSQL listens on '$listen'"; exit 1; }
+conns=$(docker exec "$AIO_NAME" su-exec postgres psql -U postgres -tAc \
+  "SELECT count(*) FILTER (WHERE client_port = -1) || '|' || count(*) FILTER (WHERE client_addr IS NOT NULL)
+     FROM pg_stat_activity WHERE datname = 'taskmoor' AND pid <> pg_backend_pid()")
+case "$conns" in [1-9]*'|0') echo "all-in-one database: Unix socket only ($conns)" ;; *) echo "all-in-one connections: $conns"; exit 1 ;; esac
 echo "restart with the same volume"
 docker restart "$AIO_NAME" >/dev/null
 wait_for http://127.0.0.1:18090/ready 60 "$AIO_NAME"
@@ -76,6 +83,20 @@ app="ts-smoke-$ID-taskmoor-1"
 wait_for http://127.0.0.1:18091/ready 120 "$app"
 curl -fsS http://127.0.0.1:18091/ready; echo
 deep_links http://127.0.0.1:18091
+# ASVS 1.9.1 (ADR-111): every network connection to the bundled PostgreSQL is TLS, the backend
+# verifies the certificate (verify-full against the kit's authority), and plain TCP is refused.
+pg="ts-smoke-$ID-postgres-1"
+tls=$(docker exec "$pg" psql -U taskmoor -d taskmoor -tAc \
+  "SELECT count(*) FILTER (WHERE s.ssl) || '|' || count(*) FILTER (WHERE NOT s.ssl)
+     FROM pg_stat_ssl s JOIN pg_stat_activity a USING (pid)
+    WHERE a.datname = 'taskmoor' AND a.client_addr IS NOT NULL")
+case "$tls" in [1-9]*'|0') echo "compose database: TLS only ($tls)" ;; *) echo "compose connections (tls|plain): $tls"; exit 1 ;; esac
+if docker exec -e PGPASSWORD="smoke-$ID" "$pg" psql "host=127.0.0.1 user=taskmoor dbname=taskmoor sslmode=disable" -tAc 'SELECT 1' >/dev/null 2>&1; then
+  echo "a plain TCP connection to the compose database was accepted"; exit 1
+fi
+docker exec -e PGPASSWORD="smoke-$ID" "$pg" psql "host=localhost user=taskmoor dbname=taskmoor sslmode=verify-full sslrootcert=/tls/ca.crt" -tAc 'SELECT 1' | grep -qx 1
+echo "compose database: plain TCP refused, verify-full accepted"
+ca_before=$(docker exec "$pg" sha256sum /tls/ca.crt | cut -d' ' -f1)
 echo "upgrade.sh to the same image: stops the backend, nothing to apply, starts it again"
 out=$(
   cd deploy/compose
@@ -85,6 +106,10 @@ out=$(
 echo "$out" | tail -3
 grep -q "Up to date at" <<<"$out"
 wait_for http://127.0.0.1:18091/ready 30 "$app"
+# The authority survives the upgrade (made once, at the first start).
+ca_after=$(docker exec "$pg" sha256sum /tls/ca.crt | cut -d' ' -f1)
+[ "$ca_before" = "$ca_after" ] || { echo "the database's certificate authority changed in the upgrade"; exit 1; }
+echo "compose database: the same certificate authority after the upgrade"
 (cd deploy/compose && docker compose -p "ts-smoke-$ID" down -v >/dev/null)
 
 echo "== compose kit with an external Postgres"

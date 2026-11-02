@@ -3,7 +3,7 @@ import { fakeNotificationsClient } from '../notifications/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakePersonalTokensClient } from '../tokens/fixtures';
 import { AccountPage } from './AccountPage';
-import { fakeAccountClient, SIGNED_IN, sampleSessions } from './fixtures';
+import { fakeAccountClient, fakePersonalDataClient, SIGNED_IN, sampleSessions } from './fixtures';
 
 /** Stories pass an in-memory account backend; nothing calls a server. */
 const meta = {
@@ -13,6 +13,7 @@ const meta = {
     client: fakeAccountClient(),
     tokens: fakePersonalTokensClient(),
     notifications: fakeNotificationsClient(),
+    personalData: fakePersonalDataClient(),
   },
   decorators: [
     (Story) => (

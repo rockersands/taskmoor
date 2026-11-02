@@ -8,7 +8,7 @@
 // checking every request's signature). Two more previews (4174, 4175) proxy to them.
 //
 // Bulk changes (M1-021) use that database and its administrator too: a job loop here runs
-// their jobs, and only theirs, as a worker would. So do notifications (M1-058): the worker's
+// their jobs, and only theirs, as a worker would (and a person's data downloads, ADR-111). So do notifications (M1-058): the worker's
 // event loop runs there, and the inbox test reads what it writes.
 import { randomBytes } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -22,14 +22,18 @@ import {
   buildApp,
   EMBEDDING_SUBSCRIBER,
   EmbeddingService,
+  ERASE_SCRUB_TASK,
   EventBus,
   embeddingSubscriber,
   eventTask,
   FieldCatalogs,
   issueSetupToken,
   JobRunner,
+  PERSONAL_EXPORT_TASK,
   registerBulkJobs,
   registerEmbeddingJobs,
+  registerEraseJobs,
+  registerPersonalExportJobs,
   registerSubscribers,
   SWEEP_TASK,
   sharedLocalEmbedder,
@@ -230,11 +234,21 @@ await attachApps[0]?.listen({ port: E2E_ATTACH_LOCAL_PORT, host: '127.0.0.1' });
 await attachApps[1]?.listen({ port: E2E_ATTACH_S3_PORT, host: '127.0.0.1' });
 
 // Bulk changes on the attachments database: the worker's loop, for their task alone.
-const bulkRunner = new JobRunner(attachDb, 'e2e-bulk', { tasks: [BULK_TASK] });
+const bulkRunner = new JobRunner(attachDb, 'e2e-bulk', {
+  tasks: [BULK_TASK, PERSONAL_EXPORT_TASK, ERASE_SCRUB_TASK],
+});
 // Clones (M1-124) run there too, copying attachments between both stores.
 registerBulkJobs(bulkRunner, attachDb, new Authorizer(attachDb), new FieldCatalogs(attachDb), {
   stores: storesOf(local, { others: [s3] }),
 });
+// A person's data (ASVS 8.3.2): downloads into the local store, and the erasure's scrub.
+registerPersonalExportJobs(
+  bulkRunner,
+  attachDb,
+  storesOf(local, { others: [s3] }),
+  new Authorizer(attachDb),
+);
+registerEraseJobs(bulkRunner, attachDb);
 let bulkRunning = true;
 const bulkLoop = (async () => {
   while (bulkRunning) {

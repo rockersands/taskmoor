@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # One-command install of the Compose kit (OPS-001): checks prerequisites, writes .env with a
 # fresh database password when there is none, starts the stack, waits for readiness and prints
-# the first-run setup link. Safe to run again: it only starts or updates what is there.
+# the first-run setup link. Safe to run again: it only starts or updates what is there. With
+# the bundled PostgreSQL, the first start makes a private certificate authority and the
+# database's TLS certificate on this machine (the postgres-tls service, ADR-111).
 #
 #   bash install.sh                 # bundled PostgreSQL
 #   DATABASE_URL=postgres://... bash install.sh   # your own PostgreSQL

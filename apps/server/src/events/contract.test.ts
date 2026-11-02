@@ -552,6 +552,35 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       run: () => admin({ method: 'POST', url: `/api/v1/users/${state.cy}/reactivate` }),
     },
     {
+      // A person asks for a download of their own data (ASVS 8.3.2, ADR-111).
+      route: 'POST /api/v1/account/data-exports',
+      expect: 'personal_data.export_requested',
+      run: () => admin({ method: 'POST', url: '/api/v1/account/data-exports' }),
+    },
+    {
+      route: 'POST /api/v1/users/:id/data-exports',
+      expect: 'personal_data.export_requested',
+      run: () => admin({ method: 'POST', url: `/api/v1/users/${state.bo}/data-exports` }),
+    },
+    {
+      route: 'POST /api/v1/users/:id/erase',
+      expect: 'user.erased',
+      prepare: async () => {
+        const row = await database.db
+          .insertInto('app_user')
+          .values({ workspace_id: 1, email: 'erase-me@example.com', name: 'Erase Me' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        state.eraseMe = row.id;
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/users/${state.eraseMe}/erase`,
+          payload: { confirmEmail: 'erase-me@example.com' },
+        }),
+    },
+    {
       route: 'POST /api/v1/groups',
       expect: 'group.created',
       run: async () => {

@@ -1,8 +1,8 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx
-accessed: 2026-11-01
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # People, groups and teams
@@ -19,7 +19,7 @@ administrators.
 
 | Page | Address | What it does |
 |---|---|---|
-| **People** | `#/admin/users` | Add people, make site administrators, deactivate and reactivate, password links |
+| **People** | `#/admin/users` | Add people, make site administrators, deactivate and reactivate, password links, download a person's data, erase a person |
 | **Groups** | `#/admin/groups` | Create and delete groups, members, groups inside groups |
 | **Teams** | `#/admin/teams` | Create, rename and delete teams, their members and lead |
 | **Security** | `#/admin/security` | Who must use two-factor authentication, and how long sign-ins last |
@@ -116,8 +116,55 @@ did stays attributed to them.
 **Reactivate** (shown with **Deactivated people** or **Everyone**) lets them sign in again
 with the password they had. Their old sessions do not come back.
 
-A directory sync and SCIM provisioning also deactivate people. Taskmoor does not yet erase a
-person's personal data on request: deactivation keeps their name and email.
+A directory sync and SCIM provisioning also deactivate people. Deactivation keeps their name
+and email; to remove them, erase the person (below).
+
+## A person's data: download and erasure
+
+When someone asks for the data Taskmoor keeps about them, or asks to be forgotten, a site
+administrator handles it on the **People** page. People can also download their own data from
+their account page (see [Your account](../use/account.md#your-data)).
+
+### Downloading a person's data
+
+**Data** on a person's row opens their downloads. **Prepare a download** asks the server to
+make a ZIP file in the background; the list shows when it is ready, and **Download** fetches it.
+Only the administrator who asked can download it, for seven days; after that the file is
+deleted. Downloads need file storage (the same as attachments).
+
+The ZIP holds JSON files: the profile (with groups, teams, single sign-on links, the kinds of
+second factors, API tokens by name, and sessions), settings and saved searches, the tickets the
+person reported, created or is assigned, their comments and time entries, the files they
+uploaded, and the audit records about them. `manifest.json` lists every file with its size and
+checksum. No password, token or secret is ever in it. An administrator's download has every
+ticket in full; the person's own download shows only the tickets they can still see (the others
+appear with their number and the person's role).
+
+### Erasing a person
+
+**Erase…** explains what happens and asks you to type the person's email. **Erase
+permanently** then:
+
+- replaces their name and email by a placeholder, `Former user 42` and
+  `erased-42@erased.invalid` (42 being the account's number), in tickets, comments, history,
+  mentions, the audit log and exports; their tickets, comments, time and files stay;
+- removes their password, profile settings, sessions, API tokens, second factors and recovery
+  codes, single sign-on links, notification settings and inbox, recently viewed tickets, and
+  their data downloads;
+- deactivates the account for good: it cannot be edited, reactivated or signed in to.
+
+It cannot be undone, so download the person's data first when they asked for it. Taskmoor
+refuses to erase yourself, the last active site administrator, and a person a directory or SCIM
+still provides: remove them in the directory or the identity provider first, or the next sync
+brings them back. A name someone typed as plain text (not as a mention) is not found: edit it
+by hand.
+
+The audit log is never rewritten, so it stays verifiable (`node cli.mjs audit-verify`). Its
+records keep the account's number, which now shows the placeholder, and when the log is read,
+searched, exported or sent to syslog it hides the name, email and addresses those records hold
+about the erased person (they are marked as masked). The stored records leave with the audit
+retention period. Both the download and the erasure are audited (`personal_data.export_requested`
+and `user.erased`).
 
 ## Two-factor authentication
 

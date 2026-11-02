@@ -106,6 +106,24 @@ export const EVENT_TYPES = {
     payload: z.object({ method: z.enum(['totp', 'webauthn']) }),
   },
   'user.recovery_codes_regenerated': { subject: 'user', payload: z.object({}) },
+  /**
+   * A site administrator erased a person (ASVS 8.3.2, IAM-008 (2); ADR-111): the placeholder
+   * the account became, and how many rows of each kind of personal data went. Never the old
+   * name or email.
+   */
+  'user.erased': {
+    subject: 'user',
+    payload: z.object({
+      label: z.string(),
+      endedSessions: z.number().int().min(0),
+      removed: z.record(z.string(), z.number().int().min(0)),
+    }),
+  },
+  /** A download of a person's data was asked for (ASVS 8.3.2): by them, or by an administrator. */
+  'personal_data.export_requested': {
+    subject: 'user',
+    payload: z.object({ exportId: z.string(), by: z.enum(['self', 'admin']) }),
+  },
   'user.two_factor_reset': { subject: 'user', payload: z.object({}) },
   'two_factor_policy.updated': {
     subject: 'workspace',

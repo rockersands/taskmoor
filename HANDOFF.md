@@ -25,6 +25,26 @@ Read this first in every session, then update it before you stop.
 - **Next:** the 14 ASVS gaps (`pnpm gate M1` waits on them), in three parallel tasks with ADRs
   109 to 111 and migrations 0081 to 0083; then M1-120 (release), and M1-091's 1M-issue run
   last, on a machine with about 30 GB free and more cores (four hours is not reachable here).
+- **ASVS group C (8.3.2, 1.9.1; ADR-111, migration 0083), branch `work/asvs-privacy`:**
+  - Personal data: `apps/server/src/privacy/` (`export.ts` job `privacy.export` writes the ZIP
+    into the attachment store; `erase.ts` erasure plus job `privacy.scrub` for history displays
+    and mention labels, found by id only), routes in `routes/personal-data.ts` (self routes are
+    session-only), web `account/PersonalDataSection.tsx` and `people/EraseUserForm.tsx`. Both
+    jobs are registered in `main.ts`; `expirePersonalExports` runs with the housekeeping.
+  - The audit log is not rewritten: `audit/query.ts` masks an erased subject's personal keys
+    and an erased actor's address on every read (`masked: true`); `verifyChain` still passes
+    (tested). Erasure refuses directory- or SCIM-managed accounts until they are removed there.
+  - Database TLS: one definition in `packages/builder-core/src/postgres-tls.ts` for both Compose
+    kits; `packages/devtools/src/compose-tls.test.ts` holds `deploy/compose/docker-compose.yml`
+    to it and runs the certificate script with the local `openssl`. `upgrade.sh` brings an old
+    install onto TLS (checked by hand here with the existing `taskmoor:dev` image: old kit up,
+    new kit file, `upgrade.sh`: 10 of 10 backend connections TLS 1.3, plain TCP refused,
+    `cli.mjs backup` over TLS fine, the CA unchanged after a restart). The all-in-one image now
+    uses the Unix socket (`listen_addresses=''`): not run here, the image smoke test checks it.
+  - For the merge: `tools/image/smoke-kits.sh` must print "all-in-one database: Unix socket
+    only", "compose database: TLS only", "plain TCP refused, verify-full accepted" and "the same
+    certificate authority after the upgrade". Counts in `docs/security/asvs-l2.md` assume only
+    this group; groups A and B change the same line.
 
 ## Start here: 2026-10-31 (cloud session): the user's decisions, search changes, batch 3
 

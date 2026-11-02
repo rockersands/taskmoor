@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { backendKit, DEFAULT_IMAGE } from './backend';
+import { backendKit, DEFAULT_IMAGE, POSTGRES_IMAGE } from './backend';
 import { validateInputs } from './inputs';
 import { buildKits, checkKits, ENV_FILE, MANIFEST_FILE } from './kits';
+import {
+  DB_TLS_PARAMS,
+  POSTGRES_TLS_COMMAND,
+  POSTGRES_TLS_DEPENDS,
+  postgresTlsService,
+} from './postgres-tls';
 import { systemRandom } from './random';
 import { generateSecrets, secretValues } from './secrets';
 
@@ -49,6 +55,21 @@ describe('the backend kit (M1-110)', () => {
     expect(
       await checkKits({ ...kits, backend: { ...kits.backend, [ENV_FILE]: files[ENV_FILE] ?? '' } }),
     ).toEqual([]);
+  });
+
+  it('[OPS-015] ASVS 1.9.1: the backend reaches PostgreSQL over TLS with a certificate made at install (ADR-111)', async () => {
+    const compose = (await kit()).files['docker-compose.yml'] ?? '';
+    expect(compose).toContain(postgresTlsService(POSTGRES_IMAGE));
+    expect(compose).toContain(POSTGRES_TLS_COMMAND);
+    expect(compose).toContain(POSTGRES_TLS_DEPENDS);
+    expect(compose).toContain(
+      `DATABASE_URL: postgres://taskmoor:\${POSTGRES_PASSWORD}@postgres:5432/taskmoor?${DB_TLS_PARAMS} # secret-scan: allow`,
+    );
+    expect(compose).toContain('- postgres-tls:/db-tls:ro');
+    expect(compose).toContain('- postgres-tls:/tls:ro');
+    expect(compose).toMatch(/\n {2}postgres-ca:\n {2}postgres-tls:\n/);
+    // No key or certificate travels in the kit: they are made on the machine it runs on.
+    expect(compose).not.toMatch(/BEGIN [A-Z ]*(PRIVATE KEY|CERTIFICATE)/);
   });
 
   it('[OPS-015] (2) lists exactly the DNS records the URLs need', async () => {

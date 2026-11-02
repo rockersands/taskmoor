@@ -18,4 +18,6 @@ export { registerSubscribers } from './events/subscribers';
 export { FieldCatalogs } from './fields/catalog';
 export { IMPORT_TASK, registerImportJobs } from './import/jobs';
 export { startDirectorySync } from './ldap/scheduler';
+export { ERASE_SCRUB_TASK, registerEraseJobs } from './privacy/erase';
+export { PERSONAL_EXPORT_TASK, registerPersonalExportJobs } from './privacy/export';
 export { issueSetupToken, setupLink, setupState } from './setup';

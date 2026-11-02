@@ -113,5 +113,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [106](0106-local-embeddings-and-vector-search.md) | Local embeddings on ONNX Runtime WebAssembly, `real[]` vectors and optional pgvector | Accepted |
 | [107](0107-ai-eval-sets.md) | AI eval sets and their runner, on a seeded synthetic dataset: query pairs scored by exact result, a summary rubric with an automatic grader, duplicate clusters | Accepted |
 | [108](0108-ai-v1-features.md) | The AI features of v1: streamed summaries citing readable comments, checked queries never run by AI, proposals created only on confirmation, duplicates re-ranked within 2 s | Accepted |
+| [111](0111-personal-data-and-database-tls.md) | A person's data as a background ZIP download and erasure to a stable placeholder, the audit log kept intact and masked on read; TLS with verify-full to the bundled PostgreSQL, the all-in-one on its Unix socket | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

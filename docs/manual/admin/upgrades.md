@@ -1,8 +1,8 @@
 ---
 title: "Upgrades"
 audience: admins
-sources: apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/cli.ts, apps/server/src/main.ts, apps/server/src/frontend.ts, apps/server/src/routes/meta.ts, packages/db/src/releases.ts, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/README.md, deploy/compose/upgrade.sh, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/upgrade-check.yaml, docs/adr/0022-upgrades-and-migrations.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+sources: apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/cli.ts, apps/server/src/main.ts, apps/server/src/frontend.ts, apps/server/src/routes/meta.ts, packages/db/src/releases.ts, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/README.md, deploy/compose/upgrade.sh, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/upgrade-check.yaml, docs/adr/0022-upgrades-and-migrations.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05b-administration-security-and-self-hosting.md, packages/builder-core/src/postgres-tls.ts, docs/adr/0111-personal-data-and-database-tls.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Upgrades
@@ -34,11 +34,17 @@ bash upgrade.sh ghcr.io/rockersands/taskmoor:1.4.0
 
 1. pulls the image when it is not loaded (with `TASKMOOR_PULL=never` it refuses instead of
    contacting a registry);
-2. stops the backend while PostgreSQL keeps running;
-3. runs the upgrade from the new image against the kit's database and data volume;
-4. on success, records the image as `TASKMOOR_IMAGE` in `.env`, starts it and waits up to two
+2. with the bundled PostgreSQL, makes the database's TLS certificate when there is none yet
+   and restarts PostgreSQL with TLS once if it ran without it (see [Encryption between the
+   backend and PostgreSQL](install.md#encryption-between-the-backend-and-postgresql));
+3. stops the backend while PostgreSQL keeps running;
+4. runs the upgrade from the new image against the kit's database and data volume;
+5. on success, records the image as `TASKMOOR_IMAGE` in `.env`, starts it and waits up to two
    minutes for it to be ready;
-5. on failure, starts the previous image again on the unchanged database.
+6. on failure, starts the previous image again on the unchanged database.
+
+An install made with an earlier kit gets TLS when you replace its `docker-compose.yml` with the
+current one and run `upgrade.sh` (or `docker compose up -d`): the data volume stays as it is.
 
 Like the installer, it uses `docker-compose.external.yml` when `DATABASE_URL` is set in the
 environment or in `.env`, and adds the files named in `TASKMOOR_COMPOSE_OVERRIDE`.
@@ -136,7 +142,9 @@ the outcome with the pre-upgrade backup.
 bash upgrade.sh ghcr.io/rockersands/taskmoor:1.4.0 --dry-run
 ```
 
-A dry run prints the checks and the plan and changes nothing; the backend keeps running. Outside
+A dry run prints the checks and the plan and changes nothing; the backend keeps running. When
+the bundled PostgreSQL does not use TLS yet, the dry run says that the upgrade will set it up
+first, and stops there: run it again after the upgrade or a `docker compose up -d`. Outside
 the Compose kit, run `node cli.mjs upgrade --dry-run` from the new image.
 
 ## Skipping the backup

@@ -139,6 +139,42 @@ describe('people (M1-053, IAM-008)', () => {
     expect(screen.queryByRole('button', { name: 'Manage Support' })).toBeNull();
   });
 
+  it('[IAM-008] ASVS 8.3.2: erases a person once their email is typed, and opens their data', async () => {
+    const client = renderPage('users');
+    await list();
+    await userEvent.click(screen.getByRole('button', { name: 'Data of Grace Hopper' }));
+    expect(await screen.findByRole('region', { name: 'Data of Grace Hopper' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('region', { name: 'Data of Grace Hopper' })).toBeNull();
+    // Nobody erases themselves: Ada (signed in) has no erase button.
+    expect(screen.queryByRole('button', { name: 'Erase Ada Lovelace' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Erase Grace Hopper' }));
+    const form = screen.getByRole('form', { name: 'Erase Grace Hopper' });
+    const erase = within(form).getByRole('button', { name: 'Erase permanently' });
+    expect(erase).toBeDisabled();
+    await userEvent.type(
+      within(form).getByLabelText('Type grace@example.com to confirm'),
+      'grace@example.org',
+    );
+    expect(erase).toBeDisabled();
+    await userEvent.clear(within(form).getByLabelText('Type grace@example.com to confirm'));
+    await userEvent.type(
+      within(form).getByLabelText('Type grace@example.com to confirm'),
+      'Grace@Example.com',
+    );
+    await userEvent.click(erase);
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'The person was erased; they are Former user 3 from now on.',
+    );
+    expect(client.calls).toContainEqual({ action: 'erase', args: [3, 'Grace@Example.com'] });
+    expect(screen.queryByText('Grace Hopper')).toBeNull();
+    // Shown among everyone as erased, with no actions left.
+    await userEvent.selectOptions(screen.getByLabelText('Show'), 'all');
+    const erased = (await screen.findByText('Former user 3')).closest('li') as HTMLElement;
+    expect(within(erased).getByText('Erased')).toBeVisible();
+    expect(within(erased).queryByRole('button')).toBeNull();
+  });
+
   it('fits a small phone', async () => {
     setViewportWidth(375);
     renderPage('users');

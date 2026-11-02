@@ -1,5 +1,12 @@
 import { apiOrigin, type BuilderInputs, frontendOrigin } from './inputs';
 import { ENV_FILE, type Kits, MANIFEST_FILE } from './kits';
+import {
+  DB_TLS_MOUNT,
+  DB_TLS_PARAMS,
+  POSTGRES_TLS_COMMAND,
+  POSTGRES_TLS_DEPENDS,
+  postgresTlsService,
+} from './postgres-tls';
 
 /**
  * The backend kit (M1-110; OPS-015, ADR-031) around the `.env` every kit shares.
@@ -11,6 +18,8 @@ import { ENV_FILE, type Kits, MANIFEST_FILE } from './kits';
  * The image comes from `ghcr.io/rockersands/taskmoor` unless the run names another.
  */
 export const DEFAULT_IMAGE = 'ghcr.io/rockersands/taskmoor';
+/** The bundled PostgreSQL: 16 with pgvector (ADR-106). */
+export const POSTGRES_IMAGE = 'pgvector/pgvector:0.8.1-pg16-trixie';
 
 /** Hosts that never get a public certificate: Caddy's own authority signs for them. */
 const isLocalHost = (host: string) =>
@@ -25,16 +34,18 @@ function compose(): string {
 # machine first; the settings and secrets are in .env.
 name: taskmoor
 services:
+${postgresTlsService(POSTGRES_IMAGE)}
   postgres:
-    # PostgreSQL 16 with pgvector for the similar-ticket index (ADR-106).
-    image: pgvector/pgvector:0.8.1-pg16-trixie
+    # PostgreSQL 16 with pgvector for the similar-ticket index (ADR-106), with TLS (ADR-111).
+    image: ${POSTGRES_IMAGE}
     environment:
       POSTGRES_USER: taskmoor
       POSTGRES_DB: taskmoor
       POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:?run install.sh from the kit folder}
-    volumes:
+${POSTGRES_TLS_COMMAND}    volumes:
       - postgres-data:/var/lib/postgresql/data
-    healthcheck:
+      - postgres-tls:/tls:ro
+${POSTGRES_TLS_DEPENDS}    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U taskmoor -d taskmoor"]
       interval: 5s
       timeout: 5s
@@ -45,7 +56,8 @@ services:
     image: \${TASKMOOR_IMAGE:?run install.sh from the kit folder}
     env_file: [.env]
     environment:
-      DATABASE_URL: postgres://taskmoor:\${POSTGRES_PASSWORD}@postgres:5432/taskmoor # secret-scan: allow
+      # TLS to PostgreSQL, checked against the kit's own authority (ADR-111).
+      DATABASE_URL: postgres://taskmoor:\${POSTGRES_PASSWORD}@postgres:5432/taskmoor?${DB_TLS_PARAMS} # secret-scan: allow
       TASKMOOR_ROLE: all
       # Caddy, on the Compose network, is the proxy whose client address is believed.
       TASKMOOR_TRUSTED_PROXIES: uniquelocal
@@ -54,6 +66,7 @@ services:
         condition: service_healthy
     volumes:
       - taskmoor-data:/data
+      - postgres-tls:${DB_TLS_MOUNT}:ro
     restart: unless-stopped
 
   caddy:
@@ -71,6 +84,8 @@ services:
 
 volumes:
   postgres-data:
+  postgres-ca:
+  postgres-tls:
   taskmoor-data:
   caddy-data:
   caddy-config:

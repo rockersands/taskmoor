@@ -83,6 +83,10 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/oauth/requests/:id',
   // Reading the AI data-egress notice is a person's own answer at their browser (M1-077).
   'POST /api/v1/ai/notice',
+  // A person's own data (ASVS 8.3.2, ADR-111): a token cannot take it out.
+  'POST /api/v1/account/data-exports',
+  'GET /api/v1/account/data-exports',
+  'GET /api/v1/account/data-exports/:id/download',
 ]);
 
 /** Routes other than GET that change nothing anyone else sees: a read token reaches them. */

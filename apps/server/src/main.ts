@@ -33,6 +33,8 @@ import { registerFieldValueJobs, scheduleFieldValueCheck } from './fields/jobs';
 import { registerImportJobs } from './import/jobs';
 import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
+import { registerEraseJobs } from './privacy/erase';
+import { expirePersonalExports, registerPersonalExportJobs } from './privacy/export';
 import { trimApiUsage } from './ratelimit/usage';
 import { deliverSubscriptions } from './search/subscriptions';
 import { loadPeppers } from './secrets';
@@ -275,6 +277,10 @@ if (config.roles.includes('worker') && db) {
   registerWorkflowMigrationJobs(runner, db, new FieldCatalogs(db));
   // Webhook deliveries (M1-067): one job per sending, retried with backoff.
   registerWebhookJobs(runner, db, { peppers });
+  // A person's data (ASVS 8.3.2, ADR-111): downloads into the attachment store, and the names
+  // an erasure replaces in other records.
+  registerPersonalExportJobs(runner, db, attachments, new Authorizer(db));
+  registerEraseJobs(runner, db);
   const formulaCatalogs = new FieldCatalogs(db);
   const scheduleHousekeeping = () =>
     Promise.all([
@@ -286,11 +292,12 @@ if (config.roles.includes('worker') && db) {
       trimWebhookDeliveries(db),
       trimBulkOperations(db),
       trimApiUsage(db),
+      expirePersonalExports(db),
       defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
     ]).catch((error) =>
       app.log.warn(
         { error },
-        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery, bulk operation or API usage trim, or storage sweep not queued',
+        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery, bulk operation, API usage or personal download trim, or storage sweep not queued',
       ),
     );
   void scheduleHousekeeping();

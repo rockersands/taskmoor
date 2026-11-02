@@ -4,7 +4,8 @@
 #   bash upgrade.sh <image>             for example: bash upgrade.sh ghcr.io/rockersands/taskmoor:1.4.0
 #   bash upgrade.sh <image> --dry-run   the checks and the plan only; nothing changes or stops
 #
-# It pulls the image when it is missing, stops the backend (PostgreSQL keeps running), runs
+# It pulls the image when it is missing, makes the database's TLS certificate when the kit has
+# none yet (ADR-111), stops the backend (PostgreSQL keeps running), runs
 # `node cli.mjs upgrade` from the new image (pre-flight checks, a backup under
 # /data/backups/pre-upgrade-<time>, the migrations, a check of the result, and a rollback when
 # anything fails), then starts the new image and records it in .env. When the upgrade fails,
@@ -72,10 +73,34 @@ start() { # image
   die "the backend ($1) did not become ready in 2 minutes; the log above says why"
 }
 
+# TLS to the bundled PostgreSQL (ASVS 1.9.1, ADR-111). A kit file with the postgres-tls service
+# makes the certificate when it is missing, and PostgreSQL restarts with TLS once when it ran
+# without it (an install from before, given the new kit file). Compose does both on `up`.
+tls=
+if [ "$file" = docker-compose.yml ] && compose config --services 2>/dev/null | grep -qx postgres-tls; then
+  tls=yes
+fi
+db_ssl() { compose exec -T postgres psql -U taskmoor -d taskmoor -tAc 'SHOW ssl' 2>/dev/null | tr -d '[:space:]' || true; }
+db_ready() { compose exec -T postgres pg_isready -U taskmoor -d taskmoor >/dev/null 2>&1; }
+
 if [ -n "$dry" ]; then
   say "dry run of the upgrade from $old to $new (the backend keeps running)"
+  if [ -n "$tls" ] && [ "$(db_ssl)" != on ]; then
+    say "PostgreSQL runs without TLS: the upgrade first makes its certificate and restarts it once with TLS (ADR-111); the database checks run then"
+    exit 0
+  fi
   upgrade --dry-run
   exit $?
+fi
+
+if [ -n "$tls" ]; then
+  say "checking the database certificate (TLS to PostgreSQL)"
+  compose up -d postgres >/dev/null
+  for _ in $(seq 1 60); do
+    if db_ready; then break; fi
+    sleep 1
+  done
+  db_ready || die "PostgreSQL did not come back with TLS; see: docker compose logs postgres-tls postgres"
 fi
 
 say "upgrading from $old to $new; the backend stops for the backup and the migrations"

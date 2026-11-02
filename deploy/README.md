@@ -101,7 +101,8 @@ the checks and the plan without changing anything:
 bash upgrade.sh ghcr.io/rockersands/taskmoor:<version> --dry-run
 ```
 
-**Compose.** `upgrade.sh` pulls the image when it is missing, stops the backend (PostgreSQL keeps
+**Compose.** `upgrade.sh` pulls the image when it is missing, makes the bundled PostgreSQL's TLS
+certificate when there is none yet (ADR-111), stops the backend (PostgreSQL keeps
 running), runs the upgrade from the new image, records the new image as `TASKMOOR_IMAGE` in
 `.env` and starts it. When the upgrade fails, it starts the previous image again on the
 unchanged database. Like `install.sh`, it uses the external-PostgreSQL file when `DATABASE_URL`
