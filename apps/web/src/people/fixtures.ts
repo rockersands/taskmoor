@@ -1,3 +1,4 @@
+import { fakePersonalDataClient } from '../account/fixtures';
 import { ApiError } from '../api/client';
 import type { GroupDetail, GroupSummary, PeopleClient, User } from './client';
 import type { TeamDetail, TeamSummary, TeamsClient } from './teamsClient';
@@ -118,6 +119,26 @@ export function fakePeopleClient(): FakePeopleClient {
       find(id);
       return `https://taskmoor.example.com/#/password?token=reset-${id}`;
     },
+    erase: async (id, confirmEmail) => {
+      log('erase', id, confirmEmail);
+      const user = find(id);
+      if (confirmEmail.trim().toLowerCase() !== user.email) {
+        throw new ApiError(400, { error: 'confirmation_mismatch' });
+      }
+      if (id === 1) throw new ApiError(409, { error: 'cannot_erase_self' });
+      const label = `Former user ${id}`;
+      Object.assign(user, {
+        name: label,
+        email: `erased-${id}@erased.invalid`,
+        active: false,
+        isSiteAdmin: false,
+        hasPassword: false,
+        deactivatedAt: '2026-11-02T08:00:00Z',
+        erased: true,
+      });
+      return { label };
+    },
+    personalData: (user) => fakePersonalDataClient(user.name),
     groups: async () => structuredClone(groups.map(summary)),
     group: async (id): Promise<GroupDetail> => {
       const g = group(id);

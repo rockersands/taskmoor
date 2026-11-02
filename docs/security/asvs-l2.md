@@ -8,11 +8,13 @@ reads this file: every row marked Gap keeps the gate waiting.
 
 Paths are relative to the repository root. Tests named here run in `pnpm verify`.
 
-**Counts:** 258 requirements: 222 met, 25 not applicable, 1 accepted by the user (3.3.2), 10 gaps. Ten of the met ones were
-fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 14.4.5, 14.4.6.
-Four more were closed on 2026-11-02 (ADR-110): 5.2.6, 12.6.1 (the outbound guard), 12.1.2
-(archive limits) and 12.1.3 (storage quotas). Seven were closed on 2026-11-02 by the security events of ADR-109: 2.2.3, 2.5.5, 7.1.3,
-7.2.1, 7.2.2, 11.1.7, 11.1.8.
+**Counts:** 258 requirements: 231 met, 25 not applicable, 1 accepted by the user (3.3.2), 1 gap
+(1.14.2, closed by signing the 1.0 release, M1-120). Ten of the met ones were fixed in this task:
+5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 14.4.5, 14.4.6. Thirteen gaps were
+closed on 2026-11-02: 2.2.3, 2.5.5, 7.1.3, 7.2.1, 7.2.2, 11.1.7, 11.1.8 (security events,
+ADR-109); 5.2.6, 12.6.1, 12.1.2, 12.1.3 (the outbound guard, archive limits, storage quotas,
+ADR-110); 1.9.1, 8.3.2 (TLS to the bundled database, personal data download and erasure,
+ADR-111).
 
 ## V1 Architecture, design and threat modelling
 
@@ -44,7 +46,7 @@ Four more were closed on 2026-11-02 (ADR-110): 5.2.6, 12.6.1 (the outbound guard
 | 1.7.2 | Logs can go to a remote system | Met | Audit syslog forwarding (`apps/server/src/audit/syslog.ts`; `syslog.test.ts`); stdout for the log collector |
 | 1.8.1 | Sensitive data identified and classified | Met | Threat model assets; AI sensitive fields and redaction patterns (`packages/ai/src/redact.ts`) |
 | 1.8.2 | Protection rules for each level of sensitive data | Met | Sealed secrets, hashed tokens and passwords, redaction before AI calls, visibility levels |
-| 1.9.1 | Communication between components is encrypted | Gap | External PostgreSQL takes `sslmode=verify-full`; the bundled Compose PostgreSQL talks plain TCP on the kit's private network. Fix: TLS between app and bundled PostgreSQL in the Compose kit, or document the private network as the boundary (M1 gate item) |
+| 1.9.1 | Communication between components is encrypted | Met | Since 2026-11-02 (ADR-111): the Compose kit and the Builder's backend kit make a private CA and a server certificate at the first start (`postgres-tls` service, `packages/builder-core/src/postgres-tls.ts`), PostgreSQL runs `ssl=on`, TLS 1.2+, and rejects plain TCP (`pg_hba.conf`), the backend connects with `sslmode=verify-full` against that CA; `upgrade.sh` adds it to existing installs. The all-in-one PostgreSQL listens on no address and the backend uses its Unix socket, so no network traffic (`deploy/allinone/entrypoint.sh`). External PostgreSQL takes `sslmode=verify-full`. Tests: `packages/devtools/src/compose-tls.test.ts`, `packages/builder-core/src/backend.test.ts`; `tools/image/smoke-kits.sh` checks TLS-only connections, the refused plain connection and the socket |
 | 1.9.2 | Components verify each other's identity | Met | TLS certificate verification for external PostgreSQL, SMTP, providers (Node's defaults, no `rejectUnauthorized: false` in production code) |
 | 1.10.1 | Source control with traceable changes | Met | Git with DCO sign-off on every commit (`pnpm dco`, ADR-002) |
 | 1.11.1 | Business flows documented | Met | Specs per area (`docs/specs`), workflow conformance (`packages/workflow`) |
@@ -233,7 +235,7 @@ Four more were closed on 2026-11-02 (ADR-110): 5.2.6, 12.6.1 (the outbound guard
 | 8.2.2 | No sensitive data in browser storage | Met | Only preferences in local storage (`apps/web/src`); the session is an `HttpOnly` cookie |
 | 8.2.3 | Client storage cleared at sign-out | Met | Sign-out drops the session state and the OAuth client's (`apps/web/src/session/SessionProvider.tsx`) |
 | 8.3.1 | Sensitive data in bodies or headers, not URLs | Met | Tokens in headers or cookies; one-time links after `#` |
-| 8.3.2 | People can export or remove their data | Gap | Administrators export the workspace and deactivate accounts (`routes/exports.ts`, SCIM); no self-service export or erasure of one person's data. Fix: a personal data export and an erasure (anonymise) action for administrators (follow-up task) |
+| 8.3.2 | People can export or remove their data | Met | Since 2026-11-02 (ADR-111): a person downloads their own data from their profile page, a site administrator anyone's, as a background ZIP (`privacy/export.ts`, `routes/personal-data.ts`, `apps/web/src/account/PersonalDataSection.tsx`); site administrators erase a person, confirmed by typing their email, to a stable placeholder in tickets, comments, history and events, with sessions, tokens, second factors and personal settings removed; the last site administrator is refused (`privacy/erase.ts`, `apps/web/src/people/EraseUserForm.tsx`). The audit log is not rewritten and still verifies; it masks an erased person's values when read (`audit/query.ts`). Tests: `apps/server/src/privacy/privacy.test.ts`, `events/contract.test.ts`, `apps/web/src/people/PeoplePages.test.tsx` |
 | 8.3.3 | People are told what is collected, consent asked | N/A | Self-hosted: the operator is the controller and publishes the notice; Taskmoor collects nothing for itself (10.2.1) |
 | 8.3.4 | Sensitive data identified with a policy | Met | Threat model assets; AI policy for sensitive fields (`ai/settings.ts`) |
 | 8.3.5 | Access to sensitive data is audited | Met | AI calls audited without content (ADR-100); exports audited (`workspace.exported`) |
@@ -346,12 +348,11 @@ Four more were closed on 2026-11-02 (ADR-110): 5.2.6, 12.6.1 (the outbound guard
 
 | ID | Gap | Severity | Closes with |
 |---|---|---|---|
-| 1.9.1 | Plain TCP to the bundled PostgreSQL inside the Compose network | Low | TLS in the Compose kit, or the private network documented as the boundary |
 | 1.14.2 | Releases not yet signed | Medium | M1-100 (the key from the user's Mac) |
 | 2.2.3, 2.5.5 | No email when a credential changes | Medium | Closed: security notices (ADR-109) |
 | 5.2.6, 12.6.1 | Webhooks may reach private addresses | Medium | Closed: the outbound guard (ADR-110) |
 | 7.1.3, 7.2.1, 7.2.2 | Failed sign-ins and refusals not audited | Medium | Closed: audited failures and refusals (ADR-109) |
-| 8.3.2 | No per-person export or erasure | Low | Personal data export and anonymisation |
+| 8.3.2 | No per-person export or erasure | Low | Closed: personal data download and erasure (ADR-111) |
 | 11.1.7, 11.1.8 | No alerting on unusual activity | Low | Closed: alert rules (ADR-109) |
 | 12.1.2 | No uncompressed-size ceiling when staging a backup | Low | Closed: archive limits (ADR-110) |
 | 12.1.3 | No storage quota | Low | Closed: storage quotas (ADR-110) |

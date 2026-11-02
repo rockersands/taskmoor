@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
-import type { Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
+import { erasedEmail, erasedName } from '../privacy/placeholder';
 
 /**
  * Searching and exporting the audit log (M1-003, IAM-013). Search pages newest first with a
@@ -30,6 +31,45 @@ export interface AuditView {
   sourceEventId: string | null;
   prevHash: string;
   hash: string;
+  /**
+   * The record is about an erased person (ADR-111): their name, email and address are shown as
+   * the placeholder. The stored record is unchanged, so `hash` covers what was written, not
+   * what is shown here; `audit-verify` checks the stored records.
+   */
+  masked?: true;
+}
+
+/** Keys whose values name a person in the details of a record about them. */
+const PERSONAL_KEYS = new Set([
+  'email',
+  'name',
+  'displayName',
+  'userName',
+  'givenName',
+  'familyName',
+]);
+
+/** Details of a record about an erased person, with their personal values replaced. */
+export function maskDetails(details: unknown, userId: number): unknown {
+  const placeholder = (key: string) => (key === 'email' ? erasedEmail(userId) : erasedName(userId));
+  const walk = (value: unknown, key: string | null): unknown => {
+    if (key !== null && PERSONAL_KEYS.has(key)) {
+      if (typeof value === 'string') return placeholder(key);
+      // A change of a personal field: { from, to }.
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        return Object.fromEntries(
+          Object.entries(value).map(([k, v]) => [k, typeof v === 'string' ? placeholder(key) : v]),
+        );
+      }
+      return value;
+    }
+    if (Array.isArray(value)) return value.map((v) => walk(v, null));
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v, k)]));
+    }
+    return value;
+  };
+  return walk(details, null);
 }
 
 const escapeLike = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`);
@@ -40,6 +80,17 @@ function selectRecords(db: Kysely<Database>, workspaceId: number, filter: AuditF
     .leftJoin('app_user as u', (join) =>
       join.onRef('u.id', '=', 'e.actor_id').onRef('u.workspace_id', '=', 'e.workspace_id'),
     )
+    // The person a record is about, when it is about one: an erased one's values are masked.
+    .leftJoin('app_user as s', (join) =>
+      join
+        .on(
+          's.id',
+          '=',
+          sql<number>`(CASE WHEN e.subject_type = 'user' AND e.subject_id ~ '^[0-9]{1,9}$'
+                        THEN e.subject_id::integer END)`,
+        )
+        .onRef('s.workspace_id', '=', 'e.workspace_id'),
+    )
     .select([
       'e.seq',
       'e.occurred_at',
@@ -47,6 +98,9 @@ function selectRecords(db: Kysely<Database>, workspaceId: number, filter: AuditF
       'e.actor_id',
       'u.name as actor_name',
       'u.email as actor_email',
+      'u.erased_at as actor_erased_at',
+      's.id as subject_user_id',
+      's.erased_at as subject_erased_at',
       'e.action',
       'e.subject_type',
       'e.subject_id',
@@ -74,7 +128,9 @@ function selectRecords(db: Kysely<Database>, workspaceId: number, filter: AuditF
 type Row = Awaited<ReturnType<ReturnType<typeof selectRecords>['execute']>>[number];
 
 function toView(row: Row): AuditView {
-  return {
+  const subjectErased = row.subject_erased_at != null && row.subject_user_id != null;
+  const actorErased = row.actor_erased_at != null;
+  const view: AuditView = {
     seq: Number(row.seq),
     occurredAt: row.occurred_at.toISOString(),
     recordedAt: row.recorded_at.toISOString(),
@@ -89,6 +145,14 @@ function toView(row: Row): AuditView {
     sourceEventId: row.source_event_id === null ? null : String(row.source_event_id),
     prevHash: row.prev_hash,
     hash: row.hash,
+  };
+  if (!subjectErased && !actorErased) return view;
+  return {
+    ...view,
+    details: subjectErased ? maskDetails(row.details, row.subject_user_id as number) : view.details,
+    // The address of a request is the person's who made it.
+    ip: actorErased ? null : view.ip,
+    masked: true,
   };
 }
 

@@ -35,6 +35,9 @@ export const AUDITED_EVENTS = [
   'user.two_factor_disabled',
   'user.recovery_codes_regenerated',
   'user.two_factor_reset',
+  // A person's data taken out or erased (ASVS 8.3.2, ADR-111).
+  'user.erased',
+  'personal_data.export_requested',
   'two_factor_policy.updated',
   'session_policy.updated',
   // Security alert rules and the alerts they raise (ADR-109; ASVS 11.1.7).

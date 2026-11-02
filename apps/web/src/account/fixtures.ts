@@ -2,6 +2,7 @@ import { ApiError } from '../api/client';
 import type { Session, SessionUser } from '../session/SessionProvider';
 import type { TotpSetupStart } from '../twofactor/types';
 import type { AccountClient, AccountSession, TwoFactorStatus } from './client';
+import type { PersonalDataClient, PersonalExport } from './personalData';
 
 /** Synthetic people and sessions for stories and tests. */
 export const KALO: SessionUser = {
@@ -180,5 +181,77 @@ export function fakeAccountClient(
       return SAMPLE_RECOVERY_CODES;
     },
     ...overrides,
+  };
+}
+
+export interface FakePersonalDataClient extends PersonalDataClient {
+  calls: string[];
+}
+
+/**
+ * An in-memory backend for a person's data downloads (ASVS 8.3.2): one finished download and
+ * one expired; a new one is ready at the next read. `subject` names someone else's data.
+ */
+export function fakePersonalDataClient(subject?: string): FakePersonalDataClient {
+  const calls: string[] = [];
+  let exports: PersonalExport[] = [
+    {
+      id: '7',
+      state: 'ready',
+      requestedBy: 1,
+      createdAt: '2026-11-01T09:00:00Z',
+      finishedAt: '2026-11-01T09:01:00Z',
+      expiresAt: '2026-11-08T09:01:00Z',
+      size: 3_400_000,
+    },
+    {
+      id: '3',
+      state: 'expired',
+      requestedBy: 1,
+      createdAt: '2026-10-01T09:00:00Z',
+      finishedAt: '2026-10-01T09:01:00Z',
+      expiresAt: null,
+      size: null,
+    },
+  ];
+  let next = 10;
+  return {
+    calls,
+    ...(subject ? { subject } : {}),
+    list: async () => {
+      calls.push('list');
+      const now = structuredClone(exports);
+      // What was asked for is ready the next time the list is read.
+      exports = exports.map((e) =>
+        e.state === 'queued'
+          ? {
+              ...e,
+              state: 'ready',
+              finishedAt: e.createdAt,
+              expiresAt: '2026-11-09T09:00:00Z',
+              size: 1_200_000,
+            }
+          : e,
+      );
+      return now;
+    },
+    request: async () => {
+      calls.push('request');
+      if (exports.some((e) => e.state === 'queued')) {
+        throw new ApiError(409, { error: 'export_in_progress' });
+      }
+      const made: PersonalExport = {
+        id: String(++next),
+        state: 'queued',
+        requestedBy: 1,
+        createdAt: '2026-11-02T09:00:00Z',
+        finishedAt: null,
+        expiresAt: null,
+        size: null,
+      };
+      exports = [made, ...exports];
+      return structuredClone(made);
+    },
+    downloadUrl: (id) => `https://taskmoor.example.com/api/v1/account/data-exports/${id}/download`,
   };
 }

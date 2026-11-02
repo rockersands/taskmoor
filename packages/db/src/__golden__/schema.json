@@ -269,7 +269,8 @@
       "kind text not null default 'person'::text",
       "description text not null default ''::text",
       "break_glass boolean not null default false",
-      "appearance text not null default 'system'::text"
+      "appearance text not null default 'system'::text",
+      "erased_at timestamp with time zone"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX app_user_pkey ON public.app_user USING btree (id)",
@@ -1531,6 +1532,28 @@
       "CREATE UNIQUE INDEX password_link_pkey ON public.password_link USING btree (id)",
       "CREATE UNIQUE INDEX password_link_token_hash_key ON public.password_link USING btree (token_hash)",
       "CREATE INDEX password_link_user_idx ON public.password_link USING btree (user_id)"
+    ]
+  },
+  "personal_export": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "requested_by integer",
+      "state text not null default 'queued'::text",
+      "storage text",
+      "storage_key text",
+      "size bigint",
+      "sha256 text",
+      "error text",
+      "created_at timestamp with time zone not null default now()",
+      "finished_at timestamp with time zone",
+      "expires_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX personal_export_expiry_idx ON public.personal_export USING btree (expires_at) WHERE (state = 'ready'::text)",
+      "CREATE UNIQUE INDEX personal_export_pkey ON public.personal_export USING btree (id)",
+      "CREATE INDEX personal_export_user_idx ON public.personal_export USING btree (workspace_id, user_id, created_at DESC)"
     ]
   },
   "priority": {

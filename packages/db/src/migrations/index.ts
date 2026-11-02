@@ -70,6 +70,7 @@ import * as m0079 from './0079_embeddings';
 import * as m0080 from './0080_session_policy';
 import * as m0081 from './0081_security_events';
 import * as m0082 from './0082_storage_quota';
+import * as m0083 from './0083_personal_data';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -150,4 +151,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0080_session_policy': m0080,
   '0081_security_events': m0081,
   '0082_storage_quota': m0082,
+  '0083_personal_data': m0083,
 };

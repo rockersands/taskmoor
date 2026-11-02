@@ -9,7 +9,9 @@ import { TokensSection } from '../tokens/TokensSection';
 import { AppearanceSection } from './AppearanceSection';
 import { type AccountClient, accountClient } from './client';
 import { PasswordSection } from './PasswordSection';
+import { PersonalDataSection } from './PersonalDataSection';
 import { ProfileSection } from './ProfileSection';
+import { ownDataClient, type PersonalDataClient } from './personalData';
 import { SessionsSection } from './SessionsSection';
 import { TwoFactorSection } from './TwoFactorSection';
 
@@ -20,18 +22,21 @@ export interface AccountPageProps {
   tokens?: PersonalTokensClient;
   /** Notification settings (M1-057); stories and tests pass their own. */
   notifications?: NotificationsClient;
+  /** Downloads of one's own data (ASVS 8.3.2); stories and tests pass their own. */
+  personalData?: PersonalDataClient;
 }
 
 /**
  * The signed-in person's own settings (#/account): profile (IAM-008), appearance, notifications
- * (NTF-004), password and two-factor authentication (IAM-001, M1-084), sessions (IAM-004) and
- * API tokens (IAM-007). The route sits behind RequireSession; #/account/notifications, where
+ * (NTF-004), password and two-factor authentication (IAM-001, M1-084), sessions (IAM-004),
+ * API tokens (IAM-007) and a download of one's own data (ASVS 8.3.2, ADR-111). The route sits behind RequireSession; #/account/notifications, where
  * notification emails link, opens it at the notification settings.
  */
 export function AccountPage({
   client = accountClient,
   tokens = personalTokensClient,
   notifications = notificationsClient,
+  personalData = ownDataClient,
 }: AccountPageProps) {
   const t = useT();
   const { session } = useSession();
@@ -63,6 +68,7 @@ export function AccountPage({
         <TwoFactorSection client={client} email={user.email} timeZone={user.timeZone} />
         <SessionsSection key={sessionsVersion} client={client} timeZone={user.timeZone} />
         <TokensSection client={tokens} allowAdmin={user.isSiteAdmin} timeZone={user.timeZone} />
+        <PersonalDataSection client={personalData} timeZone={user.timeZone} />
       </div>
     </div>
   );

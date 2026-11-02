@@ -1,9 +1,11 @@
 #!/bin/sh
 # Starts PostgreSQL in the container, upgrades the database when the image is newer than it
 # (OPS-006), then starts the Taskmoor server as the unprivileged node user. Postgres listens on
-# 127.0.0.1 only and trusts local connections, which is the container's own process; nothing
-# else can reach it. The database lives under $TASKMOOR_DATA/postgres and survives container
-# restarts and image upgrades through the /data volume.
+# no network address at all, only on its Unix socket in /run/postgresql, and trusts the
+# container's own processes there: the backend's database traffic never leaves the container
+# and is no network traffic (ASVS 1.9.1, ADR-111). The database lives under
+# $TASKMOOR_DATA/postgres and survives container restarts and image upgrades through the /data
+# volume.
 #
 #   taskmoor-allinone                       start: upgrade when needed, then serve
 #   taskmoor-allinone upgrade [--dry-run]   only the upgrade, by hand (also retries one that
@@ -22,7 +24,7 @@ if [ ! -f "$PGDATA/PG_VERSION" ]; then
   echo "allinone: initialising PostgreSQL in $PGDATA"
   su-exec postgres initdb -D "$PGDATA" -U postgres --auth=trust --encoding=UTF8 --locale=C >/dev/null
   {
-    echo "listen_addresses = '127.0.0.1'"
+    echo "listen_addresses = ''"
     echo "shared_buffers = '256MB'"
     echo "log_min_messages = warning"
   } >> "$PGDATA/postgresql.conf"
@@ -41,12 +43,14 @@ if [ -f "$PGDATA/postmaster.pid" ]; then
   fi
 fi
 
-su-exec postgres pg_ctl -D "$PGDATA" -w -t 60 -l "$LOG" start
+# The socket only, also for a volume whose postgresql.conf an older image wrote (127.0.0.1).
+su-exec postgres pg_ctl -D "$PGDATA" -w -t 60 -l "$LOG" \
+  -o "-c listen_addresses='' -c unix_socket_directories=/run/postgresql" start
 if ! su-exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'taskmoor'" | grep -q 1; then
   su-exec postgres createdb -U postgres taskmoor
 fi
 
-export DATABASE_URL=${DATABASE_URL:-postgres://postgres@127.0.0.1:5432/taskmoor}
+export DATABASE_URL=${DATABASE_URL:-postgresql:///taskmoor?host=/run/postgresql&user=postgres}
 cd /app
 
 stop_postgres() { su-exec postgres pg_ctl -D "$PGDATA" -m fast -w -t 60 stop >/dev/null || true; }

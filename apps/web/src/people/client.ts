@@ -1,3 +1,4 @@
+import { type PersonalDataClient, personDataClient } from '../account/personalData';
 import { api } from '../api/client';
 
 /** A person as `GET /api/v1/users` shows them (IAM-008). */
@@ -11,6 +12,8 @@ export interface User {
   createdAt: string;
   deactivatedAt: string | null;
   lastSignInAt: string | null;
+  /** Erased (ASVS 8.3.2, ADR-111): the account is a placeholder now. */
+  erased?: true;
 }
 
 export type UserStatus = 'active' | 'deactivated' | 'all';
@@ -42,6 +45,10 @@ export interface PeopleClient {
   deactivate: (id: number) => Promise<User>;
   reactivate: (id: number) => Promise<User>;
   passwordLink: (id: number) => Promise<string>;
+  /** Erases the person (ADR-111); `confirmEmail` is their email as typed. Resolves to the placeholder. */
+  erase: (id: number, confirmEmail: string) => Promise<{ label: string }>;
+  /** The person's data downloads, for the Data panel. */
+  personalData: (user: User) => PersonalDataClient;
   groups: (query: string) => Promise<GroupSummary[]>;
   group: (id: number) => Promise<GroupDetail>;
   createGroup: (body: { name: string; description: string }) => Promise<{ id: number }>;
@@ -73,6 +80,14 @@ export const peopleClient: PeopleClient = {
     (await api<{ user: User }>(`/users/${id}/reactivate`, { method: 'POST' })).user,
   passwordLink: async (id) =>
     (await api<{ link: string }>(`/users/${id}/password-link`, { method: 'POST' })).link,
+  erase: async (id, confirmEmail) =>
+    (
+      await api<{ erased: { label: string } }>(`/users/${id}/erase`, {
+        method: 'POST',
+        body: { confirmEmail },
+      })
+    ).erased,
+  personalData: (user) => personDataClient(user.id, user.name),
   groups: async (query) =>
     (
       await api<{ groups: GroupSummary[] }>(

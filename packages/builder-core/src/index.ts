@@ -4,6 +4,7 @@ export * from './frontend';
 export * from './inputs';
 export * from './kits';
 export * from './manifest';
+export * from './postgres-tls';
 export * from './project';
 export * from './random';
 export * from './run';

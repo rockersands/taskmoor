@@ -15,6 +15,7 @@ const stubBackend = (handlers: Record<string, Handler>) =>
     'GET /account/two-factor': () => jsonResponse(200, TWO_FACTOR_OFF),
     'GET /account/notification-preferences': () =>
       jsonResponse(200, { preferences: defaultPreferences() }),
+    'GET /account/data-exports': () => jsonResponse(200, { exports: [] }),
     ...handlers,
   });
 const sessionsAnswer =

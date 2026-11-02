@@ -1493,6 +1493,24 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           person_quota = 10737418240 WHERE workspace_id = 1`.execute(db);
     },
   },
+  '0083_personal_data': {
+    tables: {
+      personal_export:
+        "workspace_id = 1 AND state = 'ready' AND storage = 'local' AND size = 2048 AND requested_by = user_id",
+      app_user: "email = 'erased-seed@erased.invalid' AND erased_at IS NOT NULL",
+    },
+    seed: async (db) => {
+      // An erased person: the placeholder identity stays for attribution.
+      await sql`INSERT INTO app_user (workspace_id, email, name, deactivated_at, erased_at)
+        VALUES (1, 'erased-seed@erased.invalid', 'Former user', now(), now())`.execute(db);
+      // A finished personal data download (ADR-111) of the seed's first person, asked by them.
+      await sql`INSERT INTO personal_export (workspace_id, user_id, requested_by, state, storage,
+          storage_key, size, sha256, finished_at, expires_at)
+        SELECT 1, id, id, 'ready', 'local', 'w1/ab/cd/abcd0000000000000000000000000000', 2048,
+               repeat('a', 64), now(), now() + interval '7 days'
+          FROM app_user WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
+    },
+  },
 };
 
 /**

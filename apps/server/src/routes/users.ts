@@ -285,6 +285,7 @@ export function registerUserRoutes(
             'time_zone',
             'locale',
             'deactivated_at',
+            'erased_at',
           ])
           .where('id', '=', params.data.id)
           .where('workspace_id', '=', request.workspaceId)
@@ -292,6 +293,8 @@ export function registerUserRoutes(
           .forUpdate()
           .executeTakeFirst();
         if (!current) return 'not_found' as const;
+        // An erased account stays a placeholder (ADR-111).
+        if (current.erased_at !== null) return 'erased' as const;
         const demoting = body.isSiteAdmin === false && current.is_site_admin;
         if (demoting && current.deactivated_at === null) {
           if ((await activeAdminCount(trx, request.workspaceId)) <= 1) return 'last_admin' as const;
@@ -344,6 +347,7 @@ export function registerUserRoutes(
       });
       if (outcome === 'not_found') return reply.code(404).send({ error: 'not_found' });
       if (outcome === 'last_admin') return reply.code(409).send({ error: 'last_admin' });
+      if (outcome === 'erased') return reply.code(409).send({ error: 'erased' });
       return { user: toUserView(outcome) };
     } catch (error) {
       if (isUniqueViolation(error)) return reply.code(409).send({ error: 'email_taken' });
@@ -415,13 +419,15 @@ export function registerUserRoutes(
     const row = await db.transaction().execute(async (trx) => {
       const before = await trx
         .selectFrom('app_user')
-        .select('deactivated_at')
+        .select(['deactivated_at', 'erased_at'])
         .where('id', '=', params.data.id)
         .where('workspace_id', '=', request.workspaceId)
         .where('kind', '=', 'person')
         .forUpdate()
         .executeTakeFirst();
       if (!before) return undefined;
+      // An erased account never signs in again (ADR-111).
+      if (before.erased_at !== null) return 'erased' as const;
       const updated = await trx
         .updateTable('app_user')
         .set({ deactivated_at: null, updated_at: new Date() })
@@ -438,6 +444,7 @@ export function registerUserRoutes(
       return updated;
     });
     if (!row) return reply.code(404).send({ error: 'not_found' });
+    if (row === 'erased') return reply.code(409).send({ error: 'erased' });
     return { user: toUserView(row) };
   });
 

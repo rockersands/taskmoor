@@ -72,6 +72,7 @@ import { registerMetaRoutes } from './routes/meta';
 import { registerNotificationRoutes } from './routes/notifications';
 import { registerOAuthRoutes, resourceMetadataUrl } from './routes/oauth';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
+import { registerPersonalDataRoutes } from './routes/personal-data';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerCorePropertyRoutes } from './routes/properties';
 import { registerRateLimitRoutes, registerRateLimits } from './routes/rate-limits';
@@ -629,6 +630,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.rateLimits?.now ? { now: deps.rateLimits.now } : {}),
     });
     registerServiceAccountRoutes(app, db);
+    // A person's own data (ASVS 8.3.2, ADR-111): downloads made by the worker, and erasure.
+    registerPersonalDataRoutes(app, db, deps.attachments ?? NO_STORAGE);
     await registerScimRoutes(app, db, { publicUrl: deps.publicUrl ?? 'http://localhost:8080' });
     registerDirectoryRoutes(app, db, { peppers: deps.peppers });
     // Webhooks (M1-067): registered by site administrators, delivered by the worker.

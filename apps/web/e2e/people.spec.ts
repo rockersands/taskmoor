@@ -111,3 +111,47 @@ test('[IAM-008] the administrator makes a group, adds a person, nests a group an
     await expect(page.getByText(`${name} was deleted.`)).toBeVisible();
   }
 });
+
+test('[IAM-008] ASVS 8.3.2: a person downloads their own data, and the administrator erases a person', async ({
+  page,
+}, testInfo) => {
+  await signIn(page);
+  // The administrator's own data: asked for on the account page, made by the worker.
+  await page.goto(`${BASE}/#/account`);
+  const data = page.getByRole('region', { name: 'Your data' });
+  await data.getByRole('button', { name: 'Prepare a download' }).click();
+  await expect(data.getByRole('status')).toHaveText(/being prepared/);
+  const link = data.getByRole('link', { name: /Download the data asked for/ }).first();
+  await expect(link).toBeVisible({ timeout: 30_000 });
+  const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+  expect(download.suggestedFilename()).toMatch(
+    /^taskmoor-personal-data-\d+-\d{4}-\d{2}-\d{2}\.zip$/,
+  );
+  expect(await seriousAxeViolations(page)).toEqual([]);
+
+  // Someone added and then erased, confirmed by typing their email.
+  const name = `Erin Vale ${testInfo.project.name}`;
+  const email = `erin.${testInfo.project.name}.${Date.now()}@people.test`;
+  await page.goto(`${BASE}/#/admin/users`);
+  await page.getByRole('button', { name: 'Add a person' }).click();
+  const form = page.getByRole('form', { name: 'Add a person' });
+  await form.getByLabel('Name').fill(name);
+  await form.getByLabel('Email').fill(email);
+  await form.getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByText(`${name} was added.`)).toBeVisible();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('searchbox', { name: 'Find by name or email' }).fill(email);
+  await page.getByRole('button', { name: `Erase ${name}` }).click();
+  const erase = page.getByRole('form', { name: `Erase ${name}` });
+  await expect(erase.getByRole('button', { name: 'Erase permanently' })).toBeDisabled();
+  await erase.getByLabel(`Type ${email} to confirm`).fill(email);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await erase.getByRole('button', { name: 'Erase permanently' }).click();
+  await expect(
+    page.getByText(/The person was erased; they are Former user \d+ from now on\./),
+  ).toBeVisible();
+  // Their email finds nobody any more.
+  await page.getByRole('combobox', { name: 'Show' }).selectOption('all');
+  await expect(page.getByText('Nobody matches.')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
