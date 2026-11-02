@@ -14,7 +14,7 @@ const current = (): SkinId =>
     : 'light';
 
 /**
- * Light or dark in one press, at the top bar (ADR-112). Account, Appearance keeps the full
+ * Light or dark in one press, at the top bar (ADR-114). Account, Appearance keeps the full
  * choice, System included; this button picks the mode opposite to the one on screen.
  */
 export function ThemeToggle({ onChoose }: ThemeToggleProps) {

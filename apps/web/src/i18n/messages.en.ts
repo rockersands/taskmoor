@@ -34,7 +34,7 @@ export const messagesEn = {
   'nav.search': 'Search',
   'nav.dashboards': 'Dashboards',
   'nav.settings': 'Settings',
-  // Navigation sections and page purposes (ADR-112): every page says in one line what it is for.
+  // Navigation sections and page purposes (ADR-114): every page says in one line what it is for.
   'nav.group.you': 'Your work',
   'nav.group.work': 'Plan and track',
   'nav.group.manage': 'Manage',
@@ -52,7 +52,7 @@ export const messagesEn = {
     'Each column stands for one or more statuses of the workflow. Moving a card runs the transition that leads into that column; when several do, Taskmoor asks which. Filters narrow the cards, and the counts always cover every card.',
   'about.ticket':
     'The buttons under the title move the ticket through its workflow. Details on the side are its fields: change one and it saves at once. Activity below keeps the comments, the history of every change and the time recorded.',
-  // The "what is this for" button beside a title (ADR-112).
+  // The "what is this for" button beside a title (ADR-114).
   'help.about': 'What is {name} for?',
   'help.menu': 'Help',
   'help.tutorials': 'Tutorials',
@@ -82,7 +82,7 @@ export const messagesEn = {
   'home.tracksHelp': 'The tracks you can see. Open one for its summary, list, board and releases.',
   'home.tracksEmpty': 'No tracks yet. A site administrator creates the first one in Manage.',
   'home.trackKey': 'Key {key}',
-  // The guided tutorial (ADR-112): sections a person picks, each making one real thing.
+  // The guided tutorial (ADR-115): sections a person picks, each making one real thing.
   'tutorial.title': 'Tutorials',
   'tutorial.purpose':
     'Learn Taskmoor by doing: each section walks you through making one real thing in this instance. Pick the sections you want; you can skip, pause and come back at any time.',

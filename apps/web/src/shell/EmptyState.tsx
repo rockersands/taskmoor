@@ -11,7 +11,7 @@ interface EmptyStateProps {
 }
 
 /**
- * An empty list or page that explains itself (ADR-112): what would be here, how it gets here and
+ * An empty list or page that explains itself (ADR-114): what would be here, how it gets here and
  * the step that puts it there.
  */
 export function EmptyState({ icon: Icon, title, children, action }: EmptyStateProps) {

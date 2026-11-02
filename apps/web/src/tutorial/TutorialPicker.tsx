@@ -28,7 +28,7 @@ const ACTION: Record<TutorialStatus, MessageId> = {
 };
 
 /**
- * The tutorial's sections as cards to tick (ADR-112): what each makes, how long it takes, where
+ * The tutorial's sections as cards to tick (ADR-115): what each makes, how long it takes, where
  * the person is in it, and a button to start, resume or replay just that one. Used by the
  * first-run offer and by Settings, Tutorials.
  */

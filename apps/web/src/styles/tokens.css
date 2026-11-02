@@ -40,10 +40,10 @@
   --motion-base: 180ms;
   --motion-slow: 280ms;
   --ease-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
-  /* A settling curve for things that lift, land or slide in (ADR-112). */
+  /* A settling curve for things that lift, land or slide in (ADR-114). */
   --ease-settle: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* Glass (ADR-112): how much a translucent surface blurs and lifts the colour behind it. */
+  /* Glass (ADR-114): how much a translucent surface blurs and lifts the colour behind it. */
   --glass-blur: 22px;
   --glass-saturate: 165%;
   --glass-blur-strong: 32px;
@@ -115,7 +115,7 @@
   --color-flow-first: #86b6ef;
   --color-flow-last: #104281;
 
-  /* Glass (ADR-112): translucent surfaces over the canvas. Opaque enough that text keeps the
+  /* Glass (ADR-114): translucent surfaces over the canvas. Opaque enough that text keeps the
      ADR-036 ratios over the darkest point of the canvas (contrast.test.ts composites them). */
   --glass-surface: rgb(255 253 250 / 68%);
   --glass-surface-strong: rgb(255 253 250 / 86%);

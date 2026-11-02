@@ -9,7 +9,7 @@ interface HelpTipProps {
 }
 
 /**
- * "What is this for?" beside a page or panel title (ADR-112): a small round button that shows a
+ * "What is this for?" beside a page or panel title (ADR-114): a small round button that shows a
  * short explanation under it and hides it again. A disclosure, not a hover tooltip, so it works
  * by touch and keyboard; Escape and a click elsewhere close it.
  */

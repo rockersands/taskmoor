@@ -97,7 +97,7 @@
 
 .board-row {
   display: grid;
-  /* Columns wide enough to read a card, narrow enough that several fit (ADR-112). */
+  /* Columns wide enough to read a card, narrow enough that several fit (ADR-114). */
   grid-template-columns: repeat(var(--board-columns, 3), minmax(16rem, 22rem));
   gap: var(--space-3);
 }

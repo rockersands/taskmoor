@@ -7,15 +7,19 @@ Read this first in every session, then update it before you stop.
 The user asked for the whole web interface to be reworked (clear sections, every panel saying
 what it is for, glass surfaces, drag and drop, light and dark) and a sectioned guided tutorial
 (offered at first sign-in, skippable, all sections again under Settings, Tutorials).
-- **State: waiting for the user's go-ahead on the direction** (ADR-112, Proposed). Nothing is
-  pushed yet: the branch is local until the direction is agreed and `pnpm verify --e2e` passes.
+- **State: waiting for the user's go-ahead on the direction** (ADR-114 the interface, ADR-115
+  the tutorial, both Proposed). Nothing is pushed yet: the branch is local until the direction
+  is agreed and `pnpm verify --e2e` passes.
+- **Tasks are tracked in `docs/plan/ui-overhaul-tasks.md`** (UI-T01 to UI-T14), at the main
+  session's request; this branch does not edit `backlog.csv` or `progress.csv`.
 - **Prototype on the branch:** glass tokens and fallbacks (`tokens.css`), the shell in glass with
   grouped navigation (`NAV_GROUPS` in `shell/NavList.tsx`), `shell/PageHeader.tsx`,
   `shell/HelpTip.tsx`, `shell/EmptyState.tsx`, `shell/ThemeToggle.tsx`, `styles/surfaces.css`;
   Home, the board and the ticket header reworked; `tutorial/` (sections, picker, the
   Settings, Tutorials page at `#/settings/tutorials`, no storage yet).
-- **Claimed numbers:** ADR-112, migration 0084 (`tutorial_progress`), tasks M1-135 and M1-136.
-  If the main session takes them first, renumber here when merging.
+- **Numbers given by the main session:** ADR-114, ADR-115 (ADR-116 spare); migration 0084 or
+  later for `tutorial_progress` (the task file records the final one). ADR-112 belongs to the
+  Flutter mobile session.
 - **Not done yet:** component tests and stories for the new pieces (old HomePage and NavList
   tests still expect the previous markup), the rollout to every other page, the tutorial's
   coach card, first-run offer, server storage and route, drag for dashboard widgets and board

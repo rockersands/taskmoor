@@ -1,5 +1,5 @@
 /*
- * Shared pieces of the glass visual language (ADR-112, on ADR-036): glass cards, the page header
+ * Shared pieces of the glass visual language (ADR-114, on ADR-036): glass cards, the page header
  * with its purpose line, the "what is this for" button, explaining empty states and tiles.
  */
 
@@ -209,7 +209,7 @@
   background: var(--glass-tint-accent);
 }
 
-/* Home (ADR-112): ways to start, then the lists, then the tracks. */
+/* Home (ADR-114): ways to start, then the lists, then the tracks. */
 .home-page {
   gap: var(--space-6);
 }
@@ -415,7 +415,7 @@
   }
 }
 
-/* The tutorial's sections (ADR-112): one card per section, ticked to start several in a row. */
+/* The tutorial's sections (ADR-115): one card per section, ticked to start several in a row. */
 .tutorials-page {
   display: grid;
   gap: var(--space-5);

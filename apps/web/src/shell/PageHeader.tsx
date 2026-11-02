@@ -7,7 +7,7 @@ interface PageHeaderProps {
   /** Plain text of the title for the help button's name, when the title is not a string. */
   titleText?: string;
   titleId?: string;
-  /** One line under the title saying what the page is for (ADR-112). */
+  /** One line under the title saying what the page is for (ADR-114). */
   purpose?: ReactNode;
   /** A longer explanation behind the "What is this for?" button. */
   about?: ReactNode;
@@ -18,7 +18,7 @@ interface PageHeaderProps {
 }
 
 /**
- * The top of every page (ADR-112): where it sits, its name, one line on what it is for, an
+ * The top of every page (ADR-114): where it sits, its name, one line on what it is for, an
  * optional longer explanation and its actions.
  */
 export function PageHeader({

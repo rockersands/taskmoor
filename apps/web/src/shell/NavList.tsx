@@ -3,7 +3,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 
-/** The sections of the navigation, in order (ADR-112). */
+/** The sections of the navigation, in order (ADR-114). */
 export const NAV_GROUPS = [
   { id: 'you', labelId: 'nav.group.you' },
   { id: 'work', labelId: 'nav.group.work' },

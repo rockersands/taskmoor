@@ -161,7 +161,7 @@ const ADMIN_SETS = '#/admin/configuration-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
-/** Every section of the guided tutorial, to start or do again (ADR-112). */
+/** Every section of the guided tutorial, to start or do again (ADR-115). */
 const TUTORIALS = '#/settings/tutorials';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';

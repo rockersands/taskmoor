@@ -12,7 +12,7 @@ import {
 } from '../shell/icons';
 
 /**
- * The sections of the guided tutorial (ADR-112), in the order they are offered. Each makes one
+ * The sections of the guided tutorial (ADR-115), in the order they are offered. Each makes one
  * real thing in the person's own instance; `admin` sections need a site administrator.
  */
 export const TUTORIAL_SECTIONS = [

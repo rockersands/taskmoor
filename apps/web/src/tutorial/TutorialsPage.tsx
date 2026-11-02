@@ -6,7 +6,7 @@ import { TUTORIAL_SECTIONS, type TutorialSectionId } from './sections';
 import { TutorialPicker } from './TutorialPicker';
 
 /**
- * Settings, Tutorials (ADR-112): every section of the guided tutorial, to start, resume or do
+ * Settings, Tutorials (ADR-115): every section of the guided tutorial, to start, resume or do
  * again at any time, also after skipping the first-run offer.
  */
 export function TutorialsPage() {

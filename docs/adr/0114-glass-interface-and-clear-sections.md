@@ -1,17 +1,15 @@
-# ADR-112: The glass interface, clear sections and the guided tutorial
+# ADR-114: The glass interface and clear sections
 
 - Status: Proposed (a draft for the user's review; the prototype is on `claude/ui-overhaul`)
 - Date: 2026-11-02
-- Backlog: M1-135 (interface overhaul), M1-136 (guided tutorial)
+- Tasks: `docs/plan/ui-overhaul-tasks.md` (UI-T01 to UI-T09); the tutorial is ADR-115
 
 ## Context
 
 On 2026-11-02 the user asked for the whole web interface to be reworked: "way more
 understandable and usable", with inspiration from work trackers in general and from translucent,
 layered interfaces, drag and drop, light and dark modes, sections that are clear, and every
-panel saying what it is for. They also asked for a full tutorial, split into sections the person
-picks, offered at the first sign-in and always available again from Settings, that walks the
-person through making one of everything in their own instance. It can be skipped at any time.
+panel saying what it is for. The tutorial they asked for at the same time is ADR-115.
 
 A review of the running app (`pnpm demo`) found:
 
@@ -158,51 +156,14 @@ sentences. Examples:
 
 Every drop is announced in a live region, as the board does now.
 
-### 8. The guided tutorial
-
-- **Sections** (the person picks any): Tracks and tickets; Workflows; Boards and sprints;
-  Search and saved searches; Dashboards; Releases; Administration; Import.
-  - Workflows, Administration and Import show only to site administrators.
-  - Each section makes one real thing in the person's own instance. What they make stays,
-    and they may keep or delete it.
-- **First sign-in:** a welcome dialog offers the sections as cards to tick, with suggested ones
-  preselected. The choices are Start, Not now and Don't offer again. Not now and Don't offer
-  again both leave every section available.
-- **Settings → Tutorials** (and Help → Tutorials) lists every section with its state (Not
-  started, In progress, Done, Skipped), to start, resume or do again at any time. Home links
-  there too ("Take the tour").
-- **During a section:**
-  - A floating glass coach card shows the step, why it matters and Back, Next, Pause and Skip
-    section, with a step counter.
-  - The control to use is highlighted by a ring, and the rest of the page is dimmed but stays
-    usable.
-  - Steps that need the person to act (create a track, drag a card) wait for it and move on
-    by themselves.
-  - Escape pauses. Pausing keeps the place.
-  - The card is a non-modal dialog that takes focus, so screen readers and keyboards follow
-    it.
-  - On phones the card docks at the bottom.
-  - Targets are marked with `data-tutorial="<step>"` attributes, so restyling a page does not
-    break the tutorial.
-- **Progress is stored per person on the server:**
-  - Migration 0084, `tutorial_progress`: workspace, person, section, state, step, updated at,
-    plus one row for the offer (shown or dismissed).
-  - `GET /api/v1/account/tutorial` and `PUT /api/v1/account/tutorial/:section`, session-only
-    like the other self routes.
-  - Each mutating route meets the server's standing requirements: a strict body schema, an
-    authenticated person acting only on their own progress, a domain event with its contract
-    scenario, and coverage in the route tests.
-  - No other server code changes.
-
-### 9. Strings, accessibility and tests
+### 8. Strings, accessibility and tests
 
 - Every string is in `messages.en.ts` with a Spanish draft in `messages.es.ts`.
   `pnpm i18n:check` stays clean.
-- New components (`PageHeader`, `HelpTip`, `EmptyState`, `ThemeToggle`, the tutorial pieces)
+- New components (`PageHeader`, `HelpTip`, `EmptyState`, `ThemeToggle`)
   get stories (axe in both skins) and tests by role and name.
 - e2e specs change only where names or roles change, never weakened.
-- The manual gains a "Getting around" page and a "Tutorials" page. Pages that change are
-  updated in the same task.
+- The manual gains a "Getting around" page. Pages that change are updated in the same task.
 
 ## Options considered
 
@@ -211,8 +172,6 @@ Every drop is announced in a live region, as the board does now.
 | Glass layer on the ADR-036 tokens (chosen) | One token system; both skins; opaque fallback for free; small CSS diff per page | `backdrop-filter` costs GPU on very large boards (kept off the 5,000-card cells: cards use the strong, near-opaque glass) |
 | A new design system and component library | Uniform from scratch | Rewrites 57 pages at once; risks the M1 release; drops ADR-036's measured contrast |
 | Keep the opaque soft look, only fix navigation and help | Least work | The user asked for translucent depth explicitly |
-| Product tour library (external) | Ready-made steps | Most inject styles (breaks the strict CSP of ADR-080), do not wait for real actions, and are not translated through our catalogue |
-| Tutorial progress in the browser only | No migration | The user asked for server storage; it would not follow the person to another device |
 
 ## Consequences
 
@@ -220,8 +179,6 @@ Every drop is announced in a live region, as the board does now.
   in review.
 - Glass makes contrast depend on what sits behind a surface. The composited contrast test and
   the opaque fallbacks hold the line, and axe still runs on every story.
-- The tutorial depends on `data-tutorial` markers. A test walks each section's steps against the
-  stories, so a removed marker fails before release.
 - Settings and Tracks change structure. Links to `#/settings` and `#/tracks` keep working, and
   admin routes keep their paths.
 - Revisit if blur proves slow on low-end hardware (then lower `--glass-blur` or go opaque per

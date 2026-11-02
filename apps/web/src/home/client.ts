@@ -10,7 +10,7 @@ export interface HomeTicket {
   updatedAt: string;
 }
 
-/** A track as the home page lists it (ADR-112). */
+/** A track as the home page lists it (ADR-114). */
 export interface HomeTrack {
   id: number;
   key: string;
