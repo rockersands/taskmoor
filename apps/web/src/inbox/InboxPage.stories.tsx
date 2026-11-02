@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { fakeInboxClient, ITEMS, NOW } from './fixtures';
+import { ALERT_ITEM, fakeInboxClient, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
 const meta = {
@@ -56,4 +56,19 @@ export const Empty: Story = {
 /** All read: nothing stands out, and there is nothing to mark. */
 export const AllRead: Story = {
   args: { client: fakeInboxClient(ITEMS.map((i) => ({ ...i, read: true }))) },
+};
+
+/** A security alert to a site administrator (ADR-109): about no ticket, leading to the audit log. */
+export const SecurityAlert: Story = {
+  args: { client: fakeInboxClient([ALERT_ITEM, ...ITEMS]) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText('Failed sign-ins for one account: 10 in 60 minutes'),
+    ).toBeVisible();
+    await expect(canvas.getByRole('link', { name: /Kalo Smith/ })).toHaveAttribute(
+      'href',
+      expect.stringContaining('admin/audit'),
+    );
+  },
 };

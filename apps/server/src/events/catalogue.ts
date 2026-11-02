@@ -90,7 +90,12 @@ export const EVENT_TYPES = {
   'user.reactivated': { subject: 'user', payload: z.object({}) },
   'user.password_changed': {
     subject: 'user',
-    payload: z.object({ via: z.enum(['self', 'link']), endedSessions: z.number().int().min(0) }),
+    payload: z.object({
+      via: z.enum(['self', 'link']),
+      endedSessions: z.number().int().min(0),
+      /** Added with security notices (ADR-109): a link's purpose; activation sends none. */
+      purpose: z.enum(['activate', 'reset']).optional(),
+    }),
   },
   'user.password_link_created': {
     subject: 'user',
@@ -120,6 +125,46 @@ export const EVENT_TYPES = {
   'session_policy.updated': {
     subject: 'workspace',
     payload: z.object({ lifetimeMinutes: z.number().int(), idleMinutes: z.number().int() }),
+  },
+  /** The thresholds of the security alert rules (ASVS 11.1.7; ADR-109), each rule as set. */
+  'security_alerts.updated': {
+    subject: 'workspace',
+    payload: z.object({
+      rules: z.array(
+        z.object({
+          rule: z.string(),
+          enabled: z.boolean(),
+          threshold: z.number().int(),
+          windowMinutes: z.number().int(),
+        }),
+      ),
+    }),
+  },
+  /**
+   * A security alert rule's threshold was passed (ASVS 11.1.7, 11.1.8; ADR-109): failed sign-ins
+   * for one account or from one address, refused requests of one person or token, or bulk
+   * exports by one person, within the rule's window. Raised once per rule, key and window; the
+   * site administrators hear of it. Who it is about, never what was typed.
+   */
+  'security.alert_raised': {
+    subject: 'security_alert',
+    payload: z.object({
+      rule: z.enum([
+        'sign_in_failures_account',
+        'sign_in_failures_address',
+        'access_refusals',
+        'bulk_exports',
+      ]),
+      count: z.number().int().min(1),
+      threshold: z.number().int().min(1),
+      windowMinutes: z.number().int().min(1),
+      windowStart: z.string(),
+      userId: id.nullable(),
+      tokenId: id.nullable(),
+      address: z.string().nullable(),
+      /** For a sign-in rule on an account that does not exist: the email typed, if it is one. */
+      email: z.string().nullable(),
+    }),
   },
 
   // Single sign-on
@@ -1567,6 +1612,8 @@ export interface DomainEvent {
   occurredAt: Date;
   /** Client address of the request that caused it; null outside a request. */
   ip: string | null;
+  /** The request's User-Agent (ADR-109); null outside a request and for older events. */
+  userAgent?: string | null;
 }
 
 export function isEventType(value: string): value is EventType {

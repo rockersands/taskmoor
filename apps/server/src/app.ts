@@ -83,6 +83,7 @@ import { registerSavedSearchRoutes } from './routes/saved-searches';
 import { registerScimRoutes } from './routes/scim';
 import { registerSearchRoutes } from './routes/search';
 import { registerSearchExportRoutes } from './routes/search-export';
+import { registerSecurityAlertRoutes } from './routes/security-alerts';
 import { registerServiceAccountRoutes } from './routes/service-accounts';
 import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
@@ -104,12 +105,14 @@ import { registerVisibilityRoutes } from './routes/visibility';
 import { registerWebhookRoutes } from './routes/webhooks';
 import { registerWorkflowMapRoutes } from './routes/workflow-maps';
 import { registerWorkflowRoutes } from './routes/workflows';
+import { pruneSecurityData } from './security/alerts';
+import { registerRefusalAudit } from './security/refusals';
 import { securityHeaders } from './security-headers';
 import { registerMutationReceipts } from './sync/mutations';
 import { registerSyncSocket } from './sync/socket';
 import { pruneIdentityData } from './throttle';
 import { bearerToken, pruneApiTokens } from './tokens/api-tokens';
-import { authenticateBearer } from './tokens/bearer';
+import { authenticateBearer, refuseCompatCredentials } from './tokens/bearer';
 import { type ApiTokenScope, scopeDenial } from './tokens/scopes';
 import { defaultWorkspaceId } from './workspace';
 
@@ -392,6 +395,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     }
     // Events emitted while handling a request record its client address.
     registerRequestScope(app);
+    // Refused requests of people and tokens, audited in aggregate and alerted on (ADR-109).
+    registerRefusalAudit(app, db);
     // Mutations an outbox sends with a client and mutation id run at most once (M1-032).
     registerMutationReceipts(app, db);
     // The realtime channel: where the change log stands, pushed to signed-in clients (M1-032).
@@ -425,6 +430,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);
+    registerSecurityAlertRoutes(app, db);
     registerTwoFactorRoutes(app, db, {
       ...cookieOptions,
       peppers: deps.peppers,
@@ -537,7 +543,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // The Jira-compatible API (M1-069, ADR-086): /rest/api/2 and /3 over the native API.
     if (deps.jiraCompat !== false) {
-      await registerJiraCompat(app, { publicUrl: deps.publicUrl ?? 'http://localhost:8080' });
+      await registerJiraCompat(app, {
+        publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+        refused: (request, failure) => refuseCompatCredentials(db, request, failure),
+      });
     }
     // The public meta endpoint (M1-106): versions, sign-in methods and the instance's identity.
     registerMetaRoutes(app, db, {
@@ -621,6 +630,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         pruneApiTokens(db),
         pruneOAuth(db),
         purgeAiContent(db),
+        pruneSecurityData(db),
       ]).catch((error) => app.log.warn({ error }, 'prune failed'));
     let pruneTimer: NodeJS.Timeout | undefined;
     // Files of deleted attachments leave this process's stores every ten minutes too, so a

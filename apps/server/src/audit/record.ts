@@ -1,12 +1,16 @@
 import type { Database } from '@taskmoor/db';
 import type { Kysely } from 'kysely';
+import { countFailedSignIn } from '../security/alerts';
 import { type AuditEntry, appendAudit } from './chain';
 
 /**
  * Audit records that are not domain events (M1-003, ADR-034). Domain events cover every
- * successful change; these cover what changes nothing but still matters: refused sign-ins and
- * the lockouts they cause, refused password checks and links, reading the whole log out, and
- * retention dropping old records. They are written straight to the log, in the request.
+ * successful change; these cover what changes nothing but still matters: refused sign-ins (by
+ * password, directory, second factor, recovery code, API token or Basic authentication, ADR-109)
+ * and the lockouts they cause, refused password checks and links, repeated refusals of access
+ * (`access.refused_repeatedly`, written by `security/alerts.ts`), reading the whole log out, and
+ * retention dropping old records. They are written straight to the log, in the request. What
+ * was typed as a secret is never in them.
  */
 export const AUDIT_ACTIONS = {
   signInFailed: 'session.sign_in_failed',
@@ -24,9 +28,44 @@ function submittedEmail(email: string): { email: string } | { emailMalformed: tr
   return /^[^\s@]+@[^\s@]+$/.test(value) ? { email: value } : { emailMalformed: true };
 }
 
+/**
+ * How a refused attempt tried to authenticate (ASVS 7.2.1; ADR-109): a password checked here or
+ * by a directory (LDAP, Active Directory), a second factor (`totp`, `webauthn`,
+ * `recovery_code`, or a code at the enrolment a policy demands), an API token sent as a bearer
+ * token, or Basic authentication on the Jira-compatible API.
+ */
+export type AttemptMethod =
+  | 'password'
+  | 'directory'
+  | 'totp'
+  | 'webauthn'
+  | 'recovery_code'
+  | 'enrollment'
+  | 'api_token'
+  | 'basic';
+
+/**
+ * Why an attempt was refused. `wrong_password` and `unknown_account` are told apart here only:
+ * the person who tried gets the same answer for both.
+ */
+export type AttemptReason =
+  | 'wrong_password'
+  | 'unknown_account'
+  | 'second_factor'
+  | 'sso_required'
+  | 'directory_unavailable'
+  | 'token_unknown'
+  | 'token_expired'
+  | 'token_revoked'
+  | 'token_owner_deactivated'
+  | 'email_mismatch'
+  | 'not_a_token';
+
 export interface RefusedAttempt {
   workspaceId: number;
   ip: string;
+  /** The client's User-Agent, cut to 400 characters. */
+  userAgent?: string | null;
   /** The person signed in, for a refused password check; null for a sign-in. */
   actorId: number | null;
   /** The account the attempt was for, when it exists and is active. */
@@ -36,10 +75,20 @@ export interface RefusedAttempt {
   /** The lock now in force after this failure, if it caused one. */
   lockedUntil: Date | null;
   /**
-   * Why, when it was not a wrong password: `second_factor`, `sso_required`, or
-   * `directory_unavailable` (the directory managing the account could not be reached, M1-082).
+   * Why. Left out, a wrong password (or, without an account, `unknown_account`);
+   * `directory_unavailable` means the directory managing the account could not be reached
+   * (M1-082), which decides nothing.
    */
-  reason?: 'second_factor' | 'sso_required' | 'directory_unavailable';
+  reason?: AttemptReason;
+  /** How it tried; a password unless said. */
+  method?: AttemptMethod;
+  /** The API token tried, when it is one Taskmoor knows (expired, revoked...): its id only. */
+  tokenId?: number;
+  /**
+   * Whether it counts towards the alert rules (ADR-109); true unless the directory was
+   * unavailable. Sign-in passes false for a right password refused because of single sign-on.
+   */
+  countsForAlerts?: boolean;
 }
 
 /** Records a refused sign-in or password check, and the lockout it caused, if any. */
@@ -49,9 +98,14 @@ export async function recordRefusedAttempt(
   attempt: RefusedAttempt,
 ): Promise<void> {
   const subject = attempt.userId === null ? {} : { subjectType: 'user', subjectId: attempt.userId };
+  const reason: AttemptReason =
+    attempt.reason ?? (attempt.userId === null ? 'unknown_account' : 'wrong_password');
   const typed = {
     ...(attempt.email === undefined ? {} : submittedEmail(attempt.email)),
-    ...(attempt.reason ? { reason: attempt.reason } : {}),
+    reason,
+    method: attempt.method ?? 'password',
+    ...(attempt.tokenId !== undefined ? { tokenId: attempt.tokenId } : {}),
+    ...(attempt.userAgent ? { userAgent: attempt.userAgent.slice(0, 400) } : {}),
   };
   const base = { workspaceId: attempt.workspaceId, actorId: attempt.actorId, ip: attempt.ip };
   const entries: AuditEntry[] = [{ ...base, ...subject, action, details: typed }];
@@ -64,6 +118,13 @@ export async function recordRefusedAttempt(
     });
   }
   await appendAudit(db, entries);
+  if (attempt.countsForAlerts ?? reason !== 'directory_unavailable') {
+    await countFailedSignIn(db, attempt.workspaceId, {
+      userId: attempt.userId,
+      ...(attempt.email !== undefined ? { email: attempt.email } : {}),
+      ip: attempt.ip,
+    });
+  }
 }
 
 /** Records a password link that was not accepted (unknown, used or expired). */

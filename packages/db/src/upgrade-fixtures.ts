@@ -1452,6 +1452,36 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 720, 30)`.execute(db);
     },
   },
+  '0081_security_events': {
+    tables: {
+      domain_event: "type = 'user.password_changed' AND user_agent = 'Seed browser'",
+      security_email: "kind = 'password_changed' AND to_address = 'seed@example.com'",
+      security_alert_rule: "rule = 'access_refusals' AND threshold = 80",
+      security_counter: "rule = 'bulk_exports' AND key = 'user:seed'",
+      security_alert: "rule = 'bulk_exports' AND key = 'user:seed' AND count = 5",
+    },
+    seed: async (db) => {
+      // A password change with where it came from, its notice, a tuned rule, a count and the
+      // alert it raised.
+      await sql`INSERT INTO domain_event (workspace_id, type, subject_type, subject_id, payload,
+          ip, user_agent)
+        SELECT 1, 'user.password_changed', 'user', id::text,
+          '{"via": "self", "endedSessions": 0}', '192.0.2.1', 'Seed browser'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO security_email (workspace_id, user_id, kind, domain_event_id,
+          to_address, details)
+        SELECT 1, u.id, 'password_changed', e.id, u.email, '{"ip": "192.0.2.1"}'
+          FROM app_user u, domain_event e
+         WHERE u.email = 'seed@example.com' AND e.user_agent = 'Seed browser'`.execute(db);
+      await sql`INSERT INTO security_alert_rule (workspace_id, rule, threshold, window_minutes)
+        VALUES (1, 'access_refusals', 80, 15)`.execute(db);
+      await sql`INSERT INTO security_counter (workspace_id, rule, key, window_start, count)
+        VALUES (1, 'bulk_exports', 'user:seed', '2026-11-02T00:00:00Z', 5)`.execute(db);
+      await sql`INSERT INTO security_alert (workspace_id, rule, key, window_start, count,
+          threshold, window_minutes)
+        VALUES (1, 'bulk_exports', 'user:seed', '2026-11-02T00:00:00Z', 5, 5, 60)`.execute(db);
+    },
+  },
 };
 
 /**

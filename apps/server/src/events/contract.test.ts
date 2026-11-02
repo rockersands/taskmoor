@@ -104,6 +104,8 @@ const JOB_EVENTS: readonly EventType[] = [
 const SCAN_JOB_EVENTS: readonly EventType[] = ['attachment.quarantined'];
 /** A spend limit's alert (M1-077), raised by the AI meter after a call: checked below. */
 const AI_METER_EVENTS: readonly EventType[] = ['ai_limit.threshold_reached'];
+/** A security alert (ADR-109), raised by an alert rule's count: checked below. */
+const SECURITY_ALERT_EVENTS: readonly EventType[] = ['security.alert_raised'];
 /** The end of an agent run (M1-131), recorded by the agent service: checked below. */
 const AI_RUN_EVENTS: readonly EventType[] = ['ai_run.finished'];
 /** The end of an import (M1-086), emitted by its job: checked by its own test below. */
@@ -3255,6 +3257,19 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/security/alerts',
+      expect: 'security_alerts.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/security/alerts',
+          // The default, so later scenarios count as before.
+          payload: {
+            rules: { bulk_exports: { enabled: true, threshold: 5, windowMinutes: 60 } },
+          },
+        }),
+    },
+    {
       route: 'POST /api/v1/session/enroll/totp/confirm',
       expect: 'user.two_factor_enabled',
       prepare: async () => {
@@ -3676,6 +3691,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         !IMPORT_JOB_EVENTS.includes(t) &&
         !CLONE_JOB_EVENTS.includes(t) &&
         !AI_METER_EVENTS.includes(t) &&
+        !SECURITY_ALERT_EVENTS.includes(t) &&
         !AI_RUN_EVENTS.includes(t) &&
         !EXPORT_EVENTS.includes(t),
     );
@@ -3853,6 +3869,46 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     expect(event?.actor_id).toBeNull();
     await database.db.deleteFrom('ai_spend_limit').execute();
     app.ai?.service.settings.changed(1);
+  });
+
+  it('[IAM-018] an alert rule raises one valid event when its threshold is reached, with no actor', async () => {
+    const set = await admin({
+      method: 'PUT',
+      url: '/api/v1/security/alerts',
+      payload: {
+        rules: { sign_in_failures_address: { enabled: true, threshold: 1, windowMinutes: 15 } },
+      },
+    });
+    expect(set.statusCode, set.body).toBe(200);
+    const before = await database.db
+      .selectFrom('domain_event')
+      .select((eb) => eb.fn.max('id').as('max'))
+      .executeTakeFirstOrThrow();
+    const refused = await app.inject({
+      method: 'POST',
+      url: '/api/v1/session',
+      payload: { email: 'nobody@example.com', password: randomBytes(18).toString('base64url') },
+      remoteAddress: '198.18.9.1',
+    });
+    expect(refused.statusCode).toBe(401);
+    const events = await database.db
+      .selectFrom('domain_event')
+      .select(['type', 'payload', 'subject_type', 'actor_id'])
+      .where('id', '>', String(before.max ?? 0))
+      .execute();
+    expect(events.map((e) => e.type)).toEqual(SECURITY_ALERT_EVENTS);
+    const [event] = events;
+    const spec = EVENT_TYPES['security.alert_raised'];
+    expect(event?.subject_type).toBe(spec.subject);
+    expect(() => spec.payload.parse(event?.payload)).not.toThrow();
+    expect(event?.actor_id).toBeNull();
+    await admin({
+      method: 'PUT',
+      url: '/api/v1/security/alerts',
+      payload: {
+        rules: { sign_in_failures_address: { enabled: true, threshold: 25, windowMinutes: 15 } },
+      },
+    });
   });
 
   it('[AI-011] an agent run records one valid event when it ends, as the person', async () => {

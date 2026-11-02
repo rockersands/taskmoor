@@ -16,7 +16,7 @@ import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { listPath, snoozeTimes } from './client';
-import { fakeInboxClient, ITEMS, NOW } from './fixtures';
+import { ALERT_ITEM, fakeInboxClient, ITEMS, NOW } from './fixtures';
 import { InboxPage } from './InboxPage';
 
 function renderInbox(client = fakeInboxClient()) {
@@ -31,6 +31,20 @@ const cards = async (page: BoundFunctions<typeof queries>) =>
   (await page.findAllByRole('listitem')).filter((li) => li.classList.contains('inbox-item'));
 
 describe('the inbox page (M1-058)', () => {
+  it('[IAM-018] ASVS 11.1.8: a security alert names the rule and whom it is about, and leads to the audit log', async () => {
+    const user = userEvent.setup();
+    const { page, client } = renderInbox(fakeInboxClient([ALERT_ITEM, ...ITEMS]));
+    const [first] = await cards(page);
+    const card = first as HTMLElement;
+    expect(card).toHaveTextContent('Failed sign-ins for one account: 10 in 60 minutes');
+    const link = within(card).getByRole('link');
+    expect(link).toHaveTextContent('Account: Kalo Smith · From 203.0.113.9');
+    expect(link).toHaveAttribute('href', '#/admin/audit');
+    expect(page.getByRole('button', { name: 'Priority 3', pressed: false })).toBeVisible();
+    await user.click(within(card).getByRole('button', { name: 'Mark this alert as read' }));
+    await waitFor(() => expect(client.items()[0]?.read).toBe(true));
+  });
+
   it('[NTF-003] lists mentions and changes newest first, unread marked, quoting comments', async () => {
     const { page } = renderInbox();
     const items = await cards(page);

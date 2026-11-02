@@ -8,6 +8,7 @@ import { emit } from '../events/bus';
 import { zipSink } from '../export/sinks';
 import { exportWorkspace } from '../export/write';
 import type { FieldCatalogs } from '../fields/catalog';
+import { countBulkExport } from '../security/alerts';
 
 /**
  * The full export (M1-098; IMP-014): `GET /api/v1/admin/export` streams the workspace as
@@ -63,6 +64,7 @@ export function registerExportRoutes(
       { workspaceId: ws, actorId: user.id },
       { type: 'workspace.exported', subjectId: ws, payload: { tracks: keys ?? null } },
     );
+    await countBulkExport(db, ws, user.id);
     const sink = zipSink();
     const day = new Date().toISOString().slice(0, 10);
     // Written while the client reads; a failure part way ends the download short (the

@@ -4,6 +4,7 @@ import { auditSubscriber } from '../audit/subscriber';
 import type { EmbeddingIndexer } from '../embeddings/indexer';
 import { embeddingSubscriber } from '../embeddings/jobs';
 import { notificationSubscriber } from '../notifications/subscriber';
+import { securitySubscriber } from '../security/notices';
 import { webhookSubscriber } from '../webhooks/subscriber';
 import type { EventBus } from './bus';
 
@@ -22,6 +23,8 @@ export function registerSubscribers(
   bus.subscribe(notificationSubscriber(deps.db));
   // The audit log (M1-003, ADR-034).
   bus.subscribe(auditSubscriber(deps.db));
+  // Security notices to people and alerts to site administrators (ADR-109).
+  bus.subscribe(securitySubscriber(deps.db));
   // Webhooks (M1-067, ADR-055): a delivery per webhook that takes the event, sent by a job.
   bus.subscribe(
     webhookSubscriber(deps.db, deps.publicUrl !== undefined ? { publicUrl: deps.publicUrl } : {}),

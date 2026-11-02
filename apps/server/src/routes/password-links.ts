@@ -115,7 +115,7 @@ export function registerPasswordLinkRoutes(
         {
           type: 'user.password_changed',
           subjectId: link.userId,
-          payload: { via: 'link', endedSessions: ended },
+          payload: { via: 'link', endedSessions: ended, purpose: link.purpose },
         },
       );
       return true;

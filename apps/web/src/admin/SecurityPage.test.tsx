@@ -1,10 +1,11 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { type Handler, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
+import { ALERT_DEFAULTS, RECENT_ALERTS } from './alertsFixtures';
 import { ADMIN, MEMBER } from './fixtures';
 
 const GROUPS = [
@@ -19,6 +20,8 @@ function openSecurity(handlers: Record<string, Handler> = {}, session = ADMIN) {
     'GET /security/two-factor': () => jsonResponse(200, { required: 'site_admins', groupIds: [7] }),
     'GET /groups': () => jsonResponse(200, { groups: GROUPS }),
     'GET /security/sessions': () => jsonResponse(200, { ...DEFAULTS, defaults: DEFAULTS }),
+    'GET /security/alerts': () =>
+      jsonResponse(200, { rules: ALERT_DEFAULTS, defaults: ALERT_DEFAULTS, recent: RECENT_ALERTS }),
     ...handlers,
   });
   window.location.hash = '#/admin/security';
@@ -213,5 +216,95 @@ describe('security settings: sign-in sessions', () => {
     expect(calls.some((c) => c.method === 'PUT' && c.path.startsWith('/security/sessions'))).toBe(
       false,
     );
+  });
+});
+
+describe('security settings: alert rules (ADR-109)', () => {
+  it('[IAM-018] ASVS 11.1.7: shows each rule with its default and the latest alerts, and saves a stricter rule', async () => {
+    const user = userEvent.setup();
+    const saved: unknown[] = [];
+    openSecurity({
+      'PUT /security/alerts': (body) => {
+        saved.push(body);
+        const rules = (body as { rules: typeof ALERT_DEFAULTS }).rules;
+        return jsonResponse(200, { rules, defaults: ALERT_DEFAULTS, recent: [] });
+      },
+    });
+    const form = await screen.findByRole('form', { name: 'Security alerts' });
+    const account = within(form).getByRole('group', { name: 'Failed sign-ins for one account' });
+    expect(within(account).getByRole('checkbox', { name: 'Alert on this' })).toBeChecked();
+    expect(within(account).getByLabelText('Alert after this many')).toHaveValue(10);
+    expect(within(account).getByLabelText('Within this many minutes')).toHaveValue(60);
+    expect(within(account).getByText('Default: 10 within 60 minutes.')).toBeVisible();
+    const latest = within(form).getByRole('list', { name: 'Latest alerts' });
+    expect(within(latest).getAllByRole('listitem')[0]).toHaveTextContent(
+      /Failed sign-ins from one address: 25 in 15 minutes.*from 203\.0\.113\.9/,
+    );
+
+    const threshold = within(account).getByLabelText('Alert after this many');
+    await user.clear(threshold);
+    await user.type(threshold, '5');
+    const exports = within(form).getByRole('group', { name: 'Bulk exports by one person' });
+    await user.click(within(exports).getByRole('checkbox', { name: 'Alert on this' }));
+    await user.click(within(form).getByRole('button', { name: 'Save alert rules' }));
+    expect(await within(form).findByText('Alert rules saved.')).toBeVisible();
+    expect(saved).toEqual([
+      {
+        rules: {
+          ...ALERT_DEFAULTS,
+          sign_in_failures_account: { enabled: true, threshold: 5, windowMinutes: 60 },
+          bulk_exports: { enabled: false, threshold: 5, windowMinutes: 60 },
+        },
+      },
+    ]);
+    expect(within(form).getByText('No alert has been raised.')).toBeVisible();
+  });
+
+  it('[IAM-018] refuses a threshold out of range before asking the server', async () => {
+    const user = userEvent.setup();
+    const calls = openSecurity();
+    const form = await screen.findByRole('form', { name: 'Security alerts' });
+    const refusals = within(form).getByRole('group', {
+      name: 'Refused requests of one person or token',
+    });
+    const threshold = within(refusals).getByLabelText('Alert after this many');
+    await user.clear(threshold);
+    await user.type(threshold, '0');
+    await user.click(within(form).getByRole('button', { name: 'Save alert rules' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Choose a number from 1 to 100,000',
+    );
+    expect(calls.some((c) => c.method === 'PUT' && c.path.startsWith('/security/alerts'))).toBe(
+      false,
+    );
+  });
+
+  it('[NFR-006] the alert rules work on a phone and every text comes from the catalogue', async () => {
+    setViewportWidth(360);
+    openSecurity();
+    const form = await screen.findByRole('form', { name: 'Security alerts' });
+    expect(within(form).getByRole('button', { name: 'Save alert rules' })).toBeVisible();
+    stubBackend({
+      'GET /security/two-factor': () => jsonResponse(200, { required: 'none', groupIds: [] }),
+      'GET /groups': () => jsonResponse(200, { groups: GROUPS }),
+      'GET /security/sessions': () => jsonResponse(200, { ...DEFAULTS, defaults: DEFAULTS }),
+      'GET /security/alerts': () =>
+        jsonResponse(200, {
+          rules: ALERT_DEFAULTS,
+          defaults: ALERT_DEFAULTS,
+          recent: RECENT_ALERTS,
+        }),
+    });
+    cleanup();
+    const errors: Error[] = [];
+    render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
+    const recent = await waitFor(() => {
+      const list = document.querySelector('.security-alerts-list');
+      expect(list).not.toBeNull();
+      return list as HTMLElement;
+    });
+    const alerts = recent.closest('form') as HTMLElement;
+    expect(untranslated(visibleTexts(alerts))).toEqual([]);
+    expect(errors).toEqual([]);
   });
 });

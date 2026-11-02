@@ -24,6 +24,16 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
  */
 export interface CompatOptions {
   publicUrl: string;
+  /**
+   * Called when credentials were sent but refused here (ASVS 7.2.1; ADR-109): Basic with a
+   * password instead of a token, or with another person's email. It audits and throttles the
+   * attempt, and answers how long the address is locked, if it is (then the answer is 429).
+   * A refused token is audited by the native routes the call runs.
+   */
+  refused?: (
+    request: FastifyRequest,
+    failure: { reason: 'not_a_token' | 'email_mismatch'; userId: number | null },
+  ) => Promise<{ retryAfterSeconds: number } | null>;
 }
 
 const AUTH_ERROR = {
@@ -81,6 +91,16 @@ export async function registerJiraCompat(app: FastifyInstance, options: CompatOp
             reply.header('cache-control', 'no-store');
             const creds = credentials(request);
             if (!creds) {
+              // Something was sent that is no token: audited, unless nothing was sent at all.
+              const locked = request.headers.authorization
+                ? await options.refused?.(request, { reason: 'not_a_token', userId: null })
+                : null;
+              if (locked) {
+                return reply
+                  .code(429)
+                  .header('retry-after', String(locked.retryAfterSeconds))
+                  .send({ errorMessages: ['Too many failed attempts.'], errors: {} });
+              }
               return reply
                 .code(401)
                 .header('www-authenticate', 'Basic realm="taskmoor", Bearer realm="taskmoor"')
@@ -115,6 +135,20 @@ export async function registerJiraCompat(app: FastifyInstance, options: CompatOp
                 const me = await native('GET', '/api/v1/session');
                 const email = String(me.body?.user?.email ?? '');
                 if (me.status !== 200 || email.toLowerCase() !== creds.email.toLowerCase()) {
+                  // A refused token was audited by the native call; another person's email
+                  // with a good token is refused, and audited, here.
+                  if (me.status === 200) {
+                    const locked = await options.refused?.(request, {
+                      reason: 'email_mismatch',
+                      userId: Number(me.body?.user?.id) || null,
+                    });
+                    if (locked) {
+                      return reply
+                        .code(429)
+                        .header('retry-after', String(locked.retryAfterSeconds))
+                        .send({ errorMessages: ['Too many failed attempts.'], errors: {} });
+                    }
+                  }
                   return reply.code(401).send(AUTH_ERROR);
                 }
               }

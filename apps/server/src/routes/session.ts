@@ -15,6 +15,7 @@ import type { Authorizer } from '../authz/authorizer';
 import { withEvent } from '../events/bus';
 import type { DirectoryGateway } from '../ldap/gateway';
 import { endFamilyAndParent } from '../oauth/tokens';
+import { userAgentOf } from '../request-scope';
 import { emailDomain, providerForDomain } from '../sso/oidc';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 import {
@@ -39,8 +40,9 @@ const sessionId = z.object({ id: z.coerce.number().int().positive() });
  * password, and takes as long (a dummy hash is checked), so it cannot be used to find accounts.
  * Every attempt counts against the submitted email and the client address (IAM-001 lockout);
  * while either is locked the password is not even checked. Refused attempts and the lockouts
- * they cause go to the audit log (IAM-013); attempts refused while locked do not, so a flood
- * cannot fill it.
+ * they cause go to the audit log (IAM-013; ASVS 7.2.1, ADR-109: the account, address, method and
+ * reason, never the password) and count towards the security alert rules; attempts refused
+ * while locked do neither, so a flood cannot fill the log.
  */
 export function registerSessionRoutes(
   app: FastifyInstance,
@@ -128,6 +130,10 @@ export function registerSessionRoutes(
         email,
         lockedUntil: lock,
         reason: 'sso_required',
+        method: managed ? 'directory' : 'password',
+        userAgent: userAgentOf(request.headers),
+        // A right password refused because the domain signs in elsewhere is no attack.
+        countsForAlerts: !user || verdict === 'invalid',
       });
       return reply.code(403).send({
         error: 'sso_required',
@@ -153,6 +159,8 @@ export function registerSessionRoutes(
         userId: user?.id ?? null,
         email,
         lockedUntil: lock,
+        method: managed ? 'directory' : 'password',
+        userAgent: userAgentOf(request.headers),
         ...(unavailable ? { reason: 'directory_unavailable' as const } : {}),
       });
       return reply.code(401).send({ error: 'invalid_credentials' });

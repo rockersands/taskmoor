@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import { emit } from '../events/bus';
 import { isNotificationEvent, isPreferenceEvent } from '../notifications/model';
 import { bumpInbox } from '../notifications/subscriber';
+import { ALERT_INBOX_EVENTS } from '../security/notices';
 import { commentText } from '../tickets/comments';
 import { resolveTrack } from '../tickets/store';
 
@@ -21,6 +22,8 @@ import { resolveTrack } from '../tickets/store';
  *   about a ticket they may no longer see, or in the trash, is left out, and so is one about a
  *   comment they may not read (deleted, or restricted to a role or group they left). Counts
  *   apply the same rule. A comment is quoted only to those who may read it.
+ * - Security and AI spend alerts (ADR-109) are about no ticket (`ticket: null`, with `alert`):
+ *   they show while the reader is a site administrator.
  * - `PATCH /api/v1/inbox/:id` `{read?, snoozedUntil?}`: read or unread; snoozed until a time
  *   (it comes back unread then) or back now (`null`). Marking read also marks the same
  *   notification's email read, so a digest leaves it out (NTF-003 (2)).
@@ -38,7 +41,13 @@ const SNOOZE_MAX_MS = 366 * 24 * 60 * 60 * 1000;
 const eventFilter = z
   .string()
   .max(120)
-  .refine((e) => isPreferenceEvent(e) || isNotificationEvent(e), 'a notification event');
+  .refine(
+    (e) =>
+      isPreferenceEvent(e) ||
+      isNotificationEvent(e) ||
+      (ALERT_INBOX_EVENTS as readonly string[]).includes(e),
+    'a notification event',
+  );
 const listQuery = z
   .object({
     view: z.enum(VIEWS).default('all'),
@@ -79,6 +88,29 @@ const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_fou
 const zodDetail = (error: z.ZodError) =>
   error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; ');
 
+/** What an alert item shows: the rule, its numbers and whom it is about; never a secret. */
+const ALERT_FIELDS = [
+  'rule',
+  'count',
+  'threshold',
+  'windowMinutes',
+  'userId',
+  'userName',
+  'userEmail',
+  'tokenId',
+  'address',
+  'email',
+  'percent',
+  'metric',
+  'period',
+  'feature',
+] as const;
+function alertView(payload: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    ALERT_FIELDS.flatMap((f) => (payload[f] === undefined ? [] : [[f, payload[f]]])),
+  );
+}
+
 /** The sort key of an item: when it arrived, or when it came back from a snooze. */
 const SORT_AT = sql`coalesce(n.snoozed_until, n.created_at)`;
 
@@ -105,11 +137,12 @@ interface ItemRow {
   sort_at: string;
   actor_id: number | null;
   actor_name: string | null;
-  ticket_id: number;
-  ticket_key: string;
-  summary: string;
-  track_id: number;
-  track_key: string;
+  /** Null for an alert to site administrators (ADR-109), which is about no ticket. */
+  ticket_id: number | null;
+  ticket_key: string | null;
+  summary: string | null;
+  track_id: number | null;
+  track_key: string | null;
   comment_id: number | null;
   comment_body: JsonValue | null;
   comment_readable: boolean | null;
@@ -118,12 +151,19 @@ interface ItemRow {
 export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>): void {
   /**
    * The statement part every inbox read shares: the person's inbox items whose ticket they may
-   * see now (outside the trash) and, for an item about a comment, whose comment they may read.
+   * see now (outside the trash) and, for an item about a comment, whose comment they may read;
+   * and, while the person is a site administrator, the security and AI spend alerts they were
+   * sent (ADR-109), which are about no ticket.
    */
   async function visibleItems(request: FastifyRequest, userId: number) {
     const ws = request.workspaceId;
     const filter = await request.authz.ticketFilter();
-    if (filter.tracks !== 'all' && filter.tracks.length === 0) return null;
+    const admin = await request.authz.isSiteAdmin();
+    const noTickets = filter.tracks !== 'all' && filter.tracks.length === 0;
+    if (noTickets && !admin) return null;
+    const alerts = admin
+      ? sql<boolean>`(n.ticket_id IS NULL AND n.event IN (${sql.join([...ALERT_INBOX_EVENTS])}))`
+      : sql<boolean>`false`;
     // The comment an item is about (`commentId`) must be readable; a transition's comment
     // (`quotedCommentId`) is only quoted when it is. Same rule as `commentReadableSql`.
     const groups = sql`(WITH RECURSIVE g(id) AS (
@@ -139,15 +179,18 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
         OR c.visible_role_id IN (SELECT a.role_id FROM track_role_actor a
              WHERE a.track_id = k.track_id
                AND (a.user_id = ${userId} OR a.group_id IN ${groups}))))`;
+    const tickets = noTickets
+      ? sql<boolean>`false`
+      : sql<boolean>`(k.id IS NOT NULL AND k.deleted_at IS NULL AND ${filter.sql}
+          AND (NOT n.payload ? 'commentId' OR ${readable}))`;
     return {
       from: sql`notification n
-        JOIN ticket k ON k.id = n.ticket_id
-        JOIN track t ON t.id = k.track_id
+        LEFT JOIN ticket k ON k.id = n.ticket_id
+        LEFT JOIN track t ON t.id = k.track_id
         LEFT JOIN ticket_comment c ON c.ticket_id = k.id AND c.id = coalesce(
           (n.payload->>'commentId')::int, (n.payload->>'quotedCommentId')::int)`,
       where: sql<boolean>`n.user_id = ${userId} AND n.workspace_id = ${ws}
-        AND n.channel = 'inbox' AND k.deleted_at IS NULL AND ${filter.sql}
-        AND (NOT n.payload ? 'commentId' OR ${readable})`,
+        AND n.channel = 'inbox' AND (${tickets} OR ${alerts})`,
       readable,
     };
   }
@@ -174,12 +217,17 @@ export function registerInboxRoutes(app: FastifyInstance, db: Kysely<Database>):
       id: r.id,
       event: r.event,
       direct: r.direct,
-      ticket: {
-        id: r.ticket_id,
-        key: r.ticket_key,
-        summary: r.summary,
-        track: { id: r.track_id, key: r.track_key },
-      },
+      ticket:
+        r.ticket_id === null
+          ? null
+          : {
+              id: r.ticket_id,
+              key: r.ticket_key ?? '',
+              summary: r.summary ?? '',
+              track: { id: r.track_id ?? 0, key: r.track_key ?? '' },
+            },
+      // An alert to site administrators (ADR-109): the rule and whom it is about.
+      ...(r.ticket_id === null ? { alert: alertView(r.payload) } : {}),
       actor: r.actor_id === null ? null : { id: r.actor_id, name: r.actor_name ?? '' },
       ...(fields ? { fields } : {}),
       ...(mentionedIn ? { mentionedIn } : {}),

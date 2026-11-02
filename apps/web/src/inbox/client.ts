@@ -7,7 +7,13 @@ export interface InboxItem {
   event: string;
   /** A direct ask: a mention, or the ticket assigned to the reader. */
   direct: boolean;
-  ticket: { id: number; key: string; summary: string; track: { id: number; key: string } };
+  /** The ticket it is about; null for an alert to site administrators (ADR-109). */
+  ticket: { id: number; key: string; summary: string; track: { id: number; key: string } } | null;
+  /**
+   * A security or AI spend alert (`security_alert`, `ai_spend_alert`): the rule, its numbers
+   * and whom it is about. Older servers leave it out.
+   */
+  alert?: InboxAlert;
   actor: { id: number; name: string } | null;
   fields?: string[];
   /** Where the reader was mentioned: `ticket`, `description`, `environment` or `comment`. */
@@ -17,6 +23,26 @@ export interface InboxItem {
   createdAt: string;
   read: boolean;
   snoozedUntil: string | null;
+}
+
+/** What an alert item says (ADR-109). */
+export interface InboxAlert {
+  rule:
+    | 'sign_in_failures_account'
+    | 'sign_in_failures_address'
+    | 'access_refusals'
+    | 'bulk_exports'
+    | 'ai_spend';
+  count?: number;
+  threshold?: number;
+  windowMinutes?: number;
+  userId?: number | null;
+  userName?: string;
+  userEmail?: string;
+  tokenId?: number | null;
+  address?: string | null;
+  email?: string | null;
+  percent?: number;
 }
 
 export type InboxView = 'all' | 'priority' | 'snoozed';

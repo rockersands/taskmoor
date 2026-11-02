@@ -3,11 +3,22 @@ import type { FastifyInstance } from 'fastify';
 
 /**
  * What a request handler's work may need to know about the request without having it passed
- * down: today the client address, which every domain event emitted while handling the request
- * records (and the audit log shows). Outside a request (the CLI, jobs) there is no scope.
+ * down: the client address and User-Agent, which every domain event emitted while handling the
+ * request records (the audit log shows the address; security notices both). Outside a request (the CLI, jobs) there is no scope.
  */
 export interface RequestScope {
   ip: string;
+  /** The User-Agent header, cut to 400 characters (ADR-109): security notices name it. */
+  userAgent: string | null;
+}
+
+/** A request's User-Agent as events and audit records keep it. */
+export function userAgentOf(headers: {
+  'user-agent'?: string | string[] | undefined;
+}): string | null {
+  const value = headers['user-agent'];
+  const text = Array.isArray(value) ? value[0] : value;
+  return text ? text.slice(0, 400) : null;
 }
 
 const storage = new AsyncLocalStorage<RequestScope>();
@@ -23,6 +34,6 @@ export function currentRequestScope(): RequestScope | undefined {
  */
 export function registerRequestScope(app: FastifyInstance): void {
   app.addHook('preHandler', (request, _reply, done) => {
-    storage.run({ ip: request.ip }, done);
+    storage.run({ ip: request.ip, userAgent: userAgentOf(request.headers) }, done);
   });
 }

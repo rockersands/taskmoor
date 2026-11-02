@@ -37,6 +37,9 @@ export const AUDITED_EVENTS = [
   'user.two_factor_reset',
   'two_factor_policy.updated',
   'session_policy.updated',
+  // Security alert rules and the alerts they raise (ADR-109; ASVS 11.1.7).
+  'security_alerts.updated',
+  'security.alert_raised',
   'sso.signed_in',
   'identity_provider.created',
   'identity_provider.updated',

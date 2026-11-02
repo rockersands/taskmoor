@@ -343,7 +343,7 @@ describe('directories over HTTP (M1-082)', () => {
       .where('action', '=', 'session.sign_in_failed')
       .orderBy('seq', 'desc')
       .executeTakeFirstOrThrow();
-    expect(audit.details).toMatchObject({ reason: 'directory_unavailable' });
+    expect(audit.details).toMatchObject({ reason: 'directory_unavailable', method: 'directory' });
     await database.db
       .updateTable('ldap_directory')
       .set({ url: ldap.url })

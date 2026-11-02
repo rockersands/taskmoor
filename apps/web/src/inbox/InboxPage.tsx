@@ -52,8 +52,47 @@ const EMPTY: Record<InboxView, MessageId> = {
 const COUNT_CAP = 1000;
 const CUSTOM = 'custom:';
 
+const ALERT_RULES = new Set([
+  'sign_in_failures_account',
+  'sign_in_failures_address',
+  'access_refusals',
+  'bulk_exports',
+  'ai_spend',
+]);
+
+/** What an alert says (ADR-109): "Failed sign-ins for one account: 12 in 60 minutes". */
+function alertText(t: Translate, item: InboxItem): string {
+  const alert = item.alert;
+  const rule = alert && ALERT_RULES.has(alert.rule) ? alert.rule : 'access_refusals';
+  const name = t(`inbox.alert.rule.${rule}` as MessageId);
+  if (rule === 'ai_spend') return t('inbox.alert.ai', { name, percent: alert?.percent ?? 0 });
+  return t('inbox.alert.count', {
+    name,
+    count: alert?.count ?? 0,
+    minutes: alert?.windowMinutes ?? 0,
+  });
+}
+
+/** Whom an alert is about: a person, the email typed, a token or an address. */
+function alertSubject(t: Translate, item: InboxItem): string {
+  const alert = item.alert;
+  if (!alert) return '';
+  const parts: string[] = [];
+  if (alert.userName || alert.userEmail) {
+    parts.push(t('inbox.alert.person', { name: alert.userName || alert.userEmail || '' }));
+  } else if (alert.email) parts.push(t('inbox.alert.email', { email: alert.email }));
+  if (alert.tokenId) parts.push(t('inbox.alert.token', { id: alert.tokenId }));
+  if (alert.address) parts.push(t('inbox.alert.address', { address: alert.address }));
+  return parts.join(' · ');
+}
+
+/** Where an alert leads: the audit log, or the AI usage page for a spend alert. */
+const alertLink = (item: InboxItem) =>
+  routeHref(item.alert?.rule === 'ai_spend' ? '#/admin/ai-usage' : '#/admin/audit');
+
 /** What happened, in the reader's words: "Alice mentioned you in a comment". */
 function whatHappened(t: Translate, item: InboxItem): string {
+  if (!item.ticket) return alertText(t, item);
   const actor = item.actor?.name || t('inbox.someone');
   if (item.event === 'mentioned') {
     return item.mentionedIn?.includes('comment')
@@ -91,9 +130,11 @@ const isKnownEvent = (label: string) => KNOWN.has(label.slice('notifications.eve
 
 /** Where an item leads: its ticket, at the comment when it is about one. */
 const linkOf = (item: InboxItem) =>
-  routeHref(
-    `#/tickets/${encodeURIComponent(item.ticket.key)}${item.comment ? `?comment=${item.comment.id}` : ''}`,
-  );
+  item.ticket
+    ? routeHref(
+        `#/tickets/${encodeURIComponent(item.ticket.key)}${item.comment ? `?comment=${item.comment.id}` : ''}`,
+      )
+    : alertLink(item);
 
 /**
  * The in-app inbox (M1-058; NTF-003): mentions and changes to the tickets a person follows,
@@ -342,7 +383,8 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
       {items.length > 0 && (
         <ul className="inbox-list" aria-labelledby={titleId}>
           {items.map((item) => {
-            const key = item.ticket.key;
+            // An alert has no ticket key: its actions name the alert instead.
+            const key = item.ticket?.key ?? t('inbox.alert.label');
             const menuId = `inbox-snooze-${item.id}`;
             return (
               <li key={item.id} className={`inbox-item${item.read ? '' : ' inbox-item-unread'}`}>
@@ -362,7 +404,13 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                       if (!item.read) void change(item, { read: true });
                     }}
                   >
-                    <span className="inbox-key">{key}</span> {item.ticket.summary}
+                    {item.ticket ? (
+                      <>
+                        <span className="inbox-key">{key}</span> {item.ticket.summary}
+                      </>
+                    ) : (
+                      alertSubject(t, item) || t('inbox.alert.review')
+                    )}
                   </a>
                   {item.comment?.excerpt && (
                     <blockquote className="inbox-quote">{item.comment.excerpt}</blockquote>

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { LOCKOUT, passwordHasher, pepperFromSecret, pepperRing, tokenHash } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
@@ -9,11 +10,16 @@ import {
   SESSION_IDLE_MS,
   SESSION_LIFETIME_MS,
 } from './auth';
+import type { OutgoingEmail } from './email/transport';
+import { EventBus } from './events/bus';
+import { JobRunner } from './events/queue';
+import { registerSubscribers } from './events/subscribers';
+import { deliverSecurityEmail } from './security/mail';
 
 /**
  * OWASP ASVS 4.0.3, level 2: the authentication (V2) and session (V3) requirements that M1-001
- * covers, one test each, named by requirement. Items that belong to later tasks are listed as
- * todo with the task that brings them; UI items (2.1.11 paste, 2.1.12 show password) are tested
+ * covers, one test each, named by requirement (2.2.3 and 2.5.5 with the security notices of
+ * ADR-109). Items that belong to later tasks are listed as todo with the task that brings them; UI items (2.1.11 paste, 2.1.12 show password) are tested
  * in apps/web. Run against an install with a password pepper, as production runs.
  */
 const PEPPER = pepperFromSecret('the asvs suite pepper, at least 32 bytes long');
@@ -48,6 +54,28 @@ describe('ASVS level 2: authentication and sessions (M1-001)', () => {
       payload: { email, password },
       remoteAddress: nextAddress(),
     });
+  }
+
+  /** Runs the worker (events to subscribers, then the security mailer); what went to `to`. */
+  async function securityEmailsTo(to: string | string[]): Promise<OutgoingEmail[]> {
+    const bus = new EventBus(database.db);
+    registerSubscribers(bus, { db: database.db });
+    const runner = new JobRunner(database.db, 'asvs-test');
+    bus.attach(runner);
+    while ((await bus.relayOnce()) > 0) {}
+    while ((await runner.runOnce()) > 0) {}
+    const sent: OutgoingEmail[] = [];
+    await deliverSecurityEmail(database.db, {
+      transport: {
+        send: async (email) => {
+          sent.push(email);
+          return { messageId: null };
+        },
+      },
+      from: 'taskmoor@example.com',
+      publicUrl: 'https://tm.example.com',
+    });
+    return sent.filter((e) => [to].flat().includes(e.to));
   }
 
   async function createUser(email: string, password: string) {
@@ -212,7 +240,20 @@ describe('ASVS level 2: authentication and sessions (M1-001)', () => {
       expect(guesses).toBeLessThan(100);
     });
 
-    it.todo('[IAM-001] ASVS 2.2.3: people are told when their password changes (email, M1-057)');
+    it('[IAM-001] ASVS 2.2.3: people are told by email when their password changes', async () => {
+      await createUser('told@example.com', PASSWORD);
+      const cookie = cookieFrom((await signIn('told@example.com', PASSWORD)).headers['set-cookie']);
+      const changed = await as(cookie, {
+        method: 'PUT',
+        url: '/api/v1/account/password',
+        payload: { currentPassword: PASSWORD, newPassword: randomBytes(18).toString('base64url') },
+      });
+      expect(changed.statusCode).toBe(200);
+      const sent = await securityEmailsTo('told@example.com');
+      expect(sent.map((e) => e.subject)).toEqual(['Your Taskmoor password was changed']);
+      expect(sent[0]?.text).toMatch(/When: .*\nFrom: .*\nBrowser or program: /);
+      expect(sent[0]?.text).not.toMatch(/token=/);
+    });
   });
 
   describe('V2.4 credential storage', () => {
@@ -280,9 +321,28 @@ describe('ASVS level 2: authentication and sessions (M1-001)', () => {
       expect((await redeem('another otter lantern')).statusCode).toBe(404);
     });
 
-    it.todo(
-      '[IAM-001] ASVS 2.5.5: people are told when an authentication factor changes (email, M1-057)',
-    );
+    it('[IAM-001] ASVS 2.5.5: people are told by email when an authentication factor changes', async () => {
+      const res = await createUser('factor@example.com', PASSWORD);
+      const id = res.json().user.id as number;
+      const reset = await as(admin, {
+        method: 'POST',
+        url: `/api/v1/users/${id}/two-factor/reset`,
+      });
+      expect(reset.statusCode).toBe(204);
+      const renamed = await as(admin, {
+        method: 'PATCH',
+        url: `/api/v1/users/${id}`,
+        payload: { email: 'factor.new@example.com' },
+      });
+      expect(renamed.statusCode).toBe(200);
+      // The email change goes to the old address; the reset, sent after it, to the current one.
+      const sent = await securityEmailsTo(['factor@example.com', 'factor.new@example.com']);
+      expect(sent.map((e) => [e.to, e.subject])).toEqual([
+        ['factor.new@example.com', 'The second factors of your Taskmoor account were reset'],
+        ['factor@example.com', 'The email address of your Taskmoor account was changed'],
+      ]);
+      expect(sent[1]?.text).toContain('f***@example.com');
+    });
   });
 
   describe('V3 session management', () => {

@@ -1765,6 +1765,8 @@ export interface DomainEventTable {
   published_at: Timestamp | null;
   /** Client address of the request that caused the event; null for the CLI and jobs. */
   ip: string | null;
+  /** The request's User-Agent (M1-118, ADR-109), cut to 400 characters; null outside a request. */
+  user_agent: string | null;
 }
 
 /**
@@ -2018,6 +2020,72 @@ export interface SessionPolicyTable {
 export interface TwoFactorPolicyGroupTable {
   workspace_id: number;
   group_id: number;
+}
+
+/** What a security email tells (ADR-109): a credential change, or an alert to administrators. */
+export type SecurityEmailKind =
+  | 'password_changed'
+  | 'two_factor_enabled'
+  | 'two_factor_disabled'
+  | 'recovery_codes_regenerated'
+  | 'two_factor_reset'
+  | 'email_changed'
+  | 'alert';
+
+/** A security notice or alert email (ASVS 2.2.3, 2.5.5, 11.1.8): sent once, outside digests. */
+export interface SecurityEmailTable {
+  id: Generated<string>;
+  workspace_id: number;
+  user_id: number;
+  kind: SecurityEmailKind;
+  domain_event_id: string;
+  /** Fixed when written: an email change is told to the old address. */
+  to_address: string;
+  details: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  created_at: DefaultTimestamp;
+  attempts: Generated<number>;
+  last_error: string | null;
+  message_id: string | null;
+  sent_at: Timestamp | null;
+}
+
+/** The alert rules a site administrator can tune (ASVS 11.1.7); no row means the defaults. */
+export type SecurityAlertRuleName =
+  | 'sign_in_failures_account'
+  | 'sign_in_failures_address'
+  | 'access_refusals'
+  | 'bulk_exports';
+
+export interface SecurityAlertRuleTable {
+  workspace_id: number;
+  rule: SecurityAlertRuleName;
+  enabled: boolean;
+  threshold: number;
+  window_minutes: number;
+  updated_at: DefaultTimestamp;
+}
+
+/** What a rule counted for one key in one fixed window. */
+export interface SecurityCounterTable {
+  workspace_id: number;
+  rule: string;
+  key: string;
+  window_start: Timestamp;
+  count: Generated<number>;
+}
+
+/** An alert raised: at most one per rule, key and window. */
+export interface SecurityAlertTable {
+  id: Generated<string>;
+  workspace_id: number;
+  rule: string;
+  key: string;
+  window_start: Timestamp;
+  count: number;
+  threshold: number;
+  window_minutes: number;
+  details: ColumnType<Record<string, JsonValue>, string | undefined, string>;
+  raised_at: DefaultTimestamp;
 }
 
 /** An OpenID Connect provider (M1-080). The client secret is sealed under the pepper. */
@@ -2619,6 +2687,10 @@ export interface Database {
   sign_in_challenge: SignInChallengeTable;
   two_factor_policy: TwoFactorPolicyTable;
   session_policy: SessionPolicyTable;
+  security_email: SecurityEmailTable;
+  security_alert_rule: SecurityAlertRuleTable;
+  security_counter: SecurityCounterTable;
+  security_alert: SecurityAlertTable;
   two_factor_policy_group: TwoFactorPolicyGroupTable;
   identity_provider: IdentityProviderTable;
   identity_provider_group: IdentityProviderGroupTable;

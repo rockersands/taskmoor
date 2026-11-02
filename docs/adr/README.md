@@ -113,5 +113,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [106](0106-local-embeddings-and-vector-search.md) | Local embeddings on ONNX Runtime WebAssembly, `real[]` vectors and optional pgvector | Accepted |
 | [107](0107-ai-eval-sets.md) | AI eval sets and their runner, on a seeded synthetic dataset: query pairs scored by exact result, a summary rubric with an automatic grader, duplicate clusters | Accepted |
 | [108](0108-ai-v1-features.md) | The AI features of v1: streamed summaries citing readable comments, checked queries never run by AI, proposals created only on confirmation, duplicates re-ranked within 2 s | Accepted |
+| [109](0109-security-notices-and-alerts.md) | Security notices by email on credential changes, failed authentication and refusals in the audit log, alert rules that tell site administrators | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

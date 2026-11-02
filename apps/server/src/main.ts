@@ -36,6 +36,7 @@ import { buildMetricsServer, createMetrics, queryObserver, startTracing } from '
 import { trimApiUsage } from './ratelimit/usage';
 import { deliverSubscriptions } from './search/subscriptions';
 import { loadPeppers } from './secrets';
+import { deliverSecurityEmail } from './security/mail';
 import { issueSetupToken, setupLink } from './setup';
 import { gracefulShutdown } from './shutdown';
 import { rollSprintCycles } from './sprints/cycles';
@@ -354,6 +355,23 @@ if (config.roles.includes('worker') && db) {
       .catch((error) => app.log.warn({ error }, 'notification emails not sent'));
   void sendEmail();
   timers.push(setInterval(sendEmail, 30 * 1000));
+  // Security notices and alerts (ADR-109): every 15 seconds, one email each, no batching.
+  const sendSecurityEmail = () =>
+    currentMailer()
+      .then((options) =>
+        options
+          ? deliverSecurityEmail(db, {
+              transport: options.transport,
+              from: options.from,
+              publicUrl: options.publicUrl,
+            })
+          : null,
+      )
+      .then((run) => {
+        if (run && (run.sent > 0 || run.failed > 0)) app.log.info({ run }, 'security emails');
+      })
+      .catch((error) => app.log.warn({ error }, 'security emails not sent'));
+  timers.push(setInterval(sendSecurityEmail, 15 * 1000));
   // Search subscriptions (M1-063): each due one runs as each recipient; claimed per run.
   const subscriptionCatalogs = new FieldCatalogs(db);
   const sendSubscriptions = () =>
