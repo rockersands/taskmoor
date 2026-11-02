@@ -5,6 +5,7 @@ import type { AiEnvironment } from './ai/environment';
 import { PROVIDER_IDS } from './ai/settings';
 import type { EmbeddingsSetting } from './embeddings/service';
 import { frontendOrigin } from './network/frontends';
+import { parseOutboundAllow } from './outbound/addresses';
 
 /** Stamped into the bundle by `pnpm build` from TASKMOOR_VERSION, as the frontend artefact is. */
 declare const __TASKMOOR_BUILD_VERSION__: string | undefined;
@@ -67,6 +68,14 @@ const envSchema = z.object({
    * names by path must be inside it. Defaults to TASKMOOR_DATA/imports; `off` refuses paths.
    */
   TASKMOOR_IMPORT_DIR: z.string().min(1).optional(),
+  /**
+   * What an uploaded archive (a backup or export ZIP) may unpack to (ASVS 12.1.2; ADR-110):
+   * the uncompressed total in GiB (512), the ratio of an entry or the whole (200) and the
+   * number of entries (10 million). Read by `import/archive.ts`; checked here at start.
+   */
+  TASKMOOR_ARCHIVE_MAX_GIB: z.coerce.number().positive().optional(),
+  TASKMOOR_ARCHIVE_MAX_RATIO: z.coerce.number().positive().optional(),
+  TASKMOOR_ARCHIVE_MAX_ENTRIES: z.coerce.number().int().positive().optional(),
   /** Internal Prometheus port (ADR-023); 0 turns the metrics listener off. */
   METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
   TASKMOOR_SHUTDOWN_DRAIN_MS: z.coerce.number().int().min(0).max(60_000).default(2000),
@@ -78,6 +87,22 @@ const envSchema = z.object({
    * address, so set this whenever a proxy sits in front; unset, the socket peer is the client.
    */
   TASKMOOR_TRUSTED_PROXIES: z.string().min(1).optional(),
+  /**
+   * Hosts the outbound guard lets through although they resolve to a private, loopback or
+   * link-local address (ASVS 5.2.6; ADR-110): host names, `*.domain`, addresses and CIDR
+   * ranges, comma-separated. For a webhook receiver, AI server or identity provider on the
+   * internal network.
+   */
+  TASKMOOR_OUTBOUND_ALLOW: z
+    .string()
+    .optional()
+    .superRefine((text, ctx) => {
+      try {
+        parseOutboundAllow(text);
+      } catch (error) {
+        ctx.addIssue({ code: 'custom', message: (error as Error).message });
+      }
+    }),
   /**
    * The active password pepper (ASVS 2.4.5), 32 characters or more. Unset, the install keeps
    * its keyring in TASKMOOR_DATA/secrets/password-peppers (created on first start).

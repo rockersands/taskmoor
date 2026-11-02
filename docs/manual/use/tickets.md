@@ -2,7 +2,7 @@
 title: "Working with tickets"
 audience: users
 sources: apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md
-accessed: 2026-10-31
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Working with tickets
@@ -148,7 +148,9 @@ permissions allow. An edited comment shows when it was edited.
 
 The **Attachments** section lists files with their size, who added them and when. Add files
 with **Attach files**, by dropping them on the section, or by pasting them. Each file must fit
-the size limit the section names. **Preview** opens images, PDF files, videos, text and the
+the size limit the section names, and the storage quota when a site administrator set one: an
+upload that would pass yours, or the workspace's, is refused with what is used and what is left.
+**Preview** opens images, PDF files, videos, text and the
 contents of ZIP files; **Download all as ZIP** takes every file at once. Deleting a file asks
 first and is for good. If the server checks files for viruses, a file is held until it passes.
 

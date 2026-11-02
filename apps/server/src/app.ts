@@ -33,6 +33,7 @@ import { Allowlists } from './network/allowlist';
 import { isAccessToken, pruneOAuth, resolveAccessToken } from './oauth/tokens';
 import { instrumentApp, type Metrics } from './observability';
 import { OriginPolicy, registerCrossOrigin } from './origins';
+import { type OutboundGuard, outboundGuard } from './outbound/guard';
 import { RateLimiter, RateLimitPolicies } from './ratelimit/limiter';
 import { UsageRecorder } from './ratelimit/usage';
 import { registerRequestScope } from './request-scope';
@@ -177,6 +178,12 @@ export interface AppDeps {
   /** The install's password peppers; they also seal second-factor secrets (M1-084). */
   peppers?: PepperRing;
   /**
+   * Requests to addresses people typed (AI providers, OpenID Connect) go through it (ASVS 5.2.6;
+   * ADR-110). The process's guard from `TASKMOOR_OUTBOUND_ALLOW` when left out; tests that run a
+   * fake provider on loopback pass one that allows it.
+   */
+  outbound?: OutboundGuard;
+  /**
    * Where AI credentials' data keys are wrapped (M1-075, ADR-098): the master key, a key
    * service, or the peppers. Built from `peppers` alone when left out.
    */
@@ -225,6 +232,7 @@ export interface AppDeps {
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const level = deps.logLevel ?? 'silent';
   const roles = deps.roles ?? ['api'];
+  const outbound = deps.outbound ?? outboundGuard();
   const app = Fastify({
     logger:
       level === 'silent' ? false : { level, ...(deps.logStream ? { stream: deps.logStream } : {}) },
@@ -436,6 +444,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       peppers: deps.peppers,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       origins,
+      outbound,
     });
     await registerSamlRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
@@ -580,6 +589,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const ai = new AiService(db, {
       ring: aiKeys.ring,
       ...(deps.aiAdapterFactory ? { adapterFactory: deps.aiAdapterFactory } : {}),
+      // A provider's address is typed by an administrator: the outbound guard (ADR-110).
+      adapterOptions: { fetch: outbound.fetch },
       logger: { warn: (data, message) => app.log.warn(data, message) },
       ...deps.ai,
     });

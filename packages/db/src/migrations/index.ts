@@ -68,6 +68,7 @@ import * as m0075 from './0075_ai_spend';
 import * as m0076 from './0076_import_delta';
 import * as m0079 from './0079_embeddings';
 import * as m0080 from './0080_session_policy';
+import * as m0082 from './0082_storage_quota';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -146,4 +147,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0076_import_delta': m0076,
   '0079_embeddings': m0079,
   '0080_session_policy': m0080,
+  '0082_storage_quota': m0082,
 };

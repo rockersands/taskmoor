@@ -320,6 +320,7 @@
       "created_at timestamp with time zone not null default now()"
     ],
     "indexes": [
+      "CREATE INDEX attachment_author_size_idx ON public.attachment USING btree (workspace_id, author_id) INCLUDE (size)",
       "CREATE INDEX attachment_pending_idx ON public.attachment USING btree (id) WHERE ((scan_state = 'pending'::text) OR (thumbnail_state = 'pending'::text))",
       "CREATE UNIQUE INDEX attachment_pkey ON public.attachment USING btree (id)",
       "CREATE UNIQUE INDEX attachment_storage_key_idx ON public.attachment USING btree (storage, storage_key)",
@@ -331,7 +332,9 @@
     "columns": [
       "workspace_id integer not null",
       "max_file_size bigint not null default 1073741824",
-      "updated_at timestamp with time zone not null default now()"
+      "updated_at timestamp with time zone not null default now()",
+      "workspace_quota bigint",
+      "person_quota bigint"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX attachment_setting_pkey ON public.attachment_setting USING btree (workspace_id)"

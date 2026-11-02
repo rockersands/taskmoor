@@ -148,6 +148,31 @@ describe('the attachment panel (M1-016)', () => {
     expect(screen.getByText(/Up to 10 B each/)).toBeVisible();
   });
 
+  it('[CORE-021] explains a refusal by a storage quota with what is used and left (ASVS 12.1.3)', async () => {
+    const user = userEvent.setup();
+    let quota: 'person' | 'workspace' = 'person';
+    openTicket({
+      'POST /tickets/41/attachments': () =>
+        jsonResponse(413, {
+          error: 'storage_quota_exceeded',
+          quota,
+          limit: 10 * 1024 ** 3,
+          used: 9.5 * 1024 ** 3,
+          available: 0.5 * 1024 ** 3,
+        }),
+    });
+    const input = await screen.findByLabelText('Attach files');
+    await user.upload(input, new File(['video'], 'demo.mp4'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'demo.mp4 was not added: your attachments would pass your storage quota of 10 GB (9.5 GB used, 512 MB left). Delete some, or ask a site administrator to raise it.',
+    );
+    quota = 'workspace';
+    await user.upload(input, new File(['video'], 'again.mp4'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'again.mp4 was not added: the workspace would pass its storage quota of 10 GB (9.5 GB used, 512 MB left). Ask a site administrator.',
+    );
+  });
+
   it('[CORE-021] deletes after a confirmation', async () => {
     const user = userEvent.setup();
     const calls = openTicket({ 'DELETE /tickets/41/attachments/13': () => noContent() });

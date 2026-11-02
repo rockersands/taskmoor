@@ -59,6 +59,10 @@ export const E2E_AI_ADMIN = 'ada@ai.test';
 export const E2E_NO_AI_API_PORT = 8798;
 export const E2E_NO_AI_ADMIN = 'ada@no-ai.test';
 
+// The fake identity and AI providers listen on loopback, which the outbound guard refuses
+// unless the operator allows it (ASVS 5.2.6; ADR-110): allowed here as an operator would.
+process.env.TASKMOOR_OUTBOUND_ALLOW = '127.0.0.1,::1';
+
 // Always signs in the same synthetic person; the tests register it as a provider first.
 const idp = new FakeIdp('taskmoor-e2e', 'e2e-client-secret-0123456789');
 await idp.start(E2E_IDP_PORT);

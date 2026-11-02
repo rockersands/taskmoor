@@ -22,6 +22,18 @@ Read this first in every session, then update it before you stop.
     interactivity itself.
   - Under load, the enforced speed limits of the 1,500-field edit (50 ms) and the 2,000-row
     timeline (1.5 s) fail by a few percent; alone they pass.
+- **ASVS group B (outbound requests and inputs), branch `work/asvs-inputs`** (ADR-110,
+  migration 0082): 5.2.6, 12.6.1, 12.1.2, 12.1.3 are Met.
+  - Every request to a typed address goes through `outbound/guard.ts` (`guard.fetch`): webhooks,
+    AI adapters (`adapterOptions.fetch` in `app.ts`), OpenID Connect (`customFetch`) and the
+    Cloud import transport. Loopback is refused too, so a test with a fake provider, IdP or
+    receiver on 127.0.0.1 passes `outbound: loopbackOutbound()` (`testing/outbound.ts`) to
+    `buildApp` or `registerWebhookJobs`; the e2e server sets `TASKMOOR_OUTBOUND_ALLOW`. A new
+    outbound call must use the guard, never the global `fetch`.
+  - Archive ceilings (`import/archive.ts`) run before DC staging, the import route's backup
+    check and the export ZIP unpack; a failed export unpack now removes its `.part` folder.
+  - Storage quotas are columns of `attachment_setting`, off by default; CORE-021's wording
+    changed to "no storage quota by default". The form is a section of the guardrails page.
 - **Next:** the 14 ASVS gaps (`pnpm gate M1` waits on them), in three parallel tasks with ADRs
   109 to 111 and migrations 0081 to 0083; then M1-120 (release), and M1-091's 1M-issue run
   last, on a machine with about 30 GB free and more cores (four hours is not reachable here).

@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { FakeIdp } from '../testing/fake-idp';
+import { loopbackOutbound } from '../testing/outbound';
 
 const PASSWORD = 'ladder violet harbour';
 const ORIGIN = 'http://tracker.test';
@@ -129,6 +130,7 @@ describe('single sign-on with OpenID Connect (M1-080)', () => {
     await idp.start();
     app = await buildApp({
       db: database.db,
+      outbound: loopbackOutbound(),
       version: 'test',
       roles: ['api'],
       passwords,

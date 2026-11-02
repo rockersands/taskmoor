@@ -8,8 +8,10 @@ reads this file: every row marked Gap keeps the gate waiting.
 
 Paths are relative to the repository root. Tests named here run in `pnpm verify`.
 
-**Counts:** 258 requirements: 218 met, 25 not applicable, 1 accepted by the user (3.3.2), 14 gaps. Ten of the met ones were
+**Counts:** 258 requirements: 222 met, 25 not applicable, 1 accepted by the user (3.3.2), 10 gaps. Ten of the met ones were
 fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 14.4.5, 14.4.6.
+Four more were closed on 2026-11-02 (ADR-110): 5.2.6, 12.6.1 (the outbound guard), 12.1.2
+(archive limits) and 12.1.3 (storage quotas).
 
 ## V1 Architecture, design and threat modelling
 
@@ -162,7 +164,7 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 5.2.3 | Input to mail is sanitised against header injection | Met | Nodemailer encodes headers; addresses from accounts only (`apps/server/src/email`) |
 | 5.2.4 | No `eval` or dynamic code from input | Met | CSP without `unsafe-eval`; formulas are interpreted (`packages/formula`, fuzzed) |
 | 5.2.5 | No template injection | Met | No server templates from input; email templates are code (`email/render.ts`) |
-| 5.2.6 | Protection against SSRF | Gap | Webhooks take HTTPS to any host, site administrators only, no answer body kept (`webhooks/model.ts`, `deliver.ts`). Fix: resolve and refuse private, loopback and link-local addresses unless the operator allows them, pinned for the connection (follow-up task, M1 gate) |
+| 5.2.6 | Protection against SSRF | Met | One outbound guard for every request to a typed address: webhooks, AI providers, OpenID Connect, Cloud import (ADR-110). It resolves the host, refuses loopback, private, CGNAT, link-local, unique-local, multicast, reserved and metadata addresses (IPv4, IPv6 and IPv4 inside IPv6), connects to the address it checked (no rebinding), checks every redirect, sends only http and https; `TASKMOOR_OUTBOUND_ALLOW` names exceptions (`outbound/guard.ts`, `addresses.ts`; `guard.test.ts`, `webhooks.test.ts`, `routes/ai.test.ts`) |
 | 5.2.7 | SVG content is sanitised or isolated | Met | Attachments served under the sandboxing CSP and as their sniffed type (`routes/attachments.ts`); images in rich text are links, not inline SVG |
 | 5.2.8 | Markup languages (Markdown, wiki markup) sanitised | Met | Readers keep only safe links, read as browsers read them (fixed in M1-118: `isSafeHref`, `packages/richtext/src/markdown.ts`; `markdown.test.ts`; `pnpm fuzz href`) |
 | 5.3.1 | Output encoded for its interpreter | Met | React; `escapeHtml` in email; JSON by Fastify |
@@ -278,8 +280,8 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | ID | Requirement | State | Evidence or fix |
 |---|---|---|---|
 | 12.1.1 | Large files cannot fill storage | Met | `maxFileSize` per workspace, enforced while streaming (`routes/attachments.ts`) |
-| 12.1.2 | Compressed files checked before unpacking | Gap | Export ZIPs are listed, not unpacked (`attachments/zip.ts`); DC backups are staged without a limit on uncompressed size. Fix: a ceiling on the uncompressed total and ratio while staging (follow-up task) |
-| 12.1.3 | Quotas per person | Gap | No storage quota (`routes/attachments.ts`). Fix: a workspace quota with per-person limits (follow-up task) |
+| 12.1.2 | Compressed files checked before unpacking | Met | Backup and export ZIPs are held to an uncompressed total (512 GiB), a ratio (200 to 1) and an entry count (10 million) from their directory before anything is unpacked, entries checked against their declared sizes while read; the operator raises them (`import/archive.ts`, `dc-backup/stage.ts`, `import/taskmoor.ts`; `archive.test.ts` with a ZIP bomb made in the test; ADR-110). Attachment ZIPs are only listed and streamed one entry at a time (`attachments/zip.ts`) |
+| 12.1.3 | Quotas per person | Met | A workspace storage quota and one per person, off by default (CORE-021), set by site administrators on the guardrails page; an upload past one is refused with 413 `storage_quota_exceeded` and the numbers, re-checked under a lock against parallel uploads (`attachments/quota.ts`, `routes/attachments.ts`, migration 0082; `attachments.test.ts`, `StorageQuotas.test.tsx`; ADR-110) |
 | 12.2.1 | Untrusted files checked by content | Met | Types sniffed (`attachments/sniff.ts`; `sniff.test.ts`) |
 | 12.3.1 | File names never used as paths | Met | Keys from hashes (`packages/storage`); names cleaned (`attachments/filename.ts`) |
 | 12.3.2 | File names cannot reach local files | Met | As 12.3.1 |
@@ -291,7 +293,7 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 12.4.2 | Uploads scanned for malware | Met | ClamAV scanning when configured, infected files never served (`attachments/scan.ts`; `scan.test.ts`) |
 | 12.5.1 | Only intended files are served | Met | Only the built artefact (`frontend.ts`, `globIgnore`) |
 | 12.5.2 | Uploads never run as HTML or script | Met | Sandboxing CSP and `nosniff` (`routes/attachments.ts`) |
-| 12.6.1 | Outbound requests limited to an allowlist | Gap | As 5.2.6 |
+| 12.6.1 | Outbound requests limited to an allowlist | Met | As 5.2.6: public addresses only, http and https only, and the operator's allow list for internal hosts (`TASKMOOR_OUTBOUND_ALLOW`) |
 
 ## V13 API and web services
 
@@ -346,12 +348,12 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 1.9.1 | Plain TCP to the bundled PostgreSQL inside the Compose network | Low | TLS in the Compose kit, or the private network documented as the boundary |
 | 1.14.2 | Releases not yet signed | Medium | M1-100 (the key from the user's Mac) |
 | 2.2.3, 2.5.5 | No email when a credential changes | Medium | Security notices by email |
-| 5.2.6, 12.6.1 | Webhooks may reach private addresses | Medium | Resolver that refuses private ranges |
+| 5.2.6, 12.6.1 | Webhooks may reach private addresses | Medium | Closed: the outbound guard (ADR-110) |
 | 7.1.3, 7.2.1, 7.2.2 | Failed sign-ins and refusals not audited | Medium | Audit events for failures |
 | 8.3.2 | No per-person export or erasure | Low | Personal data export and anonymisation |
 | 11.1.7, 11.1.8 | No alerting on unusual activity | Low | Alert rules (with 7.1.3) |
-| 12.1.2 | No uncompressed-size ceiling when staging a backup | Low | Ceiling on total and ratio |
-| 12.1.3 | No storage quota | Low | Workspace and per-person quotas |
+| 12.1.2 | No uncompressed-size ceiling when staging a backup | Low | Closed: archive limits (ADR-110) |
+| 12.1.3 | No storage quota | Low | Closed: storage quotas (ADR-110) |
 
 None is high or critical: each needs a site administrator's action, a privileged position or a
 second weakness to matter. The pen test of M2-021 rechecks the list.

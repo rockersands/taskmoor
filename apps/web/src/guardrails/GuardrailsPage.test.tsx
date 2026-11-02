@@ -7,7 +7,7 @@ import type { Locale } from '../i18n/locale';
 import { SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { fakeGuardrailsClient } from './fixtures';
+import { fakeGuardrailsClient, fakeStorageClient } from './fixtures';
 import { GuardrailsPage } from './GuardrailsPage';
 
 function renderPage(locale: Locale = 'en') {
@@ -16,7 +16,7 @@ function renderPage(locale: Locale = 'en') {
     <I18nProvider locale={locale}>
       <SessionProvider session={ADMIN}>
         <main>
-          <GuardrailsPage client={client} />
+          <GuardrailsPage client={client} storage={fakeStorageClient()} />
         </main>
       </SessionProvider>
     </I18nProvider>,
@@ -65,7 +65,9 @@ describe('guardrails (M1-055)', () => {
     renderPage('en-XA');
     const main = screen.getByRole('main');
     await within(main).findAllByRole('listitem');
-    const texts = visibleTexts(main).filter((t) => !['SHOP', 'OPS'].includes(t));
+    const texts = visibleTexts(main).filter(
+      (t) => !['SHOP', 'OPS'].includes(t) && !t.includes('Sam Rivera'),
+    );
     expect(untranslated(texts)).toEqual([]);
   });
 });

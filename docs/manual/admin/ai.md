@@ -1,8 +1,8 @@
 ---
 title: "AI settings"
 audience: admins
-sources: apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, apps/server/src/routes/ai-features.ts, docs/adr/0108-ai-v1-features.md, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md
-accessed: 2026-11-01
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, apps/server/src/routes/ai-features.ts, docs/adr/0108-ai-v1-features.md, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # AI settings
@@ -21,7 +21,10 @@ Site administrators find the settings under **Settings > AI**.
   Bedrock, the region and project for Vertex AI, the resource name for Foundry, and the server's
   address and model for an OpenAI-compatible server. Save, then paste the key and choose
   **Save API key**. The key field is always empty: under it the page says "Stored, ending in"
-  and the last four characters, or "Not set".
+  and the last four characters, or "Not set". A server on your own network or this machine
+  (Ollama on `localhost`, for example) needs its host in `TASKMOOR_OUTBOUND_ALLOW` (see
+  [requests to other servers](configuration.md#requests-to-other-servers)): Taskmoor refuses
+  private, loopback and metadata addresses otherwise, and **Test connection** says so.
 - **From the Builder's backend kit or the environment.** Give `TASKMOOR_AI_PROVIDER` and
   `TASKMOOR_AI_KEY` (and the region, project or address your provider needs: see
   [configuration](configuration.md#ai-providers)). On the first start the server stores them,

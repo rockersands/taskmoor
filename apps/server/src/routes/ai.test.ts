@@ -9,6 +9,8 @@ import { aiKeyRing } from '../ai/keyring';
 import { type AdapterFactory, type AiService, AiUnavailableError } from '../ai/service';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { createOutboundGuard } from '../outbound/guard';
+import { loopbackOutbound } from '../testing/outbound';
 
 const PASSWORD = 'harbour lantern willow';
 /** Keys made at run time, shaped so no secret scanner mistakes them for real ones. */
@@ -47,6 +49,7 @@ describe('AI settings (M1-076)', () => {
   let base = '';
   let app: FastifyInstance;
   let scriptedApp: FastifyInstance;
+  let guardedApp: FastifyInstance | undefined;
   let admin = '';
   let member = '';
   let web = 0;
@@ -94,7 +97,13 @@ describe('AI settings (M1-076)', () => {
 
   beforeAll(async () => {
     base = await provider.start();
-    app = await buildApp({ db: database.db, version: 'test', roles: ['api'], aiKeys: keys });
+    app = await buildApp({
+      db: database.db,
+      version: 'test',
+      roles: ['api'],
+      aiKeys: keys,
+      outbound: loopbackOutbound(),
+    });
     scriptedApp = await buildApp({
       db: database.db,
       version: 'test',
@@ -135,7 +144,47 @@ describe('AI settings (M1-076)', () => {
   afterAll(async () => {
     await app.close();
     await scriptedApp.close();
+    await guardedApp?.close();
     await provider.stop();
+  });
+
+  it('[AI-001][NFR-008] ASVS 5.2.6: a provider address on loopback, a private network or a metadata service is refused, and the test says why', async () => {
+    // The guard as an install has it: nothing allowed; names never resolve over the network.
+    guardedApp = await buildApp({
+      db: database.db,
+      version: 'test',
+      roles: ['api'],
+      aiKeys: keys,
+      outbound: createOutboundGuard({
+        resolve: async (host) => {
+          if (host === 'ai.corp.example') return [{ address: '10.1.2.3', family: 4 }];
+          throw new Error(`tests resolve no names: ${host}`);
+        },
+      }),
+    });
+    const before = provider.requests.length;
+    for (const [baseUrl, reason] of [
+      [base, 'loopback'],
+      ['http://169.254.169.254', 'cloud metadata'],
+      ['https://ai.corp.example', 'private'],
+    ] as const) {
+      const res = await asAdmin(
+        {
+          method: 'POST',
+          url: '/api/v1/admin/ai/test',
+          payload: {
+            provider: { provider: 'anthropic', baseUrl },
+            credentials: { apiKey: fakeKey() },
+          },
+        },
+        guardedApp,
+      );
+      expect(res.statusCode, res.body).toBe(200);
+      expect(res.json()).toMatchObject({ ok: false });
+      expect(res.json().error.message).toContain(`is not a public address (${reason})`);
+    }
+    // Nothing reached the provider.
+    expect(provider.requests.length).toBe(before);
   });
 
   it('[AI-001] starts with AI off and hidden: no provider, every feature unavailable', async () => {

@@ -1,4 +1,5 @@
 import type { Guardrail, GuardrailsClient } from './client';
+import type { StorageClient, StorageSettings } from './storage-client';
 
 const row = (
   name: string,
@@ -35,6 +36,39 @@ export function fakeGuardrailsClient(): FakeGuardrailsClient {
       calls.push({ name, limit });
       const found = rows.find((r) => r.name === name);
       if (found) found.limit = limit;
+    },
+  };
+}
+
+const GIB = 1024 ** 3;
+
+/** A workspace of 42 GiB under a 100 GiB quota, its heaviest uploader at 9.5 of 10 GiB. */
+export const STORAGE: StorageSettings = {
+  maxFileSize: GIB,
+  workspaceQuota: 100 * GIB,
+  personQuota: 10 * GIB,
+  usage: {
+    bytes: 42 * GIB,
+    files: 1234,
+    topPerson: { id: 7, name: 'Sam Rivera', bytes: 9.5 * GIB, files: 310 },
+  },
+};
+
+export interface FakeStorageClient extends StorageClient {
+  calls: { workspaceQuota: number | null; personQuota: number | null }[];
+}
+
+/** An in-memory backend for the storage section; `settings` overrides the starting state. */
+export function fakeStorageClient(settings: StorageSettings = STORAGE): FakeStorageClient {
+  let current = structuredClone(settings);
+  const calls: FakeStorageClient['calls'] = [];
+  return {
+    calls,
+    read: async () => structuredClone(current),
+    setQuotas: async (quotas) => {
+      calls.push(quotas);
+      current = { ...current, ...quotas };
+      return structuredClone(current);
     },
   };
 }

@@ -113,5 +113,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [106](0106-local-embeddings-and-vector-search.md) | Local embeddings on ONNX Runtime WebAssembly, `real[]` vectors and optional pgvector | Accepted |
 | [107](0107-ai-eval-sets.md) | AI eval sets and their runner, on a seeded synthetic dataset: query pairs scored by exact result, a summary rubric with an automatic grader, duplicate clusters | Accepted |
 | [108](0108-ai-v1-features.md) | The AI features of v1: streamed summaries citing readable comments, checked queries never run by AI, proposals created only on confirmation, duplicates re-ranked within 2 s | Accepted |
+| [110](0110-outbound-guard-archive-limits-storage-quotas.md) | One outbound guard for requests to typed addresses (resolved, private ranges refused, pinned, redirects re-checked, operator allow list), archive ceilings checked before unpacking, storage quotas off by default | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

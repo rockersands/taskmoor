@@ -16,6 +16,7 @@ import yauzl from 'yauzl';
 import { buildApp } from '../app';
 import { SWEEP_TASK, sweepStorage } from '../attachments/cleanup';
 import { PROCESS_TASK, processAttachment } from '../attachments/jobs';
+import { storageUsage } from '../attachments/quota';
 import type { AttachmentView } from '../attachments/records';
 import { type AttachmentStores, storesOf } from '../attachments/stores';
 import { MAX_LISTED } from '../attachments/zip';
@@ -1006,6 +1007,10 @@ describe('attachments (M1-016)', () => {
     const read = await get('admin', '/api/v1/admin/attachment-settings');
     expect(read.json()).toEqual({
       maxFileSize: 1024 ** 3,
+      // No storage quota unless an administrator sets one (CORE-021; ASVS 12.1.3).
+      workspaceQuota: null,
+      personQuota: null,
+      usage: { bytes: expect.any(Number), files: expect.any(Number), topPerson: expect.anything() },
       storage: 'local',
       scanner: null,
       signedUrlSeconds: 300,
@@ -1117,6 +1122,124 @@ describe('attachments (M1-016)', () => {
       expect((await rowsOf('storage_cleanup')).filter((r) => r.reason === 'upload')).toEqual([]);
     } finally {
       await racing.close();
+    }
+  });
+
+  it('[CORE-021][NFR-008] ASVS 12.1.3: storage quotas per person and for the workspace refuse an upload past them with 413 and the numbers', async () => {
+    const ticket = await createTicket('Quotas');
+    const put = (payload: object) =>
+      as(apps.local, 'admin', { method: 'PUT', url: '/api/v1/admin/attachment-settings', payload });
+    const usedBy = async (who?: string) =>
+      (await storageUsage(database.db, 1, who ? (users[who]?.id as number) : undefined)).bytes;
+    const rowsBefore = (await rowsOf('attachment')).length;
+    const objectsBefore = objectCount();
+    try {
+      // Per person: room for 1,000 more bytes.
+      const dave = await usedBy('dave');
+      expect((await put({ personQuota: dave + 1000 })).statusCode).toBe(200);
+      expect(
+        (await upload('dave', ticket, 'a.bin', 'application/octet-stream', randomBytes(600)))
+          .statusCode,
+      ).toBe(201);
+      const refused = await upload(
+        'dave',
+        ticket,
+        'b.bin',
+        'application/octet-stream',
+        randomBytes(600),
+      );
+      expect(refused.statusCode).toBe(413);
+      expect(refused.json()).toEqual({
+        error: 'storage_quota_exceeded',
+        quota: 'person',
+        limit: dave + 1000,
+        used: dave + 600,
+        available: 400,
+      });
+      // Streamed without a length: cut where the room ends, nothing kept.
+      const streamed = await upload(
+        'dave',
+        ticket,
+        'c.bin',
+        'application/octet-stream',
+        generated(600),
+      );
+      expect(streamed.statusCode).toBe(413);
+      expect(streamed.json()).toMatchObject({ error: 'storage_quota_exceeded', available: 400 });
+      expect(
+        (await upload('dave', ticket, 'd.bin', 'application/octet-stream', randomBytes(400)))
+          .statusCode,
+      ).toBe(201);
+      const full = await upload('dave', ticket, 'e.txt', 'text/plain', 'x');
+      expect(full.json()).toMatchObject({ quota: 'person', available: 0, used: dave + 1000 });
+      // Only the two that fitted were kept.
+      expect((await rowsOf('attachment')).length).toBe(rowsBefore + 2);
+      expect(objectCount()).toBe(objectsBefore + 2);
+      expect((await rowsOf('storage_cleanup')).filter((r) => r.reason === 'upload')).toEqual([]);
+
+      // Two uploads at once that each fit, but not both: one is refused.
+      const room = await usedBy('alice');
+      await put({ personQuota: room + 1000 });
+      const both = await Promise.all([
+        upload('alice', ticket, 'g.bin', 'application/octet-stream', randomBytes(600)),
+        upload('alice', ticket, 'h.bin', 'application/octet-stream', randomBytes(600)),
+      ]);
+      expect(both.map((r) => r.statusCode).sort()).toEqual([201, 413]);
+      expect(await usedBy('alice')).toBe(room + 600);
+
+      // The workspace total.
+      const total = await usedBy();
+      await put({ personQuota: null, workspaceQuota: total + 100 });
+      const ws = await upload(
+        'alice',
+        ticket,
+        'i.bin',
+        'application/octet-stream',
+        randomBytes(200),
+      );
+      expect(ws.statusCode).toBe(413);
+      expect(ws.json()).toEqual({
+        error: 'storage_quota_exceeded',
+        quota: 'workspace',
+        limit: total + 100,
+        used: total,
+        available: 100,
+      });
+
+      // The settings show quotas and usage; nonsense is refused; changes are events.
+      const read = (await get('admin', '/api/v1/admin/attachment-settings')).json();
+      expect(read).toMatchObject({
+        workspaceQuota: total + 100,
+        personQuota: null,
+        usage: { bytes: total, topPerson: { name: expect.any(String) } },
+      });
+      expect((await put({ workspaceQuota: 0 })).statusCode).toBe(400);
+      expect((await put({ personQuota: 1.5 })).statusCode).toBe(400);
+      expect((await put({})).statusCode).toBe(400);
+      expect(
+        (
+          await as(apps.local, 'carol', {
+            method: 'PUT',
+            url: '/api/v1/admin/attachment-settings',
+            payload: { workspaceQuota: null },
+          })
+        ).statusCode,
+      ).toBe(403);
+      const events = await database.db
+        .selectFrom('domain_event')
+        .select('payload')
+        .where('type', '=', 'attachment_settings.updated')
+        .orderBy('id', 'desc')
+        .limit(1)
+        .executeTakeFirstOrThrow();
+      expect(events.payload).toEqual({
+        changes: {
+          personQuota: { from: room + 1000, to: null },
+          workspaceQuota: { from: null, to: total + 100 },
+        },
+      });
+    } finally {
+      await put({ workspaceQuota: null, personQuota: null });
     }
   });
 });

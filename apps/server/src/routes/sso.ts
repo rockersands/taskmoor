@@ -7,6 +7,7 @@ import { recordSsoRefusal } from '../audit/record';
 import { requireSiteAdmin } from '../auth';
 import { diff, emit } from '../events/bus';
 import type { OriginPolicy } from '../origins';
+import type { OutboundGuard } from '../outbound/guard';
 import {
   emailDomain,
   finishAuthorization,
@@ -187,6 +188,8 @@ export function registerSsoRoutes(
     publicUrl: string;
     /** Frontends a sign-in may return to (M1-107, M1-108). */
     origins: OriginPolicy;
+    /** Discovery and the provider's endpoints go through it (ASVS 5.2.6; ADR-110). */
+    outbound?: OutboundGuard;
   },
 ): void {
   const base = options.publicUrl.replace(/\/+$/, '');
@@ -290,7 +293,7 @@ export function registerSsoRoutes(
     let start: Awaited<ReturnType<typeof startAuthorization>>;
     try {
       start = await startAuthorization(
-        await providerConfiguration(provider, options.peppers),
+        await providerConfiguration(provider, options.peppers, options.outbound),
         provider,
         redirectUri,
       );
@@ -354,7 +357,7 @@ export function registerSsoRoutes(
     let identity: Awaited<ReturnType<typeof finishAuthorization>>;
     try {
       identity = await finishAuthorization(
-        await providerConfiguration(provider, options.peppers),
+        await providerConfiguration(provider, options.peppers, options.outbound),
         provider,
         new URL(request.url, base),
         { state: query.state, nonce: login.nonce, verifier },

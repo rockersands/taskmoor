@@ -2,11 +2,14 @@ import type { Database } from '@taskmoor/db';
 import { openSecret, type PepperRing } from '@taskmoor/iam';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import * as client from 'openid-client';
+import { type OutboundGuard, outboundGuard } from '../outbound/guard';
 
 /**
  * OpenID Connect relying party (M1-080, IAM-003, ADR-019): authorization code with PKCE,
  * state and nonce, through `openid-client`. Providers are discovered from their issuer and the
- * configuration is cached for an hour (or until the provider is edited).
+ * configuration is cached for an hour (or until the provider is edited). Discovery, the key set,
+ * the token endpoint and user info go through the outbound guard (ASVS 5.2.6; ADR-110): an issuer
+ * on a private address needs the operator's `TASKMOOR_OUTBOUND_ALLOW`.
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -67,29 +70,32 @@ export function insecureIssuerAllowed(issuer: URL): boolean {
   );
 }
 
-const cache = new Map<number, { stamp: number; at: number; config: client.Configuration }>();
+const cache = new Map<
+  number,
+  { stamp: number; at: number; guard: OutboundGuard; config: client.Configuration }
+>();
 const TTL_MS = 60 * 60 * 1000;
 
 export async function providerConfiguration(
   provider: Provider,
   peppers: PepperRing | undefined,
+  guard: OutboundGuard = outboundGuard(),
 ): Promise<client.Configuration> {
   const stamp = provider.updated_at.getTime();
   const hit = cache.get(provider.id);
-  if (hit && hit.stamp === stamp && Date.now() - hit.at < TTL_MS) return hit.config;
+  if (hit && hit.stamp === stamp && hit.guard === guard && Date.now() - hit.at < TTL_MS) {
+    return hit.config;
+  }
   const issuer = new URL(provider.issuer);
   if (!insecureIssuerAllowed(issuer)) throw new Error('The issuer must use HTTPS');
   const secret = provider.client_secret_sealed
     ? (openSecret(provider.client_secret_sealed, peppers) ?? undefined)
     : undefined;
-  const config = await client.discovery(
-    issuer,
-    provider.client_id ?? '',
-    secret,
-    undefined,
-    issuer.protocol === 'http:' ? { execute: [client.allowInsecureRequests] } : undefined,
-  );
-  cache.set(provider.id, { stamp, at: Date.now(), config });
+  const config = await client.discovery(issuer, provider.client_id ?? '', secret, undefined, {
+    [client.customFetch]: guard.fetch as client.CustomFetch,
+    ...(issuer.protocol === 'http:' ? { execute: [client.allowInsecureRequests] } : {}),
+  });
+  cache.set(provider.id, { stamp, at: Date.now(), guard, config });
   return config;
 }
 
