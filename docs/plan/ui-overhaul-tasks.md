@@ -6,8 +6,8 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 - Decisions: [ADR-114](../adr/0114-glass-interface-and-clear-sections.md) (the interface),
   [ADR-115](../adr/0115-guided-tutorial.md) (the tutorial). Both Proposed until the user agrees.
 - Numbers held by this branch: ADR-114, ADR-115 (ADR-116 if a third is needed), migration
-  **0084** for `tutorial_progress`. If the main session has taken 0084 by the merge, this branch
-  moves to the next free number and updates this line.
+  **0084** for `tutorial_progress`, exactly (0085 and ADR-113 belong to the ticket-templates
+  session).
 - States: todo, in progress, done, blocked.
 
 | ID | Title | State | Done when | Commits |
@@ -21,8 +21,10 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 | UI-T07 | Board, backlog and ticket view in the glass language | in progress | Board and ticket header done in the prototype; backlog, reports, ticket side panel fields and activity follow; BoardPage, BacklogPage and TicketPage tests and stories updated | 265af8b (board and ticket header) |
 | UI-T08 | Drag and drop with a keyboard path: board columns, dashboard widgets; restyle the existing drags | todo | Columns reorder by drag and by Move left/right; widgets by drag and by the existing buttons; every drop announced; tests for both paths | |
 | UI-T09 | Phones and accessibility pass across the app | todo | No sideways scroll at 360 px on every page; 44 px targets under a coarse pointer; axe clean in both skins on every story; `pnpm verify --e2e` green | |
-| UI-T10 | Tutorial progress on the server: migration 0084, `GET` and `PUT /api/v1/account/tutorial` | todo | Table type in `schema.ts`, schema golden reviewed; routes session-only with a strict body, own progress only, a domain event and its contract scenario, route tests | |
+| UI-T10 | Tutorial progress on the server: migration 0084 (exactly), `GET` and `PUT /api/v1/account/tutorial` | todo | Table type in `schema.ts`, schema golden reviewed; routes session-only with a strict body, own progress only, a domain event and its contract scenario, route tests | |
 | UI-T11 | Tutorial picker and Settings, Tutorials page | in progress | Page and picker built (prototype, no storage); then reads and saves progress, starts, resumes and replays a section; story and tests | 265af8b (page without storage) |
 | UI-T12 | First-run offer: Start, Not now, Don't offer again | todo | Offered once at a person's first sign-in; skipping leaves every section in Settings, Tutorials; story, tests and an e2e | |
 | UI-T13 | Coach card and the steps of the eight sections | todo | Card highlights `data-tutorial` targets, waits for real actions, Back, Next, Pause, Skip, Escape pauses, docks on phones; a test walks every section's steps; one section end to end in e2e | |
 | UI-T14 | Manual and HANDOFF | todo | A "Getting around" page and a "Tutorials" page in `docs/manual`; changed pages updated; HANDOFF says what changed and what is next | |
+| UI-T15 | Layout editor page under Settings, Configuration sets (scope relayed by the main session; to confirm with the user) | todo | A page for layout sets (`/api/v1/layout-sets`): drag fields into tabs and sections (main or side column), reorder them, mark a section "hide when empty"; "show only the fields I placed" maps to `others: "omit"`; a live preview per ticket type and per operation (create, edit, view); a keyboard path for every drag; the field rules page and this one link to each other and each explains what it does and how the two combine; manual `admin/fields.md` updated (the "no web page yet" line goes); story, tests and an e2e | |
+| UI-T16 | Board columns easy to manage (scope relayed by the main session; to confirm with the user) | todo | On the board and in its settings: add, rename, reorder by drag (and by Move left/right), set minimum and maximum; the limit stays 30 (`MAX_COLUMNS` in `apps/server/src/boards/model.ts`) and the page says so when it is reached; tests for drag and keyboard paths. Overlaps UI-T08's column drag | |
