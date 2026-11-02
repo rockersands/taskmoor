@@ -11,6 +11,9 @@ import {
 } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { EmptyState } from '../shell/EmptyState';
+import { BoardsIcon, MoreIcon } from '../shell/icons';
+import { PageHeader } from '../shell/PageHeader';
 import { useSyncEngine } from '../sync/SyncProvider';
 import {
   type Board,
@@ -62,10 +65,15 @@ function cardMeta(t: Translate, card: BoardCard): string[] {
 }
 
 /** The column's count, limits and breach, as its header reads them (AGL-003). */
-function ColumnHead({ column, t }: { column: Column; t: Translate }) {
+function ColumnHead({ column, t, at }: { column: Column; t: Translate; at: number }) {
   const hidden = column.count - column.shown;
   return (
-    <div className="board-column-head" data-wip={column.wip ?? undefined}>
+    <div
+      className="board-column-head"
+      data-wip={column.wip ?? undefined}
+      // Its place from the first step to the last, for the colour ramp of the top edge.
+      style={{ '--flow-at': `${Math.round(at * 100)}%` } as CSSProperties}
+    >
       <h2 className="board-column-name">{column.name}</h2>
       <p className="board-column-count">
         {t('boards.column.count', { count: column.count })}
@@ -421,10 +429,12 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           type="button"
           className="board-card-move"
           aria-expanded={menuOpen}
+          aria-label={t('boards.card.move', { key: card.key })}
+          title={t('boards.card.move', { key: card.key })}
           disabled={busy}
           onClick={() => setMenuFor(menuOpen ? null : card.id)}
         >
-          {t('boards.card.move', { key: card.key })}
+          <MoreIcon width={18} height={18} />
         </button>
         {menuOpen && (
           <ul className="board-move-menu">
@@ -471,30 +481,33 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const grid = { '--board-columns': columns.length } as CSSProperties;
   return (
     <section className="board-page" aria-labelledby={titleId}>
-      <header className="board-header">
-        <h1 id={titleId} className="page-title">
-          {board.name}
-        </h1>
-        {board.kind === 'scrum' && (
-          <a className="board-settings-link" href={routeHref(`#/boards/${boardId}/backlog`)}>
-            {t('sprints.backlog.link')}
-          </a>
-        )}
-        <a className="board-settings-link" href={routeHref(`#/boards/${boardId}/reports`)}>
-          {t('reports.link')}
-        </a>
-        {board.mayConfigure && (
-          <a className="board-settings-link" href={routeHref(`#/boards/${boardId}/settings`)}>
-            {t('boards.settings.link')}
-          </a>
-        )}
-        <p className="board-meta">
-          {t('boards.meta', {
-            kind: t(board.kind === 'scrum' ? 'boards.kind.scrum' : 'boards.kind.kanban'),
-            location,
-          })}
-        </p>
-      </header>
+      <PageHeader
+        titleId={titleId}
+        title={board.name}
+        eyebrow={t('boards.meta', {
+          kind: t(board.kind === 'scrum' ? 'boards.kind.scrum' : 'boards.kind.kanban'),
+          location,
+        })}
+        purpose={t('purpose.board')}
+        about={t('about.board')}
+        actions={
+          <>
+            {board.kind === 'scrum' && (
+              <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
+                {t('sprints.backlog.link')}
+              </a>
+            )}
+            <a className="button-quiet" href={routeHref(`#/boards/${boardId}/reports`)}>
+              {t('reports.link')}
+            </a>
+            {board.mayConfigure && (
+              <a className="button-quiet" href={routeHref(`#/boards/${boardId}/settings`)}>
+                {t('boards.settings.link')}
+              </a>
+            )}
+          </>
+        }
+      />
       {board.boardFilters.length > 0 &&
         (board.boardFilterDisplay === 'dropdown' ? (
           <details className="board-filters-menu">
@@ -532,13 +545,35 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       <p id={hintId} className="board-hint">
         {t('boards.keyboardHint')}
       </p>
-      {data.cards.length === 0 && <p className="page-note">{t('boards.empty')}</p>}
+      {data.cards.length === 0 &&
+        (board.kind === 'scrum' && filters.length === 0 ? (
+          <EmptyState
+            icon={BoardsIcon}
+            title={t('boards.emptyScrumTitle')}
+            action={
+              <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
+                {t('boards.emptyScrumAction')}
+              </a>
+            }
+          >
+            {t('boards.emptyScrumBody')}
+          </EmptyState>
+        ) : (
+          <EmptyState icon={BoardsIcon} title={t('boards.empty')}>
+            {t('boards.emptyBody')}
+          </EmptyState>
+        ))}
       {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region is reached by keyboard to scroll it */}
       <section className="board-scroll" aria-label={t('boards.columns')} tabIndex={0}>
         <div className="board-grid" style={grid}>
           <div className="board-row board-heads">
-            {columns.map((column) => (
-              <ColumnHead key={column.id} column={column} t={t} />
+            {columns.map((column, i) => (
+              <ColumnHead
+                key={column.id}
+                column={column}
+                t={t}
+                at={columns.length > 1 ? i / (columns.length - 1) : 0}
+              />
             ))}
           </div>
           {data.lanes.map((given) => {

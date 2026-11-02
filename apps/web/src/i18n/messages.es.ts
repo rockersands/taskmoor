@@ -45,6 +45,101 @@ export const messagesEs: Record<MessageId, string> = {
   'nav.search': 'Buscar',
   'nav.dashboards': 'Paneles',
   'nav.settings': 'Configuración',
+  'nav.group.you': 'Tu trabajo',
+  'nav.group.work': 'Planificar y seguir',
+  'nav.group.manage': 'Gestionar',
+  'purpose.home':
+    'Tu trabajo en un solo sitio: lo que tienes asignado, lo que abriste hace poco y lo que sigues.',
+  'purpose.boards':
+    'Un tablero muestra los tickets como tarjetas en columnas, una columna por paso del trabajo. Mueve una tarjeta para avanzar el trabajo.',
+  'purpose.board':
+    'Las tarjetas avanzan de izquierda a derecha a medida que avanza el trabajo: arrastra una a otra columna para mover su ticket.',
+  'purpose.ticket':
+    'Una unidad de trabajo: qué es, en qué punto está, quién la tiene y todo lo que le ha pasado.',
+  'about.home':
+    'Asignado a ti muestra los tickets abiertos de los que eres responsable, primero los que cambiaron más recientemente. Abiertos recientemente muestra los tickets que viste. Sigues muestra los tickets cuyos cambios llegan a tu bandeja de entrada.',
+  'about.board':
+    'Cada columna representa uno o varios estados del flujo de trabajo. Mover una tarjeta ejecuta la transición que lleva a esa columna; si hay varias, Taskmoor te pregunta cuál. Los filtros reducen las tarjetas y los recuentos siempre incluyen todas.',
+  'about.ticket':
+    'Los botones bajo el título mueven el ticket por su flujo de trabajo. Los detalles del lateral son sus campos: cambia uno y se guarda al momento. La actividad de abajo guarda los comentarios, el historial de cada cambio y el tiempo registrado.',
+  'help.about': '¿Para qué sirve {name}?',
+  'help.menu': 'Ayuda',
+  'help.tutorials': 'Tutoriales',
+  'help.shortcuts': 'Atajos de teclado',
+  'help.manual': 'Manual',
+  'theme.toLight': 'Cambiar al modo claro',
+  'theme.toDark': 'Cambiar al modo oscuro',
+  'home.start': 'Empieza algo',
+  'home.start.create': 'Ticket nuevo',
+  'home.start.createHint': 'Anota una unidad de trabajo: una funcionalidad, un error o una tarea.',
+  'home.start.board': 'Abrir un tablero',
+  'home.start.boardHint': 'Ve el trabajo como tarjetas en columnas y hazlo avanzar.',
+  'home.start.search': 'Buscar tickets',
+  'home.start.searchHint': 'Filtra por lo que quieras y guarda la búsqueda para volver a usarla.',
+  'home.start.learn': 'Hacer el recorrido',
+  'home.start.learnHint': 'Aprende Taskmoor creando uno de cada cosa, una sección cada vez.',
+  'home.assignedHelp':
+    'Tickets abiertos de los que eres responsable, primero los que cambiaron más recientemente.',
+  'home.recentHelp': 'Tickets que viste hace poco, para volver a ellos rápido.',
+  'home.followedHelp':
+    'Tickets cuyos cambios llegan a tu bandeja de entrada. Sigue un ticket con el botón Seguir de su página.',
+  'home.assignedEmptyHint':
+    'Cuando alguien te asigne un ticket, o elijas Asignármelo en uno, aparecerá aquí.',
+  'home.recentEmptyHint': 'Abre cualquier ticket y se guardará aquí para después.',
+  'home.followedEmptyHint':
+    'Sigue un ticket para enterarte de sus cambios en tu bandeja de entrada.',
+  'home.findTicket': 'Buscar un ticket',
+  'home.tracks': 'Tus tracks',
+  'home.tracksHelp':
+    'Los tracks que puedes ver. Abre uno para ver su resumen, lista, tablero y versiones.',
+  'home.tracksEmpty': 'Aún no hay tracks. Un administrador del sitio crea el primero en Gestionar.',
+  'home.trackKey': 'Clave {key}',
+  'tutorial.title': 'Tutoriales',
+  'tutorial.purpose':
+    'Aprende Taskmoor haciendo: cada sección te guía para crear algo real en esta instancia. Elige las secciones que quieras; puedes saltarlas, pausarlas y volver cuando quieras.',
+  'tutorial.about':
+    'Un tutorial resalta el control que debes usar a continuación y espera a que lo uses. Lo que creas es real y se queda, así que puedes conservarlo o borrarlo después. Tu progreso se guarda con tu cuenta.',
+  'tutorial.startSelected':
+    '{count, plural, =0 {Elige una sección para empezar} one {Empezar # sección} other {Empezar # secciones}}',
+  'tutorial.pick': 'Aprender {title}',
+  'tutorial.minutes': 'Unos {minutes} minutos',
+  'tutorial.adminOnly': 'Para administradores del sitio',
+  'tutorial.status.new': 'Sin empezar',
+  'tutorial.status.active': 'En curso',
+  'tutorial.status.done': 'Hecho',
+  'tutorial.status.skipped': 'Saltado',
+  'tutorial.start': 'Empezar',
+  'tutorial.resume': 'Continuar',
+  'tutorial.replay': 'Repetir',
+  'tutorial.section.tracks': 'Tracks y tickets',
+  'tutorial.section.tracksHint':
+    'Crea un track y después un ticket en él: rellena sus campos, coméntalo y adjunta un archivo.',
+  'tutorial.section.workflows': 'Flujos de trabajo',
+  'tutorial.section.workflowsHint':
+    'Dibuja un flujo de trabajo con tus propios estados y transiciones, publícalo y asígnalo a un track.',
+  'tutorial.section.boards': 'Tableros y sprints',
+  'tutorial.section.boardsHint':
+    'Crea un tablero, arrastra tarjetas por él y después planifica un sprint en el backlog e inícialo.',
+  'tutorial.section.search': 'Búsqueda y búsquedas guardadas',
+  'tutorial.section.searchHint':
+    'Encuentra tickets con filtros y con el lenguaje de consultas, y guarda la búsqueda para reutilizarla.',
+  'tutorial.section.dashboards': 'Paneles',
+  'tutorial.section.dashboardsHint':
+    'Crea un panel, añade algunos widgets y ordénalos arrastrándolos.',
+  'tutorial.section.releases': 'Versiones',
+  'tutorial.section.releasesHint': 'Crea una versión, asígnale tickets y márcala como publicada.',
+  'tutorial.section.admin': 'Administración',
+  'tutorial.section.adminHint':
+    'Añade una persona, ponla en un grupo y da acceso al grupo a un track.',
+  'tutorial.section.import': 'Importación',
+  'tutorial.section.importHint':
+    'Trae tickets desde un archivo CSV, con una prueba previa para comprobar qué pasará.',
+  'boards.emptyScrumTitle': 'No hay ningún sprint en curso',
+  'boards.emptyScrumBody':
+    'Un tablero Scrum muestra los tickets de su sprint en curso. Planifica un sprint en el backlog e inícialo; sus tickets aparecerán aquí.',
+  'boards.emptyScrumAction': 'Abrir el backlog',
+  'boards.emptyBody':
+    'El tablero muestra los tickets que encuentra su consulta. Crea un ticket en uno de sus tracks o cambia la consulta en la configuración del tablero.',
   'shell.openCommandPalette': 'Buscar o ir a…',
   'palette.title': 'Paleta de comandos',
   'palette.placeholder':

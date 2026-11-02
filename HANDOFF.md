@@ -2,6 +2,29 @@
 
 Read this first in every session, then update it before you stop.
 
+## Side session 2026-11-02 (cloud, branch `claude/ui-overhaul`): interface overhaul and tutorial
+
+The user asked for the whole web interface to be reworked (clear sections, every panel saying
+what it is for, glass surfaces, drag and drop, light and dark) and a sectioned guided tutorial
+(offered at first sign-in, skippable, all sections again under Settings, Tutorials).
+- **State: waiting for the user's go-ahead on the direction** (ADR-112, Proposed). Nothing is
+  pushed yet: the branch is local until the direction is agreed and `pnpm verify --e2e` passes.
+- **Prototype on the branch:** glass tokens and fallbacks (`tokens.css`), the shell in glass with
+  grouped navigation (`NAV_GROUPS` in `shell/NavList.tsx`), `shell/PageHeader.tsx`,
+  `shell/HelpTip.tsx`, `shell/EmptyState.tsx`, `shell/ThemeToggle.tsx`, `styles/surfaces.css`;
+  Home, the board and the ticket header reworked; `tutorial/` (sections, picker, the
+  Settings, Tutorials page at `#/settings/tutorials`, no storage yet).
+- **Claimed numbers:** ADR-112, migration 0084 (`tutorial_progress`), tasks M1-135 and M1-136.
+  If the main session takes them first, renumber here when merging.
+- **Not done yet:** component tests and stories for the new pieces (old HomePage and NavList
+  tests still expect the previous markup), the rollout to every other page, the tutorial's
+  coach card, first-run offer, server storage and route, drag for dashboard widgets and board
+  columns, the manual pages.
+- **Running the demo here (root container):** `service postgresql start`, a password for the
+  `postgres` user, `TASKMOOR_TEST_DATABASE_URL` pointed at it, then `pnpm demo`. The demo
+  caches the built frontend: rebuild (`pnpm --filter @taskmoor/web build`) and restart it to see
+  changes.
+
 ## Start here: 2026-11-02 (cloud session): M1-079 merged, M1-117 done, the ASVS gaps next
 
 - **M1-079 (AI v1 features) is on `main`** (ADR-108). It stays in-progress only for the measured

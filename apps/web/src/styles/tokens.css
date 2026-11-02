@@ -38,7 +38,15 @@
 
   --motion-fast: 120ms;
   --motion-base: 180ms;
+  --motion-slow: 280ms;
   --ease-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* A settling curve for things that lift, land or slide in (ADR-112). */
+  --ease-settle: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Glass (ADR-112): how much a translucent surface blurs and lifts the colour behind it. */
+  --glass-blur: 22px;
+  --glass-saturate: 165%;
+  --glass-blur-strong: 32px;
 }
 
 /* Soft daylight: cream, peach, blush and powder blue on a warm lavender-grey canvas. */
@@ -46,9 +54,10 @@
 [data-skin="light"] {
   --color-canvas: #ece8f0;
   --canvas-image:
-    radial-gradient(circle at 8% -10%, rgb(253 222 205 / 85%), transparent 42%),
-    radial-gradient(circle at 96% 4%, rgb(214 230 248 / 90%), transparent 38%),
-    radial-gradient(circle at 70% 110%, rgb(251 222 230 / 70%), transparent 45%),
+    radial-gradient(ellipse 60% 50% at 6% -6%, var(--canvas-glow-1), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 98% 2%, var(--canvas-glow-2), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 78% 108%, var(--canvas-glow-3), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 20% 95%, rgb(251 222 230 / 70%), transparent 70%),
     linear-gradient(160deg, #ece8f0 0%, #f3ece6 100%);
   --color-surface: #fcfaf7;
   --color-surface-raised: #ffffff;
@@ -106,6 +115,19 @@
   --color-flow-first: #86b6ef;
   --color-flow-last: #104281;
 
+  /* Glass (ADR-112): translucent surfaces over the canvas. Opaque enough that text keeps the
+     ADR-036 ratios over the darkest point of the canvas (contrast.test.ts composites them). */
+  --glass-surface: rgb(255 253 250 / 68%);
+  --glass-surface-strong: rgb(255 253 250 / 86%);
+  --glass-surface-sunken: rgb(243 239 234 / 62%);
+  --glass-edge: rgb(255 255 255 / 75%);
+  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 80%);
+  --glass-tint-accent: rgb(253 230 217 / 72%);
+  /* The canvas glows that glass picks up: warm, cool and lilac. */
+  --canvas-glow-1: rgb(253 206 182 / 90%);
+  --canvas-glow-2: rgb(196 220 248 / 95%);
+  --canvas-glow-3: rgb(222 206 246 / 80%);
+
   /* M0 names, kept so older styles follow the skin. */
   --color-bg: var(--color-canvas);
 
@@ -116,9 +138,9 @@
 [data-skin="dark"] {
   --color-canvas: #1b1922;
   --canvas-image:
-    radial-gradient(circle at 8% -10%, rgb(120 72 60 / 35%), transparent 42%),
-    radial-gradient(circle at 96% 4%, rgb(56 84 120 / 35%), transparent 38%),
-    radial-gradient(circle at 70% 110%, rgb(110 56 82 / 30%), transparent 45%),
+    radial-gradient(ellipse 60% 50% at 6% -6%, var(--canvas-glow-1), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 98% 2%, var(--canvas-glow-2), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 78% 108%, var(--canvas-glow-3), transparent 70%),
     linear-gradient(160deg, #1b1922 0%, #231d24 100%);
   --color-surface: #26222e;
   --color-surface-raised: #2e2937;
@@ -173,7 +195,43 @@
   --color-flow-first: #1c5cab;
   --color-flow-last: #b7d3f6;
 
+  --glass-surface: rgb(40 36 50 / 64%);
+  --glass-surface-strong: rgb(40 36 50 / 86%);
+  --glass-surface-sunken: rgb(24 22 31 / 55%);
+  --glass-edge: rgb(255 255 255 / 10%);
+  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 8%);
+  --glass-tint-accent: rgb(67 47 42 / 78%);
+  --canvas-glow-1: rgb(150 82 64 / 42%);
+  --canvas-glow-2: rgb(52 88 140 / 45%);
+  --canvas-glow-3: rgb(96 64 140 / 40%);
+
   --color-bg: var(--color-canvas);
 
   color-scheme: dark;
+}
+
+/*
+ * Where glass cannot blur, or the person asked for less transparency, every glass surface is
+ * the opaque surface of its skin: the same contrast, no translucency.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root,
+  [data-skin] {
+    --glass-surface: var(--color-surface);
+    --glass-surface-strong: var(--color-surface-raised);
+    --glass-surface-sunken: var(--color-surface-sunken);
+    --glass-tint-accent: var(--color-accent-soft);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root,
+  [data-skin] {
+    --glass-surface: var(--color-surface);
+    --glass-surface-strong: var(--color-surface-raised);
+    --glass-surface-sunken: var(--color-surface-sunken);
+    --glass-tint-accent: var(--color-accent-soft);
+    --glass-blur: 0px;
+    --glass-blur-strong: 0px;
+  }
 }

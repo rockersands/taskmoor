@@ -99,3 +99,78 @@ export const EyeOffIcon = (p: IconProps) => (
     <path d="m3.5 3.5 17 17" />
   </Icon>
 );
+
+export const HelpIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M9.6 9.6a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6" />
+    <path d="M12 17h.01" />
+  </Icon>
+);
+
+export const SunIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" />
+  </Icon>
+);
+
+export const MoonIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z" />
+  </Icon>
+);
+
+export const PlusIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Icon>
+);
+
+/** A map with a route on it: the guided tour. */
+export const TourIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 6.5 9 4l6 2.5L20 4v13.5L15 20l-6-2.5L4 20z" />
+    <path d="M9 4v13.5M15 6.5V20" />
+  </Icon>
+);
+
+export const TicketIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="4" y="5" width="16" height="14" rx="3" />
+    <path d="M8 10h8M8 14h5" />
+  </Icon>
+);
+
+export const MoreIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="6" cy="12" r="1.3" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+    <circle cx="18" cy="12" r="1.3" fill="currentColor" />
+  </Icon>
+);
+
+/** Three states joined by arrows: a workflow. */
+export const FlowIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="5.5" cy="7" r="2.5" />
+    <circle cx="18.5" cy="7" r="2.5" />
+    <circle cx="12" cy="18" r="2.5" />
+    <path d="M8 7h8M17.2 9.2l-3.8 6.6M6.8 9.2l3.8 6.6" />
+  </Icon>
+);
+
+/** A flag on a pole: a release. */
+export const ReleaseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 21V4M6 4h10.5l-2 3.5 2 3.5H6" />
+  </Icon>
+);
+
+/** A tray with an arrow coming in: import. */
+export const ImportIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3.5v10M8 9.5l4 4 4-4" />
+    <path d="M4 14.5v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+  </Icon>
+);

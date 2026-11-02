@@ -19,14 +19,18 @@
 .ticket-title-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2) var(--space-4);
 }
 
 .ticket-title-row .page-title {
-  flex: 1 1 20rem;
+  flex: 0 1 auto;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.ticket-title-row > .ticket-action {
+  margin-inline-start: auto;
 }
 
 .ticket-summary-form,
@@ -50,14 +54,46 @@
 }
 
 .ticket-status {
-  padding: var(--space-1) var(--space-3);
-  border-radius: 999px;
-  background: var(--color-surface-sunken);
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  font-weight: 650;
 }
 
 .ticket-status[data-stage="active"] {
-  background: var(--color-accent-soft);
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.ticket-status[data-stage="closed"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+/* The workflow's moves come first and look like the next step; the rest are quieter. */
+.ticket-transitions .ticket-action {
+  border-color: transparent;
+  background: var(--color-primary);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+  color: var(--color-on-primary);
+  font-weight: 600;
+}
+
+.ticket-transitions .ticket-action:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.ticket-toolbar-gap {
+  flex: 1 1 0;
+}
+
+.ticket-toolbar > .ticket-action {
+  background: var(--glass-surface-sunken);
+  border-color: var(--glass-edge);
+  box-shadow: none;
 }
 
 .ticket-columns {
@@ -88,9 +124,25 @@
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-5);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  background: var(--glass-surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+}
+
+.ticket-text {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-5);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
+  background: var(--glass-surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-1);
 }
 
 .ticket-section-title {
@@ -117,6 +169,13 @@
 }
 
 .ticket-facts :is(input, select) {
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-strong);
+  color: var(--color-text);
+  font: inherit;
   max-width: 100%;
 }
 

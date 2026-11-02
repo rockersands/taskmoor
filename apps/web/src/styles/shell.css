@@ -74,9 +74,12 @@ body {
   gap: var(--space-3);
   margin-top: var(--shell-gap);
   padding: 0 var(--space-3) 0 var(--space-4);
-  background: var(--color-surface);
+  background: var(--glass-surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -107,14 +110,39 @@ body {
 .shell-sidebar {
   grid-area: side;
   align-self: start;
-  background: var(--color-surface);
+  background: var(--glass-surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
   padding: var(--space-3);
   position: sticky;
   top: calc(var(--topbar-height) + 2 * var(--shell-gap));
   max-height: calc(100dvh - var(--topbar-height) - 3 * var(--shell-gap));
   overflow-y: auto;
+}
+
+/* Sections of the navigation (ADR-112): a quiet heading over each group. */
+.nav-groups {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.nav-group-title {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shell[data-collapsed="true"] .nav-group-title {
+  visibility: hidden;
+  height: 0;
+  margin: 0;
 }
 
 .nav-list {
@@ -142,7 +170,7 @@ body {
 }
 
 .nav-link:hover {
-  background: var(--color-surface-sunken);
+  background: var(--glass-surface-sunken);
   color: var(--color-text);
 }
 
@@ -263,9 +291,12 @@ body {
   min-width: 14rem;
   max-width: min(20rem, calc(100vw - 2 * var(--space-3)));
   padding: var(--space-2);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  box-shadow: var(--shadow-3);
+  box-shadow: var(--glass-highlight), var(--shadow-3);
 }
 
 .user-menu-email {
@@ -341,7 +372,10 @@ body {
   transform: translateX(-50%);
   z-index: 60;
   width: min(92vw, 560px);
-  background: var(--color-surface-raised);
+  background: var(--glass-surface-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-3);
   box-shadow: var(--shadow-3);
   overflow: hidden;
@@ -473,7 +507,9 @@ body {
   z-index: 50;
   width: min(84vw, 320px);
   padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) var(--space-3);
-  background: var(--color-surface);
+  background: var(--glass-surface-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   border-radius: 0;
   border-start-end-radius: var(--radius-3);
   border-end-end-radius: var(--radius-3);

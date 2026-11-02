@@ -1,0 +1,536 @@
+/*
+ * Shared pieces of the glass visual language (ADR-112, on ADR-036): glass cards, the page header
+ * with its purpose line, the "what is this for" button, explaining empty states and tiles.
+ */
+
+/* A translucent card over the canvas: blur, a hairline edge that catches the light, depth. */
+.glass-card {
+  background: var(--glass-surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-3);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+}
+
+/* Page header: where the page sits, its name, what it is for, and its actions. */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+  margin-bottom: var(--space-2);
+}
+
+.page-header-text {
+  min-width: 0;
+  max-width: 52rem;
+}
+
+.page-eyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  font-weight: 500;
+}
+
+.page-header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.page-header .page-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.page-purpose {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-300);
+  line-height: 1.45;
+}
+
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.section-title {
+  margin: 0;
+  font-size: var(--font-size-400);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* A panel's heading row: its name, the help button and a count. */
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: var(--font-size-300);
+  font-weight: 650;
+}
+
+.panel-count {
+  margin-inline-start: auto;
+  min-width: 1.75rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* "What is this for?": a round button and the explanation it shows under the heading. */
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.help-tip-button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    color var(--motion-fast) var(--ease-soft);
+}
+
+.help-tip-button:hover,
+.help-tip-button[aria-expanded="true"] {
+  background: var(--glass-tint-accent);
+  color: var(--color-accent);
+}
+
+.help-tip-body {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  inset-inline-start: calc(-1 * var(--space-2));
+  z-index: 25;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-3);
+  color: var(--color-text);
+  font-size: var(--font-size-200);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.help-tip-body[hidden] {
+  display: none;
+}
+
+/* Empty states say what would be here, how it gets here, and offer the next step. */
+.empty-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  padding: var(--space-3) 0 var(--space-1);
+}
+
+.empty-state-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-2);
+  background: var(--glass-tint-accent);
+  color: var(--color-accent);
+}
+
+.empty-state-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.empty-state-body {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  line-height: 1.5;
+}
+
+.empty-state-action {
+  margin-top: var(--space-2);
+}
+
+/* A quiet secondary action: a glass pill. */
+.button-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--hit-target);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-200);
+  font-weight: 550;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-settle);
+}
+
+.button-quiet:hover {
+  background: var(--glass-tint-accent);
+}
+
+/* Home (ADR-112): ways to start, then the lists, then the tracks. */
+.home-page {
+  gap: var(--space-6);
+}
+
+.home-start {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.home-start-list,
+.home-track-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.start-tile,
+.track-tile {
+  display: grid;
+  gap: var(--space-1);
+  height: 100%;
+  padding: var(--space-4);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    transform var(--motion-base) var(--ease-settle),
+    box-shadow var(--motion-base) var(--ease-settle);
+}
+
+.start-tile:hover,
+.track-tile:hover {
+  box-shadow: var(--glass-highlight), var(--shadow-2);
+}
+
+.start-tile-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-2);
+  background: var(--glass-tint-accent);
+  color: var(--color-accent);
+}
+
+.start-tile-title,
+.track-tile-name {
+  font-weight: 650;
+}
+
+.start-tile-hint,
+.track-tile-key {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  line-height: 1.45;
+}
+
+.track-tile {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+}
+
+.track-tile-badge {
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-2);
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+  font-size: var(--font-size-100);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.home-tracks {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.home-list {
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-3);
+  background: var(--glass-surface);
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+}
+
+.home-ticket {
+  padding: var(--space-2) var(--space-3);
+  margin-inline: calc(-1 * var(--space-3));
+  border-radius: var(--radius-1);
+}
+
+.home-ticket:hover {
+  background: var(--glass-surface-sunken);
+}
+
+.home-ticket-link {
+  display: grid;
+  gap: 2px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.home-ticket-link:hover .home-ticket-summary {
+  text-decoration: underline;
+}
+
+.home-ticket-key {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  letter-spacing: 0.02em;
+}
+
+.home-ticket {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.home-ticket-status {
+  flex: none;
+}
+
+.home-ticket-status {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.home-ticket-status[data-stage="active"] {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.home-ticket-status[data-stage="closed"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+@media (pointer: coarse) {
+  .help-tip-button {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+
+  .button-quiet {
+    min-height: var(--hit-target-touch);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .start-tile:hover,
+  .track-tile:hover {
+    transform: translateY(-2px);
+  }
+
+  .help-tip-body:not([hidden]) {
+    animation: glass-in var(--motion-base) var(--ease-settle);
+  }
+
+  @keyframes glass-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+  }
+}
+
+@media (forced-colors: active) {
+  .glass-card,
+  .help-tip-body,
+  .button-quiet {
+    border-color: CanvasText;
+  }
+}
+
+/* Phones: the start tiles put the icon beside the words, so four fit on a screen. */
+@media (max-width: 640px) {
+  .home-start-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .start-tile {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .start-tile-icon {
+    grid-row: span 2;
+    margin: 0;
+  }
+}
+
+/* The tutorial's sections (ADR-112): one card per section, ticked to start several in a row. */
+.tutorials-page {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.tutorial-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tutorial-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "pick text"
+    "pick start";
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  transition:
+    box-shadow var(--motion-base) var(--ease-settle),
+    background-color var(--motion-base) var(--ease-settle);
+}
+
+.tutorial-card[data-checked="true"] {
+  background: var(--glass-tint-accent);
+  box-shadow:
+    inset 0 0 0 2px var(--color-accent),
+    var(--shadow-1);
+}
+
+.tutorial-card-pick {
+  grid-area: pick;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.tutorial-card-pick input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.tutorial-card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  color: var(--color-accent);
+}
+
+.tutorial-card-text {
+  grid-area: text;
+  min-width: 0;
+}
+
+.tutorial-card-title {
+  margin: 0;
+  font-weight: 650;
+}
+
+.tutorial-card-hint {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-200);
+  line-height: 1.5;
+}
+
+.tutorial-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.tutorial-card-status {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+  font-weight: 600;
+  line-height: 1.7;
+}
+
+.tutorial-card-status[data-status="active"] {
+  background: var(--color-blue-soft);
+  color: var(--color-blue);
+}
+
+.tutorial-card-status[data-status="done"] {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.tutorial-card-start {
+  grid-area: start;
+  justify-self: start;
+}
+
+@media (pointer: coarse) {
+  .tutorial-card-pick input {
+    width: 28px;
+    height: 28px;
+  }
+}

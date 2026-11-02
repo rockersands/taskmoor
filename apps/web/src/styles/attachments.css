@@ -10,8 +10,10 @@
   padding: var(--space-5);
   border: 2px dashed transparent;
   border-radius: var(--radius-3);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-1);
+  background: var(--glass-surface);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-1);
 }
 
 .attachment-panel[data-dragging] {

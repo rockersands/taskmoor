@@ -34,6 +34,101 @@ export const messagesEn = {
   'nav.search': 'Search',
   'nav.dashboards': 'Dashboards',
   'nav.settings': 'Settings',
+  // Navigation sections and page purposes (ADR-112): every page says in one line what it is for.
+  'nav.group.you': 'Your work',
+  'nav.group.work': 'Plan and track',
+  'nav.group.manage': 'Manage',
+  'purpose.home':
+    'Your work in one place: what is assigned to you, what you opened lately and what you follow.',
+  'purpose.boards':
+    'A board shows tickets as cards in columns, one column per step of the work. Move a card to move the work.',
+  'purpose.board':
+    'Cards move from left to right as the work moves on: drag one to another column to move its ticket.',
+  'purpose.ticket':
+    'One piece of work: what it is, where it stands, who has it and everything that happened to it.',
+  'about.home':
+    'Assigned to you lists the open tickets where you are the assignee, the most recently changed first. Opened lately lists the tickets you viewed. You follow lists the tickets whose changes reach your inbox.',
+  'about.board':
+    'Each column stands for one or more statuses of the workflow. Moving a card runs the transition that leads into that column; when several do, Taskmoor asks which. Filters narrow the cards, and the counts always cover every card.',
+  'about.ticket':
+    'The buttons under the title move the ticket through its workflow. Details on the side are its fields: change one and it saves at once. Activity below keeps the comments, the history of every change and the time recorded.',
+  // The "what is this for" button beside a title (ADR-112).
+  'help.about': 'What is {name} for?',
+  'help.menu': 'Help',
+  'help.tutorials': 'Tutorials',
+  'help.shortcuts': 'Keyboard shortcuts',
+  'help.manual': 'Manual',
+  'theme.toLight': 'Switch to light mode',
+  'theme.toDark': 'Switch to dark mode',
+  'home.start': 'Start something',
+  'home.start.create': 'New ticket',
+  'home.start.createHint': 'Write down a piece of work: a feature, a bug or a chore.',
+  'home.start.board': 'Open a board',
+  'home.start.boardHint': 'See the work as cards in columns and move it along.',
+  'home.start.search': 'Find tickets',
+  'home.start.searchHint': 'Filter by anything, then save the search to use it again.',
+  'home.start.learn': 'Take the tour',
+  'home.start.learnHint': 'Learn Taskmoor by making one of everything, one section at a time.',
+  'home.assignedHelp': 'Open tickets where you are the assignee, the most recently changed first.',
+  'home.recentHelp': 'Tickets you viewed lately, so you can get back to them quickly.',
+  'home.followedHelp':
+    'Tickets whose changes reach your inbox. Follow a ticket with the Follow button on its page.',
+  'home.assignedEmptyHint':
+    'When someone assigns you a ticket, or you choose Assign to me on one, it shows here.',
+  'home.recentEmptyHint': 'Open any ticket and it is kept here for later.',
+  'home.followedEmptyHint': 'Follow a ticket to hear about its changes in your inbox.',
+  'home.findTicket': 'Find a ticket',
+  'home.tracks': 'Your tracks',
+  'home.tracksHelp': 'The tracks you can see. Open one for its summary, list, board and releases.',
+  'home.tracksEmpty': 'No tracks yet. A site administrator creates the first one in Manage.',
+  'home.trackKey': 'Key {key}',
+  // The guided tutorial (ADR-112): sections a person picks, each making one real thing.
+  'tutorial.title': 'Tutorials',
+  'tutorial.purpose':
+    'Learn Taskmoor by doing: each section walks you through making one real thing in this instance. Pick the sections you want; you can skip, pause and come back at any time.',
+  'tutorial.about':
+    'A tutorial highlights the control to use next and waits for you to use it. What you make is real and stays, so you can keep it or delete it afterwards. Your progress is saved with your account.',
+  'tutorial.startSelected':
+    '{count, plural, =0 {Pick a section to start} one {Start # section} other {Start # sections}}',
+  'tutorial.pick': 'Learn {title}',
+  'tutorial.minutes': 'About {minutes} minutes',
+  'tutorial.adminOnly': 'For site administrators',
+  'tutorial.status.new': 'Not started',
+  'tutorial.status.active': 'In progress',
+  'tutorial.status.done': 'Done',
+  'tutorial.status.skipped': 'Skipped',
+  'tutorial.start': 'Start',
+  'tutorial.resume': 'Resume',
+  'tutorial.replay': 'Do it again',
+  'tutorial.section.tracks': 'Tracks and tickets',
+  'tutorial.section.tracksHint':
+    'Make a track, then a ticket in it: fill in its fields, comment on it and attach a file.',
+  'tutorial.section.workflows': 'Workflows',
+  'tutorial.section.workflowsHint':
+    'Draw a workflow with your own statuses and transitions, publish it and give it to a track.',
+  'tutorial.section.boards': 'Boards and sprints',
+  'tutorial.section.boardsHint':
+    'Make a board, drag cards across it, then plan a sprint in the backlog and start it.',
+  'tutorial.section.search': 'Search and saved searches',
+  'tutorial.section.searchHint':
+    'Find tickets with filters and with the query language, then save the search to reuse it.',
+  'tutorial.section.dashboards': 'Dashboards',
+  'tutorial.section.dashboardsHint':
+    'Build a dashboard, add a few widgets and arrange them by dragging.',
+  'tutorial.section.releases': 'Releases',
+  'tutorial.section.releasesHint': 'Make a release, aim tickets at it and mark it released.',
+  'tutorial.section.admin': 'Administration',
+  'tutorial.section.adminHint':
+    'Add a person, put them in a group and give the group access to a track.',
+  'tutorial.section.import': 'Import',
+  'tutorial.section.importHint':
+    'Bring tickets in from a CSV file, with a dry run first to check what will happen.',
+  'boards.emptyScrumTitle': 'No sprint is running',
+  'boards.emptyScrumBody':
+    'A Scrum board shows the tickets of its running sprint. Plan a sprint in the backlog and start it; its tickets then show here.',
+  'boards.emptyScrumAction': 'Open the backlog',
+  'boards.emptyBody':
+    'The board shows the tickets its query finds. Create a ticket in one of its tracks, or change the query in the board settings.',
   'shell.openCommandPalette': 'Search or jump to…',
   'palette.title': 'Command palette',
   'palette.placeholder': 'Type a command or a page name (Ctrl K opens this anywhere)',

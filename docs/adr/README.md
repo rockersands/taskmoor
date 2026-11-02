@@ -116,5 +116,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [109](0109-security-notices-and-alerts.md) | Security notices by email on credential changes, failed authentication and refusals in the audit log, alert rules that tell site administrators | Accepted |
 | [110](0110-outbound-guard-archive-limits-storage-quotas.md) | One outbound guard for requests to typed addresses (resolved, private ranges refused, pinned, redirects re-checked, operator allow list), archive ceilings checked before unpacking, storage quotas off by default | Accepted |
 | [111](0111-personal-data-and-database-tls.md) | A person's data as a background ZIP download and erasure to a stable placeholder, the audit log kept intact and masked on read; TLS with verify-full to the bundled PostgreSQL, the all-in-one on its Unix socket | Accepted |
+| [112](0112-glass-interface-and-guided-tutorial.md) | The glass interface on the ADR-036 tokens, sectioned navigation with a purpose line on every page, explaining empty states, "What is this for?" help, drag with a keyboard path everywhere, and a sectioned guided tutorial with progress per person on the server | Proposed |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

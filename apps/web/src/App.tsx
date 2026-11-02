@@ -72,6 +72,7 @@ import {
 } from './shell/icons';
 import type { NavItem } from './shell/NavList';
 import { PaletteCommandsProvider, useRegisteredCommands } from './shell/paletteCommands';
+import { ThemeToggle } from './shell/ThemeToggle';
 import { type Appearance, applyAppearance } from './skins/skins';
 import { BacklogPage } from './sprints/BacklogPage';
 import { SprintReportPage } from './sprints/SprintReportPage';
@@ -85,22 +86,31 @@ import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
+import { TutorialsPage } from './tutorial/TutorialsPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
 import { WorkflowsPage } from './workflow/WorkflowsPage';
 
 export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
-  { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon },
+  { id: 'home', labelId: 'nav.home', href: '#/home', icon: HomeIcon, group: 'you' },
   // Mentions and changes to followed tickets (M1-058).
-  { id: 'inbox', labelId: 'nav.inbox', href: '#/inbox', icon: InboxIcon, requiresSession: true },
-  { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon },
-  { id: 'boards', labelId: 'nav.boards', href: '#/boards', icon: BoardsIcon },
-  { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon },
+  {
+    id: 'inbox',
+    labelId: 'nav.inbox',
+    href: '#/inbox',
+    icon: InboxIcon,
+    requiresSession: true,
+    group: 'you',
+  },
+  { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon, group: 'work' },
+  { id: 'boards', labelId: 'nav.boards', href: '#/boards', icon: BoardsIcon, group: 'work' },
+  { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon, group: 'work' },
   {
     id: 'dashboards',
     labelId: 'nav.dashboards',
     href: '#/dashboards',
     icon: DashboardsIcon,
     requiresSession: true,
+    group: 'work',
   },
   {
     id: 'settings',
@@ -108,6 +118,7 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
     href: '#/settings',
     icon: SettingsIcon,
     requiresSession: true,
+    group: 'manage',
   },
 ];
 
@@ -150,6 +161,8 @@ const ADMIN_SETS = '#/admin/configuration-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
+/** Every section of the guided tutorial, to start or do again (ADR-112). */
+const TUTORIALS = '#/settings/tutorials';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
 const BULK = '#/bulk';
@@ -525,6 +538,8 @@ function Pages() {
     );
   } else if (isRoute(hash, ACCOUNT)) {
     content = <AccountPage />;
+  } else if (isRoute(hash, TUTORIALS)) {
+    content = <TutorialsPage />;
   } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {
     active = 'tracks';
     const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
@@ -680,6 +695,7 @@ function Pages() {
             </button>
           )}
           <CommandPalette commands={[...commands, ...registered]} />
+          {signedIn && <ThemeToggle onChoose={appear} />}
           <UserMenu onSignedOut={showSignIn} />
         </>
       }

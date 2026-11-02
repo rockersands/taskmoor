@@ -15,6 +15,7 @@ import { type MentionSource, mentionSource } from '../../richtext/mentions';
 import { navigate, replaceRoute, routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
+import { HelpTip } from '../../shell/HelpTip';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { CloneDialog } from '../clone/CloneDialog';
@@ -487,7 +488,7 @@ export function TicketPage({
   return (
     <article aria-labelledby={titleId} className="ticket-page ticket-view">
       <header className="ticket-header">
-        <p className="ticket-crumbs">
+        <p className="ticket-crumbs page-eyebrow">
           {shown.track.name ? `${shown.track.name} · ${shown.ticketType.name}` : ''}
         </p>
         {editingSummary && loaded ? (
@@ -503,6 +504,7 @@ export function TicketPage({
             <h1 id={titleId} className="page-title">
               {t('ticketPage.title', { key: shown.key, summary: shown.summary })}
             </h1>
+            <HelpTip name={shown.key}>{t('about.ticket')}</HelpTip>
             {loaded && (
               <button
                 type="button"
@@ -535,6 +537,7 @@ export function TicketPage({
                 ))}
               </fieldset>
             )}
+            <span className="ticket-toolbar-gap" aria-hidden="true" />
             {following && (
               <button
                 type="button"
