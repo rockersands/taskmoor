@@ -2,63 +2,144 @@
 
 Read this first in every session, then update it before you stop.
 
-## Start here: moving to a local session (2026-11-02, late)
+## Start here: ONE local session runs everything (2026-11-03)
 
-The user is moving the work from the cloud session to a local Claude Code session on their PC
-(Ryzen 7 3700X, 16 threads, 64 GB, Windows). Everything needed is in the repository; this section
-is what the cloud session had in its head.
+The user moves all work to **one local Claude Code session** on their PC (Ryzen 7 3700X, 16
+threads, 64 GB, Windows with WSL 2 Ubuntu, Claude in Chrome enabled). That session coordinates
+and starts its own subagents for the parallel workstreams. The cloud sessions stop. This
+section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 
-**Where things stand**
-- `main` is at `ee70282` (gate green: 5,609 tests, 165 e2e). The branch
-  `claude/api-key-upload-prevention-9ucz4x` is a few commits ahead with docs only (clean-room
-  note on Atlassian's terms, this section, `tools/fuzz/staged.sh`). Fast-forward `main` to it
-  after your first green `pnpm verify --e2e`.
-- M1 left: M1-091 (the 500k-issue import, below), M1-118 (the staged fuzzing, below; the image
-  scans are done and clean; the live-model injection run needs an AI key), M1-120 (the release,
-  below), and M1-073, M1-074, M1-079's thresholds (an AI key: `TASKMOOR_AI_EVAL_KEY`, with
-  `TASKMOOR_AI_EVAL_PROVIDER=anthropic|openai|gemini`, then
-  `pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`).
-- **The 500k import (M1-091, the user's decision: 500k measured, 1M as an estimate):** started in
-  the cloud at 23:30 UTC; if its result is not in `progress.csv`, run it here (faster here):
-  `TASKMOOR_LARGE_DC_IMPORT=1 TASKMOOR_LARGE_DC_IMPORT_ISSUES=500000
-  TASKMOOR_LARGE_DC_IMPORT_DIR=.cache/dc-large-500k TASKMOOR_LARGE_DC_IMPORT_REPORT=.cache/dc-import-500k.jsonl
-  pnpm verify --only=tests -- apps/server/src/import/dc-import.large.test.ts`. About 15 GB of disk.
-  Record the JSON line (fidelity per kind, times, memory, database size) in M1-091's progress
-  row and in ADR-092, and write the 1M estimate from it (time grows linearly).
-- **Fuzzing (M1-118):** `bash tools/fuzz/staged.sh` (1, 2, 4, 8 hours; about 15 hours in all).
-  Then copy the 8-hour reports into `docs/security/fuzz-results.json`; `pnpm gate M1` then shows
-  the fuzz row green. Two real bugs found by short runs are fixed (6b0522c).
-- **Flaky e2e:** `e2e/a11y-keyboard.spec.ts` fails as the first spec of a gate run on a cold server
-  (the skip link is not focused yet), and passes alone. Fix it: wait for the app to be ready.
-- **Release (M1-120):** `CHANGELOG.md` and `docs/ops/releases.md` are drafts. 1.0 is LTS (24
-  months). To do: add 1.0.0 to `RELEASES` in `packages/db/src/releases.ts` with `lts: true`;
-  sign the air-gap bundle (`tools/airgap/bundle.sh`) with the release key from the user's Drive
-  (folder "Taskmoor release signing key"; never commit it, delete the local copy after); update
-  `SECURITY.md` (pre-release wording; private repo means a private email for reports, the user
-  still decides public or private); `pnpm gate M1` all green; the user's acceptance in
-  `decisions.csv`. Images on ghcr.io need a package-write token from the user.
+### How to run it
 
-**Other sessions (cloud), each on its own branch, each with its own task file:**
-- Flutter mobile app: `claude/flutter-mobile-app`, tickets in `apps/mobile/TASKS.md`, ADR-112
-  (first-party OAuth client `taskmoor-mobile`, touches `apps/server/src/oauth`, cleared by the
-  user). Merge after M1.
-- UI overhaul and guided tutorial: `claude/ui-overhaul`, `docs/plan/ui-overhaul-tasks.md`,
-  ADR-114 to 116, migration **0084**; waits for the user's answer on the design direction.
-  Includes a layout editor page (UI-T15) and board columns (UI-T16).
-- Ticket templates: `claude/ticket-templates`, `docs/plan/ticket-templates-tasks.md`, ADR-113,
-  migration **0085**. For 1.0.
-- They reported to the cloud session; from now on the user relays, or you read their branches
-  (`git fetch origin <branch>`). Merge each with a full gate; resolve conflicts in the shared
-  docs by joining both sides.
-- Never use the Atlassian connection (docs/legal/clean-room.md: Atlassian's terms forbid it).
+- **Coordinator:** this session works on `claude/api-key-upload-prevention-9ucz4x` (M1) and is
+  the only one that fast-forwards `main`, after a green `corepack pnpm verify --e2e`, by
+  fast-forward only.
+- **Workstreams:** one subagent per workstream (the Agent tool, background), each in its own
+  git worktree and branch (`git worktree add ../tm-<name> <branch>`), so none touches another's
+  files. Brief each subagent with its row below plus the rules at the end. Subagents never push
+  to `main`; they commit on their branch and report. The coordinator merges a workstream into
+  `main` with a full gate, joining both sides of conflicts in shared docs (HANDOFF, STATUS,
+  progress, decisions, the ADR index, the ASVS counts).
+- **Load:** run at most two heavy jobs at once (a full gate, the 500k import, the fuzz stages),
+  so the timings stay honest. Subagents run targeted tests; the coordinator runs the full gates.
+- **Tracking:** `docs/plan/backlog.csv` and `progress.csv` (coordinator only), plus one task
+  file per workstream (named below). Never Jira or any Atlassian product or connection
+  (`docs/legal/clean-room.md`).
 
-**Local setup notes (Windows):** WSL 2 with Ubuntu is the closest to how this was built (the
-image, kit and smoke scripts are bash; Docker Desktop with WSL integration for them). In the
-clone: `git config user.name Rockersands; git config user.email 42122514+rockersands@users.noreply.github.com;
-git config core.hooksPath .githooks`; `corepack pnpm install`; the tests start their own
-embedded PostgreSQL. The e2e suite needs `127.0.0.1 api.taskmoor.localhost app.taskmoor.localhost
-evil.taskmoor.localhost kit2.taskmoor.localhost` in the hosts file. Native Windows works for
-`pnpm verify` (there was a Windows CI job) but not for the bash tools.
+### Workstreams
+
+| # | Workstream | Branch | Task file | Numbers | State on 2026-11-03 |
+|---|---|---|---|---|---|
+| 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` at `ee70282`; the branch is a few doc commits ahead. Fast-forward `main` after your first gate. |
+| 2 | **Ticket templates** (for 1.0) | `claude/ticket-templates` | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085 | Started in the cloud; if the branch exists, continue it, else start from the brief below. |
+| 3 | **UI overhaul and tutorial** | `claude/ui-overhaul` | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, migration 0084 | Started in the cloud; waiting for the user's answer on the design direction. If the branch exists, continue; else start from the brief below. |
+| 4 | **Flutter mobile app** (after M1) | `claude/flutter-mobile-app` | `apps/mobile/TASKS.md` (its own Handoff section) | ADR-112 | Pushed at `4901a74`, nothing WIP; a first-party OAuth client `taskmoor-mobile` in `apps/server/src/oauth` (user-approved); merge after M1. |
+
+Check what the cloud sessions pushed: `git fetch origin claude/ticket-templates claude/ui-overhaul
+claude/flutter-mobile-app`. A branch that is missing was never pushed: start that workstream
+from its brief.
+
+### Workstream 1: finishing M1 (in order)
+
+1. `corepack pnpm verify --e2e`, then fast-forward `main`. On Windows, use WSL 2 (the image and
+   kit scripts are bash). The e2e suite needs `127.0.0.1 api.taskmoor.localhost
+   app.taskmoor.localhost evil.taskmoor.localhost kit2.taskmoor.localhost` in `/etc/hosts`.
+2. **Flaky e2e:** `e2e/a11y-keyboard.spec.ts` fails as the first spec on a cold server (the
+   skip link is not focused yet) and passes alone. Make it wait for the app to be ready.
+3. **M1-091, the 500k-issue import** (the user's decision: 500k measured, 1M as an estimate).
+   The cloud run was started 2026-11-02 23:30 UTC; if `progress.csv` has no result, run:
+   `TASKMOOR_LARGE_DC_IMPORT=1 TASKMOOR_LARGE_DC_IMPORT_ISSUES=500000
+   TASKMOOR_LARGE_DC_IMPORT_DIR=.cache/dc-large-500k
+   TASKMOOR_LARGE_DC_IMPORT_REPORT=.cache/dc-import-500k.jsonl corepack pnpm verify --only=tests
+   -- apps/server/src/import/dc-import.large.test.ts` (about 15 GB of disk). Every entity kind
+   must match at 99.9% or more. Record the JSON line in M1-091's progress row and ADR-092, and
+   write the 1M estimate (time grows linearly; 2.9 ms a record with one worker in the cloud).
+   With this PC's cores, the 1M run is worth trying too.
+4. **M1-118, fuzzing:** `bash tools/fuzz/staged.sh` (stages of 1, 2, 4 and 8 hours, every target
+   clean at each; about 15 hours). Any failure: reproduce alone with its seed, fix it with a
+   regression test (as in 6b0522c), delete that stage's folder, run again. Then copy the 8-hour
+   reports into `docs/security/fuzz-results.json` (`pnpm gate M1` reads it).
+5. **Merge workstream 2** (ticket templates) when its gate is green.
+6. **M1-120, the release:** 1.0 is LTS (24 months).
+   - Add 1.0.0 to `RELEASES` in `packages/db/src/releases.ts` with `lts: true`.
+   - Date `CHANGELOG.md` and add the templates and anything else merged.
+   - `SECURITY.md`: drop "pre-release". If the repository stays private, give a private email
+     for reports (the user decides public or private).
+   - Sign the air-gap bundle (`tools/airgap/bundle.sh`) with the release key from the user's
+     Google Drive (folder "Taskmoor release signing key"). Never commit it, and delete the local
+     copy afterwards. This closes ASVS 1.14.2, the last open checklist gap.
+   - `pnpm gate M1` all green; the user's acceptance in `decisions.csv`.
+   - Images on ghcr.io only with a package-write token the user gives as an environment secret.
+7. **Waiting on the user, not on you:**
+   - an AI key, for M1-073, M1-074 and M1-079's thresholds and the live injection run:
+     `TASKMOOR_AI_EVAL_KEY` with `TASKMOOR_AI_EVAL_PROVIDER=anthropic|openai|gemini`, then
+     `corepack pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`;
+   - the Spanish review (`docs/review-spanish.md`, `corepack pnpm demo`);
+   - public or private repository;
+   - the repository rename to `taskmoor` on github.com (then update the remote, `CLAUDE.md` and
+     the docs that name `Rockersands/tracksmith`);
+   - the ghcr.io token.
+
+### Brief for workstream 2: ticket templates
+
+Named starting points for new tickets, per track or for every track, optionally for some ticket
+types: a summary pattern, a description outline (rich text), default values for any field
+(custom fields included; a due date as an offset such as "in 7 days"), optional subtickets.
+
+- People pick a template in the create dialog (`apps/web/src/tickets/CreateTicketDialog.tsx`)
+  and can still edit everything. Track administrators manage templates on a settings page.
+- Applying a template never sets a field the person may not set or a field rule hides.
+- Deliver:
+  - spec text with new CORE IDs, and ADR-113;
+  - migration 0085, with its type in `schema.ts`, an upgrade seed and the schema golden;
+  - routes for listing, reading, creating, updating and deleting templates, and "create a
+    ticket from a template"; each mutating route gets an event, a contract scenario, an audit
+    decision and a scope class;
+  - the web UI with en and es strings, stories and tests;
+  - the manual (`docs/manual/use/tickets.md`, `docs/manual/admin/tracks.md`), STATUS and
+    HANDOFF.
+- For 1.0.
+
+### Brief for workstream 3: UI overhaul and guided tutorial
+
+The user's words: "The whole UI needs an overhaul: way more understandable and usable,
+inspiration from Jira and from Liquid Glass on iOS, drag and drop, light and dark mode; sections
+are not clear; explain what a panel does; a full tutorial that navigates the tool and shows how it
+works through the user making one of everything, in sections offered on first use, where you
+choose the sections you want to learn."
+
+1. **Design direction first, agreed with the user before large changes:** ADR-114. Show the
+   user the home page, a board and a ticket, on `corepack pnpm demo`, in their own Chrome
+   (Claude in Chrome, local) or as screenshots.
+2. **Every page reworked** on the tokens (`apps/web/src/styles/tokens.css`):
+   - clear sections, each with a one-line purpose and inline help ("what is this panel for");
+   - translucent glass surfaces that keep contrast;
+   - light and dark;
+   - empty states that explain;
+   - motion that respects `prefers-reduced-motion`.
+3. **Drag and drop with a keyboard path for each:** board cards and columns, the backlog,
+   dashboard widgets, files onto tickets.
+4. **A layout editor page** for layout sets (UI-T15): drag fields into tabs and sections, a live
+   preview per ticket type and operation.
+5. **Board columns** (UI-T16): add, rename, reorder and set the minimum and maximum; the limit
+   stays 30.
+6. **The tutorial:** ADR-115, with its progress per person in migration 0084 and a route.
+   - It's offered on first sign-in and later from the help menu, in sections the person picks
+     (tracks and tickets, workflows, boards and sprints, search, dashboards, releases,
+     administration, import).
+   - It makes one of everything in their own instance, and it can be skipped, paused and
+     resumed.
+
+Clean room: "inspiration" means general patterns in our own design. Never Atlassian or Apple
+code, docs, screenshots, icons or assets; never open an Atlassian site or product.
+
+### Rules every workstream keeps
+
+- `CLAUDE.md` in full: commit as `Rockersands <42122514+rockersands@users.noreply.github.com>` in the repository's own git
+  config, with the DCO sign-off (`git config core.hooksPath .githooks`).
+- Test names cite requirement IDs; stories and axe; en and es strings; phones.
+- Never put an API key, token, password or other secret in any file, commit or message.
+- No Atlassian products or connections. Push only to your own branch.
 
 ## Start here: 2026-11-02 (cloud session): M1-079 merged, M1-117 done, the ASVS gaps next
 
