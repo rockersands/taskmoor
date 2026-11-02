@@ -68,6 +68,8 @@ export const BOUNDARY_RULES: IForbiddenRuleType[] = [
         // The AI eval runner (M1-133) and its candidates and injection run (M1-079): eval
         // tooling the server never imports.
         '^apps/server/src/ai/evals/',
+        // The review demo (\`pnpm demo\`): an embedded PostgreSQL for one machine, never in the image.
+        '^apps/server/src/demo/',
         '/testing\\.ts$',
         '^apps/web/src/test/',
       ],

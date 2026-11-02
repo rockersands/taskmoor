@@ -36,6 +36,7 @@ pnpm comes from corepack. If `pnpm` is not on PATH, prefix commands with `corepa
 | `pnpm verify --only=tests -- <filter>` | A subset; anything after `--` goes to Vitest (`--project=db`, a file path) |
 | `pnpm verify --update` | Rewrite golden files after an intended change; review the diff |
 | `pnpm test:watch` | Vitest watch mode |
+| `pnpm demo [--fresh] [--port N]` | Taskmoor on this machine in Spanish with sample data (embedded PostgreSQL, the real server); prints one-time password links. For reviewing the translation (`docs/review-spanish.md`) |
 | `pnpm next-task` | The task to resume or start next, from `docs/plan/backlog.csv` and `progress.csv` |
 | `pnpm trace` | Requirements cited by tests, per milestone |
 | `pnpm gen --items N` | Generate and load a synthetic dataset into the `bench` cluster (`--force` reloads) |
