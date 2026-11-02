@@ -7,9 +7,11 @@ Read this first in every session, then update it before you stop.
 - **M1-079 (AI v1 features) is on `main`** (ADR-108). It stays in-progress only for the measured
   thresholds, which need an AI key (`pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`).
 - **M1-117 is done at 1M** (`docs/spikes/search-1m.md`, `docs/spikes/estimates-10m-30m.md`).
-  The bench database `m1037_bench_1m` (system Postgres, 9.5 GB product schema plus `gen`) is now
-  on every migration; `pnpm bench:search --database-url <url> --label 1m` reuses it (it skips
-  the load when tickets exist, and `ensureTrackKeys` adds track keys the old loader left out).
+  The bench database `m1037_bench_1m` (system Postgres) keeps only the generated dataset
+  (`gen`, 1 GB); its product schema (9.5 GB) was dropped after the run to free disk.
+  `pnpm bench:search --database-url <url> --label 1m` migrates and reloads it (about 10
+  minutes) and reuses it on later runs; `ensureTrackKeys` adds the track keys the old loader
+  left out.
   bench:search now also times opening a ticket; bench:check holds it to 100 ms.
   - A finished, real import runs `ANALYZE` on the tables it fills (`analyzeImported` in
     `import/run.ts`): without it similar tickets took a second after a bulk load. Partitioned
