@@ -24,7 +24,7 @@ import { FieldCatalogs } from '../../fields/catalog';
 import { queryCatalogue } from '../catalogue';
 import type { PageRow } from '../compile';
 import { prepareSearch } from '../run';
-import { loaded, loadFromGen } from './load';
+import { ensureTrackKeys, loaded, loadFromGen } from './load';
 import { benchNames, instantiate, PERF_QUERIES, type Timed, timed } from './perf';
 
 const ROOT = fileURLToPath(new URL('../../../../../', import.meta.url));
@@ -73,6 +73,7 @@ try {
       `Loaded ${report.tickets.toLocaleString('en')} tickets: ${JSON.stringify(report.sideRows)}`,
     );
   }
+  await ensureTrackKeys(db);
   const tickets = Number(
     (
       await sql<{

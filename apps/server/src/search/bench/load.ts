@@ -29,6 +29,16 @@ export async function loaded(db: Db): Promise<boolean> {
   return Number(rows[0]?.n ?? 0) > 0;
 }
 
+/**
+ * Each track's key in its key history, where opening a ticket by key looks it up (a loader that
+ * wrote only the track row left every key unknown). Safe to run again.
+ */
+export async function ensureTrackKeys(db: Db): Promise<void> {
+  await sql`INSERT INTO track_key_history (workspace_id, track_id, key)
+    SELECT t.workspace_id, t.id, t.key FROM track t
+     WHERE NOT EXISTS (SELECT 1 FROM track_key_history h WHERE h.track_id = t.id)`.execute(db);
+}
+
 export async function loadFromGen(
   db: Db,
   log: (m: string) => void = () => {},
@@ -92,6 +102,7 @@ export async function loadFromGen(
             FROM gen.spaces s`,
     );
     await sql`SELECT setval('track_id_seq', (SELECT max(id) FROM track))`.execute(conn);
+    await ensureTrackKeys(conn);
     await sql`INSERT INTO ticket_counter (track_id, workspace_id, last_number)
       SELECT space_id, 1, max(number) FROM gen.items GROUP BY space_id`.execute(conn);
 
