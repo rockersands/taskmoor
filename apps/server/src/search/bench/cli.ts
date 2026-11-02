@@ -249,10 +249,11 @@ try {
       ? sql`TRUE`
       : sql`k.track_id IN (${sql.join(browse.map((t) => sql`${t}`))})`;
   const sample = (
-    await sql<{ key: string }>`SELECT t.key || '-' || k.number AS key
+    await sql<{ key: string; id: number }>`SELECT t.key || '-' || k.number AS key, k.id
       FROM ticket k TABLESAMPLE SYSTEM (1) JOIN track t ON t.id = k.track_id
       WHERE ${visible} AND k.deleted_at IS NULL LIMIT ${openRuns}`.execute(db)
-  ).rows.map((r) => r.key);
+  ).rows;
+  // The page reads the ticket by key, then the rest by its id, together.
   const parts = ['', '/info', '/comments', '/history?limit=20', '/transitions', '/links'];
   const get = async (url: string) => {
     const res = await app.inject({
@@ -265,14 +266,17 @@ try {
   };
   const single: number[] = [];
   const page: number[] = [];
-  for (const key of sample) {
-    const base = `/api/v1/tickets/${encodeURIComponent(key)}`;
-    await Promise.all(parts.map((p) => get(`${base}${p}`)));
+  for (const { key, id } of sample) {
+    const byKey = `/api/v1/tickets/${encodeURIComponent(key)}`;
+    const rest = () => Promise.all(parts.slice(1).map((p) => get(`/api/v1/tickets/${id}${p}`)));
+    await get(byKey);
+    await rest();
     const t0 = performance.now();
-    await get(base);
+    await get(byKey);
     single.push(performance.now() - t0);
     const t1 = performance.now();
-    await Promise.all(parts.map((p) => get(`${base}${p}`)));
+    await get(byKey);
+    await rest();
     page.push(performance.now() - t1);
   }
   const open = {
@@ -354,7 +358,7 @@ function renderReport(r: {
       ? [
           '## Opening a ticket (member)',
           '',
-          `Budget: under 100 ms p95, warm. ${r.open.tickets} tickets the member may see, each opened once to warm and then timed: the ticket alone, and the ticket with the ${r.open.requests - 1} requests the ticket page sends with it (info, comments, history, transitions, links), in parallel.`,
+          `Budget: under 100 ms p95, warm. ${r.open.tickets} tickets the member may see, each opened once to warm and then timed: the ticket by its key alone, and the page's reads: the ticket by key, then the ${r.open.requests - 1} it sends together once it has the ticket (info, comments, history, transitions, links).`,
           '',
           '| Request | p50 | p95 | Max |',
           '|---|---:|---:|---:|',
