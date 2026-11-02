@@ -52,6 +52,23 @@ export class AiCircuitOpenError extends AiError {
 }
 
 /** The usual meaning of an HTTP error status, shared by the adapters. */
+/**
+ * The message of a refusal by the server's outbound guard (`code: 'outbound_refused'`, ASVS
+ * 5.2.6) behind a client error, when an SDK wrapped it as a cause. It names a host, an address
+ * and a reason, never a header, so it may be shown.
+ */
+export function outboundRefusalMessage(error: unknown): string | undefined {
+  let current: unknown = error;
+  for (let depth = 0; depth < 6 && current; depth++) {
+    const coded = current as { code?: unknown; message?: unknown; cause?: unknown };
+    if (coded.code === 'outbound_refused' && typeof coded.message === 'string') {
+      return coded.message;
+    }
+    current = coded.cause;
+  }
+  return undefined;
+}
+
 export function kindForHttpStatus(status: number): ProviderErrorKind {
   if (status === 429) return 'rate_limited';
   if (status === 529) return 'overloaded';

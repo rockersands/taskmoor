@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ADMIN } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
-import { fakeGuardrailsClient } from './fixtures';
+import { fakeGuardrailsClient, fakeStorageClient } from './fixtures';
 import { GuardrailsPage } from './GuardrailsPage';
 
 const meta = {
   title: 'Admin/Guardrails',
   component: GuardrailsPage,
-  args: { client: fakeGuardrailsClient() },
+  args: { client: fakeGuardrailsClient(), storage: fakeStorageClient() },
   decorators: [
     (Story) => (
       <SessionProvider session={ADMIN}>

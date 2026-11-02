@@ -5,18 +5,23 @@ import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { type Guardrail, type GuardrailsClient, guardrailsClient } from './client';
+import { StorageQuotas } from './StorageQuotas';
+import type { StorageClient } from './storage-client';
 
 export interface GuardrailsPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: GuardrailsClient;
+  /** The attachment storage section's backend (M1-118), likewise. */
+  storage?: StorageClient;
 }
 
 /**
  * Configuration guardrails (M1-055; CORE-026), for site administrators: every limit with its
  * default and where it is used most, and a form to change it. A raise takes effect at once and
  * comes with guidance; a lowered limit leaves what exists and refuses further additions.
+ * Attachment storage against its quotas follows (M1-118; ASVS 12.1.3).
  */
-export function GuardrailsPage({ client = guardrailsClient }: GuardrailsPageProps) {
+export function GuardrailsPage({ client = guardrailsClient, storage }: GuardrailsPageProps) {
   const t = useT();
   const { session } = useSession();
   const expired = useSessionExpiry();
@@ -96,6 +101,7 @@ export function GuardrailsPage({ client = guardrailsClient }: GuardrailsPageProp
               ))}
             </ul>
           )}
+          {!notAdmin && <StorageQuotas {...(storage ? { client: storage } : {})} />}
         </>
       )}
     </section>

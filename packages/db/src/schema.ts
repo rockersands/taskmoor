@@ -1189,6 +1189,17 @@ export interface AttachmentSettingTable {
   workspace_id: number;
   /** Bytes; bigint reads as text. No upper bound: there is no fixed ceiling. */
   max_file_size: ColumnType<string, number | string | undefined, number | string>;
+  /** Storage quotas in bytes (M1-118; ASVS 12.1.3); null is none, the default. */
+  workspace_quota: ColumnType<
+    string | null,
+    number | string | null | undefined,
+    number | string | null
+  >;
+  person_quota: ColumnType<
+    string | null,
+    number | string | null | undefined,
+    number | string | null
+  >;
   updated_at: DefaultTimestamp;
 }
 

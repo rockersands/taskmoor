@@ -3,6 +3,7 @@ import type { Database } from '@taskmoor/db';
 import { openSecret, type PepperRing } from '@taskmoor/iam';
 import { type Kysely, sql } from 'kysely';
 import type { JobRunner } from '../events/queue';
+import { type OutboundGuard, OutboundRefused, outboundGuard } from '../outbound/guard';
 import { retryable, type WebhookFormat } from './model';
 import { DELIVER_TASK } from './subscriber';
 
@@ -18,11 +19,16 @@ import { DELIVER_TASK } from './subscriber';
  *   the job queue's backoff (2, 4, 8, 16, 32 seconds) up to five times; anything else (other
  *   4xx, a redirect: redirects are not followed) fails at once. Each attempt is written to the
  *   delivery row. A webhook disabled or deleted meanwhile leaves the delivery failed.
+ * - Every sending goes through the outbound guard (ASVS 5.2.6; ADR-110): a receiver that
+ *   resolves to a loopback, private, link-local or metadata address fails at once, without a
+ *   retry, unless the operator allows it with `TASKMOOR_OUTBOUND_ALLOW`.
  */
 export interface DeliverDeps {
   peppers?: PepperRing | undefined;
-  /** Replaced in tests; the platform's fetch otherwise. */
+  /** Replaced in tests; the outbound guard's fetch otherwise. */
   fetch?: typeof fetch;
+  /** The guard sendings go through; the process's own when left out. */
+  outbound?: OutboundGuard;
   timeoutMs?: number;
 }
 
@@ -38,7 +44,7 @@ export function registerWebhookJobs(
   db: Kysely<Database>,
   deps: DeliverDeps = {},
 ): void {
-  const send = deps.fetch ?? fetch;
+  const send = deps.fetch ?? (deps.outbound ?? outboundGuard()).fetch;
   const timeoutMs = deps.timeoutMs ?? 10_000;
   runner.handle(DELIVER_TASK, async (job) => {
     const { deliveryId } = job.payload as { deliveryId: string };
@@ -103,6 +109,7 @@ export function registerWebhookJobs(
     const started = Date.now();
     let status: number | null = null;
     let error: string | null = null;
+    let refused = false;
     try {
       const res = await send(target, {
         method: format === 'matrix' ? 'PUT' : 'POST',
@@ -115,6 +122,7 @@ export function registerWebhookJobs(
       // The answer's body is not kept; reading it frees the connection.
       await res.arrayBuffer().catch(() => undefined);
     } catch (e) {
+      refused = e instanceof OutboundRefused;
       error =
         e instanceof Error ? (e.name === 'TimeoutError' ? 'Timed out' : e.message) : String(e);
     }
@@ -128,7 +136,8 @@ export function registerWebhookJobs(
       });
       return;
     }
-    const retry = status === null || retryable(status);
+    // A refused address stays refused: sending again would only refuse again.
+    const retry = !refused && (status === null || retryable(status));
     const last = job.attempts >= job.maxAttempts;
     const message = error ?? `HTTP ${status}`;
     await record({

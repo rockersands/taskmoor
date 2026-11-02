@@ -1,8 +1,8 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md
-accessed: 2026-10-30
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Tracks
@@ -256,3 +256,21 @@ used most, marks usage **Above the limit**, and takes a new **Limit** with **Sav
   get slower as it grows, so watch them after a large raise.
 - Through the API: `GET /api/v1/admin/guardrails` and `PUT /api/v1/admin/guardrails/:name` with
   `{ "limit": 1000 }` (names such as `fields_per_track`).
+
+### Attachment storage
+
+Below the guardrails, **Attachment storage** shows how much the attachments take in the whole
+workspace and for the person who uploaded most, against two storage quotas. Both are off unless
+you set them: Taskmoor does not cap storage on its own.
+
+- **Workspace quota (GiB)** limits all attachments together; **Quota per person (GiB)** limits
+  what each person uploads. Leave a field empty for no quota, then **Save the quotas**.
+- An upload that would pass a quota is refused with `413 storage_quota_exceeded`, naming the
+  quota (`person` or `workspace`), the limit, the usage and the room left, in bytes. The ticket
+  page says the same in words. Nothing of a refused file is kept.
+- A lowered quota never removes files; it refuses further uploads until enough are deleted.
+  Files of tickets in the trash count until the trash is purged; imports count but are never
+  refused.
+- Through the API: `GET` and `PUT /api/v1/admin/attachment-settings` with
+  `{ "workspaceQuota": 1099511627776, "personQuota": null }` (bytes, `null` for none), beside
+  `maxFileSize`.

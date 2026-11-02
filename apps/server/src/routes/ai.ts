@@ -36,6 +36,7 @@ import {
 import { requireSiteAdmin } from '../auth';
 import { emit } from '../events/bus';
 import { diff } from '../events/catalogue';
+import { outboundRefusal } from '../outbound/guard';
 
 const slotParams = z.object({ slot: z.enum(CREDENTIAL_SLOTS) }).strict();
 const idParams = z.object({ id: z.coerce.number().int().positive().max(2_147_483_647) }).strict();
@@ -336,9 +337,12 @@ export function registerAiRoutes(
             : error instanceof AiError
               ? 'error'
               : 'unknown';
-      // AI-001 (1): the provider's own message, with every key scrubbed out of it.
+      // AI-001 (1): the provider's own message, with every key scrubbed out of it; an address
+      // the outbound guard refused says so (ASVS 5.2.6), whatever the client wrapped it in.
+      const refused = outboundRefusal(error);
       const message = redactSecrets(
-        error instanceof Error ? error.message : 'The connection test failed.',
+        refused?.message ??
+          (error instanceof Error ? error.message : 'The connection test failed.'),
         secrets,
       );
       return { ok: false, error: { kind, message } };

@@ -17,7 +17,7 @@ import type {
 } from '@anthropic-ai/sdk/resources/messages/messages';
 import { AnthropicVertex } from '@anthropic-ai/vertex-sdk';
 import type { ClaudeProviderConfig, ClaudeProviderId, ProviderId } from '../config';
-import { AiUnsupportedError, kindForHttpStatus } from '../errors';
+import { AiUnsupportedError, kindForHttpStatus, outboundRefusalMessage } from '../errors';
 import { SERVER_FALLBACK_MODELS, TASK_BUDGET_MODELS } from '../policy';
 import { retryAfterFromHeaders, shouldRetryFromHeaders } from '../retry';
 import type { SecretStore } from '../secrets';
@@ -232,7 +232,10 @@ export function classifyClaudeError(error: unknown): ErrorClassification {
   const message = error instanceof Error ? error.message : String(error);
   if (error instanceof APIUserAbortError) return { kind: 'aborted', message };
   if (error instanceof APIConnectionTimeoutError) return { kind: 'timeout', message };
-  if (error instanceof APIConnectionError) return { kind: 'connection', message };
+  if (error instanceof APIConnectionError) {
+    // A refused address says so; the SDK's own message is only "Connection error."
+    return { kind: 'connection', message: outboundRefusalMessage(error) ?? message };
+  }
   if (error instanceof APIError) {
     const headers = error.headers instanceof Headers ? error.headers : undefined;
     const body = error.error as { error?: { type?: unknown } } | undefined;

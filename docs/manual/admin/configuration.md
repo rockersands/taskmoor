@@ -1,8 +1,8 @@
 ---
 title: "Configuration reference"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/server/src/compat/register.ts, docs/adr/0087-registered-frontend-origins.md, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, docs/adr/0098-ai-key-storage.md, apps/server/src/embeddings/service.ts, deploy/compose/docker-compose.yml, docs/adr/0106-local-embeddings-and-vector-search.md
-accessed: 2026-11-01
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/app.ts, apps/server/src/origins.ts, apps/server/src/routes/oauth.ts, docs/adr/0080-cross-origin-auth.md, apps/server/src/cli.ts, apps/server/src/observability.ts, apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/attachments/stores.ts, apps/server/src/secrets.ts, apps/server/src/ldap/settings.ts, apps/server/src/sso/oidc.ts, apps/server/src/webhooks/model.ts, Dockerfile, deploy/allinone/Dockerfile, deploy/compose/.env.example, deploy/compose/docker-compose.yml, deploy/compose/install.sh, deploy/compose/upgrade.sh, deploy/README.md, packages/builder-core/src/kits.ts, packages/builder-core/src/backend.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0031-builder-and-two-kits.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts, apps/server/src/compat/register.ts, docs/adr/0087-registered-frontend-origins.md, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, docs/adr/0098-ai-key-storage.md, apps/server/src/embeddings/service.ts, deploy/compose/docker-compose.yml, docs/adr/0106-local-embeddings-and-vector-search.md, apps/server/src/outbound/guard.ts, apps/server/src/outbound/addresses.ts, apps/server/src/import/archive.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Configuration reference
@@ -112,6 +112,14 @@ the pepper keyring that the backup carries).
 | `TASKMOOR_DATA` | none (the image: `/data`) | The data directory: attachments in `files`, backups in `backups`, import files in `imports`, the pepper keyring in `secrets` |
 | `TASKMOOR_BACKUP_DIR` | `TASKMOOR_DATA/backups` | Where scheduled backups go; `off` keeps this process from taking them |
 | `TASKMOOR_IMPORT_DIR` | `TASKMOOR_DATA/imports` | The only folder imports may read files from by path; `off` refuses paths |
+| `TASKMOOR_ARCHIVE_MAX_GIB` | `512` | The most a backup or export ZIP may unpack to, in GiB |
+| `TASKMOOR_ARCHIVE_MAX_RATIO` | `200` | The most an entry above 1 MiB, or the whole archive above 64 MiB, may expand: unpacked size to packed size |
+| `TASKMOOR_ARCHIVE_MAX_ENTRIES` | `10000000` | The most entries a backup or export ZIP may hold |
+
+A ZIP is held to these limits from its directory before anything is unpacked, and each entry is
+checked against the size it declares while it is read. A refused archive names the limit and its
+numbers. Raise them for a backup that really is larger; a ZIP bomb is a small file that would
+unpack to far more than it holds.
 
 See [backups](backups.md) and [importing and exporting](import-export.md).
 
@@ -168,6 +176,26 @@ not environment variables: site administrators set them in the app or through th
 | `OTEL_SERVICE_NAME` | `taskmoor` | The service name on traces |
 
 See [monitoring and logs](monitoring.md).
+
+## Requests to other servers
+
+The server sends requests to addresses people type: webhook receivers, AI providers, identity
+providers and Cloud import sites. Each request resolves the host, checks every address it
+resolves to, and connects only to the address it checked. An address on this machine, on a
+private network, link-local, unique local, shared (CGNAT), multicast, reserved, or a cloud
+metadata service (such as `169.254.169.254`) is refused, in IPv4 and IPv6, including IPv4
+addresses written inside IPv6 ones. Redirects are checked the same way. Only `http` and `https`
+are sent.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `TASKMOOR_OUTBOUND_ALLOW` | none | Hosts the check lets through: host names (`hooks.corp.example`), every host under a domain (`*.corp.example`), addresses and CIDR ranges (`10.20.0.0/16`, `fd00::/8`), comma-separated. A named host is reached at whatever it resolves to |
+
+Set it when a webhook receiver, an AI server (Ollama, vLLM) or an identity provider runs on your
+own network. The host of `TASKMOOR_AI_BASE_URL` is allowed without it. A refused request says
+which host, which address and why; a refused webhook delivery fails at once instead of retrying.
+Mail, the S3 store, ClamAV, monitoring and the embedding endpoint are set in this environment and
+are not checked.
 
 ## Exceptions for test networks
 

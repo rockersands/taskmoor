@@ -1482,6 +1482,17 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         VALUES (1, 'bulk_exports', 'user:seed', '2026-11-02T00:00:00Z', 5, 5, 60)`.execute(db);
     },
   },
+  '0082_storage_quota': {
+    tables: {
+      attachment_setting:
+        'workspace_id = 1 AND workspace_quota = 1099511627776 AND person_quota = 10737418240',
+    },
+    seed: async (db) => {
+      // A workspace capped at 1 TiB, 10 GiB a person, beside its earlier file size limit.
+      await sql`UPDATE attachment_setting SET workspace_quota = 1099511627776,
+          person_quota = 10737418240 WHERE workspace_id = 1`.execute(db);
+    },
+  },
 };
 
 /**

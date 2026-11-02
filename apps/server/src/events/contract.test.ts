@@ -26,6 +26,7 @@ import { FakeIdp } from '../testing/fake-idp';
 import { FakeLdap } from '../testing/fake-ldap';
 import { FakeSamlIdp } from '../testing/fake-saml-idp';
 import { multipartFile } from '../testing/multipart';
+import { loopbackOutbound } from '../testing/outbound';
 import { SoftAuthenticator } from '../testing/webauthn';
 import { EVENT_TYPES, type EventType } from './catalogue';
 
@@ -199,6 +200,7 @@ describe('every mutation emits exactly one event (M1-005)', () => {
     attachments = storesOf(await LocalStore.open(files));
     app = await buildApp({
       db: database.db,
+      outbound: loopbackOutbound(),
       version: 'test',
       roles: ['api'],
       attachments,

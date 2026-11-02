@@ -1,3 +1,5 @@
+import { outboundGuard } from '../../outbound/guard';
+
 /**
  * The HTTP side of the Cloud REST importer (M1-095; IMP-002; ADR-094): requests to a server that
  * speaks the Jira-compatible REST API, signed with the customer's own token, throttled as such a
@@ -260,12 +262,19 @@ export function withQuery(
   return `${path}?${new URLSearchParams(entries.map(([k, v]) => [k, String(v)]))}`;
 }
 
-/** The platform's fetch as a transport, against a base URL. */
-export function fetchTransport(baseUrl: string, timeoutMs = 60_000): Transport {
+/**
+ * A fetch as a transport, against a base URL: the outbound guard's (ASVS 5.2.6; ADR-110), since
+ * an administrator types the site's address.
+ */
+export function fetchTransport(
+  baseUrl: string,
+  timeoutMs = 60_000,
+  send: typeof fetch = outboundGuard().fetch,
+): Transport {
   const base = baseUrl.replace(/\/+$/, '');
   checkSourceHost(base);
   return async (request, authorization) => {
-    const res = await fetch(`${base}${request.path}`, {
+    const res = await send(`${base}${request.path}`, {
       method: request.method,
       headers: {
         authorization,

@@ -4,6 +4,7 @@ import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { createOutboundGuard } from '../outbound/guard';
 
 /**
  * Single sign-on against a real Keycloak (M1-080 done-when). Runs only when
@@ -90,6 +91,8 @@ describe.skipIf(!ISSUER)('single sign-on against Keycloak (M1-080)', () => {
       roles: ['api'],
       passwords,
       publicUrl: ORIGIN,
+      // Keycloak runs on this machine: allowed as an operator would (ADR-110).
+      outbound: createOutboundGuard({ allow: new URL(ISSUER as string).hostname }),
     });
     await database.db
       .insertInto('app_user')

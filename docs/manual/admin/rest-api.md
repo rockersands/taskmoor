@@ -2,8 +2,8 @@
 title: "The REST API"
 audience: admins
 jira-names: the Jira-compatible API's paths, and the scripts written for Jira that call them
-sources: docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts, packages/richtext/src/wiki.ts, docs/adr/0091-wiki-markup-converter.md
-accessed: 2026-10-31
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, docs/api/README.md, docs/api/openapi.json, apps/server/src/api/operations.ts, apps/server/src/api/openapi.ts, apps/server/src/api/diff.ts, apps/server/src/tokens/scopes.ts, apps/server/src/tickets/rich-text.ts, apps/server/src/routes/meta.ts, packages/sdk/package.json, packages/sdk/src/client.ts, packages/query/src/fields.ts, apps/server/src/webhooks/model.ts, apps/server/src/webhooks/deliver.ts, apps/server/src/webhooks/payload.ts, apps/server/src/webhooks/subscriber.ts, apps/server/src/routes/webhooks.ts, apps/server/src/main.ts, docs/adr/0016-api-contract-and-compat-shim.md, docs/adr/0017-webhooks.md, docs/adr/0055-webhooks.md, docs/adr/0067-rest-api-v1.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/routes/properties.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, packages/api-jira-compat/src/shim/issues.ts, packages/api-jira-compat/src/shim/platform.ts, apps/server/src/compat/register.ts, docs/api/jira-compat/matrix.md, docs/adr/0085-jira-compat-contract-suite.md, docs/adr/0086-jira-compat-shim.md, packages/api-jira-compat/src/shim/agile.ts, packages/richtext/src/wiki.ts, docs/adr/0091-wiki-markup-converter.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # The REST API
@@ -224,7 +224,7 @@ Content-Type: application/json
 | Field | Meaning |
 |---|---|
 | `name` | Unique on the instance |
-| `url` | Must be HTTPS, without a user name or password in it. Plain HTTP is accepted only for `localhost`, `127.0.0.1` and `[::1]`, or everywhere when the server runs with `TASKMOOR_WEBHOOK_ALLOW_HTTP=true` |
+| `url` | Must be HTTPS, without a user name or password in it. Plain HTTP is accepted only for `localhost`, `127.0.0.1` and `[::1]`, or everywhere when the server runs with `TASKMOOR_WEBHOOK_ALLOW_HTTP=true`. A receiver at a private, loopback, link-local or metadata address is refused when a delivery is sent (the delivery fails at once, without retries) unless the operator names it in `TASKMOOR_OUTBOUND_ALLOW` (see [requests to other servers](configuration.md#requests-to-other-servers)) |
 | `format` | `json` (the default), `slack`, `teams`, `mattermost` or `matrix` |
 | `events` | Exact event names, or a family such as `ticket.*` |
 | `filterQuery` | Optional. A query in [the query language](../use/search.md); it applies only to events about one ticket |

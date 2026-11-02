@@ -6,6 +6,7 @@ import type { Readable } from 'node:stream';
 import yauzl from 'yauzl';
 import { sniff } from '../../attachments/sniff';
 import { queryType } from '../../search/catalogue';
+import { ArchiveLimitError, checkArchive } from '../archive';
 import { targetShape } from '../dc-fields';
 import { AGILE_ELEMENTS } from './agile-format';
 import type { CleanStats } from './clean';
@@ -1036,7 +1037,20 @@ async function readSummary(dir: string): Promise<StageSummary | null> {
   }
 }
 
-/** Only checks that the ZIP opens and holds the entities file at its root (for the route). */
+/** Holds the ZIP's directory to the archive limits (ASVS 12.1.2), as a backup error. */
+async function checkLimits(zipPath: string): Promise<void> {
+  try {
+    await checkArchive(zipPath);
+  } catch (error) {
+    if (error instanceof ArchiveLimitError) throw new DcBackupError(error.message);
+    throw new DcBackupError(`not a ZIP file: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * Checks that the ZIP opens, holds the entities file at its root and stays within the archive
+ * limits (for the route; ASVS 12.1.2).
+ */
 export async function checkDcBackup(zipPath: string): Promise<void> {
   const { zip } = await openZip(zipPath).catch((error: unknown) => {
     throw new DcBackupError(`not a ZIP file: ${(error as Error).message}`);
@@ -1053,12 +1067,14 @@ export async function checkDcBackup(zipPath: string): Promise<void> {
     zip.readEntry();
   });
   if (!found) throw new DcBackupError(`no ${ENTITIES_FILE} at the root of the ZIP`);
+  await checkLimits(zipPath);
 }
 
 /**
  * The staged folder of a backup ZIP (`<zip>.staged`), staged now unless a stage of this exact
  * file (size and modification time) is there already. A stage is written into a folder of its
  * own and renamed into place, so a worker that stops halfway leaves nothing a later run reads.
+ * Before any entry is read, the ZIP's directory is held to the archive limits (ASVS 12.1.2).
  */
 export async function stageDcBackup(
   zipPath: string,
@@ -1070,6 +1086,7 @@ export async function stageDcBackup(
   if (ready && ready.zip.bytes === zipInfo.bytes && ready.zip.mtimeMs === zipInfo.mtimeMs) {
     return { dir, summary: ready };
   }
+  await checkLimits(zipPath);
   const partial = `${dir}.part-${randomBytes(6).toString('hex')}`;
   await mkdir(partial, { recursive: true });
   try {

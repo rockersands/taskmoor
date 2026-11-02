@@ -116,12 +116,29 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
         );
       } catch (e) {
         const code = e instanceof ApiError ? e.code : undefined;
+        // ASVS 12.1.3: the quota the upload would pass, with what is used and left.
+        const quota =
+          e instanceof ApiError && code === 'storage_quota_exceeded'
+            ? (e.body as { quota?: string; limit?: number; used?: number; available?: number })
+            : null;
         problems.push(
-          code === 'file_too_large'
-            ? t('attachments.tooLarge', { name: file.name, limit: size(loaded.maxFileSize) })
-            : code === 'forbidden'
-              ? t('attachments.forbidden')
-              : t('attachments.uploadFailed', { name: file.name }),
+          quota
+            ? t(
+                quota.quota === 'workspace'
+                  ? 'attachments.workspaceQuota'
+                  : 'attachments.personQuota',
+                {
+                  name: file.name,
+                  limit: size(quota.limit ?? 0),
+                  used: size(quota.used ?? 0),
+                  available: size(quota.available ?? 0),
+                },
+              )
+            : code === 'file_too_large'
+              ? t('attachments.tooLarge', { name: file.name, limit: size(loaded.maxFileSize) })
+              : code === 'forbidden'
+                ? t('attachments.forbidden')
+                : t('attachments.uploadFailed', { name: file.name }),
         );
         setErrors([...problems]);
       } finally {

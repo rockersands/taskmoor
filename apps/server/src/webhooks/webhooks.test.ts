@@ -13,6 +13,7 @@ import { SESSION_COOKIE } from '../auth';
 import { EventBus, startWorker } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
+import { loopbackOutbound } from '../testing/outbound';
 import { registerWebhookJobs } from './deliver';
 import { bodyFor, type DeliveryFacts } from './payload';
 import { webhookSubscriber } from './subscriber';
@@ -148,7 +149,7 @@ describe('webhooks (M1-067)', () => {
     registerSubscribers(bus, { db: database.db, publicUrl: PUBLIC_URL });
     runner = new JobRunner(database.db, 'webhook-test');
     bus.attach(runner);
-    registerWebhookJobs(runner, database.db, { timeoutMs: 5000 });
+    registerWebhookJobs(runner, database.db, { timeoutMs: 5000, outbound: loopbackOutbound() });
 
     const hash = await hashPassword(PASSWORD);
     for (const [name, isAdmin] of [
@@ -540,6 +541,33 @@ describe('webhooks (M1-067)', () => {
     );
     expect(r?.body).toMatchObject({ msgtype: 'm.text', format: 'org.matrix.custom.html' });
     expect(String(r?.body.body)).toContain(t.key);
+  });
+
+  it('[API-009][NFR-008] ASVS 5.2.6: a receiver on a private or metadata address fails at once, without a retry', async () => {
+    const hooks: Record<string, number> = {};
+    for (const [name, url] of [
+      ['private', 'https://10.0.0.7/hook'],
+      ['metadata', 'https://169.254.169.254/latest/meta-data/'],
+      ['mapped', 'https://[::ffff:192.168.1.10]/hook'],
+    ] as const) {
+      hooks[name] = (await webhook({ name: `SSRF ${name}`, url, events: ['ticket.created'] })).id;
+    }
+    await ticket('WH', 'Refused');
+    await pump();
+    for (const [name, reason] of [
+      ['private', 'private'],
+      ['metadata', 'cloud metadata'],
+      ['mapped', 'private'],
+    ] as const) {
+      const [delivery] = await deliveriesOf(hooks[name] as number);
+      expect(delivery).toMatchObject({ state: 'failed', attempts: 1, last_status: null });
+      expect(delivery?.last_error).toContain(`is not a public address (${reason})`);
+    }
+    await database.db
+      .updateTable('webhook')
+      .set({ enabled: false })
+      .where('id', 'in', Object.values(hooks))
+      .execute();
   });
 
   it('[API-009] deliveries land within 5 s at p95', async () => {

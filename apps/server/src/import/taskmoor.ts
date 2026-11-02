@@ -6,6 +6,7 @@ import type { JsonValue } from '@taskmoor/db';
 import yauzl from 'yauzl';
 import { z } from 'zod';
 import { EXPORT_FILES, MANIFEST, type Manifest, manifestSchema } from '../export/format';
+import { ArchiveLimitError, checkArchive } from './archive';
 import { readJsonLines } from './lines';
 import type {
   Command,
@@ -43,8 +44,17 @@ export class ExportFormatError extends Error {}
 const ENTRY = /^(manifest\.json|[a-z-]+\.ndjson|attachments\/[A-Za-z0-9:_-]{1,40})$/;
 const UNPACKED = '.unpacked';
 
-/** Unpacks an export ZIP into `dir`, refusing entries outside the format (and zip slip). */
+/**
+ * Unpacks an export ZIP into `dir`, refusing entries outside the format (and zip slip), and an
+ * archive beyond the archive limits before anything is written (ASVS 12.1.2).
+ */
 async function unzip(zipPath: string, dir: string): Promise<void> {
+  try {
+    await checkArchive(zipPath);
+  } catch (error) {
+    if (error instanceof ArchiveLimitError) throw new ExportFormatError(error.message);
+    throw error;
+  }
   const zip = await new Promise<yauzl.ZipFile>((ok, fail) =>
     yauzl.open(zipPath, { lazyEntries: true, autoClose: true }, (error, file) =>
       error || !file ? fail(error ?? new Error('zip')) : ok(file),
@@ -104,7 +114,12 @@ export async function exportFolder(path: string): Promise<string> {
   const partial = `${dir}.part`;
   await rm(partial, { recursive: true, force: true });
   await mkdir(partial, { recursive: true });
-  await unzip(path, partial);
+  try {
+    await unzip(path, partial);
+  } catch (error) {
+    await rm(partial, { recursive: true, force: true });
+    throw error;
+  }
   await rm(dir, { recursive: true, force: true });
   await rename(partial, dir);
   return dir;

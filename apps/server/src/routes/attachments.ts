@@ -16,6 +16,16 @@ import { dropUpload, keepUpload, registerUpload, sweepStorage } from '../attachm
 import { contentDisposition, safeFilename } from '../attachments/filename';
 import { queueProcessing } from '../attachments/jobs';
 import {
+  holdQuota,
+  type QuotaRefusal,
+  quotaRefusal,
+  quotaRoom,
+  setStorageQuota,
+  storageQuota,
+  storageUsage,
+  topUploader,
+} from '../attachments/quota';
+import {
   type AttachmentRow,
   attachmentChange,
   attachmentQuery,
@@ -44,7 +54,10 @@ import { type Lock, lockedBody, statusGate, statusLock } from '../workflows/lock
  * - Upload: `multipart/form-data` with one file part, streamed to the store while it is
  *   counted, hashed and its first bytes sniffed; a file over the workspace's limit (default
  *   1 GiB, no ceiling) is refused with 413 `file_too_large` as soon as it passes the limit
- *   (at once when Content-Length says so), and nothing is kept. No storage quota.
+ *   (at once when Content-Length says so), and nothing is kept. Storage quotas, a workspace
+ *   total and a limit per person, are off unless a site administrator sets them (M1-118;
+ *   ASVS 12.1.3; `attachments/quota.ts`); an upload past one is refused with 413
+ *   `storage_quota_exceeded` and the numbers.
  * - Download: only files the scan found clean. Local files stream through here with
  *   `X-Content-Type-Options: nosniff`, a sandboxing CSP and RFC 6266 file names, inline only
  *   for images, PDF, video and text (served as plain text), as a download otherwise; ranges
@@ -64,9 +77,16 @@ const entryParams = attachmentParams.extend({ index: z.coerce.number().int().min
 const contentQuery = z
   .object({ disposition: z.enum(['inline', 'attachment']).optional() })
   .strict();
+const bytes = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const settingsBody = z
-  .object({ maxFileSize: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER) })
-  .strict();
+  .object({
+    maxFileSize: bytes.optional(),
+    /** Storage quotas in bytes (ASVS 12.1.3); null takes one off. */
+    workspaceQuota: bytes.nullable().optional(),
+    personQuota: bytes.nullable().optional(),
+  })
+  .strict()
+  .refine((b) => Object.keys(b).length > 0);
 
 /** Room for the multipart framing around a file when comparing Content-Length to the limit. */
 const MULTIPART_OVERHEAD = 64 * 1024;
@@ -79,6 +99,11 @@ const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_fou
 const forbidden = (reply: FastifyReply, permission: TrackPermission) =>
   reply.code(403).send({ error: 'forbidden', permission });
 const unavailable = (reply: FastifyReply) => reply.code(503).send({ error: 'storage_unavailable' });
+
+/** The 413 of an upload past a storage quota; the connection closes as for a large file. */
+function overQuota(reply: FastifyReply, refusal: QuotaRefusal) {
+  return reply.code(413).header('connection', 'close').send(refusal);
+}
 
 /** The 413 of a file over the limit; the connection closes so the rest is not read. */
 function tooLarge(reply: FastifyReply, maxFileSize: number) {
@@ -349,19 +374,29 @@ export async function registerAttachmentRoutes(
       const store = stores.active;
       if (!store) return unavailable(reply);
       const ws = request.workspaceId;
-      const max = await maxFileSize(db, ws);
+      const [max, quota] = await Promise.all([maxFileSize(db, ws), storageQuota(db, ws)]);
+      // ASVS 12.1.3: the room the person's and the workspace's quotas leave.
+      const room = await quotaRoom(db, ws, user.id, quota);
+      if (room && room.available === 0) return overQuota(reply, quotaRefusal(room));
       // CORE-021 (1): a file the request's length already shows too large is refused at once.
       const length = Number(request.headers['content-length']);
       if (Number.isFinite(length) && length > max + MULTIPART_OVERHEAD) {
         return tooLarge(reply, max);
       }
+      if (room && Number.isFinite(length) && length > room.available + MULTIPART_OVERHEAD) {
+        return overQuota(reply, quotaRefusal(room));
+      }
+      // The stream stops at whichever comes first: the file size limit or the room left.
+      const cap = room ? Math.min(max, room.available) : max;
+      const capped = (r: FastifyReply) =>
+        room && cap < max ? overQuota(r, quotaRefusal(room)) : tooLarge(r, max);
       if (!request.isMultipart()) return invalid(reply, 'multipart');
       let part: Awaited<ReturnType<FastifyRequest['file']>>;
       try {
         // Busboy cuts a file at its size limit and ends the stream as if it were complete
         // (the plugin's default is 1 MiB); one byte over our limit lets the meter refuse it.
         part = await request.file({
-          limits: { fileSize: Math.min(max + 1, Number.MAX_SAFE_INTEGER) },
+          limits: { fileSize: Math.min(cap + 1, Number.MAX_SAFE_INTEGER) },
         });
       } catch {
         return invalid(reply, 'multipart');
@@ -377,7 +412,7 @@ export async function registerAttachmentRoutes(
       let stored: PutResult;
       try {
         stored = await store.put(key, part.file, {
-          maxBytes: max,
+          maxBytes: cap,
           contentType: declared,
           onChunk: (chunk) => {
             if (headLength >= SNIFF_BYTES) return;
@@ -388,25 +423,28 @@ export async function registerAttachmentRoutes(
         });
       } catch (error) {
         await dropUpload(db, stores, store.kind, key);
-        if (isTooLarge(error)) return tooLarge(reply, max);
+        if (isTooLarge(error)) return capped(reply);
         // The client went away: nobody is left to answer.
         if (request.raw.destroyed || request.raw.aborted) return reply;
         throw error;
       }
       if (part.file.truncated) {
         await dropUpload(db, stores, store.kind, key);
-        return tooLarge(reply, max);
+        return capped(reply);
       }
       const headBytes = Buffer.concat(head);
       const sniffed = sniff(headBytes, stored.size <= headBytes.length);
       const scanning = stores.scanner !== null;
       const thumbnail = thumbnailable(sniffed);
 
-      let result: AttachmentRow | 'gone' | 'expired';
+      let result: AttachmentRow | 'gone' | 'expired' | QuotaRefusal;
       try {
         result = await db.transaction().execute(async (trx) => {
           const current = await lockTicket(trx, ticket.id);
           if (!current) return 'gone' as const;
+          // Another upload may have taken the room meanwhile.
+          const over = await holdQuota(trx, ws, user.id, stored.size, quota);
+          if (over) return over;
           if (!(await keepUpload(trx, store.kind, key))) return 'expired' as const;
           const created = await trx
             .insertInto('attachment')
@@ -461,6 +499,10 @@ export async function registerAttachmentRoutes(
       }
       // The upload took longer than its grace and the sweep removed the file.
       if (result === 'expired') return reply.code(409).send({ error: 'upload_expired' });
+      if ('error' in result) {
+        await dropUpload(db, stores, store.kind, key);
+        return overQuota(reply, result);
+      }
       return reply.code(201).send({ attachment: attachmentView(result, true) });
     });
 
@@ -687,10 +729,11 @@ export async function registerAttachmentRoutes(
       return reply.code(204).send();
     });
 
-    // Settings (site administrators): the maximum file size, and what stores this process has.
+    // Settings (site administrators): the maximum file size, the storage quotas with the
+    // usage they hold (ASVS 12.1.3), and what stores this process has.
     scope.get('/api/v1/admin/attachment-settings', async (request, reply) => {
       if (!(await requireSiteAdmin(request, reply))) return reply;
-      return settingsView(await maxFileSize(db, request.workspaceId));
+      return settingsView(request.workspaceId);
     });
 
     scope.put('/api/v1/admin/attachment-settings', async (request, reply) => {
@@ -699,27 +742,51 @@ export async function registerAttachmentRoutes(
       const parsed = settingsBody.safeParse(request.body);
       if (!parsed.success) return invalid(reply);
       const ws = request.workspaceId;
-      const to = parsed.data.maxFileSize;
-      const saved = await withEvent(db, by(request), async (trx) => {
-        const from = await maxFileSize(trx, ws);
-        if (from === to) return { result: to, event: null };
-        await setMaxFileSize(trx, ws, to);
+      const body = parsed.data;
+      await withEvent(db, by(request), async (trx) => {
+        const fromMax = await maxFileSize(trx, ws);
+        const fromQuota = await storageQuota(trx, ws);
+        const toMax = body.maxFileSize ?? fromMax;
+        const toQuota = {
+          workspace: body.workspaceQuota === undefined ? fromQuota.workspace : body.workspaceQuota,
+          person: body.personQuota === undefined ? fromQuota.person : body.personQuota,
+        };
+        const changes: Record<string, { from: number | null; to: number | null }> = {};
+        if (toMax !== fromMax) changes.maxFileSize = { from: fromMax, to: toMax };
+        if (toQuota.workspace !== fromQuota.workspace) {
+          changes.workspaceQuota = { from: fromQuota.workspace, to: toQuota.workspace };
+        }
+        if (toQuota.person !== fromQuota.person) {
+          changes.personQuota = { from: fromQuota.person, to: toQuota.person };
+        }
+        if (Object.keys(changes).length === 0) return { result: null, event: null };
+        if (changes.maxFileSize) await setMaxFileSize(trx, ws, toMax);
+        if (changes.workspaceQuota || changes.personQuota) await setStorageQuota(trx, ws, toQuota);
         return {
-          result: to,
+          result: null,
           event: {
             type: 'attachment_settings.updated',
             subjectId: ws,
-            payload: { changes: { maxFileSize: { from, to } } },
+            payload: { changes },
           },
         };
       });
-      return settingsView(saved);
+      return settingsView(ws);
     });
   });
 
-  function settingsView(max: number) {
+  async function settingsView(ws: number) {
+    const [max, quota, usage, top] = await Promise.all([
+      maxFileSize(db, ws),
+      storageQuota(db, ws),
+      storageUsage(db, ws),
+      topUploader(db, ws),
+    ]);
     return {
       maxFileSize: max,
+      workspaceQuota: quota.workspace,
+      personQuota: quota.person,
+      usage: { ...usage, topPerson: top },
       storage: stores.active?.kind ?? null,
       scanner: stores.scanner?.name ?? null,
       signedUrlSeconds: stores.urlTtl,

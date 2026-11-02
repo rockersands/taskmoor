@@ -1,8 +1,8 @@
 ---
 title: "Single sign-on"
 audience: admins
-sources: apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Single sign-on
@@ -21,6 +21,10 @@ part of this is included in Taskmoor; nothing needs a separate licence.
 - A provider's issuer URL or sign-in URL must use HTTPS. Plain HTTP is accepted only on the
   loopback interface (`localhost`, `127.0.0.1`, `[::1]`), or anywhere when
   `TASKMOOR_OIDC_ALLOW_HTTP=true`, which is meant for tests.
+- Taskmoor refuses to reach an OpenID Connect provider at a private, loopback or link-local
+  address. A provider on your own network needs its host in `TASKMOOR_OUTBOUND_ALLOW` (see
+  [requests to other servers](configuration.md#requests-to-other-servers)); until then signing in
+  through it answers that the provider is unavailable, and the server log says why.
 - To keep group memberships in step with the provider, create the groups first (see
   [People and groups](people-and-groups.md)).
 - Make sure at least one site administrator can still sign in if the provider fails (see
