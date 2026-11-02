@@ -3,10 +3,18 @@
 # same container, for trials and single-box installs. One volume (/data) holds the database
 # and the files. Build it on top of the main image:
 #   docker build -f deploy/allinone/Dockerfile --build-arg BASE=taskmoor:dev -t taskmoor-allinone:dev .
+# Behind a proxy that re-signs TLS, pass its CA as the build secret `build_ca` and the proxy as
+# the HTTPS_PROXY build argument, as for the main image (the secret is never written to a layer).
 ARG BASE=taskmoor:dev
 FROM ${BASE}
 USER root
-RUN apk add --no-cache postgresql16 postgresql16-client postgresql16-contrib su-exec \
+RUN --mount=type=secret,id=build_ca,required=false \
+    if [ -s /run/secrets/build_ca ]; then \
+      cat /etc/ssl/certs/ca-certificates.crt /run/secrets/build_ca > /tmp/build-ca.pem; \
+      export SSL_CERT_FILE=/tmp/build-ca.pem; \
+    fi; \
+    apk add --no-cache postgresql16 postgresql16-client postgresql16-contrib su-exec \
+    && rm -f /tmp/build-ca.pem \
     && mkdir -p /data /run/postgresql \
     && chown node:node /data \
     && chown postgres:postgres /run/postgresql

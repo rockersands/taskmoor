@@ -45,7 +45,10 @@ wait_for() { # url, seconds, container-for-logs
 }
 
 echo "== all-in-one image"
-docker build -f deploy/allinone/Dockerfile --build-arg "BASE=$TAG" -t "$AIO" . >/dev/null
+# Behind a proxy that re-signs TLS, set BUILD_CA to its CA file (the image installs PostgreSQL).
+secret=()
+[ -n "${BUILD_CA:-}" ] && secret=(--secret "id=build_ca,src=$BUILD_CA" --network host)
+docker build "${secret[@]}" -f deploy/allinone/Dockerfile --build-arg "BASE=$TAG" -t "$AIO" . >/dev/null
 size=$(docker image inspect "$AIO" --format '{{.Size}}')
 echo "all-in-one size: $((size / 1000000)) MB"
 docker volume create "$VOL" >/dev/null
