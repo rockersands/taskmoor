@@ -398,3 +398,21 @@ describe('Plain text', () => {
     expect(toPlainText(fromWiki(''))).toBe('');
   });
 });
+
+describe('wiki markup reading time (M1-118, fuzz 2026-11-02)', () => {
+  it('[API-011] reads runs of unclosed macros and monospace in linear time', () => {
+    const inputs = [
+      // Unclosed panels nest each in the one before: deep levels read as text.
+      `before\n${'{panel:title=T|bgColor=#ffebe6}'.repeat(2000)}\nafter`,
+      `${'{panel:title=T}\n'.repeat(5000)}`,
+      // Monospace that never closes: one scan for the line, not one per opening.
+      `x ${'{{a'.repeat(30_000)}`,
+    ];
+    for (const input of inputs) {
+      const started = performance.now();
+      const doc = fromWiki(input);
+      expectWithinBudget(performance.now() - started, 500, 'reading adversarial wiki markup (ms)');
+      expect(doc.type).toBe('doc');
+    }
+  });
+});

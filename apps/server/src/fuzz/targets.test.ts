@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { parseXml } from '../import/dc-backup/parse';
 import { redirectMatches } from '../oauth/clients';
 import { readRichText, writeRichText } from '../tickets/rich-text';
-import { checkAddress, checkRichInput, FUZZ_TARGETS } from './targets';
+import { checkAddress, checkRichInput, checkStage, FUZZ_TARGETS } from './targets';
 
 /**
  * The server's fuzz targets (M1-118, ADR-104), each for a few seconds, and the inputs they
@@ -63,6 +63,29 @@ describe('fuzz targets: server parsers (M1-118)', () => {
       }),
     ).toBe('refused:invalid');
   });
+
+  it('[IMP-003] stages a backup whose saved filter has no id, never a TypeError (fuzz, 2026-11-02)', async () => {
+    const stage = FUZZ_TARGETS.find((t) => t.name === 'dc-stage');
+    const [seed] = ((await stage?.seeds()) ?? []) as {
+      entities: string;
+      activeObjects: string | null;
+    }[];
+    // The two edits the fuzzer made: one filter's id attribute garbled, another's id repeated.
+    const entities =
+      seed?.entities
+        .replace(
+          /<SearchRequest id="(\d+)" name="Projects I lead"/,
+          '<SearchRequest idid="$1" name="Projects I lead"',
+        )
+        .replace(
+          /<SearchRequest id="\d+" name="An app's epic function"/,
+          '<SearchRequest id="10000" name="An app\'s epic function"',
+        ) ?? '';
+    expect(entities).not.toBe(seed?.entities);
+    expect(
+      typeof (await checkStage({ activeObjects: seed?.activeObjects ?? null, entities })),
+    ).toBe('string');
+  }, 120_000);
 
   it('[IMP-003] the backup reader never expands entities a file declares', async () => {
     const xml = [

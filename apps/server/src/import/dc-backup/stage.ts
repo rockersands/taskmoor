@@ -635,7 +635,10 @@ class Collector {
           Number(a.id) - Number(b.id),
       );
     const byId = <T extends { id: string }>(rows: T[]) =>
-      [...rows].sort((a, b) => Number(a.id) - Number(b.id) || a.id.localeCompare(b.id));
+      [...rows].sort(
+        (a, b) =>
+          Number(a.id) - Number(b.id) || String(a.id ?? '').localeCompare(String(b.id ?? '')),
+      );
     const named = <T extends StagedNamed>(rows: T[]) =>
       bySequence(rows).map((r) => ({ id: r.id, label: r.name, data: r }));
 

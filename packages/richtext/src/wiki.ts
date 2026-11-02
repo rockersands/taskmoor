@@ -776,9 +776,26 @@ function lineEnd(src: string, i: number): number {
   return end === -1 ? src.length : end;
 }
 
+/**
+ * How deep block macros nest before an opening tag reads as text (M1-118, fuzz 2026-11-02). An
+ * unclosed `{panel}` holds the rest of the text, so a run of them nested each in the one before
+ * and every level scanned what followed it again: 312 took 620 ms. Deeper levels add nothing a
+ * document can keep (a panel in a panel loses its frame, see `unnest`).
+ */
+const MAX_MACRO_DEPTH = 8;
+let macroDepth = 0;
+
 function macroAt(src: string, i: number): RegExpExecArray | null {
+  if (macroDepth >= MAX_MACRO_DEPTH) return null;
   MACRO.lastIndex = i;
   return MACRO.exec(src);
+}
+
+/** `asciiLower` of the text a macro sits in, once per text rather than once per macro. */
+let lowered: { src: string; lower: string } | undefined;
+function lowerOf(src: string): string {
+  if (lowered?.src !== src) lowered = { src, lower: asciiLower(src) };
+  return lowered.lower;
 }
 
 function startsBlock(src: string, i: number, line: string): boolean {
@@ -892,7 +909,7 @@ function macroIn(src: string, m: RegExpExecArray): { blocks: PmJson[]; end: numb
   const name = (m[1] as string).toLowerCase();
   const bodyStart = m.index + m[0].length;
   const tag = `{${name}}`;
-  const lower = asciiLower(src);
+  const lower = lowerOf(src);
   if (name === 'code' || name === 'noformat') {
     const close = lower.indexOf(tag, bodyStart);
     const bodyEnd = close === -1 ? src.length : close;
@@ -920,7 +937,13 @@ function macroIn(src: string, m: RegExpExecArray): { blocks: PmJson[]; end: numb
   }
   const close = closingTag(src, lower, bodyStart, tag);
   const bodyEnd = close === -1 ? src.length : close;
-  const blocks = blocksIn(src.slice(bodyStart, bodyEnd));
+  macroDepth++;
+  let blocks: PmJson[];
+  try {
+    blocks = blocksIn(src.slice(bodyStart, bodyEnd));
+  } finally {
+    macroDepth--;
+  }
   const end = close === -1 ? src.length : afterTag(src, close + tag.length);
   if (name === 'quote') {
     return {
@@ -1181,12 +1204,22 @@ function bracketEnd(src: string, from: number): number {
   return -1;
 }
 
+/**
+ * Where a scan found no `}}` up to the end of its text (M1-118, fuzz 2026-11-02): a later scan
+ * of the same text from further on finds none either, so a line of unclosed `{{` costs one scan,
+ * not one per `{{`. Every caller starts right after a `{{`, a position an earlier scan reached
+ * in step (not as the character after a backslash), so the answer is the same.
+ */
+let noCloseFrom: { src: string; from: number } | undefined;
+
 /** The index of the `}}` closing monospace opened before `from`, or -1. */
 function codeEnd(src: string, from: number): number {
+  if (noCloseFrom !== undefined && from >= noCloseFrom.from && noCloseFrom.src === src) return -1;
   for (let j = from; j < src.length; j++) {
     if (src[j] === '\\') j++;
     else if (src[j] === '}' && src[j + 1] === '}') return j > from ? j : -1;
   }
+  noCloseFrom = { src, from };
   return -1;
 }
 

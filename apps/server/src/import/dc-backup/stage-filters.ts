@@ -102,7 +102,9 @@ export interface FilterResolveContext {
 const int = (v: string | undefined): number | null =>
   v !== undefined && /^-?\d+$/.test(v) ? Number(v) : null;
 const byId = <T extends { id: string }>(rows: Iterable<T>) =>
-  [...rows].sort((a, b) => Number(a.id) - Number(b.id) || a.id.localeCompare(b.id));
+  [...rows].sort(
+    (a, b) => Number(a.id) - Number(b.id) || String(a.id ?? '').localeCompare(String(b.id ?? '')),
+  );
 
 type Row = Record<string, string>;
 const withId = (rows: readonly Row[]) =>
