@@ -2,6 +2,64 @@
 
 Read this first in every session, then update it before you stop.
 
+## Start here: moving to a local session (2026-11-02, late)
+
+The user is moving the work from the cloud session to a local Claude Code session on their PC
+(Ryzen 7 3700X, 16 threads, 64 GB, Windows). Everything needed is in the repository; this section
+is what the cloud session had in its head.
+
+**Where things stand**
+- `main` is at `ee70282` (gate green: 5,609 tests, 165 e2e). The branch
+  `claude/api-key-upload-prevention-9ucz4x` is a few commits ahead with docs only (clean-room
+  note on Atlassian's terms, this section, `tools/fuzz/staged.sh`). Fast-forward `main` to it
+  after your first green `pnpm verify --e2e`.
+- M1 left: M1-091 (the 500k-issue import, below), M1-118 (the staged fuzzing, below; the image
+  scans are done and clean; the live-model injection run needs an AI key), M1-120 (the release,
+  below), and M1-073, M1-074, M1-079's thresholds (an AI key: `TASKMOOR_AI_EVAL_KEY`, with
+  `TASKMOOR_AI_EVAL_PROVIDER=anthropic|openai|gemini`, then
+  `pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`).
+- **The 500k import (M1-091, the user's decision: 500k measured, 1M as an estimate):** started in
+  the cloud at 23:30 UTC; if its result is not in `progress.csv`, run it here (faster here):
+  `TASKMOOR_LARGE_DC_IMPORT=1 TASKMOOR_LARGE_DC_IMPORT_ISSUES=500000
+  TASKMOOR_LARGE_DC_IMPORT_DIR=.cache/dc-large-500k TASKMOOR_LARGE_DC_IMPORT_REPORT=.cache/dc-import-500k.jsonl
+  pnpm verify --only=tests -- apps/server/src/import/dc-import.large.test.ts`. About 15 GB of disk.
+  Record the JSON line (fidelity per kind, times, memory, database size) in M1-091's progress
+  row and in ADR-092, and write the 1M estimate from it (time grows linearly).
+- **Fuzzing (M1-118):** `bash tools/fuzz/staged.sh` (1, 2, 4, 8 hours; about 15 hours in all).
+  Then copy the 8-hour reports into `docs/security/fuzz-results.json`; `pnpm gate M1` then shows
+  the fuzz row green. Two real bugs found by short runs are fixed (6b0522c).
+- **Flaky e2e:** `e2e/a11y-keyboard.spec.ts` fails as the first spec of a gate run on a cold server
+  (the skip link is not focused yet), and passes alone. Fix it: wait for the app to be ready.
+- **Release (M1-120):** `CHANGELOG.md` and `docs/ops/releases.md` are drafts. 1.0 is LTS (24
+  months). To do: add 1.0.0 to `RELEASES` in `packages/db/src/releases.ts` with `lts: true`;
+  sign the air-gap bundle (`tools/airgap/bundle.sh`) with the release key from the user's Drive
+  (folder "Taskmoor release signing key"; never commit it, delete the local copy after); update
+  `SECURITY.md` (pre-release wording; private repo means a private email for reports, the user
+  still decides public or private); `pnpm gate M1` all green; the user's acceptance in
+  `decisions.csv`. Images on ghcr.io need a package-write token from the user.
+
+**Other sessions (cloud), each on its own branch, each with its own task file:**
+- Flutter mobile app: `claude/flutter-mobile-app`, tickets in `apps/mobile/TASKS.md`, ADR-112
+  (first-party OAuth client `taskmoor-mobile`, touches `apps/server/src/oauth`, cleared by the
+  user). Merge after M1.
+- UI overhaul and guided tutorial: `claude/ui-overhaul`, `docs/plan/ui-overhaul-tasks.md`,
+  ADR-114 to 116, migration **0084**; waits for the user's answer on the design direction.
+  Includes a layout editor page (UI-T15) and board columns (UI-T16).
+- Ticket templates: `claude/ticket-templates`, `docs/plan/ticket-templates-tasks.md`, ADR-113,
+  migration **0085**. For 1.0.
+- They reported to the cloud session; from now on the user relays, or you read their branches
+  (`git fetch origin <branch>`). Merge each with a full gate; resolve conflicts in the shared
+  docs by joining both sides.
+- Never use the Atlassian connection (docs/legal/clean-room.md: Atlassian's terms forbid it).
+
+**Local setup notes (Windows):** WSL 2 with Ubuntu is the closest to how this was built (the
+image, kit and smoke scripts are bash; Docker Desktop with WSL integration for them). In the
+clone: `git config user.name Rockersands; git config user.email 42122514+rockersands@users.noreply.github.com;
+git config core.hooksPath .githooks`; `corepack pnpm install`; the tests start their own
+embedded PostgreSQL. The e2e suite needs `127.0.0.1 api.taskmoor.localhost app.taskmoor.localhost
+evil.taskmoor.localhost kit2.taskmoor.localhost` in the hosts file. Native Windows works for
+`pnpm verify` (there was a Windows CI job) but not for the bash tools.
+
 ## Start here: 2026-11-02 (cloud session): M1-079 merged, M1-117 done, the ASVS gaps next
 
 - **M1-079 (AI v1 features) is on `main`** (ADR-108). It stays in-progress only for the measured
