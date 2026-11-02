@@ -131,7 +131,7 @@ describe('M0 gate', () => {
     expect(() => runGate({ ...inputs, milestone: 'M9' })).toThrow(/No gate defined for M9/);
   });
 
-  it('[NFR-008] gates M1 on the scans, 24 h of fuzzing, the ASVS gaps and the live injection run', () => {
+  it('[NFR-008] gates M1 on the scans, 8 h of fuzzing, the ASVS gaps and the live injection run', () => {
     const inputs = loadGateInputs(ROOT, 'M1');
     const security = inputs.security;
     if (!security) throw new Error('docs/security records are missing');
@@ -155,9 +155,9 @@ describe('M0 gate', () => {
     const fuzz = (seconds: number, failures = 0) => [
       { target: 'wiki', seconds, inputs: 1, failures },
     ];
-    expect(state({ fuzz: fuzz(600) })['Fuzzers 24 h clean']).toBe('waiting');
-    expect(state({ fuzz: fuzz(FUZZ_GATE_SECONDS) })['Fuzzers 24 h clean']).toBe('ok');
-    expect(state({ fuzz: fuzz(FUZZ_GATE_SECONDS, 1) })['Fuzzers 24 h clean']).toBe('fail');
+    expect(state({ fuzz: fuzz(600) })['Fuzzers 8 h clean']).toBe('waiting');
+    expect(state({ fuzz: fuzz(FUZZ_GATE_SECONDS) })['Fuzzers 8 h clean']).toBe('ok');
+    expect(state({ fuzz: fuzz(FUZZ_GATE_SECONDS, 1) })['Fuzzers 8 h clean']).toBe('fail');
     expect(
       state({ asvs: '| 1.1.1 | x | Gap | y |' })[
         'ASVS 4.0.3 level 2 checklist without an open gap'

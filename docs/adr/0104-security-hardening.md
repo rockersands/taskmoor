@@ -117,3 +117,8 @@ of the history, so a rerun shows only new findings.
     policy is kept. The e2e setup file turns it off after checking it, for the journeys that
     follow; the fresh-install run (`fresh-install.spec.ts`) enrols an authenticator through the
     frontend's sign-in and signs in with a code. 4.3.1 is met.
+- 2026-11-02, the user's decision: the fuzzing bar for M1 is **8 hours clean per target**,
+  reached in stages of 1, 2, 4 and 8 hours (all 13 targets in parallel, each stage clean
+  before the next), instead of one 24-hour run: the cloud container restarted three times in a
+  day. `FUZZ_GATE_SECONDS` is 8 hours. Runs under an hour found two real bugs (a crash staging a
+  DC backup, quadratic wiki markup), fixed with regression tests.

@@ -60,10 +60,13 @@ Read this first in every session, then update it before you stop.
 - **Image scans done:** Trivy on the full image (PostgreSQL client layer included) and on the
   all-in-one image: no finding (`docs/security/scan-results.json`). Trivy runs as
   `mirror.gcr.io/aquasec/trivy:0.76.1` with `--network host` and the proxy's CA mounted.
-- **24-hour fuzz runs started 2026-11-02 17:25 UTC** (all 13 targets in parallel, `nice 19`,
-  seed 1180240, `--hang-seconds 120`; logs in the session's scratchpad `fuzz/`, reports in
-  `.verify/fuzz-<target>.json`). When they end, copy each report's seconds, inputs, failures
-  and rates into `docs/security/fuzz-results.json`; `pnpm gate M1` reads that file.
+- **Fuzzing in stages** (the user's decision of 2026-11-02): 1, 2, 4 and 8 hours, all 13
+  targets in parallel at `nice 19`, a stage only after the one before was clean for every target;
+  8 hours clean is the M1 bar (`FUZZ_GATE_SECONDS`). The runner is the session scratchpad's
+  `fuzz/staged.sh`: it leaves `stage-<h>h/done` or `failed`, copies each `.verify/fuzz-<t>.json`
+  there, and on a restart resumes at the interrupted stage (run it again; it skips finished
+  stages). When stage 8 h is done, copy its reports into `docs/security/fuzz-results.json`.
+  Runs under an hour found two real bugs, fixed on main (6b0522c).
 - **Next:** M1-120 (release) once the fuzzers are clean and the user has answered: is 1.0 an LTS
   release, does the repository go public, the storage quota default (off, CORE-021 reworded),
   the ghcr.io token and network access, the AI key; M1-091's 1M-issue run last, on a machine

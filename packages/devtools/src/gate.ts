@@ -99,12 +99,15 @@ export function loadGateInputs(root: string, milestone: string, ci?: GateInputs[
   };
 }
 
-/** A day: the fuzzers' bar for M1 (M1-118, "fuzzers 24 h clean"). */
-export const FUZZ_GATE_SECONDS = 24 * 3600;
+/**
+ * The fuzzers' bar for M1 (M1-118): eight hours clean per target, reached in stages of 1, 2, 4
+ * and 8 hours (the user's decision of 2026-11-02, decisions.csv; it was 24 hours).
+ */
+export const FUZZ_GATE_SECONDS = 8 * 3600;
 
 /**
  * The security part of the M1 gate (M1-118; ADR-104): the scans with nothing high or critical
- * left open (a scan that could not run waits), every fuzz target clean for 24 hours, and the
+ * left open (a scan that could not run waits), every fuzz target clean for 8 hours, and the
  * ASVS level 2 checklist without an open gap. M1-120 adds the rest of the M1 gate.
  */
 export function m1SecurityChecks(input: GateInputs): GateCheck[] {
@@ -126,14 +129,14 @@ export function m1SecurityChecks(input: GateInputs): GateCheck[] {
   const short = records.fuzz.filter((f) => f.failures > 0 || f.seconds < FUZZ_GATE_SECONDS);
   const failing = records.fuzz.filter((f) => f.failures > 0);
   checks.push({
-    name: 'Fuzzers 24 h clean (pnpm fuzz <target> --minutes 1440)',
+    name: 'Fuzzers 8 h clean (pnpm fuzz <target> --minutes 480)',
     state: failing.length > 0 ? 'fail' : short.length === 0 ? 'ok' : 'waiting',
     detail:
       failing.length > 0
         ? `failing: ${failing.map((f) => f.target).join(', ')}`
         : short.length === 0
           ? `${records.fuzz.length} targets`
-          : `${short.length} of ${records.fuzz.length} targets ran less than 24 h (longest clean run: ${Math.max(...records.fuzz.map((f) => f.seconds))} s)`,
+          : `${short.length} of ${records.fuzz.length} targets ran less than 8 h (longest clean run: ${Math.max(...records.fuzz.map((f) => f.seconds))} s)`,
   });
   const gaps = [...records.asvs.matchAll(/^\| (\d+\.\d+\.\d+) \|[^\n]*\| Gap \|/gm)].map(
     (m) => m[1],
