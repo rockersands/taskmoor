@@ -12,7 +12,7 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 
 | ID | Title | State | Done when | Commits |
 |---|---|---|---|---|
-| UI-T01 | Direction: ADR drafts and a prototype of Home, a board and a ticket, with screenshots for the user | in progress (waiting for the user's answer) | The user agrees the direction or names changes; ADR-114 and ADR-115 move to Accepted | 265af8b, 2678f9f |
+| UI-T01 | Direction: ADR drafts and a prototype of Home, a board and a ticket, with screenshots for the user | in progress (waiting for the user's answer) | The user agrees the direction or names changes; ADR-114 and ADR-115 move to Accepted | 265af8b, c4e6b60 |
 | UI-T02 | Glass tokens and fallbacks in both skins; composited contrast test | in progress | Glass tokens in `tokens.css` with the opaque fallbacks; `contrast.test.ts` composites each glass token over the canvas and its glows at WCAG AA in both skins | 265af8b (tokens only) |
 | UI-T03 | Shared pieces: PageHeader, HelpTip, EmptyState, ThemeToggle, Help menu | in progress | Each has a story (axe in both skins) and tests by role and name; Help menu built as an APG menu button like the person's menu | 265af8b (components, no stories yet) |
 | UI-T04 | Navigation in sections, Tracks directory and track tabs | in progress | Sidebar grouped (done in the prototype); Tracks lists every visible track; a track's pages share one tab bar; NavList and AppShell tests and stories updated | 265af8b (groups only) |
