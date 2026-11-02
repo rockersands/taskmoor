@@ -175,3 +175,14 @@ the audit log (M1-077), agent loops with budgets (AI-011), `inference_geo` for d
 (AI-010), and embeddings through a bundled local model with pgvector (M1-078), since the Claude
 API has no embeddings endpoint. Bulk jobs on providers without batches go through the job queue
 (ADR-015) at a limited rate.
+
+## Changes
+
+- 2026-11-02, at the user's request: OpenAI's API and Google's Gemini API through the
+  OpenAI-compatible adapter. `knownService` tells them by the base URL's host
+  (`api.openai.com`, `generativelanguage.googleapis.com`); for both, tool calls and structured
+  output are on without probing; OpenAI gets `max_completion_tokens` (its reasoning models refuse
+  `max_tokens`); Gemini gets no `strict` flags. The AI settings page offers both by name and
+  stores them as `openai-compatible` at those addresses (no new provider id, no migration); the
+  live eval candidate takes `TASKMOOR_AI_EVAL_PROVIDER=openai|gemini`. Tested against recorded
+  request shapes only: no OpenAI or Gemini key was available.

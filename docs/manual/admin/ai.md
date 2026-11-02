@@ -1,15 +1,18 @@
 ---
 title: "AI settings"
 audience: admins
-sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, apps/server/src/routes/ai-features.ts, docs/adr/0108-ai-v1-features.md, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/ai/AiFeature.tsx, apps/server/src/routes/ai-features.ts, docs/adr/0108-ai-v1-features.md, packages/ai/src/features.ts, docs/adr/0099-ai-settings-page.md, apps/server/src/routes/ai.ts, apps/server/src/ai/credentials.ts, apps/server/src/ai/environment.ts, apps/server/src/ai/keyring.ts, apps/server/src/ai/service.ts, apps/server/src/ai/settings.ts, packages/iam/src/envelope.ts, packages/ai/src/config.ts, deploy/compose/install.sh, packages/builder-core/src/backend.ts, docs/adr/0028-ai-provider-gateway.md, docs/adr/0098-ai-key-storage.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/adr/0106-local-embeddings-and-vector-search.md, packages/ai/src/adapters/openai-compatible.ts
 accessed: 2026-11-02
 attestation: own-words
 ---
 # AI settings
 
 Taskmoor's AI features run on an AI provider that you choose and pay for directly: the
-Anthropic API, Amazon Bedrock, Google Vertex AI, Microsoft Foundry, or a server of your own that
-speaks the OpenAI chat API (Ollama, vLLM and similar). Taskmoor adds no metering of its own.
+Anthropic API, Amazon Bedrock, Google Vertex AI, Microsoft Foundry, OpenAI's API, Google's
+Gemini API, or a server of your own that speaks the OpenAI chat API (Ollama, vLLM and similar).
+Taskmoor adds no metering of its own. The features are tuned for Claude (structured answers,
+reasoning effort, prompt caching); on OpenAI, Gemini and other servers they work with the
+provider's own model and without those settings.
 Nothing is sent to a provider until AI is switched on and a provider is set up.
 
 Site administrators find the settings under **Settings > AI**.
@@ -18,8 +21,10 @@ Site administrators find the settings under **Settings > AI**.
 
 - **On the AI page.** Choose the provider and fill in what it needs: nothing more for the
   Anthropic API (an address only if you reach it through a proxy of your own), the region for
-  Bedrock, the region and project for Vertex AI, the resource name for Foundry, and the server's
-  address and model for an OpenAI-compatible server. Save, then paste the key and choose
+  Bedrock, the region and project for Vertex AI, the resource name for Foundry, the model for
+  **OpenAI API** or **Google Gemini API** (for example `gpt-5` or `gemini-2.5-pro`: the address is
+  filled in for you, and the key is an OpenAI platform key or a Google AI Studio key), and the
+  server's address and model for an OpenAI-compatible server. Save, then paste the key and choose
   **Save API key**. The key field is always empty: under it the page says "Stored, ending in"
   and the last four characters, or "Not set". A server on your own network or this machine
   (Ollama on `localhost`, for example) needs its host in `TASKMOOR_OUTBOUND_ALLOW` (see

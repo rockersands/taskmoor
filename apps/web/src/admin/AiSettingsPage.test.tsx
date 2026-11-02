@@ -114,6 +114,46 @@ describe('the AI settings page (M1-076)', () => {
     expect(within(summaries).queryByRole('combobox', { name: 'Model' })).toBeNull();
   });
 
+  it('[AI-002] offers OpenAI and Gemini by name and saves them as OpenAI-compatible servers at their addresses', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    const provider = await screen.findByRole('combobox', { name: 'Provider' });
+    await user.selectOptions(provider, 'openai');
+    // The address comes with the choice; the model is typed, with an example.
+    expect(screen.queryByRole('textbox', { name: 'Server address' })).toBeNull();
+    const model = screen.getByRole('textbox', { name: 'Model' });
+    expect(model).toHaveAccessibleDescription(/gpt-5/);
+    await user.type(model, 'gpt-5');
+    await user.click(screen.getByRole('button', { name: 'Save AI settings' }));
+    await waitFor(() => expect(client.sent.saved.at(-1)?.provider).toBeDefined());
+    expect(client.sent.saved.at(-1)?.provider).toEqual({
+      provider: 'openai-compatible',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-5',
+    });
+    await user.selectOptions(provider, 'gemini');
+    expect(screen.getByRole('textbox', { name: 'Model' })).toHaveAccessibleDescription(
+      /gemini-2\.5-pro/,
+    );
+    await user.selectOptions(provider, 'openai-compatible');
+    expect(screen.getByRole('textbox', { name: 'Server address' })).toBeRequired();
+  });
+
+  it('[AI-002] shows a saved provider at Gemini’s address as Gemini', async () => {
+    renderPage(
+      fakeAiClient(
+        aiView({
+          provider: {
+            provider: 'openai-compatible',
+            baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+            model: 'gemini-2.5-pro',
+          },
+        }),
+      ),
+    );
+    expect(await screen.findByRole('combobox', { name: 'Provider' })).toHaveValue('gemini');
+  });
+
   it('[AI-001] hides the per-feature and per-track controls while AI is off for the workspace', async () => {
     const user = userEvent.setup();
     renderPage(fakeAiClient(aiView({ enabled: false })));

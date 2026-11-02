@@ -5,7 +5,12 @@ export {
   createClaudeClient,
 } from './adapters/claude';
 export { buildClaudeParams, echoableContent, fromClaudeMessage } from './adapters/claude-request';
-export { OpenAiCompatibleAdapter } from './adapters/openai-compatible';
+export {
+  type KnownService,
+  knownService,
+  OpenAiCompatibleAdapter,
+  SERVICE_BASE_URLS,
+} from './adapters/openai-compatible';
 export {
   AGENT_LIMITS,
   type AgentClock,

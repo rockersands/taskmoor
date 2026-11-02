@@ -173,14 +173,41 @@ function parseToolCalls(calls: readonly WireToolCall[] | undefined): ToolCall[] 
 }
 
 /**
- * Local and self-hosted models through the OpenAI chat-completions shape (Ollama, vLLM, LM
- * Studio). The configured model serves every feature; effort and prompt caching have no
- * equivalent here, and tool calls are only offered when the server is known to support them.
+ * The hosted services the chat-completions shape is known to reach, by the base URL's host:
+ * OpenAI's own API and Google's OpenAI-compatible Gemini endpoint. Both take structured output
+ * and tool calls, so nothing is probed; each has its quirks in `body`.
+ */
+export type KnownService = 'openai' | 'gemini';
+
+/** OpenAI's API and Gemini's OpenAI-compatible endpoint, the base URLs the settings page offers. */
+export const SERVICE_BASE_URLS: Record<KnownService, string> = {
+  openai: 'https://api.openai.com/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+};
+
+export function knownService(baseUrl: string): KnownService | null {
+  let host: string;
+  try {
+    host = new URL(baseUrl).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+  if (host === 'api.openai.com') return 'openai';
+  if (host === 'generativelanguage.googleapis.com') return 'gemini';
+  return null;
+}
+
+/**
+ * Models through the OpenAI chat-completions shape: local and self-hosted servers (Ollama, vLLM,
+ * LM Studio) and the hosted OpenAI and Gemini APIs (`knownService`). The configured model serves
+ * every feature; effort and prompt caching have no equivalent here, and tool calls are only
+ * offered when the server is known to support them.
  */
 export class OpenAiCompatibleAdapter implements ProviderAdapter {
   readonly provider = 'openai-compatible' as const;
   readonly secretValues: readonly string[];
   private detected: DetectedCapabilities;
+  private readonly service: KnownService | null;
 
   private constructor(
     private readonly config: OpenAiCompatibleConfig,
@@ -189,8 +216,10 @@ export class OpenAiCompatibleAdapter implements ProviderAdapter {
     private readonly timeoutMs: number,
   ) {
     this.secretValues = apiKey ? [apiKey] : [];
+    this.service = knownService(config.baseUrl);
     this.detected = {
-      toolCalls: config.capabilities?.toolCalls ?? false,
+      // The hosted services call tools; an unknown server is asked (Ollama) or assumed not to.
+      toolCalls: config.capabilities?.toolCalls ?? this.service !== null,
       jsonSchema: config.capabilities?.jsonSchema ?? true,
     };
   }
@@ -208,7 +237,11 @@ export class OpenAiCompatibleAdapter implements ProviderAdapter {
       options.timeoutMs ?? 600_000,
     );
     const stated = config.capabilities;
-    if (options.detect !== false && stated?.toolCalls === undefined) {
+    if (
+      options.detect !== false &&
+      stated?.toolCalls === undefined &&
+      knownService(config.baseUrl) === null
+    ) {
       await adapter.detectCapabilities();
     }
     return adapter;
@@ -300,9 +333,15 @@ export class OpenAiCompatibleAdapter implements ProviderAdapter {
     const tools = request.tools?.length
       ? [...request.tools].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
       : undefined;
+    // Gemini's endpoint does not take the strict flags of OpenAI's structured output and
+    // function calling; it follows the schema without them.
+    const strict = this.service === 'gemini' ? {} : { strict: true };
     return {
       model: this.config.model,
-      max_tokens: request.maxTokens,
+      // OpenAI's reasoning models refuse max_tokens; every model there takes the newer name.
+      ...(this.service === 'openai'
+        ? { max_completion_tokens: request.maxTokens }
+        : { max_tokens: request.maxTokens }),
       messages: [
         ...(system ? [{ role: 'system', content: system }] : []),
         ...toWireMessages(request.messages),
@@ -311,7 +350,7 @@ export class OpenAiCompatibleAdapter implements ProviderAdapter {
         ? {
             response_format: {
               type: 'json_schema',
-              json_schema: { name: 'output', schema: request.jsonSchema, strict: true },
+              json_schema: { name: 'output', schema: request.jsonSchema, ...strict },
             },
           }
         : {}),
@@ -323,7 +362,7 @@ export class OpenAiCompatibleAdapter implements ProviderAdapter {
                 name: tool.name,
                 description: tool.description,
                 parameters: tool.inputSchema,
-                strict: true,
+                ...strict,
               },
             })),
             tool_choice: 'auto',

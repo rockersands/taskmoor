@@ -4236,6 +4236,10 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.provider.vertex': 'Google Vertex AI',
   'ai.provider.foundry': 'Microsoft Foundry',
   'ai.provider.openaiCompatible': 'Servidor compatible con OpenAI (Ollama, vLLM)',
+  'ai.provider.openai': 'API de OpenAI (modelos GPT)',
+  'ai.provider.gemini': 'API de Google Gemini (clave de Google AI Studio)',
+  'ai.field.modelHint':
+    'El nombre del modelo tal como lo escribe el proveedor, por ejemplo {example}.',
   'ai.field.baseUrlOptional': 'Dirección (vacía para la del propio proveedor)',
   'ai.field.baseUrl': 'Dirección del servidor',
   'ai.field.region': 'Región',

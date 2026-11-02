@@ -88,13 +88,46 @@ export const aiClient: AiClient = {
   },
 };
 
-const PROVIDERS: { id: ProviderId; label: MessageId }[] = [
+/**
+ * The choices of the provider list. OpenAI's and Gemini's APIs are OpenAI-compatible servers at
+ * a known address (`SERVICE_BASE_URLS` in @taskmoor/ai): choosing one fills the address, and a
+ * saved provider at that address shows as that choice again.
+ */
+type Choice = ProviderId | 'openai' | 'gemini';
+const PROVIDERS: { id: Choice; label: MessageId }[] = [
   { id: 'anthropic', label: 'ai.provider.anthropic' },
   { id: 'bedrock', label: 'ai.provider.bedrock' },
   { id: 'vertex', label: 'ai.provider.vertex' },
   { id: 'foundry', label: 'ai.provider.foundry' },
+  { id: 'openai', label: 'ai.provider.openai' },
+  { id: 'gemini', label: 'ai.provider.gemini' },
   { id: 'openai-compatible', label: 'ai.provider.openaiCompatible' },
 ];
+const SERVICES = {
+  openai: { baseUrl: 'https://api.openai.com/v1', host: 'api.openai.com', example: 'gpt-5' },
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    host: 'generativelanguage.googleapis.com',
+    example: 'gemini-2.5-pro',
+  },
+} as const;
+
+/** Which choice a saved provider is: OpenAI or Gemini by its address, else its own id. */
+function choiceOf(provider: ProviderSettings | null): Choice | '' {
+  if (!provider) return '';
+  if (provider.provider === 'openai-compatible' && provider.baseUrl) {
+    let host = '';
+    try {
+      host = new URL(provider.baseUrl).hostname;
+    } catch {
+      // Not a full address yet: a server of one's own.
+    }
+    for (const [id, service] of Object.entries(SERVICES)) {
+      if (service.host === host) return id as Choice;
+    }
+  }
+  return provider.provider;
+}
 
 /** The provider settings that are not secret, per provider. */
 const FIELDS: Record<ProviderId, { name: string; label: MessageId; required: boolean }[]> = {
@@ -241,11 +274,18 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
 
   const chooseProvider = (next: string) => {
     setResult(null);
+    const service = next === 'openai' || next === 'gemini' ? SERVICES[next] : undefined;
     setSettings({
       ...settings,
-      provider: next ? ({ provider: next as ProviderId } as ProviderSettings) : null,
+      provider: service
+        ? ({ provider: 'openai-compatible', baseUrl: service.baseUrl } as ProviderSettings)
+        : next
+          ? ({ provider: next as ProviderId } as ProviderSettings)
+          : null,
     });
   };
+  const choice = choiceOf(provider);
+  const service = choice === 'openai' || choice === 'gemini' ? SERVICES[choice] : undefined;
 
   const setField = (name: string, value: string) => {
     if (!provider) return;
@@ -355,7 +395,7 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
           <label htmlFor={`${id}-provider`}>{t('ai.provider')}</label>
           <select
             id={`${id}-provider`}
-            value={provider?.provider ?? ''}
+            value={choice}
             onChange={(event) => chooseProvider(event.target.value)}
           >
             <option value="">{t('ai.provider.none')}</option>
@@ -367,18 +407,29 @@ export function AiSettingsPage({ client = aiClient }: { client?: AiClient }) {
           </select>
         </div>
         {provider &&
-          FIELDS[provider.provider].map((field) => (
-            <div key={field.name} className="form-field">
-              <label htmlFor={`${id}-${field.name}`}>{t(field.label)}</label>
-              <input
-                id={`${id}-${field.name}`}
-                type={field.name === 'baseUrl' ? 'url' : 'text'}
-                required={field.required}
-                value={provider[field.name] ?? ''}
-                onChange={(event) => setField(field.name, event.target.value)}
-              />
-            </div>
-          ))}
+          FIELDS[provider.provider]
+            // A known service's address is set by the choice itself.
+            .filter((field) => !(service && field.name === 'baseUrl'))
+            .map((field) => (
+              <div key={field.name} className="form-field">
+                <label htmlFor={`${id}-${field.name}`}>{t(field.label)}</label>
+                <input
+                  id={`${id}-${field.name}`}
+                  type={field.name === 'baseUrl' ? 'url' : 'text'}
+                  required={field.required}
+                  value={provider[field.name] ?? ''}
+                  aria-describedby={
+                    service && field.name === 'model' ? `${id}-model-hint` : undefined
+                  }
+                  onChange={(event) => setField(field.name, event.target.value)}
+                />
+                {service && field.name === 'model' && (
+                  <p id={`${id}-model-hint`} className="form-hint">
+                    {t('ai.field.modelHint', { example: service.example })}
+                  </p>
+                )}
+              </div>
+            ))}
 
         {settings.enabled && (
           <fieldset className="form-field ai-features">
