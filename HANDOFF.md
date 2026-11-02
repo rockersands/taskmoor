@@ -53,9 +53,21 @@ Read this first in every session, then update it before you stop.
     check and the export ZIP unpack; a failed export unpack now removes its `.part` folder.
   - Storage quotas are columns of `attachment_setting`, off by default; CORE-021's wording
     changed to "no storage quota by default". The form is a section of the guardrails page.
-- **Next:** the 14 ASVS gaps (`pnpm gate M1` waits on them), in three parallel tasks with ADRs
-  109 to 111 and migrations 0081 to 0083; then M1-120 (release), and M1-091's 1M-issue run
-  last, on a machine with about 30 GB free and more cores (four hours is not reachable here).
+- **Merged to `main` (2026-11-02):** the three ASVS groups (ADR-109 to ADR-111, migrations 0081
+  to 0083); gate 5,601 tests and 165 e2e; `tools/image/smoke-kits.sh` green with the four new
+  database checks (it now takes `BUILD_CA` and passes `HTTPS_PROXY` for the all-in-one build).
+  The ASVS checklist has one gap left, 1.14.2, closed by signing the 1.0 release.
+- **Image scans done:** Trivy on the full image (PostgreSQL client layer included) and on the
+  all-in-one image: no finding (`docs/security/scan-results.json`). Trivy runs as
+  `mirror.gcr.io/aquasec/trivy:0.76.1` with `--network host` and the proxy's CA mounted.
+- **24-hour fuzz runs started 2026-11-02 17:25 UTC** (all 13 targets in parallel, `nice 19`,
+  seed 1180240, `--hang-seconds 120`; logs in the session's scratchpad `fuzz/`, reports in
+  `.verify/fuzz-<target>.json`). When they end, copy each report's seconds, inputs, failures
+  and rates into `docs/security/fuzz-results.json`; `pnpm gate M1` reads that file.
+- **Next:** M1-120 (release) once the fuzzers are clean and the user has answered: is 1.0 an LTS
+  release, does the repository go public, the storage quota default (off, CORE-021 reworded),
+  the ghcr.io token and network access, the AI key; M1-091's 1M-issue run last, on a machine
+  with about 30 GB free and more cores.
 - **ASVS group C (8.3.2, 1.9.1; ADR-111, migration 0083), branch `work/asvs-privacy`:**
   - Personal data: `apps/server/src/privacy/` (`export.ts` job `privacy.export` writes the ZIP
     into the attachment store; `erase.ts` erasure plus job `privacy.scrub` for history displays
