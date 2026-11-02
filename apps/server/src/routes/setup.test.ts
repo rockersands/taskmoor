@@ -112,6 +112,14 @@ describe('first-run setup and sessions', () => {
       .select('required')
       .executeTakeFirstOrThrow();
     expect(policy.required).toBe('site_admins');
+    // Storage quotas start generous: 1 TiB in all, 20 GiB a person (CORE-021; ASVS 12.1.3).
+    const storage = await database.db
+      .selectFrom('attachment_setting')
+      .select(['workspace_quota', 'person_quota', 'max_file_size'])
+      .executeTakeFirstOrThrow();
+    expect(
+      [storage.workspace_quota, storage.person_quota, storage.max_file_size].map(Number),
+    ).toEqual([1024 ** 4, 20 * 1024 ** 3, 1024 ** 3]);
   });
 
   it('[OPS-003] rejects the token a second time, and any token after setup', async () => {

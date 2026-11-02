@@ -25,6 +25,9 @@ compatible API follows the shape it is compatible with and changes only additive
 | **Long-term support (LTS)** | One release a year, named in its release notes | `1.0.4`, `1.0`, `lts` | Security fixes for **24 months** from its release, as patches on its own line (1.0.x) |
 | **Preview** | Builds of `main` before a release | `preview-<date>-<commit>` | None: for trying out, never for production data |
 
+**1.0 is the first LTS release** (the user's decision of 2026-11-02): its line, 1.0.x, takes
+security fixes until 24 months after its release date.
+
 An LTS line takes security fixes and fixes for data loss; it takes no features. Upgrading from
 an LTS release to the current one is supported in one step even when it is more than three
 releases back (`packages/db/src/releases.ts`: the last three releases, and the latest LTS).

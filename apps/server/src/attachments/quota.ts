@@ -3,8 +3,10 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 
 /**
  * Storage quotas for attachments (M1-118; CORE-021; ASVS 12.1.3; ADR-110): a workspace total and
- * a limit per person, in bytes, set by a site administrator beside the maximum file size. Both
- * are off by default (CORE-021 keeps storage uncapped unless an administrator asks).
+ * a limit per person, in bytes, set by a site administrator beside the maximum file size. A new
+ * workspace starts with generous ones (`DEFAULT_STORAGE_QUOTA`, written at first-run setup; the
+ * user's decision of 2026-11-02); an install upgraded from before 0082 keeps none until an
+ * administrator sets them, so nothing it stores is refused by an upgrade.
  *
  * - Usage is the size of the attachment files a workspace holds, and of those a person
  *   uploaded (thumbnails aside); a ticket in the trash keeps its files counted until it is
@@ -19,6 +21,12 @@ import { type Kysely, sql, type Transaction } from 'kysely';
  * - A lowered quota leaves what is stored and refuses further uploads.
  */
 type Db = Kysely<Database> | Transaction<Database>;
+
+/** A new workspace's quotas: 1 TiB in all and 20 GiB a person (decisions.csv, 2026-11-02). */
+export const DEFAULT_STORAGE_QUOTA = {
+  workspace: 1024 ** 4,
+  person: 20 * 1024 ** 3,
+} as const satisfies StorageQuota;
 
 export interface StorageQuota {
   workspace: number | null;

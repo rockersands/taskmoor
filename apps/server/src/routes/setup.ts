@@ -1,8 +1,10 @@
 import type { Database } from '@taskmoor/db';
 import { checkPassword, describePasswordProblem, type PasswordHasher } from '@taskmoor/iam';
 import type { FastifyInstance } from 'fastify';
-import type { Kysely } from 'kysely';
+import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
+import { DEFAULT_STORAGE_QUOTA } from '../attachments/quota';
+import { DEFAULT_MAX_FILE_SIZE } from '../attachments/records';
 import { startSession } from '../auth';
 import { emit } from '../events/bus';
 import {
@@ -108,6 +110,25 @@ export function registerSetupRoutes(
         .insertInto('two_factor_policy')
         .values({ workspace_id: request.workspaceId, required: 'site_admins' })
         .onConflict((oc) => oc.column('workspace_id').doNothing())
+        .execute();
+      // Storage quotas start generous on a new workspace (CORE-021, the user's decision of
+      // 2026-11-02): 1 TiB in all, 20 GiB a person; the guardrails page changes them.
+      await trx
+        .insertInto('attachment_setting')
+        .values({
+          workspace_id: request.workspaceId,
+          max_file_size: DEFAULT_MAX_FILE_SIZE,
+          workspace_quota: DEFAULT_STORAGE_QUOTA.workspace,
+          person_quota: DEFAULT_STORAGE_QUOTA.person,
+        })
+        // The workspace's row may exist already (its file size limit); quotas an earlier setup
+        // attempt or an administrator chose are kept.
+        .onConflict((oc) =>
+          oc.column('workspace_id').doUpdateSet({
+            workspace_quota: sql`coalesce(attachment_setting.workspace_quota, excluded.workspace_quota)`,
+            person_quota: sql`coalesce(attachment_setting.person_quota, excluded.person_quota)`,
+          }),
+        )
         .execute();
       await startSession(trx, request, reply, {
         userId: created.id,

@@ -113,3 +113,11 @@ quota is set. Imports count toward usage but are not refused.
   streaming path first.
 - Revisit when M2 brings outbound web requests in automation (AUT-007) and extensions with an
   allow list (EXT-001): both reuse the guard.
+
+## Changes
+
+- 2026-11-02, the user's decision: storage quotas are **on by default for new installations**:
+  first-run setup writes 1 TiB for the workspace and 20 GiB a person
+  (`DEFAULT_STORAGE_QUOTA`, `routes/setup.ts`), filling only quotas still empty. An install
+  upgraded through migration 0082 keeps none until an administrator sets them, so no upgrade
+  refuses an upload it accepted before. CORE-021 and the manual say so.

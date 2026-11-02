@@ -3,11 +3,12 @@
 Every release, newest first. The policy for versions, channels and support is
 `docs/ops/releases.md`.
 
-## 1.0.0 (unreleased)
+## 1.0.0 (unreleased): long-term support
 
 The first release: a self-hosted work tracker with every feature included, compatible with
 Jira's API and query language where people and tools expect them, and an importer that moves a
-Data Center or Cloud instance across.
+Data Center or Cloud instance across. 1.0 is a long-term-support release: its 1.0.x line gets
+security fixes for 24 months.
 
 ### Work tracking
 - Tracks, ticket types and hierarchy levels; tickets with change history, rich text, comments
