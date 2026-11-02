@@ -67,12 +67,36 @@ export const Empty: Story = {
   args: { client: fakeBoardClient({ cards: [] }) },
 };
 
-/** When the board's data arrived, for the render budget below. */
-const arrival = { at: 0 };
+/**
+ * The 5,000-card board, watched on the page from the moment its data arrives (the story's play
+ * function starts only once the page is drawn, too late to press anything): the first move
+ * button is pressed as soon as it exists, and the board is interactive when its menu opens.
+ */
+const watch = { arrival: 0, menu: 0, cardsAtMenu: 0, all: 0 };
+function watchBoard() {
+  watch.arrival = performance.now();
+  const check = () => {
+    const cards = document.querySelectorAll('.board-card').length;
+    if (!watch.menu && document.querySelector('.board-move-menu')) {
+      watch.menu = performance.now() - watch.arrival;
+      watch.cardsAtMenu = cards;
+    }
+    const button = document.querySelector<HTMLButtonElement>('.board-card-move');
+    if (!watch.menu && button && button.getAttribute('aria-expanded') !== 'true') button.click();
+    if (cards === 5000) {
+      watch.all = performance.now() - watch.arrival;
+      observer.disconnect();
+    }
+  };
+  const observer = new MutationObserver(check);
+  observer.observe(document.body, { childList: true, subtree: true });
+}
 
 /**
- * 5,000 cards (M1-046: rendered in under a second from the data's arrival). Timing only: the
- * same board passes axe in the stories above, and axe over 5,000 cards measures axe.
+ * 5,000 cards (M1-046; 05b: under 1 s to interactive): from the data's arrival until a card's
+ * move menu opens, then every card on the page. A cell's first cards are drawn at once and the
+ * rest in a transition that yields to input. Timing only: the same board passes axe in the
+ * stories above, and axe over 5,000 cards measures axe.
  */
 export const FiveThousandCards: Story = {
   args: {
@@ -82,19 +106,19 @@ export const FiveThousandCards: Story = {
         ...inner,
         data: async (...args: Parameters<typeof inner.data>) => {
           const data = await inner.data(...args);
-          arrival.at = performance.now();
+          watchBoard();
           return data;
         },
       };
     })(),
   },
   parameters: { a11y: { test: 'off' } },
-  play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelectorAll('.board-card')).toHaveLength(5000), {
-      timeout: 10_000,
-      interval: 10,
-    });
-    const took = performance.now() - arrival.at;
-    await expectWithinBudget(took, 1000, '5,000 cards on screen (ms)');
+  play: async () => {
+    await waitFor(() => expect(watch.all).toBeGreaterThan(0), { timeout: 15_000, interval: 50 });
+    expect(watch.menu).toBeGreaterThan(0);
+    // The menu opened before every card was drawn: the rest did not hold the page.
+    expect(watch.cardsAtMenu).toBeLessThan(5000);
+    await expectWithinBudget(watch.menu, 1000, '5,000-card board interactive (ms)');
+    await expectWithinBudget(watch.all, 4000, 'all 5,000 cards on the page (ms)');
   },
 };

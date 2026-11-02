@@ -468,6 +468,11 @@ describe('similar tickets (M1-078)', () => {
       SELECT k.id, 1, ${LOCAL_MODEL_ID}, md5(k.summary),
              (SELECT array_agg(random()::real - 0.5) FROM generate_series(1, 384) WHERE k.id > 0)
         FROM ticket k WHERE k.summary LIKE 'Load %'`.execute(database.db);
+    // As autovacuum does after a load this size: without statistics the planner takes the
+    // 3,000 new rows for one and joins them in a nested loop (4.5 million rows compared).
+    await sql`ANALYZE ticket, ticket_embedding, ticket_comment, comment_embedding`.execute(
+      database.db,
+    );
     const time = async (app: FastifyInstance, what: string) => {
       const runs: number[] = [];
       for (let i = 0; i < 10; i++) {

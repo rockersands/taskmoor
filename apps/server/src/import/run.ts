@@ -698,9 +698,26 @@ export async function runImport(
     if (outcome === 'stop') return 'finished';
     if (outcome === 'complete' || outcome === 'cancelled') {
       await finishRun(db, runId, outcome === 'complete' ? 'done' : 'cancelled');
+      if (!run.dry_run) await analyzeImported(db);
       return 'finished';
     }
     if (Date.now() >= options.until) return 'more';
+  }
+}
+
+/**
+ * Fresh statistics for the tables an import fills (M1-117). Until autovacuum gets to them,
+ * the planner takes a table that grew by a million rows for the size it had, and joins it in
+ * nested loops: similar tickets at 3,000 new rows took a second instead of 150 ms. Best effort:
+ * a failure leaves it to autovacuum.
+ */
+export async function analyzeImported(db: Kysely<Database>): Promise<void> {
+  try {
+    await sql`ANALYZE ticket, ticket_comment, ticket_link, ticket_web_link, ticket_follower,
+      ticket_vote, ticket_key_history, time_entry, ticket_change,
+      v_text, v_number, v_date, v_time, v_user, v_option`.execute(db);
+  } catch {
+    // Autovacuum analyzes them later.
   }
 }
 

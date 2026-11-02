@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   type DragEvent,
   type KeyboardEvent,
+  startTransition,
   useCallback,
   useEffect,
   useId,
@@ -40,6 +41,9 @@ const nameOf = (value: unknown): string | null =>
   value && typeof value === 'object' && 'name' in value
     ? String((value as { name: unknown }).name)
     : null;
+
+/** How many cards of a cell are drawn before the rest: more than a screen holds. */
+const FIRST_CELL = 50;
 
 function cardMeta(t: Translate, card: BoardCard): string[] {
   const out: string[] = [card.ticketType.name];
@@ -106,6 +110,14 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     laneId: string;
     before: number | null;
   } | null>(null);
+  // A cell's first cards are drawn at once and the rest in a transition that yields to input,
+  // so a board of thousands is usable at once (05b: 5,000 cards under 1 s to interactive).
+  const [complete, setComplete] = useState(false);
+  useEffect(() => {
+    if (!data || complete) return;
+    const frame = requestAnimationFrame(() => startTransition(() => setComplete(true)));
+    return () => cancelAnimationFrame(frame);
+  }, [data, complete]);
   const focusAfter = useRef<number | null>(null);
   const links = useRef(new Map<number, HTMLAnchorElement>());
   const firstChoice = useRef<HTMLButtonElement | null>(null);
@@ -563,7 +575,10 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
                           : column.name
                       }
                     >
-                      {cardsIn(column.id, lane.id).map(renderCard)}
+                      {(complete
+                        ? cardsIn(column.id, lane.id)
+                        : cardsIn(column.id, lane.id).slice(0, FIRST_CELL)
+                      ).map(renderCard)}
                     </ul>
                   ))}
                 </div>
