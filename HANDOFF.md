@@ -2,6 +2,28 @@
 
 Read this first in every session, then update it before you stop.
 
+## Start here: 2026-11-02 (cloud session): M1-079 merged, M1-117 done, the ASVS gaps next
+
+- **M1-079 (AI v1 features) is on `main`** (ADR-108). It stays in-progress only for the measured
+  thresholds, which need an AI key (`pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`).
+- **M1-117 is done at 1M** (`docs/spikes/search-1m.md`, `docs/spikes/estimates-10m-30m.md`).
+  The bench database `m1037_bench_1m` (system Postgres, 9.5 GB product schema plus `gen`) is now
+  on every migration; `pnpm bench:search --database-url <url> --label 1m` reuses it (it skips
+  the load when tickets exist, and `ensureTrackKeys` adds track keys the old loader left out).
+  bench:search now also times opening a ticket; bench:check holds it to 100 ms.
+  - A finished, real import runs `ANALYZE` on the tables it fills (`analyzeImported` in
+    `import/run.ts`): without it similar tickets took a second after a bulk load. Partitioned
+    `ticket_change` keeps its statistics on the partitions.
+  - The board draws a cell's first 50 cards (`FIRST_CELL`) and the rest in a transition.
+    The 5,000-card story watches the page from the data's arrival (`watchBoard`): the play
+    function of a story starts only once the page is drawn, so it cannot time
+    interactivity itself.
+  - Under load, the enforced speed limits of the 1,500-field edit (50 ms) and the 2,000-row
+    timeline (1.5 s) fail by a few percent; alone they pass.
+- **Next:** the 14 ASVS gaps (`pnpm gate M1` waits on them), in three parallel tasks with ADRs
+  109 to 111 and migrations 0081 to 0083; then M1-120 (release), and M1-091's 1M-issue run
+  last, on a machine with about 30 GB free and more cores (four hours is not reachable here).
+
 ## Start here: 2026-10-31 (cloud session): the user's decisions, search changes, batch 3
 
 **Batch 3 is on `main`** (one gate, `pnpm verify --e2e`: 5,215 tests, 157 e2e): M1-093 boards and

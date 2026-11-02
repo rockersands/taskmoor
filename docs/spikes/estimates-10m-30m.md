@@ -9,8 +9,8 @@ measures at 30M (milestones.csv).
 
 | Run | Size | Where | Result |
 |---|---|---|---|
-| Search perf set (`docs/spikes/search-1m.md`) | 1,000,491 tickets | this container: 4 shared vCPUs (Xeon 2.1 GHz), 16 GB, PostgreSQL 16 | 50 queries as a member and an administrator; slowest statement p95 113 ms, slowest request p95 171 ms; budget 300 ms |
-| Opening a ticket (same report) | 1M | same | the ticket by key, and the page's reads; budget 100 ms p95 |
+| Search perf set (`docs/spikes/search-1m.md`) | 1,000,491 tickets | this container: 4 shared vCPUs (Xeon 2.1 GHz), 16 GB, PostgreSQL 16 | 50 queries as a member and an administrator; slowest statement p95 90 to 113 ms, slowest request p95 155 to 171 ms over two runs; budget 300 ms |
+| Opening a ticket (same report) | 1M | same | the ticket by key 15.5 ms p95, the page's six reads 42 ms p95; budget 100 ms |
 | Design spikes (`query-compiler-*`, `field-storage-*`, `authz-overhead-*`) | 200k, 1M and **10M** | Ryzen 7 3700X, 64 GB (2026-10-12) | the same query shapes on the spike schema at three sizes: how each shape grows |
 | Load test (`docs/ops/load-tests.md`) | 100k | Apple M3 Pro | 50 to 2,000 people; sizing per request |
 | `pnpm bench:check --size 1m --e2e` | 1M spikes, tests enforced | this container | budgets met; two misses fixed (similar tickets without statistics, the 5,000-card board) |
@@ -53,7 +53,8 @@ cap, and then stops growing.
 
 - **Opening a ticket** reads one ticket by its key and its partition of history, comments and
   links by the ticket's id: all key lookups, flat in the dataset's size (the spike's "open one
-  item" was 1.83 ms at 1M and 1.35 ms at 10M). The estimate at 10M and 30M is the 1M figure.
+  item" was 1.83 ms at 1M and 1.35 ms at 10M). Measured at 1M through the app: 15.5 ms p95 for
+  the ticket, 42 ms p95 for the page's six reads. The estimate at 10M and 30M is the same.
 - **Boards** read their columns' cards (at most the board's limit per column) through the same
   index walks: flat. The 5,000-card board is a browser budget, independent of the dataset.
 - **Field edits** write one row per side table (ADR-008): 1.7 ms at 1M, 2 ms at 10M in the spike.
