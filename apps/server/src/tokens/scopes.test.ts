@@ -64,6 +64,9 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/auth/saml/:id/metadata']).toBe('public');
     expect(classes['POST /api/v1/account/two-factor/totp/disable']).toBe('session');
     expect(classes['PUT /api/v1/security/two-factor']).toBe('admin');
+    // The security alert rules (ADR-109).
+    expect(classes['GET /api/v1/security/alerts']).toBe('admin');
+    expect(classes['PUT /api/v1/security/alerts']).toBe('admin');
     expect(classes['GET /api/v1/audit/export']).toBe('admin');
     expect(classes['PATCH /api/v1/identity-providers/:id']).toBe('admin');
     // LDAP and Active Directory administration (M1-082), reads included.

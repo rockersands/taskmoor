@@ -9,6 +9,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { plainText } from '../fields/types';
 import type { Cursor } from '../search/compile';
 import { DEFAULT_QUERY_TIMEOUT_MS, prepareSearch, readOnly } from '../search/run';
+import { countBulkExport } from '../security/alerts';
 import type { TicketView } from '../tickets/store';
 import {
   project,
@@ -221,6 +222,8 @@ export function registerSearchExportRoutes(
       return searchRefusal(reply, error, timeoutMs);
     }
     const nothing = filter.tracks !== 'all' && filter.tracks.length === 0;
+    // A bulk export by this person (ASVS 11.1.7; ADR-109): counted for the alert rule.
+    await countBulkExport(db, ws, user.id);
     const shape = projection(columns.filter((c) => c.id !== 'key').map((c) => c.id));
     const header = columns.map((c) =>
       c.kind === 'system' ? c.id : (visibleFields.get(c.field) ?? c.id),

@@ -8,8 +8,9 @@ reads this file: every row marked Gap keeps the gate waiting.
 
 Paths are relative to the repository root. Tests named here run in `pnpm verify`.
 
-**Counts:** 258 requirements: 218 met, 25 not applicable, 1 accepted by the user (3.3.2), 14 gaps. Ten of the met ones were
-fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 14.4.5, 14.4.6.
+**Counts:** 258 requirements: 225 met, 25 not applicable, 1 accepted by the user (3.3.2), 7 gaps. Ten of the met ones were
+fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 14.4.5, 14.4.6. Seven gaps were closed on 2026-11-02
+by the security events of ADR-109: 2.2.3, 2.5.5, 7.1.3, 7.2.1, 7.2.2, 11.1.7, 11.1.8.
 
 ## V1 Architecture, design and threat modelling
 
@@ -72,7 +73,7 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 2.1.12 | The password can be shown while typing | Met | `apps/web/src/session/SignInForm.test.tsx`, `PasswordLinkPage.test.tsx` |
 | 2.2.1 | Anti-automation against guessing | Met | Per-account and per-address throttling and lockout (`packages/iam/src/throttle.ts`); `asvs.test.ts` 2.2.1 |
 | 2.2.2 | Weak authenticators (SMS, email codes) only as a second option | N/A | No SMS or emailed codes; email carries only one-time recovery links (2.5) |
-| 2.2.3 | People are told when their credentials change | Gap | `user.password_changed` and two-factor events are audited but not mailed. Fix: a security notice by email on password, second factor and recovery code changes (todo in `asvs.test.ts`; follow-up task) |
+| 2.2.3 | People are told when their credentials change | Met | A security notice by email on a password change (self or reset link), a second factor added or removed, new recovery codes, an administrator reset, and an email change (to the old address): what, when, address and User-Agent, who, how to get help, no sign-in link; not optional, not batched (`security/notices.ts`, `security/mail.ts`, ADR-109; `asvs.test.ts` 2.2.3, `security/security.test.ts`) |
 | 2.3.1 | Initial passwords and activation codes are random and expire | Met | One-time setup and password links, hashed, expiring (`routes/password-links.ts`; `asvs.test.ts` 2.5.1) |
 | 2.3.2 | Security keys and passkeys can be enrolled and used | Met | WebAuthn (`apps/server/src/two-factor.ts`, `@simplewebauthn/server`; `routes/two-factor.test.ts`) |
 | 2.3.3 | Renewal of time-bound authenticators is announced | N/A | No authenticator expires (certificates are not used to sign in) |
@@ -85,7 +86,7 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 2.5.2 | No password hints or secret questions | Met | None exist (`routes/password-links.ts`) |
 | 2.5.3 | Recovery never reveals the current password | Met | Recovery sets a new password through a link |
 | 2.5.4 | No shared or default accounts | Met | `asvs.test.ts` 2.5.4; first-run setup creates the administrator (`routes/setup.ts`) |
-| 2.5.5 | People are told when an authentication factor changes | Gap | As 2.2.3 |
+| 2.5.5 | People are told when an authentication factor changes | Met | As 2.2.3: second factor enabled or disabled (with the method), recovery codes made again, second factors reset by an administrator, email changed (`asvs.test.ts` 2.5.5, `security/security.test.ts`) |
 | 2.5.6 | Recovery uses a secure mechanism | Met | `asvs.test.ts` 2.5.1, 2.5.6 |
 | 2.5.7 | A lost second factor is reset with identity checks as strong as enrolment | Met | Only an administrator resets a second factor, audited (`user.two_factor_reset`, `routes/two-factor.ts`) |
 | 2.6.1 | Recovery codes work once | Met | `used_at` (`apps/server/src/two-factor.ts`); `routes/two-factor.test.ts` |
@@ -207,10 +208,10 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 |---|---|---|---|
 | 7.1.1 | No credentials or payment data in logs | Met | Request log without headers or bodies (Fastify defaults); AI log without prompts (`packages/ai/src/gateway.ts`); tokens hashed |
 | 7.1.2 | No other sensitive personal data in logs | Met | As 7.1.1; audit records name people by id and keep no content by default (ADR-100) |
-| 7.1.3 | Security events are logged, failures included | Gap | Sign-ins, sign-outs, revocations, password and second-factor changes are audited (`audit/subscriber.ts`); failed sign-ins and refused requests are only counted (throttle) or in the request log as status codes. Fix: audit failed sign-ins and repeated access refusals (follow-up task) |
+| 7.1.3 | Security events are logged, failures included | Met | Successes as domain events (`audit/subscriber.ts`); failed sign-ins of every method, refused tokens and Basic credentials (`audit/record.ts`, `tokens/bearer.ts`), repeated refusals (`security/alerts.ts`), alerts (`security.alert_raised`), without secrets (ADR-109; `security/security.test.ts`, `routes/audit.test.ts`) |
 | 7.1.4 | Log events hold what an investigation needs | Met | Audit records: who, when, from where, what, before and after (`audit/record.ts`) |
-| 7.2.1 | Authentication decisions are logged | Gap | As 7.1.3 |
-| 7.2.2 | Access control decisions can be logged, failures are | Gap | As 7.1.3 |
+| 7.2.1 | Authentication decisions are logged | Met | `session.started` for every success; `session.sign_in_failed` with account, address, User-Agent, `method` (password, directory, totp, webauthn, recovery code, enrolment, API token, Basic) and `reason`, never what was typed (`security/security.test.ts` 7.2.1, `routes/two-factor.test.ts`, `routes/directories.test.ts`) |
+| 7.2.2 | Access control decisions can be logged, failures are | Met | Every 403 to a person or token counts; `access.refused_repeatedly` is written at 10 in the window and each tenfold, so a flood writes a handful of records (`security/refusals.ts`, `security/alerts.ts`; `security/security.test.ts` 7.2.2) |
 | 7.3.1 | Logging encodes data against log injection | Met | Pino JSON; audit as structured rows |
 | 7.3.3 | Security logs are protected | Met | Hash chain per partition (`audit/chain.ts`; `chain.test.ts`); `cli.mjs audit-verify` |
 | 7.3.4 | Time sources are synchronised | Met | Timestamps from the database server (`now()`), UTC; the host keeps time (operations manual) |
@@ -270,8 +271,8 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 | 11.1.4 | Anti-automation against mass export and abuse | Met | Rate limits (`ratelimit`), export and bulk operations audited and limited (`guardrails`) |
 | 11.1.5 | Limits against likely business risks | Met | Guardrails on field, workflow and board sizes (M1-055) |
 | 11.1.6 | No race conditions in sensitive operations | Met | Transactions and row locks (`tickets/store.ts`), single-use tokens updated atomically (`two-factor.ts` `used_at`) |
-| 11.1.7 | Unusual activity is monitored | Gap | Audit and metrics exist, but no rule watches for unusual activity. Fix: alert rules for failed sign-in bursts, bulk exports, AI spend (with 7.1.3; follow-up task) |
-| 11.1.8 | Alerts on automated attacks | Gap | As 11.1.7; AI spend alerts exist (ADR-100) |
+| 11.1.7 | Unusual activity is monitored | Met | Alert rules over failed sign-ins per account and per address, refusals per person or token, bulk exports per person, with defaults and an administrator setting (`security/alerts.ts`, `routes/security-alerts.ts`, Security page `SecurityAlertsForm`); AI spend alerts (ADR-100) reach administrators too (ADR-109; `security/security.test.ts`, `SecurityPage.test.tsx`) |
+| 11.1.8 | Alerts on automated attacks | Met | A rule's threshold raises `security.alert_raised` once per window: audited, in every site administrator's inbox (Priority) and email (`security/notices.ts`; `security/security.test.ts` 11.1.8, `InboxPage.test.tsx`, `contract.test.ts`) |
 
 ## V12 Files and resources
 
@@ -345,11 +346,8 @@ fixed in this task: 5.2.8, 6.2.3, 8.1.1, 8.2.1, 12.3.4, 14.2.2, 14.4.2, 14.4.4, 
 |---|---|---|---|
 | 1.9.1 | Plain TCP to the bundled PostgreSQL inside the Compose network | Low | TLS in the Compose kit, or the private network documented as the boundary |
 | 1.14.2 | Releases not yet signed | Medium | M1-100 (the key from the user's Mac) |
-| 2.2.3, 2.5.5 | No email when a credential changes | Medium | Security notices by email |
 | 5.2.6, 12.6.1 | Webhooks may reach private addresses | Medium | Resolver that refuses private ranges |
-| 7.1.3, 7.2.1, 7.2.2 | Failed sign-ins and refusals not audited | Medium | Audit events for failures |
 | 8.3.2 | No per-person export or erasure | Low | Personal data export and anonymisation |
-| 11.1.7, 11.1.8 | No alerting on unusual activity | Low | Alert rules (with 7.1.3) |
 | 12.1.2 | No uncompressed-size ceiling when staging a backup | Low | Ceiling on total and ratio |
 | 12.1.3 | No storage quota | Low | Workspace and per-person quotas |
 

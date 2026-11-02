@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { SessionProvider } from '../session/SessionProvider';
+import { fakeAlertsClient } from './alertsFixtures';
 import { ADMIN, MEMBER } from './fixtures';
 import { type SecurityClient, SecurityPage, type TwoFactorPolicy } from './SecurityPage';
 import type { SessionPolicy, SessionPolicyClient } from './SessionPolicyForm';
@@ -45,7 +46,7 @@ function fakeSessions(): SessionPolicyClient {
 const meta = {
   title: 'Admin/SecurityPage',
   component: SecurityPage,
-  args: { client: fakeSecurityClient(), sessions: fakeSessions() },
+  args: { client: fakeSecurityClient(), sessions: fakeSessions(), alerts: fakeAlertsClient() },
   decorators: [
     (Story) => (
       <SessionProvider session={ADMIN}>

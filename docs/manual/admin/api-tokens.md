@@ -1,8 +1,8 @@
 ---
 title: "API tokens and service accounts"
 audience: admins
-sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, docs/adr/0075-rate-limits.md
-accessed: 2026-10-30
+sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # API tokens and service accounts
@@ -228,7 +228,12 @@ several API processes a client may reach its limit once per process.
   configuration changes) and the ticket history name the owner, not the token.
 - Each token remembers when and from which address it was last used. The time is written at
   most once a minute.
-- Failed token attempts count towards the lockout above but are not written to the audit log.
+- A refused token is a `session.sign_in_failed` record with `method` `api_token` (or `basic`
+  on the Jira-compatible API), the reason (`token_unknown`, `token_expired`, `token_revoked`,
+  `token_owner_deactivated`) and, for a token Taskmoor knows, its id and owner; never the token.
+  It counts towards the lockout above and the address alert rule (see
+  [security alerts](people-and-groups.md#security-emails-and-alerts)). A token refused again and
+  again (HTTP 403) is recorded in aggregate as `access.refused_repeatedly`.
 - Tool calls through the [MCP server](mcp.md) are audited one by one.
 
 Site administrators read the log with `GET /api/v1/audit?action=token.`; `action` matches an

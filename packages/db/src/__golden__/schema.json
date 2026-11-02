@@ -637,7 +637,8 @@
       "payload jsonb not null default '{}'::jsonb",
       "occurred_at timestamp with time zone not null default clock_timestamp()",
       "published_at timestamp with time zone",
-      "ip text"
+      "ip text",
+      "user_agent text"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX domain_event_pkey ON public.domain_event USING btree (id)",
@@ -1827,6 +1828,72 @@
       "CREATE UNIQUE INDEX scim_user_pkey ON public.scim_user USING btree (user_id)",
       "CREATE INDEX scim_user_workspace_external_id_idx ON public.scim_user USING btree (workspace_id, external_id) WHERE (external_id IS NOT NULL)",
       "CREATE UNIQUE INDEX scim_user_workspace_user_name_idx ON public.scim_user USING btree (workspace_id, lower(user_name)) WHERE (removed_at IS NULL)"
+    ]
+  },
+  "security_alert": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "rule text not null",
+      "key text not null",
+      "window_start timestamp with time zone not null",
+      "count integer not null",
+      "threshold integer not null",
+      "window_minutes integer not null",
+      "details jsonb not null default '{}'::jsonb",
+      "raised_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX security_alert_pkey ON public.security_alert USING btree (id)",
+      "CREATE INDEX security_alert_recent_idx ON public.security_alert USING btree (workspace_id, raised_at DESC)",
+      "CREATE UNIQUE INDEX security_alert_workspace_id_rule_key_window_start_key ON public.security_alert USING btree (workspace_id, rule, key, window_start)"
+    ]
+  },
+  "security_alert_rule": {
+    "columns": [
+      "workspace_id integer not null",
+      "rule text not null",
+      "enabled boolean not null default true",
+      "threshold integer not null",
+      "window_minutes integer not null",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX security_alert_rule_pkey ON public.security_alert_rule USING btree (workspace_id, rule)"
+    ]
+  },
+  "security_counter": {
+    "columns": [
+      "workspace_id integer not null",
+      "rule text not null",
+      "key text not null",
+      "window_start timestamp with time zone not null",
+      "count integer not null default 0"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX security_counter_pkey ON public.security_counter USING btree (workspace_id, rule, key, window_start)",
+      "CREATE INDEX security_counter_window_idx ON public.security_counter USING btree (window_start)"
+    ]
+  },
+  "security_email": {
+    "columns": [
+      "id bigint not null",
+      "workspace_id integer not null",
+      "user_id integer not null",
+      "kind text not null",
+      "domain_event_id bigint not null",
+      "to_address text not null",
+      "details jsonb not null default '{}'::jsonb",
+      "created_at timestamp with time zone not null default now()",
+      "attempts integer not null default 0",
+      "last_error text",
+      "message_id text",
+      "sent_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX security_email_domain_event_id_user_id_kind_key ON public.security_email USING btree (domain_event_id, user_id, kind)",
+      "CREATE UNIQUE INDEX security_email_pkey ON public.security_email USING btree (id)",
+      "CREATE INDEX security_email_unsent_idx ON public.security_email USING btree (id) WHERE (sent_at IS NULL)"
     ]
   },
   "session_policy": {

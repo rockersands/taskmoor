@@ -156,7 +156,8 @@ export type InvalidTokenReason = 'unknown' | 'expired' | 'revoked' | 'owner_deac
 
 export type BearerOutcome =
   | { ok: true; token: CurrentApiToken; user: SessionUser }
-  | { ok: false; reason: InvalidTokenReason };
+  /** A refusal; a token Taskmoor knows (expired, revoked...) also names itself and its owner. */
+  | { ok: false; reason: InvalidTokenReason; tokenId?: number; userId?: number };
 
 /**
  * Finds the token a request presented. Text that is not shaped like a token is refused without
@@ -193,9 +194,10 @@ export async function resolveApiToken(
     .where('t.workspace_id', '=', workspaceId)
     .executeTakeFirst();
   if (!row) return { ok: false, reason: 'unknown' };
-  if (row.revoked_at) return { ok: false, reason: 'revoked' };
-  if (row.expires_at.getTime() <= now.getTime()) return { ok: false, reason: 'expired' };
-  if (row.deactivated_at) return { ok: false, reason: 'owner_deactivated' };
+  const known = { tokenId: row.tokenId, userId: row.id };
+  if (row.revoked_at) return { ok: false, reason: 'revoked', ...known };
+  if (row.expires_at.getTime() <= now.getTime()) return { ok: false, reason: 'expired', ...known };
+  if (row.deactivated_at) return { ok: false, reason: 'owner_deactivated', ...known };
   if (!row.last_used_at || now.getTime() - row.last_used_at.getTime() > TOKEN_TOUCH_INTERVAL_MS) {
     await db
       .updateTable('api_token')

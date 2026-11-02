@@ -22,8 +22,27 @@ Read this first in every session, then update it before you stop.
     interactivity itself.
   - Under load, the enforced speed limits of the 1,500-field edit (50 ms) and the 2,000-row
     timeline (1.5 s) fail by a few percent; alone they pass.
-- **Next:** the 14 ASVS gaps (`pnpm gate M1` waits on them), in three parallel tasks with ADRs
-  109 to 111 and migrations 0081 to 0083; then M1-120 (release), and M1-091's 1M-issue run
+- **ASVS group A, security events (ADR-109, migration 0081, branch `work/asvs-events`):**
+  2.2.3, 2.5.5, 7.1.3, 7.2.1, 7.2.2, 11.1.7 and 11.1.8 are Met.
+  - Security emails are their own table and mailer (`security/notices.ts`, `security/mail.ts`,
+    every 15 s on the worker), not notifications: no preference, digest, quiet hours or
+    unsubscribe applies.
+  - `domain_event.user_agent` is new, filled from the request scope like `ip`. An event with an
+    explicit `ip` (also `null`) in its context takes no User-Agent from the request.
+  - Every 403 to a person or token costs one upsert in `security_counter` (`onSend` hook in
+    `security/refusals.ts`). A test that makes many refusals by one person now writes
+    `access.refused_repeatedly` records, and at 50 in 15 minutes a `security.alert_raised`
+    event. The same goes for five exports by one person in an hour, or for failed sign-ins:
+    check there first if a test that counts events or audit records breaks after a merge.
+  - The inbox reads notifications with outer joins: alert items have no ticket (`ticket: null`,
+    `alert`) and show only to site administrators. `inbox.large.test.ts` holds its budget
+    (first page 17 ms p95 at 50,000 items).
+  - Notices other than an email change go to the address the account has when the subscriber
+    runs, not when the change happened.
+  - IAM-018 (anomaly detection, M3) is cited by the alert tests: exports are counted, not
+    weighed by ticket volume; new countries and impossible travel stay for M3.
+- **Next:** the rest of the 14 ASVS gaps (`pnpm gate M1` waits on them), in three parallel tasks
+  with ADRs 109 to 111 and migrations 0081 to 0083; then M1-120 (release), and M1-091's 1M-issue run
   last, on a machine with about 30 GB free and more cores (four hours is not reachable here).
 
 ## Start here: 2026-10-31 (cloud session): the user's decisions, search changes, batch 3

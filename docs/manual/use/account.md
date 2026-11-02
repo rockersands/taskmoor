@@ -1,8 +1,8 @@
 ---
 title: "Your account"
 audience: users
-sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Your account
@@ -102,6 +102,23 @@ After your password, Taskmoor asks for the code from your app. **Use a security 
 a recovery code** switch to the other methods. If your administrator requires two-factor
 authentication and you have not set it up, you set up an authenticator app before you can
 continue.
+
+## Security emails
+
+Taskmoor emails you when something about how you sign in changes, so you notice a change you
+did not make:
+
+- your password changed (on this page, or with a reset link from an administrator);
+- a second factor was added or removed, or new recovery codes were made;
+- an administrator removed your second factors;
+- your email address changed: that email goes to your **old** address, with the new one partly
+  hidden.
+
+Each email says what changed, when, from which IP address and browser or program, and whether you
+or an administrator did it. These emails are not notifications: your notification settings,
+digests and quiet hours do not hold them, and they cannot be turned off. They contain no link that
+signs you in. If you did not make the change, tell your Taskmoor administrator straight away and
+change your password.
 
 ## Sessions
 

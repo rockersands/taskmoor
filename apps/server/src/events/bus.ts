@@ -21,6 +21,17 @@ export interface EventContext {
   actorId: number | null;
   /** The client address; defaults to the address of the request being handled, if any. */
   ip?: string | null;
+  /** The client's User-Agent; defaults to that of the request being handled, if any. */
+  userAgent?: string | null;
+}
+
+/** Where an event came from: the context's, or else the request being handled. */
+function origin(context: EventContext): { ip: string | null; user_agent: string | null } {
+  const scope = currentRequestScope();
+  return {
+    ip: context.ip ?? scope?.ip ?? null,
+    user_agent: context.userAgent !== undefined ? context.userAgent : (scope?.userAgent ?? null),
+  };
 }
 
 /**
@@ -39,7 +50,7 @@ export async function emit(db: Db, context: EventContext, event: DomainEventInpu
       subject_type: spec.subject,
       subject_id: String(event.subjectId),
       payload: JSON.stringify(payload),
-      ip: context.ip ?? currentRequestScope()?.ip ?? null,
+      ...origin(context),
     })
     .execute();
 }
@@ -53,7 +64,7 @@ export async function emitMany(
   context: EventContext,
   events: readonly DomainEventInput[],
 ): Promise<void> {
-  const ip = context.ip ?? currentRequestScope()?.ip ?? null;
+  const from = origin(context);
   const rows = events.map((event) => {
     const spec = EVENT_TYPES[event.type];
     return {
@@ -63,7 +74,7 @@ export async function emitMany(
       subject_type: spec.subject,
       subject_id: String(event.subjectId),
       payload: JSON.stringify(spec.payload.parse(event.payload)),
-      ip,
+      ...from,
     };
   });
   for (let i = 0; i < rows.length; i += 1000) {
@@ -105,6 +116,7 @@ interface EventRow {
   payload: unknown;
   occurred_at: Date;
   ip: string | null;
+  user_agent: string | null;
 }
 
 function toEvent(row: EventRow): DomainEvent {
@@ -119,6 +131,7 @@ function toEvent(row: EventRow): DomainEvent {
     payload: row.payload,
     occurredAt: row.occurred_at,
     ip: row.ip,
+    userAgent: row.user_agent,
   };
 }
 

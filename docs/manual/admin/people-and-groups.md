@@ -1,8 +1,8 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx
-accessed: 2026-11-01
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # People, groups and teams
@@ -22,7 +22,7 @@ administrators.
 | **People** | `#/admin/users` | Add people, make site administrators, deactivate and reactivate, password links |
 | **Groups** | `#/admin/groups` | Create and delete groups, members, groups inside groups |
 | **Teams** | `#/admin/teams` | Create, rename and delete teams, their members and lead |
-| **Security** | `#/admin/security` | Who must use two-factor authentication, and how long sign-ins last |
+| **Security** | `#/admin/security` | Who must use two-factor authentication, how long sign-ins last, and security alerts |
 | **Service accounts** | `#/admin/service-accounts` | Accounts for programs: see [API tokens and service accounts](api-tokens.md) |
 | **Single sign-on** | `#/admin/identity-providers` | See [Single sign-on](sso.md) |
 | **LDAP and Active Directory** | `#/admin/directories` | See [LDAP directories](ldap.md) |
@@ -166,6 +166,46 @@ password (their other sessions), redeems a password link, or is deactivated. A s
 administrator signs a person out everywhere with `DELETE /api/v1/users/:id/sessions`. An ended
 session is refused at its next request.
 
+## Security emails and alerts
+
+**Security emails to people.** Taskmoor emails a person when their password changes, a second
+factor is added or removed, their recovery codes are made again, an administrator resets their
+second factors, or their email address changes (told to the old address). This happens whoever
+made the change: the person, an administrator, SCIM or a directory. The email says what changed,
+when, from which address and browser, and who made it, and holds no sign-in link. No notification
+setting turns it off, and digests and quiet hours do not delay it. It goes out through the same
+mail server as notifications (see [notifications](notifications.md)), within about 15 seconds;
+a failed send is tried again later, ten times at most.
+
+**Failed sign-ins in the audit log.** Every refused sign-in is a `session.sign_in_failed` record
+with the account (when one matches; otherwise the email typed, if it looks like one), the IP
+address, the browser or program, the `method` (`password`, `directory` for LDAP or Active
+Directory, `totp`, `webauthn`, `recovery_code`, `enrollment`, `api_token`, `basic`) and the
+`reason` (such as `wrong_password`, `unknown_account`, `second_factor`, `token_expired` or
+`email_mismatch`). The password, code or token tried is never recorded. Attempts refused while
+an account or address is locked are not recorded, so a flood cannot fill the log.
+
+**Refused requests.** When a person or an API token is refused (HTTP 403) again and again, the
+audit log gets one `access.refused_repeatedly` record when the refusals in the window reach 10,
+and one more at 100, 1,000 and so on, with the count and the last route.
+
+**Alerts.** On **Settings** > **Security**, under **Security alerts**, each rule has **Alert on
+this**, **Alert after this many** and **Within this many minutes**:
+
+| Rule | Counts | Default |
+|---|---|---|
+| **Failed sign-ins for one account** | Failed sign-ins and password checks for the account | 10 within 60 minutes |
+| **Failed sign-ins from one address** | The same, plus refused API tokens, from one IP address | 25 within 15 minutes |
+| **Refused requests of one person or token** | HTTP 403 answers | 50 within 15 minutes |
+| **Bulk exports by one person** | Full exports, audit log exports and search result exports | 5 within 60 minutes |
+
+Select **Save alert rules**. Windows are fixed: a 15-minute window starts on the quarter hour.
+A rule raises at most one alert per window for the same account, address, person or token.
+Every site administrator then gets an item in their inbox (under **Priority**) and an email, and
+the audit log records `security.alert_raised`, so it also reaches syslog and webhooks. The
+section lists the latest alerts. AI spend alerts (see [AI usage](ai-usage.md)) reach site
+administrators the same way.
+
 ## Groups
 
 Groups gather people so you can give them permissions, require two-factor authentication,
@@ -252,6 +292,7 @@ teams.
 | `DELETE /api/v1/users/:id/sessions` | Sign the person out everywhere |
 | `POST /api/v1/users/:id/two-factor/reset` | Remove every second factor |
 | `GET`, `PUT /api/v1/security/two-factor` | Read or set the two-factor policy |
+| `GET`, `PUT /api/v1/security/alerts` | Read the alert rules and the latest alerts, or set rules: `{"rules": {"bulk_exports": {"enabled": true, "threshold": 5, "windowMinutes": 60}}}` |
 | `GET`, `POST /api/v1/groups` | List or create groups |
 | `GET`, `PATCH`, `DELETE /api/v1/groups/:id` | Read, rename or delete a group |
 | `PUT`, `DELETE /api/v1/groups/:id/members/:userId` | Add or remove a member |

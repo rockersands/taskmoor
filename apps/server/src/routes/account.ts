@@ -18,6 +18,7 @@ import {
   directoryManaged,
   readOnly,
 } from '../ldap/gateway';
+import { userAgentOf } from '../request-scope';
 import { clearFailures, lockedUntil, recordFailure, secondsUntil } from '../throttle';
 
 const profileBody = z
@@ -163,6 +164,8 @@ export function registerAccountRoutes(
         actorId: user.id,
         userId: user.id,
         lockedUntil: lock,
+        method: managed ? 'directory' : 'password',
+        userAgent: userAgentOf(request.headers),
       });
       return reply.code(403).send({ error: 'wrong_password' });
     }

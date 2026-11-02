@@ -61,6 +61,29 @@ export const ITEMS: readonly InboxItem[] = [
   },
 ];
 
+/** A security alert as a site administrator gets it (ADR-109): about no ticket. */
+export const ALERT_ITEM: InboxItem = {
+  id: '16',
+  event: 'security_alert',
+  direct: true,
+  ticket: null,
+  alert: {
+    rule: 'sign_in_failures_account',
+    count: 10,
+    threshold: 10,
+    windowMinutes: 60,
+    userId: 7,
+    userName: 'Kalo Smith',
+    userEmail: 'kalo@example.com',
+    address: '203.0.113.9',
+  },
+  actor: null,
+  comment: null,
+  createdAt: '2026-10-29T09:55:00Z',
+  read: false,
+  snoozedUntil: null,
+};
+
 const shown = (item: InboxItem, now: Date) =>
   item.snoozedUntil === null || Date.parse(item.snoozedUntil) <= now.getTime();
 
@@ -93,7 +116,7 @@ export function fakeInboxClient(
         (q.view !== 'priority' || i.direct) &&
         (!q.unread || !i.read) &&
         (!q.event || i.event === q.event) &&
-        (!q.track || i.ticket.track.key === q.track),
+        (!q.track || i.ticket?.track.key === q.track),
     );
   return {
     calls,
@@ -135,7 +158,7 @@ export function fakeInboxClient(
           shown(i, now) &&
           (q.view !== 'priority' || i.direct) &&
           (!q.event || i.event === q.event) &&
-          (!q.track || i.ticket.track.key === q.track) &&
+          (!q.track || i.ticket?.track.key === q.track) &&
           (q.upTo === undefined || BigInt(i.id) <= BigInt(q.upTo));
         if (!fits) return i;
         marked++;

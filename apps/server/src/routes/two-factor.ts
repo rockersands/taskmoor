@@ -23,6 +23,7 @@ import { AUDIT_ACTIONS, recordRefusedAttempt } from '../audit/record';
 import { requireSiteAdmin, requireUser, startSession } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { emit } from '../events/bus';
+import { userAgentOf } from '../request-scope';
 import {
   DEFAULT_SESSION_POLICY,
   forgetSessionPolicy,
@@ -178,6 +179,7 @@ export function registerTwoFactorRoutes(
         actorId: userId,
         userId,
         lockedUntil: lock,
+        userAgent: userAgentOf(request.headers),
       });
       await reply.code(403).send({ error: 'wrong_password' });
       return false;
@@ -268,6 +270,8 @@ export function registerTwoFactorRoutes(
         email: user.email,
         lockedUntil: lock,
         reason: 'second_factor',
+        method: body.method,
+        userAgent: userAgentOf(request.headers),
       });
       return reply.code(401).send({ error: 'invalid_second_factor' });
     }
@@ -359,6 +363,8 @@ export function registerTwoFactorRoutes(
         email: user.email,
         lockedUntil: lock,
         reason: 'second_factor',
+        method: 'enrollment',
+        userAgent: userAgentOf(request.headers),
       });
       return reply.code(401).send({ error: 'invalid_second_factor' });
     }

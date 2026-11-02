@@ -10,6 +10,7 @@ import { MAX_RETENTION_MONTHS, RETENTION_SETTING, retentionMonths } from '../aud
 import { latestSeq, type SyslogTarget, sendSyslog, syslogMessage } from '../audit/syslog';
 import { requireSiteAdmin } from '../auth';
 import { withEvent } from '../events/bus';
+import { countBulkExport } from '../security/alerts';
 import { writeSetting } from '../setup';
 
 /** An ISO 8601 date (midnight UTC) or date and time with an offset. */
@@ -129,6 +130,7 @@ export function registerAuditRoutes(
         details: { format, filter: describeFilter(rest) },
       },
     ]);
+    await countBulkExport(db, workspaceId, admin.id);
     const filter = toFilter(rest);
     async function* chunks(): AsyncGenerator<string> {
       let buffer = format === 'csv' ? `${CSV_COLUMNS.join(',')}\r\n` : '';

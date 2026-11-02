@@ -1,8 +1,8 @@
 ---
 title: "AI usage, spend limits and data controls"
 audience: admins
-sources: packages/ai/src/spend.ts, packages/ai/src/agent.ts, apps/server/src/ai/agent-runs.ts, docs/adr/0101-agent-runs-with-budgets.md, packages/ai/src/redact.ts, packages/ai/src/gateway.ts, apps/server/src/ai/usage.ts, apps/server/src/ai/service.ts, apps/server/src/ai/context.ts, apps/server/src/ai/statement.ts, apps/server/src/routes/ai-usage.ts, apps/web/src/admin/AiUsagePage.tsx, apps/web/src/ai/AiNotice.tsx, apps/web/src/ai/DataStatement.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0075_ai_spend.ts, docs/adr/0100-ai-spend-audit-redaction.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-10-31
+sources: packages/ai/src/spend.ts, packages/ai/src/agent.ts, apps/server/src/ai/agent-runs.ts, docs/adr/0101-agent-runs-with-budgets.md, packages/ai/src/redact.ts, packages/ai/src/gateway.ts, apps/server/src/ai/usage.ts, apps/server/src/ai/service.ts, apps/server/src/ai/context.ts, apps/server/src/ai/statement.ts, apps/server/src/routes/ai-usage.ts, apps/web/src/admin/AiUsagePage.tsx, apps/web/src/ai/AiNotice.tsx, apps/web/src/ai/DataStatement.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0075_ai_spend.ts, docs/adr/0100-ai-spend-audit-redaction.md, docs/specs/02c-platform-api-and-integrations.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # AI usage, spend limits and data controls
@@ -62,7 +62,7 @@ AI is available again.
   for each person is `{"scope": "user", "period": "day", "metric": "tokens", "amount": 200000}`.
 - Each threshold raises one alert per period (and per person for a personal limit). The alert is
   an `ai_limit.threshold_reached` record in the audit log, so it also reaches syslog and webhooks
-  when you forward those. Alerts by email are not yet sent.
+  when you forward those, and every site administrator gets it in their inbox and by email.
 - A call already running when a limit is reached still finishes, so the use can end a little
   above the amount.
 - Calls the system makes for nobody are not counted against personal limits.

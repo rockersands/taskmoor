@@ -1,8 +1,8 @@
 ---
 title: "Notifications and your inbox"
 audience: users
-sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md
-accessed: 2026-10-30
+sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md
+accessed: 2026-11-02
 attestation: own-words
 ---
 # Notifications and your inbox
@@ -73,6 +73,12 @@ On each item:
 to you afterwards, digests included.
 
 If a ticket becomes hidden from you, its items leave your inbox and its unread count.
+
+Site administrators also get **security alerts** and **AI spend alerts** here, under
+**Priority**: an item names the rule ("Failed sign-ins for one account: 10 in 60 minutes") and
+whom it is about, and links to the audit log (or the AI usage page). They are about no ticket,
+and they stay only while you are a site administrator. See
+[security alerts](../admin/people-and-groups.md#security-emails-and-alerts).
 
 ## Your notification settings
 
