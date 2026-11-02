@@ -245,10 +245,13 @@ try {
   // the member, for tickets they may see. Each ticket is opened once to warm, then timed.
   const openRuns = Math.max(20, endpointRuns * 2);
   const visible =
-    browse.length === 0 ? sql`TRUE` : sql`track_id IN (${sql.join(browse.map((t) => sql`${t}`))})`;
+    browse.length === 0
+      ? sql`TRUE`
+      : sql`k.track_id IN (${sql.join(browse.map((t) => sql`${t}`))})`;
   const sample = (
-    await sql<{ key: string }>`SELECT key FROM ticket TABLESAMPLE SYSTEM (1)
-      WHERE ${visible} AND deleted_at IS NULL LIMIT ${openRuns}`.execute(db)
+    await sql<{ key: string }>`SELECT t.key || '-' || k.number AS key
+      FROM ticket k TABLESAMPLE SYSTEM (1) JOIN track t ON t.id = k.track_id
+      WHERE ${visible} AND k.deleted_at IS NULL LIMIT ${openRuns}`.execute(db)
   ).rows.map((r) => r.key);
   const parts = ['', '/info', '/comments', '/history?limit=20', '/transitions', '/links'];
   const get = async (url: string) => {
