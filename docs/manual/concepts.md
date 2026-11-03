@@ -121,7 +121,8 @@ comment. An administrator can make a workflow ask for a reason.
 
 ## Priorities
 
-Priorities rank how urgent a ticket is: **Urgent**, **High**, **Normal** and **Low** by default.
+Priorities rank how urgent a ticket is: **Urgent**, **High**, **Normal**, **Low** and **Very low**
+by default.
 The list belongs to the site; a **priority set** chooses which priorities a track offers and
 which one new tickets get. In the default set it is Normal.
 

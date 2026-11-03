@@ -10,6 +10,7 @@ import { lockOfField, useLockText } from '../locks/useLockText';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
+import { priorityName } from '../shell/priorityName';
 import { type DuplicateLookup, DuplicateSuggestions } from './DuplicateSuggestions';
 import {
   type CustomField,
@@ -391,11 +392,28 @@ export function CreateTicketPage({
         />
       );
     }
-    if (type === 'priority' || (type === 'select' && !custom?.multiple)) {
-      const options =
-        type === 'priority'
-          ? priorities.map((p) => ({ id: p.id, value: p.name }))
-          : (custom?.options ?? []);
+    if (type === 'priority') {
+      // No empty choice: a ticket always has a priority, and the form shows the one it would get.
+      const prioritySet = form?.status === 'loaded' ? form.value.priorities : undefined;
+      const offered = prioritySet
+        ? priorities.filter((p) => prioritySet.offered.includes(p.id))
+        : priorities;
+      return (
+        <select
+          {...common}
+          value={text || String(prioritySet?.defaultId ?? '')}
+          onChange={(e) => set(field.key, e.target.value)}
+        >
+          {offered.map((p) => (
+            <option key={p.id} value={String(p.id)}>
+              {priorityName(t, p.name)}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    if (type === 'select' && !custom?.multiple) {
+      const options = custom?.options ?? [];
       return (
         <select {...common} value={text} onChange={(e) => set(field.key, e.target.value)}>
           <option value="">{t('tickets.create.none')}</option>

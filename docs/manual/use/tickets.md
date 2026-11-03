@@ -99,7 +99,7 @@ The **Details** section lists the ticket's fields. Some can be changed in place:
 | **Status** | Read the status, and the close reason once the ticket is closed |
 | **Assignee** | **Assign to me** or **Unassign** |
 | **Requester** | Read |
-| **Priority** | Choose from the list, or **None** |
+| **Priority** | Choose from the list. A ticket always has one: a new ticket starts with its track's default, and there is no empty choice. Only an imported ticket can have none, until someone chooses |
 | **Labels** | **Edit**, then type labels separated by spaces or commas and press **Save**; a label has no spaces |
 | **Start date**, **Due date** | Pick a date, or clear it |
 | **Original estimate**, **Time spent**, **Remaining estimate** | Read, in hours |

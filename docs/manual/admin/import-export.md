@@ -600,7 +600,7 @@ Content-Type: application/json
 | `track` | project | A track key |
 | `summary`, `description` | | Text; the description is read as Markdown |
 | `type` | issue type | A ticket type the target has; an unknown one fails the row |
-| `status`, `priority` | | A name the target has; an unknown status leaves the workflow's first status and an unknown priority leaves it empty, each with a warning |
+| `status`, `priority` | | A name the target has; an unknown status leaves the workflow's first status and an unknown priority leaves it empty, each with a warning. A ticket with no priority keeps none after the import (it does not take the track's default) until someone chooses one; `priority IS EMPTY` finds those |
 | `assignee`, `creator` | | An email address, or text the `people` map names |
 | `requester` | reporter | As for `assignee` |
 | `parent` | | Another row's `id` or `key`, or the key of a ticket the target has |

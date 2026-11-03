@@ -78,7 +78,8 @@ export const messagesEs: Record<MessageId, string> = {
   'tracks.emptyMayCreate':
     'Un track reúne los tickets de un equipo o proyecto, con su tablero, su backlog o su lista, y sus informes. Crea el primero para empezar.',
   'tracks.new': 'Nuevo track',
-  'tracks.new.intro': 'Un track reúne los tickets de un equipo o proyecto. Su clave inicia la clave de cada ticket.',
+  'tracks.new.intro':
+    'Un track reúne los tickets de un equipo o proyecto. Su clave inicia la clave de cada ticket.',
   'tracks.new.create': 'Crear track',
   'tracks.new.cancel': 'Cancelar',
   'tracks.new.close': 'Cerrar sin crear un track',
@@ -227,6 +228,12 @@ export const messagesEs: Record<MessageId, string> = {
   'search.filter.pickTrack':
     'Elige un track arriba para ver aquí sus valores, o escribe un nombre.',
   'search.filter.type': 'Tipo',
+  'priority.name.urgent': 'Urgente',
+  'priority.name.high': 'Alta',
+  'priority.name.normal': 'Normal',
+  'priority.name.low': 'Baja',
+  'priority.name.veryLow': 'Muy baja',
+  'priority.choose': 'Elige una prioridad',
   'search.filter.priority': 'Prioridad',
   'search.filter.labels': 'Etiquetas',
   'search.filter.requester': 'Solicitante',

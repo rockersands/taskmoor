@@ -210,6 +210,14 @@ describe('general reports (M1-062)', () => {
           201,
         )
       ).ticket;
+      // Only an import can leave a ticket with no priority (CORE-014).
+      if (prio === null) {
+        await database.db
+          .updateTable('ticket')
+          .set({ priority_id: null })
+          .where('summary', '=', `cvc ${name}`)
+          .execute();
+      }
     }
     t.other = (
       await call(

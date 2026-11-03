@@ -281,9 +281,14 @@ describe('search (M1-037)', () => {
       ticketTypeId: type('Subticket'),
       parent: keys.dashboard,
       summary: 'Export to CSV',
-      priorityId: null,
       labels: [],
     });
+    // Only an import can leave a ticket with no priority (CORE-014).
+    await database.db
+      .updateTable('ticket')
+      .set({ priority_id: null })
+      .where('summary', '=', 'Export to CSV')
+      .execute();
     await create('audit', {
       track: 'DEF',
       ticketTypeId: type('Chore'),

@@ -188,7 +188,9 @@ export function storedChanges(
         set[name] = v === null ? null : JSON.stringify(v);
         break;
       case 'priority':
-        out.priorityId = v === null ? null : Number(v);
+        // A ticket always has a priority: an effect that clears it leaves it as it is.
+        if (v === null) break;
+        out.priorityId = Number(v);
         set.priority_id = out.priorityId;
         break;
       case 'labels':

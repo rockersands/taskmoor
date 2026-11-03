@@ -19,6 +19,7 @@ import type { Command } from '../../shell/CommandPalette';
 import { HelpTip } from '../../shell/HelpTip';
 import { leaveMotion } from '../../shell/motion';
 import { usePaletteCommands } from '../../shell/paletteCommands';
+import { priorityName } from '../../shell/priorityName';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
@@ -850,14 +851,17 @@ function Details({
           <select
             id={`${id}-priority`}
             value={ticket.priority?.id ?? ''}
-            onChange={(event) =>
-              void onEdit({ priorityId: event.target.value ? Number(event.target.value) : null })
-            }
+            onChange={(event) => void onEdit({ priorityId: Number(event.target.value) })}
           >
-            <option value="">{none}</option>
+            {/* Only an imported ticket can have none; once chosen there is no going back. */}
+            {!ticket.priority && (
+              <option value="" disabled>
+                {t('priority.choose')}
+              </option>
+            )}
             {(priorities ?? (ticket.priority ? [ticket.priority] : [])).map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {priorityName(t, p.name)}
               </option>
             ))}
           </select>

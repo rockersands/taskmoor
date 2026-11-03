@@ -5,6 +5,7 @@ import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import { priorityName } from '../shell/priorityName';
 import type { SearchClient, SearchTicket } from './client';
 import {
   type CellEditor,
@@ -320,10 +321,15 @@ function CellInput({
       const list = priorities ?? (current ? [current as { id: number; name: string }] : []);
       return (
         <select {...common} onChange={(event) => onChange(event.target.value)}>
-          <option value="">{t('search.edit.none')}</option>
+          {/* Only an imported ticket can have none; a ticket's priority cannot be taken away. */}
+          {!current && (
+            <option value="" disabled>
+              {t('priority.choose')}
+            </option>
+          )}
           {list.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name}
+              {priorityName(t, p.name)}
             </option>
           ))}
         </select>

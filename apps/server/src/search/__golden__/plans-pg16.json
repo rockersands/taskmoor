@@ -118,11 +118,18 @@
     "          Bitmap Heap Scan on ticket k_4",
     "            BitmapAnd",
     "              Bitmap Index Scan using ticket_assignee_idx",
-    "              Bitmap Index Scan using ticket_track_number_key",
+    "              Bitmap Index Scan using ticket_priority_created_idx",
     "            [SubPlan] Bitmap Heap Scan on track_role_actor a_4",
     "              BitmapOr",
     "                Bitmap Index Scan using track_role_actor_user_idx",
-    "                Bitmap Index Scan using track_role_actor_group_idx"
+    "                Bitmap Index Scan using track_role_actor_group_idx",
+    "      Limit",
+    "        Sort",
+    "          Bitmap Heap Scan on ticket k_5",
+    "            BitmapAnd",
+    "              Bitmap Index Scan using ticket_assignee_idx",
+    "              Bitmap Index Scan using ticket_track_number_key",
+    "            [SubPlan] Index Scan using track_role_actor_unique_idx on track_role_actor a_5"
   ],
   "closed >= \"2024-12-01\" ORDER BY closed DESC": [
     "Limit",

@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import { priorityName } from '../../shell/priorityName';
 import type { Priority, TicketClient, Transition } from './client';
 
 /** The fields a form like this can fill in; a transition asking for others goes to the ticket. */
@@ -70,7 +71,7 @@ export function TransitionForm({
           >
             {(options[field] ?? []).map((o) => (
               <option key={o.id} value={o.id}>
-                {o.name}
+                {field === 'priority' ? priorityName(t, o.name) : o.name}
               </option>
             ))}
           </select>

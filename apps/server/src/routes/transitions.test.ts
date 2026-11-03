@@ -362,7 +362,11 @@ describe('transitions through the workflow engine (M1-024 to M1-027)', () => {
           name: 'Reopen',
           from: [S('Closed')],
           to: S('New'),
-          effects: [{ type: 'clear-field', field: 'close-reason' }],
+          effects: [
+            { type: 'clear-field', field: 'close-reason' },
+            // A ticket always has a priority (CORE-014): this leaves it as it is.
+            { type: 'clear-field', field: 'priority' },
+          ],
         },
         {
           id: 3,
@@ -396,6 +400,7 @@ describe('transitions through the workflow engine (M1-024 to M1-027)', () => {
       null,
       null,
     ]);
+    expect(reopened.priority?.name).toBe('Urgent');
   });
 
   it('[WF-003] enforces separation of duties from the recorded transition history', async () => {

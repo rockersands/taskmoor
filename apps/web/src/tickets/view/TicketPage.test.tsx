@@ -59,6 +59,19 @@ const details = () => screen.getByRole('region', { name: 'Details' });
 const heading = () => screen.findByRole('heading', { level: 1 });
 
 describe('the ticket view (M1-051)', () => {
+  it('[CORE-014] offers no empty priority; an imported ticket with none asks for one', async () => {
+    renderPage();
+    await heading();
+    const offered = within(within(details()).getByRole('combobox', { name: 'Priority' }));
+    expect(offered.queryByRole('option', { name: 'None' })).toBeNull();
+    cleanup();
+    renderPage({ ticket: { ...SHOP_41, priority: null } });
+    await heading();
+    const empty = within(details()).getByRole('combobox', { name: 'Priority' });
+    expect(empty).toHaveValue('');
+    expect(within(empty).getByRole('option', { name: 'Choose a priority' })).toBeDisabled();
+  });
+
   it('[CORE-022] shows the ticket: summary, details, links, attachments and comments', async () => {
     renderPage();
     expect(await heading()).toHaveTextContent('SHOP-41 Checkout fails for expired cards');

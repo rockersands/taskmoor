@@ -24,6 +24,20 @@ function openCreate(handlers: Record<string, Handler> = {}, locale?: 'en-XA') {
 }
 
 describe('the create form (M1-012)', () => {
+  it('[CORE-014] starts on the priority a new ticket would take, with no empty choice', async () => {
+    openCreate({
+      'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () =>
+        jsonResponse(200, { ...BUG_FORM, priorities: { defaultId: 2, offered: [1, 2, 3] } }),
+    });
+    const priority = await screen.findByRole('combobox', { name: 'Priority' });
+    expect(priority).toHaveValue('2');
+    expect(
+      within(priority)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Urgent', 'Normal', 'Very low']);
+  });
+
   it("[CORE-008] lays out the type's form: tabs, the context column, required marks, help", async () => {
     openCreate();
     expect(await screen.findByRole('heading', { level: 1, name: 'Create ticket' })).toBeVisible();

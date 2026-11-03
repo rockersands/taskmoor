@@ -184,6 +184,7 @@ describe('priorities, close reasons, labels, releases and areas (M1-014)', () =>
         ['High', 2],
         ['Normal', 3],
         ['Low', 4],
+        ['Very low', 5],
       ]);
       const reasons = (await get('alice', '/api/v1/close-reasons')).json().closeReasons;
       expect(reasons.map((r: Named) => r.name)).toEqual([
@@ -207,6 +208,60 @@ describe('priorities, close reasons, labels, releases and areas (M1-014)', () =>
       expect(ticket.closeReason).toBeNull();
     });
 
+    it('[CORE-014] always gives a ticket a priority; only an import can leave it empty', async () => {
+      const normal = await priorityId('Normal');
+      // Null is not a choice when creating: the ticket takes the default, as if left out.
+      const made = await create('alice', { track: 'ABC', summary: 'No choice', priorityId: null });
+      expect(made.priority?.id).toBe(normal);
+      // An edit cannot take a priority away.
+      const refused = await patch('alice', `/api/v1/tickets/${made.id}`, { priorityId: null });
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json().fields).toEqual({ priorityId: 'required' });
+      expect((await view(made.id)).priority?.id).toBe(normal);
+      // What an import left stays as it is until someone chooses, and other edits still work.
+      await database.db
+        .updateTable('ticket')
+        .set({ priority_id: null })
+        .where('id', '=', made.id)
+        .execute();
+      expect(
+        (await edit('alice', made.id, { summary: 'Still none', priorityId: null })).priority,
+      ).toBeNull();
+      expect((await edit('alice', made.id, { priorityId: normal })).priority?.id).toBe(normal);
+    });
+
+    it('[CORE-014] tells the create form what a new ticket would take and what it may choose', async () => {
+      const type = (await get('alice', '/api/v1/tracks/ABC/ticket-types')).json()
+        .ticketTypes[0] as Named;
+      const form = (
+        await get('alice', `/api/v1/tracks/ABC/layout?ticketTypeId=${type.id}&operation=create`)
+      ).json();
+      expect(form.priorities.defaultId).toBe(await priorityId('Normal'));
+      expect([...form.priorities.offered].sort()).toEqual(
+        (await priorities()).map((p) => p.id).sort(),
+      );
+    });
+
+    it('[CORE-014] a set with no default gives the middle of what it offers', async () => {
+      const ids = await Promise.all(['Urgent', 'High', 'Low'].map((n) => priorityId(n)));
+      const set = await post('admin', '/api/v1/priority-sets', {
+        name: 'No default',
+        priorityIds: ids,
+      });
+      expect(set.statusCode, set.body).toBe(201);
+      expect(
+        (
+          await patch('admin', `/api/v1/tracks/${tracks.XYZ}`, {
+            prioritySetId: set.json().prioritySet.id,
+          })
+        ).statusCode,
+      ).toBe(200);
+      const ticket = await create('alice', { track: 'XYZ', summary: 'Middle' });
+      expect(ticket.priority?.name).toBe('High');
+      await patch('admin', `/api/v1/tracks/${tracks.XYZ}`, { prioritySetId: null });
+      await del('admin', `/api/v1/priority-sets/${set.json().prioritySet.id}`);
+    });
+
     it('[CORE-014] lets administrators add, edit and reorder priorities', async () => {
       expect((await post('alice', '/api/v1/priorities', { name: 'Blocker' })).statusCode).toBe(403);
       const created = await post('admin', '/api/v1/priorities', {
@@ -216,7 +271,7 @@ describe('priorities, close reasons, labels, releases and areas (M1-014)', () =>
       });
       expect(created.statusCode, created.body).toBe(201);
       const blocker = created.json().priority;
-      expect(blocker).toMatchObject({ name: 'Blocker', color: '#aa0000', order: 5 });
+      expect(blocker).toMatchObject({ name: 'Blocker', color: '#aa0000', order: 6 });
       expect((await post('admin', '/api/v1/priorities', { name: 'blocker' })).json()).toEqual({
         error: 'name_taken',
       });
@@ -243,6 +298,7 @@ describe('priorities, close reasons, labels, releases and areas (M1-014)', () =>
         ['High', 3],
         ['Normal', 4],
         ['Low', 5],
+        ['Very low', 6],
       ]);
     });
 

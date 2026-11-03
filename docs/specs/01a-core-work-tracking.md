@@ -100,7 +100,7 @@ Rules: every target object is either shared (site level) or owned by one track. 
 
 - Stages: new (grey), active (blue), closed (green).
 - Statuses: Open, New, Backlog, Selected for Development, Active, In Review, Under review, Approved, Rejected, Cancelled, Draft, Published, Closed.
-- Priorities: Urgent, High, Normal, Low. Close reasons: Completed, Not planned, Duplicate, Not reproducible (service tracks add Known error and others).
+- Priorities: Urgent, High, Normal, Low, Very low; a ticket always has one, and only an import can leave it empty. Close reasons: Completed, Not planned, Duplicate, Not reproducible (service tracks add Known error and others).
 - Link types: Relates, Duplicates, Blocks, Copies (verify Jira's full default set).
 - Default workflow: statuses New, Active, In Review and Closed, initial status New, one global transition into each status, named after it. No fields, guards or checks. Entering Closed sets close reason Completed; entering any other status clears the close reason. Why a ticket moved goes in a comment. Administrators may add rules to it or use a stricter workflow; imported workflows keep their source's rules.
 

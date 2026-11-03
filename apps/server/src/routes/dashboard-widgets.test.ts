@@ -228,6 +228,14 @@ describe('dashboard widgets (M1-064)', () => {
           201,
         )
       ).ticket;
+      // Only an import can leave a ticket with no priority (CORE-014).
+      if (prio === null) {
+        await database.db
+          .updateTable('ticket')
+          .set({ priority_id: null })
+          .where('summary', '=', summary)
+          .execute();
+      }
     }
     await madeAt('a', ago(5));
     await madeAt('b', ago(4));

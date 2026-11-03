@@ -772,10 +772,12 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async (db) => {
       // A ticket made after the log exists: a row with its snapshot, numbered at commit. Its
-      // own ticket, so the other seeds' rows (logged too when they run later) do not count.
+      // own ticket, so the other seeds' rows (logged too when they run later) do not count. It has
+      // a priority, so 0092's filling leaves it and its one row alone.
       await sql`INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary,
-          requester_id, creator_id, rank)
-        SELECT 1, t.id, 36, ty.id, 'Logged ticket', u.id, u.id, 'a36'
+          requester_id, creator_id, rank, priority_id)
+        SELECT 1, t.id, 36, ty.id, 'Logged ticket', u.id, u.id, 'a36',
+               (SELECT id FROM priority WHERE name = 'Seed priority')
           FROM track t, ticket_type ty, app_user u
          WHERE t.key = 'SEED' AND ty.name = 'Seed type' AND u.email = 'seed@example.com'`.execute(
         db,
@@ -1556,6 +1558,16 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
                '[{"id": "w-seed", "kind": "track-summary", "column": 0, "title": "", "config": {}}]'
           FROM track WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
+  },
+  '0092_very_low_priority': {
+    // The seed's list is an administrator's by then ('Seed priority', 0018): it must stay as it is.
+    tables: { priority: "name = 'Seed priority' AND workspace_id = 1" },
+    seed: async () => {},
+  },
+  '0094_board_kind_decides_backlog': {
+    // Data only, over tracks: the seed's first track is still there with its board.
+    tables: { track: "key = 'SEED' AND workspace_id = 1" },
+    seed: async () => {},
   },
 };
 
