@@ -286,8 +286,8 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.challengeExpired':
     'El inicio de sesión tardó demasiado o tuvo demasiados códigos erróneos. Vuelve a introducir tu contraseña.',
   'auth.sso.signInWith': 'Iniciar sesión con {name}',
-  'auth.sso.others': 'O inicia sesión a través de tu organización',
-  'auth.sso.organisation': 'Tu organización inicia sesión con {name}.',
+  'auth.sso.others': 'Otras formas de iniciar sesión',
+  'auth.sso.organisation': 'Esta dirección inicia sesión con {name}.',
   'auth.sso.error.invalidState':
     'El inicio de sesión tardó demasiado, o se empezó en otro navegador. Inténtalo de nuevo.',
   'auth.sso.error.providerError':
@@ -299,7 +299,7 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.sso.error.domainNotAllowed':
     'Tu dirección de correo está en un dominio que esta opción de inicio de sesión no atiende. Pide ayuda a tu administrador.',
   'auth.sso.error.noAccount':
-    'Aún no tienes una cuenta aquí. Pide a tu administrador que cree una.',
+    'Aún no tienes una cuenta aquí. Pide a tu administrador que cree una. Si te invitaron, inicia sesión con la misma dirección a la que llegó la invitación.',
   'auth.sso.error.accountDeactivated':
     'Tu cuenta está desactivada. Pregunta a tu administrador si la necesitas de nuevo.',
   'auth.sso.error.unknown':
@@ -1483,9 +1483,20 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.acsUrl': 'URL del servicio consumidor de aserciones (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadatos que importar',
   'admin.sso.spMetadataNamed': 'Metadatos de Taskmoor para {name}',
-  'admin.sso.form.protocol': 'Protocolo',
+  'admin.sso.form.protocol': 'Tipo de proveedor',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',
+  'admin.sso.form.protocolGoogle': 'Google',
+  'admin.sso.google.intro':
+    'Las personas inician sesión con una dirección de Gmail o de Google Workspace, mediante un cliente de Google propio: este sitio habla directamente con Google, sin ningún servicio de Taskmoor de por medio. Los ajustes de abajo solo dejan entrar a personas invitadas y cuentas existentes, y las contraseñas siguen funcionando. Al iniciar sesión basta con Google: Taskmoor no pide un segundo factor propio, y una cuenta personal de Google puede no tenerlo.',
+  'admin.sso.google.redirect': 'URI de redirección que registrar en Google',
+  'admin.sso.google.guide': 'Cómo configurar el cliente de Google (manual)',
+  'admin.sso.form.clientSecretHintGoogle':
+    'El secreto de tu cliente de Google. Se guarda cifrado y no se vuelve a mostrar.',
+  'admin.sso.warning.jitPublic':
+    'Cualquiera con una dirección en {domains} podría unirse a este sitio sin invitación: cualquiera puede conseguir una de esas direcciones. Desactiva la creación de cuentas salvo que sea lo que quieres.',
+  'admin.sso.warning.enforcePublic':
+    'Esto bloquea el inicio de sesión con contraseña para todas las direcciones en {domains}, también a los administradores del sitio cuyas cuentas no estén marcadas como de emergencia (break-glass). Si Google no funciona, no podrán entrar.',
   'admin.sso.form.name': 'Nombre',
   'admin.sso.form.nameHint':
     'Se muestra en el botón de inicio de sesión, como Cuentas del personal.',

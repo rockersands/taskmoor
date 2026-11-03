@@ -129,6 +129,12 @@ export function SignInForm({
     [ssoClient],
   );
 
+  // An address the page already knows (an invitation's) is never left, so ask at once: the
+  // provider that serves it is offered from the start (IAM-032).
+  useEffect(() => {
+    if (initialEmail) void discover(initialEmail);
+  }, [initialEmail, discover]);
+
   const key = normalized(email);
   const known = discovery?.email === key ? discovery : null;
   const breakGlass = hashParam(currentRoute(), 'method') === 'password';

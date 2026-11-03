@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute, navigate, routeHref } from '../routing/router';
@@ -14,7 +14,7 @@ import { SecondFactorStep } from '../session/SecondFactorStep';
 import type { SecondFactorMethod, SessionUser } from '../session/SessionProvider';
 import { useSession } from '../session/SessionProvider';
 import { SignInForm } from '../session/SignInForm';
-import { hashParam, type SignInSsoClient } from '../sso/client';
+import { hashParam, type SignInSsoClient, signInSsoClient } from '../sso/client';
 import { type InvitationClient, type InvitationLink, invitationClient } from './client';
 
 /**
@@ -118,6 +118,26 @@ export function InvitationPage({
       cancelled = true;
     };
   }, [token, client]);
+
+  // A provider serves this address (decided by its domain alone, so it says nothing about
+  // accounts): signing in comes first, with the provider on offer (IAM-032). Choosing a password
+  // stays one click away, unless the domain enforces single sign-on and the server refuses it.
+  const linkEmail = state.status === 'ready' ? state.link.email : null;
+  const modeTouched = useRef(false);
+  useEffect(() => {
+    if (!linkEmail || modeTouched.current) return;
+    let cancelled = false;
+    (ssoClient ?? signInSsoClient).discover(linkEmail).then(
+      (found) => {
+        if (!cancelled && !modeTouched.current && found?.provider) setMode('account');
+      },
+      // Unanswered: the page stays as it is.
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [linkEmail, ssoClient]);
 
   const anonymous = session.status === 'anonymous';
   useEffect(() => {
@@ -348,7 +368,10 @@ export function InvitationPage({
             type="radio"
             name={`${id}-mode`}
             checked={mode === 'new'}
-            onChange={() => setMode('new')}
+            onChange={() => {
+              modeTouched.current = true;
+              setMode('new');
+            }}
           />{' '}
           {t('invite.mode.new')}
         </label>
@@ -357,7 +380,10 @@ export function InvitationPage({
             type="radio"
             name={`${id}-mode`}
             checked={mode === 'account'}
-            onChange={() => setMode('account')}
+            onChange={() => {
+              modeTouched.current = true;
+              setMode('account');
+            }}
           />{' '}
           {t('invite.mode.account')}
         </label>

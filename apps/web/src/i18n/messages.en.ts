@@ -272,8 +272,8 @@ export const messagesEn = {
   'auth.challengeExpired':
     'The sign-in took too long or had too many wrong codes. Enter your password again.',
   'auth.sso.signInWith': 'Sign in with {name}',
-  'auth.sso.others': 'Or sign in through your organisation',
-  'auth.sso.organisation': 'Your organisation signs in with {name}.',
+  'auth.sso.others': 'Other ways to sign in',
+  'auth.sso.organisation': 'This address signs in with {name}.',
   'auth.sso.error.invalidState':
     'The sign-in took too long, or it was started in another browser. Try again.',
   'auth.sso.error.providerError':
@@ -285,7 +285,7 @@ export const messagesEn = {
   'auth.sso.error.domainNotAllowed':
     'Your email address is in a domain this sign-in option does not serve. Ask your administrator for help.',
   'auth.sso.error.noAccount':
-    'There is no account for you here yet. Ask your administrator to create one.',
+    'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
   'auth.sso.error.accountDeactivated':
     'Your account is deactivated. Ask your administrator if you need it again.',
   'auth.sso.error.unknown': 'Single sign-on did not work. Try again in a moment.',
@@ -1432,9 +1432,20 @@ export const messagesEn = {
   'admin.sso.acsUrl': 'Assertion consumer service URL (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadata to import',
   'admin.sso.spMetadataNamed': 'Taskmoor metadata for {name}',
-  'admin.sso.form.protocol': 'Protocol',
+  'admin.sso.form.protocol': 'Type of provider',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',
+  'admin.sso.form.protocolGoogle': 'Google',
+  'admin.sso.google.intro':
+    'People sign in with a Gmail or Google Workspace address, through a Google client of your own: this site talks to Google directly, and no Taskmoor service stands between. The settings below let in only invited people and existing accounts, and passwords keep working. Google is enough at sign-in: Taskmoor asks no second factor of its own, and a personal Google account may have none.',
+  'admin.sso.google.redirect': 'Redirect URI to register at Google',
+  'admin.sso.google.guide': 'How to set up the Google client (manual)',
+  'admin.sso.form.clientSecretHintGoogle':
+    'The secret of your Google client. It is kept encrypted and never shown again.',
+  'admin.sso.warning.jitPublic':
+    'Anyone with an address at {domains} could join this site with no invitation: anybody can get such an address. Turn off account creation unless you mean that.',
+  'admin.sso.warning.enforcePublic':
+    'This blocks password sign-in for every address at {domains}, site administrators included unless their accounts are marked break-glass. If Google is down, they cannot get in.',
   'admin.sso.form.name': 'Name',
   'admin.sso.form.nameHint': 'Shown on the sign-in button, such as Staff accounts.',
   'admin.sso.form.issuer': 'Issuer URL',

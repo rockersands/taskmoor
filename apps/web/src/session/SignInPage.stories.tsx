@@ -79,9 +79,36 @@ export const OrganisationProvider: Story = {
     await userEvent.type(canvas.getByLabelText('Email'), 'sam@corp.example');
     await userEvent.tab();
     await expect(
-      await canvas.findByText('Your organisation signs in with Staff accounts.'),
+      await canvas.findByText('This address signs in with Staff accounts.'),
     ).toBeVisible();
   },
+};
+
+const GOOGLE = { id: 8, name: 'Google' };
+const withGoogle = fakeSignInSso([GOOGLE], { 'gmail.com': { provider: GOOGLE, password: true } });
+
+/** A site with Google set up (IAM-032): on offer for anyone, first for a Gmail address. */
+export const GoogleOnOffer: Story = {
+  args: { ssoClient: withGoogle },
+  decorators: anonymous,
+};
+
+export const GoogleForAGmailAddress: Story = {
+  args: { ssoClient: withGoogle },
+  decorators: anonymous,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(canvas.getByLabelText('Email'), 'sam@gmail.com');
+    await userEvent.tab();
+    await expect(await canvas.findByText('This address signs in with Google.')).toBeVisible();
+    await expect(canvas.getByLabelText('Password')).toBeVisible();
+  },
+};
+
+export const GooglePhone: Story = {
+  args: { ssoClient: withGoogle },
+  decorators: anonymous,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const SingleSignOnEnforced: Story = {
@@ -106,7 +133,7 @@ export const BreakGlass: Story = {
     const canvas = within(canvasElement);
     await userEvent.type(canvas.getByLabelText('Email'), 'ana@umbrella.example');
     await userEvent.tab();
-    await canvas.findByText('Your organisation signs in with Umbrella.');
+    await canvas.findByText('This address signs in with Umbrella.');
     await expect(canvas.getByLabelText('Password')).toBeVisible();
   },
 };

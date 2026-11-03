@@ -243,6 +243,62 @@ describe('the invite dialog (IAM-027)', () => {
   });
 });
 
+describe('an invitation whose address a provider serves (IAM-032)', () => {
+  it('[IAM-032] the page opens at signing in, with the provider on offer, and returns to the link', async () => {
+    window.location.hash = '#/invite?token=tok';
+    const user = userEvent.setup();
+    const went: string[] = [];
+    const google = { id: 8, name: 'Google' };
+    const ssoClient = {
+      providers: async () => [google],
+      discover: async () => ({ provider: google, password: true }),
+      go: (url: string) => {
+        went.push(url);
+      },
+    };
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={{ status: 'anonymous' }}>
+          <InvitationPage client={fakeInvitationClient()} ssoClient={ssoClient} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const button = await screen.findByRole('button', { name: 'Sign in with Google' });
+    expect(screen.getByRole('radio', { name: 'Sign in' })).toBeChecked();
+    await user.click(button);
+    expect(went).toHaveLength(1);
+    expect(went[0]).toContain('/api/v1/auth/oidc/8/start?returnTo=');
+    expect(decodeURIComponent(went[0] as string)).toContain('#/invite');
+    expect(decodeURIComponent(went[0] as string)).not.toContain('tok');
+
+    // Choosing a password stays possible, and stays chosen.
+    await user.click(screen.getByRole('radio', { name: 'Choose a name and a password' }));
+    expect(screen.getByRole('form', { name: 'Choose a name and a password' })).toBeVisible();
+  });
+
+  it('[IAM-032] with no provider for the address the page stays at choosing a password', async () => {
+    window.location.hash = '#/invite?token=tok';
+    const asked: string[] = [];
+    const ssoClient = {
+      providers: async () => [],
+      discover: async (email: string) => {
+        asked.push(email);
+        return { provider: null, password: true };
+      },
+      go: () => {},
+    };
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={{ status: 'anonymous' }}>
+          <InvitationPage client={fakeInvitationClient()} ssoClient={ssoClient} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await waitFor(() => expect(asked).toHaveLength(1));
+    expect(screen.getByRole('radio', { name: 'Choose a name and a password' })).toBeChecked();
+  });
+});
+
 describe('the page an invitation leads to (IAM-027, IAM-029)', () => {
   const signedIn = (email: string): SessionUser => ({
     id: 9,
