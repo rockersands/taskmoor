@@ -2,7 +2,11 @@
 
 Started 2026-11-03. One ticket per thing the user asked for or decided, so nothing from the
 conversation lives only in a chat. Bigger tasks are in `backlog.csv`, and each branch has its own
-task file with the details. The coordinator keeps this file current.
+task file with the details. The coordinator keeps this file current. The same tickets are in the tool
+itself, on the demo: the Backend (BE), Front (FE) and Flutter (FL) tracks, each ticket starting with
+its T number. On their boards, Done is Closed, On branch is In Review, In progress is Active, and
+the rest are New, with the state and section as labels. This file is the record: the demo can be
+reset.
 
 States:
 
@@ -27,7 +31,7 @@ reported, and the coordinator checked that it was pushed.
 | T-005 | Rewrite git history to remove the old address and paths, once, with a backup | You | Just before going public; needs `git-filter-repo` and one force-push, each confirmed |
 | T-006 | Tests run on native Windows | Done | M1-144, on `main` |
 | T-007 | Job queue uses the database's clock | Done | On `main` |
-| T-008 | Keep every request as a ticket, here and in the tool itself | In progress | This file; track TM on the demo |
+| T-008 | Keep every request as a ticket, here and in the tool itself | In progress | This file, and tracks BE, FE and FL on the demo |
 
 ## Getting to 1.0
 
@@ -101,7 +105,7 @@ reported, and the coordinator checked that it was pushed.
 | T-071 | Tracks expands in the sidebar with the current one marked | On branch | Up to eight, then a link to all |
 | T-072 | Exactly one board per track, enforced on the server | On branch | ADR-116 |
 | T-073 | No board outside a track | On branch | ADR-116 |
-| T-074 | Decide about the leftover demo board `rrg` | You | Stays readable until decided |
+| T-074 | Decide about the leftover demo board `rrg` | You | Its sample track is gone; it can go too if the user agrees |
 | T-075 | Summary is a dashboard the track owner can customize | In progress | Migration 0090 exists |
 | T-076 | Statistics holds every report for the track | In progress | Created vs closed and two-dimensional were missing |
 | T-077 | Files and links section | On branch | `claude/ui-overhaul` |
@@ -125,8 +129,8 @@ reported, and the coordinator checked that it was pushed.
 | T-096 | The rightmost column closes by default, and this can be changed | On branch | Per track |
 | T-097 | Deleting a column with cards asks where they go | On branch | `claude/ui-overhaul` |
 | T-098 | Columns no card can reach say so, and offer a fix | On branch | Includes the "potato" test |
-| T-099 | Decide on the "potato" column | You | Pressing the fix changes a workflow other tracks share |
-| T-100 | Should demo tracks stop sharing one workflow? | You | Recommended: give each its own |
+| T-099 | Decide on the "potato" column | Done | No longer needed: its sample track was removed |
+| T-100 | Should demo tracks stop sharing one workflow? | Done | Settled: the three real tracks each have their own |
 | T-101 | Track picker in the board form, raw query under advanced | On branch | `claude/ui-overhaul` |
 | T-102 | Filter a board by person, for ordinary members | On branch | `claude/ui-overhaul` |
 | T-103 | The people list floats, and does not push the page down | To do | With the front sub chat |
@@ -157,6 +161,7 @@ reported, and the coordinator checked that it was pushed.
 | T-131 | Basic search: type, priority, labels and more | On branch | `claude/ui-overhaul` |
 | T-132 | A widget that cannot load says what it needs | On branch | `claude/ui-overhaul` |
 | T-133 | The user's "vxfdv" widget holds an invalid search | You | Fix or clear its search on the demo |
+| T-134 | Remove the sample tracks; keep only Flutter, Backend and Front | Done | The user asked; the four sample tracks are in the demo's trash |
 
 ## The look
 
