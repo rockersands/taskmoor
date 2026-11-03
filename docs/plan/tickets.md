@@ -120,7 +120,7 @@ reported, and the coordinator checked that it was pushed.
 | T-080 | A New track button on the Tracks page | Done | `claude/ui-overhaul` |
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | Done | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
-| T-083 | A cross-track timeline | In progress | Part of T-088 |
+| T-083 | A cross-track timeline | Done | On `main` with T-088: the plan Timeline spans tracks |
 | T-084 | Personal track groups: drag tracks together, name the group | Done | On `main` (ADR-121, CORE-034, migration 0100): by mouse, touch and keyboard; private to their owner |
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | Done | On `main` |
 | T-086 | Share a whole group, or set it on another person | Done | On `main` (IAM-034) |
@@ -130,7 +130,8 @@ reported, and the coordinator checked that it was pushed.
 | T-087b | When someone loses the manager role, should their permission to create tracks go too? | You | Today it stays until a site administrator removes it, and the people admin page shows who holds it |
 | T-087b | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
 | T-087c | Keep Paneles in the sidebar | Done | Decided by the user; dashboards that can span tracks |
-| T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | To do | Paused on `claude/multi-track`; restarts after the merges |
+| T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | Done | On `main` (ADR-122, PLN-001, PLN-012, migration 0101): sources each viewer may see, filters and grouping in the address, rescheduling, the first 10,000 per view; `docs/plan/multi-track-tasks.md` holds the next stages |
+| T-088a | One plan is called a "plan" in the interface; the terminology file had "roadmap". Keep "plan"? | You | A strings and manual change only |
 | T-089 | Multi-track: dependencies view | To do | In 1.0; starts after T-088 |
 | T-089b | Multi-track: teams and capacity | To do | In 1.0 |
 | T-089c | Multi-track: releases across tracks | To do | In 1.0 |
