@@ -1044,6 +1044,54 @@ export interface TrackSummaryLayoutTable {
   updated_at: DefaultTimestamp;
 }
 
+/** A person's own named group of tracks on the Tracks page (CORE-034; ADR-121). */
+export interface TrackGroupTable {
+  id: Generated<number>;
+  workspace_id: number;
+  owner_id: number;
+  name: string;
+  /** Among the owner's groups and the groups shared with them. */
+  position: number;
+  minimized: Generated<boolean>;
+  /** A copy set on this person (IAM-034): the group it came from, and who set it. */
+  copied_from: number | null;
+  given_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A track in a group; `owner_id` is the group's, so a track sits in one of a person's groups. */
+export interface TrackGroupTrackTable {
+  workspace_id: number;
+  group_id: number;
+  owner_id: number;
+  track_id: number;
+  position: number;
+}
+
+/** A group shown to another person, with the role it gives on its tracks; null gives none. */
+export interface TrackGroupShareTable {
+  id: Generated<number>;
+  workspace_id: number;
+  group_id: number;
+  user_id: number;
+  role_id: number | null;
+  shared_by: number | null;
+  /** The recipient's own place for it and whether they minimized it. */
+  position: number;
+  minimized: Generated<boolean>;
+  created_at: DefaultTimestamp;
+}
+
+/** A role in a track that a share holds (IAM-034): what taking the share back removes. */
+export interface TrackGroupAccessTable {
+  workspace_id: number;
+  share_id: number;
+  track_id: number;
+  role_id: number;
+  user_id: number;
+}
+
 /** Who besides its owner sees a dashboard; the scopes of saved searches (ADR-053). */
 export interface DashboardShareTable {
   id: Generated<number>;
@@ -2753,6 +2801,10 @@ export interface Database {
   dashboard: DashboardTable;
   dashboard_share: DashboardShareTable;
   track_summary_layout: TrackSummaryLayoutTable;
+  track_group: TrackGroupTable;
+  track_group_track: TrackGroupTrackTable;
+  track_group_share: TrackGroupShareTable;
+  track_group_access: TrackGroupAccessTable;
   saved_search_star: SavedSearchStarTable;
   saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;

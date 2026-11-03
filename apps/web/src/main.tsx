@@ -35,6 +35,7 @@ import './styles/timeline.css';
 import './styles/views.css';
 import './styles/ai.css';
 import './styles/surfaces.css';
+import './styles/track-groups.css';
 import './styles/motion.css';
 
 async function start() {

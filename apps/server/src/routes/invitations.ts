@@ -30,6 +30,7 @@ import { emit } from '../events/bus';
 import { RateLimiter } from '../ratelimit/limiter';
 import { emailDomain, providerForDomain } from '../sso/oidc';
 import { lockedUntil, recordFailure, secondsUntil } from '../throttle';
+import { keepRole, lockTracks } from '../trackgroups/access';
 import { trackInTrash } from '../trash/policy';
 import { isExternal, readPolicy } from '../two-factor';
 
@@ -355,19 +356,26 @@ export function registerInvitationRoutes(
     return { person: { id: row.id, locale: row.locale }, shut: false };
   }
 
+  /**
+   * Gives an invited person the role. `kept` when shared track groups held it until now: it is
+   * the person's own from here, and the event of the change says so (IAM-034).
+   */
   async function giveRole(
     trx: Transaction<Database>,
     workspaceId: number,
     trackId: number,
     roleId: number,
     userId: number,
-  ): Promise<boolean> {
+  ): Promise<'added' | 'kept' | 'held'> {
+    await lockTracks(trx, [trackId]);
     const added = await trx
       .insertInto('track_role_actor')
       .values({ workspace_id: workspaceId, track_id: trackId, role_id: roleId, user_id: userId })
       .onConflict((oc) => oc.doNothing())
       .executeTakeFirst();
-    return Number(added.numInsertedOrUpdatedRows ?? 0) > 0;
+    const fromShares = await keepRole(trx, trackId, roleId, userId);
+    if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) return 'added';
+    return fromShares ? 'kept' : 'held';
   }
 
   /** Takes `count` sends from the inviter's bucket; the wait in seconds when it is empty. */
@@ -484,7 +492,8 @@ export function registerInvitationRoutes(
           continue;
         }
         const { person, shut } = await accountAt(trx, ws, email);
-        const added = person ? await giveRole(trx, ws, trackId, role.id, person.id) : false;
+        const given = person ? await giveRole(trx, ws, trackId, role.id, person.id) : 'held';
+        const added = given === 'added';
         let grantId: number | null = null;
         if (person && added) {
           await trx
@@ -527,6 +536,7 @@ export function registerInvitationRoutes(
             grantedUserId: person && added ? person.id : null,
             createTracks: body.createTracks,
             ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
+            ...(given === 'kept' ? { keptFromGroupShares: true as const } : {}),
           },
         });
         done.push({
@@ -551,7 +561,21 @@ export function registerInvitationRoutes(
           done.push({ userId, status: 'invalid' });
           continue;
         }
-        const added = await giveRole(trx, ws, trackId, role.id, person.id);
+        const given = await giveRole(trx, ws, trackId, role.id, person.id);
+        const added = given === 'added';
+        if (given === 'kept') {
+          // Shared track groups held it until now: from here it is the person's own.
+          await emit(trx, by, {
+            type: 'track_role.actor_added',
+            subjectId: trackId,
+            payload: {
+              roleId: role.id,
+              userId: person.id,
+              groupId: null,
+              keptFromGroupShares: true,
+            },
+          });
+        }
         if (added) {
           const grantId = body.createTracks ? await giveCreateTracks(trx, ws, person.id) : null;
           await emit(trx, by, {
@@ -627,7 +651,8 @@ export function registerInvitationRoutes(
       row.grants_create_tracks && (await inviterMayGiveCreateTracks(authorizer, ws, user.id));
     const found = await db.transaction().execute(async (trx) => {
       const { person, shut } = await accountAt(trx, ws, row.email);
-      const added = person ? await giveRole(trx, ws, trackId, row.role_id, person.id) : false;
+      const given = person ? await giveRole(trx, ws, trackId, row.role_id, person.id) : 'held';
+      const added = given === 'added';
       const updated = await trx
         .updateTable('track_invitation')
         .set({
@@ -676,6 +701,7 @@ export function registerInvitationRoutes(
             invitationId: row.id,
             delivery: parsed.data.delivery,
             ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
+            ...(given === 'kept' ? { keptFromGroupShares: true as const } : {}),
           },
         },
       );
@@ -720,6 +746,7 @@ export function registerInvitationRoutes(
       return reply.code(409).send({ error: 'last_track_admin' });
     }
     const revoked = await db.transaction().execute(async (trx) => {
+      await lockTracks(trx, [trackId]);
       const marked = await trx
         .updateTable('track_invitation')
         .set({ revoked_at: new Date() })
@@ -738,6 +765,8 @@ export function registerInvitationRoutes(
           .where('user_id', '=', row.granted_user_id)
           .executeTakeFirst();
         roleRemoved = Number(removed.numDeletedRows) > 0;
+        // A share may have come to hold it meanwhile: its record goes with the role (IAM-034).
+        await keepRole(trx, trackId, row.role_id, row.granted_user_id);
       }
       await emit(
         trx,
@@ -908,6 +937,7 @@ export function registerInvitationRoutes(
           })
           .returning('id')
           .executeTakeFirstOrThrow();
+        // A new account holds nothing through shares, so the role is simply given.
         await giveRole(trx, ws, row.track_id, row.role_id, person.id);
         const grantId = createTracks ? await giveCreateTracks(trx, ws, person.id) : null;
         await emit(
@@ -958,7 +988,8 @@ export function registerInvitationRoutes(
         .executeTakeFirst();
       if (!marked) return false;
       // A role given when the invitation was made already brought its grant then.
-      const added = await giveRole(trx, ws, row.track_id, row.role_id, user.id);
+      const given = await giveRole(trx, ws, row.track_id, row.role_id, user.id);
+      const added = given === 'added';
       const grantId = added && createTracks ? await giveCreateTracks(trx, ws, user.id) : null;
       await emit(
         trx,
@@ -972,6 +1003,7 @@ export function registerInvitationRoutes(
             userId: user.id,
             accountCreated: false,
             ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
+            ...(given === 'kept' ? { keptFromGroupShares: true as const } : {}),
           },
         },
       );

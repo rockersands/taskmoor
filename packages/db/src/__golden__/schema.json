@@ -2655,6 +2655,70 @@
       "CREATE UNIQUE INDEX track_category_workspace_name_idx ON public.track_category USING btree (workspace_id, lower(name))"
     ]
   },
+  "track_group": {
+    "columns": [
+      "id integer not null default nextval('track_group_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "owner_id integer not null",
+      "name text not null",
+      "position integer not null",
+      "minimized boolean not null default false",
+      "copied_from integer",
+      "given_by integer",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX track_group_id_owner_id_key ON public.track_group USING btree (id, owner_id)",
+      "CREATE INDEX track_group_owner_idx ON public.track_group USING btree (owner_id, \"position\")",
+      "CREATE UNIQUE INDEX track_group_pkey ON public.track_group USING btree (id)"
+    ]
+  },
+  "track_group_access": {
+    "columns": [
+      "workspace_id integer not null",
+      "share_id integer not null",
+      "track_id integer not null",
+      "role_id integer not null",
+      "user_id integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX track_group_access_pkey ON public.track_group_access USING btree (share_id, track_id)",
+      "CREATE INDEX track_group_access_role_idx ON public.track_group_access USING btree (track_id, role_id, user_id)"
+    ]
+  },
+  "track_group_share": {
+    "columns": [
+      "id integer not null default nextval('track_group_share_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "group_id integer not null",
+      "user_id integer not null",
+      "role_id integer",
+      "shared_by integer",
+      "position integer not null",
+      "minimized boolean not null default false",
+      "created_at timestamp with time zone not null default now()"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX track_group_share_group_id_user_id_key ON public.track_group_share USING btree (group_id, user_id)",
+      "CREATE UNIQUE INDEX track_group_share_pkey ON public.track_group_share USING btree (id)",
+      "CREATE INDEX track_group_share_user_idx ON public.track_group_share USING btree (user_id)"
+    ]
+  },
+  "track_group_track": {
+    "columns": [
+      "workspace_id integer not null",
+      "group_id integer not null",
+      "owner_id integer not null",
+      "track_id integer not null",
+      "position integer not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX track_group_track_owner_id_track_id_key ON public.track_group_track USING btree (owner_id, track_id)",
+      "CREATE UNIQUE INDEX track_group_track_pkey ON public.track_group_track USING btree (group_id, track_id)",
+      "CREATE INDEX track_group_track_track_idx ON public.track_group_track USING btree (track_id)"
+    ]
+  },
   "track_invitation": {
     "columns": [
       "id integer not null default nextval('track_invitation_id_seq'::regclass)",

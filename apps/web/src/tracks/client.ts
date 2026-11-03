@@ -123,6 +123,7 @@ export interface TrackFiles {
 
 /** A track in the directory and the sidebar. */
 export interface TrackListItem {
+  id: number;
   key: string;
   name: string;
   owner: { id: number; name: string } | null;

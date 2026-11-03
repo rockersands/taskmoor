@@ -124,6 +124,18 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/admin/imports/:id/report']).toBe('admin');
     expect(classes['POST /api/v1/admin/imports/:id/cancel']).toBe('admin');
     expect(classes['GET /api/v1/admin/imports/:id/records']).toBe('admin');
+    // Personal track groups (CORE-034): read and write. Sharing one gives roles only where the
+    // person could give them track by track, which is a write there too (IAM-034).
+    expect(classes['GET /api/v1/track-groups']).toBe('read');
+    expect(classes['GET /api/v1/track-groups/people']).toBe('read');
+    expect(classes['GET /api/v1/track-groups/:id/shares']).toBe('read');
+    expect(classes['POST /api/v1/track-groups']).toBe('write');
+    expect(classes['PATCH /api/v1/track-groups/:id']).toBe('write');
+    expect(classes['PUT /api/v1/track-groups/order']).toBe('write');
+    expect(classes['PUT /api/v1/track-groups/:id/tracks/:trackId']).toBe('write');
+    expect(classes['POST /api/v1/track-groups/:id/shares']).toBe('write');
+    expect(classes['DELETE /api/v1/track-groups/:id/shares/:userId']).toBe('write');
+    expect(classes['POST /api/v1/track-groups/:id/copies']).toBe('write');
     // The SCIM service answers only its own scope, whatever the method (ADR-038).
     expect(classes['GET /api/v1/scim/v2/Users']).toBe('scim');
     expect(classes['PATCH /api/v1/scim/v2/Groups/:id']).toBe('scim');

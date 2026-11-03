@@ -5,6 +5,8 @@ import { ApiError } from '../api/client';
 import type { ConfigurationClient, Track } from '../configuration/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { type Session, SessionProvider, type SessionUser } from '../session/SessionProvider';
+import type { TrackGroupClient } from '../trackgroups/client';
+import { fakeTrackGroupClient, ownGroup } from '../trackgroups/fixtures';
 import { fakeTrackClient } from './fixtures';
 import { TracksPage } from './TracksPage';
 import { newTrackModes } from './trackAccess';
@@ -40,13 +42,20 @@ function fakeCreator(create: ConfigurationClient['createTrack'] = vi.fn()) {
   } as unknown as ConfigurationClient;
 }
 
-function open(session: Session, options: { creator?: ConfigurationClient; empty?: boolean } = {}) {
+function open(
+  session: Session,
+  options: { creator?: ConfigurationClient; empty?: boolean; groups?: TrackGroupClient } = {},
+) {
   const client = fakeTrackClient();
   if (options.empty) client.list = async () => [];
   render(
     <I18nProvider locale="en">
       <SessionProvider session={session}>
-        <TracksPage client={client} creator={options.creator ?? fakeCreator()} />
+        <TracksPage
+          client={client}
+          creator={options.creator ?? fakeCreator()}
+          groups={options.groups ?? fakeTrackGroupClient()}
+        />
       </SessionProvider>
     </I18nProvider>,
   );
@@ -202,5 +211,32 @@ describe('New track on the directory (CORE-001)', () => {
     expect(await screen.findByText('No tracks yet')).toBeVisible();
     expect(screen.getByText(/Administrators make them/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'New track' })).toBeNull();
+  });
+});
+
+describe('the directory in the person’s groups (CORE-034)', () => {
+  it('[CORE-034] shows the person’s groups, and a search lists the matches plainly', async () => {
+    const user = userEvent.setup();
+    open(signedIn(), {
+      groups: fakeTrackGroupClient({ groups: [ownGroup(1, 'Launch', [1])] }),
+    });
+    const launch = await screen.findByRole('region', { name: 'Launch' });
+    expect(within(launch).getByRole('link', { name: /Shop/ })).toBeVisible();
+    expect(
+      within(screen.getByRole('region', { name: 'Tracks in no group' })).getByRole('link', {
+        name: /Web/,
+      }),
+    ).toBeVisible();
+    await user.type(screen.getByLabelText('Find a track'), 'sh');
+    expect(screen.queryByRole('region', { name: 'Launch' })).toBeNull();
+    expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual(['SHOPShop']);
+  });
+
+  it('[CORE-034] without its groups the page still lists every track, and says so', async () => {
+    const groups = fakeTrackGroupClient({ layoutFails: true });
+    open(signedIn(), { groups });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your groups could not be loaded');
+    expect(screen.getByRole('link', { name: /Shop/ })).toBeVisible();
+    expect(screen.getByRole('link', { name: /Web/ })).toBeVisible();
   });
 });

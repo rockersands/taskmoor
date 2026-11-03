@@ -1,0 +1,266 @@
+/*
+ * Personal track groups on the Tracks page (CORE-034; ADR-121), in the glass language of ADR-114:
+ * an open group is a glass bubble holding its tracks, a minimized one the size of one track card
+ * with small glass squares for its tracks. Only tokens: where glass cannot blur, or the person
+ * asked for less transparency, tokens.css makes every glass surface its opaque surface.
+ */
+.track-arrangement {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.track-arrangement-hint {
+  max-width: 52rem;
+  margin: 0;
+}
+
+/* Groups share the directory's grid: a minimized one takes one card's cell, an open one a row. */
+.track-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track-group.is-open {
+  grid-column: 1 / -1;
+}
+
+.track-group > section {
+  height: 100%;
+}
+
+/* The bubble: thicker, rounder glass than a card, with more blur behind it. */
+.track-group-bubble {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: calc(var(--radius-4) * 1.5);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+}
+
+.track-group-mini {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.track-group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.track-group-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-300);
+  font-weight: 650;
+}
+
+.track-group-count,
+.track-group-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.track-group-count {
+  flex: none;
+}
+
+.track-group-meta {
+  margin: 0;
+}
+
+.track-group-toggle svg {
+  transition: transform var(--motion-fast) var(--ease-soft);
+}
+
+.track-group.is-minimized .track-group-toggle svg {
+  transform: rotate(-90deg);
+}
+
+.track-group-empty {
+  margin: 0;
+}
+
+/* A minimized group's tracks: one small square of glass each, with the track's initial. */
+.track-group-squares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.track-group-square {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-1);
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 650;
+}
+
+.track-move {
+  position: relative;
+  flex: none;
+}
+
+/* A track card with its grip at the top corner. */
+.track-card {
+  position: relative;
+  padding-inline-end: calc(var(--hit-target) + var(--space-2));
+}
+
+.track-card .track-move {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+.track-move-handle {
+  display: inline-grid;
+  place-items: center;
+  width: var(--hit-target);
+  height: var(--hit-target);
+  border: 1px solid transparent;
+  border-radius: var(--radius-2);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: grab;
+  /* A finger on the grip drags the card rather than scrolling the page or selecting text. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background-color var(--motion-fast) var(--ease-soft);
+}
+
+.track-move-handle:hover,
+.track-move-handle[aria-expanded="true"] {
+  border-color: var(--glass-edge);
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+}
+
+/*
+ * A card's grip sits at its end, so its menu opens towards the start; a group's grip leads its
+ * head, so its menu opens towards the end. Neither runs off the page.
+ */
+.track-card .track-move-popup {
+  inset-inline: auto 0;
+}
+
+.track-group-head .track-move-popup {
+  inset-inline: 0 auto;
+}
+
+/*
+ * Every card and group is glass, each its own stacking context: an open menu's card, and the
+ * group around it, rise above the cards and groups after them, which would cover the menu.
+ */
+.track-card:has(.track-move-popup),
+.track-group:has(.track-move-popup) > section {
+  z-index: 2;
+}
+
+/* While dragging: what moves fades, and where it would land is outlined. */
+.track-card.is-dragging,
+.track-group.is-dragging {
+  opacity: 0.55;
+}
+
+.track-card.is-drop-target,
+.track-group.is-drop-target > section,
+.track-ungrouped.is-drop-target {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.track-ungrouped {
+  display: grid;
+  gap: var(--space-2);
+  border-radius: var(--radius-3);
+}
+
+.track-ungrouped > .section-title,
+.track-ungrouped > .page-note {
+  margin: 0;
+}
+
+.track-drag-ghost {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 60;
+  max-width: 16rem;
+  padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-pill);
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The share dialog's chosen person, and a share of someone no longer active. */
+.track-share-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.track-share-inactive {
+  margin-inline-start: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.track-share-list {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 40rem) {
+  .track-group-bubble {
+    padding: var(--space-3);
+    border-radius: var(--radius-4);
+  }
+}
+
+@media (pointer: coarse) {
+  .track-move-handle,
+  .track-group-toggle {
+    width: var(--hit-target-touch);
+    height: var(--hit-target-touch);
+  }
+
+  .track-card {
+    padding-inline-end: calc(var(--hit-target-touch) + var(--space-2));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-group-toggle svg,
+  .track-move-handle {
+    transition: none;
+  }
+}

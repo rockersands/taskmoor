@@ -1650,6 +1650,38 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          ORDER BY t.id, r.id LIMIT 1`.execute(db);
     },
   },
+  '0100_track_groups': {
+    tables: {
+      track_group: "name = 'Seed group' AND position = 0 AND NOT minimized",
+      track_group_track: "track_id = (SELECT id FROM track WHERE key = 'SEEDGRP')",
+      track_group_share:
+        "user_id = (SELECT id FROM app_user WHERE email = 'seed-0055@example.com')",
+      track_group_access: "track_id = (SELECT id FROM track WHERE key = 'SEEDGRP')",
+    },
+    seed: async (db) => {
+      // The seed's person groups a track of their own and shares the group with a role, which
+      // the share holds (ADR-121).
+      await sql`INSERT INTO track (workspace_id, key, name, access_policy_id)
+        SELECT 1, 'SEEDGRP', 'Seed group track', id FROM access_policy
+         WHERE name = 'Seed policy'`.execute(db);
+      await sql`INSERT INTO track_group (workspace_id, owner_id, name, position)
+        SELECT 1, id, 'Seed group', 0 FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO track_group_track (workspace_id, group_id, owner_id, track_id, position)
+        SELECT 1, g.id, g.owner_id, t.id, 0 FROM track_group g, track t
+         WHERE g.name = 'Seed group' AND t.key = 'SEEDGRP'`.execute(db);
+      await sql`INSERT INTO track_group_share (workspace_id, group_id, user_id, role_id, shared_by,
+          position)
+        SELECT 1, g.id, u.id, r.id, g.owner_id, 0 FROM track_group g, app_user u, role r
+         WHERE g.name = 'Seed group' AND u.email = 'seed-0055@example.com'
+           AND r.name = 'Seed role'`.execute(db);
+      await sql`INSERT INTO track_role_actor (workspace_id, track_id, role_id, user_id)
+        SELECT 1, t.id, s.role_id, s.user_id FROM track_group_share s, track t
+         WHERE t.key = 'SEEDGRP'`.execute(db);
+      await sql`INSERT INTO track_group_access (workspace_id, share_id, track_id, role_id, user_id)
+        SELECT 1, s.id, t.id, s.role_id, s.user_id FROM track_group_share s, track t
+         WHERE t.key = 'SEEDGRP'`.execute(db);
+    },
+  },
 };
 
 /**
