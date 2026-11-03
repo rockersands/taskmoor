@@ -29,14 +29,17 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
 - **Ticket tools are on `main`** (M1-143, merged on the Mac on 2026-11-03 after a full gate): links,
   subtickets, checklists and the slash menu, migration 0096, plus the fixes from an independent review
   (25 findings, each with a test). `claude/ticket-tools` is merged and can be ignored.
-- **The first wave is on `main`** (2026-11-03, each after its own full gate): completing a sprint from
-  the board (T-106), who may create tracks (T-087a, migration 0097, IAM-033) and the Outcomes section
-  (T-079, AGL-024). The backlog's outcome panel now counts the closed stage as done, as subtickets do.
-- **Numbers held for the next wave:** migration 0099 (T-075 and T-076), 0100 and ADR-121 (track
-  groups), 0101 to 0103, ADR-122 and PLN-012 (Multi-track); ADR-123 spare. 0098 and ADR-124 are free
-  again (T-079 needed neither). Never merge a number below one already on `main`: renumber instead.
-- **`claude/multi-track`:** a plan only, no code, in `docs/plan/multi-track-tasks.md`. Restart from
-  `main`, and take the next free migration number at that time.
+- **On `main` since then (2026-11-03, each after its own full gate and an independent review with a
+  skeptic per finding):** T-106 (complete a sprint from the board), T-087a (who may create tracks,
+  0097, IAM-033), T-079 (Outcomes section, AGL-024), T-190 to T-192 (unsaved text on the full page,
+  controls that follow edit permission, the sprint switch guard), T-146 and T-200 to T-202 (small
+  fixes), T-194 (Your tracks by membership), T-193 (large board columns drawn near the screen, with
+  roving focus), T-075 and T-076 (Summary and Statistics), T-084 to T-087 (personal track groups,
+  0100, ADR-121, CORE-034, IAM-034) and T-088 (Multi-track's first stage, 0101, ADR-122, PLN-012).
+  `claude/multi-track` is superseded: its task file is on `main`.
+- **Free numbers:** migrations 0102 and up (0098 and 0099 were never used and stay below `main`'s
+  highest, so do not take them), ADR-123 and up. Requirement IDs taken today: AGL-024, IAM-033,
+  CORE-034, IAM-034, PLN-012.
 - **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
 - **Other `claude/*` branches** are merged and can be ignored.
 
@@ -63,13 +66,13 @@ corepack pnpm install
 ### Next, in order
 
 1. Nothing waits to merge.
-2. Start the waiting tickets a few at a time in side sessions, merging each as it finishes rather
-   than letting branches drift (the user's decision; the user reminded on 2026-11-03 that several
-   parallel sessions are welcome). Proposed and waiting for the user to start: Multi-track first stage
-   (T-088), track groups (T-084 to T-087), Summary and Statistics (T-075, T-076). Next: the ticket page
-   guards (T-190 to T-192), the glass pass and the sweep of every route (T-143, T-144, best alone since
-   it touches every page), Multi-track's later stages (T-089 to T-089g), the tutorial, the layout
-   editor, drag and drop beyond boards, and the phone and accessibility pass.
+2. Next tickets, a few at a time in side sessions or workflows, merged one by one, each reviewed first:
+   the glass pass and the sweep of every route (T-143, T-144; best alone, it touches every page),
+   Multi-track's later stages (T-089 to T-089g, `docs/plan/multi-track-tasks.md`), the tutorial
+   (T-161), drag and drop beyond boards (T-162), the layout editor (T-163), the phone and accessibility
+   pass (T-164), the group follow-ups (T-204 to T-206), ticket tools' follow-ups (T-196, T-203).
+   Questions for the user are the rows marked You in `tickets.md` (T-075a, T-086a, T-087b, T-088a are
+   new today).
 3. The fuzz stages, on the final code (T-019; the user's decision).
 4. The release (T-020 to T-024) and going public (T-031 to T-036, T-005). Those need the user.
 
