@@ -211,7 +211,7 @@ reported, and the coordinator checked that it was pushed.
 | T-143 | Glass on every page, starting with the track sections | To do | Waits for the merges; the list section was called out |
 | T-144 | The design is consistent through the whole app | To do | Waits for the merges; shared styles, a guard, then a sweep of every route |
 | T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | Done | The user's own skin choice is kept |
-| T-146 | Fix the English filters in the Spanish interface | To do | Check first: filter names were reworked, and type names are now translated |
+| T-146 | Fix the English filters in the Spanish interface | Done | On `main`: every filter checked in Spanish and the pseudo-locale; the list's group headings for type and priority were the one gap. Status names stay untranslated everywhere (NFR-006 (2), a product decision) |
 | T-147 | A watery look for every animation in the app | Done | off with reduced motion |
 
 ## Administration
@@ -257,9 +257,9 @@ reported, and the coordinator checked that it was pushed.
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
 | T-198 | Load these tickets into the demo again | To do | T-121 onward never reached the demo, and a new device starts with none |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
-| T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | To do | Found by the ticket tools review; the effect needs the editing state too |
-| T-201 | A subticket refusal names a custom field as "field 12", not by its name | To do | The panel has no field catalogue; the template picker does the same |
-| T-202 | A pasted section title from another Taskmoor document keeps control characters | To do | The editor and the Markdown reader clean them; the HTML paste rule does not |
+| T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | Done | On `main` |
+| T-201 | A subticket refusal names a custom field as "field 12", not by its name | Done | On `main`: the panel reads the create form's field names once per type; the template picker still says "field N" for a field not on the form |
+| T-202 | A pasted section title from another Taskmoor document keeps control characters | Done | On `main` |
 | T-203 | A checklist item rewritten by someone else shows its new words in the writer's own data download | To do | Only on tickets the person still sees; needs an `updated_by` column |
 
 ## Flutter app (stopped)
