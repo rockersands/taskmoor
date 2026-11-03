@@ -125,5 +125,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [118](0118-track-invitations.md) | Invitations into a track by email or copied link, off until a site administrator gives the permission; a separate, removable permission for appointing a track's administrators, on by default; a track keeps its last administrator; web pages for track managers | Accepted |
 | [119](0119-google-sign-in.md) | Google sign-in is a preset of OpenID Connect on each operator's own client: Gmail only, no accounts made, nothing enforced, with warnings for public domains; Google believed only for Gmail and its hosted domains; no Taskmoor second factor | Accepted |
 | [121](0121-personal-track-groups.md) | Personal track groups on the Tracks page; sharing one gives a chosen role on its tracks only where the sharer may give it, as ordinary roles that shares are recorded as holding, so taking a share back removes only what shares gave; setting a group on someone gives them their own copy | Accepted |
+| [122](0122-multi-track.md) | Multi-track: plans over several tracks and saved searches, each viewer seeing only the sources and tickets they may see, in Summary, Timeline, List and Calendar views | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
