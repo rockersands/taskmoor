@@ -293,7 +293,7 @@ function Cell({
   );
 }
 
-/** The type and priority columns show their icon (CORE-012, CORE-014); the rest their text. */
+/** The type and priority columns show their icon (CORE-005, CORE-014); the rest their text. */
 function CellPicture({ column, value, shown }: { column: string; value: unknown; shown: string }) {
   const named = value as { name?: unknown; icon?: string | null; level?: number } | null;
   if (typeof named?.name !== 'string') return shown;

@@ -64,7 +64,7 @@ function Labelled({
 }
 
 /**
- * A ticket's type as an icon (CORE-012): the name a type's `icon` holds if it is one of ours, then
+ * A ticket's type as an icon (CORE-005): the name a type's `icon` holds if it is one of ours, then
  * the type's own name, then a plain shape for a custom type. The name stays as its accessible name
  * and tooltip, and shape carries it: colour does not.
  */

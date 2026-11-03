@@ -1,4 +1,4 @@
-/* Ticket type and priority icons (CORE-012, CORE-014). Shape tells them apart; the two highest
+/* Ticket type and priority icons (CORE-005, CORE-014). Shape tells them apart; the two highest
    priorities also take the colour of what they mean. No effect per icon: a board can hold thousands. */
 .ticket-icons {
   display: inline-flex;

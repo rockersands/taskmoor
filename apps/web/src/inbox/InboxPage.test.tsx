@@ -66,7 +66,7 @@ describe('the inbox page (M1-058)', () => {
     expect(page.getByRole('button', { name: 'Priority 2', pressed: false })).toBeVisible();
   });
 
-  it('[CORE-012] [CORE-014] shows the ticket’s type and priority as named icons', async () => {
+  it('[CORE-005] [CORE-014] shows the ticket’s type and priority as named icons', async () => {
     const { page } = renderInbox();
     const [first] = await cards(page);
     expect(within(first as HTMLElement).getByRole('img', { name: 'Bug' })).toBeVisible();

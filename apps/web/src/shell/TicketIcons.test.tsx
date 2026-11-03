@@ -9,12 +9,12 @@ import { PriorityGlyph, PriorityIcon, TypeGlyph, TypeIcon } from './TicketIcons'
 const shapeOf = (element: Element) => element.querySelector('svg')?.innerHTML ?? '';
 
 describe('ticket type icons', () => {
-  it('[CORE-012] names the type for assistive technology and in a tooltip', () => {
+  it('[CORE-005] names the type for assistive technology and in a tooltip', () => {
     render(<TypeIcon name="Bug" icon="bug" />);
     expect(screen.getByRole('img', { name: 'Bug' })).toHaveAttribute('title', 'Bug');
   });
 
-  it('[CORE-012] draws a different shape per default type, and one for a custom type', () => {
+  it('[CORE-005] draws a different shape per default type, and one for a custom type', () => {
     const { container } = render(
       <div>
         {['outcome', 'feature', 'bug', 'chore', 'to-do', 'idea', 'subticket', 'rocket'].map(
@@ -28,7 +28,7 @@ describe('ticket type icons', () => {
     expect(new Set(shapes).size).toBe(8);
   });
 
-  it('[CORE-012] uses the icon an administrator set, then the name, then the plain shape', () => {
+  it('[CORE-005] uses the icon an administrator set, then the name, then the plain shape', () => {
     const shape = (node: React.ReactNode) => {
       const { container, unmount } = render(node);
       const out = container.innerHTML;

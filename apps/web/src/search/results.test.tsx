@@ -128,7 +128,7 @@ describe('search results (M1-042)', () => {
     expect(client.edits[1]).toEqual({ id: 41, change: { priorityId: 1, version: 2 } });
   });
 
-  it('[CORE-012] [CORE-014] shows type and priority as icons, named for assistive technology', async () => {
+  it('[CORE-005] [CORE-014] shows type and priority as icons, named for assistive technology', async () => {
     renderPage();
     await screen.findByRole('table');
     const cells = within(row('SHOP-41'));

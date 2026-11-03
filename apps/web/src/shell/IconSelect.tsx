@@ -32,7 +32,7 @@ export interface IconSelectProps {
 }
 
 /**
- * A single choice whose options show an icon and a name (CORE-012, CORE-014), which a native select
+ * A single choice whose options show an icon and a name (CORE-005, CORE-014), which a native select
  * cannot draw. It is a combobox that only selects: focus stays on the button, the arrow keys, Home,
  * End and a letter move through the list, Enter or Space takes the option, Tab takes it and moves on,
  * Escape closes. It opens under the button in the page's flow of layers, without moving anything.
