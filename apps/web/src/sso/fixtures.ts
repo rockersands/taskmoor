@@ -65,6 +65,22 @@ export const SAML_PROVIDER: SamlProvider = {
   groupMap: [{ claimValue: 'support', groupId: 9 }],
 };
 
+/** A provider made with the Google choice (IAM-031). */
+export const GOOGLE_PROVIDER: IdentityProvider = {
+  id: 8,
+  name: 'Google',
+  issuer: 'https://accounts.google.com',
+  clientId: 'an-operators-own-client',
+  hasClientSecret: true,
+  scopes: 'openid email profile',
+  groupClaim: null,
+  domains: ['gmail.com'],
+  enforceSso: false,
+  jit: false,
+  enabled: true,
+  groupMap: [],
+};
+
 export const PROVIDERS: IdentityProvider[] = [
   {
     id: STAFF.id,

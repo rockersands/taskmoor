@@ -3,6 +3,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { ApiError } from '../api/client';
 import { SessionProvider } from '../session/SessionProvider';
+import { fakeSignInSso } from '../sso/fixtures';
 import { fakeInvitationClient, fakeTrackPeopleClient, ROLES } from './fixtures';
 import { InvitationPage } from './InvitationPage';
 import { InviteDialog } from './InviteDialog';
@@ -84,6 +85,20 @@ const invited = {
 export const InvitationLinkPage: StoryObj<typeof InvitationPage> = {
   ...invited,
   render: () => anonymous(<InvitationPage client={fakeInvitationClient()} />),
+};
+
+/** A provider serves the invited address (IAM-032): signing in comes first, with it on offer. */
+export const InvitationWithGoogle: StoryObj<typeof InvitationPage> = {
+  ...invited,
+  render: () =>
+    anonymous(
+      <InvitationPage
+        client={fakeInvitationClient()}
+        ssoClient={fakeSignInSso([{ id: 8, name: 'Google' }], {
+          'example.com': { provider: { id: 8, name: 'Google' }, password: true },
+        })}
+      />,
+    ),
 };
 
 export const InvitationNeedsSecondFactor: StoryObj<typeof InvitationPage> = {

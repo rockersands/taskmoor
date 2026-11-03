@@ -460,7 +460,7 @@ describe('identity provider administration (M1-080)', () => {
     await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     await user.keyboard('Agency');
-    const protocol = within(form).getByRole('group', { name: 'Protocol' });
+    const protocol = within(form).getByRole('group', { name: 'Type of provider' });
     expect(within(protocol).getByRole('radio', { name: 'OpenID Connect' })).toBeChecked();
     await user.click(within(protocol).getByRole('radio', { name: 'SAML 2.0' }));
     // The OpenID Connect fields give way to the SAML ones; the name stays.
@@ -572,7 +572,7 @@ describe('identity provider administration (M1-080)', () => {
     await user.click(within(item).getByRole('button', { name: 'Edit Contractors' }));
     const form = within(item).getByRole('form', { name: 'Edit Contractors' });
     // The saved settings are there to change; the protocol is not.
-    expect(within(form).queryByRole('group', { name: 'Protocol' })).toBeNull();
+    expect(within(form).queryByRole('group', { name: 'Type of provider' })).toBeNull();
     expect(within(form).getByLabelText('Entity ID')).toHaveValue(CONTRACTORS.entityId);
     expect(within(form).getByLabelText('Signing certificates')).toHaveValue(PEM);
     expect(within(form).getByText(/Saved: CN=id\.contractors\.example, valid until/)).toBeVisible();
@@ -625,6 +625,159 @@ describe('identity provider administration (M1-080)', () => {
     expect(texts.length).toBeGreaterThan(40);
     expect(untranslated(texts)).toEqual([]);
     expect(errors).toEqual([]);
+  });
+
+  describe('the Google choice (IAM-031)', () => {
+    async function openGoogleForm(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+      const form = screen.getByRole('form', { name: 'New identity provider' });
+      await user.click(within(form).getByRole('radio', { name: 'Google' }));
+      return form;
+    }
+
+    it('[IAM-031] fills visible, editable safe settings and shows what to register at Google', async () => {
+      const user = userEvent.setup();
+      let sent: unknown;
+      const calls = openPage({
+        'GET /identity-providers': () =>
+          jsonResponse(200, { providers: [], redirectUri: REDIRECT_URI }),
+        'POST /identity-providers': (body) => {
+          sent = body;
+          return jsonResponse(201, { provider: STAFF });
+        },
+      });
+      const form = await openGoogleForm(user);
+      expect(within(form).getByLabelText('Name')).toHaveValue('Google');
+      expect(within(form).getByLabelText('Issuer URL')).toHaveValue('https://accounts.google.com');
+      expect(within(form).getByLabelText('Issuer URL')).toBeEnabled();
+      expect(within(form).getByText('gmail.com')).toBeVisible();
+      const policy = within(form).getByRole('group', { name: 'Sign-in policy' });
+      expect(
+        within(policy).getByRole('checkbox', { name: 'Create accounts at a first sign-in' }),
+      ).not.toBeChecked();
+      expect(
+        within(policy).getByRole('checkbox', { name: 'Enforce single sign-on for these domains' }),
+      ).not.toBeChecked();
+      expect(within(form).getByText(REDIRECT_URI)).toBeVisible();
+      expect(
+        within(form).getByRole('link', { name: 'How to set up the Google client (manual)' }),
+      ).toHaveAttribute('href', expect.stringContaining('sso.md#signing-in-with-google'));
+      expect(within(form).queryByRole('alert')).toBeNull();
+
+      // The secret is asked for: a Google client always has one.
+      expect(within(form).getByLabelText('Client secret')).toBeRequired();
+      await user.type(within(form).getByLabelText('Client ID'), 'an-own-client');
+      await user.type(within(form).getByLabelText('Client secret'), 'typed-in-the-test');
+      await user.click(within(form).getByRole('button', { name: 'Add provider' }));
+      await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
+      expect(sent).toEqual({
+        name: 'Google',
+        issuer: 'https://accounts.google.com',
+        clientId: 'an-own-client',
+        clientSecret: 'typed-in-the-test',
+        scopes: 'openid email profile',
+        groupClaim: null,
+        domains: ['gmail.com'],
+        enforceSso: false,
+        jit: false,
+        enabled: true,
+        groupMap: [],
+      });
+    });
+
+    it('[IAM-031] warns when account creation or enforcement is turned on for a public domain', async () => {
+      const user = userEvent.setup();
+      openPage({
+        'GET /identity-providers': () =>
+          jsonResponse(200, { providers: [], redirectUri: REDIRECT_URI }),
+      });
+      const form = await openGoogleForm(user);
+      const policy = within(form).getByRole('group', { name: 'Sign-in policy' });
+      await user.click(
+        within(policy).getByRole('checkbox', { name: 'Create accounts at a first sign-in' }),
+      );
+      expect(within(policy).getByRole('alert')).toHaveTextContent(
+        'Anyone with an address at gmail.com could join this site',
+      );
+      await user.click(
+        within(policy).getByRole('checkbox', { name: 'Create accounts at a first sign-in' }),
+      );
+      expect(within(policy).queryByRole('alert')).toBeNull();
+      await user.click(
+        within(policy).getByRole('checkbox', { name: 'Enforce single sign-on for these domains' }),
+      );
+      expect(within(policy).getByRole('alert')).toHaveTextContent(
+        'This blocks password sign-in for every address at gmail.com',
+      );
+    });
+
+    it('[IAM-031] a company domain alone draws no warning; any provider with a public domain does', async () => {
+      const user = userEvent.setup();
+      openPage({
+        'GET /identity-providers': () =>
+          jsonResponse(200, {
+            providers: [{ ...STAFF, domains: ['gmail.com'], enforceSso: false, jit: false }],
+            redirectUri: REDIRECT_URI,
+          }),
+      });
+      const item = await providerItem('Staff accounts');
+      await user.click(within(item).getByRole('button', { name: 'Edit Staff accounts' }));
+      const form = within(item).getByRole('form', { name: 'Edit Staff accounts' });
+      // Not Google, so no Google note.
+      expect(within(form).queryByText(REDIRECT_URI)).toBeNull();
+      const policy = within(form).getByRole('group', { name: 'Sign-in policy' });
+      const create = within(policy).getByRole('checkbox', {
+        name: 'Create accounts at a first sign-in',
+      });
+      await user.click(create);
+      expect(within(policy).getByRole('alert')).toBeVisible();
+      await user.click(within(form).getByRole('button', { name: 'Remove gmail.com' }));
+      await user.type(within(form).getByLabelText('Domain'), 'company.example.com{Enter}');
+      expect(within(policy).queryByRole('alert')).toBeNull();
+    });
+
+    it('[IAM-031] going back to OpenID Connect takes the filled settings away, at phone width too', async () => {
+      const user = userEvent.setup();
+      setViewportWidth(360);
+      openPage({
+        'GET /identity-providers': () =>
+          jsonResponse(200, { providers: [], redirectUri: REDIRECT_URI }),
+      });
+      const form = await openGoogleForm(user);
+      await user.click(within(form).getByRole('radio', { name: 'OpenID Connect' }));
+      expect(within(form).getByLabelText('Issuer URL')).toHaveValue('');
+      expect(within(form).getByLabelText('Name')).toHaveValue('');
+      expect(within(form).queryByText('gmail.com')).toBeNull();
+      expect(within(form).queryByText(REDIRECT_URI)).toBeNull();
+      expect(
+        within(form).getByRole('checkbox', { name: 'Create accounts at a first sign-in' }),
+      ).toBeChecked();
+    });
+
+    it('passes the Google choice through the pseudo-locale', async () => {
+      const user = userEvent.setup();
+      stubBackend({
+        'GET /identity-providers': () =>
+          jsonResponse(200, { providers: [], redirectUri: REDIRECT_URI }),
+        'GET /groups': () => jsonResponse(200, { groups: GROUPS }),
+      });
+      window.location.hash = '#/admin/identity-providers';
+      const errors: Error[] = [];
+      render(<App session={ADMIN} locale="en-XA" onI18nError={(e) => errors.push(e)} />);
+      const main = screen.getByRole('main');
+      const add = await within(main).findByRole('button', { expanded: false });
+      await user.click(add);
+      const radios = within(main).getAllByRole('radio');
+      await user.click(radios[radios.length - 1] as HTMLElement);
+      const boxes = within(main).getAllByRole('checkbox');
+      for (const box of boxes.slice(0, 2)) await user.click(box);
+      const texts = visibleTexts(main).filter(
+        (text) => ![REDIRECT_URI, 'openid email profile', 'gmail.com', 'Google'].includes(text),
+      );
+      expect(texts.length).toBeGreaterThan(30);
+      expect(untranslated(texts)).toEqual([]);
+      expect(errors).toEqual([]);
+    });
   });
 
   it('passes every string through the pseudo-locale', async () => {

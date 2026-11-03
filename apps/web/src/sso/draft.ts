@@ -113,6 +113,78 @@ export function draftOf(provider: IdentityProvider): ProviderDraft {
   };
 }
 
+/** Google's issuer; the guide says how an operator makes a client of their own there. */
+export const GOOGLE_ISSUER = 'https://accounts.google.com';
+export const GOOGLE_NAME = 'Google';
+export const GOOGLE_DOMAIN = 'gmail.com';
+export const GOOGLE_GUIDE_URL =
+  'https://github.com/Rockersands/taskmoor/blob/main/docs/manual/admin/sso.md#signing-in-with-google';
+
+export function isGoogleIssuer(issuer: string): boolean {
+  try {
+    return new URL(issuer.trim()).origin === GOOGLE_ISSUER;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The Google choice (IAM-031, ADR-119): ordinary OpenID Connect settings, all still editable, set
+ * so that only invited people and existing accounts get in and passwords keep working. Domains
+ * already typed stay.
+ */
+export function googleDraft(draft: ProviderDraft): ProviderDraft {
+  return {
+    ...draft,
+    protocol: 'oidc',
+    name: draft.name.trim() ? draft.name : GOOGLE_NAME,
+    issuer: GOOGLE_ISSUER,
+    scopes: DEFAULT_SCOPES,
+    domains: draft.domains.length > 0 ? draft.domains : [GOOGLE_DOMAIN],
+    jit: false,
+    enforceSso: false,
+  };
+}
+
+/** Back to a blank provider where the Google choice's values are still untouched. */
+export function withoutGoogle(draft: ProviderDraft): ProviderDraft {
+  const blank = emptyDraft(draft.protocol);
+  return {
+    ...draft,
+    name: draft.name === GOOGLE_NAME ? '' : draft.name,
+    issuer: draft.issuer === GOOGLE_ISSUER ? '' : draft.issuer,
+    domains: draft.domains.join() === GOOGLE_DOMAIN ? [] : draft.domains,
+    jit: blank.jit,
+    enforceSso: blank.enforceSso,
+  };
+}
+
+/** Where anyone can get an address, so that a domain says nothing about who someone is. */
+const PUBLIC_EMAIL_DOMAINS = new Set([
+  'aol.com',
+  'gmail.com',
+  'gmx.com',
+  'gmx.net',
+  'googlemail.com',
+  'hotmail.com',
+  'icloud.com',
+  'live.com',
+  'mail.com',
+  'me.com',
+  'msn.com',
+  'outlook.com',
+  'proton.me',
+  'protonmail.com',
+  'yahoo.com',
+  'yandex.com',
+  'zoho.com',
+]);
+
+/** The public email domains among these (IAM-031), for the warnings of the provider form. */
+export function publicDomains(domains: readonly string[]): string[] {
+  return domains.filter((domain) => PUBLIC_EMAIL_DOMAINS.has(domain.trim().toLowerCase()));
+}
+
 /** Complete rows, trimmed, without duplicates, in a stable order. */
 function mappingsOf(rows: readonly (MappingRow | GroupMapping)[]): GroupMapping[] {
   const seen = new Set<string>();

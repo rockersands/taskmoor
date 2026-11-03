@@ -119,5 +119,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [113](0113-ticket-templates.md) | Ticket templates in one table, for a track or every track; made through the ticket create route as the person, template values refused for them left out and listed, their own refused; one `ticket.created` per ticket made | Accepted |
 | [117](0117-update-command-and-new-version-notice.md) | One update command that installs only a signed release, and a new-version notice for administrators from the public releases, with off switches | Accepted |
 | [118](0118-track-invitations.md) | Invitations into a track by email or copied link, off until a site administrator gives the permission; a separate, removable permission for appointing a track's administrators, on by default; a track keeps its last administrator; web pages for track managers | Accepted |
+| [119](0119-google-sign-in.md) | Google sign-in is a preset of OpenID Connect on each operator's own client: Gmail only, no accounts made, nothing enforced, with warnings for public domains; Google believed only for Gmail and its hosted domains; no Taskmoor second factor | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
 import { ApiError } from '../api/client';
-import { GROUPS, PROVIDERS, SAML_PROVIDER } from './fixtures';
+import { GOOGLE_PROVIDER, GROUPS, PROVIDERS, REDIRECT_URI, SAML_PROVIDER } from './fixtures';
 import { ProviderForm } from './ProviderForm';
 
 const meta = {
@@ -87,4 +87,63 @@ export const InvalidMetadata: Story = {
 export const SamlPhone: Story = {
   args: { provider: SAML_PROVIDER },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** The Google choice (IAM-031): safe settings filled in, and what to register at Google. */
+const chooseGoogle = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByRole('radio', { name: 'Google' }));
+  await expect(canvas.getByLabelText('Issuer URL')).toHaveValue('https://accounts.google.com');
+  await expect(canvas.getByText(REDIRECT_URI)).toBeVisible();
+  return canvas;
+};
+
+export const NewGoogleProvider: Story = {
+  args: { redirectUri: REDIRECT_URI },
+  play: async ({ canvasElement }) => {
+    await chooseGoogle(canvasElement);
+  },
+};
+
+export const GoogleOpensToAnyone: Story = {
+  args: { redirectUri: REDIRECT_URI },
+  play: async ({ canvasElement }) => {
+    const canvas = await chooseGoogle(canvasElement);
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Create accounts/ }));
+    await expect(canvas.getByRole('alert')).toHaveTextContent('could join this site');
+  },
+};
+
+export const GoogleEnforcedOnPublicDomain: Story = {
+  args: { redirectUri: REDIRECT_URI },
+  play: async ({ canvasElement }) => {
+    const canvas = await chooseGoogle(canvasElement);
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Enforce single sign-on/ }));
+    await expect(canvas.getByRole('alert')).toHaveTextContent('blocks password sign-in');
+  },
+};
+
+export const EditingGoogle: Story = {
+  args: { provider: GOOGLE_PROVIDER, redirectUri: REDIRECT_URI },
+};
+
+export const GooglePhone: Story = {
+  args: { redirectUri: REDIRECT_URI },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 320 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = await chooseGoogle(canvasElement);
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Create accounts/ }));
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Enforce single sign-on/ }));
+    await expect(canvas.getAllByRole('alert')).toHaveLength(2);
+    // No sideways scrolling, with the long redirect URI and both warnings on screen.
+    const form = canvas.getByRole('form');
+    await expect(form.scrollWidth).toBeLessThanOrEqual(form.clientWidth);
+  },
 };

@@ -6,9 +6,14 @@ import {
   DEFAULT_SCOPES,
   draftOf,
   emptyDraft,
+  GOOGLE_ISSUER,
+  googleDraft,
   inputOf,
+  isGoogleIssuer,
   mappingRow,
+  publicDomains,
   samlComplete,
+  withoutGoogle,
 } from './draft';
 
 const SAVED: IdentityProvider = {
@@ -209,5 +214,58 @@ describe('SAML provider drafts (M1-081)', () => {
     });
     // A cleared field keeps the saved value rather than sending nothing useful.
     expect(changesOf(SAML, { ...draft, entityId: '', certificates: '' })).toEqual({});
+  });
+});
+
+describe('the Google choice (IAM-031)', () => {
+  it('[IAM-031] fills safe settings: Gmail, no accounts made, nothing enforced', () => {
+    const draft = googleDraft(emptyDraft());
+    expect(inputOf({ ...draft, clientId: 'a-client', clientSecret: 'a-secret' })).toEqual({
+      name: 'Google',
+      issuer: GOOGLE_ISSUER,
+      clientId: 'a-client',
+      clientSecret: 'a-secret',
+      scopes: 'openid email profile',
+      groupClaim: null,
+      domains: ['gmail.com'],
+      enforceSso: false,
+      jit: false,
+      enabled: true,
+      groupMap: [],
+    });
+  });
+
+  it('[IAM-031] keeps what was already typed, and turns off what was turned on', () => {
+    const typed = { ...emptyDraft(), name: 'Company', domains: ['company.example.com'] };
+    const draft = googleDraft({ ...typed, jit: true, enforceSso: true });
+    expect(draft).toMatchObject({
+      name: 'Company',
+      domains: ['company.example.com'],
+      jit: false,
+      enforceSso: false,
+    });
+  });
+
+  it('[IAM-031] leaving the choice clears what it filled and nothing else', () => {
+    const left = withoutGoogle({ ...googleDraft(emptyDraft()), clientId: 'kept' });
+    expect(left).toMatchObject({ name: '', issuer: '', domains: [], jit: true, clientId: 'kept' });
+    const changed = withoutGoogle({
+      ...googleDraft(emptyDraft()),
+      name: 'Mine',
+      domains: ['gmail.com', 'company.example.com'],
+    });
+    expect(changed).toMatchObject({ name: 'Mine', domains: ['gmail.com', 'company.example.com'] });
+  });
+
+  it('[IAM-031] knows Google by the issuer, and public domains by name', () => {
+    expect(isGoogleIssuer('https://accounts.google.com/')).toBe(true);
+    expect(isGoogleIssuer(' https://accounts.google.com ')).toBe(true);
+    expect(isGoogleIssuer('https://accounts.google.com.example.com')).toBe(false);
+    expect(isGoogleIssuer('not a url')).toBe(false);
+    expect(publicDomains(['gmail.com', 'company.example.com', 'GMAIL.com'])).toEqual([
+      'gmail.com',
+      'GMAIL.com',
+    ]);
+    expect(publicDomains(['company.example.com'])).toEqual([]);
   });
 });

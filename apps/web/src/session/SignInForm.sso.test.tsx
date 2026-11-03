@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -8,6 +8,7 @@ import { type Handler, stubBackend, untranslated, visibleTexts } from '../test/b
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { SessionProvider } from './SessionProvider';
+import { SignInForm } from './SignInForm';
 import { SignInPage } from './SignInPage';
 
 const SAM = {
@@ -76,7 +77,7 @@ describe('sign-in with single sign-on (M1-080)', () => {
     const { client, went } = fakeSso();
     openSignIn(client);
     const others = await screen.findByRole('group', {
-      name: 'Or sign in through your organisation',
+      name: 'Other ways to sign in',
     });
     expect(
       within(others)
@@ -86,6 +87,53 @@ describe('sign-in with single sign-on (M1-080)', () => {
     await user.click(within(others).getByRole('button', { name: 'Sign in with Partners' }));
     // From the sign-in page itself the browser comes back to the start page.
     expect(went).toEqual(['/api/v1/auth/oidc/2/start?returnTo=%2F']);
+  });
+
+  it('[IAM-032] a site with Google offers it for a Gmail address, with the password still there', async () => {
+    const user = userEvent.setup();
+    const google: SsoProviderSummary = { id: 8, name: 'Google' };
+    const { client, went } = fakeSso({
+      providers: async () => [google],
+      discover: async (email) =>
+        email.endsWith('@gmail.com')
+          ? { provider: google, password: true }
+          : { provider: null, password: true },
+    });
+    const { calls } = openSignIn(client);
+    // Before any address, it is on offer for whoever has it.
+    const others = await screen.findByRole('group', { name: 'Other ways to sign in' });
+    expect(within(others).getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+
+    await user.type(screen.getByLabelText('Email'), 'sam@gmail.com');
+    await user.tab();
+    const form = screen.getByRole('form', { name: 'Sign in' });
+    expect(await within(form).findByText('This address signs in with Google.')).toBeVisible();
+    expect(screen.queryByRole('group', { name: 'Other ways to sign in' })).toBeNull();
+    expect(within(form).getByLabelText('Password')).toBeVisible();
+
+    // The password goes on working: Google does not stand in its way.
+    await user.type(within(form).getByLabelText('Password'), 'a password');
+    await user.click(within(form).getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(passwordSent(calls)).toBe(true));
+    expect(went).toEqual([]);
+  });
+
+  it('[IAM-032] an address the page already knows gets its provider without leaving the field', async () => {
+    const google: SsoProviderSummary = { id: 8, name: 'Google' };
+    const { client } = fakeSso({
+      providers: async () => [google],
+      discover: async () => ({ provider: google, password: true }),
+    });
+    stubBackend({});
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={{ status: 'anonymous' }}>
+          <SignInForm ssoClient={client} initialEmail="sam@gmail.com" ssoReturnRoute="#/invite" />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('button', { name: 'Sign in with Google' })).toBeVisible();
+    expect(await screen.findByText('This address signs in with Google.')).toBeVisible();
   });
 
   it('[IAM-002] starts a SAML provider at its own address', async () => {
@@ -102,7 +150,7 @@ describe('sign-in with single sign-on (M1-080)', () => {
     await user.type(screen.getByLabelText('Email'), 'kai@contractors.test');
     await user.tab();
     const form = screen.getByRole('form', { name: 'Sign in' });
-    await within(form).findByText('Your organisation signs in with Contractors.');
+    await within(form).findByText('This address signs in with Contractors.');
     await user.click(within(form).getByRole('button', { name: 'Sign in with Contractors' }));
     expect(went).toEqual([
       '/api/v1/auth/saml/4/start?returnTo=%2F',
@@ -128,14 +176,14 @@ describe('sign-in with single sign-on (M1-080)', () => {
     await user.tab();
     const form = screen.getByRole('form', { name: 'Sign in' });
     expect(
-      await within(form).findByText('Your organisation signs in with Staff accounts.'),
+      await within(form).findByText('This address signs in with Staff accounts.'),
     ).toBeVisible();
     expect(screen.getByLabelText('Email')).toHaveAccessibleDescription(
-      'Your organisation signs in with Staff accounts.',
+      'This address signs in with Staff accounts.',
     );
     expect(within(form).getByRole('button', { name: 'Sign in with Staff accounts' })).toBeVisible();
     // The other providers stay below; Staff accounts is not offered twice.
-    const others = screen.getByRole('group', { name: 'Or sign in through your organisation' });
+    const others = screen.getByRole('group', { name: 'Other ways to sign in' });
     expect(
       within(others).queryByRole('button', { name: 'Sign in with Staff accounts' }),
     ).toBeNull();
@@ -157,9 +205,7 @@ describe('sign-in with single sign-on (M1-080)', () => {
     await user.type(screen.getByLabelText('Email'), 'ana@enforced.test');
     await user.tab();
     const form = screen.getByRole('form', { name: 'Sign in' });
-    expect(
-      await within(form).findByText('Your organisation signs in with Umbrella.'),
-    ).toBeVisible();
+    expect(await within(form).findByText('This address signs in with Umbrella.')).toBeVisible();
     expect(screen.queryByLabelText('Password')).toBeNull();
     // One button: the form's own, so pressing Enter in the email field leads there too.
     const submit = within(form).getByRole('button', { name: 'Sign in with Umbrella' });
@@ -223,7 +269,7 @@ describe('sign-in with single sign-on (M1-080)', () => {
     const { calls, signedIn } = openSignIn(client, { hash: '#/sign-in?method=password' });
     await user.type(screen.getByLabelText('Email'), 'ana@enforced.test');
     await user.tab();
-    expect(await screen.findByText('Your organisation signs in with Umbrella.')).toBeVisible();
+    expect(await screen.findByText('This address signs in with Umbrella.')).toBeVisible();
     // The password stays on offer, next to the provider.
     await user.type(screen.getByLabelText('Password'), 'the break-glass passphrase');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
@@ -259,7 +305,7 @@ describe('sign-in with single sign-on (M1-080)', () => {
     const { client } = fakeSso();
     openSignIn(client, { hash: '#/sign-in?sso_error=no_account' });
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'There is no account for you here yet. Ask your administrator to create one.',
+      'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
     );
     // The address loses the reason, so a reload does not show it again.
     expect(window.location.hash).toBe('#/sign-in');
@@ -290,9 +336,7 @@ describe('sign-in with single sign-on (M1-080)', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(passwordSent(calls)).toBe(true);
     expect(signedIn).toEqual(['home']);
-    expect(
-      screen.queryByRole('group', { name: 'Or sign in through your organisation' }),
-    ).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Other ways to sign in' })).toBeNull();
   });
 
   it('[IAM-003] works on a phone-sized screen', async () => {
@@ -300,7 +344,7 @@ describe('sign-in with single sign-on (M1-080)', () => {
     const { client } = fakeSso();
     openSignIn(client);
     const others = await screen.findByRole('group', {
-      name: 'Or sign in through your organisation',
+      name: 'Other ways to sign in',
     });
     expect(within(others).getAllByRole('button')).toHaveLength(3);
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeVisible();
