@@ -220,6 +220,8 @@ export const AUDITED_EVENTS = [
   'dashboard.updated',
   'dashboard.deleted',
   'dashboard.default_set',
+  'track.summary_layout_set',
+  'track.summary_layout_removed',
   'audit.settings_updated',
   'backup_schedule.updated',
   'token.created',

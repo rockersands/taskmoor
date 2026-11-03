@@ -2987,6 +2987,22 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'saved_search.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/saved-searches/${state.savedSearch}` }),
     },
+    // A track's customized Summary (ADR-116): saved, then removed to go back to the default.
+    {
+      route: 'PUT /api/v1/tracks/:id/summary-layout',
+      expect: 'track.summary_layout_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/tracks/${state.track}/summary-layout`,
+          payload: { layout: 'one', widgets: [{ kind: 'track-summary' }] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/tracks/:id/summary-layout',
+      expect: 'track.summary_layout_removed',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/tracks/${state.track}/summary-layout` }),
+    },
     // Dashboards (M1-064): made, changed, copied, made the default and removed.
     {
       route: 'POST /api/v1/dashboards',

@@ -1545,6 +1545,18 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     },
     seed: async () => {},
   },
+  '0090_track_summary_layout': {
+    tables: {
+      track_summary_layout: "layout = 'two' AND jsonb_array_length(widgets) = 1 AND version = 1",
+    },
+    seed: async (db) => {
+      // The seed's first track has a customized Summary with one widget (ADR-116).
+      await sql`INSERT INTO track_summary_layout (track_id, workspace_id, layout, widgets)
+        SELECT id, 1, 'two',
+               '[{"id": "w-seed", "kind": "track-summary", "column": 0, "title": "", "config": {}}]'
+          FROM track WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
+    },
+  },
 };
 
 /**

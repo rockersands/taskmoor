@@ -71,11 +71,16 @@ export const WIDGET_SETTINGS = {
   'sprint-health': z.object({ boardId: id }).strict(),
   'days-remaining': z.object({ boardId: id }).strict(),
   'average-time-in-status': z.object({ query, days }).strict(),
+  /** A track's own numbers, as its default Summary shows them; only on a track's Summary. */
+  'track-summary': z.object({}).strict(),
 } as const;
 
 export type WidgetKind = keyof typeof WIDGET_SETTINGS;
 export const WIDGET_KINDS = Object.keys(WIDGET_SETTINGS) as WidgetKind[];
 export type WidgetSettings<K extends WidgetKind> = z.infer<(typeof WIDGET_SETTINGS)[K]>;
+
+/** Kinds that need a track to read, so a dashboard cannot hold them (ADR-116). */
+const TRACK_ONLY_KINDS: ReadonlySet<WidgetKind> = new Set<WidgetKind>(['track-summary']);
 
 export interface Widget {
   id: string;
@@ -101,11 +106,13 @@ export type WidgetInput = z.infer<typeof widgetInput>;
 /**
  * Checks and completes widgets: each kind's settings with their defaults, an id for a new one,
  * unique ids, and columns within the layout (a widget beyond the last column moves to it).
- * Returns the widgets, or the problems by path (`widgets.2.config.query`, …).
+ * Returns the widgets, or the problems by path (`widgets.2.config.query`, …). A kind that needs a
+ * track is refused unless these widgets are a track's Summary.
  */
 export function readWidgets(
   input: readonly WidgetInput[],
   layout: DashboardLayout,
+  place: { onTrack: boolean } = { onTrack: false },
 ): { widgets: Widget[] } | { fields: Record<string, string> } {
   const fields: Record<string, string> = {};
   const widgets: Widget[] = [];
@@ -113,6 +120,10 @@ export function readWidgets(
   if (taken.size !== input.filter((w) => w.id).length) fields.widgets = 'duplicate_id';
   const last = COLUMNS[layout] - 1;
   for (const [i, w] of input.entries()) {
+    if (TRACK_ONLY_KINDS.has(w.kind) && !place.onTrack) {
+      fields[`widgets.${i}.kind`] = 'track_only';
+      continue;
+    }
     const parsed = WIDGET_SETTINGS[w.kind].safeParse(w.config);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {

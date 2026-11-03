@@ -1007,6 +1007,18 @@ export interface DashboardTable {
   updated_at: DefaultTimestamp;
 }
 
+/** A track's customized Summary, at most one per track; no row is the default (ADR-116). */
+export interface TrackSummaryLayoutTable {
+  track_id: number;
+  workspace_id: number;
+  layout: ColumnType<DashboardLayout, DashboardLayout | undefined, DashboardLayout>;
+  /** The widgets in order, as a dashboard's (checked by the API). */
+  widgets: ColumnType<JsonValue, string | undefined, string>;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
 /** Who besides its owner sees a dashboard; the scopes of saved searches (ADR-053). */
 export interface DashboardShareTable {
   id: Generated<number>;
@@ -2658,6 +2670,7 @@ export interface Database {
   saved_search_share: SavedSearchShareTable;
   dashboard: DashboardTable;
   dashboard_share: DashboardShareTable;
+  track_summary_layout: TrackSummaryLayoutTable;
   saved_search_star: SavedSearchStarTable;
   saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;
