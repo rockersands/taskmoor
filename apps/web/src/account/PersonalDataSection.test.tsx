@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
@@ -45,7 +45,10 @@ describe('a download of one’s own data (ASVS 8.3.2, ADR-111)', () => {
     const client = renderSection();
     await userEvent.click(await screen.findByRole('button', { name: 'Prepare a download' }));
     expect(await screen.findByRole('status')).toHaveTextContent(/being prepared/);
-    expect(await screen.findAllByRole('link', { name: /Download the data/ })).toHaveLength(2);
+    // The new download is ready after the next poll: until then only the older one is a link.
+    await waitFor(() =>
+      expect(screen.getAllByRole('link', { name: /Download the data/ })).toHaveLength(2),
+    );
     expect(client.calls).toContain('request');
   });
 

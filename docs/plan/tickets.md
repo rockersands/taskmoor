@@ -115,7 +115,7 @@ reported, and the coordinator checked that it was pushed.
 | T-076 | Statistics holds every report for the track | In progress | Created vs closed and two-dimensional were missing |
 | T-077 | Files and links section | Done | `claude/ui-overhaul` |
 | T-078 | Keep the Lista and Versiones tabs | Done | Decided by the user |
-| T-079 | An Objetivos tab listing outcomes with progress | To do | Decided by the user; after the front merge |
+| T-079 | An Objetivos tab listing outcomes with progress | On branch | `claude/t079-outcomes-tab-dfd7e1` (AGL-024); merging next |
 | T-080 | A New track button on the Tracks page | Done | `claude/ui-overhaul` |
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | Done | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
@@ -124,7 +124,7 @@ reported, and the coordinator checked that it was pushed.
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | Waits for the merges |
 | T-086 | Share a whole group, or set it on another person | To do | Waits for the merges |
 | T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
-| T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | To do | After the front merge. Larger than it looks: a track-level action writes a site-wide grant, so it needs a rule on who may tick it, for example only a site administrator or someone who already holds it, plus audit and tests |
+| T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | On branch | `claude/t087a-create-tracks-box-1c6ead` (migration 0097, IAM-033, ADR-118). Only site administrators and holders may tick it. Open for the user: removing the manager role leaves the grant |
 | T-087b | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
 | T-087c | Keep Paneles in the sidebar | Done | Decided by the user; dashboards that can span tracks |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | To do | Paused on `claude/multi-track`; restarts after the merges |
@@ -158,7 +158,7 @@ reported, and the coordinator checked that it was pushed.
 | T-103 | The people list floats, and does not push the page down | Done | `claude/ui-overhaul` |
 | T-104 | Filter buttons and checkboxes get the glass style | Done | `claude/ui-overhaul` |
 | T-105 | Check whether "Solo mis tickets" and "Yo" duplicate each other | Done | `claude/ui-overhaul` |
-| T-106 | Complete a sprint from the board, for managers and above, with a confirmation pop-up | To do | Waits for the merges; says how many tickets are done and open, and where open ones go; Complete and Cancel |
+| T-106 | Complete a sprint from the board, for managers and above, with a confirmation pop-up | On branch | `claude/t106-complete-sprint-board-6e1530`: counts done and open, chooses where open ones go; Complete and Cancel |
 
 ## Tickets
 
@@ -168,11 +168,11 @@ reported, and the coordinator checked that it was pushed.
 | T-111 | A way back from a ticket to its board | Done | `claude/ui-overhaul` |
 | T-112 | Fix Escape after Create in the create dialog | Done | `claude/ui-overhaul` |
 | T-113 | Ticket templates | Done | `claude/ticket-templates`; form limits accepted by the user |
-| T-114 | Links with categories, on every ticket type | On branch | `claude/ticket-tools` |
-| T-115 | Link picker searches by number or name, same track only | On branch | `claude/ticket-tools` |
-| T-116 | Subtickets on the ticket page, with a completion percentage | On branch | `claude/ticket-tools`; normal ticket statuses |
-| T-117 | Checklists with completion, item states open, in progress, done, rejected | On branch | `claude/ticket-tools`; rejected items are left out of the percentage |
-| T-118 | A `/` menu in descriptions and comments | On branch | `claude/ticket-tools`; our own list, no Atlassian site opened |
+| T-114 | Links with categories, on every ticket type | Done | On `main` (M1-143) |
+| T-115 | Link picker searches by number or name, same track only | Done | On `main` |
+| T-116 | Subtickets on the ticket page, with a completion percentage | Done | On `main`; normal ticket statuses; boards up to 50,000 cards show progress |
+| T-117 | Checklists with completion, item states open, in progress, done, rejected | Done | On `main`; rejected items are left out of the percentage |
+| T-118 | A `/` menu in descriptions and comments | Done | On `main`; our own list, no Atlassian site opened |
 | T-119 | Mention someone with `@` to notify them | Done | Already built |
 | T-120 | Add any tool the `/` menu is missing | You | Describe it in words, no screenshots |
 | T-118a | Followers are not notified of checklist changes | Done | Decided by the user; webhooks still get the event |
@@ -256,6 +256,10 @@ reported, and the coordinator checked that it was pushed.
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
 | T-198 | Load these tickets into the demo again | To do | T-121 onward never reached the demo, and a new device starts with none |
 | T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
+| T-200 | After editing an in-progress checklist item, its box loses the half-ticked look | To do | Found by the ticket tools review; the effect needs the editing state too |
+| T-201 | A subticket refusal names a custom field as "field 12", not by its name | To do | The panel has no field catalogue; the template picker does the same |
+| T-202 | A pasted section title from another Taskmoor document keeps control characters | To do | The editor and the Markdown reader clean them; the HTML paste rule does not |
+| T-203 | A checklist item rewritten by someone else shows its new words in the writer's own data download | To do | Only on tickets the person still sees; needs an `updated_by` column |
 
 ## Flutter app (stopped)
 

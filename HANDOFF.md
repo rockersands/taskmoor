@@ -17,8 +17,8 @@ Paste this into a new Claude Code session on the other device:
 You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/taskmoor). Clone it if needed and check out claude/api-key-upload-prevention-9ucz4x. Read HANDOFF.md, starting with the section "continuing on another device", then docs/plan/tickets.md, docs/plan/decisions.csv and CLAUDE.md, and follow them exactly. Rules with no exceptions: no secrets in any file, commit, message or log; never use any Atlassian site, product or connection; never push to main except by fast-forward after a green full gate; ask me before anything outside the repository folder and before decisions that are mine. Keep every new request as a ticket in tickets.md. Tell me in plain words what finished, what failed and what you need from me. Start with the next step in the handoff.
 ```
 
-The user chose to stop before the ticket tools gate, so `main` stays at `6015efc` and that gate is the
-first job. The handoff, tickets and decisions are on the coordinator branch, not yet on `main`.
+Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
+handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
 ### Where things are
 
@@ -26,10 +26,16 @@ first job. The handoff, tickets and decisions are on the coordinator branch, not
   the import results and all the front work so far. Each merge passed a full gate.
 - **Coordinator branch:** `claude/api-key-upload-prevention-9ucz4x`. It is `main` plus documents.
   Work there, and fast-forward `main` only after a green `corepack pnpm verify --e2e`.
-- **`claude/ticket-tools`:** links, subtickets, checklists and the slash menu, ready for the gate at
-  `6c28a30`. It holds `main` at `6015efc`, its migration is now 0096, and its panels work in the ticket
-  pop-up. Its own whole e2e run passed (187 passed, 0 failed), but `pnpm verify` has not run on it. See
-  the Handoff section in `docs/plan/ticket-tools-tasks.md`. Run the full gate before it reaches `main`.
+- **Ticket tools are on `main`** (M1-143, merged on the Mac on 2026-11-03 after a full gate): links,
+  subtickets, checklists and the slash menu, migration 0096, plus the fixes from an independent review
+  (25 findings, each with a test). `claude/ticket-tools` is merged and can be ignored.
+- **Wave branches waiting to merge, each with its own full gate, in this order:**
+  `claude/t106-complete-sprint-board-6e1530` (T-106), `claude/t087a-create-tracks-box-1c6ead`
+  (T-087a, migration 0097, IAM-033) and `claude/t079-outcomes-tab-dfd7e1` (T-079, AGL-024). Each has a
+  hand-over note in the coordinator's shared notes folder; they live only in this Mac's worktrees.
+- **Numbers held for the next wave:** migration 0099 (T-075 and T-076), 0100 and ADR-121 (track
+  groups), 0101 to 0103, ADR-122 and PLN-012 (Multi-track); ADR-123 spare. 0098 and ADR-124 are free
+  again (T-079 needed neither). Never merge a number below one already on `main`: renumber instead.
 - **`claude/multi-track`:** a plan only, no code, in `docs/plan/multi-track-tasks.md`. Restart from
   `main`, and take the next free migration number at that time.
 - **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
@@ -57,21 +63,27 @@ corepack pnpm install
 
 ### Next, in order
 
-1. Merge `claude/ticket-tools` into the coordinator branch, run the full gate, fast-forward `main`. Its
-   last worktree force-stopped its Postgres, so a stale lock is possible only on the old PC.
-   The slash menu's new blocks have not been through `pnpm fuzz adf`, `markdown` and `wiki`: T-019 covers
-   that on the final code.
-2. Start the waiting tickets a few at a time, merging each as it finishes rather than letting
-   branches drift (the user's decision): the glass pass and the sweep of every route (T-143, T-144),
-   the Objetivos tab (T-079), completing a sprint from the board (T-106), the box for creating tracks
-   (T-087a), track groups (T-084 to T-087), Multi-track in stages (T-088, T-089 to T-089g), the
-   rest of Summary and Statistics (T-075, T-076), the tutorial, the layout editor, drag and drop
-   beyond boards, and the phone and accessibility pass.
+1. Merge the three wave branches above, one at a time, each with a full gate and a fast-forward of
+   `main`. Their notes list the conflict spots (`messages.*.ts`, `App.tsx`, `tracks/client.ts`,
+   `routes/subtickets.ts`, the migration index and upgrade seeds).
+2. Start the waiting tickets a few at a time in side sessions, merging each as it finishes rather
+   than letting branches drift (the user's decision; the user reminded on 2026-11-03 that several
+   parallel sessions are welcome). Proposed and waiting for the user to start: Multi-track first stage
+   (T-088), track groups (T-084 to T-087), Summary and Statistics (T-075, T-076). Next: the ticket page
+   guards (T-190 to T-192), the glass pass and the sweep of every route (T-143, T-144, best alone since
+   it touches every page), Multi-track's later stages (T-089 to T-089g), the tutorial, the layout
+   editor, drag and drop beyond boards, and the phone and accessibility pass.
 3. The fuzz stages, on the final code (T-019; the user's decision).
 4. The release (T-020 to T-024) and going public (T-031 to T-036, T-005). Those need the user.
 
 ### Rules learned here
 
+- **On this Mac** (2026-11-03): commits use the clone's existing local git identity, the user's choice
+  when changing it was blocked; `pnpm dco` only needs the sign-off to match the author. Do not change it
+  or ask again. Every `*.localhost` name resolves here without a hosts file. The DNS-rebinding test uses
+  `::1` because macOS has only 127.0.0.1 on loopback.
+- **Side sessions** hold every test run while `/tmp/taskmoor-gate.lock` exists and take the lock for
+  their own Playwright spec; the coordinator holds it for each full gate.
 - **Only one Playwright run on a machine at a time.** All worktrees share the e2e ports. `pnpm verify`
   now sets CI, so it starts its own servers and fails loudly if a port is held; before that, a gate
   could test another worktree's code.
