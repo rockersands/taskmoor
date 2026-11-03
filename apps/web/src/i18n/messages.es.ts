@@ -5135,4 +5135,22 @@ export const messagesEs: Record<MessageId, string> = {
     'No puedes elegir eso para este track. Un administrador del sitio o de la configuración puede.',
   'admin.trackSets.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
   'admin.tracks.setsLink': 'Elegir los conjuntos que usa {key}',
+  'ticketTools.remove': 'Quitar',
+  'ticketTools.done': 'Listo',
+  'ticketTools.picker.found':
+    '{count, plural, one {# ticket encontrado} other {# tickets encontrados}}',
+  'ticketTools.picker.none': 'Ningún ticket coincide.',
+  'ticketTools.picker.failed': 'La búsqueda no funcionó. Inténtalo de nuevo en un momento.',
+  'ticketTools.links.add': 'Añadir un enlace',
+  'ticketTools.links.empty': 'Todavía no hay enlaces.',
+  'ticketTools.links.category': 'Cómo se relaciona',
+  'ticketTools.links.ticket': 'Número o nombre del ticket',
+  'ticketTools.links.hint': 'Busca en el track {track}. Elige tantos como necesites.',
+  'ticketTools.links.added': 'Enlazado: {phrase} {key}.',
+  'ticketTools.links.removed': 'Quitado: {phrase} {key}.',
+  'ticketTools.links.remove': 'Quitar el enlace: {phrase} {key}',
+  'ticketTools.links.exists': 'Ese enlace ya existe.',
+  'ticketTools.links.disabled': 'Los enlaces entre tickets están desactivados en este sitio.',
+  'ticketTools.links.archived':
+    'El track de ese ticket está archivado, así que sus enlaces no pueden cambiar.',
 };

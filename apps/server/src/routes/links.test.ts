@@ -283,6 +283,58 @@ describe('ticket links, web links, followers and votes (M1-015)', () => {
       expect(await readLinks('alice', here)).toHaveLength(2);
     });
 
+    it('[CORE-031] the picker query finds tickets of the track by number or name, and only what the person sees', async () => {
+      const here = await create('alice', 'ABC', 'Picker home');
+      const wanted = await create('alice', 'ABC', 'Quarterly invoice export');
+      const elsewhere = await create('alice', 'XYZ', 'Quarterly invoice import');
+      const pick = async (who: string, q: string) => {
+        const res = await post(who, '/api/v1/search', {
+          q,
+          limit: 8,
+          fields: 'summary,status',
+          count: false,
+        });
+        expect(res.statusCode, res.body).toBe(200);
+        return (res.json().tickets as { key: string }[]).map((t) => t.key);
+      };
+      const inTrack = (clause: string) =>
+        `track = "ABC" AND key != "${here.key}" AND (${clause}) ORDER BY updated DESC`;
+      // By name, the last word as it is being typed; not the same words in the other track.
+      expect(await pick('alice', inTrack('summary ~ "quarterly inv*"'))).toEqual([wanted.key]);
+      // By number or key.
+      expect(await pick('alice', inTrack(`key = "${wanted.key}"`))).toEqual([wanted.key]);
+      expect(await pick('alice', inTrack('key = "ABC-999999"'))).toEqual([]);
+      // Without the track's condition the other track's ticket is there: the condition does it.
+      expect(await pick('alice', 'summary ~ "quarterly inv*" ORDER BY key')).toEqual(
+        expect.arrayContaining([wanted.key, elsewhere.key]),
+      );
+      // The permission filter is part of the statement: Bob only views ABC.
+      expect(await pick('bob', 'summary ~ "quarterly inv*" ORDER BY key')).toEqual([wanted.key]);
+    });
+
+    it("[CORE-031] says whether the person may change a ticket's links", async () => {
+      const here = await create('alice', 'ABC', 'May link?');
+      expect((await get('alice', `/api/v1/tickets/${here.id}/links`)).json()).toMatchObject({
+        mayLink: true,
+        enabled: true,
+      });
+      expect((await get('bob', `/api/v1/tickets/${here.id}/links`)).json()).toMatchObject({
+        mayLink: false,
+      });
+    });
+
+    it('[CORE-031] removes a link to another track, as imports and the API can make', async () => {
+      const here = await create('alice', 'ABC', 'Cross-track home');
+      const there = await create('alice', 'XYZ', 'Cross-track other');
+      const made = await link('alice', here, there, 'Relates');
+      expect(made.statusCode, made.body).toBe(201);
+      expect(await readLinks('alice', here)).toEqual([`relates to ${there.key}`]);
+      expect(
+        (await del('alice', `/api/v1/tickets/${here.id}/links/${made.json().link.id}`)).statusCode,
+      ).toBe(204);
+      expect(await readLinks('alice', here)).toEqual([]);
+    });
+
     it('[CORE-018] remaps every link of a deleted link type to its replacement', async () => {
       const created = await post('admin', '/api/v1/link-types', {
         name: 'Precedes',

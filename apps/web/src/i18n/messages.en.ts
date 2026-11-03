@@ -5012,6 +5012,22 @@ export const messagesEn = {
     'You may not choose that for this track. A site or configuration administrator can.',
   'admin.trackSets.problem.other': 'That could not be saved. Try again in a moment.',
   'admin.tracks.setsLink': 'Choose the sets {key} uses',
+  'ticketTools.remove': 'Remove',
+  'ticketTools.done': 'Done',
+  'ticketTools.picker.found': '{count, plural, one {# ticket found} other {# tickets found}}',
+  'ticketTools.picker.none': 'No tickets match.',
+  'ticketTools.picker.failed': 'The search did not work. Try again in a moment.',
+  'ticketTools.links.add': 'Add a link',
+  'ticketTools.links.empty': 'No links yet.',
+  'ticketTools.links.category': 'How it relates',
+  'ticketTools.links.ticket': 'Ticket number or name',
+  'ticketTools.links.hint': 'Looks in the track {track}. Choose as many as you need.',
+  'ticketTools.links.added': 'Linked: {phrase} {key}.',
+  'ticketTools.links.removed': 'Removed: {phrase} {key}.',
+  'ticketTools.links.remove': 'Remove the link: {phrase} {key}',
+  'ticketTools.links.exists': 'That link is already there.',
+  'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
+  'ticketTools.links.archived': 'That ticket\'s track is archived, so its links cannot change.',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

@@ -485,7 +485,13 @@ export function registerLinkRoutes(
         },
         createdAt: r.created_at.toISOString(),
       }));
-    return { links, webLinks: webLinks.map(webLinkView) };
+    return {
+      links,
+      webLinks: webLinks.map(webLinkView),
+      // What the ticket page offers (CORE-031): the routes check both again.
+      mayLink: await request.authz.canTicket('link_tickets', ticket),
+      enabled: await linksEnabled(db, request.workspaceId),
+    };
   });
 
   app.post('/api/v1/tickets/:id/links', async (request, reply) => {
