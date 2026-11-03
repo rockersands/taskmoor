@@ -3,16 +3,18 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
+import type { Locale } from '../i18n/locale';
 import { SessionProvider } from '../session/SessionProvider';
+import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { fakeListClient, fakeListSearch } from './fixtures';
 import { ListPage } from './ListPage';
 
-function renderList(trackKey = 'SHOP') {
+function renderList(trackKey = 'SHOP', locale: Locale = 'en') {
   const search = fakeListSearch();
   const client = fakeListClient(search);
   render(
-    <I18nProvider locale="en">
+    <I18nProvider locale={locale}>
       <SessionProvider session={MEMBER}>
         <ListPage trackKey={trackKey} client={client} search={search} />
       </SessionProvider>
@@ -57,6 +59,24 @@ describe('a track’s list (M1-049)', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'Due date');
     await waitFor(() =>
       expect(search.queries).toContain('track = SHOP AND priority = 1 ORDER BY due ASC'),
+    );
+  });
+
+  it('[AGL-016] [NFR-006] names a seeded type’s or priority’s group in Spanish, and keeps its query', async () => {
+    const user = userEvent.setup();
+    const { search } = renderList('SHOP', 'es');
+    await screen.findByRole('link', { name: 'SHOP-41' });
+    const groupBy = screen.getByRole('combobox', { name: 'Agrupar por' });
+    await user.selectOptions(groupBy, 'Prioridad');
+    const high = await screen.findByRole('region', { name: 'Alta (1 ticket)' });
+    expect(await within(high).findByRole('link', { name: 'SHOP-44' })).toBeVisible();
+    expect(search.queries).toContain('track = SHOP AND priority = 1 ORDER BY created DESC');
+    // A priority someone added shows as they wrote it.
+    expect(screen.getByRole('heading', { name: 'Medium (2 tickets)' })).toBeVisible();
+    await user.selectOptions(groupBy, 'Tipo');
+    expect(await screen.findByRole('heading', { name: 'Error (3 tickets)' })).toBeVisible();
+    await waitFor(() =>
+      expect(search.queries).toContain('track = SHOP AND type = Bug ORDER BY created DESC'),
     );
   });
 
@@ -115,5 +135,22 @@ describe('a track’s list (M1-049)', () => {
     renderList();
     await screen.findByRole('link', { name: 'SHOP-41' });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+
+  it('[NFR-006] words its filter and groups from the catalogue, in the pseudo-locale too', async () => {
+    const user = userEvent.setup();
+    renderList('SHOP', 'en-XA');
+    const page = (await screen.findByRole('link', { name: 'SHOP-41' })).closest(
+      'section.list-page',
+    ) as HTMLElement;
+    const groupBy = page.querySelector('.list-tools select') as HTMLSelectElement;
+    await user.selectOptions(groupBy, 'priority');
+    // The seeded priority's name goes through the catalogue inside the heading's own words.
+    expect(await screen.findByRole('heading', { name: /^\[\[Ĥíğĥ~~\] / })).toBeVisible();
+    // Cell values are tickets' data, and so are the names of fields and values someone added.
+    for (const cell of page.querySelectorAll('.search-cell-value')) cell.textContent = '';
+    const data = new Set(['SHOP-41', 'SHOP-44', 'OPS-12', 'Customer', 'Team']);
+    expect(untranslated(visibleTexts(page).filter((text) => !data.has(text)))).toEqual([]);
+    expect(within(page).getByRole('heading', { name: /^\[Medium / })).toBeVisible();
   });
 });

@@ -104,6 +104,23 @@ const plainLine = (v: unknown, max: number): boolean =>
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it refuses
   !/[\u0000-\u001f\u007f]/.test(v);
 export const isExpandTitle = (v: unknown): v is string => plainLine(v, MAX_TITLE_LENGTH);
+
+/**
+ * A section title as the document may hold it (NTF-014): one line, with control characters and
+ * runs of white space read as one space, within the length. Markdown and pasted HTML both read a
+ * title through it, so a title like `Step<tab>1` is never refused on save.
+ */
+export function expandTitleLine(text: string): string {
+  return (
+    text
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it replaces
+      .replace(/[\u0000-\u001f\u007f\s]+/g, ' ')
+      .trim()
+      .slice(0, MAX_TITLE_LENGTH)
+      .trimEnd()
+  );
+}
+
 export const isAttachmentName = (v: unknown): v is string =>
   plainLine(v, MAX_ATTACHMENT_NAME) && (v as string).trim() !== '';
 

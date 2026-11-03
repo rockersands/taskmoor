@@ -300,6 +300,28 @@ describe('ChecklistsPanel', () => {
     expect(await screen.findByRole('checkbox', { name: 'Post it' })).toBeVisible();
   });
 
+  it('[CORE-033] keeps an item in progress half-ticked after its text is edited or left', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'State of Print it' }), [
+      'In progress',
+    ]);
+    const box = () => screen.getByRole('checkbox', { name: 'Print it' }) as HTMLInputElement;
+    await waitFor(() => expect(box().indeterminate).toBe(true));
+    await waitFor(() => expect(stateOf('Print it')).toBeEnabled());
+    // Left with Escape: the box is drawn again, still neither ticked nor empty.
+    await user.click(screen.getByRole('button', { name: 'Edit Print it' }));
+    await user.keyboard('{Escape}');
+    expect(box().indeterminate).toBe(true);
+    // Saved with new words: the same.
+    await user.click(screen.getByRole('button', { name: 'Edit Print it' }));
+    await user.clear(screen.getByRole('textbox', { name: 'Item' }));
+    await user.keyboard('Print it twice{Enter}');
+    const renamed = await screen.findByRole('checkbox', { name: 'Print it twice' });
+    expect((renamed as HTMLInputElement).indeterminate).toBe(true);
+    expect(renamed).not.toBeChecked();
+  });
+
   it('[CORE-033] removes an item and a checklist', async () => {
     const user = userEvent.setup();
     renderPanel();

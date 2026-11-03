@@ -83,7 +83,7 @@ describe('SubticketsPanel', () => {
     const field = await screen.findByRole('textbox', { name: 'New subticket' });
     await user.type(field, 'Needs more{Enter}');
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This track also asks for: Due date, field 12. Use the create form for this one.',
+      'This track also asks for: Due date, Customer. Use the create form for this one.',
     );
     expect(field).toHaveValue('Needs more');
     const refused = async (words: string) => {
@@ -99,21 +99,69 @@ describe('SubticketsPanel', () => {
     // A field it cannot name: no key is shown.
     await refused('That did not work. Try again in a moment.');
     expect(screen.getByRole('alert')).not.toHaveTextContent(/visibility|Id\b/);
+    // The names come from the type's create form, read once and not again for each refusal.
+    expect(client.calls.filter((call) => call.action === 'childFields')).toEqual([
+      { action: 'childFields', args: ['SHOP', 9] },
+    ]);
+  });
+
+  it('[CORE-032] reads the names before the first refusal, once per type, and falls back to the number', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient({
+      childTypes: [
+        { id: 9, name: 'Subticket' },
+        { id: 10, name: 'Sub-bug' },
+      ],
+    });
+    let names = 0;
+    const read = client.childFields?.bind(client);
+    client.childFields = async (track, typeId) => {
+      names++;
+      if (typeId === 10) throw new ApiError(503, { error: 'unavailable' });
+      return (await read?.(track, typeId)) ?? [];
+    };
+    client.createChild = async () => {
+      throw new ApiError(400, { error: 'invalid_fields', fields: { 'fields.12': 'required' } });
+    };
+    renderPanel(client);
+    const field = await screen.findByRole('textbox', { name: 'New subticket' });
+    expect(names).toBe(0);
+    await user.type(field, 'A');
+    // Asked as the subticket is written, not when the server refuses it.
+    await waitFor(() => expect(names).toBe(1));
+    await user.type(field, '{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('also asks for: Customer.');
+    await user.type(field, '{Enter}');
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Customer'));
+    expect(names).toBe(1);
+    // Another type's form could not be read: the field goes by its number, and is asked again.
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Ticket type' }), 'Sub-bug');
+    await user.type(field, '{Enter}');
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('also asks for: field 12.'),
+    );
+    const before = names;
+    await user.type(field, '{Enter}');
+    await waitFor(() => expect(names).toBe(before + 1));
   });
 
   it('[CORE-032] names the fields in Spanish too', async () => {
     const user = userEvent.setup();
     const client = fakeToolsClient();
     client.createChild = async () => {
-      throw new ApiError(400, { error: 'invalid_fields', fields: { dueDate: 'required' } });
+      throw new ApiError(400, {
+        error: 'invalid_fields',
+        fields: { dueDate: 'required', 'fields.41': 'required' },
+      });
     };
     renderPanel(client, 0, 'es');
     await user.type(
       await screen.findByRole('textbox', { name: 'Nuevo subticket' }),
       'Falta algo{Enter}',
     );
+    // The seeded Points field in the person's language, as the create form names it.
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Este track también pide: Fecha límite. Usa el formulario de creación para este.',
+      'Este track también pide: Fecha límite, Puntos. Usa el formulario de creación para este.',
     );
   });
 

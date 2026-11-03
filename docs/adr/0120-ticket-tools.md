@@ -37,6 +37,11 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
   where it shows.
 - A ticket above the standard level holds the next level down in the same section, under its own
   title, because the hierarchy has no subtickets under an outcome (spec 01a section 1.2).
+- A refusal names the fields the track asks for: a system field from the catalogue, a custom one by
+  the name its type's create form gives it (`GET /api/v1/tracks/:key/layout`, the request the create
+  form makes), a seeded one in the reader's language. The panel reads that form once per type, as a
+  subticket is first written, so a refusal never makes a request of its own; a field the form does
+  not name, or a form that could not be read, goes by its number and is asked for again (T-201).
 
 ### Checklists (CORE-033)
 
@@ -75,7 +80,11 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
 - A collapsible section is the browser's own `details` element in read mode, so it needs no script;
   in the editor it stays open, with its title as a field.
 - Values are checked at the door (`docShapeProblem`): a key must be a ticket key, a name and a title a
-  line of text within a length. No block holds HTML or an address.
+  line of text within a length. No block holds HTML or an address. A section title read from pasted
+  HTML or from Markdown goes through one rule, `expandTitleLine`: control characters and runs of
+  white space become one space, and it is held to the length, so a section copied from another
+  Taskmoor document is never refused on save (T-202). The editor's title field turns a typed or
+  pasted control character into a space as it goes.
 - What a document format cannot hold follows the existing rule for losses:
 
 | Block | Jira-compatible format | Markdown | Wiki markup | Plain text and email |

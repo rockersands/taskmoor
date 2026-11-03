@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { ApiError } from '../api/client';
-import { useT } from '../i18n/I18nProvider';
+import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { ColumnPicker } from '../search/ColumnPicker';
@@ -13,6 +13,8 @@ import {
 import { DEFAULT_COLUMNS } from '../search/columns';
 import { ResultTable, type RowFormat, type Tone } from '../search/ResultTable';
 import { useColumnName } from '../search/useColumnName';
+import { priorityName } from '../shell/priorityName';
+import { typeName } from '../shell/seededNames';
 import { readShownPages, useTicketChanges } from '../tickets/view/ticketChanges';
 import {
   type FormatRule,
@@ -51,6 +53,18 @@ const SORTS = {
   priority: { order: 'priority DESC', label: 'list.sort.priority' },
 } as const satisfies Record<string, { order: string; label: MessageId }>;
 type Sort = keyof typeof SORTS;
+
+/**
+ * A group's heading: the value's name, with a type or a priority the workspace started with in
+ * the person's language, as the search filters name them (NFR-006). Its query keeps the id.
+ */
+function groupName(t: Translate, field: GroupField, value: GroupValue): string {
+  const name = value.name ?? value.id ?? '';
+  if (field === 'type') return typeName(t, name);
+  if (field === 'priority') return priorityName(t, name);
+  return name;
+}
+
 const TONES: { id: Tone; label: MessageId }[] = [
   { id: 'red', label: 'list.tone.red' },
   { id: 'amber', label: 'list.tone.amber' },
@@ -303,7 +317,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
               ? t('list.group.noValue')
               : g.kind === 'other'
                 ? t('list.group.other')
-                : (g.name ?? g.id ?? ''),
+                : groupName(t, group, g),
             g.total,
             groupClause(group, g),
             g.kind === 'other',

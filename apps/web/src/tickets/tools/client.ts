@@ -1,4 +1,5 @@
 import { api } from '../../api/client';
+import type { TicketForm } from '../form';
 import type { TicketLink, WebLink } from '../view/client';
 
 /** A ticket the picker offers: what a person may see, as search answers it. */
@@ -175,6 +176,11 @@ export interface TicketToolsClient {
   ) => Promise<{ tickets: ChildTicket[]; next: string | null }>;
   /** The track's ticket types one level under `rank`. */
   childTypes: (track: string, rank: number) => Promise<ChildType[]>;
+  /**
+   * The custom fields on a ticket type's create form, by id and name: the form the create page
+   * reads, so a refused subticket can name what it asks for. Without it they go by number.
+   */
+  childFields?: (track: string, ticketTypeId: number) => Promise<{ id: number; name: string }[]>;
   createChild: (ticket: {
     track: string;
     parent: string;
@@ -284,6 +290,12 @@ export const ticketToolsClient: TicketToolsClient = {
     ).ticketTypes
       .filter((type) => type.level.rank === rank - 1)
       .map((type) => ({ id: type.id, name: type.name })),
+  childFields: async (track, ticketTypeId) =>
+    (
+      await api<TicketForm>(
+        `/tracks/${encodeURIComponent(track)}/layout?ticketTypeId=${ticketTypeId}&operation=create`,
+      )
+    ).customFields.map((field) => ({ id: field.id, name: field.name })),
   createChild: async (ticket) =>
     (
       await api<{ ticket: { id: number; key: string } }>('/tickets', {

@@ -5,7 +5,7 @@ import TaskItem, { type TaskItemOptions } from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import type { Schema } from '@tiptap/pm/model';
 import StarterKit from '@tiptap/starter-kit';
-import { TICKET_KEY } from './adf';
+import { expandTitleLine, TICKET_KEY } from './adf';
 
 /**
  * The document schema shared by the editor, the server and the importer. Everything the
@@ -86,8 +86,10 @@ const Expand = Node.create({
     title: {
       default: '',
       rendered: false,
+      // One line within the length, as the editor's title field and the Markdown reader keep it:
+      // pasted control characters would have the document refused on save.
       parseHTML: (element: unknown) =>
-        (element as DomElement).querySelector('summary')?.textContent ?? '',
+        expandTitleLine((element as DomElement).querySelector('summary')?.textContent ?? ''),
     },
   }),
   parseHTML: () => [{ tag: 'details[data-expand]', contentElement: 'div[data-expand-body]' }],
