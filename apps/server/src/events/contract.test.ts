@@ -2715,6 +2715,43 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'POST /api/v1/boards/:id/columns/:columnId/path',
+      expect: 'board.updated',
+      // A column no card can reach, on a board of a track on a workflow the board does not manage
+      // (ADR-116): the status and steps it gets are a new version, told in the one event.
+      prepare: async () => {
+        const track = await admin({
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'BPA', name: 'Board path', mode: 'shared' },
+        });
+        const board = await admin({
+          method: 'POST',
+          url: '/api/v1/boards',
+          payload: {
+            name: 'Board with a parked column',
+            kind: 'kanban',
+            trackId: track.json().track.id,
+            source: { query: 'track = BPA' },
+          },
+        });
+        state.pathBoard = board.json().board.id;
+        await admin({
+          method: 'PATCH',
+          url: `/api/v1/boards/${state.pathBoard}`,
+          payload: {
+            columns: [...board.json().board.columns, { id: 'parked', name: 'Parked', statusIds: [] }],
+          },
+        });
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/boards/${state.pathBoard}/columns/parked/path`,
+          payload: {},
+        }),
+    },
+    {
       route: 'POST /api/v1/boards/:id/moves',
       expect: 'ticket.transitioned',
       run: () =>
