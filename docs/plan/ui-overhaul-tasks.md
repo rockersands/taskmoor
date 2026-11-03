@@ -25,7 +25,13 @@ The work continues in a local session on the user's PC. Start there with: read `
     (`#/settings/tutorials`) without storage; the Start buttons do nothing yet.
   - Everything else is todo; nothing of UI-T10 (server storage) or UI-T15 (layout editor) is on
     the branch.
-- **Gate:** see the last commit on the branch and HANDOFF for which steps passed.
+- **Gate (not complete):** passed on this branch: `pnpm verify --only=lint,types`; the web
+  component tests (`--project=web`, 782 passed); the stories and tests of `shell`, `home`,
+  `tutorial`, `boards` and `tickets` in both skins (190 passed); `docs-check` and `next-task`
+  tests; `pnpm i18n:check`; `pnpm run docs`. Not run to the end: the full `pnpm verify --e2e`. It
+  started on fe9066d and the cloud container was killed partway (exit 137, likely memory), so
+  the database suites, the other stories and Playwright e2e are unverified. Run the full gate
+  first in the local session, before anything goes to `main`.
 - **Numbers:** ADR-114 (interface), ADR-115 (tutorial), ADR-116 spare; migration **0084** exactly
   for `tutorial_progress`.
 - **See the work:**

@@ -28,6 +28,13 @@ a layout editor and easier board columns; then asked to wrap up.
 - **Not started:** the server storage (a helper began it and was stopped before committing),
   the layout editor, the Help menu, the Tracks directory, the Settings hub, the other pages,
   widget and column drag, the coach card and first-run offer, the manual pages.
+- **Gate (not complete), pushed as WIP at the user's request to wrap up:** passed on this branch: `pnpm verify --only=lint,types`; the web
+  component tests (`--project=web`, 782 passed); the stories and tests of `shell`, `home`,
+  `tutorial`, `boards` and `tickets` in both skins (190 passed); `docs-check` and `next-task`
+  tests; `pnpm i18n:check`; `pnpm run docs`. Not run to the end: the full `pnpm verify --e2e`. It
+  started on fe9066d and the cloud container was killed partway (exit 137, likely memory), so
+  the database suites, the other stories and Playwright e2e are unverified. Run the full gate
+  first in the local session, before anything goes to `main`.
 - **Running the demo here (root container):** `service postgresql start`, a password for the
   `postgres` user, `TASKMOOR_TEST_DATABASE_URL` pointed at it, then `pnpm demo`. The demo
   caches the built frontend: rebuild (`pnpm --filter @taskmoor/web build`) and restart it to see
