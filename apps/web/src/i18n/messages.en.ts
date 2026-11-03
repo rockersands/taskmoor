@@ -3399,7 +3399,7 @@ export const messagesEn = {
     '{key} changed meanwhile, so it was not moved. Look at it again and retry.',
   'boards.refusedArchived': '{key} is in an archived track, so it cannot be moved.',
   'boards.refusedOther': '{key} could not be moved. Try again in a moment.',
-  'boards.asking.intro': 'To {name} this ticket, choose:',
+  'boards.asking.intro': '{name} asks for this:',
   'boards.choose.title': 'Move {key} to {column}',
   'boards.choose.intro': 'Several transitions lead there. Which one?',
   'boards.choose.option': '{name} (to {status})',
@@ -3462,6 +3462,25 @@ export const messagesEn = {
   'boards.settings.managed.migration':
     'Tickets are still moving to new statuses. Try again in a moment.',
   'boards.settings.addColumn': 'Add a column',
+  'boards.settings.closing': 'Column that closes tickets',
+  'boards.settings.closing.rightmost': 'The rightmost column, now {column}',
+  'boards.settings.closing.none': 'No column closes tickets',
+  'boards.settings.closing.hint':
+    'Reaching this column closes a ticket as Completed; leaving it reopens the ticket. If you leave it on the rightmost, it follows that column as you reorder them. Tickets already closed keep their close reason and history when you change this.',
+  'boards.settings.remove.ask':
+    '{column} holds {count, plural, one {# ticket} other {# tickets}}. Where should they go?',
+  'boards.settings.remove.to': 'Move them to',
+  'boards.settings.remove.confirm': 'Remove the column',
+  'boards.settings.reach.noStatus':
+    "No card can go to {column} yet: it has no status in this track's workflow.",
+  'boards.settings.reach.noPath':
+    'No card can reach {column}: nothing in the workflow leads there.',
+  'boards.settings.reach.shared':
+    'This adds a step to {workflow}, which {tracks} also use. They see the new status too.',
+  'boards.settings.reach.fix': 'Let cards reach {column}',
+  'boards.settings.reach.whoCan':
+    'A site or configuration administrator can fix this, because it changes the workflow.',
+  'boards.column.noStatus': 'No status yet, so no card can go here. Fix it in the board settings.',
   'boards.settings.statuses': 'Which column shows each status',
   'boards.settings.status': 'Status',
   'boards.settings.column': 'Column',

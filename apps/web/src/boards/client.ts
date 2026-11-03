@@ -93,6 +93,8 @@ export interface Board extends BoardSummary {
   version: number;
   /** Its columns are its local-mode track's statuses (M1-126; WF-010). */
   managesWorkflow?: boolean;
+  /** Which column closes tickets: null the rightmost, `none` no column, or a column's id. */
+  closingColumn?: string | null;
 }
 
 /** A status a column may take: one of the board's workflows' (`GET /api/v1/boards/:id`). */
@@ -117,6 +119,9 @@ export function sourceOf(text: string): BoardSource {
 }
 
 export interface BoardPatch {
+  closingColumn?: string | null;
+  /** Where the tickets of a removed column go, by status id. */
+  statusMapping?: Record<string, number>;
   version: number;
   name?: string;
   kind?: 'scrum' | 'kanban';
@@ -182,6 +187,15 @@ export interface Transition {
   to: { id: number; name: string };
 }
 
+/** Whether cards can reach each column, and whose workflow decides it (ADR-116). */
+export interface BoardReach {
+  workflow: { id: number; name: string } | null;
+  singleWorkflow: boolean;
+  otherTracks: string[];
+  columns: Record<string, 'ok' | 'no_status' | 'no_path'>;
+  mayFix: boolean;
+}
+
 export interface MoveRequest {
   ticket: number;
   columnId: string;
@@ -221,7 +235,11 @@ export interface BoardClient {
   tracks(): Promise<BoardTrack[]>;
   board(id: number): Promise<Board>;
   /** The configuration with the statuses its columns may take. */
-  settings(id: number): Promise<{ board: Board; statuses: BoardStatus[] }>;
+  settings(
+    id: number,
+  ): Promise<{ board: Board; statuses: BoardStatus[]; reach?: BoardReach | null }>;
+  /** Adds the status and steps a column needs to the track's workflow (ADR-116). */
+  addColumnPath(id: number, columnId: string): Promise<Board>;
   update(id: number, patch: BoardPatch): Promise<UpdateOutcome>;
   /** The number fields the person sees, for the estimation statistic. */
   numberFields(): Promise<NumberField[]>;
@@ -264,7 +282,15 @@ export const boardClient: BoardClient = {
       })
     ).board,
   board: async (id) => (await api<{ board: Board }>(`/boards/${id}`)).board,
-  settings: (id) => api<{ board: Board; statuses: BoardStatus[] }>(`/boards/${id}`),
+  settings: (id) =>
+    api<{ board: Board; statuses: BoardStatus[]; reach?: BoardReach | null }>(`/boards/${id}`),
+  addColumnPath: async (id, columnId) =>
+    (
+      await api<{ board: Board }>(`/boards/${id}/columns/${encodeURIComponent(columnId)}/path`, {
+        method: 'POST',
+        body: {},
+      })
+    ).board,
   update: async (id, patch) => {
     try {
       const { board } = await api<{ board: Board }>(`/boards/${id}`, {

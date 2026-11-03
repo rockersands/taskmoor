@@ -3496,7 +3496,27 @@ export const messagesEs: Record<MessageId, string> = {
     '{key} cambió mientras tanto, así que no se movió. Vuelve a mirarlo e inténtalo de nuevo.',
   'boards.refusedArchived': '{key} está en un track archivado, así que no se puede mover.',
   'boards.refusedOther': 'No se pudo mover {key}. Inténtalo de nuevo en un momento.',
-  'boards.asking.intro': 'Para {name} este ticket, elige:',
+  'boards.asking.intro': '{name} pide esto:',
+  'boards.settings.closing': 'Columna que cierra los tickets',
+  'boards.settings.closing.rightmost': 'La columna de más a la derecha, ahora {column}',
+  'boards.settings.closing.none': 'Ninguna columna cierra los tickets',
+  'boards.settings.closing.hint':
+    'Al llegar a esta columna, el ticket se cierra como Completed; al salir, se reabre. Si la dejas en la de más a la derecha, sigue a esa columna cuando las reordenas. Los tickets ya cerrados conservan su motivo de cierre y su historial cuando cambias esto.',
+  'boards.settings.remove.ask':
+    '{column} tiene {count, plural, one {# ticket} other {# tickets}}. ¿Adónde deben ir?',
+  'boards.settings.remove.to': 'Moverlos a',
+  'boards.settings.remove.confirm': 'Quitar la columna',
+  'boards.settings.reach.noStatus':
+    'Ninguna tarjeta puede ir a {column} todavía: no tiene estado en el flujo de trabajo de este track.',
+  'boards.settings.reach.noPath':
+    'Ninguna tarjeta puede llegar a {column}: nada en el flujo de trabajo lleva hasta allí.',
+  'boards.settings.reach.shared':
+    'Esto añade un paso a {workflow}, que también usan {tracks}. También verán el estado nuevo.',
+  'boards.settings.reach.fix': 'Permitir que las tarjetas lleguen a {column}',
+  'boards.settings.reach.whoCan':
+    'Un administrador del sitio o de configuración puede arreglarlo, porque cambia el flujo de trabajo.',
+  'boards.column.noStatus':
+    'Aún no tiene estado, así que ninguna tarjeta puede ir aquí. Arréglalo en la configuración del tablero.',
   'boards.choose.title': 'Mover {key} a {column}',
   'boards.choose.intro': 'Varias transiciones llevan allí. ¿Cuál?',
   'boards.choose.option': '{name} (a {status})',

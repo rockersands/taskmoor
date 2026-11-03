@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
 import { BoardSettingsPage } from './BoardSettingsPage';
@@ -15,6 +15,46 @@ function renderSettings(client = fakeBoardClient()) {
   return client;
 }
 const ready = () => screen.findByRole('heading', { level: 1, name: 'Settings of Checkout team' });
+
+describe('columns no card can reach (ADR-116)', () => {
+  const reach = {
+    workflow: { id: 1, name: 'Default workflow' },
+    singleWorkflow: true,
+    otherTracks: ['Web app'],
+    columns: { todo: 'no_status' as const },
+    mayFix: true,
+  };
+
+  it('[AGL-002] says so at once, names who else is affected and offers the fix', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient();
+    const read = client.settings;
+    client.settings = async (id) => ({ ...(await read(id)), reach });
+    const fix = vi.spyOn(client, 'addColumnPath');
+    render(
+      <I18nProvider locale="en">
+        <BoardSettingsPage boardId={7} client={client} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/No card can go to To do yet/)).toBeVisible();
+    expect(screen.getByText(/which Web app also use/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Let cards reach To do' }));
+    expect(fix).toHaveBeenCalledWith(7, 'todo');
+  });
+
+  it('[AGL-002] tells others who can fix it instead of offering it', async () => {
+    const client = fakeBoardClient();
+    const read = client.settings;
+    client.settings = async (id) => ({ ...(await read(id)), reach: { ...reach, mayFix: false } });
+    render(
+      <I18nProvider locale="en">
+        <BoardSettingsPage boardId={7} client={client} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/A site or configuration administrator can fix/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Let cards reach/ })).toBeNull();
+  });
+});
 
 describe('board settings (M1-043)', () => {
   it('[AGL-002] [AGL-003] maps statuses to columns and sets WIP limits', async () => {

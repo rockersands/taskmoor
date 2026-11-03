@@ -93,6 +93,9 @@ function ColumnHead({ column, t, at }: { column: Column; t: Translate; at: numbe
         {column.min !== null && <span>{t('boards.column.min', { min: column.min })}</span>}
         {column.max !== null && <span>{t('boards.column.max', { max: column.max })}</span>}
       </p>
+      {column.statusIds.length === 0 && (
+        <p className="board-column-wip">{t('boards.column.noStatus')}</p>
+      )}
       {column.wip === 'over' && <p className="board-column-wip">{t('boards.column.over')}</p>}
       {column.wip === 'under' && <p className="board-column-wip">{t('boards.column.under')}</p>}
       {hidden > 0 && (

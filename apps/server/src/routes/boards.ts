@@ -1144,9 +1144,9 @@ export function registerBoardRoutes(
   // takes the right to edit workflows; the settings page names the other tracks first.
   app.post('/api/v1/boards/:id/columns/:columnId/path', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
-    const p = idParam.safeParse(request.params);
+    const { id: boardRef, columnId } = request.params as { id: string; columnId: string };
+    const p = idParam.safeParse({ id: boardRef });
     if (!p.success) return notFound(reply);
-    const { columnId } = request.params as { columnId: string };
     const found = await visibleBoard(request, reply, p.data.id);
     if (!found) return reply;
     const row = found.row;

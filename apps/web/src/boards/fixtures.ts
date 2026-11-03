@@ -257,6 +257,7 @@ export function fakeBoardClient(
       return created;
     },
     board: async () => board,
+    addColumnPath: async () => board,
     settings: async () => ({
       board,
       statuses: STATUSES.map((s) => ({

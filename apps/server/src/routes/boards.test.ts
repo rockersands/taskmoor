@@ -308,7 +308,7 @@ describe('boards (M1-043)', () => {
     expect(read.board.managesWorkflow).toBe(false);
     expect(read.reach.mayFix).toBe(false);
     const refused = await post('alice', `/api/v1/boards/${board.id}/columns/extra/path`, {});
-    expect(refused.statusCode).toBe(403);
+    expect(refused.statusCode, refused.body).toBe(403);
     // An administrator adds the path: a status, a new version, and any card can go there.
     const fixed = await post('admin', `/api/v1/boards/${board.id}/columns/extra/path`, {});
     expect(fixed.statusCode, fixed.body).toBe(200);

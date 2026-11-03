@@ -229,7 +229,7 @@ describe('a move the workflow needs more for (ADR-049)', () => {
     card.focus();
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).getByText('To Close this ticket, choose:')).toBeVisible();
+    expect(within(dialog).getByText('Close asks for this:')).toBeVisible();
     const reason = await within(dialog).findByRole('combobox', { name: 'Close reason' });
     await within(dialog).findByRole('option', { name: 'Fixed' });
     await user.selectOptions(reason, 'Duplicate');
