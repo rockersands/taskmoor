@@ -204,7 +204,7 @@ describe('webhooks (M1-067)', () => {
     const field = await admin({
       method: 'POST',
       url: '/api/v1/fields',
-      payload: { name: 'Points', type: 'number' },
+      payload: { name: 'Pts', type: 'number' },
     });
     expect(field.statusCode, field.body).toBe(201);
     points = field.json().field.id;

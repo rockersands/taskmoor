@@ -2,7 +2,7 @@
 title: "Working with tickets"
 audience: users
 sources: apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
-accessed: 2026-11-02
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Working with tickets
@@ -129,8 +129,12 @@ The **Details** section lists the ticket's fields. Some can be changed in place:
 | **Created**, **Updated** | Read |
 
 Each change saves at once and the page says **Saved.** If someone changed the ticket since you
-opened it, the page says so: read it again and retry. The ticket view does not yet show custom
-fields; they can be shown as columns in [search results](search.md#search-results).
+opened it, the page says so: read it again and retry.
+
+Number fields on the ticket's edit form, such as **Points**, show in the details too: type a value
+and press Enter or leave the box, clear it to remove the value, and Escape puts back what is
+saved. Someone who may not change it reads the value. The ticket view does not yet show other
+custom fields; they can be shown as columns in [search results](search.md#search-results).
 
 ### Info
 

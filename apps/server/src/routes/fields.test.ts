@@ -184,7 +184,7 @@ describe('custom fields (M1-010)', () => {
     const f = {
       text: await field({ name: 'Customer', type: 'text' }),
       paragraph: await field({ name: 'Notes', type: 'paragraph' }),
-      number: await field({ name: 'Points', type: 'number', config: { decimals: 1 } }),
+      number: await field({ name: 'Pts', type: 'number', config: { decimals: 1 } }),
       date: await field({ name: 'Go-live', type: 'date' }),
       datetime: await field({ name: 'Incident start', type: 'datetime' }),
       select: await field({

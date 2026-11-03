@@ -204,18 +204,13 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
       }[]
     ).map((r) => [r.name, r.id]),
   );
+  // Every workspace starts with it (migration 0095).
   const points = (
-    (
-      await ok(
-        admin({
-          method: 'POST',
-          url: '/api/v1/fields',
-          payload: { name: 'Points', type: 'number' },
-        }),
-        'Points',
-      )
-    ).field as { id: number }
-  ).id;
+    (await ok(admin({ method: 'GET', url: '/api/v1/fields' }), 'fields')).fields as {
+      id: number;
+      name: string;
+    }[]
+  ).find((f) => f.name === 'Points')?.id as number;
 
   // The dataset's tickets close for chosen reasons, so its tracks use a workflow that asks why,
   // as an administrator can set up. The default workflow always closes as Completed.

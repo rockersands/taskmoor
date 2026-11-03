@@ -52,7 +52,10 @@ beside the icons while the keyboard is on the card.
 
 Points are a number field: the one the board estimates with (see [Sprint settings](#sprint-settings)),
 else a number field named Points or Puntos (an imported one under its source's usual name counts
-too). Taskmoor does not create one, so without such a field cards show none.
+too). Every workspace starts with a number field called **Points** (**Puntos** in Spanish), and a new
+track's board estimates with it. Set a ticket's points in its details, on the create form or in a
+search result's cell. A card with no value shows nothing. An administrator may rename the field or
+remove it ([Fields](../admin/fields.md#the-points-field)).
 
 If you may edit a ticket, its card has a pencil at the corner (on a touch screen, in a row under the
 card): it edits the title in place. **Enter** saves, **Escape** cancels, and if the title cannot be

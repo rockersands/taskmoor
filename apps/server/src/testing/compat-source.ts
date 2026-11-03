@@ -205,7 +205,13 @@ export async function buildCompatSource(db: Kysely<Database>): Promise<CompatSou
     multiple: true,
     context: { options: [{ value: 'alpha' }, { value: 'beta' }, { value: 'gamma' }] },
   });
-  const points = await field({ name: 'Points', type: 'number' });
+  // Every workspace starts with Points (migration 0095).
+  const points = (
+    (await must({ method: 'GET', url: '/api/v1/fields' }, 200)).fields as {
+      id: number;
+      name: string;
+    }[]
+  ).find((f) => f.name === 'Points') as { id: number };
   const reviewer = await field({ name: 'Reviewer', type: 'user' });
   const topics = await field({ name: 'Topics', type: 'labels' });
   const notes = await field({ name: 'Notes', type: 'paragraph' });

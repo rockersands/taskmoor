@@ -158,7 +158,7 @@ describe('sprint charts (M1-060)', () => {
     points = (
       await call(
         'admin',
-        { method: 'POST', url: '/api/v1/fields', payload: { name: 'Points', type: 'number' } },
+        { method: 'POST', url: '/api/v1/fields', payload: { name: 'Pts', type: 'number' } },
         201,
       )
     ).field.id;

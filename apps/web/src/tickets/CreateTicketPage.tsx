@@ -12,6 +12,7 @@ import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
 import { IconSelect } from '../shell/IconSelect';
 import { priorityName } from '../shell/priorityName';
+import { fieldName } from '../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../shell/TicketIcons';
 import { type DuplicateLookup, DuplicateSuggestions } from './DuplicateSuggestions';
 import {
@@ -328,7 +329,7 @@ export function CreateTicketPage({
 
   const labelOf = (field: FormField, custom: CustomField | undefined) => {
     const system = SYSTEM_FIELDS[field.key];
-    const name = custom ? custom.name : system ? t(system.label) : field.key;
+    const name = custom ? fieldName(t, custom.name) : system ? t(system.label) : field.key;
     return field.required ? t('tickets.create.requiredLabel', { label: name }) : name;
   };
 

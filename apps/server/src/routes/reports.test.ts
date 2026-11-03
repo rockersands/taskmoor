@@ -173,7 +173,7 @@ describe('general reports (M1-062)', () => {
     points = (
       await call(
         'admin',
-        { method: 'POST', url: '/api/v1/fields', payload: { name: 'Points', type: 'number' } },
+        { method: 'POST', url: '/api/v1/fields', payload: { name: 'Pts', type: 'number' } },
         201,
       )
     ).field.id;

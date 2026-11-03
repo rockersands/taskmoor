@@ -119,6 +119,12 @@ describe('sprints (M1-044)', () => {
         { id: 'doing', name: 'Doing', statusIds: [S('Active'), S('In Review')] },
         { id: 'done', name: 'Done', statusIds: [S('Closed')] },
       ],
+      // These tests estimate in time; a new board otherwise estimates with Points (AGL-007).
+      sprintSettings: {
+        estimation: { statistic: 'originalEstimate' },
+        timeTracking: 'remainingEstimate',
+        parallelSprints: false,
+      },
       ...extra,
     });
     expect(res.statusCode, res.body).toBe(201);
@@ -534,9 +540,9 @@ describe('sprints (M1-044)', () => {
     const board = await scrumBoard('Going Kanban', 'track = SP');
     const one = await sprint(board.id);
     // A planned sprint does not stand in the way, so this goes there and back.
-    expect((await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' })).statusCode,
+    ).toBe(200);
     // Nor can a planned sprint start on a Kanban board: nothing could complete it there.
     const planned = await post('alice', `/api/v1/sprints/${one.id}/start`, {
       endAt: '2030-01-15T09:00:00Z',
@@ -572,9 +578,9 @@ describe('sprints (M1-044)', () => {
       moveTo: { type: 'backlog' },
     });
     expect(done.statusCode, done.body).toBe(200);
-    expect((await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' })).statusCode,
+    ).toBe(200);
   });
 
   it('[AGL-010] sprints need a Scrum board the caller sees', async () => {

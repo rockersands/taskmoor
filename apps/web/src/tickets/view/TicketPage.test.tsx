@@ -285,6 +285,25 @@ describe('the ticket view (M1-051)', () => {
     ).toBeVisible();
   });
 
+  it("[AGL-007] sets Points in place, in the person's language; someone who may not edit reads it", async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage({}, 'es');
+    const points = await screen.findByRole('spinbutton', { name: 'Puntos' });
+    await user.type(points, '5');
+    await user.keyboard('{Enter}');
+    const edits = () => client.calls.filter((c) => c.action === 'edit').map((c) => c.args[1]);
+    await vi.waitFor(() => expect(edits()).toEqual([{ fields: { 31: 5 } }]));
+    await vi.waitFor(() => expect(points).toHaveValue(5));
+    await user.clear(points);
+    await user.tab();
+    await vi.waitFor(() => expect(edits().at(-1)).toEqual({ fields: { 31: null } }));
+    cleanup();
+    renderPage({ ticket: { ...SHOP_41, mayEdit: false, fields: { 31: 8 } } });
+    expect(await screen.findByText('Points')).toBeInTheDocument();
+    expect(screen.getByText('8')).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: 'Points' })).toBeNull();
+  });
+
   it('[CORE-014] sets the priority with icon and name; someone who may not edit sees the value', async () => {
     const user = userEvent.setup();
     const { client } = renderPage();

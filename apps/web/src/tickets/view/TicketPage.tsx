@@ -29,6 +29,7 @@ import { IconSelect } from '../../shell/IconSelect';
 import { leaveMotion } from '../../shell/motion';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { priorityName } from '../../shell/priorityName';
+import { fieldName } from '../../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../../shell/TicketIcons';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
@@ -37,6 +38,7 @@ import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
+  type NumberField,
   type Priority,
   type TicketClient,
   type TicketDetails,
@@ -890,6 +892,19 @@ function Details({
         });
   const names = (list: { name: string }[]) =>
     list.length ? list.map((v) => v.name).join(', ') : none;
+  const [numberFields, setNumberFields] = useState<NumberField[]>([]);
+  // The form depends on the ticket's type and its status's edit lock.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again when either changes
+  useEffect(() => {
+    let live = true;
+    client.numberFields?.(ticket.id).then(
+      (list) => live && setNumberFields(list),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, ticket.id, ticket.ticketType.id, ticket.status.id]);
 
   return (
     <dl className="ticket-facts">
@@ -1035,6 +1050,15 @@ function Details({
           </dd>
         </div>
       ))}
+      {numberFields.map((field) => (
+        <NumberFact
+          key={field.id}
+          field={field}
+          value={ticket.fields?.[String(field.id)]}
+          readOnly={ticket.mayEdit === false || field.locked}
+          onEdit={onEdit}
+        />
+      ))}
       <div>
         <dt>{t('workflow.field.originalEstimate')}</dt>
         <dd>{hours(ticket.timeTracking.originalEstimate)}</dd>
@@ -1082,6 +1106,81 @@ function Details({
         <dd>{when(ticket.updatedAt)}</dd>
       </div>
     </dl>
+  );
+}
+
+/**
+ * A number field on the details, such as Points (AGL-007): typed in place, saved on Enter or on
+ * leaving the box, Escape puts back what is saved. Someone who may not change it reads the value.
+ */
+function NumberFact({
+  field,
+  value,
+  readOnly,
+  onEdit,
+}: {
+  field: NumberField;
+  value: unknown;
+  readOnly: boolean;
+  onEdit: (change: TicketEdit) => Promise<boolean>;
+}) {
+  const t = useT();
+  const intl = useIntl();
+  const id = useId();
+  const saved = typeof value === 'number' ? String(value) : '';
+  const [draft, setDraft] = useState<string | null>(null);
+  const name = fieldName(t, field.name);
+  const save = () => {
+    if (draft === null || draft === saved) {
+      setDraft(null);
+      return;
+    }
+    const next = draft === '' ? null : Number(draft);
+    void onEdit({ fields: { [field.id]: next } }).then((ok) => ok && setDraft(null));
+  };
+  if (readOnly) {
+    return (
+      <div>
+        <dt>{name}</dt>
+        <dd>{typeof value === 'number' ? intl.formatNumber(value) : t('ticketView.none')}</dd>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <dt>
+        <label htmlFor={id}>{name}</label>
+      </dt>
+      <dd>
+        <form
+          className="ticket-inline-form"
+          data-no-draft={draft === null || draft === saved || undefined}
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+        >
+          <input
+            id={id}
+            type="number"
+            step="any"
+            value={draft ?? saved}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={save}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                save();
+              }
+              if (event.key === 'Escape' && draft !== null) {
+                event.stopPropagation();
+                setDraft(null);
+              }
+            }}
+          />
+        </form>
+      </dd>
+    </div>
   );
 }
 

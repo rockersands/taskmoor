@@ -1057,6 +1057,15 @@ export function registerFieldRoutes(
       await trx.deleteFrom('field').where('id', '=', field.id).execute();
       // Rules naming it go with it; layouts that place it skip it from now on (M1-012).
       await trx.deleteFrom('field_rule').where('field', '=', `cf[${field.id}]`).execute();
+      // A board estimating with it goes back to the default statistic (AGL-007), or its settings
+      // would name a field that no longer exists and be refused the next time they are saved.
+      await sql`
+        UPDATE board
+           SET sprint_settings = sprint_settings
+                 || '{"estimation": {"statistic": "originalEstimate"}}'::jsonb
+         WHERE workspace_id = ${ws}
+           AND sprint_settings #>> '{estimation,statistic}' = 'field'
+           AND sprint_settings #>> '{estimation,fieldId}' = ${String(field.id)}`.execute(trx);
       await emit(trx, by(request), {
         type: 'field.deleted',
         subjectId: field.id,

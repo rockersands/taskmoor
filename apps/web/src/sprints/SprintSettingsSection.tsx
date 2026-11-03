@@ -1,6 +1,7 @@
 import { type ReactNode, useId, useMemo } from 'react';
 import { timeZoneOptions } from '../account/options';
 import { useT } from '../i18n/I18nProvider';
+import { fieldName } from '../shell/seededNames';
 import type { NumberField, SprintSettings } from './client';
 
 /** The server's bounds of a cycle (`sprintCycleInput`, AGL-012). */
@@ -171,7 +172,7 @@ export function SprintSettingsSection({
             <option value="">{t('sprints.settings.fieldPlaceholder')}</option>
             {fields.map((field) => (
               <option key={field.id} value={String(field.id)}>
-                {t('common.value', { value: field.name })}
+                {t('common.value', { value: fieldName(t, field.name) })}
               </option>
             ))}
           </select>

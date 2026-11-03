@@ -547,7 +547,7 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
         "context_id IN (SELECT id FROM field_context WHERE name = 'Seed context') AND track_id IS NULL",
       field_option: "value = 'Seed option' AND NOT disabled",
       field_label: "name = 'seed-label'",
-      field_epoch: 'epoch > 1',
+      field_epoch: 'epoch > 1 AND workspace_id = 1',
       ticket: "summary = 'Seed ticket' AND fields <> '{}'::jsonb",
     },
     seed: async (db) => {
@@ -1572,6 +1572,16 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
   '0094_board_kind_decides_backlog': {
     // Data only, over tracks: the seed's first track is still there with its board.
     tables: { track: "key = 'SEED' AND workspace_id = 1" },
+    seed: async () => {},
+  },
+  '0095_points_field': {
+    // Data only: a workspace with no such field gets one, and its board follows; tickets stay.
+    tables: {
+      field: "name = 'Points' AND type = 'number' AND workspace_id = 1",
+      board: `name = 'Seed one-track board'
+        AND (sprint_settings #>> '{estimation,fieldId}')::int
+          = (SELECT id FROM field WHERE name = 'Points' AND workspace_id = 1)`,
+    },
     seed: async () => {},
   },
 };

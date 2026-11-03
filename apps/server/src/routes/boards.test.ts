@@ -734,8 +734,10 @@ describe('boards (M1-043)', () => {
   });
 
   it('[AGL-006] starts a new board on the default cards, with points only where there is one', async () => {
-    const field = (await post('admin', '/api/v1/fields', { name: 'Points', type: 'number' })).json()
-      .field.id as number;
+    // The field every workspace starts with (migration 0095).
+    const field = (await get('admin', '/api/v1/fields'))
+      .json()
+      .fields.find((f: { name: string }) => f.name === 'Points').id as number;
     const other = (await post('admin', '/api/v1/fields', { name: 'Value', type: 'number' })).json()
       .field.id as number;
     const pointed = await ticket('pointed', 'BA', { fields: { [field]: 5, [other]: 8 } });

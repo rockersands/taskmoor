@@ -197,7 +197,13 @@ describe('history operators through the search API (M1-039)', () => {
     await field(10023, { name: 'Approver', type: 'user' });
     await field(10024, { name: 'Notes', type: 'text' });
     await field(10025, { name: 'Tags', type: 'labels' });
-    await field(null, { name: 'Points', type: 'number' });
+    // Every workspace starts with Points (migration 0095).
+    const seeded = await db
+      .selectFrom('field')
+      .select('id')
+      .where('name', '=', 'Points')
+      .executeTakeFirstOrThrow();
+    fields.Points = seeded.id;
     for (const release of ['1.0', '2.0']) {
       const res = await as('admin', {
         method: 'POST',

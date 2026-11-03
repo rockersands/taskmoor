@@ -2657,6 +2657,7 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketView.someone': 'Alguien',
   'ticketView.editSummary': 'Editar el resumen',
   'ticketView.edit': 'Editar',
+  'field.name.points': 'Puntos',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',

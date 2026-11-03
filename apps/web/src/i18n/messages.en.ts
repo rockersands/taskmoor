@@ -2582,6 +2582,7 @@ export const messagesEn = {
   'ticketView.someone': 'Someone',
   'ticketView.editSummary': 'Edit summary',
   'ticketView.edit': 'Edit',
+  'field.name.points': 'Points',
   'ticketView.editLabels': 'Edit labels',
   'ticketView.save': 'Save',
   'ticketView.cancel': 'Cancel',

@@ -464,6 +464,39 @@ function pointsFieldOf(catalog: Catalog, estimateFieldId: number | null): number
   return named[0]?.id ?? null;
 }
 
+/**
+ * The field a new board estimates with (AGL-007): its own track's or the workspace's number field
+ * under a points name, the oldest, else the field most of the workspace's boards estimate with,
+ * which finds the seeded field (migration 0095) after an administrator renames it. A field they
+ * removed is not brought back. None: the board has the default statistic.
+ */
+export async function estimateFieldForNewBoard(
+  db: Kysely<Database>,
+  workspaceId: number,
+  trackId: number,
+): Promise<number | null> {
+  const numbers = await db
+    .selectFrom('field')
+    .select(['id', 'name', 'track_id'])
+    .where('workspace_id', '=', workspaceId)
+    .where('type', '=', 'number')
+    .where((eb) => eb.or([eb('track_id', 'is', null), eb('track_id', '=', trackId)]))
+    .orderBy('id')
+    .execute();
+  const named = numbers.filter((f) => POINTS_NAMES.has(f.name.trim().toLowerCase()));
+  const own = named.find((f) => f.track_id !== null) ?? named[0];
+  if (own) return own.id;
+  const used = await sql<{ id: number }>`
+    SELECT (sprint_settings #>> '{estimation,fieldId}')::int AS id
+      FROM board
+     WHERE workspace_id = ${workspaceId}
+       AND sprint_settings #>> '{estimation,statistic}' = 'field'
+     GROUP BY 1
+     ORDER BY count(*) DESC, 1`.execute(db);
+  const shared = new Set(numbers.filter((f) => f.track_id === null).map((f) => f.id));
+  return used.rows.find((row) => shared.has(row.id))?.id ?? null;
+}
+
 /** A card property, for the extra fields of the card rules. */
 function cardField(view: TicketView, name: string, pointsField: number | null): unknown {
   const custom = /^cf\[(\d+)\]$/.exec(name);

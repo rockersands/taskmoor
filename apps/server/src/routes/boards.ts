@@ -13,6 +13,7 @@ import {
   boardTracks,
   compileBoard,
   editorScope,
+  estimateFieldForNewBoard,
   loadBoardData,
   type PersonChoice,
   personFilter,
@@ -40,7 +41,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { uniqueViolation } from '../scim/store';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
-import { DEFAULT_SPRINT_SETTINGS, readSprintSettings } from '../sprints/model';
+import { DEFAULT_SPRINT_SETTINGS, readSprintSettings, type SprintSettings } from '../sprints/model';
 import { findTeam } from '../teams';
 import { type Caller, callRoute, type TicketRoute } from '../tickets/caller';
 import { resolveTicket } from '../tickets/store';
@@ -714,6 +715,17 @@ export function registerBoardRoutes(
     const boardFilters = checked.boardFilters ?? DEFAULT_BOARD_FILTERS;
     const cardRules = checked.cardRules ?? DEFAULT_CARD_RULES;
     const adminIds = options.system ? [] : [...new Set([user.id, ...(body.adminIds ?? [])])];
+    const estimateField = body.sprintSettings
+      ? null
+      : await estimateFieldForNewBoard(db, ws, trackId);
+    const sprintSettings: SprintSettings =
+      body.sprintSettings ??
+      (estimateField === null
+        ? DEFAULT_SPRINT_SETTINGS
+        : {
+            ...DEFAULT_SPRINT_SETTINGS,
+            estimation: { statistic: 'field', fieldId: estimateField },
+          });
     const made = await db
       .transaction()
       .execute(async (trx) => {
@@ -734,7 +746,7 @@ export function registerBoardRoutes(
             board_filters: JSON.stringify(boardFilters),
             ...(body.boardFilterDisplay ? { board_filter_display: body.boardFilterDisplay } : {}),
             card_rules: JSON.stringify(cardRules),
-            sprint_settings: JSON.stringify(body.sprintSettings ?? DEFAULT_SPRINT_SETTINGS),
+            sprint_settings: JSON.stringify(sprintSettings),
             team_id: body.teamId ?? null,
             created_by: options.system ? null : user.id,
           })

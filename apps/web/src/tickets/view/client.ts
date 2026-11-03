@@ -1,5 +1,7 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { api } from '../../api/client';
+import { lockOfField } from '../../locks/useLockText';
+import type { TicketForm } from '../form';
 
 export interface Person {
   id: number;
@@ -40,6 +42,16 @@ export interface TicketDetails {
   updatedAt: string;
   /** Whether the reader may edit it, said when the ticket is read. An answer to an edit omits it. */
   mayEdit?: boolean;
+  /** Custom values, keyed by field id. */
+  fields?: Record<string, unknown>;
+}
+
+/** A number field on the ticket's edit form, such as Points (AGL-007). */
+export interface NumberField {
+  id: number;
+  name: string;
+  /** A field rule or the ticket's status keeps the person from changing it. */
+  locked: boolean;
 }
 
 export interface Transition {
@@ -105,6 +117,7 @@ export type TicketEdit = Partial<{
   labels: string[];
   startDate: string | null;
   dueDate: string | null;
+  fields: Record<string, number | null>;
 }>;
 
 /** The endpoints the ticket view uses. Stories and tests pass their own. */
@@ -134,6 +147,8 @@ export interface TicketClient {
   info?: (id: number) => Promise<TicketInfo>;
   priorities: () => Promise<Priority[]>;
   closeReasons: () => Promise<Priority[]>;
+  /** The number fields on its edit form; without it the page shows none. */
+  numberFields?: (id: number) => Promise<NumberField[]>;
 }
 
 export const ticketClient: TicketClient = {
@@ -178,6 +193,19 @@ export const ticketClient: TicketClient = {
   links: (id) => api<{ links: TicketLink[]; webLinks: WebLink[] }>(`/tickets/${id}/links`),
   info: async (id) => (await api<{ info: TicketInfo }>(`/tickets/${id}/info`)).info,
   priorities: async () => (await api<{ priorities: Priority[] }>('/priorities')).priorities,
+  numberFields: async (id) => {
+    const form = await api<TicketForm>(`/tickets/${id}/layout?operation=edit`);
+    const placed = new Set(
+      form.layout.tabs.flatMap((tab) => tab.sections.flatMap((s) => s.fields.map((f) => f.key))),
+    );
+    return form.customFields
+      .filter((f) => f.type === 'number' && placed.has(`cf[${f.id}]`))
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        locked: lockOfField(form.locks, `cf[${f.id}]`) !== null,
+      }));
+  },
   closeReasons: async () =>
     (await api<{ closeReasons: Priority[] }>('/close-reasons')).closeReasons,
 };

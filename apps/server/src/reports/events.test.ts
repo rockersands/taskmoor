@@ -151,7 +151,7 @@ describe('report event store (M1-059)', () => {
     for (const s of await database.db.selectFrom('status').select(['id', 'name']).execute()) {
       status[s.name] = s.id;
     }
-    points = (await post('/api/v1/fields', { name: 'Points', type: 'number' }, 201)).field.id;
+    points = (await post('/api/v1/fields', { name: 'Pts', type: 'number' }, 201)).field.id;
 
     // The starting point: three tickets with estimates and points, two in a started sprint.
     await ticket('a', {
