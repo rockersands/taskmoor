@@ -16,12 +16,16 @@ import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon, MoreIcon } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
 import { useSyncEngine } from '../sync/SyncProvider';
+import type { Transition as TicketTransition } from '../tickets/view/client';
+import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
+import { refusalMessage } from '../workflow/refusal';
 import {
   type Board,
   type BoardCard,
   type BoardClient,
   type BoardData,
   boardClient,
+  type MoveOutcome,
   type MoveRequest,
   type Transition,
 } from './client';
@@ -38,6 +42,14 @@ interface Choice {
   card: BoardCard;
   column: Column;
   transitions: Transition[];
+}
+
+/** A move waiting for what its transition asks for, such as a close reason. */
+interface Asking {
+  move: MoveRequest;
+  card: BoardCard;
+  column: Column;
+  transition: TicketTransition;
 }
 
 /** A person, priority or other named value on a card. */
@@ -90,6 +102,29 @@ function ColumnHead({ column, t, at }: { column: Column; t: Translate; at: numbe
   );
 }
 
+/** The plain reason a move was refused: the server's refusal in the person's words. */
+function refusedText(
+  t: Translate,
+  key: string,
+  outcome: Extract<MoveOutcome, { kind: 'refused' }>,
+): string {
+  if (outcome.refusal) {
+    return t('boards.refused', { key, reason: refusalMessage(t, outcome.refusal) });
+  }
+  switch (outcome.code) {
+    case '403':
+    case 'forbidden':
+    case 'forbidden_in_status':
+      return t('boards.refusedForbidden', { key });
+    case 'version_conflict':
+      return t('boards.refusedStale', { key });
+    case 'track_archived':
+      return t('boards.refusedArchived', { key });
+    default:
+      return t('boards.refusedOther', { key });
+  }
+}
+
 /**
  * A new board's two filters come from the server in English and stay as they are until someone
  * renames them; shown here in the person's language. A renamed filter shows its own name.
@@ -115,6 +150,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const titleId = useId();
   const hintId = useId();
   const choiceTitleId = useId();
+  const askingTitleId = useId();
   const [board, setBoard] = useState<Board | null>(null);
   const [data, setData] = useState<BoardData | null>(null);
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
@@ -122,6 +158,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const [announcement, setAnnouncement] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
+  const [asking, setAsking] = useState<Asking | null>(null);
   const [menuFor, setMenuFor] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   /** The card being dragged, and where it would land: before a card, or at the cell's end. */
@@ -245,6 +282,33 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const cardsIn = (columnId: string, laneId: string) => cells.get(cellKey(columnId, laneId)) ?? [];
   const columnById = (id: string) => columns.find((c) => c.id === id) as Column;
 
+  /** The transition whose fields a refused move is waiting for, when a form can ask for them. */
+  async function neededForm(
+    card: BoardCard,
+    request: MoveRequest,
+    column: Column,
+    outcome: Extract<MoveOutcome, { kind: 'refused' }>,
+  ) {
+    const missing =
+      outcome.refusal?.name === 'field-required' ? outcome.refusal.check?.field : null;
+    if (typeof missing !== 'string' || request.fields) return null;
+    try {
+      const offered = await client.transitions(card.id);
+      const leading = offered.filter(
+        (o) =>
+          column.statusIds.includes(o.to.id) &&
+          (request.transitionId === undefined || o.id === request.transitionId),
+      );
+      return (
+        leading.find(
+          (o) => o.layout.includes(missing) && o.layout.every((f) => FILLABLE_FIELDS.includes(f)),
+        ) ?? null
+      );
+    } catch {
+      return null;
+    }
+  }
+
   async function move(card: BoardCard, request: MoveRequest, done: string) {
     setBusy(true);
     setProblem(null);
@@ -257,13 +321,29 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         return;
       }
       setChoice(null);
+      setAsking(null);
       if (outcome.kind === 'no_transition') {
-        setProblem(t('boards.noTransition', { key: card.key, column: column.name }));
+        setProblem(
+          column.statusIds.length === 0
+            ? t('boards.emptyColumn', { column: column.name })
+            : t('boards.noTransition', {
+                key: card.key,
+                column: column.name,
+                status: card.status.name,
+              }),
+        );
         links.current.get(card.id)?.focus();
         return;
       }
       if (outcome.kind === 'refused') {
-        setProblem(t('boards.refused', { key: card.key, code: outcome.code }));
+        // The transition asks for something a form can ask here, as the ticket does (a close
+        // reason): ask, and move once it is given.
+        const needs = await neededForm(card, request, column, outcome);
+        if (needs) {
+          setAsking({ card, column, move: request, transition: needs });
+          return;
+        }
+        setProblem(refusedText(t, card.key, outcome));
         links.current.get(card.id)?.focus();
         return;
       }
@@ -271,7 +351,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       focusAfter.current = card.id;
       await load(filters);
     } catch {
-      setProblem(t('boards.refused', { key: card.key, code: 'error' }));
+      setProblem(t('boards.refusedOther', { key: card.key }));
     } finally {
       setBusy(false);
     }
@@ -639,6 +719,43 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       <div className="visually-hidden" aria-live="polite">
         {announcement}
       </div>
+      {asking && (
+        <div
+          className="board-choice"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={askingTitleId}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setAsking(null);
+              links.current.get(asking.card.id)?.focus();
+            }
+          }}
+          ref={(el) => {
+            if (el && !el.contains(document.activeElement)) el.querySelector('select')?.focus();
+          }}
+        >
+          <h2 id={askingTitleId}>
+            {t('boards.choose.title', { key: asking.card.key, column: asking.column.name })}
+          </h2>
+          <p>{t('boards.asking.intro', { name: asking.transition.name })}</p>
+          <TransitionForm
+            transition={asking.transition}
+            client={client}
+            onRun={(fields) => {
+              void move(
+                asking.card,
+                { ...asking.move, transitionId: asking.transition.id, fields },
+                t('boards.moved', { key: asking.card.key, column: asking.column.name }),
+              );
+            }}
+            onCancel={() => {
+              setAsking(null);
+              links.current.get(asking.card.id)?.focus();
+            }}
+          />
+        </div>
+      )}
       {choice && (
         <div
           className="board-choice"

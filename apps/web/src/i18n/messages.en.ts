@@ -3389,8 +3389,17 @@ export const messagesEn = {
   'boards.moved': '{key} moved to {column}.',
   'boards.dropped': '{key} moved within {column}.',
   'boards.ranked': '{key} moved {direction, select, up {up} other {down}} in {column}.',
-  'boards.noTransition': 'No transition leads {key} into {column}.',
-  'boards.refused': '{key} could not be moved ({code}). Open the ticket to see why.',
+  'boards.noTransition':
+    '{key} cannot go to {column}: its workflow has no step there from {status}. An administrator can add one to the workflow.',
+  'boards.emptyColumn':
+    '{column} has no status yet, so no ticket can go there. Give it one in the board settings.',
+  'boards.refused': '{key} was not moved. {reason}',
+  'boards.refusedForbidden': 'You may not move {key} from where it is. A track administrator can.',
+  'boards.refusedStale':
+    '{key} changed meanwhile, so it was not moved. Look at it again and retry.',
+  'boards.refusedArchived': '{key} is in an archived track, so it cannot be moved.',
+  'boards.refusedOther': '{key} could not be moved. Try again in a moment.',
+  'boards.asking.intro': 'To {name} this ticket, choose:',
   'boards.choose.title': 'Move {key} to {column}',
   'boards.choose.intro': 'Several transitions lead there. Which one?',
   'boards.choose.option': '{name} (to {status})',

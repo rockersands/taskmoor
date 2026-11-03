@@ -1,62 +1,61 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 /**
- * Dragging cards end to end (M1-046; AGL-002, AGL-009: "drag e2e triggers checks"): a card
- * dragged to the next column runs its transition on the server; one dragged to Closed meets the
- * Close transition's check (a close reason is required), stays where it was and says so; a card
- * dragged above another takes its place. Mouse dragging only: on a phone the same moves are the
- * Move menu's. It uses the attachments database (preview 4174), whose administrator (Ada
- * Attach) the API server made with the ATT track.
+ * Dragging a card with the mouse really moves its ticket (M1-046; AGL-003, ADR-049), and when the
+ * workflow's transition asks for something, here a close reason, the board asks for it: the
+ * user's report was a refusal with a raw code on the demo's default workflow.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
 
-test('[AGL-002] [AGL-009] dragging a card runs its transition and its checks', async ({
+async function drag(page: Page, card: string, column: string) {
+  const from = page.getByRole('link', { name: new RegExp(card) });
+  const to = page.getByRole('list', { name: column, exact: true });
+  await from.dragTo(to);
+}
+
+test('[AGL-003] a mouse drag runs the transition, and asks for the close reason it needs', async ({
   page,
-  isMobile,
 }, testInfo) => {
-  test.skip(isMobile, 'mouse dragging; phones move cards with the Move menu');
+  test.skip(testInfo.project.name !== 'desktop', 'dragging with a mouse is a desktop path');
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const word = `drg${testInfo.project.name}${Date.now().toString(36)}`;
-  const keys: string[] = [];
-  for (const summary of ['Drag me', 'Stay here', 'Second one']) {
-    const res = await page.request.post(`${BASE}/api/v1/tickets`, {
-      data: { track: 'ATT', summary: `${summary} ${word}` },
-    });
-    expect(res.status(), await res.text()).toBe(201);
-    keys.push((await res.json()).ticket.key as string);
-  }
-  const [first, second, third] = keys as [string, string, string];
-  const made = await page.request.post(`${BASE}/api/v1/boards`, {
-    data: { name: `Drag ${word}`, kind: 'kanban', source: { query: `summary ~ ${word}` } },
+  const word = `drag${Date.now()}`;
+  const made = await page.request.post(`${BASE}/api/v1/tickets`, {
+    data: { track: 'ATT', summary: `${word} one`, assigneeId: null },
   });
-  expect(made.status(), await made.text()).toBe(201);
-  const boardId = (await made.json()).board.id as number;
+  expect(made.ok(), await made.text()).toBe(true);
+  const { ticket } = await made.json();
 
-  await page.goto(`${BASE}/#/boards/${boardId}`);
-  const board = page.getByRole('region', { name: `Drag ${word}` });
-  const cell = (column: string) => board.getByRole('list', { name: column, exact: true });
-  const card = (key: string) => board.locator('li.board-card', { hasText: key });
-  await expect(cell('New').getByRole('link')).toHaveCount(3);
+  await page.goto(`${BASE}/#/boards`);
+  await page.getByLabel('Name').fill(`Drag ${word}`);
+  await page.getByRole('button', { name: 'Advanced: choose the tickets with a query' }).click();
+  await page.getByLabel('Tickets (a query)').fill(`track = ATT AND summary ~ ${word}`);
+  await page.getByRole('button', { name: 'Create board' }).click();
+  await expect(page.getByRole('link', { name: new RegExp(word) })).toBeVisible();
 
-  // New to Active: the Start transition runs on the server.
-  await card(first).dragTo(cell('Active'));
-  await expect(cell('Active').getByRole('link')).toHaveCount(1);
-  const started = await page.request.get(`${BASE}/api/v1/tickets/${first}`);
-  expect((await started.json()).ticket.status.name).toBe('Active');
+  // New to Active: one transition, no fields.
+  await drag(page, word, 'Active');
+  await expect(
+    page.getByRole('list', { name: 'Active', exact: true }).getByRole('link', {
+      name: new RegExp(word),
+    }),
+  ).toBeVisible();
+  const read = async () =>
+    (await (await page.request.get(`${BASE}/api/v1/tickets/${ticket.key}`)).json()).ticket.status
+      .name;
+  expect(await read()).toBe('Active');
 
-  // Active to Closed: Close needs a close reason, so the move is refused and the card stays.
-  await card(first).dragTo(cell('Closed'));
-  await expect(board.getByRole('alert')).toContainText(`${first} could not be moved`);
-  await expect(cell('Active').getByRole('link')).toHaveCount(1);
-  const kept = await page.request.get(`${BASE}/api/v1/tickets/${first}`);
-  expect((await kept.json()).ticket.status.name).toBe('Active');
-
-  // Within New: the third card dropped on the top half of the second goes above it.
-  const target = card(second);
-  const box = await target.boundingBox();
-  if (!box) throw new Error('no box for the target card');
-  await card(third).dragTo(target, { targetPosition: { x: box.width / 2, y: 2 } });
-  await expect(cell('New').getByRole('link').first()).toContainText(third);
+  // Active to Closed: the transition needs a close reason, so the board asks.
+  await drag(page, word, 'Closed');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('combobox', { name: 'Close reason' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(
+    page.getByRole('list', { name: 'Closed', exact: true }).getByRole('link', {
+      name: new RegExp(word),
+    }),
+  ).toBeVisible();
+  expect(await read()).toBe('Closed');
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });

@@ -119,7 +119,7 @@ describe('the board page (M1-043)', () => {
     screen.getByRole('link', { name: /SHOP-23/ }).focus();
     await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'No transition leads SHOP-23 into To do.',
+      'SHOP-23 cannot go to To do: its workflow has no step there from Active.',
     );
     expect(keysIn('Doing in Everything else')).toContain('SHOP-23');
   });
@@ -217,6 +217,53 @@ describe('the boards list (M1-043)', () => {
     await user.type(screen.getByLabelText('Tickets (a query)'), 'track = PAY');
     await user.click(screen.getByRole('button', { name: 'Create board' }));
     await waitFor(() => expect(made).toEqual([9]));
+  });
+});
+
+describe('a move the workflow needs more for (ADR-049)', () => {
+  it('[AGL-003] asks for the close reason the transition needs, then moves', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient({ closeReasonRequired: 'done' });
+    renderBoard(client);
+    const card = await screen.findByRole('link', { name: /Gift cards/ });
+    card.focus();
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('To Close this ticket, choose:')).toBeVisible();
+    const reason = await within(dialog).findByRole('combobox', { name: 'Close reason' });
+    await within(dialog).findByRole('option', { name: 'Fixed' });
+    await user.selectOptions(reason, 'Duplicate');
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(client.moves.at(-1)).toMatchObject({ columnId: 'done', fields: { 'close-reason': 2 } });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('[AGL-003] says in plain words why a move was refused, never a code', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient();
+    client.move = async () => ({
+      kind: 'refused',
+      code: 'transition_refused',
+      refusal: {
+        error: 'transition_refused',
+        by: 'guard',
+        name: 'only-assignee',
+      },
+    });
+    renderBoard(client);
+    const card = await screen.findByRole('link', { name: /Gift cards/ });
+    card.focus();
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/was not moved\. /);
+    expect(alert).not.toHaveTextContent('transition_refused');
+
+    client.move = async () => ({ kind: 'no_transition' });
+    await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/its workflow has no step there from/),
+    );
   });
 });
 

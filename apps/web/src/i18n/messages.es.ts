@@ -3485,8 +3485,18 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.moved': '{key} se movió a {column}.',
   'boards.dropped': '{key} se movió dentro de {column}.',
   'boards.ranked': '{key} se movió {direction, select, up {arriba} other {abajo}} en {column}.',
-  'boards.noTransition': 'Ninguna transición lleva {key} a {column}.',
-  'boards.refused': 'No se pudo mover {key} ({code}). Abre el ticket para ver por qué.',
+  'boards.noTransition':
+    '{key} no puede ir a {column}: su flujo de trabajo no tiene un paso hacia allí desde {status}. Un administrador puede añadirlo al flujo.',
+  'boards.emptyColumn':
+    '{column} aún no tiene ningún estado, así que ningún ticket puede ir allí. Asígnale uno en la configuración del tablero.',
+  'boards.refused': '{key} no se movió. {reason}',
+  'boards.refusedForbidden':
+    'No puedes mover {key} desde donde está. Un administrador del track sí puede.',
+  'boards.refusedStale':
+    '{key} cambió mientras tanto, así que no se movió. Vuelve a mirarlo e inténtalo de nuevo.',
+  'boards.refusedArchived': '{key} está en un track archivado, así que no se puede mover.',
+  'boards.refusedOther': 'No se pudo mover {key}. Inténtalo de nuevo en un momento.',
+  'boards.asking.intro': 'Para {name} este ticket, elige:',
   'boards.choose.title': 'Mover {key} a {column}',
   'boards.choose.intro': 'Varias transiciones llevan allí. ¿Cuál?',
   'boards.choose.option': '{name} (a {status})',

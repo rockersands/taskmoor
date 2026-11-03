@@ -214,6 +214,8 @@ export function fakeBoardClient(
     board?: Partial<Board>;
     lanes?: BoardLane[];
     numberFields?: NumberField[];
+    /** A column whose transition needs a close reason, as the server's check says. */
+    closeReasonRequired?: string;
     /** Time zones the browser offers that this server refuses (older time zone data). */
     unknownTimeZones?: string[];
   } = {},
@@ -350,8 +352,35 @@ export function fakeBoardClient(
       };
       return { ok: true, board };
     },
+    transitions: async () => [
+      {
+        id: TRANSITIONS.find((t) => t.to === 'Closed')?.id ?? 0,
+        name: 'Close',
+        to: { id: STATUS.Closed, name: 'Closed', stage: 'closed' },
+        layout: ['close-reason'],
+      },
+    ],
+    closeReasons: async () => [
+      { id: 1, name: 'Fixed' },
+      { id: 2, name: 'Duplicate' },
+    ],
+    priorities: async () => [{ id: 1, name: 'High' }],
     move: async (_id, move): Promise<MoveOutcome> => {
       client.moves.push(move);
+      if (options.closeReasonRequired && move.columnId === options.closeReasonRequired) {
+        if (!move.fields?.['close-reason']) {
+          return {
+            kind: 'refused',
+            code: 'transition_refused',
+            refusal: {
+              error: 'transition_refused',
+              by: 'check',
+              name: 'field-required',
+              check: { type: 'field-required', field: 'close-reason', configured: false },
+            },
+          };
+        }
+      }
       const target = board.columns.find((c) => c.id === move.columnId);
       const moving = cards.find((c) => c.id === move.ticket);
       if (!target || !moving) return { kind: 'refused', code: 'invalid_fields' };

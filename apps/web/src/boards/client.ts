@@ -1,5 +1,7 @@
 import { ApiError, api } from '../api/client';
 import type { NumberField, SprintSettings } from '../sprints/client';
+import { type Transition as TicketTransition, ticketClient } from '../tickets/view/client';
+import type { TransitionRefusal } from '../workflow/refusal';
 
 /** A board in the list (`GET /api/v1/boards`, M1-043). */
 export interface BoardSummary {
@@ -184,6 +186,8 @@ export interface MoveRequest {
   ticket: number;
   columnId: string;
   transitionId?: number;
+  /** Values for the fields a transition asks for, such as a close reason. */
+  fields?: Record<string, unknown>;
   before?: number;
   after?: number;
 }
@@ -196,7 +200,7 @@ export type MoveOutcome =
   | { kind: 'moved' }
   | { kind: 'choose'; transitions: Transition[] }
   | { kind: 'no_transition' }
-  | { kind: 'refused'; code: string };
+  | { kind: 'refused'; code: string; refusal?: TransitionRefusal };
 
 /** A track a new board can be for, in the create form's picker. */
 export interface BoardTrack {
@@ -226,6 +230,10 @@ export interface BoardClient {
   /** `sprints: 'active'` shows a Scrum board's active sprints only (M1-044). */
   data(id: number, filters: readonly string[], sprints?: 'active'): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
+  /** What a ticket can do next, to ask for the fields a refused move needs. */
+  transitions(ticket: number): Promise<TicketTransition[]>;
+  closeReasons(): Promise<{ id: number; name: string }[]>;
+  priorities(): Promise<{ id: number; name: string }[]>;
   /** Makes the columns the track's statuses, or stops (M1-126); a problem code when refused. */
   manageWorkflow?(
     id: number,
@@ -302,7 +310,16 @@ export const boardClient: BoardClient = {
       return { kind: 'moved' };
     } catch (error) {
       if (!(error instanceof ApiError)) throw error;
-      const body = error.body as { transitions?: Transition[] } | null;
+      const body = error.body as
+        | ({ transitions?: Transition[] } & Partial<TransitionRefusal>)
+        | null;
+      if (error.code === 'transition_refused' && body?.by && body.name) {
+        return {
+          kind: 'refused',
+          code: error.code,
+          refusal: body as unknown as TransitionRefusal,
+        };
+      }
       if (error.code === 'transition_choice') {
         return { kind: 'choose', transitions: body?.transitions ?? [] };
       }
@@ -310,4 +327,7 @@ export const boardClient: BoardClient = {
       return { kind: 'refused', code: error.code ?? String(error.status) };
     }
   },
+  transitions: (ticket) => ticketClient.transitions(ticket),
+  closeReasons: () => ticketClient.closeReasons(),
+  priorities: () => ticketClient.priorities(),
 };
