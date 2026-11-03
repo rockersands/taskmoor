@@ -108,6 +108,27 @@
   font-size: var(--font-size-200);
 }
 
+.widget-groups {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.widget-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+}
+
+.widget-group-head strong {
+  overflow-wrap: anywhere;
+}
+
 .widget-big {
   display: grid;
   justify-items: start;
@@ -237,7 +258,13 @@
 @media (pointer: coarse) {
   .dashboard-widget-tools button,
   .dashboard-row .reports-check,
-  .summary-list a {
+  .summary-list a,
+  .widget-tickets a {
     min-height: var(--hit-target-touch);
+  }
+
+  .widget-tickets a {
+    display: inline-flex;
+    align-items: center;
   }
 }

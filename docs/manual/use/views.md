@@ -45,7 +45,8 @@ On a track's summary:
 - **Assigned to me** and **Followed tickets** list only the viewer's tickets in this track;
 - a widget's query that you do write is used as written, so it can count another track, for those
   who may see that track;
-- the sprint widgets read the track's board, and need it to be a Scrum board.
+- the sprint widgets read the track's board, and need it to be a Scrum board; a Kanban track's
+  editor offers every other widget, the time and workload ones included.
 
 **Back to the default** removes the customization for everyone, after asking. If someone else saved
 a change while you were editing, saving says so, and nothing is overwritten. An archived track's

@@ -9762,6 +9762,49 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/boards/{id}/reports/outcome-report": {
+      "get": {
+        "operationId": "internal-get-boards-by-id-reports-outcome-report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/boards/{id}/reports/release-burndown": {
       "get": {
         "operationId": "internal-get-boards-by-id-reports-release-burndown",

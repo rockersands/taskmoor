@@ -74,6 +74,23 @@ export const TEAM_DASHBOARD: Dashboard = {
     widget('close', 'time-to-close', 2, { query: 'track = SHOP', days: 7, period: 'day' }),
     widget('status', 'average-time-in-status', 0, { query: 'track = SHOP', days: 30 }),
     widget('followed', 'followed-tickets', 2, { limit: 10 }),
+    widget('since', 'time-since', 0, {
+      query: 'track = SHOP',
+      field: 'due',
+      days: 7,
+      period: 'day',
+      cumulative: false,
+    }),
+    widget('grouped', 'group-by', 1, { query: 'track = SHOP', field: 'priority', limit: 2 }),
+    widget('work', 'workload', 2, {
+      query: 'track = SHOP',
+      field: 'assignee',
+      statistic: 'remainingEstimate',
+      open: true,
+      release: null,
+      view: 'table',
+    }),
+    widget('time', 'time-tracking', 0, { query: 'track = SHOP', limit: 20, release: null }),
   ],
 };
 
@@ -214,6 +231,63 @@ export const WIDGET_DATA: Record<string, unknown> = {
     sprint: { id: 11, name: 'Checkout Sprint 10' },
     timeZone: 'UTC',
     daysRemaining: 3,
+  },
+  since: {
+    timeZone: 'UTC',
+    field: 'due',
+    periods: PERIODS,
+    counts: [1, 0, 2, 4, 0, 1, 3],
+    cumulative: false,
+  },
+  grouped: {
+    field: 'priority',
+    values: [
+      {
+        ...value('1', 'High', 3),
+        closed: 1,
+        tickets: [
+          { ...ticket(12, 'Accept card payments', 'Active', 'High'), closed: false },
+          { ...ticket(14, 'Save the card', 'Closed', 'High'), closed: true },
+        ],
+      },
+      {
+        ...value(null, null, 1, 'none'),
+        closed: 0,
+        tickets: [{ ...ticket(19, 'Refund a payment', 'New', null), closed: false }],
+      },
+    ],
+    total: 4,
+    closed: 1,
+  },
+  work: {
+    field: 'assignee',
+    statistic: 'remainingEstimate',
+    open: true,
+    release: null,
+    values: [
+      { ...value('2', 'Ada Lovelace', 4), seconds: 14 * H, unestimated: 1 },
+      { ...value(null, null, 2, 'none'), seconds: 3 * H, unestimated: 0 },
+    ],
+    total: 6,
+    seconds: 17 * H,
+    unestimated: 1,
+  },
+  time: {
+    release: null,
+    tickets: 9,
+    estimated: 7,
+    original: 40 * H,
+    remaining: 12 * H,
+    spent: 31 * H,
+    rows: [
+      {
+        ...ticket(12, 'Accept card payments', 'Active', 'High'),
+        closed: false,
+        original: 16 * H,
+        remaining: 6 * H,
+        spent: 13 * H,
+      },
+    ],
   },
   status: {
     timeZone: 'UTC',

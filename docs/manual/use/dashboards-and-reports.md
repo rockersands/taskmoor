@@ -1,7 +1,7 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md
+sources: apps/web/src/App.tsx, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -65,6 +65,10 @@ see.
 | **Sprint health** | **Board** | **Time gone**, **Work done**, **Scope change** and **Remaining** |
 | **Days remaining in the sprint** | **Board** | Days left in the active sprint |
 | **Average time in status** | **Query**, **Days back** | Average time per ticket in each status |
+| **Tickets by date** | **Query**, **Date**, **Days back**, **Group by**, **Running totals** | Tickets per period by the day they were created, updated, closed, are due or start |
+| **Grouped tickets** | **Query**, **Field**, **Tickets to show** | The tickets of each value of a field: how many, how many are done, and the most recently updated |
+| **Workload** | **Query**, **Field**, **Measure**, **Open tickets only**, **Show as** | The remaining or original estimate, or the time spent, added up per value, as a **Table** or a **Pie chart** |
+| **Time tracking** | **Query**, **Tickets to show** | The original and remaining estimates and the time spent added up, against each other, with the tickets that have them |
 
 Widgets group by status, priority, type, track, assignee, requester, creator, close reason,
 labels, target and found-in release, area, or a custom field that groups. A field with more than
@@ -72,7 +76,10 @@ labels, target and found-in release, area, or a custom field that groups. A fiel
 counts under each.
 
 In **Created vs closed**, a closing is the moment a close reason is set, so a ticket closed,
-reopened and closed again counts twice. Sprint widgets need a Scrum board you can see; when the
+reopened and closed again counts twice. **Tickets by date** counts each ticket once, by the date
+it has now. A ticket is done when its status is in the closed stage, the same rule progress uses
+everywhere. **Workload** and **Time tracking** add up time in hours, and say so when time
+tracking is turned off on the site. Sprint widgets need a Scrum board you can see; when the
 board has no active sprint, the widget says so.
 
 ### Wallboards
@@ -84,14 +91,15 @@ wallboard**), set **Seconds per dashboard**, and press **Start the wallboard**.
 
 ## A track's statistics
 
-**Statistics**, in a track's tab bar, holds every report of that track, in four groups:
+**Statistics**, in a track's tab bar, holds every report of that track, in five groups:
 
 | Group | Reports |
 |---|---|
 | **Flow** | **Cumulative flow**, **Control chart**, **Cycle time**, **Time in status** |
 | **Sprints** | **Sprint report**, **Velocity** |
-| **Releases** | **Release burndown**, **Outcome burndown**, **Release report** |
-| **Tickets** | **Created vs closed**, **Recently created**, **Average age**, **Time to close**, **Ticket statistics**, **Two-dimensional statistics** |
+| **Releases** | **Release burndown**, **Outcome burndown**, **Release report**, **Outcome report** |
+| **Tickets** | **Created vs closed**, **Recently created**, **Average age**, **Time to close**, **Tickets by date**, **Pie chart**, **Ticket statistics**, **Two-dimensional statistics**, **Grouped tickets** |
+| **Time and workload** | **Time tracking**, **Workload by person**, **Release workload**, **Workload pie chart** |
 
 The **Reports** link on a board opens this section, and moving between reports stays inside the
 track's tabs. Each report counts only the tickets you can see in the track, so two people may read
@@ -99,7 +107,7 @@ different numbers.
 
 Sprint and release reports follow sprints, so only a track with a Scrum board lists them. A Kanban
 track does not list them. An old link to one says it needs a Scrum board, and those who may change
-the board get a link to its settings. Flow and ticket reports work on any board. On a Kanban track, a
+the board get a link to its settings. Flow, ticket, time and workload reports work on any board. On a Kanban track, a
 customized Summary also leaves out sprint widgets: they stay in its editor, to take away.
 
 ### Ticket reports
@@ -109,9 +117,29 @@ These read the whole track, with no query to write:
 - **Created vs closed**, **Recently created**, **Average age** and **Time to close**: choose the
   **Period** and how to group it (by day, week or month). **Created vs closed** can show **Running
   totals**.
-- **Ticket statistics**: how many tickets have each value of one **Field**.
+- **Tickets by date**: how many tickets have a chosen **Date** (created, updated, closed, due or
+  start) in each period, or a running total.
+- **Pie chart** and **Ticket statistics**: how many tickets have each value of one **Field**.
 - **Two-dimensional statistics**: a table of two fields against each other, as **Rows** and
   **Columns**. Custom fields can be chosen too.
+- **Grouped tickets**: each value of a **Field** with its tickets, how many of them are done, and
+  the most recently updated ones, each a link to the ticket.
+
+Every number in these reports is the count of a search you could run yourself, such as `track =
+PAY AND status = "Active"`, so a report and the search never disagree.
+
+### Time and workload
+
+These add up the time on the track's tickets, in hours:
+
+- **Time tracking**: the **Original estimate**, **Time spent** and **Remaining** of the whole track
+  or of one **Release**, whether the work is under or over the estimate, and the tickets with the
+  most time spent. Time spent is the sum of the tickets' time entries.
+- **Workload by person**: the remaining estimate of the open tickets per assignee, with how many
+  have no estimate.
+- **Release workload**: the same for the open tickets that target a chosen **Release**.
+- **Workload pie chart**: a **Measure** (remaining or original estimate, or time spent) by any
+  **Field**, as a pie, for the open tickets or all of them.
 
 To count something narrower or across tracks, use the [widget](#widgets) of the same name on a
 dashboard, where you can write a query.
@@ -165,7 +193,7 @@ same numbers. Tickets in statuses no column shows are counted apart and named un
 
 ### Release and outcome reports
 
-These three follow a Scrum board's sprints, counted by the board's estimation setting:
+These follow a Scrum board's sprints, counted by the board's estimation setting:
 
 - **Release burndown**: choose a **Release** of the board's track.
 - **Outcome burndown**: enter an outcome's key under **Outcome** and press **Show**.
@@ -177,6 +205,9 @@ needs at the board's velocity (the average of its last three completed sprints).
 - **Release report**: **Release progress**, the scope and the completed work day by day from
   the release's start, its planned or shipped date, and the day the work would be done at the
   pace of the last 14 days.
+- **Outcome report**: enter an outcome's key and press **Show**. The same chart for the tickets
+  under the outcome, from the day the first one joined it, with how many are **Done**, **Still
+  open** and **Open without an estimate**, and the list of its tickets.
 
 A release's own page in the releases hub also shows its progress, warnings and release notes:
 see [Releases](boards.md#releases).

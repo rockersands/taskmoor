@@ -10,12 +10,16 @@ import { datesBetween, dayEnd, dayStart, timeInStatus } from '../reports/flow';
 import {
   averageAge,
   createdVsClosed,
+  groupBy,
   oneDimensional,
   type Period,
   parseAxis,
   periodsBetween,
+  timeSince,
   timeToClose,
+  timeTracking,
   twoDimensional,
+  workload,
 } from '../reports/general';
 import { visibleBoardRecord } from '../routes/boards';
 import { searchPerson } from '../routes/search';
@@ -28,6 +32,7 @@ import {
 } from '../routes/sprints';
 import { prepareSearch, readOnly, runPage } from '../search/run';
 import { priorityLevels } from '../tickets/priority-level';
+import { timeSettings } from '../tickets/time';
 import type { Widget, WidgetSettings } from './model';
 
 /**
@@ -50,8 +55,32 @@ export interface WidgetContext {
 }
 
 export type Unavailable = {
-  unavailable: 'board_not_found' | 'not_scrum' | 'no_active_sprint' | 'sprint_not_found' | 'field';
+  unavailable:
+    | 'board_not_found'
+    | 'not_scrum'
+    | 'no_active_sprint'
+    | 'sprint_not_found'
+    | 'field'
+    | 'time_tracking_off';
 };
+
+/** Running totals of a list of counts. */
+const running = (list: readonly number[]) => {
+  let n = 0;
+  return list.map((v) => {
+    n += v;
+    return n;
+  });
+};
+
+/** Not in a status of the closed stage: the one definition of done (ADR-120), as search's `stage`. */
+const OPEN = sql<boolean>`NOT EXISTS (SELECT 1 FROM status st
+                                       WHERE st.id = k.status_id AND st.stage = 'closed')`;
+/** Targets the release, as search's `targetRelease`. */
+const targets = (release: number) =>
+  sql<boolean>`EXISTS (SELECT 1 FROM ticket_release tr
+                        WHERE tr.ticket_id = k.id AND tr.role = 'target'
+                          AND tr.release_id = ${release}::int)`;
 
 const ASSIGNED =
   'assignee = currentUser() AND closeReason IS EMPTY ORDER BY priority DESC, updated DESC';
@@ -234,13 +263,6 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
       if (widget.kind === 'recently-created') {
         return { timeZone: w.timeZone, periods: counts.periods, created: counts.created };
       }
-      const running = (list: number[]) => {
-        let n = 0;
-        return list.map((v) => {
-          n += v;
-          return n;
-        });
-      };
       return {
         timeZone: w.timeZone,
         periods: counts.periods,
@@ -312,6 +334,74 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
       return {
         fields: { x: c.x, y: c.y },
         ...(await read((trx) => twoDimensional(trx, { workspaceId: ws, scope: condition, x, y }))),
+      };
+    }
+    case 'time-since': {
+      const c = config as WidgetSettings<'time-since'>;
+      const w = window(request, c.days);
+      const condition = await where(c.query);
+      const counted = await read((trx) =>
+        timeSince(trx, {
+          scope: condition,
+          field: c.field,
+          from: w.from,
+          to: w.to,
+          start: w.start,
+          end: w.end,
+          timeZone: w.timeZone,
+          period: c.period as Period,
+        }),
+      );
+      return {
+        timeZone: w.timeZone,
+        field: c.field,
+        periods: counted.periods,
+        counts: c.cumulative ? running(counted.counts) : counted.counts,
+        cumulative: c.cumulative,
+      };
+    }
+    case 'group-by': {
+      const c = config as WidgetSettings<'group-by'>;
+      const s = await scope();
+      const axis = parseAxis(c.field, s);
+      if (typeof axis === 'string') return { unavailable: 'field' } satisfies Unavailable;
+      const condition = await compileQuery(db, s, c.query, new Date());
+      return {
+        field: c.field,
+        ...(await read((trx) =>
+          groupBy(trx, { workspaceId: ws, scope: condition, axis, limit: c.limit }),
+        )),
+      };
+    }
+    case 'workload': {
+      const c = config as WidgetSettings<'workload'>;
+      const s = await scope();
+      const axis = parseAxis(c.field, s);
+      if (typeof axis === 'string') return { unavailable: 'field' } satisfies Unavailable;
+      let condition = await compileQuery(db, s, c.query, new Date());
+      if (c.open) condition = sql<boolean>`${condition} AND ${OPEN}`;
+      if (c.release !== null) condition = sql<boolean>`${condition} AND ${targets(c.release)}`;
+      const added = await read((trx) =>
+        workload(trx, { workspaceId: ws, scope: condition, axis, statistic: c.statistic }),
+      );
+      return {
+        field: c.field,
+        statistic: c.statistic,
+        open: c.open,
+        release: c.release,
+        ...added,
+      };
+    }
+    case 'time-tracking': {
+      const c = config as WidgetSettings<'time-tracking'>;
+      if (!(await timeSettings(db, ws)).enabled) {
+        return { unavailable: 'time_tracking_off' } satisfies Unavailable;
+      }
+      let condition = await where(c.query);
+      if (c.release !== null) condition = sql<boolean>`${condition} AND ${targets(c.release)}`;
+      return {
+        release: c.release,
+        ...(await read((trx) => timeTracking(trx, { scope: condition, limit: c.limit }))),
       };
     }
     case 'sprint-burndown':

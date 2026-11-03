@@ -5,10 +5,10 @@ import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
 import { boardScope } from '../boards/data';
-import { type ReportState, readReportEvents } from '../reports/events';
+import { fold, type ReportState, readReportEvents } from '../reports/events';
 import { datesBetween } from '../reports/flow';
 import { type ScopeInput, scopeBurndown, scopeByDay } from '../reports/scope-burndown';
-import type { Statistic } from '../reports/sprint-charts';
+import { type Statistic, ticketValue } from '../reports/sprint-charts';
 import { doneStatuses } from '../sprints/lifecycle';
 import { resolveTicket } from '../tickets/store';
 import type { SprintBoard, SprintRouteDeps } from './sprints';
@@ -42,6 +42,8 @@ const outcomeQuery = z
       .regex(/^(\d+|[A-Za-z][A-Za-z0-9_]*-\d+)$/),
   })
   .strict();
+
+const outcomeReportQuery = outcomeQuery.extend({ timeZone: releaseQuery.shape.timeZone }).strict();
 
 const invalidFields = (reply: FastifyReply, fields: Record<string, string>) =>
   reply.code(400).send({ error: 'invalid_fields', fields });
@@ -152,6 +154,29 @@ export function registerScopeReportRoutes(
            AND ${String(releaseId)} = ANY(string_to_array(to_value, ','))`.execute(db)
     ).rows.map((r) => r.ticket_id);
 
+  /** The outcome by key or id, if the caller may see it. */
+  async function visibleOutcome(request: FastifyRequest, keyOrId: string) {
+    const found = await resolveTicket(db, request.workspaceId, keyOrId);
+    if (!found) return undefined;
+    const scope = await boardScope(db, catalogs, request);
+    return (
+      await sql<{ id: number; key: string; summary: string; createdAt: Date }>`
+        SELECT k.id, t.key || '-' || k.number AS key, k.summary, k.created_at AS "createdAt"
+          FROM ticket k JOIN track t ON t.id = k.track_id
+         WHERE k.id = ${found.id}::int AND k.workspace_id = ${request.workspaceId}::int
+           AND k.deleted_at IS NULL AND ${scope.filter.sql}`.execute(db)
+    ).rows[0];
+  }
+
+  /** Every ticket that was ever under the outcome, by its history. */
+  const everUnder = async (workspaceId: number, outcomeId: number) =>
+    (
+      await sql<{ ticket_id: number }>`
+        SELECT DISTINCT ticket_id FROM ticket_change
+         WHERE workspace_id = ${workspaceId}::int AND field = 'parent'
+           AND to_value = ${String(outcomeId)}`.execute(db)
+    ).rows.map((r) => r.ticket_id);
+
   /** The board's sprints that started, in start order. */
   const startedSprints = (boardId: number) =>
     db
@@ -214,26 +239,12 @@ export function registerScopeReportRoutes(
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
     const board = await scrumBoard(request, reply);
     if (!board) return reply;
-    const found = await resolveTicket(db, request.workspaceId, q.data.outcome);
-    const scope = await boardScope(db, catalogs, request);
-    const outcome = found
-      ? (
-          await sql<{ id: number; key: string; summary: string }>`
-            SELECT k.id, t.key || '-' || k.number AS key, k.summary
-              FROM ticket k JOIN track t ON t.id = k.track_id
-             WHERE k.id = ${found.id}::int AND k.workspace_id = ${request.workspaceId}::int
-               AND k.deleted_at IS NULL AND ${scope.filter.sql}`.execute(db)
-        ).rows[0]
-      : undefined;
+    const outcome = await visibleOutcome(request, q.data.outcome);
     if (!outcome) return notFound(reply);
-    const candidates = (
-      await sql<{ ticket_id: number }>`
-        SELECT DISTINCT ticket_id FROM ticket_change
-         WHERE workspace_id = ${request.workspaceId}::int AND field = 'parent'
-           AND to_value = ${String(outcome.id)}`.execute(db)
-    ).rows.map((r) => r.ticket_id);
+    const candidates = await everUnder(request.workspaceId, outcome.id);
     const input = await inputs(request, board, candidates, (s) => s.parentId === outcome.id);
-    return { outcome, ...(await burndown(board, input)) };
+    const { createdAt: _, ...shown } = outcome;
+    return { outcome: shown, ...(await burndown(board, input)) };
   });
 
   // Release report: the release's scope and completed work day by day, with a forecast date.
@@ -276,6 +287,82 @@ export function registerScopeReportRoutes(
       statistic: board.settings.estimation,
       timeZone,
       ...report,
+    };
+  });
+
+  // Outcome report: the work under an outcome day by day, and its tickets as they stand now.
+  app.get('/api/v1/boards/:id/reports/outcome-report', async (request, reply) => {
+    const user = requireUser(request, reply);
+    if (!user) return reply;
+    const q = outcomeReportQuery.safeParse(request.query);
+    if (!q.success) return invalidFields(reply, shapeErrors(q.error));
+    const board = await scrumBoard(request, reply);
+    if (!board) return reply;
+    const outcome = await visibleOutcome(request, q.data.outcome);
+    if (!outcome) return notFound(reply);
+    const timeZone =
+      q.data.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
+    const candidates = await everUnder(request.workspaceId, outcome.id);
+    const member = (s: ReportState) => s.parentId === outcome.id;
+    const input = await inputs(request, board, candidates, member);
+    // From the first day a ticket came under it, else the day it was made; at most two years.
+    const first = input.events.find(
+      (e) => e.kind === 'field' && e.field === 'parent' && e.to === String(outcome.id),
+    );
+    const today = localDate(input.now, timeZone);
+    let from = localDate(first?.at ?? outcome.createdAt, timeZone);
+    if (from > today) from = today;
+    const span = datesBetween(from, today);
+    if (span.length > MAX_DAYS) from = span[span.length - MAX_DAYS] as string;
+    const report = scopeByDay({ ...input, from, timeZone });
+    // The tickets under it now, by the same events, as the board measures and finishes them.
+    const now = [...fold(input.events)].filter(([, s]) => !s.inTrash && member(s));
+    const shown = new Map(
+      now.length === 0
+        ? []
+        : (
+            await sql<{ id: number; key: string; summary: string; status: string }>`
+              SELECT k.id, t.key || '-' || k.number AS key, k.summary, st.name AS status
+                FROM ticket k JOIN track t ON t.id = k.track_id
+                JOIN status st ON st.id = k.status_id
+               WHERE k.id = ANY(${now.map(([id]) => id)}::int[])`.execute(db)
+          ).rows.map((r) => [r.id, r]),
+    );
+    const estimated = (s: ReportState) => {
+      const e = input.estimation;
+      if (e.statistic === 'ticketCount') return true;
+      if (e.statistic === 'originalEstimate') {
+        return (input.burnRemaining ? s.remainingEstimate : s.originalEstimate) !== null;
+      }
+      return (s.numbers[e.fieldId] ?? null) !== null;
+    };
+    const tickets = now
+      .flatMap(([id, s]) => {
+        const row = shown.get(id);
+        return row
+          ? [
+              {
+                ...row,
+                done: s.statusId !== null && input.done.has(s.statusId),
+                value: ticketValue(s, input),
+                estimated: estimated(s),
+              },
+            ]
+          : [];
+      })
+      .sort((a, b) => Number(a.done) - Number(b.done) || a.id - b.id);
+    const { createdAt: _, ...about } = outcome;
+    return {
+      outcome: about,
+      statistic: board.settings.estimation,
+      timeZone,
+      ...report,
+      tickets,
+      counts: {
+        done: tickets.filter((t) => t.done).length,
+        open: tickets.filter((t) => !t.done).length,
+        unestimated: tickets.filter((t) => !t.done && !t.estimated).length,
+      },
     };
   });
 }

@@ -89,6 +89,97 @@ export const TWO_DIMENSIONAL = {
   total: 5,
 };
 
+export const TIME_SINCE = {
+  timeZone: 'UTC',
+  field: 'due',
+  periods: ['2026-10-26', '2026-10-27', '2026-10-28'],
+  counts: [2, 0, 4],
+  cumulative: false,
+};
+export const PIE = {
+  field: 'assignee',
+  values: [
+    { id: '2', name: 'Ada Lovelace', kind: 'value', total: 4 },
+    { id: '3', name: 'Grace Hopper', kind: 'value', total: 3 },
+    { id: null, name: null, kind: 'none', total: 1 },
+  ],
+  total: 8,
+};
+const listed = (n: number, summary: string, closed: boolean) => ({
+  id: n,
+  key: `SHOP-${n}`,
+  summary,
+  status: closed ? 'Closed' : 'Active',
+  closed,
+  assignee: 'Ada Lovelace',
+});
+export const GROUP_BY = {
+  field: 'assignee',
+  values: [
+    {
+      id: '2',
+      name: 'Ada Lovelace',
+      kind: 'value',
+      total: 3,
+      closed: 1,
+      tickets: [
+        listed(41, 'Checkout fails for expired cards', false),
+        listed(40, 'Card payments', true),
+      ],
+    },
+    {
+      id: null,
+      name: null,
+      kind: 'none',
+      total: 1,
+      closed: 0,
+      tickets: [listed(44, 'Gift cards', false)],
+    },
+  ],
+  total: 4,
+  closed: 1,
+};
+export const WORKLOAD = {
+  field: 'assignee',
+  statistic: 'remainingEstimate',
+  open: true,
+  release: null,
+  values: [
+    { id: '2', name: 'Ada Lovelace', kind: 'value', total: 3, seconds: 10_800, unestimated: 1 },
+    { id: '3', name: 'Grace Hopper', kind: 'value', total: 2, seconds: 5400, unestimated: 0 },
+  ],
+  total: 5,
+  seconds: 16_200,
+  unestimated: 1,
+};
+export const TIME_TRACKING = {
+  release: null,
+  tickets: 6,
+  estimated: 4,
+  original: 36_000,
+  remaining: 7200,
+  spent: 25_200,
+  rows: [
+    {
+      ...listed(41, 'Checkout fails for expired cards', false),
+      original: 14_400,
+      remaining: 3600,
+      spent: 12_600,
+    },
+    { ...listed(40, 'Card payments', true), original: 21_600, remaining: 0, spent: 12_600 },
+  ],
+};
+/** What each kind of the track's reports answers here. */
+const STATISTICS: Record<string, unknown> = {
+  'two-dimensional': TWO_DIMENSIONAL,
+  'time-since': TIME_SINCE,
+  pie: PIE,
+  'ticket-statistics': PIE,
+  'group-by': GROUP_BY,
+  workload: WORKLOAD,
+  'time-tracking': TIME_TRACKING,
+};
+
 /** A customized Summary: the numbers, a list and a note. */
 export const CUSTOM_WIDGETS: Widget[] = [
   { id: 'w-numbers', kind: 'track-summary', column: 0, title: '', config: {} },
@@ -221,7 +312,7 @@ export function fakeTrackClient(
     summaryWidget: async (_key, id) => WIDGET_DATA[id] ?? null,
     statistics: async (_key, kind, settings) => {
       statisticCalls.push({ kind, settings });
-      return kind === 'two-dimensional' ? TWO_DIMENSIONAL : CREATED_VS_CLOSED;
+      return STATISTICS[kind] ?? CREATED_VS_CLOSED;
     },
     groupFields: async () => [{ id: 'cf[9]', name: 'Team' }],
     list: async () => [

@@ -102,6 +102,27 @@ export interface ReleaseReport {
   forecast: string | null;
 }
 
+/** An outcome's work day by day, and its tickets as they stand (RPT-001, outcome report). */
+export interface OutcomeReport {
+  outcome: { id: number; key: string; summary: string };
+  statistic: SprintSettings['estimation'];
+  timeZone: string;
+  days: { date: string; scope: number; completed: number }[];
+  pace: number;
+  forecast: string | null;
+  tickets: {
+    id: number;
+    key: string;
+    summary: string;
+    status: string;
+    done: boolean;
+    /** By the board's statistic. */
+    value: number;
+    estimated: boolean;
+  }[];
+  counts: { done: number; open: number; unestimated: number };
+}
+
 export interface ReportParams {
   from?: string;
   to?: string;
@@ -127,6 +148,8 @@ export interface ReportClient {
   /** An outcome by key or id. */
   outcomeBurndown(boardId: number, outcome: string): Promise<ScopeBurndown>;
   releaseReport(boardId: number, releaseId: number): Promise<ReleaseReport>;
+  /** An outcome by key or id. */
+  outcomeReport(boardId: number, outcome: string): Promise<OutcomeReport>;
 }
 
 /** A report's path with its query string; empty values are left out. */
@@ -161,4 +184,8 @@ export const reportClient: ReportClient = {
     ),
   releaseReport: (boardId, releaseId) =>
     api<ReleaseReport>(`/boards/${boardId}/reports/release-report?release=${releaseId}`),
+  outcomeReport: (boardId, outcome) =>
+    api<OutcomeReport>(
+      `/boards/${boardId}/reports/outcome-report?outcome=${encodeURIComponent(outcome)}`,
+    ),
 };

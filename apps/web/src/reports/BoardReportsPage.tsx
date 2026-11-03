@@ -40,6 +40,7 @@ const TAB: Record<BoardReport, MessageId> = {
   'release-burndown': 'reports.tab.releaseBurndown',
   'outcome-burndown': 'reports.tab.outcomeBurndown',
   'release-report': 'reports.tab.releaseReport',
+  'outcome-report': 'reports.tab.outcomeReport',
 };
 const isScope = (r: BoardReport): r is ScopeReportKind =>
   (SCOPE_REPORTS as readonly string[]).includes(r);

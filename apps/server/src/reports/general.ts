@@ -303,6 +303,63 @@ export interface TwoDimensional {
 
 const keyOf = (id: string | null) => id ?? '';
 
+/**
+ * An axis' values in order from their ticket counts: named values first, none last, and past
+ * `MAX_AXIS_VALUES` the least frequent gathered as other. `slot` says where a raw value lands.
+ */
+async function orderAxis(
+  db: Db,
+  workspaceId: number,
+  a: Axis,
+  counted: { v: string | null; n: number }[],
+): Promise<{ out: AxisValue[]; slot: (v: string | null) => string }> {
+  const named = await names(
+    db,
+    workspaceId,
+    a,
+    counted.flatMap((c) => (c.v === null ? [] : [c.v])),
+  );
+  let values = counted
+    .filter((c) => c.v !== null)
+    .map((c) => ({ id: c.v as string, n: c.n, named: named.get(c.v as string) }));
+  let other = 0;
+  if (values.length > MAX_AXIS_VALUES) {
+    const kept = new Set(
+      [...values]
+        .sort((p, q) => q.n - p.n || p.id.localeCompare(q.id))
+        .slice(0, MAX_AXIS_VALUES)
+        .map((v) => v.id),
+    );
+    other = values.filter((v) => !kept.has(v.id)).length;
+    values = values.filter((v) => kept.has(v.id));
+  }
+  values.sort(
+    (p, q) =>
+      (p.named?.order ?? Number.MAX_SAFE_INTEGER) - (q.named?.order ?? Number.MAX_SAFE_INTEGER) ||
+      p.id.localeCompare(q.id),
+  );
+  const out: AxisValue[] = values.map((v) => ({
+    id: v.id,
+    name: v.named?.name ?? null,
+    kind: 'value',
+    total: v.n,
+  }));
+  const kept = new Set(out.map((v) => v.id));
+  if (other > 0) out.push({ id: '*', name: null, kind: 'other', total: 0 });
+  const none = counted.find((c) => c.v === null);
+  if (none) out.push({ id: null, name: null, kind: 'none', total: none.n });
+  const slot = (v: string | null) =>
+    v === null ? keyOf(null) : kept.has(v) ? v : other > 0 ? '*' : v;
+  return { out, slot };
+}
+
+/** The tickets with a value of `a` other than the kept ones, each once. */
+const otherThan = (a: Axis, kept: readonly AxisValue[]) => {
+  const ids = kept.flatMap((v) => (v.kind === 'value' && v.id !== null ? [v.id] : []));
+  return sql<boolean>`EXISTS (SELECT 1 FROM unnest(${axisValues(a)}) AS a(v)
+                               WHERE NOT (a.v = ANY(${ids}::text[])))`;
+};
+
 export async function twoDimensional(
   db: Db,
   input: { workspaceId: number; scope: RawBuilder<boolean>; x: Axis; y: Axis },
@@ -329,50 +386,8 @@ export async function twoDimensional(
     (await sql<{ n: number }>`SELECT count(*)::int AS n FROM ticket k WHERE ${scope}`.execute(db))
       .rows[0]?.n ?? 0;
 
-  /** The axis' values in order, none last, the least frequent gathered as other past the cap. */
-  const axis = async (a: Axis, counted: { v: string | null; n: number }[]) => {
-    const named = await names(
-      db,
-      workspaceId,
-      a,
-      counted.flatMap((c) => (c.v === null ? [] : [c.v])),
-    );
-    let values = counted
-      .filter((c) => c.v !== null)
-      .map((c) => ({ id: c.v as string, n: c.n, named: named.get(c.v as string) }));
-    let other = 0;
-    if (values.length > MAX_AXIS_VALUES) {
-      const kept = new Set(
-        [...values]
-          .sort((p, q) => q.n - p.n || p.id.localeCompare(q.id))
-          .slice(0, MAX_AXIS_VALUES)
-          .map((v) => v.id),
-      );
-      other = values.filter((v) => !kept.has(v.id)).length;
-      values = values.filter((v) => kept.has(v.id));
-    }
-    values.sort(
-      (p, q) =>
-        (p.named?.order ?? Number.MAX_SAFE_INTEGER) - (q.named?.order ?? Number.MAX_SAFE_INTEGER) ||
-        p.id.localeCompare(q.id),
-    );
-    const out: AxisValue[] = values.map((v) => ({
-      id: v.id,
-      name: v.named?.name ?? null,
-      kind: 'value',
-      total: v.n,
-    }));
-    const kept = new Set(out.map((v) => v.id));
-    if (other > 0) out.push({ id: '*', name: null, kind: 'other', total: 0 });
-    const none = counted.find((c) => c.v === null);
-    if (none) out.push({ id: null, name: null, kind: 'none', total: none.n });
-    /** Where a raw value lands on the axis. */
-    const slot = (v: string | null) =>
-      v === null ? keyOf(null) : kept.has(v) ? v : other > 0 ? '*' : v;
-    return { out, slot };
-  };
-  const ax = await axis(input.x, xTotals);
-  const ay = await axis(input.y, yTotals);
+  const ax = await orderAxis(db, workspaceId, input.x, xTotals);
+  const ay = await orderAxis(db, workspaceId, input.y, yTotals);
   const xIndex = new Map(ax.out.map((v, i) => [keyOf(v.id), i]));
   const yIndex = new Map(ay.out.map((v, i) => [keyOf(v.id), i]));
   const cells = ax.out.map(() => new Array<number>(ay.out.length).fill(0));
@@ -384,17 +399,12 @@ export async function twoDimensional(
     row[j] = (row[j] ?? 0) + p.n;
   }
   // "Other" totals count tickets once even when several of their values were gathered.
-  const otherTotal = async (a: Axis, kept: AxisValue[]) => {
-    const ids = kept.flatMap((v) => (v.kind === 'value' && v.id !== null ? [v.id] : []));
-    return (
-      (
-        await sql<{ n: number }>`
-          SELECT count(*)::int AS n FROM ticket k
-           WHERE ${scope} AND EXISTS (SELECT 1 FROM unnest(${axisValues(a)}) AS a(v)
-                                       WHERE NOT (a.v = ANY(${ids}::text[])))`.execute(db)
-      ).rows[0]?.n ?? 0
-    );
-  };
+  const otherTotal = async (a: Axis, kept: AxisValue[]) =>
+    (
+      await sql<{ n: number }>`
+        SELECT count(*)::int AS n FROM ticket k
+         WHERE ${scope} AND ${otherThan(a, kept)}`.execute(db)
+    ).rows[0]?.n ?? 0;
   for (const [a, values] of [
     [input.x, ax.out],
     [input.y, ay.out],
@@ -416,20 +426,32 @@ export async function oneDimensional(
 
 /**
  * - **Average age**: at the end of each period, how long the tickets open then had been open,
- *   on average (open: created by then and without a close reason then, by the history).
+ *   on average (open: created by then and without a close reason then, by the history). Each
+ *   close reason the history sets closes the ticket until its next change of close reason, so
+ *   a ticket is open at an instant outside all of those spans: one anti-join, not a look into
+ *   the history per ticket and period.
  */
 export async function averageAge(
   db: Db,
   input: { scope: RawBuilder<boolean>; ends: readonly Date[] },
 ): Promise<{ age: number; open: number }[]> {
+  const ends = input.ends.map((d) => d.toISOString());
+  const last = ends.reduce((a, b) => (b > a ? b : a), ends[0] ?? new Date(0).toISOString());
   const { rows } = await sql<{ i: string; n: number; age: number }>`
+    WITH k AS (SELECT k.id, k.created_at FROM ticket k WHERE ${input.scope}),
+         changes AS (
+           SELECT c.ticket_id, c.at, c.to_value,
+                  lead(c.at) OVER (PARTITION BY c.ticket_id ORDER BY c.at, c.id) AS until
+             FROM ticket_change c JOIN k ON k.id = c.ticket_id
+            WHERE c.field = 'closeReason' AND c.at <= ${last}::timestamptz),
+         closed AS (SELECT ticket_id, at, coalesce(until, 'infinity') AS until
+                      FROM changes WHERE to_value IS NOT NULL)
     SELECT e.i, count(*)::int AS n,
            coalesce(avg(EXTRACT(EPOCH FROM (e.at - k.created_at))), 0)::float AS age
-      FROM unnest(${input.ends.map((d) => d.toISOString())}::timestamptz[]) WITH ORDINALITY AS e(at, i)
-      JOIN ticket k ON k.created_at <= e.at AND ${input.scope}
-     WHERE (SELECT c.to_value FROM ticket_change c
-             WHERE c.ticket_id = k.id AND c.field = 'closeReason' AND c.at <= e.at
-             ORDER BY c.at DESC, c.id DESC LIMIT 1) IS NULL
+      FROM unnest(${ends}::timestamptz[]) WITH ORDINALITY AS e(at, i)
+      JOIN k ON k.created_at <= e.at
+     WHERE NOT EXISTS (SELECT 1 FROM closed s
+                        WHERE s.ticket_id = k.id AND s.at <= e.at AND e.at < s.until)
      GROUP BY e.i`.execute(db);
   const byIndex = new Map(rows.map((r) => [Number(r.i), r]));
   return input.ends.map((_, i) => {
@@ -478,5 +500,279 @@ export async function timeToClose(
     periods,
     closed,
     average: closed.map((n, i) => (n === 0 ? 0 : Math.round((total[i] ?? 0) / n))),
+  };
+}
+
+/** The date fields a time-since report counts by: an instant, or a day as written. */
+export const DATE_FIELDS = {
+  created: { column: 'created_at', instant: true },
+  updated: { column: 'updated_at', instant: true },
+  closed: { column: 'closed_at', instant: true },
+  due: { column: 'due_date', instant: false },
+  start: { column: 'start_date', instant: false },
+} as const;
+export type DateField = keyof typeof DATE_FIELDS;
+
+/**
+ * - **Time since** (RPT-002): per period, the tickets whose date field falls in it as it stands
+ *   now, an instant on `timeZone`'s days (created, updated, closed) or a day as written (due,
+ *   start). Each ticket counts once, so a period equals the search `field >= first AND field <
+ *   next`.
+ */
+export async function timeSince(
+  db: Db,
+  input: {
+    scope: RawBuilder<boolean>;
+    field: DateField;
+    from: string;
+    to: string;
+    start: Date;
+    end: Date;
+    timeZone: string;
+    period: Period;
+  },
+): Promise<{ periods: string[]; counts: number[] }> {
+  const { column, instant } = DATE_FIELDS[input.field];
+  const col = sql.ref(`k.${column}`);
+  const { rows } = instant
+    ? await sql<{ day: string; n: number }>`
+        SELECT to_char((${col} AT TIME ZONE ${input.timeZone})::date, 'YYYY-MM-DD') AS day,
+               count(*)::int AS n
+          FROM ticket k
+         WHERE ${input.scope} AND ${col} >= ${input.start}::timestamptz
+           AND ${col} < ${input.end}::timestamptz
+         GROUP BY 1`.execute(db)
+    : await sql<{ day: string; n: number }>`
+        SELECT to_char(${col}, 'YYYY-MM-DD') AS day, count(*)::int AS n
+          FROM ticket k
+         WHERE ${input.scope} AND ${col} >= ${input.from}::date AND ${col} <= ${input.to}::date
+         GROUP BY 1`.execute(db);
+  const periods = periodsBetween(input.from, input.to, input.period);
+  const index = new Map(periods.map((p, i) => [p, i]));
+  const counts = new Array<number>(periods.length).fill(0);
+  for (const r of rows) {
+    const i = index.get(periodStart(r.day, input.period));
+    if (i !== undefined) counts[i] = (counts[i] ?? 0) + r.n;
+  }
+  return { periods, counts };
+}
+
+/** A ticket as the grouped and time reports list it. */
+export interface ListedTicket {
+  id: number;
+  key: string;
+  summary: string;
+  status: string;
+  /** In a status of the closed stage: the one definition of done (ADR-120). */
+  closed: boolean;
+  assignee: string | null;
+}
+
+export interface GroupValue extends AxisValue {
+  /** Of `total`, those in a status of the closed stage. */
+  closed: number;
+  /** The first of them, most recently updated first; none for "other". */
+  tickets: ListedTicket[];
+}
+
+/**
+ * - **Single level group by** (RPT-002): the matching tickets grouped by one field like ticket
+ *   statistics, each value with how many of its tickets are done (a status of the closed stage,
+ *   as progress counts everywhere) and its first `limit` tickets, most recently updated first.
+ */
+export async function groupBy(
+  db: Db,
+  input: { workspaceId: number; scope: RawBuilder<boolean>; axis: Axis; limit: number },
+): Promise<{ values: GroupValue[]; total: number; closed: number }> {
+  const { workspaceId, scope, axis } = input;
+  const values = axisValues(axis);
+  const counted = (
+    await sql<{ v: string | null; n: number; c: number }>`
+      SELECT a.v, count(*)::int AS n, count(*) FILTER (WHERE st.stage = 'closed')::int AS c
+        FROM ticket k JOIN status st ON st.id = k.status_id
+       CROSS JOIN LATERAL ${each(values)} AS a(v)
+       WHERE ${scope}
+       GROUP BY 1`.execute(db)
+  ).rows;
+  const { out, slot } = await orderAxis(db, workspaceId, axis, counted);
+  const closed = new Map<string, number>();
+  for (const c of counted) closed.set(slot(c.v), (closed.get(slot(c.v)) ?? 0) + c.c);
+  const totals = (
+    await sql<{ n: number; c: number }>`
+      SELECT count(*)::int AS n, count(*) FILTER (WHERE st.stage = 'closed')::int AS c
+        FROM ticket k JOIN status st ON st.id = k.status_id
+       WHERE ${scope}`.execute(db)
+  ).rows[0] ?? { n: 0, c: 0 };
+  const other = out.find((v) => v.kind === 'other');
+  if (other) {
+    const gathered = (
+      await sql<{ n: number; c: number }>`
+        SELECT count(*)::int AS n, count(*) FILTER (WHERE st.stage = 'closed')::int AS c
+          FROM ticket k JOIN status st ON st.id = k.status_id
+         WHERE ${scope} AND ${otherThan(axis, out)}`.execute(db)
+    ).rows[0] ?? { n: 0, c: 0 };
+    other.total = gathered.n;
+    closed.set('*', gathered.c);
+  }
+  const listed = out.flatMap((v) => (v.kind === 'value' && v.id !== null ? [v.id] : []));
+  const rows = (
+    await sql<ListedTicket & { v: string | null }>`
+      SELECT x.v, k.id, t.key || '-' || k.number AS key, k.summary, s.name AS status,
+             s.stage = 'closed' AS closed, u.name AS assignee
+        FROM (SELECT a.v, k.id,
+                     row_number() OVER (PARTITION BY a.v ORDER BY k.updated_at DESC, k.id DESC) AS rn
+                FROM ticket k CROSS JOIN LATERAL ${each(values)} AS a(v)
+               WHERE ${scope} AND (a.v IS NULL OR a.v = ANY(${listed}::text[]))) x
+        JOIN ticket k ON k.id = x.id
+        JOIN track t ON t.id = k.track_id
+        JOIN status s ON s.id = k.status_id
+        LEFT JOIN app_user u ON u.id = k.assignee_id
+       WHERE x.rn <= ${input.limit}::int
+       ORDER BY x.rn`.execute(db)
+  ).rows;
+  const tickets = new Map<string, ListedTicket[]>();
+  for (const { v, ...ticket } of rows) {
+    const list = tickets.get(keyOf(v)) ?? [];
+    list.push(ticket);
+    tickets.set(keyOf(v), list);
+  }
+  return {
+    values: out.map((v) => ({
+      ...v,
+      closed: closed.get(keyOf(v.id)) ?? 0,
+      tickets: v.kind === 'other' ? [] : (tickets.get(keyOf(v.id)) ?? []),
+    })),
+    total: totals.n,
+    closed: totals.c,
+  };
+}
+
+/** The time figures a workload can add up, and their ticket columns (seconds). */
+export const WORK_STATISTICS = {
+  remainingEstimate: 'remaining_estimate',
+  originalEstimate: 'original_estimate',
+  timeSpent: 'time_spent',
+} as const;
+export type WorkStatistic = keyof typeof WORK_STATISTICS;
+
+export interface WorkValue extends AxisValue {
+  /** The statistic added up over this value's tickets. */
+  seconds: number;
+  /** Of `total`, those with no value for the statistic. */
+  unestimated: number;
+}
+
+/**
+ * - **Workload** (RPT-002: user workload, release workload, workload pie chart): the matching
+ *   tickets grouped by one field, with a time statistic (remaining or original estimate, time
+ *   spent) added up per value. Grouped like ticket statistics: a ticket with several values adds
+ *   to each, totals count it once, and "other" gathers the least frequent past the cap.
+ */
+export async function workload(
+  db: Db,
+  input: {
+    workspaceId: number;
+    scope: RawBuilder<boolean>;
+    axis: Axis;
+    statistic: WorkStatistic;
+  },
+): Promise<{ values: WorkValue[]; total: number; seconds: number; unestimated: number }> {
+  const { workspaceId, scope, axis } = input;
+  const col = sql.ref(`k.${WORK_STATISTICS[input.statistic]}`);
+  const sums = sql`count(*)::int AS n, coalesce(sum(${col}), 0)::float8 AS s,
+                   count(*) FILTER (WHERE ${col} IS NULL)::int AS u`;
+  const counted = (
+    await sql<{ v: string | null; n: number; s: number; u: number }>`
+      SELECT a.v, ${sums} FROM ticket k CROSS JOIN LATERAL ${each(axisValues(axis))} AS a(v)
+       WHERE ${scope} GROUP BY 1`.execute(db)
+  ).rows;
+  const { out, slot } = await orderAxis(db, workspaceId, axis, counted);
+  const added = new Map<string, { s: number; u: number }>();
+  for (const c of counted) {
+    const at = added.get(slot(c.v)) ?? { s: 0, u: 0 };
+    added.set(slot(c.v), { s: at.s + c.s, u: at.u + c.u });
+  }
+  const once = async (where: RawBuilder<boolean>) =>
+    (
+      await sql<{ n: number; s: number; u: number }>`
+        SELECT ${sums} FROM ticket k WHERE ${where}`.execute(db)
+    ).rows[0] ?? { n: 0, s: 0, u: 0 };
+  const other = out.find((v) => v.kind === 'other');
+  if (other) {
+    const gathered = await once(sql<boolean>`${scope} AND ${otherThan(axis, out)}`);
+    other.total = gathered.n;
+    added.set('*', { s: gathered.s, u: gathered.u });
+  }
+  const totals = await once(scope);
+  return {
+    values: out.map((v) => ({
+      ...v,
+      seconds: added.get(keyOf(v.id))?.s ?? 0,
+      unestimated: added.get(keyOf(v.id))?.u ?? 0,
+    })),
+    total: totals.n,
+    seconds: totals.s,
+    unestimated: totals.u,
+  };
+}
+
+export interface TimeRow extends ListedTicket {
+  original: number | null;
+  remaining: number | null;
+  spent: number;
+}
+
+export interface TimeTracking {
+  tickets: number;
+  /** Tickets with an original estimate. */
+  estimated: number;
+  original: number;
+  remaining: number;
+  /** Time spent: the sum of the time entries of the tickets, kept on each ticket (M1-019). */
+  spent: number;
+  /** The first `limit` tickets with time on them, most time spent first. */
+  rows: TimeRow[];
+}
+
+/**
+ * - **Time tracking** (RPT-002 (2)): over the matching tickets, the original and remaining
+ *   estimates and the time spent added up, with the tickets that have any of them, most time
+ *   spent first. Time spent is each ticket's sum of time entries, so the total is theirs.
+ */
+export async function timeTracking(
+  db: Db,
+  input: { scope: RawBuilder<boolean>; limit: number },
+): Promise<TimeTracking> {
+  const { scope } = input;
+  const totals = (
+    await sql<{ n: number; e: number; o: number; r: number; s: number }>`
+      SELECT count(*)::int AS n, count(k.original_estimate)::int AS e,
+             coalesce(sum(k.original_estimate), 0)::float8 AS o,
+             coalesce(sum(k.remaining_estimate), 0)::float8 AS r,
+             coalesce(sum(k.time_spent), 0)::float8 AS s
+        FROM ticket k WHERE ${scope}`.execute(db)
+  ).rows[0] ?? { n: 0, e: 0, o: 0, r: 0, s: 0 };
+  const rows = (
+    await sql<TimeRow>`
+      SELECT k.id, t.key || '-' || k.number AS key, k.summary, s.name AS status,
+             s.stage = 'closed' AS closed, u.name AS assignee,
+             k.original_estimate AS original, k.remaining_estimate AS remaining,
+             k.time_spent AS spent
+        FROM ticket k
+        JOIN track t ON t.id = k.track_id
+        JOIN status s ON s.id = k.status_id
+        LEFT JOIN app_user u ON u.id = k.assignee_id
+       WHERE ${scope} AND (k.original_estimate IS NOT NULL OR k.remaining_estimate IS NOT NULL
+                           OR k.time_spent > 0)
+       ORDER BY k.time_spent DESC, k.original_estimate DESC NULLS LAST, k.id
+       LIMIT ${input.limit}::int`.execute(db)
+  ).rows;
+  return {
+    tickets: totals.n,
+    estimated: totals.e,
+    original: totals.o,
+    remaining: totals.r,
+    spent: totals.s,
+    rows,
   };
 }

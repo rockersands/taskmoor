@@ -71,6 +71,42 @@ export const WIDGET_SETTINGS = {
   'sprint-health': z.object({ boardId: id }).strict(),
   'days-remaining': z.object({ boardId: id }).strict(),
   'average-time-in-status': z.object({ query, days }).strict(),
+  /** Tickets per period by one of their dates (RPT-002, time since). */
+  'time-since': z
+    .object({
+      query,
+      days,
+      period,
+      field: z.enum(['created', 'updated', 'closed', 'due', 'start']).default('created'),
+      cumulative: z.boolean().default(false),
+    })
+    .strict(),
+  /** Tickets grouped by one field, each value with its done share and first tickets. */
+  'group-by': z.object({ query, field: axis, limit }).strict(),
+  /**
+   * A time statistic added up by one field (RPT-002: user and release workload, the workload pie
+   * chart): open tickets only unless `open` is off, those targeting `release` when one is given.
+   */
+  workload: z
+    .object({
+      query,
+      field: axis.default('assignee'),
+      statistic: z
+        .enum(['remainingEstimate', 'originalEstimate', 'timeSpent'])
+        .default('remainingEstimate'),
+      open: z.boolean().default(true),
+      release: id.nullable().default(null),
+      view: z.enum(['table', 'pie']).default('table'),
+    })
+    .strict(),
+  /** Estimates and time spent added up, with the tickets that carry them (RPT-002 (2)). */
+  'time-tracking': z
+    .object({
+      query,
+      limit: z.number().int().min(1).max(100).default(20),
+      release: id.nullable().default(null),
+    })
+    .strict(),
   /** A track's own numbers, as its default Summary shows them; only on a track's Summary. */
   'track-summary': z.object({}).strict(),
 } as const;

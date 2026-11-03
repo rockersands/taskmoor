@@ -42,6 +42,11 @@ export const STATISTIC_KINDS = [
   'time-to-close',
   'ticket-statistics',
   'two-dimensional',
+  'pie',
+  'time-since',
+  'group-by',
+  'workload',
+  'time-tracking',
 ] as const;
 export type StatisticKind = (typeof STATISTIC_KINDS)[number];
 export type StatisticSettings = Record<string, string | number | boolean>;

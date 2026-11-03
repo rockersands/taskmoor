@@ -1,5 +1,6 @@
 import { type FormEvent, useId, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import type { MessageId } from '../i18n/messages.en';
 import type { Widget, WidgetKind } from './client';
 
 /** The settings each kind asks for, in order (the server's `dashboards/model.ts`). */
@@ -15,7 +16,11 @@ type Setting =
   | 'x'
   | 'y'
   | 'sort'
-  | 'board';
+  | 'board'
+  | 'dateField'
+  | 'statistic'
+  | 'open'
+  | 'view';
 
 export const SETTINGS: Readonly<Record<WidgetKind, readonly Setting[]>> = {
   introduction: ['text'],
@@ -34,8 +39,18 @@ export const SETTINGS: Readonly<Record<WidgetKind, readonly Setting[]>> = {
   'sprint-health': ['board'],
   'days-remaining': ['board'],
   'average-time-in-status': ['query', 'days'],
+  'time-since': ['query', 'dateField', 'days', 'period', 'cumulative'],
+  'group-by': ['query', 'field', 'limit'],
+  workload: ['query', 'field', 'statistic', 'open', 'view'],
+  'time-tracking': ['query', 'limit'],
   'track-summary': [],
 };
+
+/** The dates a time-since widget counts by, and the time figures a workload adds up. */
+export const DATE_FIELDS = ['created', 'updated', 'closed', 'due', 'start'] as const;
+export const WORK_STATISTICS = ['remainingEstimate', 'originalEstimate', 'timeSpent'] as const;
+
+const VIEWS = ['table', 'pie'] as const;
 
 /** Fields a widget can group by (the server's axes); custom fields as `cf[<id>]`. */
 const AXES = [
@@ -64,11 +79,15 @@ export function defaultConfig(kind: WidgetKind, boardId: number | null): Record<
     if (s === 'days') config.days = 30;
     if (s === 'period') config.period = 'day';
     if (s === 'cumulative') config.cumulative = false;
-    if (s === 'field') config.field = 'status';
+    if (s === 'field') config.field = kind === 'workload' ? 'assignee' : 'status';
     if (s === 'x') config.x = 'status';
     if (s === 'y') config.y = 'priority';
     if (s === 'sort') config.sort = 'natural';
     if (s === 'board' && boardId !== null) config.boardId = boardId;
+    if (s === 'dateField') config.field = 'created';
+    if (s === 'statistic') config.statistic = 'remainingEstimate';
+    if (s === 'open') config.open = true;
+    if (s === 'view') config.view = 'table';
   }
   return config;
 }
@@ -277,6 +296,40 @@ export function WidgetSettings({
               <option value="total">{t('dashboards.sort.total')}</option>
             </select>
           </div>
+        );
+      case 'dateField':
+      case 'statistic':
+      case 'view': {
+        const name = key === 'dateField' ? 'field' : key;
+        const choices: readonly string[] =
+          key === 'dateField' ? DATE_FIELDS : key === 'statistic' ? WORK_STATISTICS : VIEWS;
+        return (
+          <div className="form-field" key={key}>
+            <label htmlFor={fid}>{t(`dashboards.setting.${key}`)}</label>
+            <select
+              id={fid}
+              value={String(config[name] ?? choices[0])}
+              onChange={(e) => set(name, e.target.value)}
+            >
+              {choices.map((c) => (
+                <option key={c} value={c}>
+                  {t(`dashboards.${key}.${c}` as MessageId)}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      }
+      case 'open':
+        return (
+          <label className="reports-check" key={key}>
+            <input
+              type="checkbox"
+              checked={config.open !== false}
+              onChange={(e) => set('open', e.target.checked)}
+            />
+            {t('dashboards.setting.open')}
+          </label>
         );
       case 'board':
         return scrum.length === 0 ? (

@@ -52,20 +52,31 @@ const STATISTIC_KINDS = [
   'time-to-close',
   'ticket-statistics',
   'two-dimensional',
+  'pie',
+  'time-since',
+  'group-by',
+  'workload',
+  'time-tracking',
 ] as const;
 const statisticParam = z
   .object({ id: trackParam.shape.id, kind: z.enum(STATISTIC_KINDS) })
   .strict();
+const flag = z.enum(['true', 'false']).optional();
 /** Everything but a query: the settings of the kinds above, checked per kind. */
 const statisticQuery = z
   .object({
     days: z.coerce.number().int().optional(),
     period: z.string().max(10).optional(),
-    cumulative: z.enum(['true', 'false']).optional(),
+    cumulative: flag,
     field: z.string().max(60).optional(),
     x: z.string().max(60).optional(),
     y: z.string().max(60).optional(),
     sort: z.string().max(10).optional(),
+    limit: z.coerce.number().int().optional(),
+    statistic: z.string().max(30).optional(),
+    open: flag,
+    release: z.coerce.number().int().optional(),
+    view: z.string().max(10).optional(),
   })
   .strict();
 const layoutWidgetParam = z
@@ -183,10 +194,11 @@ export function registerTrackSummaryRoutes(
     }
     const found = await seenTrack(request, p.data.id);
     if (!found) return reply.code(404).send({ error: 'not_found' });
-    const { cumulative, ...settings } = q.data;
+    const { cumulative, open, ...settings } = q.data;
     const config = WIDGET_SETTINGS[p.data.kind].safeParse({
       ...settings,
       ...(cumulative === undefined ? {} : { cumulative: cumulative === 'true' }),
+      ...(open === undefined ? {} : { open: open === 'true' }),
     });
     if (!config.success) {
       return reply.code(400).send({ error: 'invalid_fields', fields: shapeErrors(config.error) });
