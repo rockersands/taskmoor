@@ -36,7 +36,16 @@ export function checkGovernance(root: string): string[] {
   return problems;
 }
 
-const SKIP_DIRS = new Set(['node_modules', '.git', '.cache', '.verify', 'dist', '.tsbuild']);
+// `.claude` holds the agents' worktrees: other checkouts, each checked in its own run.
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.git',
+  '.cache',
+  '.verify',
+  'dist',
+  '.tsbuild',
+  '.claude',
+]);
 
 export function markdownFiles(root: string, dir = root): string[] {
   const out: string[] = [];
