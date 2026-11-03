@@ -251,7 +251,7 @@ reported, and the coordinator checked that it was pushed.
 | T-191 | Controls follow edit permission up front, not only priority | Done | On `main`: the ticket view, edit and transition answers say which fields the person may change; a locked field does not yet say why (WF-007 (2)) |
 | T-192 | Turning a track's sprints off while a sprint runs is not guarded | Done | On `main`: refused while a sprint runs, naming it; a sprint cannot start while sprints are off; the box shows only where the board can have sprints |
 | T-193 | A 5,000-card column is not smooth | To do | About 15 frames a second scrolling and a 0.9 s pause on a drop; `content-visibility` might help, but clips card menus |
-| T-194 | Home's "Your tracks" should show the tracks a person belongs to | To do | Today, tracks they can see; "latest opened" is remembered per browser |
+| T-194 | Home's "Your tracks" should show the tracks a person belongs to | Done | On `main` (ADR-046): a role given directly or through a group, owning the track, or a team on its board or a live area; policy grants and "open to everyone" only let people see. Recently opened tracks come first however many they belong to; "latest opened" stays per browser |
 | T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | To do | Known limit, not tested |
 | T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | To do | `docs/plan/ticket-tools-tasks.md`: same-named files, live co-editing of collapsible sections, email |
 | T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
