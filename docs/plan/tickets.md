@@ -114,11 +114,12 @@ reported, and the coordinator checked that it was pushed.
 | T-080 | A New track button on the Tracks page | To do | With the front sub chat |
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | To do | With the front sub chat |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
-| T-083 | A cross-track timeline | Later | Roadmaps in 2.0, unless the user wants it sooner |
+| T-083 | A cross-track timeline | You | Part of T-088 |
 | T-084 | Personal track groups: drag tracks together, name the group | To do | With the front sub chat; private to the person |
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | With the front sub chat |
 | T-086 | Share a whole group, or set it on another person | To do | With the front sub chat |
 | T-087 | Sharing a group gives access to its tracks | To do | Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
+| T-088 | A Multi-track section: one plan over work from several tracks, boards and searches, in our own words | You | Backlog M2-005 for 2.0; the user decides how much goes in 1.0 |
 
 ## Boards and moving tickets
 
