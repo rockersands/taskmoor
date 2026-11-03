@@ -2584,11 +2584,59 @@ export interface PersonalExportTable {
   expires_at: Timestamp | null;
 }
 
+/** An address invited into a track with a role (IAM-027; ADR-118). */
+export interface TrackInvitationTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number;
+  role_id: number;
+  /** Lower case. */
+  email: string;
+  /** The link's token is only ever kept as this hash. */
+  token_hash: string;
+  invited_by: number | null;
+  /** The account that got the role when the invitation was made, if it did. */
+  granted_user_id: number | null;
+  delivery: 'email' | 'link';
+  last_error: string | null;
+  created_at: DefaultTimestamp;
+  last_sent_at: DefaultTimestamp;
+  expires_at: Timestamp;
+  accepted_at: Timestamp | null;
+  revoked_at: Timestamp | null;
+}
+
 /** Who has read the AI data-egress notice (M1-077; IAM-022). */
 export interface AiNoticeAckTable {
   workspace_id: number;
   user_id: number;
   acknowledged_at: DefaultTimestamp;
+}
+
+/**
+ * A ticket template (CORE-029; ADR-113): a named starting point for new tickets, in one track
+ * or (`track_id` null) for every track, optionally only for some ticket types (empty: all).
+ */
+export interface TicketTemplateTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number | null;
+  name: string;
+  /** What it is for, shown in the picker. */
+  purpose: Generated<string>;
+  ticket_type_ids: ColumnType<number[], number[] | undefined, number[]>;
+  /** The summary pattern: `{date}`, `{track}` and `{user}` are filled in. */
+  summary: Generated<string>;
+  /** The description outline, a document. */
+  description: NullableJson;
+  /** Default values by API body name (`priorityId`, `labels`, `dueInDays`, `fields`, ...). */
+  defaults: ColumnType<JsonValue, string | undefined, string>;
+  /** Subtickets made with it: `{ summary, ticketTypeId }`. */
+  subtickets: ColumnType<JsonValue, string | undefined, string>;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  version: Generated<number>;
 }
 
 /** Every table Kysely knows about. Add a table here in the same change as its migration. */
@@ -2598,6 +2646,8 @@ export interface Database {
   app_user: AppUserTable;
   personal_export: PersonalExportTable;
   tutorial_progress: TutorialProgressTable;
+  ticket_template: TicketTemplateTable;
+  track_invitation: TrackInvitationTable;
   user_group: UserGroupTable;
   group_member: GroupMemberTable;
   team: TeamTable;

@@ -1525,6 +1525,39 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
   },
+  '0085_ticket_templates': {
+    tables: {
+      ticket_template:
+        "name = 'Seed bug report' AND summary = 'Bug: {date}' AND defaults->>'dueInDays' = '7' AND jsonb_array_length(subtickets) = 1",
+    },
+    seed: async (db) => {
+      // A template of the seed track (ADR-113): a pattern, an outline, two defaults and one
+      // subticket.
+      await sql`INSERT INTO ticket_template (workspace_id, track_id, name, summary, description,
+          defaults, subtickets, created_by)
+        SELECT 1, t.id, 'Seed bug report', 'Bug: {date}',
+          '{"type": "doc", "content": [{"type": "paragraph"}]}',
+          '{"labels": ["seed"], "dueInDays": 7}', '[{"summary": "Write a test"}]', u.id
+          FROM track t, app_user u
+         WHERE t.key = 'SEED' AND u.email = 'seed@example.com'`.execute(db);
+    },
+  },
+  '0087_track_invitations': {
+    tables: {
+      track_invitation: "email = 'invited-seed@example.com' AND delivery = 'link'",
+      // Whoever runs a track keeps giving the role that runs it (ADR-118).
+      access_grant: `id = (SELECT min(id) FROM access_grant
+        WHERE permission = 'appoint_track_admins' AND grantee = 'role')`,
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO track_invitation (workspace_id, track_id, role_id, email, token_hash,
+          delivery, expires_at)
+        SELECT t.workspace_id, t.id, r.id, 'invited-seed@example.com', 'seed-invitation', 'link',
+               now() + interval '7 days'
+          FROM track t JOIN role r ON r.workspace_id = t.workspace_id
+         ORDER BY t.id, r.id LIMIT 1`.execute(db);
+    },
+  },
   '0088_one_board_per_track': {
     tables: {
       board: "name = 'Seed one-track board' AND location_user_id IS NULL",

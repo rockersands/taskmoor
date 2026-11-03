@@ -83,8 +83,8 @@ export function AdminOverviewPage({ client = overviewClient }: { client?: Overvi
         purpose={t(access === 'setup' ? 'admin.overview.purposeSetup' : 'admin.overview.purpose')}
       />
       {access === 'none' && <p className="page-note">{t('admin.forbidden')}</p>}
-      {access === 'setup' &&
-        groupsFor('setup').map((group) => (
+      {(access === 'setup' || access === 'tracks') &&
+        groupsFor(access).map((group) => (
           <div key={group.id} className="glass-card admin-panel">
             <AdminPageLinks group={group} />
           </div>

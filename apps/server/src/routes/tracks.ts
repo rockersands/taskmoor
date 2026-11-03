@@ -817,6 +817,15 @@ export function registerTrackRoutes(
     if (body.ownerId !== undefined && !(await activeUser(ws, body.ownerId))) {
       return invalid(reply, 'ownerId');
     }
+    // An owner may run the track, so naming one appoints an administrator (IAM-028).
+    if (
+      body.ownerId !== undefined &&
+      body.ownerId !== current.owner_id &&
+      !(await isAdmin(request)) &&
+      !(await request.authz.can('appoint_track_admins', trackId))
+    ) {
+      return reply.code(403).send({ error: 'forbidden', permission: 'appoint_track_admins' });
+    }
     if (body.categoryId != null && !(await categoryExists(ws, body.categoryId))) {
       return invalid(reply, 'categoryId');
     }
@@ -1374,7 +1383,8 @@ export function registerTrackRoutes(
 
 /**
  * A local-mode track's own access policy: a copy of `sourceId`'s grants, owned by the track
- * (section 1.1: nothing leaks to other tracks). Policy names are unique per workspace, so the
+ * (section 1.1: nothing leaks to other tracks). The right to invite stays behind: anyone may
+ * make a local-mode track, and only a site administrator gives that right (ADR-118). Policy names are unique per workspace, so the
  * track id is added when the plain name is already used.
  */
 async function copyPolicy(
@@ -1401,7 +1411,8 @@ async function copyPolicy(
       INSERT INTO access_grant (workspace_id, policy_id, permission, grantee, role_id, group_id,
                                 user_id, field_key)
       SELECT workspace_id, ${row.id}, permission, grantee, role_id, group_id, user_id, field_key
-        FROM access_grant WHERE policy_id = ${sourceId}`.execute(trx);
+        FROM access_grant WHERE policy_id = ${sourceId}
+         AND permission <> 'invite_people'`.execute(trx);
     return row.id;
   }
   throw new Error(`no free name for the local access policy of track ${key}`);

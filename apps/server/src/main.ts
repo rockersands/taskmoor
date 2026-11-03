@@ -33,6 +33,7 @@ import { registerFieldValueJobs, scheduleFieldValueCheck } from './fields/jobs';
 import { registerImportJobs } from './import/jobs';
 import { startDirectorySync } from './ldap/scheduler';
 import { buildMetricsServer, createMetrics, queryObserver, startTracing } from './observability';
+import { outboundGuard } from './outbound/guard';
 import { registerEraseJobs } from './privacy/erase';
 import { expirePersonalExports, registerPersonalExportJobs } from './privacy/export';
 import { trimApiUsage } from './ratelimit/usage';
@@ -45,6 +46,12 @@ import { rollSprintCycles } from './sprints/cycles';
 import { waitForDatabase } from './startup';
 import { registerChangeLogJobs, scheduleChangeLogTrim } from './sync/jobs';
 import { registerTrashJobs, schedulePurge } from './trash/purge';
+import {
+  githubReleases,
+  registerUpdateCheckJobs,
+  scheduleUpdateCheck,
+  type UpdateCheckConfig,
+} from './updates/check';
 import { registerWebhookJobs, trimWebhookDeliveries } from './webhooks/deliver';
 import { registerWorkflowMigrationJobs } from './workflows/migration';
 import { defaultWorkspaceId } from './workspace';
@@ -174,6 +181,7 @@ const app = await buildApp({
   embedder,
   ...(vectorSearch ? { vectorSearch } : {}),
   rateLimits: {},
+  ...(config.smtp ? { smtp: config.smtp } : {}),
   passwords: passwordHasher(peppers),
   ...(peppers ? { peppers } : {}),
   aiKeys,
@@ -199,6 +207,7 @@ const app = await buildApp({
   ...(config.smtpPassword ? { smtpPassword: config.smtpPassword } : {}),
   queryTimeoutMs: config.queryTimeoutMs,
   jiraCompat: config.jiraCompat,
+  updateCheck: { environmentOff: !config.updateCheck, command: config.updateCommand },
 });
 const metricsServer = config.metricsPort > 0 ? await buildMetricsServer(metrics) : undefined;
 
@@ -282,6 +291,20 @@ if (config.roles.includes('worker') && db) {
   // an erasure replaces in other records.
   registerPersonalExportJobs(runner, db, attachments, new Authorizer(db));
   registerEraseJobs(runner, db);
+  // The look at the public releases behind the administrators' notice (OPS-026, ADR-117): at
+  // most once a day, through the outbound guard; a failure says so only at debug level.
+  const updateCheck: UpdateCheckConfig = {
+    version: config.version,
+    environmentOff: !config.updateCheck,
+    command: config.updateCommand,
+  };
+  registerUpdateCheckJobs(
+    runner,
+    db,
+    githubReleases(outboundGuard().fetch),
+    updateCheck,
+    (message) => app.log.debug(message),
+  );
   const formulaCatalogs = new FieldCatalogs(db);
   const scheduleHousekeeping = () =>
     Promise.all([
@@ -295,10 +318,11 @@ if (config.roles.includes('worker') && db) {
       trimApiUsage(db),
       expirePersonalExports(db),
       defaultWorkspaceId(db).then((ws) => scheduleSweep(db, ws)),
+      scheduleUpdateCheck(db, updateCheck),
     ]).catch((error) =>
       app.log.warn(
         { error },
-        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery, bulk operation, API usage or personal download trim, or storage sweep not queued',
+        'trash purge, backup, field value check, change log trim, formula refresh, webhook delivery, bulk operation, API usage or personal download trim, storage sweep or new-version check not queued',
       ),
     );
   void scheduleHousekeeping();

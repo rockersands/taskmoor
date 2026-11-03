@@ -876,7 +876,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
     await signOutThroughMenu(page, ADMIN.name);
     await page.getByRole('button', { name: 'Sign in with Staff accounts' }).click();
     await expect(page.getByRole('alert')).toHaveText(
-      'There is no account for you here yet. Ask your administrator to create one.',
+      'There is no account for you here yet. Ask your administrator to create one. If you were invited, sign in with the very address the invitation went to.',
     );
     await expect.poll(() => new URL(page.url()).hash).toBe('#/sign-in');
 
@@ -902,7 +902,7 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
     await signOutThroughMenu(page, ADMIN.name);
     await page.getByLabel('Email').fill(SAM.email);
     await page.getByLabel('Email').blur();
-    await expect(page.getByText('Your organisation signs in with Staff accounts.')).toBeVisible();
+    await expect(page.getByText('This address signs in with Staff accounts.')).toBeVisible();
     await expect(page.getByLabel('Password', { exact: true })).toHaveCount(0);
     const refused = await page.request.post('/api/v1/session', {
       data: { email: SAM.email, password: 'any password at all' },

@@ -1,4 +1,5 @@
 import { apiOrigin, type BuilderInputs, frontendOrigin } from './inputs';
+import { RELEASE_PUBLIC_KEY, UPDATE_SH, UPGRADE_SH } from './kit-scripts';
 import { ENV_FILE, type Kits, MANIFEST_FILE } from './kits';
 import {
   DB_TLS_MOUNT,
@@ -13,7 +14,8 @@ import {
  * - Compose (the default target): Postgres, the backend pinned to the image version, and Caddy
  *   for automatic HTTPS; `install.sh` and `install.ps1` check Docker, the ports and the DNS
  *   record, start the stack, wait for health and print the setup link; the README lists the
- *   DNS records the chosen URLs need.
+ *   DNS records the chosen URLs need. `update.sh` and `upgrade.sh` are the Compose kit's own
+ *   (OPS-025, ADR-117), with the release key's public half to check a release against.
  * - Helm: values for the chart and a Secret with the instance's secrets.
  * The image comes from `ghcr.io/rockersands/taskmoor` unless the run names another.
  */
@@ -293,7 +295,26 @@ certificate and to serve the API.
 \`.env\` holds the instance's secrets: keep it private and back it up with the data volumes.
 \`connection-manifest.json\` is the instance's signed description; the frontend kit carries the
 same one.
-`;
+
+## Update
+
+Run \`bash update.sh\` in this folder (on Windows with Docker Desktop, from Git Bash).
+
+- It finds the newest release from the project's public GitHub releases and checks its signature
+  against \`taskmoor-release.pub\`. A release it cannot verify is not installed.
+- \`upgrade.sh\` then backs up, migrates and starts the new version, and puts the previous version
+  back if anything fails.
+- \`bash update.sh --dry-run\` says what it would do and changes nothing.
+  \`bash update.sh 1.4.0\` goes to that version.
+${
+  front === api
+    ? ''
+    : `
+Your frontend at \`${front}\` is on another host, so it keeps its version until you replace it: open
+the new Builder, load your saved project file, and upload the new frontend. The command reminds
+you when it finishes.
+`
+}`;
 }
 
 function helmValues(inputs: BuilderInputs, image: string, version: string): string {
@@ -381,6 +402,9 @@ export function backendKit(
     Caddyfile: caddyfile(host),
     'install.sh': installSh(),
     'install.ps1': installPs1(),
+    'update.sh': UPDATE_SH,
+    'upgrade.sh': UPGRADE_SH,
+    'taskmoor-release.pub': RELEASE_PUBLIC_KEY,
     'README.md': readme(inputs, `${image}:${version}`),
     [MANIFEST_FILE]: manifest,
   };

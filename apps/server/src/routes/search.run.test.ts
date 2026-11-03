@@ -980,7 +980,9 @@ describe('search (M1-037)', () => {
   // where the server's timers fire late (Windows: about every 15 ms). Writing them takes a few
   // seconds alone and over a minute while other suites load the machine, hence the long limit.
   it('[QRY-010] stops a query over the timeout with a clear error', {
-    timeout: 180_000,
+    // It makes 20,000 tickets first: that passes alone in about 90 s, and took over 180 s in
+    // some full gates on Windows.
+    timeout: process.platform === 'win32' ? 540_000 : 180_000,
   }, async () => {
     const type = await database.db
       .selectFrom('ticket_type')

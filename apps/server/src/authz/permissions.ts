@@ -34,7 +34,16 @@ export const ADMIN_GLOBAL_PERMISSIONS: readonly GlobalPermission[] = [
 
 /** Track permissions: granted per access policy (access_grant), grouped as in section 1.2. */
 export const TRACK_PERMISSION_GROUPS = {
-  administration: ['administer_track', 'manage_layouts', 'edit_workflows'],
+  administration: [
+    'administer_track',
+    'manage_layouts',
+    'edit_workflows',
+    // Giving or taking a role that runs the track (IAM-028; ADR-118): on wherever
+    // administer_track is, removable per policy.
+    'appoint_track_admins',
+    // Inviting people into the track (IAM-027; ADR-118): off until a site administrator gives it.
+    'invite_people',
+  ],
   track: [
     'browse_track',
     'manage_sprints',

@@ -3,6 +3,30 @@
     "pages": [
       "admin/sso.md"
     ],
+    "url": "https://console.cloud.google.com/auth/clients"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://developers.google.com/identity/branding-guidelines"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://developers.google.com/identity/gsi/web/guides/verify-google-id-token"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://developers.google.com/identity/openid-connect/openid-connect"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
     "url": "https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf"
   },
   {
@@ -16,6 +40,30 @@
       "admin/sso.md"
     ],
     "url": "https://openid.net/specs/openid-connect-core-1_0.html"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://support.google.com/cloud/answer/13463073"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://support.google.com/cloud/answer/13464323"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://support.google.com/cloud/answer/15549257"
+  },
+  {
+    "pages": [
+      "admin/sso.md"
+    ],
+    "url": "https://support.google.com/cloud/answer/15549945"
   },
   {
     "pages": [

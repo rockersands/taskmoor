@@ -28,6 +28,10 @@ type Step =
 export interface SignInFormProps {
   /** Stories and tests pass their own single sign-on endpoints; the form calls the backend otherwise. */
   ssoClient?: SignInSsoClient;
+  /** The address to start from, where the page already knows it (an invitation's). */
+  initialEmail?: string;
+  /** Where a single sign-on comes back to, when the current address must not travel. */
+  ssoReturnRoute?: string;
 }
 
 const normalized = (email: string) => email.trim().toLowerCase();
@@ -44,12 +48,16 @@ const looksLikeEmail = (email: string) => /^[^@\s]+@[^@\s]+$/.test(email);
  * a recovery code, or the authenticator-app setup a two-factor policy requires. Going back
  * keeps the email.
  */
-export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
+export function SignInForm({
+  ssoClient = signInSsoClient,
+  initialEmail = '',
+  ssoReturnRoute,
+}: SignInFormProps) {
   const t = useT();
   const { signIn, setUser } = useSession();
   const id = useId();
   const [step, setStep] = useState<Step>({ kind: 'password' });
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   // A failed single sign-on comes back as #/sign-in?sso_error=<code>.
   const [error, setError] = useState<string | null>(() => {
@@ -121,6 +129,12 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
     [ssoClient],
   );
 
+  // An address the page already knows (an invitation's) is never left, so ask at once: the
+  // provider that serves it is offered from the start (IAM-032).
+  useEffect(() => {
+    if (initialEmail) void discover(initialEmail);
+  }, [initialEmail, discover]);
+
   const key = normalized(email);
   const known = discovery?.email === key ? discovery : null;
   const breakGlass = hashParam(currentRoute(), 'method') === 'password';
@@ -129,7 +143,7 @@ export function SignInForm({ ssoClient = signInSsoClient }: SignInFormProps) {
   const others = providers.filter((p) => p.id !== organisation?.id);
 
   const start = (provider: SsoProviderSummary) =>
-    ssoClient.go(startUrl(provider, returnTo(currentRoute(), appBase())));
+    ssoClient.go(startUrl(provider, returnTo(ssoReturnRoute ?? currentRoute(), appBase())));
 
   const promptFor = (provider: SsoProviderSummary) => {
     const answer: Discovery = { provider, password: false };

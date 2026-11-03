@@ -32,6 +32,7 @@ export function trackRefusal(t: Translate, error: unknown): string {
   if (body?.error === 'key_taken' || body?.error === 'invalid_key') {
     return t('admin.tracks.problem.key');
   }
+  if (body?.error === 'last_track_admin') return t('admin.tracks.problem.lastAdmin');
   if (error.status === 403) return t('admin.tracks.problem.forbidden');
   return t('admin.tracks.problem.other');
 }

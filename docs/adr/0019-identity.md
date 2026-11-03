@@ -136,7 +136,8 @@ spec puts local sign-in with 2FA (IAM-001), SAML (IAM-002), OIDC (IAM-003), poli
   `PUBLIC_URL`, because the address an administrator's browser uses can differ (a proxy, an
   internal host name) and would register the wrong one.
 - The provider's own multi-factor policy applies to single sign-on; Taskmoor's second factor
-  applies to password sign-in. One `sso.signed_in` event records the sign-in, the session, an
+  applies to password sign-in (for Google, where a personal account may have no second factor at
+  all, see ADR-119). One `sso.signed_in` event records the sign-in, the session, an
   account creation and the group changes.
 
 ## Single sign-on with SAML 2.0 (M1-081)

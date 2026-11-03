@@ -67,6 +67,9 @@ describe('the Builder CLI (M1-111)', () => {
       'docker-compose.yml',
       'install.ps1',
       'install.sh',
+      'taskmoor-release.pub',
+      'update.sh',
+      'upgrade.sh',
     ]);
     expect(Object.keys(readZip(readFileSync(out.frontend))).sort()).toEqual([
       '.htaccess',

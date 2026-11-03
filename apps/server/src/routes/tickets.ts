@@ -1220,6 +1220,7 @@ export function ticketRoutes(
           parentId,
           ...fired,
           ...mentionPayload(mentioned),
+          ...(request.ticketTemplateId ? { templateId: request.ticketTemplateId } : {}),
         },
       });
       await autoFollow(trx, ws, row.id, user.id);

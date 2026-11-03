@@ -131,7 +131,11 @@ describe('roles, access policies, global grants and track roles (M1-002)', () =>
 
   it('[IAM-010] grants track permissions through roles, the owner, and nothing to strangers', async () => {
     expect((await myPermissions('stranger')).track).toEqual([]);
-    expect((await myPermissions('owner')).track).toEqual(['administer_track', 'browse_track']);
+    expect((await myPermissions('owner')).track).toEqual([
+      'administer_track',
+      'appoint_track_admins',
+      'browse_track',
+    ]);
     // The owner manages the track's roles.
     const add = (who: string, role: string, userName: string) =>
       as(who, {

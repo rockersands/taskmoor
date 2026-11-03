@@ -172,6 +172,13 @@ export async function eraseUser(
     .executeTakeFirst();
   count('sign_in_throttle', throttle.numDeletedRows);
   count('personal_export', await dropPersonalExports(trx, ws, userId));
+  // Invitations name the person by address (IAM-027); the role they gave stays with the row.
+  const invited = await trx
+    .deleteFrom('track_invitation')
+    .where('workspace_id', '=', ws)
+    .where('email', '=', user.email.toLowerCase())
+    .executeTakeFirst();
+  count('track_invitation', invited.numDeletedRows);
 
   const label = erasedName(userId);
   await trx

@@ -1,8 +1,8 @@
 ---
 title: "The operator CLI"
 audience: admins
-sources: apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/backup.ts, apps/server/src/backups/drill.ts, apps/server/src/backups/schedule.ts, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/directory.ts, apps/server/src/audit/chain.ts, apps/server/src/fields/jobs.ts, apps/server/src/reports/events.ts, apps/server/src/trash/purge.ts, apps/server/src/export/write.ts, Dockerfile, deploy/README.md, deploy/compose/upgrade.sh, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, docs/adr/0022-upgrades-and-migrations.md, apps/server/src/embeddings/backfill.ts, docs/adr/0106-local-embeddings-and-vector-search.md
-accessed: 2026-11-01
+sources: apps/server/src/updates/check.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/backup.ts, apps/server/src/backups/drill.ts, apps/server/src/backups/schedule.ts, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/directory.ts, apps/server/src/audit/chain.ts, apps/server/src/fields/jobs.ts, apps/server/src/reports/events.ts, apps/server/src/trash/purge.ts, apps/server/src/export/write.ts, Dockerfile, deploy/README.md, deploy/compose/upgrade.sh, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, docs/adr/0022-upgrades-and-migrations.md, apps/server/src/embeddings/backfill.ts, docs/adr/0106-local-embeddings-and-vector-search.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # The operator CLI
@@ -39,6 +39,7 @@ links. See [Configuration reference](configuration.md).
 |---|---|---|
 | `upgrade [--dry-run] [--no-backup] [--unattended]` | Checks, backs up, migrates, verifies, rolls back on failure | 1 not upgraded, 3 rollback failed |
 | `check-upgrade` | The pre-upgrade checks alone | 1 something blocks |
+| `frontends` | The registered frontends on other hosts, one origin per line; `update.sh` names them when it finishes | 1 failed |
 | `migrate` | Applies pending migrations, nothing else | 1 failed |
 | `status` | Applied and pending migrations as JSON | 1 failed |
 | `backup [--out <dir>]` | A full backup | 1 failed |

@@ -476,8 +476,8 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.challengeExpired':
     'El inicio de sesión tardó demasiado o tuvo demasiados códigos erróneos. Vuelve a introducir tu contraseña.',
   'auth.sso.signInWith': 'Iniciar sesión con {name}',
-  'auth.sso.others': 'O inicia sesión a través de tu organización',
-  'auth.sso.organisation': 'Tu organización inicia sesión con {name}.',
+  'auth.sso.others': 'Otras formas de iniciar sesión',
+  'auth.sso.organisation': 'Esta dirección inicia sesión con {name}.',
   'auth.sso.error.invalidState':
     'El inicio de sesión tardó demasiado, o se empezó en otro navegador. Inténtalo de nuevo.',
   'auth.sso.error.providerError':
@@ -489,7 +489,7 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.sso.error.domainNotAllowed':
     'Tu dirección de correo está en un dominio que esta opción de inicio de sesión no atiende. Pide ayuda a tu administrador.',
   'auth.sso.error.noAccount':
-    'Aún no tienes una cuenta aquí. Pide a tu administrador que cree una.',
+    'Aún no tienes una cuenta aquí. Pide a tu administrador que cree una. Si te invitaron, inicia sesión con la misma dirección a la que llegó la invitación.',
   'auth.sso.error.accountDeactivated':
     'Tu cuenta está desactivada. Pregunta a tu administrador si la necesitas de nuevo.',
   'auth.sso.error.unknown':
@@ -1366,6 +1366,27 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.frontends.invalidRedirect':
     'Cada dirección de retorno debe ser una dirección completa en el mismo origen, sin fragmento.',
   'admin.frontends.addFailed': 'No se pudo añadir el frontend. Inténtalo de nuevo.',
+  'admin.updates.noticeTitle': 'Taskmoor {latest} está disponible.',
+  'admin.updates.noticeBody':
+    'Este servidor usa la {version}. Para actualizar, ejecuta esto en la carpeta del kit en el servidor:',
+  'admin.updates.copy': 'Copiar el comando',
+  'admin.updates.copied': 'Copiado',
+  'admin.updates.releaseNotes': 'Novedades',
+  'admin.updates.title': 'Actualizaciones',
+  'admin.updates.running': 'En uso',
+  'admin.updates.newest': 'Versión más reciente',
+  'admin.updates.lastChecked': 'Última consulta',
+  'admin.updates.notKnown': 'Aún no se sabe',
+  'admin.updates.runThis':
+    'Hay una versión más reciente. Para actualizar, ejecuta esto en la carpeta del kit en el servidor:',
+  'admin.updates.toggle': 'Buscar versiones nuevas una vez al día',
+  'admin.updates.toggleHelp':
+    'El servidor consulta las versiones públicas del proyecto en GitHub, como mucho una vez al día, y no les dice nada sobre esta instalación. Si no puede llegar a ellas, no dice nada y vuelve a intentarlo al día siguiente.',
+  'admin.updates.environmentOff':
+    'Desactivado en el servidor con TASKMOOR_UPDATE_CHECK=off: no se hace ninguna petición.',
+  'admin.updates.development':
+    'Una versión de desarrollo no tiene con qué compararse, así que no busca.',
+  'admin.updates.saveFailed': 'No se pudo guardar el ajuste. Inténtalo de nuevo en un momento.',
   'admin.system.title': 'Estado del sistema',
   'admin.system.refresh': 'Actualizar',
   'admin.system.loading': 'Leyendo el estado del sistema…',
@@ -1673,9 +1694,20 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.acsUrl': 'URL del servicio consumidor de aserciones (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadatos que importar',
   'admin.sso.spMetadataNamed': 'Metadatos de Taskmoor para {name}',
-  'admin.sso.form.protocol': 'Protocolo',
+  'admin.sso.form.protocol': 'Tipo de proveedor',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',
+  'admin.sso.form.protocolGoogle': 'Google',
+  'admin.sso.google.intro':
+    'Las personas inician sesión con una dirección de Gmail o de Google Workspace, mediante un cliente de Google propio: este sitio habla directamente con Google, sin ningún servicio de Taskmoor de por medio. Los ajustes de abajo solo dejan entrar a personas invitadas y cuentas existentes, y las contraseñas siguen funcionando. Al iniciar sesión basta con Google: Taskmoor no pide un segundo factor propio, y una cuenta personal de Google puede no tenerlo.',
+  'admin.sso.google.redirect': 'URI de redirección que registrar en Google',
+  'admin.sso.google.guide': 'Cómo configurar el cliente de Google (manual)',
+  'admin.sso.form.clientSecretHintGoogle':
+    'El secreto de tu cliente de Google. Se guarda cifrado y no se vuelve a mostrar.',
+  'admin.sso.warning.jitPublic':
+    'Cualquiera con una dirección en {domains} podría unirse a este sitio sin invitación: cualquiera puede conseguir una de esas direcciones. Desactiva la creación de cuentas salvo que sea lo que quieres.',
+  'admin.sso.warning.enforcePublic':
+    'Esto bloquea el inicio de sesión con contraseña para todas las direcciones en {domains}, también a los administradores del sitio cuyas cuentas no estén marcadas como de emergencia (break-glass). Si Google no funciona, no podrán entrar.',
   'admin.sso.form.name': 'Nombre',
   'admin.sso.form.nameHint':
     'Se muestra en el botón de inicio de sesión, como Cuentas del personal.',
@@ -2278,6 +2310,121 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.teams.confirmNo': 'Conservarlo',
   'admin.teams.problem.nameTaken': 'Ya hay un equipo con ese nombre.',
   'admin.teams.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
+  'permission.appoint_track_admins': 'Dar el rol que administra el track',
+  'permission.invite_people': 'Invitar personas',
+  'settings.managedTracks': 'Tracks que administras',
+  'settings.managedTracksHint':
+    'Los tracks que administras: quién tiene cada rol e invitar personas.',
+  'admin.tracks.people': 'Personas e invitaciones de {key}',
+  'admin.tracks.problem.lastAdmin':
+    'Es la última persona que administra el track: da el rol a otra persona primero.',
+  'trackPeople.listTitle': 'Tracks que administras',
+  'trackPeople.listIntro': 'Cada track tiene aquí una página para sus roles e invitaciones.',
+  'trackPeople.listEmpty': 'No administras ningún track.',
+  'trackPeople.manage': 'Gestionar',
+  'trackPeople.manageOf': 'Gestionar el track {key}',
+  'trackPeople.title': 'Personas de {key} · {name}',
+  'trackPeople.titleLoading': 'Personas del track',
+  'trackPeople.loading': 'Leyendo el track…',
+  'trackPeople.forbidden': 'Solo quienes administran este track pueden gestionarlo.',
+  'trackPeople.failed': 'No se pudo leer el track. Inténtalo de nuevo en un momento.',
+  'trackPeople.backToList': 'Todos los tracks que administras',
+  'trackPeople.invite': 'Invitar personas',
+  'trackPeople.inviteOff':
+    'Las invitaciones están desactivadas en este track. Un administrador del sitio puede activarlas.',
+  'trackPeople.inviteOffAdmin':
+    'Aquí solo pueden invitar los administradores del sitio. Para que otros puedan, dales Invitar personas en la política de acceso de este track.',
+  'trackPeople.openPermissions': 'Abrir Permisos',
+  'trackPeople.emailOff':
+    'El correo no está configurado en este sitio, así que Taskmoor no puede enviar nada. Crea un enlace y pásalo tú.',
+  'trackPeople.holders': 'Quién tiene cada rol',
+  'trackPeople.noHolders': 'Nadie tiene un rol en este track todavía.',
+  'trackPeople.appointLocked':
+    'No puedes dar ni quitar el rol que administra este track. Un administrador del sitio sí puede.',
+  'trackPeople.inRole': '{name}: {role}',
+  'trackPeople.groupInRole': 'Grupo {name}: {role}',
+  'trackPeople.takeRole': 'Quitar {role} a {name}',
+  'trackPeople.roleTaken': '{name} ya no tiene {role}.',
+  'trackPeople.giveRole': 'Dar un rol',
+  'trackPeople.role': 'Rol',
+  'trackPeople.findByName': 'Buscar una persona por nombre',
+  'trackPeople.add': 'Añadir',
+  'trackPeople.remove': 'Quitar',
+  'trackPeople.giveTo': 'Dar {role} a {name}',
+  'trackPeople.roleGiven': '{name} ahora tiene {role}.',
+  'trackPeople.pending': 'Invitaciones en espera',
+  'trackPeople.noPending': 'No hay invitaciones en espera.',
+  'trackPeople.pendingMeta': '{role}, invitación de {who}.',
+  'trackPeople.someone': 'alguien que ya no está',
+  'trackPeople.lapsed': 'Ya no es válida',
+  'trackPeople.sendFailed': 'Correo no enviado',
+  'trackPeople.resend': 'Enviar de nuevo',
+  'trackPeople.resendTo': 'Enviar de nuevo la invitación a {who}',
+  'trackPeople.resent': 'La invitación a {who} se envió de nuevo.',
+  'trackPeople.newLink': 'Enlace nuevo',
+  'trackPeople.newLinkFor': 'Crear un enlace nuevo para {who}',
+  'trackPeople.linkMade': 'Hay un enlace nuevo para {who}; el anterior ya no funciona.',
+  'trackPeople.revoke': 'Retirar',
+  'trackPeople.revokeFor': 'Retirar la invitación a {who}',
+  'trackPeople.revoked': 'Se retiró la invitación a {who}.',
+  'trackPeople.inviteTitle': 'Invitar personas a {key}',
+  'trackPeople.addresses': 'Direcciones de correo',
+  'trackPeople.addressesHint': 'Una o varias: escríbelas o pega una lista.',
+  'trackPeople.pick': 'Elegir a {name}',
+  'trackPeople.unpick': 'Dejar fuera a {name}',
+  'trackPeople.picked': 'Personas elegidas',
+  'trackPeople.delivery': 'Cómo llega la invitación',
+  'trackPeople.delivery.email': 'Taskmoor envía un correo',
+  'trackPeople.delivery.link': 'Copio un enlace y lo paso yo',
+  'trackPeople.send': 'Enviar invitaciones',
+  'trackPeople.makeLinks': 'Crear enlaces',
+  'trackPeople.cancel': 'Cancelar',
+  'trackPeople.done': 'Hecho',
+  'trackPeople.linkFor': 'Enlace para {who}',
+  'trackPeople.linkHint':
+    'Cada enlace funciona una vez, durante siete días, y solo se muestra ahora. Pásalo solo a la persona indicada: quien lo tenga puede usar la invitación.',
+  'trackPeople.result.invited': '{who}: invitación creada.',
+  'trackPeople.result.alreadyInvited': '{who}: ya tiene una invitación en espera.',
+  'trackPeople.result.invalid': '{who}: no es una dirección de correo.',
+  'trackPeople.result.tooMany': '{who}: demasiadas invitaciones últimamente; inténtalo más tarde.',
+  'trackPeople.result.added': '{who}: ya tiene el rol.',
+  'trackPeople.result.alreadyHolds': '{who}: ya tenía el rol.',
+  'trackPeople.result.sendFailed':
+    'No se pudo enviar el correo; inténtalo de nuevo desde la lista.',
+  'trackPeople.result.external':
+    'Esta dirección es externa a tu organización, así que hará falta la autenticación en dos pasos.',
+  'trackPeople.problem.appoint':
+    'No puedes dar ni quitar el rol que administra este track. Un administrador del sitio sí puede.',
+  'trackPeople.problem.lastAdmin':
+    'Es la última persona que administra el track: da el rol a otra persona primero.',
+  'trackPeople.problem.tooMany':
+    'Demasiadas invitaciones en poco tiempo. Inténtalo dentro de un rato.',
+  'trackPeople.problem.forbidden': 'No puedes hacer eso en este track.',
+  'trackPeople.problem.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'invite.title': 'Tu invitación',
+  'invite.titleFor': 'Tu invitación a {key} · {name}',
+  'invite.intro': 'Te han invitado como {role}, en {email}.',
+  'invite.introBy': '{who} te invitó como {role}, en {email}.',
+  'invite.checking': 'Comprobando el enlace…',
+  'invite.noToken':
+    'Esta dirección no contiene ninguna invitación. Usa el enlace completo que recibiste.',
+  'invite.invalid':
+    'Esta invitación ya no se puede usar: se usó, se retiró o caducó. Pide una nueva a quien te invitó.',
+  'invite.failed': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'invite.goToSignIn': 'Ir al inicio de sesión',
+  'invite.secondFactorNote':
+    'Este sitio pide autenticación en dos pasos para esta dirección: la configurarás al iniciar sesión, con una aplicación de autenticación.',
+  'invite.howIn': '¿Cómo quieres entrar?',
+  'invite.mode.new': 'Elegir un nombre y una contraseña',
+  'invite.mode.account': 'Iniciar sesión',
+  'invite.name': 'Tu nombre',
+  'invite.submit': 'Continuar',
+  'invite.join': 'Entrar en {key}',
+  'invite.otherAccount':
+    'Esta invitación es para {email}. Cierra sesión y abre el enlace de nuevo.',
+  'invite.signOut': 'Cerrar sesión',
+  'invite.useProvider': 'Esta dirección inicia sesión a través de su organización: hazlo abajo.',
+  'invite.signInToFinish': 'Inicia sesión para terminar.',
   'admin.tracks.title': 'Tracks',
   'admin.tracks.intro':
     'Añade tracks, ponles nombre, elige su mapa de flujos y decide quién hace qué en ellos. Los tracks archivados lo conservan todo y no cambian nada.',
@@ -4807,6 +4954,8 @@ export const messagesEs: Record<MessageId, string> = {
   'duplicates.reason': '{reason}',
   'duplicates.byAi': 'Ordenados por IA, con sus motivos. Revísalos antes de fiarte de ellos.',
   'nav.administration': 'Administración',
+  'admin.group.tracks': 'Tus tracks',
+  'admin.group.tracksPurpose': 'Los tracks que diriges: quién está en ellos y a quién se invita.',
   'settings.purpose': 'Tu propia cuenta, cómo se ve Taskmoor para ti y tus tutoriales.',
   'settings.tutorialsHint':
     'Recorridos guiados breves por cada parte de Taskmoor, para empezar o repetir.',
@@ -5184,4 +5333,84 @@ export const messagesEs: Record<MessageId, string> = {
     'No puedes elegir eso para este track. Un administrador del sitio o de la configuración puede.',
   'admin.trackSets.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
   'admin.tracks.setsLink': 'Elegir los conjuntos que usa {key}',
+  'summary.templates': 'Plantillas de ticket',
+  'settings.ticketTemplates': 'Plantillas de ticket',
+  'settings.ticketTemplatesHint':
+    'Plantillas que se ofrecen al crear un ticket en cualquier track.',
+  'tickets.templates.adminTitle': 'Plantillas de ticket para todos los tracks',
+  'tickets.templates.trackTitle': 'Plantillas de ticket de {name}',
+  'tickets.templates.toSummary': 'Volver al resumen',
+  'tickets.templates.intro':
+    'Una plantilla inicia un ticket nuevo con un resumen, un esquema, valores predeterminados y subtickets. Las personas revisan los valores en el formulario de creación antes de crear el ticket, y lo que no pueden establecer se omite.',
+  'tickets.templates.loading': 'Cargando las plantillas…',
+  'tickets.templates.failed':
+    'No se pudieron cargar las plantillas. Comprueba la dirección o inténtalo de nuevo en un momento.',
+  'tickets.templates.readOnlyTrack':
+    'Solo los administradores de este track pueden cambiar sus plantillas.',
+  'tickets.templates.readOnlyEveryTrack':
+    'Solo los administradores de configuración pueden cambiar estas plantillas.',
+  'tickets.templates.none': 'Todavía no hay plantillas aquí.',
+  'tickets.templates.new': 'Nueva plantilla',
+  'tickets.templates.saved': 'Se guardó la plantilla {name}.',
+  'tickets.templates.deleted': 'Se eliminó la plantilla {name}.',
+  'tickets.templates.everyTrack': 'Todos los tracks',
+  'tickets.templates.everyType': 'Todos los tipos de ticket',
+  'tickets.templates.subticketCount': '{count, plural, one {# subticket} other {# subtickets}}',
+  'tickets.templates.edit': 'Editar',
+  'tickets.templates.editOf': 'Editar la plantilla {name}',
+  'tickets.templates.delete': 'Eliminar',
+  'tickets.templates.deleteOf': 'Eliminar la plantilla {name}',
+  'tickets.templates.confirmDelete': 'Sí, eliminarla',
+  'tickets.templates.confirmDeleteOf': 'Sí, eliminar la plantilla {name}',
+  'tickets.templates.keep': 'Conservarla',
+  'tickets.templates.name': 'Nombre',
+  'tickets.templates.purpose': 'Para qué sirve',
+  'tickets.templates.types': 'Tipos de ticket a los que se aplica',
+  'tickets.templates.typesHint': 'No elijas ninguno para aplicarla a todos los tipos de ticket.',
+  'tickets.templates.summaryHint':
+    '{date} se convierte en la fecha de hoy, {track} en la clave del track, {user} en el nombre de quien crea el ticket.',
+  'tickets.templates.startInDays': 'Fecha de inicio, en días desde hoy',
+  'tickets.templates.dueInDays': 'Fecha de vencimiento, en días desde hoy',
+  'tickets.templates.assigneeHint': 'Escribe un nombre para buscar a alguien.',
+  'tickets.templates.removeAssignee': 'Quitar a {name} como responsable',
+  'tickets.templates.remove': 'Quitar',
+  'tickets.templates.customFields': 'Campos personalizados',
+  'tickets.templates.addFieldLabel': 'Añadir un valor para un campo',
+  'tickets.templates.addField': 'Añadir el campo',
+  'tickets.templates.removeField': 'Quitar el valor de {name}',
+  'tickets.templates.keptFields':
+    '{count, plural, one {# valor de un campo que este formulario no puede mostrar se queda como está.} other {# valores de campos que este formulario no puede mostrar se quedan como están.}}',
+  'tickets.templates.subtickets': 'Subtickets que crea',
+  'tickets.templates.subticketSummary': 'Subticket {number}: resumen',
+  'tickets.templates.subticketType': 'Subticket {number}: tipo',
+  'tickets.templates.subticketTypeFirst': 'El primer tipo de subticket del track',
+  'tickets.templates.removeSubticket': 'Quitar el subticket {number}',
+  'tickets.templates.addSubticket': 'Añadir un subticket',
+  'tickets.templates.save': 'Guardar la plantilla',
+  'tickets.templates.cancel': 'Cancelar',
+  'tickets.templates.problem.nameTaken': 'Otra plantilla de aquí ya tiene ese nombre.',
+  'tickets.templates.problem.conflict':
+    'Otra persona cambió esta plantilla. Recarga la página e inténtalo de nuevo.',
+  'tickets.templates.problem.limit':
+    'Aquí ya hay tantas plantillas como se permite. Elimina una primero.',
+  'tickets.templates.problem.archived':
+    'Este track está archivado, así que sus plantillas no pueden cambiar.',
+  'tickets.templates.problem.invalid':
+    'Algunos valores no se pueden usar. Revisa los días, los campos y los subtickets.',
+  'tickets.templates.problem.forbidden': 'No puedes cambiar esta plantilla.',
+  'tickets.templates.problem.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'tickets.templates.pick': 'Empezar desde una plantilla',
+  'tickets.templates.pickNone': 'Sin plantilla',
+  'tickets.templates.pickFailed':
+    'No se pudo cargar esa plantilla. Inténtalo de nuevo en un momento.',
+  'tickets.templates.filled': 'Se rellenaron los valores de {name}: cambia lo que sea distinto.',
+  'tickets.templates.also': 'También de esta plantilla',
+  'tickets.templates.alsoSubtickets':
+    '{count, plural, one {Crear su # subticket} other {Crear sus # subtickets}}',
+  'tickets.templates.fieldNumber': 'campo {id}',
+  'tickets.templates.left': 'Se omitieron porque no se pueden establecer aquí: {fields}.',
+  'tickets.templates.subticketsMade':
+    '{count, plural, one {Subticket creado: {keys}.} other {Subtickets creados: {keys}.}}',
+  'tickets.templates.subticketsFailed':
+    'El ticket se creó, pero estos subtickets no se pudieron crear:',
 };

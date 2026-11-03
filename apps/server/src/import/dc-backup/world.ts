@@ -1,3 +1,4 @@
+import { parseQuery } from '@taskmoor/query';
 import type { GeneratorOptions } from './manifest';
 import { Random, Skewed } from './random';
 
@@ -201,7 +202,21 @@ export function paragraphs(random: Random, max: number): string {
   return out.join('\n\n');
 }
 
-/** Project keys: two to four capitals, unique by construction from the index. */
+/** Whether a query can name this key: `project = IN` does not parse, as queries reserve the word. */
+function readableInQuery(key: string): boolean {
+  try {
+    parseQuery(`project = ${key}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Project keys: capitals from the index, unique by construction. A single letter gets an X, so
+ * a two-letter key ending in X (the 50th project is AX, like the first) takes a 0 to stay apart,
+ * and so does a key a query reserves.
+ */
 export function projectKey(index: number): string {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let n = index;
@@ -210,7 +225,8 @@ export function projectKey(index: number): string {
     key = letters[n % 26] + key;
     n = Math.floor(n / 26) - 1;
   } while (n >= 0);
-  return key.length === 1 ? `${key}X` : key;
+  if (key.length === 1) return `${key}X`;
+  return (key.length === 2 && key.endsWith('X')) || !readableInQuery(key) ? `${key}0` : key;
 }
 
 // --- The instance ----------------------------------------------------------------------------

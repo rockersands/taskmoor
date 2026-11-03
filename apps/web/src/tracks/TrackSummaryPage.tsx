@@ -12,10 +12,10 @@ import {
   WidgetEditorFields,
   WidgetGrid,
 } from '../dashboards/WidgetEditor';
-import { SETTINGS } from '../dashboards/WidgetSettings';
-import { defaultConfig } from '../dashboards/WidgetSettings';
+import { defaultConfig, SETTINGS } from '../dashboards/WidgetSettings';
 import { WidgetView } from '../dashboards/WidgetView';
 import { useT } from '../i18n/I18nProvider';
+import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { type TrackClient, type TrackSummaryLayout, trackClient } from './client';
@@ -181,12 +181,17 @@ export function TrackSummaryPage({
         purpose={t('summary.purpose')}
         about={t('summary.about')}
         actions={
-          read.mayCustomize && !draft ? (
+          !draft && (
             <>
-              <button type="button" className="button-primary" onClick={customize}>
-                {t('summary.customize')}
-              </button>
-              {custom && (
+              <a href={routeHref(`#/tracks/${encodeURIComponent(read.track.key)}/templates`)}>
+                {t('summary.templates')}
+              </a>
+              {read.mayCustomize && (
+                <button type="button" className="button-primary" onClick={customize}>
+                  {t('summary.customize')}
+                </button>
+              )}
+              {read.mayCustomize && custom && (
                 <button
                   type="button"
                   className="button-secondary"
@@ -196,7 +201,7 @@ export function TrackSummaryPage({
                 </button>
               )}
             </>
-          ) : undefined
+          )
         }
       />
       {draft && (

@@ -89,11 +89,15 @@ import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketDialog } from './tickets/CreateTicketDialog';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
+import { TicketTemplatesPage } from './tickets/templates/TicketTemplatesPage';
 import { TicketPage } from './tickets/view/TicketPage';
 import { TicketPopup } from './tickets/view/TicketPopup';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
+import { InvitationPage } from './trackpeople/InvitationPage';
+import { ManagedTracksPage } from './trackpeople/ManagedTracksPage';
+import { TrackPeoplePage } from './trackpeople/TrackPeoplePage';
 import {
   BacklogOfBoard,
   BacklogOfTrack,
@@ -196,6 +200,7 @@ const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
+const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
 /** Every section of the guided tutorial, to start or do again (ADR-115). */
@@ -216,6 +221,8 @@ const TRACK_BOARD_SECTION =
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
+/** A track's ticket templates (CORE-029). */
+const TRACK_TEMPLATES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/templates(?:[/?]|$)/;
 /** A track's calendar (M1-049). */
 const TRACK_CALENDAR = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/calendar(?:[/?]|$)/;
 /** A track's list (M1-049). */
@@ -226,6 +233,9 @@ const TRACK_TIMELINE = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/timeline(?:[/?
 const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
+/** An invitation's link (IAM-027) and the pages of the tracks a person runs (IAM-030). */
+const INVITATION = '#/invite';
+const MANAGED_TRACKS = '#/manage/tracks';
 const UNSUBSCRIBE = '#/unsubscribe';
 /** An MCP client's OAuth request waiting for the person's answer (M1-072). */
 const OAUTH_CONSENT = '#/oauth/consent';
@@ -380,9 +390,9 @@ function Pages() {
               },
             },
           ]),
-      // A configuration administrator is offered the setup pages (ADR-114).
-      ...(access === 'setup'
-        ? groupsFor('setup').flatMap((group) =>
+      // A configuration administrator or a track's manager is offered their pages (ADR-114).
+      ...(access === 'setup' || access === 'tracks'
+        ? groupsFor(access).flatMap((group) =>
             group.pages.map((page) => ({
               id: `go-setup-${page.id}`,
               labelId: page.labelId,
@@ -531,6 +541,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-ticket-templates',
+              labelId: 'tickets.templates.adminTitle' as const,
+              keywords: ['template', 'ticket template', 'subtickets', 'outline'],
+              run: () => {
+                navigate(ADMIN_TICKET_TEMPLATES);
+              },
+            },
+            {
               id: 'go-configuration-sets',
               labelId: 'admin.sets.title' as const,
               keywords: ['type set', 'field rules', 'required', 'hidden', 'scheme'],
@@ -579,6 +597,7 @@ function Pages() {
   // First-run setup and password links stand alone: no shell before someone can sign in.
   if (hash.startsWith('#/setup')) return <SetupPage onDone={goHome} />;
   if (isRoute(hash, PASSWORD_LINK)) return <PasswordLinkPage onDone={goHome} />;
+  if (isRoute(hash, INVITATION)) return <InvitationPage />;
   if (isRoute(hash, UNSUBSCRIBE)) return <UnsubscribePage />;
   if (isRoute(hash, OAUTH_CONSENT)) return <ConsentPage />;
 
@@ -630,6 +649,13 @@ function Pages() {
     content = <GroupsPage />;
   } else if (isRoute(hash, ADMIN_TEAMS)) {
     content = <TeamsPage />;
+  } else if (isRoute(hash, MANAGED_TRACKS)) {
+    const managed = /^#\/manage\/tracks\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    content = managed ? (
+      <TrackPeoplePage key={managed} trackId={Number(managed)} />
+    ) : (
+      <ManagedTracksPage />
+    );
   } else if (isRoute(hash, ADMIN_TRACKS)) {
     content = <TracksAdminPage />;
   } else if (isRoute(hash, ADMIN_WORKFLOW_MAPS)) {
@@ -656,6 +682,8 @@ function Pages() {
   } else if (adminGroupOf(hash)) {
     const group = adminGroupOf(hash);
     content = group ? <AdminGroupPage group={group} /> : null;
+  } else if (isRoute(hash, ADMIN_TICKET_TEMPLATES)) {
+    content = <TicketTemplatesPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
@@ -760,6 +788,11 @@ function Pages() {
         <ReleasesPage key={key} trackKey={key} />
       </TrackLayout>
     );
+  } else if (TRACK_TEMPLATES.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_TEMPLATES.exec(hash)?.[1] ?? '';
+    content = <TicketTemplatesPage key={key} trackKey={key} />;
   } else if (RELEASE.test(hash)) {
     active = 'tracks';
     guarded = true;
@@ -876,7 +909,7 @@ function Pages() {
   }
 
   // Administration has its own navigation; each page keeps its route and its guard (ADR-114).
-  if (isRoute(hash, ADMIN_HOME)) {
+  if (isRoute(hash, ADMIN_HOME) || isRoute(hash, MANAGED_TRACKS)) {
     if (access !== 'none') active = ADMIN_NAV_ITEM.id;
     content = <AdminLayout hash={hash}>{content}</AdminLayout>;
   }

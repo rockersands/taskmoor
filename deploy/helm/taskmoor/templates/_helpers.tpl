@@ -53,6 +53,10 @@ app.kubernetes.io/component: {{ .component }}
   value: {{ .Values.logLevel | quote }}
 - name: METRICS_PORT
   value: {{ .Values.metrics.port | quote }}
+- name: TASKMOOR_UPDATE_CHECK
+  value: {{ if .Values.updateCheck.enabled }}"on"{{ else }}"off"{{ end }}
+- name: TASKMOOR_UPDATE_COMMAND
+  value: {{ printf "helm upgrade %s deploy/helm/taskmoor --reuse-values --set image.tag={version}" .Release.Name | quote }}
 - name: TASKMOOR_PASSWORD_PEPPER
   valueFrom:
     secretKeyRef:

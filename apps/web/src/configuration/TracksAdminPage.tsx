@@ -296,6 +296,11 @@ function TrackPanel({
       )}
 
       <h2 className="facts-title">{t('admin.tracks.members', { key: track.key })}</h2>
+      <p className="page-note">
+        <a href={routeHref(`#/manage/tracks/${track.id}`)}>
+          {t('admin.tracks.people', { key: track.key })}
+        </a>
+      </p>
       {actors.length === 0 ? (
         <p className="page-note">{t('admin.tracks.noMembers')}</p>
       ) : (

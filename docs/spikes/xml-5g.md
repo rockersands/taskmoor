@@ -6,7 +6,7 @@ Budget (M0-022): 5 GB in under 20 minutes with RSS under 512 MB. Result: 2.5 min
 
 | Measure | Value |
 |---|---:|
-| File | C:\Users\you\AppData\Local\Temp\tracksmith-xml\entities-5g.xml |
+| File | <temp>/tracksmith-xml/entities-5g.xml |
 | Bytes | 5,000,011,001 |
 | Entity rows | 27,420,332 |
 | Generate time | 0.001s |

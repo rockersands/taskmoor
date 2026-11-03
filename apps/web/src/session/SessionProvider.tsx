@@ -13,6 +13,7 @@ export interface SessionUser {
    * for a moment after signing in; the provider asks when it is.
    */
   isConfigAdmin?: boolean;
+  managesTracks?: boolean;
   /** Holds Create tracks with their own configuration; known from the same answer. */
   mayCreateLocalTracks?: boolean;
   /** IANA time zone the person chose; null follows the device. */

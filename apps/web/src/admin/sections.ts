@@ -10,7 +10,7 @@ export interface AdminPage {
 }
 
 export interface AdminGroup {
-  id: 'people' | 'setup' | 'security' | 'integrations' | 'system';
+  id: 'tracks' | 'people' | 'setup' | 'security' | 'integrations' | 'system';
   labelId: MessageId;
   purposeId: MessageId;
   pages: readonly AdminPage[];
@@ -20,10 +20,23 @@ export const ADMIN_HOME = '#/admin';
 
 /**
  * Administration's groups and pages (ADR-114). A control that has no page yet is not listed:
- * layout sets (UI-T15), priorities, notification policies and invitations (the branch
- * `claude/track-invites`) join their groups with their pages.
+ * layout sets (UI-T15), priorities and notification policies join their groups with their pages.
+ * The tracks someone runs lead the list, and are all a track's manager sees here.
  */
 export const ADMIN_GROUPS: readonly AdminGroup[] = [
+  {
+    id: 'tracks',
+    labelId: 'admin.group.tracks',
+    purposeId: 'admin.group.tracksPurpose',
+    pages: [
+      {
+        id: 'managed-tracks',
+        href: '#/manage/tracks',
+        labelId: 'settings.managedTracks',
+        hintId: 'settings.managedTracksHint',
+      },
+    ],
+  },
   {
     id: 'people',
     labelId: 'admin.group.people',
@@ -77,6 +90,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         href: '#/admin/tracks',
         labelId: 'settings.tracks',
         hintId: 'settings.tracksHint',
+      },
+      {
+        id: 'ticket-templates',
+        href: '#/admin/ticket-templates',
+        labelId: 'settings.ticketTemplates',
+        hintId: 'settings.ticketTemplatesHint',
       },
       {
         id: 'workflows',
@@ -234,7 +253,8 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
 /** The groups a person sees: a configuration administrator only the setup pages (ADR-114). */
 export function groupsFor(access: AdminAccess): readonly AdminGroup[] {
   if (access === 'site') return ADMIN_GROUPS;
-  return access === 'setup' ? ADMIN_GROUPS.filter((g) => g.id === 'setup') : [];
+  if (access === 'setup') return ADMIN_GROUPS.filter((g) => g.id === 'setup' || g.id === 'tracks');
+  return access === 'tracks' ? ADMIN_GROUPS.filter((g) => g.id === 'tracks') : [];
 }
 
 export const adminGroupHref = (group: AdminGroup) => `${ADMIN_HOME}/group/${group.id}`;

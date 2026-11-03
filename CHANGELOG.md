@@ -10,6 +10,13 @@ Jira's API and query language where people and tools expect them, and an importe
 Data Center or Cloud instance across. 1.0 is a long-term-support release: its 1.0.x line gets
 security fixes for 24 months.
 
+### Updating
+- `bash update.sh` in the Compose kits finds the newest release, checks its signature and upgrades
+  with a backup and a rollback; it never installs a release it cannot verify.
+- Site administrators see a notice with the new version and the exact command. The server looks at
+  the public releases once a day, says nothing about the install, stays quiet on failure, and can
+  be turned off; the air-gap bundle has it off.
+
 ### Work tracking
 - Tracks, ticket types and hierarchy levels; tickets with change history, rich text, comments
   (with role and group visibility, reactions, edit history), attachments, links, followers,
@@ -40,6 +47,9 @@ security fixes for 24 months.
   digests; live updates on every open screen; works offline and catches up.
 
 ### Identity and administration
+- Invitations into a track by email or copied link, with a set role, off until a site
+  administrator turns them on; web pages for the people who run a track; a removable permission
+  for appointing a track's administrators.
 - Passwords (Argon2id, breached-password check), two-factor sign-in (required for site
   administrators by default), OpenID Connect, SAML 2.0, LDAP and Active Directory, SCIM 2.0.
 - Roles, access policies and an explainer for who may do what; an audit log; API tokens and

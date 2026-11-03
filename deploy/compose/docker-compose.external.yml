@@ -52,6 +52,10 @@ services:
       TASKMOOR_IMPORT_DIR: ${TASKMOOR_IMPORT_DIR:-}
       TASKMOOR_QUERY_TIMEOUT_MS: ${TASKMOOR_QUERY_TIMEOUT_MS:-}
       TASKMOOR_JIRA_COMPAT: ${TASKMOOR_JIRA_COMPAT:-on}
+      # The new-version notice for administrators (OPS-026): off stops its daily look at the
+      # project's public releases.
+      TASKMOOR_UPDATE_CHECK: ${TASKMOOR_UPDATE_CHECK:-}
+      TASKMOOR_UPDATE_COMMAND: ${TASKMOOR_UPDATE_COMMAND:-}
       # Metrics and traces (ADR-023).
       METRICS_PORT: ${METRICS_PORT:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}

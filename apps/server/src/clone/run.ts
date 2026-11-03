@@ -74,7 +74,7 @@ const ATTEMPTS = 8;
 type Answer = { statusCode: number; payload: unknown };
 
 /** The body keys a refusal of a create names, when leaving them out could help; else null. */
-function refusedKeys(answer: Answer): string[] | null {
+export function refusedKeys(answer: Answer): string[] | null {
   const body = (answer.payload ?? {}) as {
     error?: string;
     fields?: Record<string, string>;

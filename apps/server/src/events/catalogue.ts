@@ -287,6 +287,37 @@ export const EVENT_TYPES = {
     payload: z.object({ roleId: id, userId: id.nullable(), groupId: id.nullable() }),
   },
 
+  // Invitations into a track (IAM-027; ADR-118). Never a token or a link.
+  'track_invitation.created': {
+    subject: 'track',
+    payload: z.object({
+      invitationId: id,
+      roleId: id,
+      email: z.string(),
+      delivery: z.enum(['email', 'link']),
+      /** The account that got the role at once; null when it waits for the person. */
+      grantedUserId: id.nullable(),
+    }),
+  },
+  'track_invitation.resent': {
+    subject: 'track',
+    payload: z.object({ invitationId: id, delivery: z.enum(['email', 'link']) }),
+  },
+  'track_invitation.revoked': {
+    subject: 'track',
+    payload: z.object({ invitationId: id, roleRemoved: z.boolean() }),
+  },
+  'track_invitation.accepted': {
+    subject: 'track',
+    payload: z.object({
+      invitationId: id,
+      roleId: id,
+      userId: id,
+      /** The person made their account with the link. */
+      accountCreated: z.boolean(),
+    }),
+  },
+
   // Tracks and categories (M1-006)
   'track.created': {
     subject: 'track',
@@ -421,6 +452,8 @@ export const EVENT_TYPES = {
       webhookCount: z.number().int().min(0),
       /** Mentions in the description and environment it starts with (M1-058). */
       mentions: mentions.optional(),
+      /** The ticket template it started from (ADR-113). */
+      templateId: id.optional(),
     }),
   },
   /**
@@ -908,6 +941,18 @@ export const EVENT_TYPES = {
   },
   // Saved searches (M1-063): `shares` names the scopes it is shared with (QRY-011); a
   // subscription names its recipient and schedule (QRY-012), never an email address.
+  // Ticket templates (CORE-029; ADR-113): a ticket made from one is `ticket.created` with its
+  // `templateId`.
+  'ticket_template.created': {
+    subject: 'ticket_template',
+    payload: z.object({ name: z.string(), trackId: id.nullable() }),
+  },
+  /** Changes by API name; a description outline's change as the hashes of its documents. */
+  'ticket_template.updated': { subject: 'ticket_template', payload: z.object({ changes }) },
+  'ticket_template.deleted': {
+    subject: 'ticket_template',
+    payload: z.object({ name: z.string(), trackId: id.nullable() }),
+  },
   'saved_search.created': {
     subject: 'saved_search',
     payload: z.object({ name: z.string(), query: z.string(), shares: z.array(z.string()) }),
@@ -1059,6 +1104,8 @@ export const EVENT_TYPES = {
     }),
   },
   'attachment_settings.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  /** The site administrator's switch for the new-version check (OPS-026, ADR-117). */
+  'update_check.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   /** The schedule, retention and verification of scheduled backups (M1-101, OPS-008). */

@@ -29,7 +29,7 @@ export function SettingsPage() {
           </li>
         </ul>
       </div>
-      {(access === 'site' || access === 'setup') && (
+      {access !== null && access !== 'none' && (
         <p className="page-note settings-section">
           {t('settings.administrationMoved')}{' '}
           <a href={routeHref(ADMIN_HOME)}>{t('nav.administration')}</a>
