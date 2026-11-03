@@ -197,7 +197,9 @@ export function registerTicketTemplateRoutes(
       (r.defaults as { assigneeId?: number } | null)?.assigneeId ?? null;
     const people = [
       ...new Set(
-        rows.flatMap((r) => [r.created_by, assigneeOf(r)].flatMap((id) => (id === null ? [] : [id]))),
+        rows.flatMap((r) =>
+          [r.created_by, assigneeOf(r)].flatMap((id) => (id === null ? [] : [id])),
+        ),
       ),
     ];
     const names = new Map(

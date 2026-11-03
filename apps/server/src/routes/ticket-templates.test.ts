@@ -356,7 +356,7 @@ describe('ticket templates (CORE-029, CORE-030)', () => {
     const plain = ok(
       await apply('carol', tpl.id, {
         subtickets: false,
-        omit: ['assigneeId', 'fields.' + field.id],
+        omit: ['assigneeId', `fields.${field.id}`],
       }),
       201,
     );

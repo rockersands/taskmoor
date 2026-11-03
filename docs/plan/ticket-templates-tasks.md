@@ -4,29 +4,27 @@ Asked for by the user on 2026-11-02 for 1.0 (M1). Requirement IDs reserved: CORE
 what they hold, scope, management) and CORE-030 (creating a ticket from one). ADR number:
 ADR-113. Migration: 0085 (0084 is reserved for another session).
 
-## Handoff (2026-11-03, cloud session; resume locally)
+## Handoff (2026-11-03, local session, Windows)
 
-**Numbers taken:** ADR-113 (not yet written), migration `0085_ticket_templates`, requirements
-CORE-029 (templates: content, scope, management) and CORE-030 (creating a ticket from one).
+**Numbers taken:** ADR-113, migration `0085_ticket_templates`, requirements CORE-029 and CORE-030.
 
-**Gate steps:** passed: `tsc -b` (typecheck), Biome on `apps/server/src` and `packages/db/src`,
-`templates/model.test.ts` (6) and `routes/ticket-templates.test.ts` (7). The schema golden was
-regenerated with `pnpm verify --update` (only the `ticket_template` table added, reviewed).
-Not run: `events/contract.test.ts`, `tokens/scopes.test.ts`, `audit/*`, `packages/db` after the
-golden update, the full `pnpm verify`, `pnpm verify --e2e`. The first commit on this branch has
-no "WIP:" subject but is work in progress too.
+**State:** everything in the task table is written and passes the targeted runs below. The only
+thing left is the coordinator's whole gate (TT-9) and the merge.
 
-**Half-done, by file:**
-- Server, written and tested: `packages/db/src/migrations/0085_ticket_templates.ts`,
-  `packages/db/src/schema.ts` (`TicketTemplateTable`), `packages/db/src/upgrade-fixtures.ts`,
-  `packages/db/src/__golden__/schema.json`, `apps/server/src/templates/model.ts`,
-  `apps/server/src/routes/ticket-templates.ts` (registered in `app.ts`), their tests.
-- Server, written but not run: `events/catalogue.ts` (`ticket_template.*`, optional
-  `templateId` on `ticket.created`), `audit/subscriber.ts`, `events/contract.test.ts` (four
-  scenarios before `POST /api/v1/tickets`), `tokens/scopes.ts` (comment) and `scopes.test.ts`.
-- Small edits elsewhere: `tickets/caller.ts` (`ticketTemplateId`), `routes/tickets.ts` (emits
-  `templateId`), `clone/run.ts` (`refusedKeys` exported).
-- Not started: web, spec, ADR, manual.
+**Targeted runs, all passing:** `templates/model.test.ts`, `routes/ticket-templates.test.ts` (9),
+`events/contract.test.ts`, `tokens/scopes.test.ts`, `audit/*`; the web tests in
+`apps/web/src/tickets/templates`, `tickets`, `tracks`, `i18n`, `shell`; the stories of
+`tickets/templates` and `CreateTicketPage` in both skins; `e2e/ticket-templates.spec.ts` on desktop and
+mobile; `pnpm i18n:check`; `pnpm run docs`. The `packages/db` project had 39 of 40 pass: the
+`ticket-types.test.ts` migration test hit its 20 s limit with other work on the machine, and passes
+alone.
+
+**Web, added:** `apps/web/src/tickets/templates/` (`client.ts`, `start.ts` from a template's `start` to
+the form and back to `omit`, `draft.ts` the management form's values, `TemplatePicker.tsx`,
+`TemplateForm.tsx`, `TicketTemplatesPage.tsx`, fixtures, stories, tests), `styles/ticket-templates.css`,
+routes `#/tracks/KEY/templates` and `#/admin/ticket-templates` in `App.tsx`, a palette command, links on
+the track summary and in Settings. The edit to `CreateTicketPage.tsx` is about 50 lines; the logic is
+in `tickets/templates`.
 
 **Design decisions so far:**
 - One table; `track_id` null = every track; `ticket_type_ids` empty = every type; name unique
@@ -46,30 +44,32 @@ no "WIP:" subject but is work in progress too.
 - DC importer (for the ADR): core backups have no ticket templates; field-context default
   values are already imported; third-party app tables are not read. No import is built.
 
-**Left before `pnpm verify --e2e` can pass and the branch can merge for 1.0:**
-1. Run the unrun suites above and fix what fails.
-2. Spec section in `docs/specs/01a-core-work-tracking.md` and rows CORE-029, CORE-030 in
-   `requirements-index.csv` (tests already cite them); ADR-113.
-3. Web: picker in `apps/web/src/tickets/CreateTicketPage.tsx` (keep it small; the UI overhaul
-   branch edits this file) filling the form from `GET /api/v1/ticket-templates/:id?track=KEY`
-   (`start`) and posting to `POST /api/v1/ticket-templates/:id/tickets` with `omit` and
-   `subtickets`; management page at `#/tracks/KEY/templates` and `#/admin/ticket-templates`;
-   strings in `messages.en.ts` and `messages.es.ts`, stories, tests by role and name, phone
-   layout, an e2e spec; `pnpm i18n:check` clean.
-4. Manual: `docs/manual/use/tickets.md`, `docs/manual/admin/tracks.md`; `progress.csv`.
-5. Full `pnpm verify --e2e`, then hand to the main session for the merge.
+**Decisions made while building the web:**
+- The picker lists the templates for the track and type chosen now, so a choice always fits. Changing
+  the type or track lets go of the template and keeps what is typed.
+- What the backend will refuse (hidden, off the layout, locked) is never filled in. It stays out of the
+  body, the backend leaves it out and the form names it after Create.
+- Values on the layout with no control in the form (assignee, areas, releases, other custom types) are
+  listed under the picker with a checkbox; turned off, they go in `omit`.
+- The management form edits text, number, date, URL, choice and label custom fields. Other types, and
+  an assignee on a template for every track, are API-only, and a save keeps them. This follows the
+  precedent of the configuration sets page.
+- Every-track templates are read-only on a track's page: that form would offer the track's areas and
+  releases, which they cannot hold.
+- The template's view gained `assignee: { id, name }`, so the form can show who it names.
 
-**Locally (WSL 2):** the embedded Postgres works there when not running as root; no
-`TASKMOOR_TEST_DATABASE_URL` needed.
+**Found, not changed:** in the create dialog, Escape does not close the dialog after Create, because the
+submit button is disabled while busy and focus falls out of the dialog's key handler
+(`CreateTicketDialog.tsx`). It is older than this branch and the UI overhaul edits that area.
 
 | Task | State | Notes |
 |---|---|---|
-| TT-1 Data: migration 0085, `schema.ts`, upgrade seed, schema golden | Done, not gated | `ticket_template`; golden regenerated (one table added, reviewed) |
-| TT-2 API: list, read, create, update, delete, create-from-template | Done, not gated | `routes/ticket-templates.ts`, `templates/model.ts`; 13 tests pass |
-| TT-3 Events, audit decisions, scope classes, contract scenarios | Written, not run | Contract scenarios and scope expectations added; their files were not run after the change |
-| TT-4 Spec section (CORE-029, CORE-030) and `requirements-index.csv` rows | To do | Tests already cite the IDs; `pnpm trace` will flag them until the rows exist |
-| TT-5 ADR-113 | To do | Content in HANDOFF (2026-11-03 entry); include the DC importer note |
-| TT-6 Web: template picker in the create dialog | To do | See HANDOFF for the agreed protocol |
-| TT-7 Web: management page (track and every-track) | To do | `#/tracks/KEY/templates`, `#/admin/ticket-templates`; strings en and es, stories, phone layout |
-| TT-8 Manual: `use/tickets.md`, `admin/tracks.md` | To do | |
-| TT-9 Gate: `pnpm verify --e2e` | To do | Not run on this branch |
+| TT-1 Data: migration 0085, `schema.ts`, upgrade seed, schema golden | Done | Passed in the `packages/db` run (see above) |
+| TT-2 API: list, read, create, update, delete, create-from-template | Done | 9 route tests |
+| TT-3 Events, audit decisions, scope classes, contract scenarios | Done | Contract, scope and audit suites run and pass |
+| TT-4 Spec rows CORE-029, CORE-030 and `requirements-index.csv` | Done | |
+| TT-5 ADR-113 | Done | `docs/adr/0113-ticket-templates.md`, with the DC importer note |
+| TT-6 Web: template picker in the create dialog | Done | |
+| TT-7 Web: management page (track and every-track) | Done | en and es, stories, tests by role and name, phone layout, e2e spec |
+| TT-8 Manual: `use/tickets.md`, `admin/tracks.md` | Done | |
+| TT-9 Gate: `pnpm verify --e2e` | Coordinator | Not run here, by agreement |

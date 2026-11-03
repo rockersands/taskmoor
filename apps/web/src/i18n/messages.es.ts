@@ -4519,7 +4519,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.templates.removeField': 'Quitar el valor de {name}',
   'tickets.templates.keptFields':
     '{count, plural, one {# valor de un campo que este formulario no puede mostrar se queda como está.} other {# valores de campos que este formulario no puede mostrar se quedan como están.}}',
-  'tickets.templates.subtickets': 'Subtickets',
+  'tickets.templates.subtickets': 'Subtickets que crea',
   'tickets.templates.subticketSummary': 'Subticket {number}: resumen',
   'tickets.templates.subticketType': 'Subticket {number}: tipo',
   'tickets.templates.subticketTypeFirst': 'El primer tipo de subticket del track',

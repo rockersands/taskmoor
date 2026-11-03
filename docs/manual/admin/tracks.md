@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md
 accessed: 2026-11-02
 attestation: own-words
 ---
@@ -195,6 +195,49 @@ A track's administrators add releases on the track's **Releases** page with **Ne
 this release…**) and shows approvals. Shipping a release with open tickets asks where they go.
 The API adds start dates, ordering, unshipping, merging, archiving, deleting and approvers under
 `/api/v1/tracks/:id/releases` and `/api/v1/releases/:id`.
+
+### Ticket templates
+
+Ticket templates start a new ticket with a summary, an outline, default values and subtickets.
+They are not the track templates under [Templates](#templates), which start a track.
+
+- **A track's templates** are on the page **Ticket templates**, linked from the track's summary
+  (the address ends in `/tracks/KEY/templates`). Anyone who can browse the track reads them. The
+  track's administrators ("Administer track") and configuration administrators change them.
+- **Templates for every track** are under **Settings**, **Ticket templates** for site
+  administrators; configuration administrators open them by address (it ends in
+  `/admin/ticket-templates`). They are offered in every track and read by everyone signed in.
+  Configuration administrators and site administrators change them. They show in each track's list
+  marked **Every track**, read-only there.
+
+**New template** asks for:
+
+| Field | What it does |
+|---|---|
+| **Name** | Required; unique among the templates of that track, or among those for every track, ignoring case |
+| **What it is for** | Shown beside the template when someone chooses it |
+| **Ticket types it fits** | The types that offer it; none means every type |
+| **Summary** | A pattern: `{date}` becomes today in the person's time zone, `{track}` the track's key, `{user}` the person's name |
+| **Description** | An outline in rich text |
+| **Priority**, **Labels** | Default values |
+| **Start date** and **Due date**, **in days from today** | Counted from the day the ticket is made; negative numbers count back |
+| **Assignee**, **Area**, **Target release**, **Found in release** | Default values; track templates only |
+| **Custom fields** | Add a value for a field; text, number, date, URL, choice and label fields |
+| **Subtickets** | Up to 50, each a summary pattern and, when the track has several subticket types, a type; otherwise the track's first subticket type |
+
+Custom fields of other types, and an assignee on a template for every track, can be set through the
+API. The form says how many it cannot show, and saving keeps them.
+
+Applying a template checks everything as the person making the ticket. Values they may not set, and
+fields a rule hides or the layout leaves out, stay off the ticket, and the form names them, so a
+template can name an assignee even if some of its users may not assign. A template is checked for
+what it refers to when you save it; whether a value suits a type or a person is only known when a
+ticket is made. Each track or the every-track list holds at most 500 templates. Deleting a template
+changes no ticket already made from it.
+
+Every ticket made records its template in its `ticket.created` event, as `templateId`, and adding,
+changing or deleting a template is in the audit log. The API is `/api/v1/ticket-templates`, with
+`POST /api/v1/ticket-templates/:id/tickets` to make a ticket from one.
 
 ### Categories
 
