@@ -201,6 +201,11 @@ test('[RPT-002] Statistics of a Kanban track: the time and ticket reports count 
   await expect(totals.getByText('4.5h')).toBeVisible();
   await expect(totals.getByText('On the estimate')).toBeVisible();
   await expect(page.getByText('3 of 4 tickets have an original estimate.')).toBeVisible();
+  // On a phone each ticket's link is a finger's target, 44px tall (ADR-033).
+  if (testInfo.project.name === 'mobile') {
+    const link = page.getByRole('region', { name: 'Time tracking' }).getByRole('link').first();
+    expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+  }
   expect(await seriousAxeViolations(page)).toEqual([]);
   await noSidewaysScroll(page);
 

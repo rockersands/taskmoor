@@ -258,7 +258,13 @@
 @media (pointer: coarse) {
   .dashboard-widget-tools button,
   .dashboard-row .reports-check,
-  .summary-list a {
+  .summary-list a,
+  .widget-tickets a {
     min-height: var(--hit-target-touch);
+  }
+
+  .widget-tickets a {
+    display: inline-flex;
+    align-items: center;
   }
 }

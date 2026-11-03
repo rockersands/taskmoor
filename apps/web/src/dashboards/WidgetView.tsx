@@ -321,7 +321,8 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
     case 'ticket-statistics': {
       const d = data as { values: Value[]; total: number };
       return (
-        <section className="report-table" aria-label={title}>
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
+        <section className="report-table" aria-label={title} tabIndex={0}>
           <table>
             <thead>
               <tr>
@@ -663,7 +664,8 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
         );
       }
       return (
-        <section className="report-table" aria-label={title}>
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
+        <section className="report-table" aria-label={title} tabIndex={0}>
           <table>
             <thead>
               <tr>

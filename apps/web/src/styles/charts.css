@@ -421,8 +421,15 @@
 
 @media (pointer: coarse) {
   .reports-tabs a,
-  .reports-check {
+  .reports-check,
+  .report-table a {
     min-height: var(--hit-target-touch);
+  }
+
+  /* A ticket's link in a table row is a finger's target, as in the releases' tables. */
+  .report-table a {
+    display: inline-flex;
+    align-items: center;
   }
 }
 
