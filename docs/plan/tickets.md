@@ -102,7 +102,7 @@ reported, and the coordinator checked that it was pushed.
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
 | T-070 | "Tableros" leaves the sidebar; each track is one place with sections | On branch | `claude/ui-overhaul`; the name stays Track |
-| T-071 | Tracks expands in the sidebar with the current one marked | On branch | Up to eight, then a link to all |
+| T-071 | Tracks in the sidebar is one link, with no list under it | To do | With the front sub chat; replaces the expanding list, as there could be many tracks |
 | T-072 | Exactly one board per track, enforced on the server | On branch | ADR-116 |
 | T-073 | No board outside a track | On branch | ADR-116 |
 | T-074 | Decide about the leftover demo board `rrg` | You | Its sample track is gone; it can go too if the user agrees |
@@ -115,6 +115,10 @@ reported, and the coordinator checked that it was pushed.
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | To do | With the front sub chat |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
 | T-083 | A cross-track timeline | Later | Roadmaps in 2.0, unless the user wants it sooner |
+| T-084 | Personal track groups: drag tracks together, name the group | To do | With the front sub chat; private to the person |
+| T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | With the front sub chat |
+| T-086 | Share a whole group, or set it on another person | To do | With the front sub chat |
+| T-087 | Does sharing a group give access to its tracks? | You | Built so it does not, until the user says |
 
 ## Boards and moving tickets
 
@@ -183,6 +187,7 @@ reported, and the coordinator checked that it was pushed.
 | T-144 | The design is consistent through the whole app | In progress | Shared styles, a guard, then a sweep of every route |
 | T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | On branch | The user's own skin choice is kept |
 | T-146 | Fix the English filters in the Spanish interface | To do | With the front sub chat |
+| T-147 | A watery look for every animation in the app | To do | With the front sub chat; off with reduced motion |
 
 ## Administration
 
