@@ -105,7 +105,9 @@ ticket, saved search or board the import made of them (see
 
 The header holds the ticket's status, which also moves it (see
 [Moving a ticket through its workflow](#moving-a-ticket-through-its-workflow)), **Follow** and
-**Vote** with their counts, **Clone** (see [Cloning a ticket](#cloning-a-ticket)) and
+**Vote** with their counts, **Clone** (see [Cloning a ticket](#cloning-a-ticket)), **Copy link**
+(the ticket's full address; if the browser refuses the clipboard, the page shows the link to copy by
+hand) and
 **Keyboard shortcuts**. **Edit summary** changes the summary: press Save, or Escape to cancel.
 
 ### Details
@@ -117,7 +119,7 @@ The **Details** section lists the ticket's fields. Some can be changed in place:
 | **Status** | Read the status, and the close reason once the ticket is closed |
 | **Assignee** | **Assign to me** or **Unassign** |
 | **Requester** | Read |
-| **Priority** | Choose from the list. A ticket always has one: a new ticket starts with its track's default, and there is no empty choice. Only an imported ticket can have none, until someone chooses |
+| **Priority** | Choose from the list, each with its icon and name. A ticket always has one: a new ticket starts with its track's default, and there is no empty choice. Only an imported ticket can have none, until someone chooses. If you may not edit the ticket you see the value only |
 | **Labels** | **Edit**, then type labels separated by spaces or commas and press **Save**; a label has no spaces |
 | **Start date**, **Due date** | Pick a date, or clear it |
 | **Original estimate**, **Time spent**, **Remaining estimate** | Read, in hours |
@@ -223,7 +225,8 @@ Tickets also move by dragging their cards on a [board](boards.md).
 
 ## Cloning a ticket
 
-**Clone** in a ticket's header makes a copy of it. The dialog asks for:
+**Clone** in a ticket's header, on its page or in its pop-up, makes a copy of it. The copy opens where
+you are: in the pop-up over the same page, with Back returning to the original. The dialog asks for:
 
 - **Summary of the copy**: the original's, until you change it.
 - **Track**: where the copy goes, the ticket's own track by default. You need permission to

@@ -307,6 +307,36 @@ describe('the ticket pop-up', () => {
   });
 });
 
+describe('cloning from the ticket pop-up', () => {
+  it('[CORE-023] the clone dialog opens inside, Escape closes only it, and the copy opens in place', async () => {
+    const user = userEvent.setup();
+    const client = fakeTicketClient();
+    const copy = { ...SHOP_41, key: 'PAY-40', summary: 'The copy', id: 400 };
+    client.get = async (key) => (key === 'PAY-40' ? copy : SHOP_41);
+    renderPopup(client);
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Clone' }));
+    expect(await screen.findByRole('dialog', { name: 'Clone SHOP-41' })).toBeVisible();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Clone SHOP-41' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: NAME })).toBeVisible();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Clone' }));
+    const box = within(await screen.findByRole('dialog', { name: 'Clone SHOP-41' }));
+    await user.click(box.getByRole('button', { name: 'Clone' }));
+    expect(
+      await screen.findByRole('dialog', { name: 'PAY-40 The copy' }, { timeout: 5000 }),
+    ).toBeVisible();
+    expect(addressRoute()).toBe('#/tickets/PAY-40');
+    expect(currentRoute()).toBe('#/tracks/SHOP/board?people=7');
+
+    window.history.back();
+    expect(await screen.findByRole('dialog', { name: NAME })).toBeVisible();
+  });
+});
+
 describe('a draft in the ticket pop-up', () => {
   async function typeLabels() {
     const user = userEvent.setup();

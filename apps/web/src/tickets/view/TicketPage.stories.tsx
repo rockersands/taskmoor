@@ -79,6 +79,21 @@ export const Closing: Story = {
   },
 };
 
+/** Someone who may not edit sees the priority's value, not a control; copying the link says so. */
+export const MayNotEdit: Story = {
+  args: { client: fakeTicketClient({ ticket: { ...SHOP_41, mayEdit: false } }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const facts = within(await canvas.findByRole('region', { name: 'Details' }));
+    await expect(facts.queryByRole('combobox', { name: 'Priority' })).toBeNull();
+    await expect(facts.getByText('High')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Copy link' }));
+    await expect(
+      await canvas.findByText(/The (link to SHOP-41 is copied|browser did not allow)/),
+    ).toBeVisible();
+  },
+};
+
 /** The keyboard shortcuts, open. */
 export const Shortcuts: Story = {
   args: { client: fakeTicketClient() },

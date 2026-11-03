@@ -25,6 +25,17 @@
   content: "\2192\00a0";
 }
 
+/* The status line can hold a whole address to copy by hand. */
+.ticket-header .form-status {
+  overflow-wrap: anywhere;
+}
+
+.ticket-fact-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .ticket-crumbs {
   display: flex;
   align-items: center;

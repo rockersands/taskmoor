@@ -450,6 +450,14 @@ describe('tickets (M1-008)', () => {
   });
 
   describe('editing', () => {
+    it('[CORE-014] says when reading a ticket whether the reader may edit it', async () => {
+      const ticket = await create('alice', { track: 'ABC', summary: 'Who may' });
+      const read = async (who: string) =>
+        (await get(who, `/api/v1/tickets/${ticket.key}`)).json().ticket;
+      expect((await read('alice')).mayEdit).toBe(true);
+      expect((await read('bob')).mayEdit).toBe(false);
+    });
+
     it("[CORE-008] saves only what changed, and refuses a write over someone else's", async () => {
       const ticket = await create('alice', {
         track: 'ABC',

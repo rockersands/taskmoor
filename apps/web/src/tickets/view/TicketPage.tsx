@@ -15,9 +15,11 @@ import { type MentionSource, mentionSource } from '../../richtext/mentions';
 import { boardBehind } from '../../routing/cameFrom';
 import {
   navigate,
+  openOverlay,
   replaceOverlay,
   replaceRoute,
   routeHref,
+  routeUrl,
   useOverlayRoute,
 } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
@@ -361,6 +363,17 @@ export function TicketView({
       setProblem(refusal(error));
     }
   };
+  /** The ticket's full address, for the clipboard; refused, the page shows it to copy by hand. */
+  const copyLink = async (key: string) => {
+    const link = routeUrl(`#/tickets/${encodeURIComponent(key)}`);
+    setProblem(null);
+    try {
+      await navigator.clipboard.writeText(link);
+      setMessage(t('ticketView.linkCopied', { key }));
+    } catch {
+      setMessage(t('ticketView.linkIs', { link }));
+    }
+  };
   const assignToMe = () => {
     if (loaded && me.id && loaded.assignee?.id !== me.id) {
       void edit({ assigneeId: me.id }).then(
@@ -415,8 +428,8 @@ export function TicketView({
 
   // Every action of the view is in the command palette too (AGL-018 (1)). The commands call
   // the latest handlers through a ref, so they change only when what they offer changes.
-  const actions = useRef({ transition, toggleFollow, toggleVote, assignToMe, edit });
-  actions.current = { transition, toggleFollow, toggleVote, assignToMe, edit };
+  const actions = useRef({ transition, toggleFollow, toggleVote, assignToMe, edit, copyLink });
+  actions.current = { transition, toggleFollow, toggleVote, assignToMe, edit, copyLink };
   const key = loaded?.key ?? null;
   // Opened by an earlier key (a moved ticket, a renamed track; M1-128): the address shows the
   // current one, without a new history entry.
@@ -503,7 +516,7 @@ export function TicketView({
       labelId: 'palette.ticket.copyLink',
       values,
       keywords: ['link', 'url', 'share'],
-      run: () => void navigator.clipboard?.writeText(window.location.href).catch(() => {}),
+      run: () => void actions.current.copyLink(key),
     });
     list.push({
       id: 'ticket-shortcuts',
@@ -619,6 +632,13 @@ export function TicketView({
             >
               {t('clone.action')}
             </button>
+            <button
+              type="button"
+              className="button-secondary ticket-action"
+              onClick={() => void copyLink(loaded.key)}
+            >
+              {t('ticketView.copyLink')}
+            </button>
             <BreakdownAction
               ticket={{ id: loaded.id, key: loaded.key }}
               trackId={loaded.track.id}
@@ -727,7 +747,14 @@ export function TicketView({
           onClose={() => setCloning(false)}
           onCloned={(key) => {
             setCloning(false);
-            navigate(`#/tickets/${encodeURIComponent(key)}`);
+            const copy = `#/tickets/${encodeURIComponent(key)}`;
+            // In the pop-up the copy opens there, and Back returns to the ticket it came from.
+            if (popup) {
+              announceTicketChange();
+              openOverlay(copy);
+            } else {
+              navigate(copy);
+            }
           }}
         />
       )}
@@ -905,21 +932,39 @@ function Details({
       </div>
       <div>
         <dt>
-          <label htmlFor={`${id}-priority`}>{t('workflow.field.priority')}</label>
+          {ticket.mayEdit === false ? (
+            t('workflow.field.priority')
+          ) : (
+            <label htmlFor={`${id}-priority`}>{t('workflow.field.priority')}</label>
+          )}
         </dt>
         <dd>
-          <IconSelect
-            id={`${id}-priority`}
-            value={String(ticket.priority?.id ?? '')}
-            // Only an imported ticket can have none; once chosen there is no going back.
-            placeholder={t('priority.choose')}
-            options={(priorities ?? (ticket.priority ? [ticket.priority] : [])).map((p) => ({
-              value: String(p.id),
-              label: priorityName(t, p.name),
-              icon: <PriorityGlyph level={p.level} />,
-            }))}
-            onChange={(next) => void onEdit({ priorityId: Number(next) })}
-          />
+          {ticket.mayEdit === false ? (
+            // Someone who may not edit sees the value, not a control.
+            <span className="ticket-fact-value">
+              {ticket.priority ? (
+                <>
+                  <PriorityGlyph level={ticket.priority.level} />
+                  {priorityName(t, ticket.priority.name)}
+                </>
+              ) : (
+                none
+              )}
+            </span>
+          ) : (
+            <IconSelect
+              id={`${id}-priority`}
+              value={String(ticket.priority?.id ?? '')}
+              // Only an imported ticket can have none; once chosen there is no going back.
+              placeholder={t('priority.choose')}
+              options={(priorities ?? (ticket.priority ? [ticket.priority] : [])).map((p) => ({
+                value: String(p.id),
+                label: priorityName(t, p.name),
+                icon: <PriorityGlyph level={p.level} />,
+              }))}
+              onChange={(next) => void onEdit({ priorityId: Number(next) })}
+            />
+          )}
         </dd>
       </div>
       <div>

@@ -799,8 +799,9 @@ export function ticketRoutes(
       return notFound(reply);
     }
     const ticket = await viewOf(request, found.row);
+    const mayEdit = await request.authz.canTicket('edit_tickets', found.row);
     return {
-      ticket: inFormat(ticket, format),
+      ticket: { ...inFormat(ticket, format), mayEdit },
       ...(found.asked !== null && found.asked !== ticket.key
         ? { redirect: { from: found.asked, to: ticket.key } }
         : {}),

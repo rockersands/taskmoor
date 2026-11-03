@@ -352,6 +352,7 @@ export function CloneDialog({
                 <a
                   className="button-primary"
                   href={routeHref(`#/tickets/${encodeURIComponent(copyKey)}`)}
+                  onClick={onClose}
                 >
                   {t('clone.open', { key: copyKey })}
                 </a>

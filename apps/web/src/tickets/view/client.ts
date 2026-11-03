@@ -38,6 +38,8 @@ export interface TicketDetails {
   version: number;
   createdAt: string;
   updatedAt: string;
+  /** Whether the reader may edit it, said when the ticket is read. An answer to an edit omits it. */
+  mayEdit?: boolean;
 }
 
 export interface Transition {
