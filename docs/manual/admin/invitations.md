@@ -139,9 +139,11 @@ changes.
 A provider that vouches for the invited address (see [Single sign-on](sso.md)) opens the invitation,
 also when its **Create accounts at a first sign-in** is off: an address with a live invitation gets
 an account, and the link then gives the role. Any other address with no account is still refused.
-A provider still serves only its own domains. Where a domain enforces single sign-on, choosing a
-password is refused and the page moves to signing in. A provider's own checks replace Taskmoor's
-second factor there.
+A provider still serves only its own domains. Where a provider serves the address, the page opens
+at signing in, with that provider offered first; choosing a password stays one click away unless the
+domain enforces single sign-on, where it is refused and the page moves to signing in. A provider's
+own checks replace Taskmoor's second factor there. For invitations to Gmail addresses, see
+[Signing in with Google](sso.md#signing-in-with-google).
 
 ## Through the API
 

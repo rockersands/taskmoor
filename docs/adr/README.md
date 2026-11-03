@@ -117,5 +117,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [110](0110-outbound-guard-archive-limits-storage-quotas.md) | One outbound guard for requests to typed addresses (resolved, private ranges refused, pinned, redirects re-checked, operator allow list), archive ceilings checked before unpacking, storage quotas off by default | Accepted |
 | [111](0111-personal-data-and-database-tls.md) | A person's data as a background ZIP download and erasure to a stable placeholder, the audit log kept intact and masked on read; TLS with verify-full to the bundled PostgreSQL, the all-in-one on its Unix socket | Accepted |
 | [118](0118-track-invitations.md) | Invitations into a track by email or copied link, off until a site administrator gives the permission; a separate, removable permission for appointing a track's administrators, on by default; a track keeps its last administrator; web pages for track managers | Accepted |
+| [119](0119-google-sign-in.md) | Google sign-in is a preset of OpenID Connect on each operator's own client: Gmail only, no accounts made, nothing enforced, with warnings for public domains; Google believed only for Gmail and its hosted domains; no Taskmoor second factor | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.
