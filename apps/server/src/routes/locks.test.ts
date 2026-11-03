@@ -291,6 +291,24 @@ describe('per-status locks and per-field edit permissions (M1-029)', () => {
     expect((await patch('alice', url, { labels: ['refused'] })).statusCode).toBe(403);
   });
 
+  it('[WF-007] [IAM-010] the answer to a transition says what may change in the new status', async () => {
+    const ticket = await create('alice', locked);
+    const free = await editable('dave', ticket);
+    const url = `/api/v1/tickets/${ticket.id}`;
+    // Into Approved: Dave, an approver, may no longer assign it, and the answer says so.
+    const moved = await post('dave', `${url}/transitions`, { transitionId: 1 });
+    expect(moved.statusCode, moved.body).toBe(200);
+    const answered = moved.json().ticket;
+    expect(answered.status.id).toBe(S('Approved'));
+    expect(answered.mayEdit).toBe(true);
+    expect(answered.editableFields).toEqual(free.filter((key) => key !== 'assignee'));
+    expect(answered.editableFields).toEqual(await editable('dave', ticket));
+    // An edit there answers the same.
+    const edited = await patch('dave', url, { labels: ['checked'] });
+    expect(edited.statusCode, edited.body).toBe(200);
+    expect(edited.json().ticket.editableFields).toEqual(answered.editableFields);
+  });
+
   it('[WF-007] a refusal changes nothing, and a file is removed only by the attach list', async () => {
     const ticket = await approved();
     expect(

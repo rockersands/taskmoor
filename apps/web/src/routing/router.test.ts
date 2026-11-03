@@ -291,6 +291,13 @@ describe.each([
   });
 
   describe('a page that holds unsaved text (T-190)', () => {
+    /** Every guard is released after its test, even one that failed, so none outlives it. */
+    let releases: (() => void)[] = [];
+    afterEach(() => {
+      for (const release of releases) release();
+      releases = [];
+    });
+
     /** The full ticket page, guarded: anything but its own ticket would lose a draft. */
     function guarded(holding = true) {
       window.history.pushState(null, '', addressOf(TICKET));
@@ -299,6 +306,7 @@ describe.each([
         holds: (route) => holding && !route.startsWith(TICKET),
         ask,
       });
+      releases.push(release);
       return { ask, release, proceed: () => ask.mock.calls.at(-1)?.[0]() };
     }
 
@@ -310,6 +318,39 @@ describe.each([
       proceed();
       await vi.waitFor(() => expect(router.current()).toBe('#/boards/7'));
       release();
+    });
+
+    it('[NFR-005] navigate() out of the page asks first, as a link does, and goes when told', async () => {
+      const { ask, release, proceed } = guarded();
+      const entries = window.history.length;
+      router.navigate('#/boards/7');
+      // Nothing has moved while the person is asked: no new entry, the same address.
+      expect(ask).toHaveBeenCalledTimes(1);
+      expect(window.history.length).toBe(entries);
+      expect(address()).toBe(addressOf(TICKET));
+      expect(router.current()).toBe(TICKET);
+      proceed();
+      await vi.waitFor(() => expect(router.current()).toBe('#/boards/7'));
+      expect(address()).toBe(addressOf('#/boards/7'));
+      expect(ask).toHaveBeenCalledTimes(1);
+      // Once gone, the guard is spent: navigating on does not ask again.
+      router.navigate('#/boards/8');
+      await vi.waitFor(() => expect(router.current()).toBe('#/boards/8'));
+      expect(ask).toHaveBeenCalledTimes(1);
+      release();
+    });
+
+    it('[NFR-005] navigate() to the page itself, or with nothing held, goes at once', async () => {
+      const { ask, release } = guarded();
+      router.navigate(`${TICKET}?comment=3`);
+      await vi.waitFor(() => expect(router.current()).toBe(`${TICKET}?comment=3`));
+      release();
+      const free = guarded(false);
+      router.navigate('#/boards/7');
+      await vi.waitFor(() => expect(router.current()).toBe('#/boards/7'));
+      expect(ask).not.toHaveBeenCalled();
+      expect(free.ask).not.toHaveBeenCalled();
+      free.release();
     });
 
     it('[NFR-005] a comment of the page, a ticket over it, or nothing held, do not ask', () => {

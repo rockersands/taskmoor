@@ -16,14 +16,23 @@ import { type Session, SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
+import type { TicketToolsClient } from '../tools/client';
+import { fakeToolsClient } from '../tools/fixtures';
 import type { TicketDetails } from './client';
-import { fakeTicketClient, SHOP_41, SHOP_41_SOME_FIELDS } from './fixtures';
+import {
+  type FakeTicketClient,
+  fakeTicketClient,
+  SHOP_41,
+  SHOP_41_SOME_FIELDS,
+  type TicketAccess,
+} from './fixtures';
 import { TicketPage, ticketEditorTools } from './TicketPage';
 
 const member = MEMBER as Extract<Session, { status: 'signed-in' }>;
+const ADA_SESSION_ID = 1;
 const ADA_SESSION: Session = {
   status: 'signed-in',
-  user: { ...member.user, id: 1, name: 'Ada Lovelace' },
+  user: { ...member.user, id: ADA_SESSION_ID, name: 'Ada Lovelace' },
 };
 
 const inPage: Connect = (_name, onStatus) => {
@@ -38,6 +47,8 @@ function renderPage(
   locale: Locale = 'en',
   /** The app around the page, such as its navigation. */
   around: React.ReactNode = null,
+  /** Links, subtickets and checklists; the page's own by default. */
+  tools?: TicketToolsClient,
 ) {
   const client = fakeTicketClient(start);
   const comments = fakeCommentClient();
@@ -54,6 +65,7 @@ function renderPage(
             clone={fakeCloneClient().client}
             connect={inPage}
             mentions={() => async () => []}
+            {...(tools ? { tools } : {})}
           />
         </main>
       </SessionProvider>
@@ -462,27 +474,60 @@ describe('controls follow what the reader may change (T-191)', () => {
           { labels: ['payments', 'checkout', 'urgent'] },
         ]),
       );
-      // An answer to an edit does not say what may change: the page keeps what reading said.
+      // The answer to the edit says the same as reading did, and the page follows it.
       expect(await within(facts).findByText('payments, checkout, urgent')).toBeVisible();
+      expect(within(facts).getByRole('button', { name: 'Edit labels' })).toBeVisible();
       expect(screen.queryByRole('button', { name: 'Edit summary' })).toBeNull();
     },
   );
 
-  it('[WF-007] a transition into a locked status reads again what may change', async () => {
+  /** Reading the ticket, in the calls the page made. */
+  const reads = (client: FakeTicketClient) => client.calls.filter((c) => c.action === 'get');
+
+  it('[IAM-010] an edit that changes who may edit takes what its answer says, at once', async () => {
+    const user = userEvent.setup();
+    // A ticket-level grant: its assignee may edit it; any member may take it or drop it.
+    const { client } = renderPage({
+      access: (ticket): TicketAccess =>
+        ticket.assignee?.id === ADA_SESSION_ID
+          ? { mayEdit: true, editableFields: ['summary', 'assignee', 'labels', 'dueDate'] }
+          : { mayEdit: false, editableFields: ['assignee'] },
+    });
+    await heading();
+    expect(screen.queryByRole('button', { name: 'Edit summary' })).toBeNull();
+    expect(within(details()).queryByRole('button', { name: 'Edit labels' })).toBeNull();
+    // Ada takes it: the answer to the edit says she may change it now.
+    await user.click(within(details()).getByRole('button', { name: 'Assign to me' }));
+    expect(await screen.findByRole('button', { name: 'Edit summary' })).toBeVisible();
+    expect(within(details()).getByRole('button', { name: 'Edit labels' })).toBeVisible();
+    expect(within(details()).getByLabelText('Due date')).toBeVisible();
+    // She drops it: the controls go with the answer, with nothing kept from before.
+    await user.click(within(details()).getByRole('button', { name: 'Unassign' }));
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Edit summary' })).toBeNull(),
+    );
+    expect(within(details()).queryByRole('button', { name: 'Edit labels' })).toBeNull();
+    expect(within(details()).queryByLabelText('Due date')).toBeNull();
+    expect(reads(client)).toHaveLength(1);
+  });
+
+  it('[WF-007] a transition into a locked status takes what may change from its answer', async () => {
     const user = userEvent.setup();
     const { client } = renderPage({
-      ticket: { ...SHOP_41, editableFields: ['summary', 'labels'] },
+      access: (ticket): TicketAccess => ({
+        mayEdit: true,
+        editableFields: ticket.status.name === 'In review' ? [] : ['summary', 'labels'],
+      }),
     });
     expect(await screen.findByRole('button', { name: 'Edit summary' })).toBeVisible();
-    // In review, the ticket is locked: reading it again says so.
-    const get = client.get;
-    client.get = async (key) => ({ ...(await get(key)), editableFields: [] });
+    // In review, the ticket is locked: the transition's answer says so, and nothing is read again.
     await user.click(await screen.findByRole('button', { name: /^Status: / }));
     await user.click(screen.getByRole('menuitem', { name: 'In review' }));
     await vi.waitFor(() =>
       expect(screen.queryByRole('button', { name: 'Edit summary' })).toBeNull(),
     );
     expect(within(details()).queryByRole('button', { name: 'Edit labels' })).toBeNull();
+    expect(reads(client)).toHaveLength(1);
   });
 });
 
@@ -570,6 +615,21 @@ describe('unsaved text on the full page (T-190)', () => {
     window.history.back();
     await user.click(within(await asked()).getByRole('button', { name: 'Discard it' }));
     await waitFor(() => expect(addressRoute()).toBe('#/tracks/SHOP/board'));
+  });
+
+  it('[NFR-005] [CORE-032] Add and open leaves for the new subticket at once: its summary is saved', async () => {
+    const user = userEvent.setup();
+    const tools = fakeToolsClient();
+    tools.createChild = async () => ({ id: 400, key: 'SHOP-400' });
+    renderPage({}, 'en', NAV, tools);
+    await heading();
+    const subs = await screen.findByRole('region', { name: 'Subtickets' });
+    await user.type(within(subs).getByRole('textbox', { name: 'New subticket' }), 'Write tests');
+    await user.click(within(subs).getByRole('button', { name: 'Add and open' }));
+    await waitFor(() => expect(currentRoute()).toBe('#/tickets/SHOP-400'));
+    expect(addressRoute()).toBe('#/tickets/SHOP-400');
+    expect(overlayRoute()).toBeNull();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
   it('[NFR-005] closing or reloading the tab asks only while there is a draft', async () => {

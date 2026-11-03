@@ -29,9 +29,10 @@ import { runtimeConfig } from '../runtime/config';
  * around it, with the `data-full-page` attribute opts out and leaves the page instead.
  *
  * Leaving a page that holds unsaved text (NFR-005; the full ticket page, `TicketPage.tsx`): the
- * page sets a `LeaveGuard`, and a link inside the app that would leave it asks first, then goes
- * on. Back and Forward cannot be refused: the page's entry comes back at once as a new entry
- * (with the entry the person went to just behind it), the page beneath never changes, and
+ * page sets a `LeaveGuard`, and a link inside the app or a `navigate()` (a palette command, a
+ * menu, a copy opened after Clone) that would leave it asks first, then goes on, the same in
+ * both modes. Back and Forward cannot be refused: the page's entry comes back at once as a new
+ * entry (with the entry the person went to just behind it), the page beneath never changes, and
  * discarding steps back to it. Opening a ticket over the page does not leave it. A link out of
  * the app, a reload or closing the tab are the browser's own `beforeunload` question.
  */
@@ -62,7 +63,10 @@ export interface Router {
   href(route: string): string;
   /** The route as an absolute address, for copying. */
   url(route: string): string;
-  /** Goes to the route as a new history entry. */
+  /**
+   * Goes to the route as a new history entry. Leaving a page whose guard holds asks first, as a
+   * link does, and goes only when told.
+   */
   navigate(route: string): void;
   /** Rewrites the address without a new entry or a change event, as history.replaceState does. */
   replace(route: string): void;
@@ -70,7 +74,10 @@ export interface Router {
   redirect(route: string): void;
   /** Calls the listener after every route change; returns the unsubscribe. */
   subscribe(listener: () => void): () => void;
-  /** Asks before a link or Back leaves the page while the guard holds; returns the release. */
+  /**
+   * Asks before a link, `navigate()` or Back leaves the page while the guard holds; returns the
+   * release.
+   */
   guardLeave(guard: LeaveGuard): () => void;
   /** Clean URLs: rewrites a hash route in the address and takes over links. Returns the stop. */
   start(): () => void;
@@ -214,6 +221,12 @@ export function createRouter(
         ask(held, go);
         return true;
       },
+      /** `go` to `route`, asking first when that would leave the page while the guard holds. */
+      guarded: (route: string, go: () => void) => {
+        const held = guard;
+        if (held?.holds(route)) ask(held, go);
+        else go();
+      },
       guardLeave: (next: LeaveGuard) => {
         guard = next;
         remember();
@@ -255,7 +268,7 @@ export function createRouter(
         event.preventDefault();
         holdFocus(pressed.anchor);
         part.openOverlay(url.hash);
-      } else if (leave.asked(url.hash, () => navigate(url.hash))) {
+      } else if (leave.asked(url.hash, () => go(url.hash))) {
         event.preventDefault();
       } else if (overlayState() && url.hash === address()) {
         // The way out to the full page: the fragment does not change, so the browser would stay.
@@ -265,7 +278,8 @@ export function createRouter(
     };
     const current = () => overlayState()?.behind ?? address();
     const leave = leavePart(current);
-    const navigate = (route: string) => {
+    /** Goes to the route, whatever the page holds. */
+    const go = (route: string) => {
       if (overlayState() && route === address()) {
         win.history.pushState(null, '', write(route));
         notify();
@@ -273,6 +287,9 @@ export function createRouter(
         win.location.hash = route;
       }
     };
+    // Asked here, not only when the fragment's change comes back as popstate: the page stays
+    // until the person answers, as in the other mode.
+    const navigate = (route: string) => leave.guarded(route, () => go(route));
     return {
       mode: 'hash',
       current,
@@ -316,8 +333,11 @@ export function createRouter(
   const leave = leavePart(current);
   const navigate = (route: string) => {
     if (href(route) === here() && !overlayState()) return;
-    win.history.pushState(null, '', href(route));
-    notify();
+    // Nothing comes back as popstate in this mode: a page that holds unsaved text asks here.
+    leave.guarded(route, () => {
+      win.history.pushState(null, '', href(route));
+      notify();
+    });
   };
   const replace = (route: string) => {
     if (overlayState()) holdBehind(route);
@@ -351,7 +371,7 @@ export function createRouter(
     if (opensOverlay(route, anchor, current())) {
       holdFocus(anchor);
       part.openOverlay(route);
-    } else if (!leave.asked(route, () => navigate(route))) {
+    } else {
       navigate(route);
     }
   };

@@ -5,8 +5,9 @@ import { expect, type Page, test } from '@playwright/test';
 /**
  * The full ticket page guards what people do (T-190, T-191), on tracks of their own: unsaved text
  * asks before a link inside the app or Back takes it away, a reload gets the browser's own
- * question only while there is some, and a person sees edit controls only for the fields they
- * may change (here a field rule keeps three of them to a group they are not in). Desktop and
+ * question only while there is some, a subticket's saved summary is no such text, and a person
+ * sees edit controls only for the fields they may change, after an edit too (here a field rule
+ * keeps three of them to a group they are not in). Desktop and
  * phone, no serious axe issue and no sideways scroll. It uses the attachments database (preview
  * 4174), whose administrator (Ada Attach) the API server made.
  */
@@ -116,6 +117,17 @@ test('[NFR-005] the full ticket page asks before unsaved text goes: a link, Back
   await expect(page).toHaveURL(new RegExp(`#/boards/${board.id}`));
   await expect(onBoard).toBeVisible();
   expect(questions).toEqual(['beforeunload']);
+
+  // Add and open saves the subticket's summary, so the page goes to it without asking.
+  await page.goto(address);
+  await expect(title).toHaveText(`${ticket.key} Half done`);
+  const subtickets = page.getByRole('region', { name: 'Subtickets' });
+  await subtickets.getByRole('textbox', { name: 'New subticket' }).fill('Write the tests');
+  await subtickets.getByRole('button', { name: 'Add and open' }).click();
+  await expect(title).toHaveText(new RegExp(`^${key}-\\d+ Write the tests$`));
+  await expect(page).toHaveURL(new RegExp(`#/tickets/${key}-\\d+$`));
+  await expect(asked).toHaveCount(0);
+  expect(questions).toEqual(['beforeunload']);
 });
 
 test('[IAM-010] [WF-007] the ticket page offers controls only for the fields the person may change', async ({
@@ -152,9 +164,15 @@ test('[IAM-010] [WF-007] the ticket page offers controls only for the fields the
   await page.keyboard.press('a');
   await expect(details.getByRole('button', { name: 'Unassign' })).toHaveCount(0);
 
-  // What is offered works.
+  // What is offered works, and the edit's answer says what Ada may change, as reading did: the
+  // same controls stay, and none comes back for the fields the rule keeps.
   await details.getByLabel('Due date').fill('2026-12-01');
   await expect(page.getByText('Saved.')).toBeVisible();
+  await expect(details.getByLabel('Due date')).toHaveValue('2026-12-01');
+  await expect(editLabels).toBeVisible();
+  await expect(details.getByRole('combobox', { name: 'Priority' })).toHaveCount(0);
+  await expect(details.getByLabel('Start date')).toHaveCount(0);
+  await expect(details.getByRole('button', { name: 'Assign to me' })).toHaveCount(0);
   if (isMobile) {
     expect((await editLabels.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
   }

@@ -90,11 +90,12 @@ export const ticket = z
       description: 'Set while the ticket is in the trash.',
     }),
     mayEdit: z.boolean().optional().meta({
-      description: 'Reading one ticket only: whether the caller holds Edit tickets for it.',
+      description:
+        'Reading one ticket, and the answer to an edit or a transition: whether the caller holds Edit tickets for it, as the change left it.',
     }),
     editableFields: z.array(z.string()).optional().meta({
       description:
-        'Reading one ticket only: the fields the caller may change now, by field key (`summary`, `assignee`, `cf[12]`), in the order of its edit form. A field leaves it for want of the permission it needs, a status lock, a field rule, its place on the edit layout, or being computed. Empty in the trash and in an archived track.',
+        'Reading one ticket, and the answer to an edit or a transition: the fields the caller may change now, as the change left the ticket, by field key (`summary`, `assignee`, `cf[12]`), in the order of its edit form. A field leaves it for want of the permission it needs, a status lock, a field rule, its place on the edit layout, or being computed. Empty in the trash and in an archived track.',
     }),
   })
   .loose()

@@ -116,11 +116,13 @@ beneath stays as it is, with its scroll and filters, and shows your edits at onc
 - On a phone the pop-up fills the screen.
 
 The ticket's full page keeps unsaved text safe the same way. A link elsewhere in the app, such as
-the navigation or **Back to** a board, and the browser's Back button ask **Discard what you have
-not saved?** first: **Keep editing** leaves everything as it was, **Discard it** goes on. Closing
-or reloading the tab gets the browser's own question, and only while there is unsaved text. A link
-to a comment on the same ticket, or a ticket opened in a pop-up over the page, does not ask: the
-page stays as it is beneath.
+the navigation or **Back to** a board, a command palette command or a menu entry that goes to
+another page, and the browser's Back button ask **Discard what you have not saved?** first:
+**Keep editing** leaves everything as it was, **Discard it** goes on. Closing or reloading the tab
+gets the browser's own question, and only while there is unsaved text. A link to a comment on the
+same ticket, or a ticket opened in a pop-up over the page, does not ask: the page stays as it is
+beneath. Nor does **Add and open** under **Subtickets**: the summary you typed is saved as the new
+subticket, which opens.
 
 The timeline's bars still open their days panel, and links inside a comment or description open in a
 new tab.
@@ -145,7 +147,8 @@ you may change: your role's permissions, the ticket's status, the track's field 
 form decide which. A field you may not change shows its value with no control, on the page and in
 the pop-up alike, and its keyboard shortcut and command palette entry are not offered either. For
 example, without **Assign tickets** there is no **Assign to me**, and a due date only some group
-may set is a date to read.
+may set is a date to read. What you may change can itself change with the ticket: when you take
+it, hand it on or move it to another status, the controls follow at once.
 
 | Field | What you can do there |
 |---|---|

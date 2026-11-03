@@ -46,8 +46,10 @@ which fields are required or hidden, so they are where a field's editors belong.
   `editableFields` (T-191): the fields the person may change now, from the same checks as an
   edit (the permission each field needs, the status's edit or assign lock, field rules, the
   edit layout, computed fields), so the ticket page and pop-up show controls only there and
-  values elsewhere. An answer to a change leaves it out; the view keeps the one it read and
-  reads the ticket again after a transition, whose new status may lock other fields.
+  values elsewhere. The answers to an edit and a transition carry it too, with `mayEdit`, worked
+  out for the ticket as the change left it: a new assignee or requester (ticket-level grants) or
+  a new status (its locks) can change both, so the view takes them from each answer and never
+  keeps what an earlier read said, with no second read.
 
 ## Options considered
 

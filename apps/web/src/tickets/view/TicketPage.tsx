@@ -49,7 +49,6 @@ import { LinksPanel } from '../tools/LinksPanel';
 import { SubticketsPanel } from '../tools/SubticketsPanel';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
-  accessOf,
   mayChange,
   type NumberField,
   type Priority,
@@ -425,11 +424,10 @@ export function TicketView({
     [t],
   );
 
+  // The answer to an edit or a transition says what the reader may change now, as reading does
+  // (T-191): a new assignee or status can change it, so nothing is kept from the read before.
   const changed = (next: TicketDetails, said: string) => {
-    setState((s) => ({
-      status: 'loaded',
-      ticket: s.status === 'loaded' ? { ...accessOf(s.ticket), ...next } : next,
-    }));
+    setState({ status: 'loaded', ticket: next });
     setRevision((r) => r + 1);
     setMessage(said);
     setProblem(null);
@@ -469,16 +467,6 @@ export function TicketView({
       setAsking(null);
       changed(next, t('ticketView.moved', { status: next.status.name }));
       void refreshAround(next.id);
-      // The new status may lock other fields: what the reader may change is read again.
-      client.get(ticket).then(
-        (found) =>
-          setState((s) =>
-            s.status === 'loaded' && s.ticket.id === found.id
-              ? { status: 'loaded', ticket: { ...s.ticket, ...accessOf(found) } }
-              : s,
-          ),
-        () => {},
-      );
     } catch (error) {
       setProblem(refusal(error));
     }

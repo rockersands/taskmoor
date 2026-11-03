@@ -465,6 +465,61 @@ describe('tickets (M1-008)', () => {
       expect((await read('bob')).editableFields).toEqual([]);
     });
 
+    it('[IAM-010] [CORE-014] the answer to an edit says what the editor may change now, as reading does', async () => {
+      // A ticket-level grant (T-191): the requester may edit the ticket and hand it on.
+      const { access_policy_id: policy } = await database.db
+        .selectFrom('track')
+        .select('access_policy_id')
+        .where('id', '=', tracks.ABC as number)
+        .executeTakeFirstOrThrow();
+      const grants = await database.db
+        .insertInto('access_grant')
+        .values(
+          (['edit_tickets', 'modify_requester'] as const).map((permission) => ({
+            workspace_id: 1,
+            policy_id: policy,
+            permission,
+            grantee: 'requester' as const,
+          })),
+        )
+        .returning('id')
+        .execute();
+      try {
+        const ticket = await create('alice', { track: 'ABC', summary: 'Asked by Bob' });
+        await database.db
+          .updateTable('ticket')
+          .set({ requester_id: users.bob?.id as number })
+          .where('id', '=', ticket.id)
+          .execute();
+        const url = `/api/v1/tickets/${ticket.id}`;
+        const read = await view('bob', ticket.id);
+        expect(read.mayEdit).toBe(true);
+        expect(read.editableFields).toEqual(expect.arrayContaining(['summary', 'labels']));
+        // Still the requester after his edit: the answer says what reading says.
+        const renamed = await patch('bob', url, { summary: 'Asked by Bob, renamed' });
+        expect(renamed.statusCode, renamed.body).toBe(200);
+        expect(ticketOf(renamed)).toMatchObject({
+          mayEdit: true,
+          editableFields: read.editableFields,
+        });
+        // Handed to Alice: the answer says at once that he may change nothing now.
+        const handed = await patch('bob', url, { requesterId: users.alice?.id as number });
+        expect(handed.statusCode, handed.body).toBe(200);
+        expect(ticketOf(handed)).toMatchObject({ mayEdit: false, editableFields: [] });
+        expect(await view('bob', ticket.id)).toMatchObject({ mayEdit: false, editableFields: [] });
+        expect((await patch('bob', url, { summary: 'No longer his' })).statusCode).toBe(403);
+      } finally {
+        await database.db
+          .deleteFrom('access_grant')
+          .where(
+            'id',
+            'in',
+            grants.map((grant) => grant.id),
+          )
+          .execute();
+      }
+    });
+
     it("[CORE-008] saves only what changed, and refuses a write over someone else's", async () => {
       const ticket = await create('alice', {
         track: 'ABC',

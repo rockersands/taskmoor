@@ -764,7 +764,16 @@ export function ticketRoutes(
     return null;
   }
 
-  async function answer(request: Caller, reply: Answer, outcome: Outcome, code = 200) {
+  /**
+   * Answers an outcome: the ticket as it now is, in the format asked for. `access` adds what the
+   * caller may change on it now, as reading it does (T-191): an edit and a transition answer it.
+   */
+  async function answer(
+    request: Caller,
+    reply: Answer,
+    outcome: Outcome,
+    { code = 200, access = false }: { code?: number; access?: boolean } = {},
+  ) {
     const refused = refusal(reply, outcome);
     if (refused) return refused;
     const { ticket: row, mentions } = outcome as { ticket: TicketRow; mentions?: Mentions };
@@ -779,7 +788,10 @@ export function ticketRoutes(
       request.authz,
     );
     return reply.code(code).send({
-      ticket: inFormat(view, requestedFormat(request.query) ?? 'doc'),
+      ticket: {
+        ...inFormat(view, requestedFormat(request.query) ?? 'doc'),
+        ...(access ? await accessOf(request, row) : {}),
+      },
       ...warningsField(warnings),
     });
   }
@@ -870,6 +882,20 @@ export function ticketRoutes(
     });
   }
 
+  /**
+   * What the caller may change on a ticket now (T-191): whether they hold Edit tickets for it,
+   * and which fields (`editableFields`). Reading one ticket says it, and so do the answers to an
+   * edit and a transition, from the ticket as the change left it: a new assignee, requester or
+   * status can change both, and the ticket view never keeps what an earlier read said.
+   */
+  async function accessOf(request: Caller, row: TicketRow) {
+    const held = await request.authz.ticket(row);
+    return {
+      mayEdit: held.has('edit_tickets'),
+      editableFields: await editableFields(request, row, held),
+    };
+  }
+
   route('GET', '/api/v1/tickets/:id', async (request, reply) => {
     const p = params.safeParse(request.params);
     const format = requestedFormat(request.query);
@@ -880,13 +906,8 @@ export function ticketRoutes(
       return notFound(reply);
     }
     const ticket = await viewOf(request, found.row);
-    const held = await request.authz.ticket(found.row);
     return {
-      ticket: {
-        ...inFormat(ticket, format),
-        mayEdit: held.has('edit_tickets'),
-        editableFields: await editableFields(request, found.row, held),
-      },
+      ticket: { ...inFormat(ticket, format), ...(await accessOf(request, found.row)) },
       ...(found.asked !== null && found.asked !== ticket.key
         ? { redirect: { from: found.asked, to: ticket.key } }
         : {}),
@@ -1327,7 +1348,7 @@ export function ticketRoutes(
       }
       return { ticket: created, mentions: mentioned };
     });
-    return answer(request, reply, outcome, 201);
+    return answer(request, reply, outcome, { code: 201 });
   });
 
   route('PATCH', '/api/v1/tickets/:id', async (request, reply) => {
@@ -1722,7 +1743,7 @@ export function ticketRoutes(
       );
       return { ticket: updated, mentions };
     });
-    return answer(request, reply, outcome);
+    return answer(request, reply, outcome, { access: true });
   });
 
   // To another track (CORE-023): new numbers there for the ticket and its subtickets.
@@ -2393,7 +2414,7 @@ export function ticketRoutes(
     if ('conflict' in outcome && outcome.conflict === 'forbidden_in_status') {
       return reply.code(403).send({ error: 'forbidden', ...(outcome.detail ?? {}) });
     }
-    return answer(request, reply, outcome);
+    return answer(request, reply, outcome, { access: true });
   });
 
   // An external event moves a ticket along the first transition it triggers that is offered,
