@@ -109,10 +109,11 @@ test('[AGL-005] a board filtered by person, by keyboard and from a shared addres
   await expect(panel).toBeHidden();
   await expect(opener).toBeFocused();
 
-  // A click outside closes it too, and focus comes back.
+  // A click outside closes it too, and focus comes back: the corner of the screen is no control,
+  // and on a phone it is the dimmed page around the panel.
   await opener.click();
   await expect(panel).toBeVisible();
-  await page.getByRole('heading', { level: 1 }).click();
+  await page.mouse.click(4, 4);
   await expect(panel).toBeHidden();
   await expect(opener).toBeFocused();
 
@@ -121,10 +122,13 @@ test('[AGL-005] a board filtered by person, by keyboard and from a shared addres
   await expect.poll(() => sidewaysOverflow(page)).toEqual([]);
   await opener.click();
   await expect(panel).toBeVisible();
-  const docked = await panel.boundingBox();
-  expect(docked?.x).toBe(0);
-  expect(docked?.width).toBe(360);
-  expect(Math.round((docked?.y ?? 0) + (docked?.height ?? 0))).toBe(700);
+  // It rises into place, so its edges are read once it has landed.
+  await expect
+    .poll(async () => {
+      const docked = await panel.boundingBox();
+      return [docked?.x, docked?.width, Math.round((docked?.y ?? 0) + (docked?.height ?? 0))];
+    })
+    .toEqual([0, 360, 700]);
   await expect.poll(() => sidewaysOverflow(page)).toEqual([]);
   await panel.getByRole('button', { name: 'Done' }).click();
   await expect(panel).toBeHidden();

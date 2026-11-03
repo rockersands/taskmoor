@@ -519,6 +519,38 @@ body {
   box-shadow: var(--shadow-3);
 }
 
+/*
+ * A small phone: five round controls and the name of the product do not fit in 360 px, and the
+ * person's menu stuck out sideways. The name goes, the gaps tighten, and the search field takes
+ * what is left, shortening its label.
+ */
+@media (max-width: 480px) {
+  .shell-brand {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .shell-topbar {
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
+  }
+
+  .shell-topbar-end {
+    flex: 1 1 0;
+    justify-content: flex-end;
+    gap: var(--space-1);
+  }
+
+  .palette-trigger {
+    flex: 1 1 0;
+    padding-inline: var(--space-2);
+  }
+}
+
 /* Touch screens get larger targets regardless of width. */
 @media (pointer: coarse) {
   .icon-button,

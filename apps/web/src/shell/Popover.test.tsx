@@ -8,6 +8,7 @@ function renderPopover(on = false) {
   render(
     <I18nProvider locale="en">
       <p>Outside text</p>
+      <h1 tabIndex={-1}>A page's title</h1>
       <input aria-label="Another field" />
       <Popover label="People" title="People on this board" on={on}>
         <input type="checkbox" aria-label="Rin" />
@@ -51,6 +52,15 @@ describe('a popover (ADR-114)', () => {
     renderPopover();
     await user.click(opener());
     await user.click(screen.getByText('Outside text'));
+    expect(panel()).toBeNull();
+    expect(opener()).toHaveFocus();
+  });
+
+  it('[AGL-005] gives focus back after a click on something only code can focus', async () => {
+    const user = userEvent.setup();
+    renderPopover();
+    await user.click(opener());
+    await user.click(screen.getByRole('heading', { name: "A page's title" }));
     expect(panel()).toBeNull();
     expect(opener()).toHaveFocus();
   });

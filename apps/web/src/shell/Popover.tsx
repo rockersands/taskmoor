@@ -10,7 +10,8 @@ import {
 import { useT } from '../i18n/I18nProvider';
 
 /** A click here keeps its own focus when it closes a popover: the person meant that control. */
-const CONTROL = 'a[href], button, input, select, textarea, [contenteditable="true"], [tabindex]';
+const CONTROL =
+  'a[href], button, input, select, textarea, [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
 /** The space kept between the panel and the edge of the screen. */
 const GUTTER = 8;
 
@@ -85,7 +86,10 @@ export function Popover({ label, title, on = false, children }: PopoverProps) {
       }}
       onBlur={(event) => {
         const next = event.relatedTarget;
-        if (next instanceof Node && !root.current?.contains(next)) close(false);
+        // Only to a control: focus a press moved to anything else comes back on the click.
+        if (next instanceof Element && next.matches(CONTROL) && !root.current?.contains(next)) {
+          close(false);
+        }
       }}
     >
       <button
