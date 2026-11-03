@@ -9,6 +9,17 @@ one. The work is all in this repository. Read this section, then `docs/plan/tick
 request as a ticket, with its state), then `docs/plan/decisions.csv` (the user's decisions, newest
 at the bottom), then `CLAUDE.md`.
 
+### The message to start with
+
+Paste this into a new Claude Code session on the other device:
+
+```
+You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/taskmoor). Clone it if needed and check out claude/api-key-upload-prevention-9ucz4x. Read HANDOFF.md, starting with the section "continuing on another device", then docs/plan/tickets.md, docs/plan/decisions.csv and CLAUDE.md, and follow them exactly. Rules with no exceptions: no secrets in any file, commit, message or log; never use any Atlassian site, product or connection; never push to main except by fast-forward after a green full gate; ask me before anything outside the repository folder and before decisions that are mine. Keep every new request as a ticket in tickets.md. Tell me in plain words what finished, what failed and what you need from me. Start with the next step in the handoff.
+```
+
+The user chose to stop before the ticket tools gate, so `main` stays at `6015efc` and that gate is the
+first job. The handoff, tickets and decisions are on the coordinator branch, not yet on `main`.
+
 ### Where things are
 
 - **`main`** holds ticket templates, easier updates, invitations and manager pages, Google sign-in,
