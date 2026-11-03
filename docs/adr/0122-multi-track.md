@@ -169,8 +169,13 @@ in the spec with their stage, so nothing lists them for 1.0 before they exist.
 ## Consequences
 
 - Every view of a plan costs one bind of its query; a plan of hundreds of sources pays for it on
-  each view. Measured on the M1 bar (`plans.large.test.ts`): a plan of 20 tracks and 100,000
-  tickets answers each view in under a second.
+  each view. Measured on the M1 bar (`plans.large.test.ts` with `TASKMOOR_LARGE_PLANS=1`, a Mac,
+  2026-11-03): a plan of 20 tracks and 100,000 tickets, medians of five reads, answers its page in
+  3 ms, Summary 53 ms, Timeline 126 ms, Calendar 40 ms, a filtered Timeline 28 ms, the filter
+  choices 32 ms, the List's search 6 ms and its groups 66 ms. Every gate runs the same at 10,000
+  tickets against a one-second budget.
+- Past 200 rows a timeline holds only the rows in view in the page, so a screen reader or the
+  browser's find reaches the others by scrolling, not at once.
 - Saved searches change a plan as they change: someone who edits a shared saved search changes
   every plan built on it, as for boards built on saved searches.
 - A plan someone may see but whose sources they cannot see is an empty plan for them. The page

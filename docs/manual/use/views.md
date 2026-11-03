@@ -1,7 +1,7 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -98,8 +98,9 @@ created in the track with that summary; open it to fill in the rest.
 - Sprints of the track's boards show as bands, named on their first day and on Mondays.
 - Releases with a date show on their day, with a diamond before the name.
 
-**Previous month**, **Next month** and **This month** move between months. The calendar shows
-up to 1,000 tickets for the weeks on screen and says when there are more.
+**Previous month**, **Next month** and **This month** move between months. A day lists six
+tickets and a button for the rest. The calendar shows up to 1,000 tickets for the weeks on screen
+and says when there are more.
 
 To reschedule a ticket, drag it to another day:
 
@@ -111,7 +112,9 @@ To reschedule a ticket, drag it to another day:
 With the keyboard, focus an entry and press Alt with the left or right arrow to move it a day,
 or with the up or down arrow to move it a week. Clicking an entry, or Enter, opens the ticket over the
 calendar, where **Start date** and **Due date** are among its details. Rescheduling needs the **Set due dates**
-permission; without it the calendar says the ticket could not be moved.
+permission. When a change is refused, the calendar says why: you may not schedule tickets in the
+track, the track is archived, the ticket is gone, the dates are not valid, or the ticket changed
+meanwhile.
 
 On a phone, the calendar becomes a list of the month's days.
 
@@ -146,7 +149,9 @@ A bar moved keeps the days it had: a ticket with only a due day keeps only that.
 by its sprint gets days of its own once you save. As in the calendar, rescheduling needs the
 **Set due dates** permission and is recorded in the ticket's history.
 
-The timeline lists the first 5,000 tickets of the track; roll-ups still count them all.
+The timeline lists the first 5,000 tickets of the track; roll-ups still count them all. A
+refused change says why, as on the calendar. A [Multi-track](multi-track.md) plan shows the same
+timeline and calendar over several tracks.
 
 ## Outcomes
 
