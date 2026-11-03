@@ -82,6 +82,18 @@ describe('the backlog with sprint sections (M1-044)', () => {
     expect(await screen.findByRole('heading', { name: 'Checkout Sprint 3' })).toBeVisible();
   });
 
+  it('[AGL-010] says so in plain words when the track has its sprints turned off', async () => {
+    const user = userEvent.setup();
+    const client = fakeSprintClient();
+    client.start = async () => ({ ok: false, code: 'sprints_off' });
+    renderBacklog(client);
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    await user.click(section('Checkout Sprint 2').getByRole('button', { name: 'Start sprint' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This track has its sprints turned off, so none can start.',
+    );
+  });
+
   it('[AGL-010] fits a phone: sections stack, nothing scrolls sideways', async () => {
     setViewportWidth(375);
     renderBacklog();

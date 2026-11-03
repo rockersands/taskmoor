@@ -2470,6 +2470,14 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.rename': 'Cambiar el nombre',
   'admin.tracks.workflowMap': 'Mapa de flujos',
   'admin.tracks.mapSaved': 'El track {key} usa ahora {map}.',
+  'admin.tracks.sprints': 'Sprints en {key}',
+  'admin.tracks.sprintsHint':
+    'Cambiar el tablero entre Scrum y Kanban también activa o desactiva los sprints. Desactivarlos no borra ningún sprint, y espera a que no haya ninguno en curso.',
+  'admin.tracks.sprintsOnSaid': 'El track {key} tiene sprints ahora.',
+  'admin.tracks.sprintsOffSaid': 'El track {key} tiene ahora los sprints desactivados.',
+  'admin.tracks.sprintRunning':
+    'El sprint «{sprint}» sigue en curso en {key}. Complétalo primero y luego desactiva los sprints.',
+  'admin.tracks.sprintRunningLink': 'Complétalo en el tablero de {key}',
   'admin.tracks.members': 'Quién hace qué en {key}',
   'admin.tracks.noMembers': 'Aún nadie tiene un rol aquí.',
   'admin.tracks.inRole': '{name}: {role}',
@@ -3959,6 +3967,8 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.start.submit': 'Empezar el sprint',
   'sprints.start.failed':
     'No se pudo empezar el sprint. Puede que otro sprint esté activo; complétalo primero.',
+  'sprints.start.sprintsOff':
+    'Este track tiene los sprints desactivados, así que no puede empezar ninguno. Un administrador los activa en Administración, Tracks.',
   'sprints.complete.target': 'Mover los tickets sin terminar a',
   'sprints.complete.newSprint': 'Un sprint nuevo',
   'sprints.complete.submit': 'Completar el sprint',

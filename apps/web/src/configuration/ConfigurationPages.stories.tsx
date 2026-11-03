@@ -24,12 +24,28 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Tracks, one open with its workflow map and who does what in it. */
+/** Tracks, one open with its workflow map, its sprints and who does what in it. */
 export const Tracks: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage track SHOP' }));
     await expect(await canvas.findByText('Grace Hopper: Members')).toBeVisible();
+    await expect(canvas.getByRole('checkbox', { name: 'Sprints in SHOP' })).toBeChecked();
+  },
+};
+
+/** Turning sprints off while one runs is refused, naming it, with a way to the board (AGL-010). */
+export const SprintRunning: Story = {
+  args: { client: fakeConfigurationClient({ runningSprint: 'Shop Sprint 4' }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage track SHOP' }));
+    await userEvent.click(await canvas.findByRole('checkbox', { name: 'Sprints in SHOP' }));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Shop Sprint 4');
+    await expect(
+      canvas.getByRole('link', { name: 'Complete it on the board of SHOP' }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('checkbox', { name: 'Sprints in SHOP' })).toBeChecked();
   },
 };
 

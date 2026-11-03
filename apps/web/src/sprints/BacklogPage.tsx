@@ -143,6 +143,13 @@ export function BacklogPage({
       },
     );
   };
+  /** A track whose sprints are turned off starts none (AGL-010); other refusals say the usual. */
+  const startRefusal = (error: unknown) =>
+    t(
+      error instanceof Error && error.message === 'sprints_off'
+        ? 'sprints.start.sprintsOff'
+        : 'sprints.start.failed',
+    );
   /** Some tickets of a batch refused (no permission, a rule): say how many. */
   const flag = (outcome: Planned) => {
     if (outcome.refused > 0) setProblem(t('sprints.planned.refused', { count: outcome.refused }));
@@ -635,7 +642,7 @@ export function BacklogPage({
                       const outcome = await client.start(sprint.id, end);
                       if (!outcome.ok) throw new Error(outcome.code);
                       return t('sprints.start.done', { name: sprint.name });
-                    }, t('sprints.start.failed'))
+                    }, startRefusal)
                   }
                   onComplete={(target) =>
                     run(

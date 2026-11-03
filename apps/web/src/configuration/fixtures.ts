@@ -22,7 +22,11 @@ export interface FakeConfigurationClient extends ConfigurationClient {
 
 /** An in-memory backend for stories and tests: it answers as the API would. */
 export function fakeConfigurationClient(
-  start: { refuseMapping?: boolean } = {},
+  start: {
+    refuseMapping?: boolean;
+    /** A sprint running in SHOP, so its sprints cannot be turned off (AGL-010). */
+    runningSprint?: string;
+  } = {},
 ): FakeConfigurationClient {
   let tracks: Track[] = [
     {
@@ -33,6 +37,7 @@ export function fakeConfigurationClient(
       mode: 'shared',
       workflowMapId: null,
       archived: false,
+      features: { sprints: true },
     },
     {
       id: 4,
@@ -42,6 +47,7 @@ export function fakeConfigurationClient(
       mode: 'local',
       workflowMapId: 21,
       archived: false,
+      features: { sprints: false },
     },
     {
       id: 9,
@@ -124,7 +130,15 @@ export function fakeConfigurationClient(
         });
       }
       const track = tracks.find((t) => t.id === id) as Track;
-      Object.assign(track, change);
+      if (change.features?.sprints === false && start.runningSprint && track.key === 'SHOP') {
+        throw new ApiError(409, {
+          error: 'sprint_running',
+          sprintId: 41,
+          sprintName: start.runningSprint,
+        });
+      }
+      const { features, ...rest } = change;
+      Object.assign(track, rest, features ? { features: { ...track.features, ...features } } : {});
       return structuredClone(track);
     },
     archiveTrack: async (id, archive) => {

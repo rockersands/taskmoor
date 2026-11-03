@@ -831,6 +831,22 @@ export function registerTrackRoutes(
     }
     try {
       const updated = await db.transaction().execute(async (trx) => {
+        // Turning sprints off reads the track's board for a running sprint, so its lock comes
+        // first: a board that changes kind takes its own lock, then the track's, and a sprint
+        // that starts takes the board's. Neither slips by, and the order is the same (AGL-010).
+        const boardIds =
+          body.features?.sprints === false
+            ? (
+                await trx
+                  .selectFrom('board')
+                  .select('id')
+                  .where('location_track_id', '=', trackId)
+                  .where('workspace_id', '=', ws)
+                  .orderBy('id')
+                  .forUpdate()
+                  .execute()
+              ).map((b) => b.id)
+            : [];
         const locked = await trx
           .selectFrom('track')
           .selectAll()
@@ -885,6 +901,19 @@ export function registerTrackRoutes(
           ),
         };
         const changes = diff(before, next);
+        // Sprints cannot go off while one runs: nothing would show it to complete (AGL-010). It
+        // has to end first, as before a board goes Kanban; with parallel sprints (AGL-011), every
+        // one of them. Refused before anything is written, so the refusal leaves no event.
+        if (changes['features.sprints'] && body.features?.sprints === false && boardIds.length) {
+          const running = await trx
+            .selectFrom('sprint')
+            .select(['id', 'name'])
+            .where('board_id', 'in', boardIds)
+            .where('state', '=', 'active')
+            .orderBy('id')
+            .executeTakeFirst();
+          if (running) return { sprintRunning: running };
+        }
         let mapped: { fromTypeId: number; toTypeId: number; ticketCount: number }[] = [];
         if (changes.typeSetId && body.typeSetId !== undefined && locked.type_set_id !== null) {
           // Types the new set lacks leave the track: their tickets there take the types the
@@ -1056,6 +1085,13 @@ export function registerTrackRoutes(
       });
       if ('missing' in updated) return notFound(reply);
       if ('archived' in updated) return reply.code(409).send({ error: 'track_archived' });
+      if ('sprintRunning' in updated) {
+        return reply.code(409).send({
+          error: 'sprint_running',
+          sprintId: updated.sprintRunning.id,
+          sprintName: updated.sprintRunning.name,
+        });
+      }
       if ('refused' in updated) {
         return reply.code(updated.refused.status).send(updated.refused.body);
       }

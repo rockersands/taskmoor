@@ -79,6 +79,14 @@ them.
     open one.
   - Tickets that were in a Scrum backlog stay on the board as Kanban, as a Kanban board reads every
     ticket of its query and no sprint.
+  - A running sprint has to be completed first, whichever way sprints go off (AGL-010): a board
+    does not change to Kanban, and a track's `sprints` toggle is not turned off by hand, while one
+    of its sprints is active (`409 sprint_running`, naming the first by id; every one of them with
+    parallel sprints). The refusal writes nothing and records no event. From the other side, a
+    planned sprint does not start on a Kanban board (`not_scrum`) or on a track whose sprints are
+    off (`sprints_off`). Both sides take the board's lock, the toggle before the track's, the same
+    order as a change of kind, so neither slips past the other. Administration > Tracks shows the
+    toggle and the refusal in plain words, with a link to the board to complete the sprint (T-192).
 - **Summary** works as a dashboard the track's owner and administrators can customize, using the
   existing widgets, and that everyone else who can see the track reads as it is.
   - A track has at most one customized Summary, in its own table (`track_summary_layout`, migration

@@ -153,7 +153,8 @@ export async function createSprint(
 
 /**
  * Starts a future sprint: its tickets are committed at `now`. Refused when it is not future
- * any more, or when another sprint is active on a board without parallel sprints.
+ * any more, when the board's track has its sprints turned off, or when another sprint is active
+ * on a board without parallel sprints.
  */
 export async function startSprint(
   trx: Db,
@@ -163,18 +164,23 @@ export async function startSprint(
   input: { name?: string; goal?: string; startAt: Date; endAt: Date; now?: Date },
 ): Promise<
   | { error: 'not_scrum' }
+  | { error: 'sprints_off' }
   | { error: 'sprint_not_future' }
   | { error: 'sprint_active'; sprintId: number }
   | { started: true }
 > {
   await lockBoard(trx, board.id);
   // A Kanban board keeps its planned sprints, but one cannot start there: nothing could end it.
+  // Nor on a track whose sprints are turned off, which refuses that while one runs (AGL-010);
+  // turning them off takes this board's lock first, so neither slips by.
   const kind = await trx
-    .selectFrom('board')
-    .select('kind')
-    .where('id', '=', board.id)
+    .selectFrom('board as b')
+    .leftJoin('track as t', 't.id', 'b.location_track_id')
+    .select(['b.kind', 't.feature_sprints'])
+    .where('b.id', '=', board.id)
     .executeTakeFirst();
   if (kind?.kind !== 'scrum') return { error: 'not_scrum' };
+  if (kind.feature_sprints === false) return { error: 'sprints_off' };
   const current = await trx
     .selectFrom('sprint')
     .select('state')

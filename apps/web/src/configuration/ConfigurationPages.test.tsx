@@ -134,6 +134,61 @@ describe('track and workflow map administration (M1-053)', () => {
     );
   });
 
+  it("[CORE-002] turns a track's sprints off and on again", async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks');
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    const sprints = await screen.findByRole('checkbox', { name: 'Sprints in SHOP' });
+    expect(sprints).toBeChecked();
+    expect(sprints).toHaveAccessibleDescription(
+      expect.stringContaining('Turning them off deletes no sprint'),
+    );
+    await user.click(sprints);
+    expect(await screen.findByText('Track SHOP has its sprints turned off now.')).toBeVisible();
+    expect(sprints).not.toBeChecked();
+    await user.click(sprints);
+    expect(await screen.findByText('Track SHOP has sprints now.')).toBeVisible();
+    expect(sprints).toBeChecked();
+    expect(client.calls.map((c) => c.args)).toEqual([
+      [3, { features: { sprints: false } }],
+      [3, { features: { sprints: true } }],
+    ]);
+  });
+
+  it('[AGL-010] names the running sprint that keeps sprints on, with a way to the board', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks', { runningSprint: 'Shop Sprint 4' });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    const sprints = await screen.findByRole('checkbox', { name: 'Sprints in SHOP' });
+    await user.click(sprints);
+    const said =
+      'The sprint “Shop Sprint 4” is still running in SHOP. Complete it first, then turn sprints off.';
+    expect(await screen.findByRole('alert')).toHaveTextContent(said);
+    // Nothing changed: the box stays ticked and points at the reason.
+    expect(sprints).toBeChecked();
+    expect(sprints).toHaveAttribute('aria-invalid', 'true');
+    expect(sprints).toHaveAccessibleDescription(expect.stringContaining(said));
+    expect(screen.getByRole('link', { name: 'Complete it on the board of SHOP' })).toHaveAttribute(
+      'href',
+      '#/tracks/SHOP/board',
+    );
+    expect(screen.queryByText('Track SHOP has its sprints turned off now.')).toBeNull();
+    expect(client.calls.at(-1)).toEqual({
+      action: 'updateTrack',
+      args: [3, { features: { sprints: false } }],
+    });
+  });
+
+  it('[AGL-010] shows the refusal and its way to the board on a small phone', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    renderPage('tracks', { runningSprint: 'Shop Sprint 4' });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Sprints in SHOP' }));
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Complete it on the board of SHOP' })).toBeVisible();
+  });
+
   it('[WF-001] makes a workflow map and gives a ticket type its own workflow', async () => {
     const user = userEvent.setup();
     const client = renderPage('maps');

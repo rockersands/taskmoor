@@ -14,6 +14,8 @@ export interface Track {
   mode: 'shared' | 'local';
   workflowMapId: number | null;
   archived: boolean;
+  /** Its feature toggles (CORE-002), as far as this page changes them. */
+  features?: { sprints?: boolean };
 }
 
 export interface RoleActors {
@@ -71,7 +73,12 @@ export interface ConfigurationClient {
   createTrack: (body: NewTrack) => Promise<{ track: Track; board?: Named }>;
   updateTrack: (
     id: number,
-    change: { name?: string; description?: string; workflowMapId?: number | null },
+    change: {
+      name?: string;
+      description?: string;
+      workflowMapId?: number | null;
+      features?: { sprints: boolean };
+    },
   ) => Promise<Track>;
   archiveTrack: (id: number, archive: boolean) => Promise<void>;
   roles: () => Promise<Named[]>;

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { trackHref } from '../tracks/TrackLayout';
 import {
   type ConfigurationClient,
   configurationClient,
@@ -152,6 +153,87 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
   );
 }
 
+/** The running sprint a refusal to turn sprints off names (AGL-010), or null for another error. */
+function runningSprint(error: unknown): string | null {
+  if (!(error instanceof ApiError) || error.code !== 'sprint_running') return null;
+  const name = (error.body as { sprintName?: unknown } | null)?.sprintName;
+  return typeof name === 'string' ? name : '';
+}
+
+/**
+ * Whether the track has sprints (CORE-002). Turning them off while a sprint runs is refused
+ * (AGL-010), as a board cannot go Kanban then: the refusal names the sprint and leads to the
+ * track's board, where it can be completed.
+ */
+function SprintsSetting({
+  track,
+  on: stored,
+  client,
+  onChanged,
+  onProblem,
+}: {
+  track: Track;
+  on: boolean;
+  client: ConfigurationClient;
+  onChanged: (message: string) => void;
+  onProblem: (error: unknown) => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const [on, setOn] = useState(stored);
+  const [running, setRunning] = useState<string | null>(null);
+  const busy = useRef(false);
+  const turn = async (next: boolean) => {
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await client.updateTrack(track.id, { features: { sprints: next } });
+      setOn(next);
+      setRunning(null);
+      onChanged(
+        t(next ? 'admin.tracks.sprintsOnSaid' : 'admin.tracks.sprintsOffSaid', { key: track.key }),
+      );
+    } catch (error) {
+      const sprint = runningSprint(error);
+      if (sprint === null) onProblem(error);
+      else setRunning(sprint);
+    } finally {
+      busy.current = false;
+    }
+  };
+  // The panel lays its parts out on a grid: these join it as they are.
+  return (
+    <>
+      <div className="form-field form-field-inline">
+        <input
+          id={`${id}-sprints`}
+          type="checkbox"
+          checked={on}
+          aria-describedby={`${id}-hint${running === null ? '' : ` ${id}-problem`}`}
+          aria-invalid={running === null ? undefined : true}
+          onChange={(event) => void turn(event.target.checked)}
+        />
+        <label htmlFor={`${id}-sprints`}>{t('admin.tracks.sprints', { key: track.key })}</label>
+      </div>
+      <p id={`${id}-hint`} className="form-hint">
+        {t('admin.tracks.sprintsHint')}
+      </p>
+      {running !== null && (
+        <>
+          <p id={`${id}-problem`} role="alert" className="form-error">
+            {t('admin.tracks.sprintRunning', { sprint: running, key: track.key })}
+          </p>
+          <p className="page-note">
+            <a href={routeHref(trackHref(track.key, 'board'))}>
+              {t('admin.tracks.sprintRunningLink', { key: track.key })}
+            </a>
+          </p>
+        </>
+      )}
+    </>
+  );
+}
+
 function TrackPanel({
   track,
   client,
@@ -285,6 +367,16 @@ function TrackPanel({
             ))}
           </select>
         </div>
+      )}
+
+      {!track.archived && track.features?.sprints !== undefined && (
+        <SprintsSetting
+          track={track}
+          on={track.features.sprints}
+          client={client}
+          onChanged={onChanged}
+          onProblem={onProblem}
+        />
       )}
 
       {!track.archived && (
