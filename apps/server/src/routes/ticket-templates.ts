@@ -193,7 +193,13 @@ export function registerTicketTemplateRoutes(
     format: RichTextFormat,
   ) {
     const tracks = await trackInfo(rows.flatMap((r) => (r.track_id === null ? [] : [r.track_id])));
-    const people = [...new Set(rows.flatMap((r) => (r.created_by === null ? [] : [r.created_by])))];
+    const assigneeOf = (r: TemplateRow) =>
+      (r.defaults as { assigneeId?: number } | null)?.assigneeId ?? null;
+    const people = [
+      ...new Set(
+        rows.flatMap((r) => [r.created_by, assigneeOf(r)].flatMap((id) => (id === null ? [] : [id]))),
+      ),
+    ];
     const names = new Map(
       (people.length === 0
         ? []
@@ -204,6 +210,7 @@ export function registerTicketTemplateRoutes(
     const out = [];
     for (const r of rows) {
       if (!manage.has(r.track_id)) manage.set(r.track_id, await mayManage(request, r.track_id));
+      const assignee = assigneeOf(r);
       out.push({
         id: r.id,
         name: r.name,
@@ -213,6 +220,8 @@ export function registerTicketTemplateRoutes(
         summary: r.summary,
         description: writeRichText(r.description, format),
         defaults: r.defaults,
+        /** Who `defaults.assigneeId` names, so a form can show them. */
+        assignee: assignee === null ? null : { id: assignee, name: names.get(assignee) ?? '' },
         subtickets: r.subtickets,
         createdBy:
           r.created_by === null ? null : { id: r.created_by, name: names.get(r.created_by) ?? '' },

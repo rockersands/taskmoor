@@ -415,6 +415,54 @@ describe('ticket templates (CORE-029, CORE-030)', () => {
     expect(theirs.json().fields).toEqual({ labels: 'hidden' });
   });
 
+  it('[CORE-030] (3) never sets a custom field a field rule hides, and names who a template assigns', async () => {
+    const key = await track();
+    const field = ok(
+      await call('admin', 'POST', '/api/v1/fields', { name: `Secret ${key}`, type: 'text' }),
+      201,
+    ).field;
+    const rules = ok(
+      await call('admin', 'POST', '/api/v1/field-rule-sets', {
+        name: `Hide secret ${key}`,
+        rules: [{ field: `cf[${field.id}]`, hidden: true }],
+      }),
+      201,
+    ).fieldRuleSet;
+    ok(await call('admin', 'PATCH', `/api/v1/tracks/${tracks[key]}`, { fieldRuleSetId: rules.id }));
+    const tpl = (
+      await template('carol', {
+        track: key,
+        name: 'Secretive',
+        summary: 'Secretive',
+        defaults: { assigneeId: users.carol.id, fields: { [field.id]: 'hush' } },
+      })
+    ).template;
+    expect(tpl.assignee).toEqual({ id: users.carol.id, name: 'Carol' });
+    const made = ok(await apply('carol', tpl.id), 201);
+    expect(made.left).toEqual([`fields.${field.id}`]);
+    expect(made.ticket.fields[field.id] ?? null).toBeNull();
+    expect(made.ticket.assignee).toMatchObject({ id: users.carol.id });
+  });
+
+  it('[CORE-030] (2) leaves out an assignee who cannot be assigned here', async () => {
+    const key = await track();
+    const tpl = (
+      await template('carol', {
+        track: key,
+        name: 'For Dave',
+        summary: 'For Dave',
+        defaults: { assigneeId: users.dave.id },
+      })
+    ).template;
+    const made = ok(await apply('carol', tpl.id), 201);
+    expect(made.left).toEqual(['assigneeId']);
+    expect(made.ticket.assignee).toBeNull();
+    // The person's own choice of Dave is refused, not left out.
+    const own = await apply('carol', tpl.id, { assigneeId: users.dave.id, omit: ['assigneeId'] });
+    expect(own.statusCode).toBe(400);
+    expect(own.json().fields).toEqual({ assigneeId: 'not_assignable' });
+  });
+
   it('[CORE-030] (4) a template of one track does not make tickets in another', async () => {
     const key = await track();
     const other = await track();
