@@ -7,6 +7,7 @@ import { ColumnChart } from '../reports/ColumnChart';
 import { DonutChart, MAX_SLICES } from '../reports/DonutChart';
 import { LineChart } from '../reports/LineChart';
 import { routeHref } from '../routing/router';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { estimateText } from '../sprints/client';
 import type { DashboardClient, Widget } from './client';
 
@@ -25,7 +26,10 @@ interface TicketRow {
   key: string;
   summary: string;
   status: string;
+  type?: string;
+  typeIcon?: string | null;
   priority: string | null;
+  priorityLevel?: number | null;
   assignee: string | null;
 }
 
@@ -161,7 +165,13 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
           <ul className="widget-tickets">
             {d.tickets.map((x) => (
               <li key={x.id}>
-                <a href={routeHref(`#/tickets/${encodeURIComponent(x.key)}`)}>{x.key}</a>
+                <span className="widget-ticket-key">
+                  <span className="ticket-icons">
+                    {x.type && <TypeIcon name={x.type} icon={x.typeIcon} />}
+                    {x.priority && <PriorityIcon name={x.priority} level={x.priorityLevel} />}
+                  </span>
+                  <a href={routeHref(`#/tickets/${encodeURIComponent(x.key)}`)}>{x.key}</a>
+                </span>
                 <span className="widget-ticket-summary">{x.summary}</span>
                 <span className="widget-ticket-status">{x.status}</span>
               </li>

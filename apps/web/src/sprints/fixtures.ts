@@ -24,6 +24,8 @@ const ticket = (id: number, summary: string, hours: number, done = false): Backl
   key: `CHK-${id}`,
   summary,
   type: 'Task',
+  typeIcon: null,
+  priority: { id: 1, name: 'High', level: 2 },
   status: done ? { id: 4, name: 'Closed' } : { id: 1, name: 'New' },
   done,
   estimate: hours * HOUR,

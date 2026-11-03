@@ -13,6 +13,7 @@ import { functionNames, loginTimes, readOnly } from '../search/run';
 import { expandSavedSearches } from '../search/saved';
 import { commentReadableSql } from '../tickets/comments';
 import { ticketKey } from '../tickets/model';
+import { priorityLevels } from '../tickets/priority-level';
 import { type TicketView, ticketQuery, ticketView } from '../tickets/store';
 import { loadMap, publishedStatuses, trackMapId, workflowsOf } from '../workflows/maps';
 import {
@@ -454,7 +455,13 @@ function cardField(view: TicketView, name: string): unknown {
     case 'assignee':
       return view.assignee;
     case 'priority':
-      return view.priority && { id: view.priority.id, name: view.priority.name };
+      return (
+        view.priority && {
+          id: view.priority.id,
+          name: view.priority.name,
+          level: view.priority.level,
+        }
+      );
     case 'parent':
       return view.parent?.key ? view.parent : null;
     case 'track':
@@ -504,6 +511,7 @@ async function cardSources(
 ): Promise<Map<number, CardSource>> {
   const out = new Map<number, CardSource>();
   if (ids.length === 0) return out;
+  const levels = await priorityLevels(db, scope.ws);
   const idList = sql<boolean>`k.id = ANY(${[...ids]}::int[])`;
   if (fields.every((f) => SLIM_FIELDS.has(f))) {
     const rows = await db
@@ -549,7 +557,11 @@ async function cardSources(
           : { id: r.priority_id, name: r.priority_name ?? '', color: r.priority_color ?? null };
       const values: Record<string, unknown> = {
         assignee,
-        priority: priority && { id: priority.id, name: priority.name },
+        priority: priority && {
+          id: priority.id,
+          name: priority.name,
+          level: levels.get(priority.id) ?? 4,
+        },
         dueDate: r.due_date,
         startDate: r.start_date,
         createdAt: r.created_at.toISOString(),

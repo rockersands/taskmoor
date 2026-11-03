@@ -121,13 +121,19 @@ describe('search results (M1-042)', () => {
     // Back on the edit button, and the next edit sends the new version.
     expect(screen.getByRole('button', { name: 'Edit Summary of SHOP-41' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Edit Priority of SHOP-41' }));
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Edit Priority of SHOP-41' }),
-      'High',
-    );
+    await user.click(screen.getByRole('combobox', { name: 'Edit Priority of SHOP-41' }));
+    await user.click(screen.getByRole('option', { name: 'High' }));
     await user.click(within(row('SHOP-41')).getByRole('button', { name: 'Save' }));
-    expect(await within(row('SHOP-41')).findByText('High')).toBeVisible();
+    expect(await within(row('SHOP-41')).findByRole('img', { name: 'High' })).toBeVisible();
     expect(client.edits[1]).toEqual({ id: 41, change: { priorityId: 1, version: 2 } });
+  });
+
+  it('[CORE-012] [CORE-014] shows type and priority as icons, named for assistive technology', async () => {
+    renderPage();
+    await screen.findByRole('table');
+    const cells = within(row('SHOP-41'));
+    expect(cells.getByRole('img', { name: 'Bug' })).toHaveAttribute('title', 'Bug');
+    expect(cells.getByRole('img', { name: 'Medium' })).toHaveAttribute('title', 'Medium');
   });
 
   it('[QRY-014] assigns to me, edits labels and a custom number in place', async () => {

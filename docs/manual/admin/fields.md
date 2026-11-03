@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -163,7 +163,9 @@ A fresh site has these ticket types:
 There is no web page for ticket types or levels yet. Through the API:
 
 - `/api/v1/ticket-types`: `name`, `description`, `icon`, `color`, `levelId`, and `trackId` for a
-  type a local-mode track owns. A type is deleted only once no type set holds it.
+  type a local-mode track owns. A type is deleted only once no type set holds it. `icon` is a
+  name: `outcome`, `feature`, `bug`, `chore`, `to-do`, `idea` or `subticket` draw that icon, and
+  any other shows a plain hexagon; with none, a type named like one of those draws its icon.
 - `/api/v1/hierarchy-levels`: add levels above Outcome (2, 3 and up), rename any level, move or
   remove the added ones. Removing a level moves its types to the standard level. The three
   built-in levels are renamed but never moved or removed.
@@ -251,7 +253,9 @@ Priorities are the site's ordered list: Urgent, High, Normal, Low and Very low o
 no web page for them yet.
 
 - `/api/v1/priorities`: `name`, `description`, `icon`, `color`; `PUT /api/v1/priorities/order`
-  lists every id in the new order. A new priority joins the default priority set.
+  lists every id in the new order. A new priority joins the default priority set. The list, and a
+  ticket's `priority`, also give `level`, from 1 to 6: which icon it shows, from its place in the
+  order. The stored `icon` and `color` of a priority do not change what lists draw.
 - A ticket always has a priority. A new ticket takes its track's set's `defaultPriorityId`; a set
   with no default gives the middle of what it offers. `priorityId: null` means the same when
   creating, and an edit that sends it is refused. Only imports leave it empty, as their source

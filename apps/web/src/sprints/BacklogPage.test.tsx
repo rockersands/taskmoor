@@ -37,6 +37,13 @@ describe('the backlog with sprint sections (M1-044)', () => {
     ).toHaveAttribute('href', '#/boards/7/sprints/11/report');
   });
 
+  it('[CORE-012] [CORE-014] shows each ticket’s type and priority as named icons', async () => {
+    renderBacklog();
+    await screen.findByRole('heading', { name: 'Checkout Sprint 1' });
+    expect(section('Backlog').getAllByRole('img', { name: 'Task' })).toHaveLength(2);
+    expect(section('Backlog').getAllByRole('img', { name: 'High' })).toHaveLength(2);
+  });
+
   it('[AGL-008] moves a ticket into a sprint and back to the backlog with the keyboard', async () => {
     const user = userEvent.setup();
     renderBacklog();

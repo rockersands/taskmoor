@@ -8,7 +8,14 @@ export interface InboxItem {
   /** A direct ask: a mention, or the ticket assigned to the reader. */
   direct: boolean;
   /** The ticket it is about; null for an alert to site administrators (ADR-109). */
-  ticket: { id: number; key: string; summary: string; track: { id: number; key: string } } | null;
+  ticket: {
+    id: number;
+    key: string;
+    summary: string;
+    ticketType?: { name: string; icon?: string | null };
+    priority?: { name: string; level?: number } | null;
+    track: { id: number; key: string };
+  } | null;
   /**
    * A security or AI spend alert (`security_alert`, `ai_spend_alert`): the rule, its numbers
    * and whom it is about. Older servers leave it out.

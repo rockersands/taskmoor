@@ -204,7 +204,13 @@ describe('priorities, close reasons, labels, releases and areas (M1-014)', () =>
       ]);
       // A new ticket takes the default set's default.
       const ticket = await create('alice', { track: 'ABC', summary: 'Defaults' });
-      expect(ticket.priority).toMatchObject({ name: 'Normal', icon: 'priority-normal' });
+      // Which icon it shows comes from its place in the order: the middle of the five.
+      expect(ticket.priority).toMatchObject({ name: 'Normal', icon: 'priority-normal', level: 4 });
+      expect(
+        (await get('alice', '/api/v1/priorities'))
+          .json()
+          .priorities.map((p: { level: number }) => p.level),
+      ).toEqual([1, 2, 4, 5, 6]);
       expect(ticket.closeReason).toBeNull();
     });
 

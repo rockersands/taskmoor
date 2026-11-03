@@ -17,9 +17,11 @@ import { navigate, replaceRoute, routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
 import { HelpTip } from '../../shell/HelpTip';
+import { IconSelect } from '../../shell/IconSelect';
 import { leaveMotion } from '../../shell/motion';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { priorityName } from '../../shell/priorityName';
+import { PriorityGlyph, TypeGlyph } from '../../shell/TicketIcons';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
@@ -500,7 +502,10 @@ export function TicketPage({
           </a>
         )}
         <p className="ticket-crumbs page-eyebrow">
-          {shown.track.name ? `${shown.track.name} · ${shown.ticketType.name}` : ''}
+          {shown.track.name && (
+            <TypeGlyph name={shown.ticketType.name} icon={shown.ticketType.icon} />
+          )}
+          <span>{shown.track.name ? `${shown.track.name} · ${shown.ticketType.name}` : ''}</span>
         </p>
         {editingSummary && loaded ? (
           <SummaryForm
@@ -848,23 +853,18 @@ function Details({
           <label htmlFor={`${id}-priority`}>{t('workflow.field.priority')}</label>
         </dt>
         <dd>
-          <select
+          <IconSelect
             id={`${id}-priority`}
-            value={ticket.priority?.id ?? ''}
-            onChange={(event) => void onEdit({ priorityId: Number(event.target.value) })}
-          >
-            {/* Only an imported ticket can have none; once chosen there is no going back. */}
-            {!ticket.priority && (
-              <option value="" disabled>
-                {t('priority.choose')}
-              </option>
-            )}
-            {(priorities ?? (ticket.priority ? [ticket.priority] : [])).map((p) => (
-              <option key={p.id} value={p.id}>
-                {priorityName(t, p.name)}
-              </option>
-            ))}
-          </select>
+            value={String(ticket.priority?.id ?? '')}
+            // Only an imported ticket can have none; once chosen there is no going back.
+            placeholder={t('priority.choose')}
+            options={(priorities ?? (ticket.priority ? [ticket.priority] : [])).map((p) => ({
+              value: String(p.id),
+              label: priorityName(t, p.name),
+              icon: <PriorityGlyph level={p.level} />,
+            }))}
+            onChange={(next) => void onEdit({ priorityId: Number(next) })}
+          />
         </dd>
       </div>
       <div>

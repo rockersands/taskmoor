@@ -15,6 +15,7 @@ import {
   TracksIcon,
 } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { type HomeClient, type HomeTicket, type HomeTrack, homeClient, homeTracks } from './client';
 
 export interface HomePageProps {
@@ -225,6 +226,14 @@ function HomeList({
                 <span className="home-ticket-key">{ticket.key}</span>{' '}
                 <span className="home-ticket-summary">{ticket.summary}</span>
               </a>
+              <span className="ticket-icons">
+                {ticket.ticketType && (
+                  <TypeIcon name={ticket.ticketType.name} icon={ticket.ticketType.icon} />
+                )}
+                {ticket.priority && (
+                  <PriorityIcon name={ticket.priority.name} level={ticket.priority.level} />
+                )}
+              </span>
               <span className="home-ticket-status" data-stage={ticket.status.stage}>
                 {ticket.status.name}
               </span>

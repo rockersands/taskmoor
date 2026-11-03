@@ -1131,7 +1131,8 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
   await page.getByLabel('Track').selectOption({ label: 'FORM Forms' });
-  await page.getByLabel('Ticket type').selectOption({ label: 'Bug' });
+  await page.getByLabel('Ticket type').click();
+  await page.getByRole('option', { name: 'Bug', exact: true }).click();
   await expect(page.getByLabel('Due date (required)')).toBeVisible();
   await expect(page.getByLabel('Severity (required)')).toBeVisible();
   // Hidden by the rules: not on the form at all.
@@ -1159,7 +1160,8 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   expect(created.ticket.fields[String(fieldId)]?.value).toBe('Blocker');
 
   // A Chore needs neither: optional there, so a summary is enough.
-  await page.getByLabel('Ticket type').selectOption({ label: 'Chore' });
+  await page.getByLabel('Ticket type').click();
+  await page.getByRole('option', { name: 'Chore', exact: true }).click();
   await expect(page.getByLabel('Due date', { exact: true })).toBeVisible();
   await page.getByLabel('Summary (required)').fill('Tidy the cart code');
   await page.getByRole('button', { name: 'Create' }).click();

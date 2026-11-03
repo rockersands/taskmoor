@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import {
   type InboxClient,
   type InboxItem,
@@ -416,6 +417,22 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
                     <blockquote className="inbox-quote">{item.comment.excerpt}</blockquote>
                   )}
                   <p className="inbox-meta">
+                    {item.ticket && (
+                      <span className="ticket-icons">
+                        {item.ticket.ticketType && (
+                          <TypeIcon
+                            name={item.ticket.ticketType.name}
+                            icon={item.ticket.ticketType.icon}
+                          />
+                        )}
+                        {item.ticket.priority && (
+                          <PriorityIcon
+                            name={item.ticket.priority.name}
+                            level={item.ticket.priority.level}
+                          />
+                        )}
+                      </span>
+                    )}
                     <time dateTime={item.createdAt}>{when(item.createdAt)}</time>
                     {item.direct && <span className="inbox-badge">{t('inbox.direct')}</span>}
                     {item.snoozedUntil && (

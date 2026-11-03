@@ -26,6 +26,9 @@
 }
 
 .ticket-crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-200);

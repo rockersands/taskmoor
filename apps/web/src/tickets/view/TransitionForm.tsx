@@ -1,6 +1,8 @@
 import { useEffect, useId, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import { IconSelect } from '../../shell/IconSelect';
 import { priorityName } from '../../shell/priorityName';
+import { PriorityGlyph } from '../../shell/TicketIcons';
 import type { Priority, TicketClient, Transition } from './client';
 
 /** The fields a form like this can fill in; a transition asking for others goes to the ticket. */
@@ -64,17 +66,30 @@ export function TransitionForm({
           <label htmlFor={`${id}-${field}`} className="form-label">
             {t(labels[field] ?? 'workflow.field.closeReason')}
           </label>
-          <select
-            id={`${id}-${field}`}
-            value={values[field] ?? ''}
-            onChange={(event) => setValues((v) => ({ ...v, [field]: event.target.value }))}
-          >
-            {(options[field] ?? []).map((o) => (
-              <option key={o.id} value={o.id}>
-                {field === 'priority' ? priorityName(t, o.name) : o.name}
-              </option>
-            ))}
-          </select>
+          {field === 'priority' ? (
+            <IconSelect
+              id={`${id}-${field}`}
+              value={values[field] ?? ''}
+              options={(options[field] ?? []).map((o) => ({
+                value: String(o.id),
+                label: priorityName(t, o.name),
+                icon: <PriorityGlyph level={o.level} />,
+              }))}
+              onChange={(next) => setValues((v) => ({ ...v, [field]: next }))}
+            />
+          ) : (
+            <select
+              id={`${id}-${field}`}
+              value={values[field] ?? ''}
+              onChange={(event) => setValues((v) => ({ ...v, [field]: event.target.value }))}
+            >
+              {(options[field] ?? []).map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       ))}
       <div className="form-actions">

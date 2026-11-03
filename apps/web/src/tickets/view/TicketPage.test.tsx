@@ -62,14 +62,19 @@ describe('the ticket view (M1-051)', () => {
   it('[CORE-014] offers no empty priority; an imported ticket with none asks for one', async () => {
     renderPage();
     await heading();
-    const offered = within(within(details()).getByRole('combobox', { name: 'Priority' }));
-    expect(offered.queryByRole('option', { name: 'None' })).toBeNull();
+    const user = userEvent.setup();
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    expect(
+      within(screen.getByRole('listbox'))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Highest', 'High', 'Medium']);
     cleanup();
     renderPage({ ticket: { ...SHOP_41, priority: null } });
     await heading();
-    const empty = within(details()).getByRole('combobox', { name: 'Priority' });
-    expect(empty).toHaveValue('');
-    expect(within(empty).getByRole('option', { name: 'Choose a priority' })).toBeDisabled();
+    expect(within(details()).getByRole('combobox', { name: 'Priority' })).toHaveTextContent(
+      'Choose a priority',
+    );
   });
 
   it('[CORE-022] shows the ticket: summary, details, links, attachments and comments', async () => {
@@ -78,7 +83,7 @@ describe('the ticket view (M1-051)', () => {
     expect(screen.getByText('Shop · Bug')).toBeVisible();
     const facts = details();
     expect(within(facts).getByText('Grace Hopper')).toBeVisible();
-    expect(within(facts).getByRole('combobox', { name: 'Priority' })).toHaveValue('2');
+    expect(within(facts).getByRole('combobox', { name: 'Priority' })).toHaveTextContent('High');
     expect(within(facts).getByText('payments, checkout')).toBeVisible();
     expect(within(facts).getByLabelText('Due date')).toHaveValue('2026-11-02');
     expect(within(facts).getByRole('link', { name: 'SHOP-40 Card payments' })).toHaveAttribute(
@@ -123,7 +128,8 @@ describe('the ticket view (M1-051)', () => {
     await user.clear(summary);
     await user.type(summary, 'Expired cards fail silently{Enter}');
     expect(await heading()).toHaveTextContent('SHOP-41 Expired cards fail silently');
-    await user.selectOptions(within(details()).getByRole('combobox', { name: 'Priority' }), '1');
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Highest' }));
     await user.click(within(details()).getByRole('button', { name: 'Edit labels' }));
     const labels = within(details()).getByRole('textbox', { name: 'Labels' });
     await user.clear(labels);

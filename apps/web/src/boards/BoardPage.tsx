@@ -17,6 +17,7 @@ import { BoardsIcon, MoreIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useSyncEngine } from '../sync/SyncProvider';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
@@ -66,12 +67,10 @@ const nameOf = (value: unknown): string | null =>
 const FIRST_CELL = 50;
 
 function cardMeta(t: Translate, card: BoardCard): string[] {
-  const out: string[] = [card.ticketType.name];
+  const out: string[] = [];
   if ('assignee' in card.fields) {
     out.push(nameOf(card.fields.assignee) ?? t('boards.card.unassigned'));
   }
-  const priority = nameOf(card.fields.priority);
-  if (priority) out.push(priority);
   if (typeof card.fields.dueDate === 'string') {
     out.push(t('boards.card.due', { date: card.fields.dueDate }));
   }
@@ -538,6 +537,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     const cell = cardsIn(card.columnId, card.laneId);
     const position = placeOf.get(card.id) ?? 0;
     const menuOpen = menuFor === card.id;
+    const priority = card.fields.priority as { name: string; level?: number } | null | undefined;
     return (
       <li
         key={card.id}
@@ -577,6 +577,10 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           <span className="board-card-summary">{card.summary}</span>
         </a>
         <p className="board-card-meta">
+          <span className="ticket-icons">
+            <TypeIcon name={card.ticketType.name} icon={card.ticketType.icon} />
+            {priority && <PriorityIcon name={priority.name} level={priority.level} />}
+          </span>
           {cardMeta(t, card).map((part, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: parts are fixed in order per card
             <span key={i}>{part}</span>
@@ -823,7 +827,9 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             }
           }}
           ref={(el) => {
-            if (el && !el.contains(document.activeElement)) el.querySelector('select')?.focus();
+            if (el && !el.contains(document.activeElement)) {
+              el.querySelector<HTMLElement>('select, [role="combobox"]')?.focus();
+            }
           }}
         >
           <h2 id={askingTitleId}>

@@ -30,6 +30,7 @@ import {
   startSprintBody,
   updateSprintBody,
 } from '../sprints/model';
+import { priorityLevels } from '../tickets/priority-level';
 import { resolveTicket } from '../tickets/store';
 import { searchRefusal } from './search';
 
@@ -312,6 +313,9 @@ export function registerSprintRoutes(
       status_id: number;
       status_name: string;
       type_name: string;
+      type_icon: string | null;
+      priority_id: number | null;
+      priority_name: string | null;
       estimate: number | string | null;
       remaining_estimate: number | null;
       sprint_id: number | null;
@@ -323,7 +327,8 @@ export function registerSprintRoutes(
       const rows = await readOnly(db, timeoutMs, async (trx) => {
         const r = await sql<Row>`
           SELECT k.id, t.key || '-' || k.number AS key, k.summary, k.status_id,
-                 s.name AS status_name, y.name AS type_name,
+                 s.name AS status_name, y.name AS type_name, y.icon AS type_icon,
+                 k.priority_id, p.name AS priority_name,
                  ${estimateSql(board.settings)} AS estimate, k.remaining_estimate,
                  st.sprint_id, k.parent_id,
                  ARRAY(SELECT tr.release_id FROM ticket_release tr
@@ -333,6 +338,7 @@ export function registerSprintRoutes(
             JOIN track t ON t.id = k.track_id
             JOIN status s ON s.id = k.status_id
             JOIN ticket_type y ON y.id = k.ticket_type_id
+            LEFT JOIN priority p ON p.id = k.priority_id
             LEFT JOIN sprint_ticket st ON st.ticket_id = k.id AND st.open
            WHERE ${c.scope} AND k.status_id = ANY(${mapped}::int[])
              AND (st.sprint_id = ANY(${sprints.map((s) => s.id)}::int[])
@@ -344,11 +350,21 @@ export function registerSprintRoutes(
       const truncated = rows.length > q.data.limit;
       const shown = rows.slice(0, q.data.limit);
       const doneSet = new Set(done);
+      const levels = await priorityLevels(db, request.workspaceId);
       const card = (r: Row) => ({
         id: r.id,
         key: r.key,
         summary: r.summary,
         type: r.type_name,
+        typeIcon: r.type_icon,
+        priority:
+          r.priority_id === null
+            ? null
+            : {
+                id: r.priority_id,
+                name: r.priority_name ?? '',
+                level: levels.get(r.priority_id) ?? 4,
+              },
         status: { id: r.status_id, name: r.status_name },
         done: doneSet.has(r.status_id),
         estimate: num(r.estimate),

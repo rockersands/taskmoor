@@ -246,8 +246,11 @@
         "id": 0,
         "key": "WA-n",
         "priority": null,
+        "priorityLevel": null,
         "status": "New",
         "summary": "wid d",
+        "type": "Feature",
+        "typeIcon": "feature",
         "updatedAt": ""
       },
       {
@@ -255,8 +258,11 @@
         "id": 0,
         "key": "WA-n",
         "priority": "High",
+        "priorityLevel": 2,
         "status": "Closed",
         "summary": "wid a",
+        "type": "Feature",
+        "typeIcon": "feature",
         "updatedAt": ""
       }
     ],

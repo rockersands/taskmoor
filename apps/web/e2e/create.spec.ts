@@ -94,19 +94,23 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
   const type = dialog.getByLabel('Ticket type');
 
   // The first type: its tab, Environment required, no due date.
-  await type.selectOption({ label: report.name });
+  const chooseType = async (name: string) => {
+    await type.click();
+    await dialog.getByRole('option', { name, exact: true }).click();
+  };
+  await chooseType(report.name);
   await expect(dialog.getByRole('region', { name: 'What happened' })).toBeVisible();
   await expect(dialog.getByLabel('Environment (required)')).toBeVisible();
   await expect(dialog.getByLabel('Due date')).toHaveCount(0);
   // The second: its tab, a due date, no environment.
-  await type.selectOption({ label: plan.name });
+  await chooseType(plan.name);
   await expect(dialog.getByRole('region', { name: 'When' })).toBeVisible();
   await expect(dialog.getByLabel('Due date')).toBeVisible();
   await expect(dialog.getByLabel(/^Environment/)).toHaveCount(0);
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // Back to the first: refused without its environment, created with it.
-  await type.selectOption({ label: report.name });
+  await chooseType(report.name);
   await dialog
     .getByLabel('Summary (required)')
     .fill(`Checkout times out on ${testInfo.project.name}`);

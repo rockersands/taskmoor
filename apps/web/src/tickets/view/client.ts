@@ -11,7 +11,7 @@ export interface TicketDetails {
   id: number;
   key: string;
   track: { id: number; key: string; name: string };
-  ticketType: { id: number; name: string; level?: { rank: number } };
+  ticketType: { id: number; name: string; icon?: string | null; level?: { rank: number } };
   parent: { id: number; key: string | null; summary: string | null } | null;
   status: { id: number; name: string; stage: 'new' | 'active' | 'closed' };
   summary: string;
@@ -21,7 +21,7 @@ export interface TicketDetails {
   creator?: Person | null;
   startDate: string | null;
   dueDate: string | null;
-  priority: { id: number; name: string } | null;
+  priority: { id: number; name: string; level?: number } | null;
   closeReason: { id: number; name: string } | null;
   visibilityLevel: { id: number; name: string } | null;
   labels: string[];
@@ -92,6 +92,8 @@ export interface TicketInfo {
 export interface Priority {
   id: number;
   name: string;
+  /** Which of the six icons it shows, from its place in the order (CORE-014). */
+  level?: number;
 }
 
 export type TicketEdit = Partial<{

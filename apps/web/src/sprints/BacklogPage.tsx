@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import {
   type Backlog,
   type BacklogPanels,
@@ -360,6 +361,12 @@ export function BacklogPage({
               onChange={() => toggle(ticket.id)}
               aria-label={t('sprints.select.label', { key: ticket.key })}
             />
+            <span className="ticket-icons">
+              <TypeIcon name={ticket.type} icon={ticket.typeIcon} />
+              {ticket.priority && (
+                <PriorityIcon name={ticket.priority.name} level={ticket.priority.level} />
+              )}
+            </span>
             <a
               href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}
               className="sprint-ticket-key"

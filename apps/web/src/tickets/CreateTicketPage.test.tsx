@@ -23,16 +23,23 @@ function openCreate(handlers: Record<string, Handler> = {}, locale?: 'en-XA') {
   return calls;
 }
 
+async function chooseType(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('combobox', { name: 'Ticket type' }));
+  await user.click(screen.getByRole('option', { name }));
+}
+
 describe('the create form (M1-012)', () => {
   it('[CORE-014] starts on the priority a new ticket would take, with no empty choice', async () => {
     openCreate({
       'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () =>
         jsonResponse(200, { ...BUG_FORM, priorities: { defaultId: 2, offered: [1, 2, 3] } }),
     });
+    const user = userEvent.setup();
     const priority = await screen.findByRole('combobox', { name: 'Priority' });
-    expect(priority).toHaveValue('2');
+    await within(priority).findByText('Normal');
+    await user.click(priority);
     expect(
-      within(priority)
+      within(screen.getByRole('listbox'))
         .getAllByRole('option')
         .map((o) => o.textContent),
     ).toEqual(['Urgent', 'Normal', 'Very low']);
@@ -100,7 +107,7 @@ describe('the create form (M1-012)', () => {
     const user = userEvent.setup();
     openCreate();
     await screen.findByLabelText('Severity (required)');
-    await user.selectOptions(screen.getByLabelText('Ticket type'), 'Chore');
+    await chooseType(user, 'Chore');
     expect(await screen.findByLabelText('Due date')).toBeVisible();
     expect(screen.queryByLabelText('Severity (required)')).toBeNull();
     // One generated tab needs no heading.
@@ -114,9 +121,11 @@ describe('the create form (M1-012)', () => {
     const track = screen.getByLabelText('Track') as HTMLSelectElement;
     await user.selectOptions(track, track.value);
     // The list stays filled and a type stays chosen: found by the fresh-install run (M1-113).
-    const type = screen.getByLabelText('Ticket type') as HTMLSelectElement;
-    expect(type.options.length).toBeGreaterThan(0);
-    expect(type.value).not.toBe('');
+    const type = screen.getByRole('combobox', { name: 'Ticket type' });
+    expect(type).toHaveTextContent('Bug');
+    await user.click(type);
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
+    await user.keyboard('{Escape}');
     expect(await screen.findByLabelText('Severity (required)')).toBeVisible();
   });
 
@@ -128,7 +137,7 @@ describe('the create form (M1-012)', () => {
       'POST /tickets': () => jsonResponse(201, { ticket: { id: 10, key: 'SHOP-10' } }),
     });
     await screen.findByLabelText('Severity (required)');
-    await user.selectOptions(screen.getByLabelText('Ticket type'), 'Chore');
+    await chooseType(user, 'Chore');
     const due = await screen.findByLabelText('Due date');
     expect(due).toBeDisabled();
     expect(due).toHaveAccessibleDescription('Only the Approvers group can set this field.');
@@ -155,8 +164,8 @@ describe('the create form (M1-012)', () => {
           answerBug = () => resolve(jsonResponse(200, BUG_FORM));
         }),
     });
-    await screen.findByRole('option', { name: 'Chore' });
-    await user.selectOptions(screen.getByLabelText('Ticket type'), 'Chore');
+    await within(await screen.findByRole('combobox', { name: 'Ticket type' })).findByText('Bug');
+    await chooseType(user, 'Chore');
     expect(await screen.findByLabelText('Due date')).toBeVisible();
     answerBug();
     await new Promise((resolve) => setTimeout(resolve, 50));

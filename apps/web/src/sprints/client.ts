@@ -41,6 +41,8 @@ export interface BacklogTicket {
   key: string;
   summary: string;
   type: string;
+  typeIcon?: string | null;
+  priority?: { id: number; name: string; level?: number } | null;
   status: { id: number; name: string };
   done: boolean;
   estimate: number | null;

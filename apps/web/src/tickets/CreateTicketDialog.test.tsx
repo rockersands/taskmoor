@@ -74,7 +74,8 @@ describe('the create dialog (M1-052)', () => {
     renderApp({ 'POST /tickets': () => jsonResponse(201, { ticket: { key: 'SHOP-9' } }) });
     await user.click(await screen.findByRole('button', { name: 'New ticket' }));
     const dialog = await screen.findByRole('dialog', { name: 'Create ticket' });
-    await user.selectOptions(await within(dialog).findByLabelText('Ticket type'), '4');
+    await user.click(await within(dialog).findByRole('combobox', { name: 'Ticket type' }));
+    await user.click(within(dialog).getByRole('option', { name: 'Chore' }));
     await user.type(await within(dialog).findByLabelText('Summary (required)'), 'Clean the cache');
     await user.click(within(dialog).getByRole('button', { name: 'Create' }));
     const open = await within(dialog).findByRole('link', { name: 'Open SHOP-9' });
@@ -104,7 +105,9 @@ describe('the create dialog (M1-052)', () => {
     expect(
       await within(dialog).findByText('The fields of SHOP-7 are filled in: change what differs.'),
     ).toBeVisible();
-    expect(within(dialog).getByLabelText('Ticket type')).toHaveValue('4');
+    expect(within(dialog).getByRole('combobox', { name: 'Ticket type' })).toHaveTextContent(
+      'Chore',
+    );
     expect(await within(dialog).findByLabelText('Summary (required)')).toHaveValue(
       'Rotate the payment keys',
     );

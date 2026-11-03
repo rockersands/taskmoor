@@ -10,7 +10,9 @@ import { lockOfField, useLockText } from '../locks/useLockText';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
+import { IconSelect } from '../shell/IconSelect';
 import { priorityName } from '../shell/priorityName';
+import { PriorityGlyph, TypeGlyph } from '../shell/TicketIcons';
 import { type DuplicateLookup, DuplicateSuggestions } from './DuplicateSuggestions';
 import {
   type CustomField,
@@ -34,6 +36,7 @@ export interface TrackChoice {
 export interface TypeChoice {
   id: number;
   name: string;
+  icon?: string | null;
 }
 
 /** The endpoints the page uses. Stories and some tests pass their own. */
@@ -41,7 +44,7 @@ export interface CreateClient {
   tracks: () => Promise<TrackChoice[]>;
   ticketTypes: (track: string) => Promise<{ defaultTypeId: number | null; types: TypeChoice[] }>;
   form: (track: string, ticketTypeId: number) => Promise<TicketForm>;
-  priorities: () => Promise<{ id: number; name: string }[]>;
+  priorities: () => Promise<{ id: number; name: string; level?: number }[]>;
   create: (body: Record<string, unknown>) => Promise<{ key: string }>;
   /** A ticket to start from (M1-052); the form offers it only when the client has it. */
   template?: (key: string) => Promise<TicketTemplate>;
@@ -62,7 +65,8 @@ export const createClient: CreateClient = {
       `/tracks/${encodeURIComponent(track)}/layout?ticketTypeId=${ticketTypeId}&operation=create`,
     ),
   priorities: async () =>
-    (await api<{ priorities: { id: number; name: string }[] }>('/priorities')).priorities,
+    (await api<{ priorities: { id: number; name: string; level?: number }[] }>('/priorities'))
+      .priorities,
   create: async (body) =>
     (await api<{ ticket: { key: string } }>('/tickets', { method: 'POST', body })).ticket,
   mentions: (track) => mentionSource({ track }),
@@ -152,7 +156,7 @@ export function CreateTicketPage({
   const [types, setTypes] = useState<TypeChoice[]>([]);
   const [typeId, setTypeId] = useState<number | null>(null);
   const [form, setForm] = useState<Loaded<TicketForm> | null>(null);
-  const [priorities, setPriorities] = useState<{ id: number; name: string }[]>([]);
+  const [priorities, setPriorities] = useState<{ id: number; name: string; level?: number }[]>([]);
   const [values, setValues] = useState<FormValues>({});
   // Rich text fields' documents, by field key; a new form key gives empty editors.
   const [docs, setDocs] = useState<Record<string, PmJson | null>>({});
@@ -399,17 +403,20 @@ export function CreateTicketPage({
         ? priorities.filter((p) => prioritySet.offered.includes(p.id))
         : priorities;
       return (
-        <select
-          {...common}
+        <IconSelect
+          id={id}
+          aria-describedby={described || undefined}
+          aria-required={field.required || undefined}
+          aria-invalid={errors[field.key] ? true : undefined}
+          disabled={locked || undefined}
           value={text || String(prioritySet?.defaultId ?? '')}
-          onChange={(e) => set(field.key, e.target.value)}
-        >
-          {offered.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {priorityName(t, p.name)}
-            </option>
-          ))}
-        </select>
+          options={offered.map((p) => ({
+            value: String(p.id),
+            label: priorityName(t, p.name),
+            icon: <PriorityGlyph level={p.level} />,
+          }))}
+          onChange={(next) => set(field.key, next)}
+        />
       );
     }
     if (type === 'select' && !custom?.multiple) {
@@ -655,17 +662,16 @@ export function CreateTicketPage({
               <label htmlFor={`${prefix}-type`} className="form-label">
                 {t('tickets.create.type')}
               </label>
-              <select
+              <IconSelect
                 id={`${prefix}-type`}
-                value={typeId ?? ''}
-                onChange={(e) => setTypeId(Number(e.target.value))}
-              >
-                {types.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.name}
-                  </option>
-                ))}
-              </select>
+                value={String(typeId ?? '')}
+                options={types.map((k) => ({
+                  value: String(k.id),
+                  label: k.name,
+                  icon: <TypeGlyph name={k.name} icon={k.icon} />,
+                }))}
+                onChange={(next) => setTypeId(Number(next))}
+              />
             </div>
           </div>
           <DraftFromText
