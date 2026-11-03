@@ -437,6 +437,22 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
       .orderBy('position')
       .execute();
     expect(rows.map((r) => r.track_id)).toEqual([tracks.PLB, tracks.PLC]);
+    // Naming the hidden source answers exactly as naming one that does not exist, so a refusal
+    // never tells which hidden sources the plan holds.
+    const hiddenOne = await patch(
+      'ana',
+      plan.id,
+      { sources: [{ kind: 'track', trackId: tracks.PLC }] },
+      400,
+    );
+    const noSuch = await patch(
+      'ana',
+      plan.id,
+      { sources: [{ kind: 'track', trackId: 2_000_000 }] },
+      400,
+    );
+    expect(hiddenOne).toEqual(noSuch);
+    expect(hiddenOne.fields).toEqual({ 'sources.0.trackId': 'not_found' });
   });
 
   it('[PLN-012] makes every number on the summary equal the count of the search it links to', async () => {
@@ -497,6 +513,13 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
     await get('ana', `${base}/timeline?stage=done`, 400);
     await get('ana', `${base}/timeline?assignee=me&assignee=none`, 400);
     expect((await get('ana', `${base}/timeline?track=PLC`, 400)).error).toBe('invalid_query');
+    // A person's id beyond an int4 is a bad filter, not a database error.
+    for (const view of ['', '/summary', '/timeline', '/calendar?from=2027-03-01&to=2027-03-31&']) {
+      const url = view.endsWith('&')
+        ? `${base}${view}assignee=3000000000`
+        : `${base}${view}?assignee=3000000000`;
+      expect((await get('ana', url, 400)).error, url).toMatch(/^invalid_/);
+    }
   });
 
   it('[PLN-012] draws the timeline across tracks with roll-ups from every child the viewer sees', async () => {
@@ -633,6 +656,103 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
     expect(choices.types.map((t: { name: string }) => t.name)).toContain('Feature');
     expect(choices.assignees.map((a: { name: string }) => a.name).sort()).toEqual(['ana', 'bo']);
     expect(choices.unassigned).toBe(3);
+  });
+
+  it('[PLN-001] keeps a track seen only through a ticket-level grant hidden: no name, sprints or releases', async () => {
+    // PLD's policy lets requesters see their own tickets (a service desk's): Cy is the requester
+    // of one, and browses the track itself no more than before.
+    const desk = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/tracks',
+          payload: { key: 'PLD', name: 'Desk', mode: 'shared' },
+        },
+        201,
+      )
+    ).track.id as number;
+    const policy = await database.db
+      .insertInto('access_policy')
+      .values({ workspace_id: 1, name: 'Requesters see their own' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('access_grant')
+      .values([
+        {
+          workspace_id: 1,
+          policy_id: policy.id,
+          permission: 'browse_track',
+          grantee: 'role',
+          role_id: await role('Members'),
+        },
+        { workspace_id: 1, policy_id: policy.id, permission: 'browse_track', grantee: 'requester' },
+      ])
+      .execute();
+    await database.db
+      .updateTable('track')
+      .set({ access_policy_id: policy.id })
+      .where('id', '=', desk)
+      .execute();
+    const asked = await ticket('PLD', { summary: 'Printer jam', dueDate: '2027-03-12' });
+    await ticket('PLD', { summary: 'Someone else’s', dueDate: '2027-03-13' });
+    await database.db
+      .updateTable('ticket')
+      .set({ requester_id: users.cy?.id as number })
+      .where('id', '=', asked.id)
+      .execute();
+    await database.db
+      .insertInto('release')
+      .values({
+        workspace_id: 1,
+        track_id: desk,
+        name: 'Desk 1.0',
+        release_date: '2027-03-15',
+        sort_order: 1,
+      })
+      .execute();
+    const deskSearch = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/saved-searches',
+          payload: { name: 'Desk work', query: 'track = PLD', shares: [{ scope: 'any_user' }] },
+        },
+        201,
+      )
+    ).savedSearch.id;
+    const plan = (
+      await make('admin', {
+        name: 'Desk',
+        sources: [
+          { kind: 'track', trackId: desk },
+          { kind: 'savedSearch', savedSearchId: deskSearch },
+        ],
+        shares: [{ scope: 'any_user' }],
+      })
+    ).plan;
+    const base = `/api/v1/plans/${plan.id}`;
+    const cy = (await get('cy', base)).plan;
+    expect(cy.sources.map((x: { kind: string }) => x.kind)).toEqual(['savedSearch']);
+    expect(cy.hiddenSources).toBe(1);
+    expect(cy.query).toBe('(track = PLD)');
+    const timeline = await get('cy', `${base}/timeline`);
+    expect((timeline.items as Item[]).map((i) => i.summary)).toEqual(['Printer jam']);
+    expect(timeline.tracks).toEqual([{ id: desk, key: 'PLD', name: null }]);
+    expect(timeline.markers).toEqual({ sprints: [], releases: [] });
+    const calendar = await get('cy', `${base}/calendar?from=2027-03-01&to=2027-03-31`);
+    expect(calendar.tickets.map((t: { summary: string }) => t.summary)).toEqual(['Printer jam']);
+    expect(calendar.tracks).toEqual([{ id: desk, key: 'PLD', name: null }]);
+    expect(calendar.releases).toEqual([]);
+    expect((await get('cy', `${base}/choices`)).tracks).toEqual([
+      { id: desk, key: 'PLD', name: null, count: 1 },
+    ]);
+    // Those who browse the track see its name and its releases.
+    const admin = await get('admin', `${base}/timeline`);
+    expect(admin.tracks).toEqual([{ id: desk, key: 'PLD', name: 'Desk' }]);
+    expect(admin.markers.releases.map((r: { name: string }) => r.name)).toEqual(['Desk 1.0']);
   });
 
   it('[PLN-001] shares like a dashboard, and sharing needs its permission', async () => {

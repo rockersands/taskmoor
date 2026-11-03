@@ -70,7 +70,16 @@ export const filterShape = {
     .string()
     .regex(/^[A-Za-z][A-Za-z0-9_]{0,29}$/)
     .optional(),
-  assignee: z.union([z.enum(['me', 'none']), z.string().regex(/^[1-9]\d{0,9}$/)]).optional(),
+  // A person's id is an int4, as route ids are: a larger one answers 400, not a database error.
+  assignee: z
+    .union([
+      z.enum(['me', 'none']),
+      z
+        .string()
+        .regex(/^[1-9]\d{0,9}$/)
+        .refine((v) => Number(v) <= MAX_INT, 'too_large'),
+    ])
+    .optional(),
   type: z.string().trim().min(1).max(255).optional(),
   stage: z.enum(['new', 'active', 'closed']).optional(),
 };

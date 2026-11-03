@@ -17,6 +17,7 @@ import {
   updateBody,
 } from '../plans/model';
 import {
+  browsedTracks,
   type PlanTickets,
   planScope,
   planTickets,
@@ -420,13 +421,20 @@ export function registerPlanRoutes(
         ]);
         return { groups, people, tracks: names[0], users: names[1] };
       });
+      const browses = await browsedTracks(request);
       const countOfTrack = new Map(
         counted.groups.filter((g) => g.by_track === 0).map((g) => [g.track_id, g.n]),
       );
       const userName = new Map(counted.users.map((u) => [u.id, u.name]));
       return {
         tracks: counted.tracks
-          .map((t) => ({ id: t.id, key: t.key, name: t.name, count: countOfTrack.get(t.id) ?? 0 }))
+          // A track known only from tickets the person may see by a ticket-level grant: its key.
+          .map((t) => ({
+            id: t.id,
+            key: t.key,
+            name: browses(t.id) ? t.name : null,
+            count: countOfTrack.get(t.id) ?? 0,
+          }))
           .sort((a, b) => a.key.localeCompare(b.key)),
         types: counted.groups
           .filter((g) => g.by_type === 0 && g.by_track === 1 && g.type_name !== null)
@@ -475,13 +483,12 @@ export function registerPlanRoutes(
         ),
       );
       const kept = current.map(inputOf).filter((s) => !visibleKeys.has(sourceKey(s)));
+      // A source hidden from the editor answers exactly as one that does not exist, so a refusal
+      // never says which hidden sources the plan holds.
       const fields = await sourceErrors(request, body.sources, visibleKeys);
-      const keptKeys = new Set(kept.map(sourceKey));
-      for (const [i, s] of body.sources.entries()) {
-        if (keptKeys.has(sourceKey(s))) fields[`sources.${i}`] = 'not_found';
-      }
       if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
-      sources = [...body.sources, ...kept];
+      const given = new Set(body.sources.map(sourceKey));
+      sources = [...body.sources, ...kept.filter((s) => !given.has(sourceKey(s)))];
       if (sources.length > MAX_SOURCES) return invalidFields(reply, { sources: 'too_many' });
     }
     const sharesBefore = (await sharesOf(db, PLAN_SHARES, [row.id])).get(row.id) ?? [];

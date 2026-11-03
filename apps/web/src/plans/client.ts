@@ -84,7 +84,8 @@ export interface PlanSummary {
 export interface PlanTrack {
   id: number;
   key: string;
-  name: string;
+  /** Null for a track seen only through tickets a ticket-level grant shows: its key alone. */
+  name: string | null;
 }
 
 export interface PlanTimelineItem extends TimelineItem {
@@ -128,7 +129,7 @@ export type PlanSaved =
 
 /** What a person may choose as a source: the tracks and saved searches they see. */
 export interface SourceOptions {
-  tracks: PlanTrack[];
+  tracks: { id: number; key: string; name: string }[];
   savedSearches: { id: number; name: string }[];
 }
 
@@ -195,10 +196,10 @@ export const planClient: PlanClient = {
   sourceOptions: async () => {
     const searches = api<{ savedSearches: { id: number; name: string }[] }>('/saved-searches');
     // Every track the person sees, a page of 500 at a time, up to a plan's 500 sources twice.
-    const tracks: PlanTrack[] = [];
+    const tracks: SourceOptions['tracks'] = [];
     let after: string | null = null;
     do {
-      const page: { tracks: PlanTrack[]; next: string | null } = await api(
+      const page: { tracks: SourceOptions['tracks']; next: string | null } = await api(
         `/tracks?limit=500${after ? `&after=${encodeURIComponent(after)}` : ''}`,
       );
       tracks.push(...page.tracks.map((t) => ({ id: t.id, key: t.key, name: t.name })));

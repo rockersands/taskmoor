@@ -32,11 +32,14 @@ The **Multi-track** page lists **Your plans** and those **Shared with you**.
 ## What each person sees
 
 - **A track you may not see** adds nothing for you. Neither does a saved search you may not see.
-  The plan says how many of its sources are hidden from you, never which.
+  The plan says how many of its sources are hidden from you, never which. Seeing a few of a track's
+  tickets, as their requester for example, is not seeing the track: the plan shows those tickets
+  with the track's key, but not its name, sprints or releases.
 - **A saved search that no longer runs for you**, for example because it names a track you cannot
   see, is left out, and the plan names it. The rest of the plan still shows.
 - **An archived track** is named, and its tickets are not shown, as in a search.
-- **When you may see none of its sources**, the plan shows nothing for you.
+- **When you may see none of its sources**, the plan shows nothing for you. When you see them but
+  none can be searched (archived tracks, saved searches that no longer run), it says so.
 
 ## The views
 
@@ -74,8 +77,8 @@ phone. On the Calendar, drag a ticket to another day, or press Alt and an arrow.
 
 Each change is the ticket's own, so its track's **Set due dates** permission, its history and its
 notifications apply. When a change is refused, the page says why: you may not schedule tickets in
-that track, the track is archived, the ticket was deleted or is hidden from you, the dates are not
-valid, or someone changed the ticket meanwhile.
+that track, the ticket's status or dates are locked for you, the track is archived, the ticket was
+deleted or is hidden from you, the dates are not valid, or someone changed the ticket meanwhile.
 
 ## Changing and sharing a plan
 

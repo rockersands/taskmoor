@@ -127,7 +127,7 @@ export function CalendarView({
         }),
       );
     } else {
-      setProblem(scheduleRefusal(t, ticket.key, outcome.code));
+      setProblem(scheduleRefusal(t, ticket.key, outcome));
     }
     reload();
   };

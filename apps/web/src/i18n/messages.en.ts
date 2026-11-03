@@ -4247,6 +4247,8 @@ export const messagesEn = {
   'plans.section.calendar': 'Calendar',
   'plans.section.settings': 'Settings',
   'plans.notice.nothing': 'You cannot see any of this plan’s sources, so it shows nothing for you.',
+  'plans.notice.unsearchable':
+    'None of this plan’s sources can be searched now: archived tracks and saved searches that no longer run add nothing.',
   'plans.notice.noSources':
     'This plan has no sources yet: add tracks or saved searches in its settings.',
   'plans.notice.hidden':
@@ -4382,7 +4384,8 @@ export const messagesEn = {
     '{key} could not be moved: you may not schedule it, or its days were refused.',
   'calendar.truncated': 'Only the first 1,000 tickets of these weeks are shown.',
   'calendar.more': '{count, number} more',
-  'calendar.moreLabel': 'Show {count, number} more tickets on {date}',
+  // The visible "N more" comes first, whole, so speech input finds the button by its text.
+  'calendar.moreLabel': '{count, number} more: show all tickets on {date}',
   'calendar.fewer': 'Show fewer',
   // A track's list view (M1-049).
   'list.title': 'List of {name}',
@@ -4476,6 +4479,8 @@ export const messagesEn = {
   'timeline.group.expand': 'Show the tickets of {name}',
   'schedule.refused.forbidden':
     '{key} could not be rescheduled: you may not schedule tickets in its track.',
+  'schedule.refused.locked':
+    '{key} could not be rescheduled: its status or its dates are locked for you.',
   'schedule.refused.archived': '{key} could not be rescheduled: its track is archived.',
   'schedule.refused.gone':
     '{key} could not be rescheduled: it was deleted, or you can no longer see it.',

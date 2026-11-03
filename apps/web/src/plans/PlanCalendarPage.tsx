@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CalendarView, monthOf, monthWeeks } from '../calendar/CalendarView';
 import { useT } from '../i18n/I18nProvider';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
@@ -19,14 +19,20 @@ export function PlanCalendarPage({ id, filters, client, now }: PlanSectionProps)
   const { first, last } = monthWeeks(month);
   const filterKey = JSON.stringify(filters);
 
+  /** Counts requests: only the latest one's answer is drawn, however they come back. */
+  const latest = useRef(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
   const load = useCallback(() => {
+    const asked = ++latest.current;
     client.calendar(id, filters, isoDay(first), isoDay(last)).then(
       (d) => {
+        if (asked !== latest.current) return;
         setData(d);
         setFailed(false);
       },
-      () => setFailed(true),
+      () => {
+        if (asked === latest.current) setFailed(true);
+      },
     );
   }, [client, id, filterKey, first, last]);
   useEffect(load, [load]);

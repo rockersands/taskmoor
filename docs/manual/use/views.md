@@ -113,8 +113,8 @@ With the keyboard, focus an entry and press Alt with the left or right arrow to 
 or with the up or down arrow to move it a week. Clicking an entry, or Enter, opens the ticket over the
 calendar, where **Start date** and **Due date** are among its details. Rescheduling needs the **Set due dates**
 permission. When a change is refused, the calendar says why: you may not schedule tickets in the
-track, the track is archived, the ticket is gone, the dates are not valid, or the ticket changed
-meanwhile.
+track, its status or dates are locked for you, the track is archived, the ticket is gone, the dates
+are not valid, or the ticket changed meanwhile.
 
 On a phone, the calendar becomes a list of the month's days.
 

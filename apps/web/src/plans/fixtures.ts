@@ -1,5 +1,5 @@
 import { ApiError } from '../api/client';
-import { dayNumber, isoDay } from '../timeline/client';
+import { dayNumber, isoDay, type Refusal } from '../timeline/client';
 import type {
   Plan,
   PlanCalendar,
@@ -132,8 +132,12 @@ const filterText = (filters: PlanFilters) =>
 const BASE = 'track IN ("SHOP", "OPS") OR (track = PLB AND due IS NOT EMPTY)';
 
 export interface FakePlanOptions {
-  /** Answer reschedules with this code instead of saving them. */
-  refuse?: string;
+  /** Answer reschedules with this code (or this refusal) instead of saving them. */
+  refuse?: string | Omit<Refusal, 'ok'>;
+  /** Fail reading the plan for these filters, as a dropped connection or a 503 would. */
+  failOn?: (filters: PlanFilters) => boolean;
+  /** Its one source an archived track: seen, but nothing to search. */
+  archivedOnly?: boolean;
   /** How many sources the viewer cannot see; with every one hidden, the plan finds nothing. */
   hidden?: number | 'all';
   /** Other items instead of the default ones (a large plan). */
@@ -142,6 +146,9 @@ export interface FakePlanOptions {
   /** The person viewing (for `assignee = me`). */
   me?: number;
 }
+
+const refusal = (r: string | Omit<Refusal, 'ok'>): Refusal =>
+  typeof r === 'string' ? { ok: false, code: r } : { ok: false, ...r };
 
 export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   items: () => PlanTimelineItem[];
@@ -164,14 +171,21 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     editable: options.editable ?? true,
     sources: nothing
       ? []
-      : [
-          { kind: 'track', id: 1, key: 'SHOP', name: 'Shop', state: 'visible' },
-          { kind: 'track', id: 2, key: 'OPS', name: 'Operations', state: 'visible' },
-          { kind: 'savedSearch', id: 30, name: 'Billing due', state: 'visible' },
-          { kind: 'savedSearch', id: 31, name: 'Old import', state: 'broken' },
-        ],
+      : options.archivedOnly
+        ? [{ kind: 'track', id: 1, key: 'SHOP', name: 'Shop', state: 'archived' }]
+        : [
+            { kind: 'track', id: 1, key: 'SHOP', name: 'Shop', state: 'visible' },
+            { kind: 'track', id: 2, key: 'OPS', name: 'Operations', state: 'visible' },
+            { kind: 'savedSearch', id: 30, name: 'Billing due', state: 'visible' },
+            { kind: 'savedSearch', id: 31, name: 'Old import', state: 'broken' },
+          ],
     hiddenSources: options.hidden === 'all' ? 4 : (options.hidden ?? 0),
-    query: nothing ? null : filterText(filters) ? `(${BASE}) AND ${filterText(filters)}` : BASE,
+    query:
+      nothing || options.archivedOnly
+        ? null
+        : filterText(filters)
+          ? `(${BASE}) AND ${filterText(filters)}`
+          : BASE,
     version,
   });
   const shown = (filters: PlanFilters) =>
@@ -204,6 +218,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     get: async (id, filters = {}) => {
       if (id !== 12) throw new ApiError(404, { error: 'not_found' });
       if (filters.track === 'NOPE') throw new ApiError(400, { error: 'invalid_query' });
+      if (options.failOn?.(filters)) throw new ApiError(503, { error: 'query_timeout' });
       return plan(filters);
     },
     create: async (input) => {
@@ -332,7 +347,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       });
     },
     reschedule: async (key, dates) => {
-      if (options.refuse) return { ok: false, code: options.refuse };
+      if (options.refuse) return refusal(options.refuse);
       items = rolled(
         items.map((i) =>
           i.key === key ? { ...i, start: dates.startDate, due: dates.dueDate, dated: 'own' } : i,
@@ -341,7 +356,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       return { ok: true };
     },
     move: async (key, days) => {
-      if (options.refuse) return { ok: false, code: options.refuse };
+      if (options.refuse) return refusal(options.refuse);
       items = rolled(
         items.map((i) =>
           i.key === key

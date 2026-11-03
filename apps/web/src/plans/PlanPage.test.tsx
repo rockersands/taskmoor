@@ -142,6 +142,49 @@ describe('a Multi-track plan (PLN-001, PLN-012)', () => {
     );
   });
 
+  it('[PLN-012] says a lock is a lock, not a missing permission', async () => {
+    const user = userEvent.setup();
+    renderPlan('timeline', '#/plans/12/timeline', {
+      refuse: { code: 'forbidden', permission: 'edit', locked: true },
+    });
+    const bar = await screen.findByRole('button', { name: 'OPS-4: Nov 12, 2026 to Nov 18, 2026' });
+    bar.focus();
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'OPS-4 could not be rescheduled: its status or its dates are locked for you.',
+    );
+  });
+
+  it('[PLN-001] does not say the sources are hidden when they are seen but none can be searched', async () => {
+    renderPlan('summary', '#/plans/12', { archivedOnly: true });
+    expect(
+      await screen.findByText(
+        'None of this plan’s sources can be searched now: archived tracks and saved searches that no longer run add nothing.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText('The track Shop is archived, so its tickets are not shown.'),
+    ).toBeVisible();
+    expect(
+      screen.queryByText('You cannot see any of this plan’s sources, so it shows nothing for you.'),
+    ).toBeNull();
+  });
+
+  it('[PLN-012] runs no view with the last filters when the plan for new ones fails to load', async () => {
+    const user = userEvent.setup();
+    const { search } = renderPlan('list', '#/plans/12/list', {
+      failOn: (filters) => filters.assignee === 'me',
+    });
+    expect(await screen.findByRole('region', { name: 'Tickets' })).toBeVisible();
+    await user.selectOptions(screen.getByLabelText('Assignee'), 'me');
+    expect(await screen.findByRole('alert')).toHaveTextContent('This plan could not be loaded.');
+    expect(screen.queryByRole('region', { name: 'Tickets' })).toBeNull();
+    // Nothing searched without the filter the address now holds.
+    const before = search.queries.length;
+    await new Promise((r) => setTimeout(r, 50));
+    expect(search.queries.length).toBe(before);
+  });
+
   it('[PLN-012] lists at most the first 10,000 tickets on the timeline and says so', async () => {
     renderPlan('timeline', '#/plans/12/timeline', { items: manyPlanItems(10_001) });
     expect(

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { priorityName } from '../shell/priorityName';
 import { typeName } from '../shell/seededNames';
@@ -27,14 +27,20 @@ export function PlanTimelinePage({
   const [failed, setFailed] = useState(false);
   const filterKey = JSON.stringify(filters);
 
+  /** Counts requests: only the latest one's answer is drawn, however they come back. */
+  const latest = useRef(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
   const load = useCallback(() => {
+    const asked = ++latest.current;
     client.timeline(id, filters).then(
       (d) => {
+        if (asked !== latest.current) return;
         setData(d);
         setFailed(false);
       },
-      () => setFailed(true),
+      () => {
+        if (asked === latest.current) setFailed(true);
+      },
     );
   }, [client, id, filterKey]);
   useEffect(load, [load]);
@@ -52,7 +58,11 @@ export function PlanTimelinePage({
           const track = tracks.get(item.trackId);
           return {
             id: String(item.trackId),
-            label: track ? t('plans.filter.trackOption', { key: track.key, name: track.name }) : '',
+            label: !track
+              ? ''
+              : track.name === null
+                ? track.key
+                : t('plans.filter.trackOption', { key: track.key, name: track.name }),
           };
         }
         case 'assignee':

@@ -4360,6 +4360,8 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.section.settings': 'Configuración',
   'plans.notice.nothing':
     'No puedes ver ninguna de las fuentes de este plan, así que no te muestra nada.',
+  'plans.notice.unsearchable':
+    'Ninguna de las fuentes de este plan se puede buscar ahora: los tracks archivados y las búsquedas guardadas que ya no funcionan no aportan nada.',
   'plans.notice.noSources':
     'Este plan aún no tiene fuentes: agrega tracks o búsquedas guardadas en su configuración.',
   'plans.notice.hidden':
@@ -4499,7 +4501,8 @@ export const messagesEs: Record<MessageId, string> = {
     'No se pudo mover {key}: puede que no puedas programarlo, o se rechazaron sus días.',
   'calendar.truncated': 'Solo se muestran los primeros 1000 tickets de estas semanas.',
   'calendar.more': '{count, number} más',
-  'calendar.moreLabel': 'Mostrar {count, number} tickets más del {date}',
+  // The visible "N más" comes first, whole, so speech input finds the button by its text.
+  'calendar.moreLabel': '{count, number} más: mostrar los tickets del {date}',
   'calendar.fewer': 'Mostrar menos',
   'list.title': 'Lista de {name}',
   'list.notFound': 'Este track no existe, o no puedes verlo.',
@@ -4592,6 +4595,8 @@ export const messagesEs: Record<MessageId, string> = {
   'timeline.group.expand': 'Mostrar los tickets de {name}',
   'schedule.refused.forbidden':
     'No se pudo reprogramar {key}: no puedes programar tickets en su track.',
+  'schedule.refused.locked':
+    'No se pudo reprogramar {key}: su estado o sus fechas están bloqueados para ti.',
   'schedule.refused.archived': 'No se pudo reprogramar {key}: su track está archivado.',
   'schedule.refused.gone': 'No se pudo reprogramar {key}: se eliminó, o ya no puedes verlo.',
   'schedule.refused.invalid': 'No se pudo reprogramar {key}: esas fechas no son válidas.',

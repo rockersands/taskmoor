@@ -162,8 +162,12 @@ export function PlanPage({
       </nav>
       {(plan.hiddenSources > 0 || broken.length > 0 || archived.length > 0 || !plan.query) && (
         <ul className="plan-notices">
-          {plan.query === null && plan.sources.length + plan.hiddenSources > 0 && (
+          {plan.query === null && plan.sources.length === 0 && plan.hiddenSources > 0 && (
             <li>{t('plans.notice.nothing')}</li>
+          )}
+          {/* Sources the person sees, none of them searchable: archived or no longer running. */}
+          {plan.query === null && plan.sources.length > 0 && (
+            <li>{t('plans.notice.unsearchable')}</li>
           )}
           {plan.sources.length + plan.hiddenSources === 0 && <li>{t('plans.notice.noSources')}</li>}
           {plan.hiddenSources > 0 && (
@@ -181,13 +185,21 @@ export function PlanPage({
         <PlanFilterBar view={view} choices={choices} grouped={grouped} onChange={go} />
       )}
       <div ref={body}>
-        {section === 'summary' && <PlanSummaryPage {...viewProps} />}
-        {section === 'timeline' && <PlanTimelinePage {...viewProps} group={view.group} />}
-        {section === 'list' && (
+        {/* The plan for this address did not load: no view runs with the last address's query. */}
+        {problem === 'failed' && (
+          <p className="board-problem" role="alert">
+            {t('plans.failed')}
+          </p>
+        )}
+        {problem !== 'failed' && section === 'summary' && <PlanSummaryPage {...viewProps} />}
+        {problem !== 'failed' && section === 'timeline' && (
+          <PlanTimelinePage {...viewProps} group={view.group} />
+        )}
+        {problem !== 'failed' && section === 'list' && (
           <PlanListPage {...viewProps} group={view.group} search={search} list={list} />
         )}
-        {section === 'calendar' && <PlanCalendarPage {...viewProps} />}
-        {section === 'settings' && plan.editable && (
+        {problem !== 'failed' && section === 'calendar' && <PlanCalendarPage {...viewProps} />}
+        {problem !== 'failed' && section === 'settings' && plan.editable && (
           <PlanSettingsPage plan={plan} client={client} onSaved={() => setVersion((v) => v + 1)} />
         )}
       </div>
@@ -249,7 +261,9 @@ function PlanFilterBar({
           )}
           {tracks.map((x) => (
             <option key={x.id} value={x.key}>
-              {t('plans.filter.trackOption', { key: x.key, name: x.name })}
+              {x.name === null
+                ? x.key
+                : t('plans.filter.trackOption', { key: x.key, name: x.name })}
             </option>
           ))}
         </select>

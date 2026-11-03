@@ -1,9 +1,11 @@
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -121,6 +123,7 @@ export function TimelineView({
   const [notice, setNotice] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLDivElement>(null);
   /** Set when a drag ends, so the click that follows does not open the panel. */
@@ -207,9 +210,12 @@ export function TimelineView({
   }, [zoom]);
 
   const windowed = rows.length > WINDOW_AFTER;
-  useEffect(() => {
+  // Before the first paint with windowing on: the rows drawn come from where the list stands now,
+  // not from where it stood the last time it was windowed.
+  useLayoutEffect(() => {
     const el = scroller.current;
     if (!el || !windowed) return;
+    setStep(Math.floor(el.scrollTop / (ROW * STEP)));
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
@@ -227,6 +233,17 @@ export function TimelineView({
   const lastRow = windowed
     ? Math.min(rows.length, Math.ceil((top + viewHeight) / ROW) + STEP + OVERSCAN)
     : rows.length;
+  const rowKey = (row: Row) => (row.kind === 'group' ? `g:${row.id}` : `i:${row.item.id}`);
+  // The row holding focus, and the chosen one, stay drawn while scrolled out of view, so keyboard
+  // focus never drops to the page.
+  const pinned = windowed
+    ? rows.flatMap((row, index) =>
+        (index < firstRow || index >= lastRow) &&
+        (rowKey(row) === focusKey || (row.kind === 'item' && row.item.id === selected))
+          ? [{ row, index }]
+          : [],
+      )
+    : [];
 
   const dayText = (day: number) =>
     intl.formatDate(new Date(day * 86_400_000), {
@@ -256,7 +273,7 @@ export function TimelineView({
         }),
       );
     } else {
-      setProblem(scheduleRefusal(t, item.key, outcome.code));
+      setProblem(scheduleRefusal(t, item.key, outcome));
     }
     reload();
   };
@@ -377,7 +394,11 @@ export function TimelineView({
     return next;
   };
 
-  const itemRow = (row: Extract<Row, { kind: 'item' }>) => {
+  /** Where a pinned row is drawn: at its own place, outside the slice of rows in view. */
+  const placed = (index: number | undefined): CSSProperties | undefined =>
+    index === undefined ? undefined : { position: 'absolute', top: index * ROW, left: 0 };
+
+  const itemRow = (row: Extract<Row, { kind: 'item' }>, at?: number) => {
     const { item } = row;
     const live = drag?.id === item.id ? dragged(drag) : null;
     const bar = barOf(item);
@@ -385,9 +406,11 @@ export function TimelineView({
     const progress = item.rollup;
     return (
       <li
-        key={item.id}
+        key={`i:${item.id}`}
+        data-row={`i:${item.id}`}
         className={`timeline-row${selected === item.id ? ' is-selected' : ''}`}
         data-stage={item.status.stage}
+        style={placed(at)}
       >
         <div
           className="timeline-label"
@@ -487,10 +510,15 @@ export function TimelineView({
     );
   };
 
-  const groupRow = (row: Extract<Row, { kind: 'group' }>) => {
+  const groupRow = (row: Extract<Row, { kind: 'group' }>, at?: number) => {
     const open = !closedGroups.has(row.id);
     return (
-      <li key={`g:${row.id}`} className="timeline-row timeline-group">
+      <li
+        key={`g:${row.id}`}
+        data-row={`g:${row.id}`}
+        className="timeline-row timeline-group"
+        style={placed(at)}
+      >
         <div className="timeline-label">
           <button
             type="button"
@@ -650,10 +678,24 @@ export function TimelineView({
             <ul
               className="timeline-rows"
               style={windowed ? { paddingTop: firstRow * ROW } : undefined}
+              onFocus={(event) => {
+                const li = (event.target as HTMLElement).closest('li[data-row]');
+                setFocusKey(li?.getAttribute('data-row') ?? null);
+              }}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setFocusKey(null);
+                }
+              }}
             >
-              {rows
-                .slice(firstRow, lastRow)
-                .map((row) => (row.kind === 'group' ? groupRow(row) : itemRow(row)))}
+              {/* One list in row order, so React never remounts or moves a drawn row: focus stays. */}
+              {[
+                ...pinned.filter((p) => p.index < firstRow),
+                ...rows.slice(firstRow, lastRow).map((row) => ({ row, index: undefined })),
+                ...pinned.filter((p) => p.index >= lastRow),
+              ].map(({ row, index }) =>
+                row.kind === 'group' ? groupRow(row, index) : itemRow(row, index),
+              )}
             </ul>
           </div>
         </div>

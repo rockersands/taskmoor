@@ -58,7 +58,11 @@ plan, the rename is in the UI strings and the manual; the tables and routes can 
   compiles it through `compileQuery` (`boards/data.ts`), which adds the viewer's ticket filter
   (QRY-008), so a plan never shows, counts or groups a ticket its viewer may not see.
 - **A source the viewer cannot see adds nothing for them**, and the plan's page says how many of
-  its sources are hidden from them, never which. A plan with no visible source finds nothing:
+  its sources are hidden from them, never which. A track counts as seen only when the viewer
+  browses the track itself (track-level "Browse track", as `visibleTrack` decides): a ticket-level
+  grant (requester, assignee, a person or group field) shows single tickets, never the track. Such
+  a track's name, sprints and releases stay out of every answer; a ticket it shows carries its
+  track's key, which the ticket's own key holds anyway. A plan with no visible source finds nothing:
   views answer empty without running a query, and the plan's `query` is null.
 - A saved search's condition is printed from its parsed query (`printQuery`, without its
   ORDER BY), never as `savedSearch = <id>`: a saved search named like another's id would be read
@@ -106,7 +110,9 @@ Each view answers the plan's query with the filters, as the viewer. Each lists a
   descendant the viewer may see, in the plan or not, so a plan of outcomes still shows their span;
   a parent the viewer may not see reads as none (`parentId` null) instead of its id. Each item
   also carries its track, assignee and priority, for grouping. The page draws only the rows in
-  view once there are more than 200 (rows are a fixed 44px), for the track's timeline too.
+  view once there are more than 200 (rows are a fixed 44px), for the track's timeline too, taken
+  from where the list stands whenever windowing switches on; the row holding focus and the chosen
+  one stay drawn at their own place while scrolled away, so keyboard focus never drops.
 - **List**: the search with the plan's query (`POST /api/v1/search`) in the person's columns,
   sorted and grouped, cells edited in place as in search results. It stops offering more rows
   at 10,000.
@@ -121,8 +127,12 @@ Each view answers the plan's query with the filters, as the viewer. Each lists a
   panel change the ticket through its own route (`PATCH /tickets/:key`), so "Schedule tickets",
   the ticket's history and its events apply, ticket by ticket, across tracks. Nothing is held in
   the plan: draft changes arrive with scenarios (PLN-002, T-089e).
-- A refusal says why in plain words, from the ticket route's codes: no permission to schedule,
-  an archived track, a ticket gone or hidden, dates that are not valid.
+- A refusal says why in plain words, from the ticket route's codes and the permission it names:
+  no "Set due dates", a status or field lock (WF-007, which answers `forbidden` with its locks), an
+  archived track, a ticket gone or hidden, dates that are not valid, a change made meanwhile.
+- Only the answer to the latest request is drawn, so a slow answer for filters or a month left
+  behind never replaces the current one; when the plan for new filters fails to load, the page
+  says so and no view runs with the old ones.
 
 #### Routes, events and records
 

@@ -138,6 +138,17 @@ export interface SeenSources {
   conditions: Map<number, string>;
 }
 
+/**
+ * Whether the person browses a track itself (track-level `browse_track`, archived tracks aside),
+ * not merely some of its tickets through a ticket-level grant.
+ */
+export async function browsedTracks(
+  request: FastifyRequest,
+): Promise<(trackId: number) => boolean> {
+  const allowed = await request.authz.allowedTracks('browse_track');
+  return (trackId) => allowed === 'all' || allowed.includes(trackId);
+}
+
 /** Which sources the viewer sees, without running anything. */
 export async function viewerSources(
   db: Db,
@@ -149,6 +160,10 @@ export async function viewerSources(
   const userId = request.user?.id ?? null;
   const searchable = (trackId: number) =>
     scope.filter.tracks === 'all' || scope.filter.tracks.includes(trackId);
+  // A track is seen by browsing it, as its own pages decide (`visibleTrack`): the ticket filter's
+  // tracks also hold those where a ticket-level grant (requester, assignee, a person or group
+  // field) shows single tickets, and such a track's name, sprints and releases stay hidden.
+  const browses = await browsedTracks(request);
   const savedIds = rows.flatMap((r) => (r.saved_search_id === null ? [] : [r.saved_search_id]));
   const seen = new Set(
     savedIds.length === 0
@@ -175,7 +190,7 @@ export async function viewerSources(
       };
       if (r.track_deleted || r.track_key === null) {
         out.hidden++;
-      } else if (searchable(id)) {
+      } else if (searchable(id) && browses(id)) {
         out.sources.push({ ...named, state: 'visible' });
         out.keys.push(r.track_key);
       } else if (r.track_archived && (await request.authz.track(id)).has('browse_track')) {

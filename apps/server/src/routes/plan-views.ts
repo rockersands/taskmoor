@@ -12,7 +12,7 @@ import {
   MAX_CALENDAR_DAYS,
   type PlanFilters,
 } from '../plans/model';
-import { type PlanTickets, planTickets, sourceRows } from '../plans/query';
+import { browsedTracks, type PlanTickets, planTickets, sourceRows } from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { planVisible } from './plans';
 import { searchRefusal } from './search';
@@ -193,18 +193,24 @@ export function registerPlanViewRoutes(
     return { sprints, releases };
   }
 
-  /** The tracks named in an answer, by id. */
+  /**
+   * The tracks named in an answer, by id: the name only of a track the person browses; a track
+   * known only from a ticket they may see (a ticket-level grant) by its key, which the ticket's own
+   * key already shows.
+   */
   async function tracksOf(
     trx: Kysely<Database> | Transaction<Database>,
     trackIds: readonly number[],
+    browses: (trackId: number) => boolean,
   ) {
     if (trackIds.length === 0) return [];
-    return trx
+    const rows = await trx
       .selectFrom('track')
       .select(['id', 'key', 'name'])
       .where('id', 'in', [...trackIds])
       .orderBy('key')
       .execute();
+    return rows.map((t) => ({ id: t.id, key: t.key, name: browses(t.id) ? t.name : null }));
   }
 
   app.get('/api/v1/plans/:id/summary', async (request, reply) => {
@@ -243,6 +249,7 @@ export function registerPlanViewRoutes(
         closedRecently: await compileCondition(db, scope, CONDITIONS.closedRecently, now),
       };
       const linked = (clause: string) => `(${query}) AND ${clause}`;
+      const browses = await browsedTracks(request);
       const counted = await readOnly(db, timeoutMs, async (trx) => {
         const { rows } = await sql<{
           by_track: number;
@@ -289,6 +296,7 @@ export function registerPlanViewRoutes(
         const tracks = await tracksOf(
           trx,
           byTrack.map((r) => r.track_id as number),
+          browses,
         );
         return { all, rows, byTrack, byPerson, names, tracks };
       });
@@ -428,9 +436,11 @@ export function registerPlanViewRoutes(
       const trackIds = [
         ...new Set([...answer.rows.map((r) => r.track_id), ...sourceTracks(tickets)]),
       ];
+      // Sprints and releases only of tracks the person browses, never through a ticket-level grant.
+      const browses = await browsedTracks(request);
       const extra = await readOnly(db, timeoutMs, async (trx) => ({
-        markers: await markers(trx, ws, trackIds),
-        tracks: await tracksOf(trx, trackIds),
+        markers: await markers(trx, ws, trackIds.filter(browses)),
+        tracks: await tracksOf(trx, trackIds, browses),
       }));
       const rollupOf = new Map(answer.rollups.map((r) => [r.id, r]));
       return {
@@ -494,6 +504,7 @@ export function registerPlanViewRoutes(
       const where = tickets.where;
       if (!where) return none;
       const ws = request.workspaceId;
+      const browses = await browsedTracks(request);
       const answer = await readOnly(db, timeoutMs, async (trx) => {
         const rows = (
           await sql<{
@@ -522,8 +533,8 @@ export function registerPlanViewRoutes(
         const trackIds = [...new Set([...listed.map((r) => r.trackId), ...sourceTracks(tickets)])];
         return {
           tickets: listed,
-          tracks: await tracksOf(trx, trackIds),
-          ...(await markers(trx, ws, trackIds, { from, to })),
+          tracks: await tracksOf(trx, trackIds, browses),
+          ...(await markers(trx, ws, trackIds.filter(browses), { from, to })),
           truncated: rows.length > LISTED,
         };
       });
