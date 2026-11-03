@@ -9,8 +9,8 @@
 Accounts come from a site administrator, a single sign-on provider, a directory or SCIM. There
 is no way for the person who runs a track to bring someone in, and no page in the web app for a
 track's administrators who are not site administrators, although the server has let them manage
-their track's roles since M1-002. A self-hosted site may have no mail server, and the project
-offers no hosted service: importing people from outside services or adding reCAPTCHA would mean
+their track's roles since M1-002. A self-hosted site may have no mail server, and nobody runs a
+hosted service for it: importing people from outside services or adding reCAPTCHA would mean
 every operator bringing their own accounts, so neither is built.
 
 The user decided on 2026-11-03:
