@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { BoardsPage } from './BoardsPage';
 import { fakeBoardClient } from './fixtures';
 
@@ -25,5 +25,18 @@ export const Boards: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('link', { name: 'Checkout team' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Create board' })).toBeVisible();
+    await expect(await canvas.findByRole('option', { name: 'Payments (PAY)' })).toBeInTheDocument();
+  },
+};
+
+/** The advanced way: any query, with the chosen track already in it. */
+export const AdvancedQuery: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('option', { name: 'Payments (PAY)' });
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Advanced: choose the tickets with a query' }),
+    );
+    await expect(canvas.getByRole('textbox', { name: 'Tickets (a query)' })).toHaveFocus();
   },
 };

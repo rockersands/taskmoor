@@ -339,7 +339,38 @@
 }
 
 .boards-create {
+  display: grid;
+  gap: var(--space-3);
   max-width: 36rem;
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+}
+
+.boards-create-title {
+  margin: 0;
+  font-size: var(--font-size-400);
+}
+
+/* A plain link in looks: the way to the query is there, and does not compete with the form. */
+.boards-create-switch {
+  justify-self: start;
+  min-height: var(--hit-target);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  font-size: var(--font-size-200);
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .boards-create-switch {
+    min-height: var(--hit-target-touch);
+  }
 }
 
 .board-settings-link {

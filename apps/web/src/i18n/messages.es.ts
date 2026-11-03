@@ -3485,13 +3485,26 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.choose.cancel': 'Cancelar',
   'boards.list.title': 'Tableros',
   'boards.list.failed': 'No se pudieron cargar los tableros.',
-  'boards.list.empty': 'Aún no hay tableros. Crea uno a partir de una consulta más abajo.',
+  'boards.list.emptyTitle': 'Aún no hay tableros',
+  'boards.list.empty': 'Crea el primero aquí abajo: ponle nombre y elige su track.',
   'boards.create.title': 'Tablero nuevo',
   'boards.create.name': 'Nombre',
   'boards.create.kind': 'Tipo',
+  'boards.create.track': 'Track',
+  'boards.create.trackChoose': 'Elige un track',
+  'boards.create.trackOption': '{name} ({key})',
+  'boards.create.trackHint':
+    'El tablero muestra los tickets de este track. Sus columnas parten de los estados de los flujos de trabajo del track.',
+  'boards.create.noTracks':
+    'Aún no puedes ver ningún track, así que el tablero no tendría nada que mostrar.',
+  'boards.create.useQuery': 'Avanzado: elegir los tickets con una consulta',
+  'boards.create.useTrack': 'Elegir un track',
+  'boards.create.tracksFailed':
+    'No se pudieron cargar los tracks, así que este formulario pide una consulta.',
+  'boards.create.failedTrack': 'No se pudo crear el tablero. Inténtalo de nuevo en un momento.',
   'boards.create.query': 'Tickets (una consulta)',
   'boards.create.queryHint':
-    'Por ejemplo: track = SHOP. Las columnas parten de los estados de sus flujos de trabajo.',
+    'Un tablero puede mostrar todo lo que encuentre una búsqueda, como tickets de varios tracks. Por ejemplo: {example}. Las columnas parten de los estados de sus flujos de trabajo.',
   'boards.create.submit': 'Crear el tablero',
   'boards.create.failed': 'No se pudo crear el tablero. Revisa la consulta.',
   'boards.settings.link': 'Configuración del tablero',

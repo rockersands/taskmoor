@@ -54,6 +54,7 @@ test('[AGL-001] [AGL-002] [AGL-003] [AGL-005] a board from a query, keyboard mov
   await page.goto(`${BASE}/#/boards`);
   await expect(page.getByRole('heading', { name: 'Boards', level: 1 })).toBeVisible();
   await page.getByLabel('Name').fill(`Team ${word}`);
+  await page.getByRole('button', { name: 'Advanced: choose the tickets with a query' }).click();
   await page.getByLabel('Tickets (a query)').fill(`track = ATT AND summary ~ ${word}`);
   await page.getByRole('button', { name: 'Create board' }).click();
   const board = page.getByRole('region', { name: `Team ${word}` });

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { setViewportWidth } from '../test/viewport';
 import { BoardPage } from './BoardPage';
@@ -135,6 +135,65 @@ describe('the board page (M1-043)', () => {
 });
 
 describe('the boards list (M1-043)', () => {
+  it('[AGL-001] lists boards and makes one for a track, with the query out of the way', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient();
+    const create = vi.spyOn(client, 'create');
+    render(
+      <I18nProvider locale="en">
+        <BoardsPage client={client} onCreated={() => {}} />
+      </I18nProvider>,
+    );
+    await user.type(screen.getByLabelText('Name'), 'Payments');
+    expect(screen.queryByLabelText('Tickets (a query)')).toBeNull();
+    const track = screen.getByRole('combobox', { name: 'Track' });
+    await screen.findByRole('option', { name: 'Payments (PAY)' });
+    expect(track).toBeRequired();
+    await user.selectOptions(track, 'Payments (PAY)');
+    await user.click(screen.getByRole('button', { name: 'Create board' }));
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith({
+        name: 'Payments',
+        kind: 'kanban',
+        query: 'track = PAY',
+      }),
+    );
+  });
+
+  it('[AGL-001] carries the track into the advanced query, and asks for one if tracks fail', async () => {
+    const user = userEvent.setup();
+    const client = fakeBoardClient();
+    const { unmount } = render(
+      <I18nProvider locale="en">
+        <BoardsPage client={client} onCreated={() => {}} />
+      </I18nProvider>,
+    );
+    await screen.findByRole('option', { name: 'Web app (WEB)' });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Track' }), 'Web app (WEB)');
+    await user.click(
+      screen.getByRole('button', { name: 'Advanced: choose the tickets with a query' }),
+    );
+    const query = screen.getByRole('textbox', { name: 'Tickets (a query)' });
+    expect(query).toHaveValue('track = WEB');
+    expect(query).toHaveFocus();
+    expect(screen.getByText(/For example: track = PAY/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Choose a track instead' }));
+    expect(screen.getByRole('combobox', { name: 'Track' })).toHaveFocus();
+    unmount();
+
+    client.tracks = async () => {
+      throw new Error('no');
+    };
+    render(
+      <I18nProvider locale="en">
+        <BoardsPage client={client} onCreated={() => {}} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('textbox', { name: 'Tickets (a query)' })).toBeRequired();
+    expect(screen.getByRole('status')).toHaveTextContent('The tracks could not be loaded');
+    expect(screen.queryByRole('button', { name: 'Choose a track instead' })).toBeNull();
+  });
+
   it('[AGL-001] lists boards and makes one from a query', async () => {
     const user = userEvent.setup();
     const client = fakeBoardClient();
@@ -151,6 +210,9 @@ describe('the boards list (M1-043)', () => {
     expect(screen.getByText('Scrum board · kept by Kalo Smith')).toBeVisible();
     await user.type(screen.getByLabelText('Name'), 'Payments');
     await user.selectOptions(screen.getByLabelText('Kind'), 'scrum');
+    await user.click(
+      screen.getByRole('button', { name: 'Advanced: choose the tickets with a query' }),
+    );
     await user.type(screen.getByLabelText('Tickets (a query)'), 'track = PAY');
     await user.click(screen.getByRole('button', { name: 'Create board' }));
     await waitFor(() => expect(made).toEqual([9]));

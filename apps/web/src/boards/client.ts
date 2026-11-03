@@ -198,6 +198,12 @@ export type MoveOutcome =
   | { kind: 'no_transition' }
   | { kind: 'refused'; code: string };
 
+/** A track a new board can be for, in the create form's picker. */
+export interface BoardTrack {
+  key: string;
+  name: string;
+}
+
 export interface NewBoard {
   name: string;
   kind: 'scrum' | 'kanban';
@@ -207,6 +213,8 @@ export interface NewBoard {
 export interface BoardClient {
   list(): Promise<BoardSummary[]>;
   create(board: NewBoard): Promise<BoardSummary>;
+  /** The tracks the person sees, for the create form. */
+  tracks(): Promise<BoardTrack[]>;
   board(id: number): Promise<Board>;
   /** The configuration with the statuses its columns may take. */
   settings(id: number): Promise<{ board: Board; statuses: BoardStatus[] }>;
@@ -236,6 +244,10 @@ export function dataPath(id: number, filters: readonly string[], sprints?: 'acti
 
 export const boardClient: BoardClient = {
   list: async () => (await api<{ boards: BoardSummary[] }>('/boards')).boards,
+  tracks: async () =>
+    (await api<{ tracks: { key: string | null; name: string }[] }>('/tracks?limit=200')).tracks
+      .filter((track): track is BoardTrack => track.key !== null)
+      .map(({ key, name }) => ({ key, name })),
   create: async (board) =>
     (
       await api<{ board: BoardSummary }>('/boards', {
