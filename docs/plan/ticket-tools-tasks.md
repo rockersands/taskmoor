@@ -28,17 +28,29 @@ None of these blocks 1.0. Each was left out on purpose, to keep to what is safe.
 
 ## Handoff
 
-**Where it stands.** All four parts are committed on the branch. It has not been through the full
-gate: that is the coordinator's, after merging.
+**Where it stands (2026-11-03).** All four parts are committed, and `origin/main` (at `6015efc`, with
+the ticket pop-up and migrations through 0095) is merged into this branch. Nothing is known to fail.
+It has not been through `pnpm verify`.
 
-**To merge.** Base it on `claude/ui-overhaul`. Expect easy conflicts at the end of
-`apps/web/src/i18n/messages.en.ts` and `messages.es.ts` (keep both sides), in
-`docs/specs/requirements-index.csv`, `docs/adr/README.md`, `packages/db/src/migrations/index.ts`,
-`packages/db/src/upgrade-fixtures.ts`, `packages/db/src/__golden__/schema.json`, `docs/api/*` and
-`packages/sdk/src/generated/*`. The last four are generated or ordered: after joining them, run
-`pnpm verify --update` and review. In `apps/web/src/tickets/view/TicketPage.tsx` the local
-`LinksPanel` went away and the columns are wrapped in `EditorToolsProvider`, which reindented them.
-Numbers taken: migration 0096, ADR-120, CORE-031 to 033, NTF-013 and 014.
+**Migration.** Renumbered from 0091 to 0096, with its file, index and upgrade seed; 0096 was free on
+`origin/main`, and the schema golden and upgrade test pass. Check again that it is still free if main
+moves. Numbers taken: migration 0096, ADR-120, CORE-031 to 033, NTF-013 and 014.
+
+**What ran after the merge, one file at a time.** Web, server, db, richtext and SDK test files for
+these tools, the stories of the tools and the pop-up, `tsc -b`, `i18n:check`, and the whole e2e suite
+once with `CI=1`: 187 passed, 45 skipped, none failed.
+
+**What the merge changed.** The panels work in the pop-up, tested in `TicketPopup.test.tsx`: they tell
+the page beneath when they change, and a closed picker leaves no list for Escape to find. A block's
+prompt in the editor is no longer a form, since the editor often sits inside one. The subticket
+field is now **New subticket**, because "Summary of a new one" also answered to the ticket's Summary
+field and failed two e2e journeys.
+
+**Next steps.** 1. Run `corepack pnpm verify --e2e`. 2. Fast-forward or merge to main. 3. Run
+`pnpm fuzz adf`, `markdown` and `wiki`, which have not seen the new nodes. If main moved before step
+1, merge it here again, and regenerate with `vitest run --project=<name> <file> -u` for
+`apps/server/src/api/openapi.test.ts`, `packages/sdk/src/generate.test.ts` and
+`packages/db/src/schema.test.ts`; a full `verify --update` has hung here.
 
 **What is new where.** The panels are in `apps/web/src/tickets/tools`; the menu is in
 `apps/web/src/richtext/slashTools.ts`, `BlockPrompt.tsx` and `EditorTools.tsx`; the routes are
@@ -46,5 +58,5 @@ Numbers taken: migration 0096, ADR-120, CORE-031 to 033, NTF-013 and 014.
 `checklistProgress` in `apps/server/src/tickets/checklists.ts`; the import side is
 `apps/server/src/import/load-checklists.ts`.
 
-**Before relying on it.** Run the full gate. Run `pnpm fuzz adf`, `markdown` and `wiki`, which have
-not seen the new nodes. Read the Spanish strings: they are a draft like the rest of `messages.es.ts`.
+**Before relying on it.** Read the Spanish strings: they are a draft like the rest of
+`messages.es.ts`.
