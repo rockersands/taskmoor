@@ -19,7 +19,7 @@ States:
 
 Work runs in waves, the user's decision on 2026-11-03: a ticket waits here rather than start beside too much else. First the finished branches merge, then the front work, then the rest.
 
-A ticket is only Done on `main` after a green full gate. `main` holds the first wave since 2026-11-03: ticket templates, easier updates, invitations and manager pages, and Google sign-in (not yet tried with real Google). "On branch" means what its sub chat
+A ticket is only Done on `main` after a green full gate. `main` holds the first waves since 2026-11-03: ticket templates, easier updates, invitations and manager pages, Google sign-in (not yet tried with real Google), and the front work so far. "On branch" means what its sub chat
 reported, and the coordinator checked that it was pushed.
 
 ## Setup and repository
@@ -29,7 +29,7 @@ reported, and the coordinator checked that it was pushed.
 | T-001 | Everything lives on one NVMe drive and runs on native Windows | Done | Decision recorded; this PC has no WSL Ubuntu |
 | T-002 | Old copies of the repository cleared from other drives | You | In the Recycle Bin; the user empties it |
 | T-003 | Repository renamed to `Rockersands/taskmoor` | Done | Remote and docs updated |
-| T-004 | The user's Gmail address and local paths removed from tracked files | On branch | M1 branch; new commits use the no-reply address |
+| T-004 | The user's Gmail address and local paths removed from tracked files | Done | M1 branch; new commits use the no-reply address |
 | T-005 | Rewrite git history to remove the old address and paths, once, with a backup | You | Just before going public; needs `git-filter-repo` and one force-push, each confirmed |
 | T-006 | Tests run on native Windows | Done | M1-144, on `main` |
 | T-007 | Job queue uses the database's clock | Done | On `main` |
@@ -43,7 +43,7 @@ reported, and the coordinator checked that it was pushed.
 | T-010 | Full gate, then fast-forward `main` | Done | `main` at `3ad14a3`; repeats for each merge |
 | T-011 | Fix the flaky keyboard e2e test | Done | Passed 20 of 20 |
 | T-012 | Fix the flaky MCP consent e2e test | Done | Passed 10 of 10 |
-| T-013 | Look into the AI settings Strict mode test that needed its retry | To do | Failed in two gates, passed alone |
+| T-013 | Look into the AI settings Strict mode test that needed its retry | Done | Late answers overwrote unsaved settings; fixed |
 | T-013a | Look into the boards and sprints e2e tests that need their retry in full gates | To do | Passed alone; may be the proxy losing connections, may be a real race |
 | T-013b | Rerun the 1M import after the two fixes | To do | Optional; those fixes have only quick tests so far |
 | T-014 | 500k-issue import | Done | 100% of sampled entities in 1 h 58 min; ADR-092 |
@@ -106,18 +106,18 @@ reported, and the coordinator checked that it was pushed.
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-070 | "Tableros" leaves the sidebar; each track is one place with sections | On branch | `claude/ui-overhaul`; the name stays Track |
-| T-071 | Tracks in the sidebar is one link, with no list under it | On branch | replaces the expanding list, as there could be many tracks |
-| T-072 | Exactly one board per track, enforced on the server | On branch | ADR-116 |
-| T-073 | No board outside a track | On branch | ADR-116 |
+| T-070 | "Tableros" leaves the sidebar; each track is one place with sections | Done | `claude/ui-overhaul`; the name stays Track |
+| T-071 | Tracks in the sidebar is one link, with no list under it | Done | replaces the expanding list, as there could be many tracks |
+| T-072 | Exactly one board per track, enforced on the server | Done | ADR-116 |
+| T-073 | No board outside a track | Done | ADR-116 |
 | T-074 | Decide about the leftover demo board `rrg` | You | Its sample track is gone; it can go too if the user agrees |
 | T-075 | Summary is a dashboard the track owner can customize | In progress | Migration 0090 exists |
 | T-076 | Statistics holds every report for the track | In progress | Created vs closed and two-dimensional were missing |
-| T-077 | Files and links section | On branch | `claude/ui-overhaul` |
+| T-077 | Files and links section | Done | `claude/ui-overhaul` |
 | T-078 | Keep the Lista and Versiones tabs | Done | Decided by the user |
 | T-079 | An Objetivos tab listing outcomes with progress | To do | Decided by the user; after the front merge |
-| T-080 | A New track button on the Tracks page | On branch | `claude/ui-overhaul` |
-| T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | On branch | `claude/ui-overhaul` |
+| T-080 | A New track button on the Tracks page | Done | `claude/ui-overhaul` |
+| T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | Done | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
 | T-083 | A cross-track timeline | In progress | Part of T-088 |
 | T-084 | Personal track groups: drag tracks together, name the group | To do | Waits for the merges; takes the next free migration number at the start; private to the person |
@@ -142,31 +142,31 @@ reported, and the coordinator checked that it was pushed.
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-090 | Fix drag and drop refusing moves | On branch | The missing close reason |
-| T-091 | Seamless moves in any direction, with no dialog, by default | On branch | Needs the user's check by mouse |
-| T-092 | A column is its status | On branch | New column makes a status; rename renames it |
-| T-093 | Refusals in plain words, no raw codes | On branch | `claude/ui-overhaul` |
-| T-094 | Why a move happened goes in a comment, with no prompt | On branch | Decided by the user |
-| T-095 | Closing a ticket by drag sets the reason Completed, and reports count it | On branch | A server test covers it |
-| T-096 | The rightmost column closes by default, and this can be changed | On branch | Per track |
-| T-097 | Deleting a column with cards asks where they go | On branch | `claude/ui-overhaul` |
-| T-098 | Columns no card can reach say so, and offer a fix | On branch | Includes the "potato" test |
+| T-090 | Fix drag and drop refusing moves | Done | The missing close reason |
+| T-091 | Seamless moves in any direction, with no dialog, by default | Done | Needs the user's check by mouse |
+| T-092 | A column is its status | Done | New column makes a status; rename renames it |
+| T-093 | Refusals in plain words, no raw codes | Done | `claude/ui-overhaul` |
+| T-094 | Why a move happened goes in a comment, with no prompt | Done | Decided by the user |
+| T-095 | Closing a ticket by drag sets the reason Completed, and reports count it | Done | A server test covers it |
+| T-096 | The rightmost column closes by default, and this can be changed | Done | Per track |
+| T-097 | Deleting a column with cards asks where they go | Done | `claude/ui-overhaul` |
+| T-098 | Columns no card can reach say so, and offer a fix | Done | Includes the "potato" test |
 | T-099 | Decide on the "potato" column | Done | No longer needed: its sample track was removed |
 | T-100 | Should demo tracks stop sharing one workflow? | Done | Settled: the three real tracks each have their own |
-| T-101 | Track picker in the board form, raw query under advanced | On branch | `claude/ui-overhaul` |
-| T-102 | Filter a board by person, for ordinary members | On branch | `claude/ui-overhaul` |
-| T-103 | The people list floats, and does not push the page down | On branch | `claude/ui-overhaul` |
-| T-104 | Filter buttons and checkboxes get the glass style | On branch | `claude/ui-overhaul` |
-| T-105 | Check whether "Solo mis tickets" and "Yo" duplicate each other | On branch | `claude/ui-overhaul` |
+| T-101 | Track picker in the board form, raw query under advanced | Done | `claude/ui-overhaul` |
+| T-102 | Filter a board by person, for ordinary members | Done | `claude/ui-overhaul` |
+| T-103 | The people list floats, and does not push the page down | Done | `claude/ui-overhaul` |
+| T-104 | Filter buttons and checkboxes get the glass style | Done | `claude/ui-overhaul` |
+| T-105 | Check whether "Solo mis tickets" and "Yo" duplicate each other | Done | `claude/ui-overhaul` |
 | T-106 | Complete a sprint from the board, for managers and above, with a confirmation pop-up | To do | Waits for the merges; says how many tickets are done and open, and where open ones go; Complete and Cancel |
 
 ## Tickets
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-110 | One status dropdown on the ticket, not a row of buttons | On branch | `claude/ui-overhaul` |
-| T-111 | A way back from a ticket to its board | On branch | `claude/ui-overhaul` |
-| T-112 | Fix Escape after Create in the create dialog | On branch | `claude/ui-overhaul` |
+| T-110 | One status dropdown on the ticket, not a row of buttons | Done | `claude/ui-overhaul` |
+| T-111 | A way back from a ticket to its board | Done | `claude/ui-overhaul` |
+| T-112 | Fix Escape after Create in the create dialog | Done | `claude/ui-overhaul` |
 | T-113 | Ticket templates | Done | `claude/ticket-templates`; form limits accepted by the user |
 | T-114 | Links with categories, on every ticket type | On branch | `claude/ticket-tools` |
 | T-115 | Link picker searches by number or name, same track only | On branch | `claude/ticket-tools` |
@@ -182,11 +182,11 @@ reported, and the coordinator checked that it was pushed.
 | T-122 | Clone a ticket from the pop-up and the ticket page | To do | Clone exists on the ticket page; the pop-up needs it |
 | T-123 | Copy a link to a ticket | To do | With the front sub chat |
 | T-124 | Set a ticket's priority from the pop-up | To do | With the front sub chat |
-| T-125 | Board cards show title, priority, assignee and points | On branch | points only where set |
-| T-126 | Edit a ticket's title from the card, with a pencil button | On branch | `claude/ui-overhaul` |
-| T-127 | The ticket's type shows as an icon on the card, not a word | On branch | our own icons; the name stays for screen readers |
-| T-128 | Priority shows as an icon, not a word | On branch | shape as well as colour; custom priorities too |
-| T-129 | Add a Very low priority and remove the None choice | On branch | new tickets take the default priority |
+| T-125 | Board cards show title, priority, assignee and points | Done | points only where set |
+| T-126 | Edit a ticket's title from the card, with a pencil button | Done | `claude/ui-overhaul` |
+| T-127 | The ticket's type shows as an icon on the card, not a word | Done | our own icons; the name stays for screen readers |
+| T-128 | Priority shows as an icon, not a word | Done | shape as well as colour; custom priorities too |
+| T-129 | Add a Very low priority and remove the None choice | Done | new tickets take the default priority |
 | T-129a | A seeded Points field, so points can show on cards | In progress | Migration 0095; the coordinator's choice while the user was away |
 | T-129b | Show the ticket key on board cards again | To do | Decided by the user; with the front sub chat |
 
@@ -194,9 +194,9 @@ reported, and the coordinator checked that it was pushed.
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-130 | Basic search: dates on, before, after and between | On branch | `claude/ui-overhaul` |
-| T-131 | Basic search: type, priority, labels and more | On branch | `claude/ui-overhaul` |
-| T-132 | A widget that cannot load says what it needs | On branch | `claude/ui-overhaul` |
+| T-130 | Basic search: dates on, before, after and between | Done | `claude/ui-overhaul` |
+| T-131 | Basic search: type, priority, labels and more | Done | `claude/ui-overhaul` |
+| T-132 | A widget that cannot load says what it needs | Done | `claude/ui-overhaul` |
 | T-133 | The user's "vxfdv" widget holds an invalid search | You | Fix or clear its search on the demo |
 | T-134 | Remove the sample tracks; keep only Flutter, Backend and Front | Done | The user asked; the four sample tracks are in the demo's trash |
 
@@ -204,31 +204,31 @@ reported, and the coordinator checked that it was pushed.
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-140 | Liquid Glass style, in our own design | On branch | No Apple or Atlassian assets |
-| T-141 | Deep strength, Soft canvas, the generated illustration | On branch | Decided by the user, who says Gemini's terms allow it |
+| T-140 | Liquid Glass style, in our own design | Done | No Apple or Atlassian assets |
+| T-141 | Deep strength, Soft canvas, the generated illustration | Done | Decided by the user, who says Gemini's terms allow it |
 | T-142 | Controls need not truly bend their colour for now | Done | Decision recorded |
 | T-143 | Glass on every page, starting with the track sections | To do | Waits for the merges; the list section was called out |
 | T-144 | The design is consistent through the whole app | To do | Waits for the merges; shared styles, a guard, then a sweep of every route |
-| T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | On branch | The user's own skin choice is kept |
+| T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | Done | The user's own skin choice is kept |
 | T-146 | Fix the English filters in the Spanish interface | To do | With the front sub chat |
-| T-147 | A watery look for every animation in the app | On branch | off with reduced motion |
+| T-147 | A watery look for every animation in the app | Done | off with reduced motion |
 
 ## Administration
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-150 | Administration as its own section, with an overview | On branch | e2e not run yet |
-| T-151 | Pages for visibility policies and the permission explainer | On branch | `claude/ui-overhaul` |
-| T-152 | Page for webhooks | On branch | `claude/ui-overhaul` |
-| T-153 | Pages for AI limits and prices | On branch | `claude/ui-overhaul` |
-| T-154 | Choose which sets a track uses | On branch | A plain picker for now |
+| T-150 | Administration as its own section, with an overview | Done | e2e not run yet |
+| T-151 | Pages for visibility policies and the permission explainer | Done | `claude/ui-overhaul` |
+| T-152 | Page for webhooks | Done | `claude/ui-overhaul` |
+| T-153 | Pages for AI limits and prices | Done | `claude/ui-overhaul` |
+| T-154 | Choose which sets a track uses | Done | A plain picker for now |
 | T-155 | Decide which other API-only controls go in 1.0 | You | UI-T21; the list comes from the front sub chat |
 
 ## The rest of the interface work
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-160 | Help menu with tutorials and keyboard shortcuts | On branch | `claude/ui-overhaul` |
+| T-160 | Help menu with tutorials and keyboard shortcuts | Done | `claude/ui-overhaul` |
 | T-161 | Tutorial: first-run offer, sections to pick, one of everything | To do | Waits for the merges; progress and picker exist |
 | T-162 | Drag and drop with a keyboard path beyond boards | To do | Backlog, dashboard widgets, files onto tickets |
 | T-163 | Layout editor page | To do | UI-T15 |
