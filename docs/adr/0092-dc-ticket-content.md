@@ -149,3 +149,18 @@ apps/server/src/import/dc-import.large.test.ts` at 1,000,000 issues on a machine
 40 GB free and faster cores, and, if it misses four hours there, load content kinds in parallel
 batches (each kind after tickets is independent of the others but for history, which runs last)
 or set-based (the option above).
+
+**500,000 issues, measured on 2026-11-03** (the user's decision: 500k measured, 1M as an estimate),
+on a 16-thread PC with NVMe storage, native Windows, with other work running on the machine.
+
+| Issues | Records | Stage | Import | Per record | Peak memory | Database | Fidelity |
+|---|---|---|---|---|---|---|---|
+| 500,000 | 2,853,241 | 214 s | 7,108 s (1 h 58 min) | 2.5 ms | 659 MB staging, 474 MB importing (RSS 1,022 MB) | 12.3 GB | 214,411 of 214,411 (every 20th issue) |
+
+Seven records failed. That run did not capture why; the test now reports the reasons. An earlier
+run on the same day scored 98.58% because the generator repeated six project keys at 200 projects:
+the import refused each second track, as it should, and the generator is fixed.
+
+**The estimate for 1,000,000 issues:** time grew linearly from the 100,000-issue run, so about
+5.7 million records at 2.5 ms is 3 h 57 min, plus about 7 minutes of staging, and about 24 GB of
+database. That is right at the four-hour bar, on this machine, with no margin.

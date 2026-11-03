@@ -107,6 +107,11 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_DC_IMPORT)(
       const size = await sql<{
         bytes: string;
       }>`SELECT pg_database_size(current_database())::text AS bytes`.execute(db);
+      // Why records failed, as the database is gone once this test ends.
+      const failedReasons = await sql<{ kind: string; reason: string; count: string }>`
+        SELECT entity_kind AS kind, left(error::text, 200) AS reason, count(*)::text AS count
+          FROM import_record WHERE run_id = ${run.id} AND outcome = 'failed'
+         GROUP BY 1, 2 ORDER BY count(*) DESC LIMIT 20`.execute(db);
       const line = JSON.stringify({
         issues: ISSUES,
         records: report.entities.reduce((n, e) => n + e.source, 0),
@@ -122,6 +127,7 @@ describe.skipIf(!process.env.TASKMOOR_LARGE_DC_IMPORT)(
         maxRssMB: +((process.resourceUsage().maxRSS * 1024) / MB).toFixed(0),
         databaseMB: +(Number(size.rows[0]?.bytes ?? 0) / MB).toFixed(0),
         failed: report.totals.failed,
+        failedReasons: failedReasons.rows,
         checkedEvery: EVERY,
         issuesChecked: fidelity.issuesChecked,
         fidelity: {
