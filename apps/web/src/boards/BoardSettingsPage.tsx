@@ -325,13 +325,15 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   const [manageProblem, setManageProblem] = useState<string | null>(null);
   const noticeRef = useRef<HTMLParagraphElement | null>(null);
 
+  /** Once the person has changed something, a late answer (their time zone, say) leaves it be. */
+  const edited = useRef(false);
   useEffect(() => {
     client.settings(boardId).then(
       (read) => {
         setBoard(read.board);
         setStatuses(read.statuses);
         setReach(read.reach ?? null);
-        setDraft(draftOf(read.board, timeZone));
+        if (!edited.current) setDraft(draftOf(read.board, timeZone));
         setState('loaded');
       },
       () => setState('failed'),
@@ -366,7 +368,10 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     );
   }
 
-  const set = (change: Partial<Draft>) => setDraft({ ...draft, ...change });
+  const set = (change: Partial<Draft>) => {
+    edited.current = true;
+    setDraft({ ...draft, ...change });
+  };
   const problem = (path: string) => problems[path];
   const invalid = (path: string, inputId: string) =>
     problem(path)

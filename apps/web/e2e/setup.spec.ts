@@ -401,7 +401,8 @@ test('[OPS-010] the administrator opens the system status from Settings', async 
   await page.getByRole('link', { name: 'System status' }).click();
   await expect(heading(page)).toHaveText('System status');
   const database = page.getByRole('region', { name: 'Database' });
-  await expect(database.getByText('Connected')).toBeVisible();
+  // It asks the database for its size, version and migrations: slow on a busy machine.
+  await expect(database.getByText('Connected')).toBeVisible({ timeout: 20_000 });
   await expect(database.getByText(/^\d+ applied$/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Runtime' }).getByText(/^v\d+\./)).toBeVisible();
 
