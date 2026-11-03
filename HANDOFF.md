@@ -43,6 +43,13 @@ Check what the cloud sessions pushed: `git fetch origin claude/ticket-templates 
 claude/flutter-mobile-app`. A branch that is missing was never pushed: start that workstream
 from its brief.
 
+### What changed on 2026-11-03
+
+Today's new work is M1-135 to M1-144 in `docs/plan/backlog.csv`, with the user's decisions in
+`docs/plan/decisions.csv`. The order below changed: after the 1M import, the finished branches
+merge with a full gate each, and only then the fuzz stages run, so the 8-hour clean run covers the
+final code (the user's decision).
+
 ### Workstream 1: finishing M1 (in order)
 
 1. `corepack pnpm verify --e2e`, then fast-forward `main`. The e2e suite needs `127.0.0.1
