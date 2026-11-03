@@ -91,7 +91,7 @@ reported, and the coordinator checked that it was pushed.
 | T-051 | Invite by email with a set role | Done | `claude/track-invites`; real email not yet tested |
 | T-052 | A link to copy when a site has no mail server | Done | `claude/track-invites` |
 | T-053 | Should managers copy links where email works? | You | Today every inviter can; recommended: only site administrators there |
-| T-054 | Is it fine that a manager can tell an account exists? | You | Recommended: accept it |
+| T-054 | A manager can tell an account exists when inviting it | Done | Accepted by the user |
 | T-055 | Site administrators give track administrators permission to invite | Done | Off by default |
 | T-056 | Managers appoint managers by default, through a removable permission | Done | Decided by the user |
 | T-057 | Track managers' web pages | Done | Settings > Tracks you run; moves into the panel on merge |
@@ -114,8 +114,8 @@ reported, and the coordinator checked that it was pushed.
 | T-075 | Summary is a dashboard the track owner can customize | In progress | Migration 0090 exists |
 | T-076 | Statistics holds every report for the track | In progress | Created vs closed and two-dimensional were missing |
 | T-077 | Files and links section | On branch | `claude/ui-overhaul` |
-| T-078 | Keep the Lista and Versiones tabs? | You | Recommended: keep both |
-| T-079 | An Objetivos tab listing outcomes with progress | You | Recommended: add it |
+| T-078 | Keep the Lista and Versiones tabs | Done | Decided by the user |
+| T-079 | An Objetivos tab listing outcomes with progress | To do | Decided by the user; after the front merge |
 | T-080 | A New track button on the Tracks page | On branch | `claude/ui-overhaul` |
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | On branch | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
@@ -187,7 +187,7 @@ reported, and the coordinator checked that it was pushed.
 | T-128 | Priority shows as an icon, not a word | On branch | shape as well as colour; custom priorities too |
 | T-129 | Add a Very low priority and remove the None choice | On branch | new tickets take the default priority |
 | T-129a | A seeded Points field, so points can show on cards | In progress | Migration 0095; the coordinator's choice while the user was away |
-| T-129b | The ticket key no longer shows on a card, only in its tooltip | You | Front's choice, since it was not on the user's list of card items |
+| T-129b | Show the ticket key on board cards again | To do | Decided by the user; with the front sub chat |
 
 ## Search and dashboards
 
