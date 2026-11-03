@@ -3655,7 +3655,7 @@ export const messagesEn = {
   'boards.truncated': 'Showing the first {count} cards in rank order.',
   'boards.warnings': 'Some lanes or colours could not be read: {list}',
   'boards.keyboardHint':
-    'Alt+Left and Alt+Right move a card to the next column; Alt+Up and Alt+Down move it within its column.',
+    'Up and Down go from card to card in a column, Home and End to its first and last card, and Tab to the next column. Alt+Left and Alt+Right move a card to the next column; Alt+Up and Alt+Down move it within its column.',
   'boards.empty': 'No tickets on this board match.',
   'boards.columns': 'Columns',
   'boards.column.count': '{count, plural, one {# ticket} other {# tickets}}',

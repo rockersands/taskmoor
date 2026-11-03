@@ -3758,7 +3758,7 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.warnings': 'No se pudieron leer algunos carriles o colores: {list}',
   'boards.card.points': '{points, plural, one {# punto} other {# puntos}}',
   'boards.keyboardHint':
-    'Alt+Izquierda y Alt+Derecha mueven una tarjeta a la columna siguiente; Alt+Arriba y Alt+Abajo la mueven dentro de su columna.',
+    'Arriba y Abajo te llevan de una tarjeta a otra en una columna, Inicio y Fin a su primera y su última tarjeta, y Tab a la columna siguiente. Alt+Izquierda y Alt+Derecha mueven una tarjeta a la columna siguiente; Alt+Arriba y Alt+Abajo la mueven dentro de su columna.',
   'boards.empty': 'Ningún ticket de este tablero coincide.',
   'boards.columns': 'Columnas',
   'boards.column.count': '{count, plural, one {# ticket} other {# tickets}}',

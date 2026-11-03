@@ -5,7 +5,7 @@ import { ApiError } from '../api/client';
 import { fakeSprintClient } from '../sprints/fixtures';
 import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
-import { CARDS, fakeBoardClient, manyCards, SCRUM_BOARD } from './fixtures';
+import { CARDS, fakeBoardClient, longColumn, manyCards, ONE_LANE, SCRUM_BOARD } from './fixtures';
 
 const meta = {
   title: 'Boards/BoardPage',
@@ -147,21 +147,18 @@ export const Empty: Story = {
  * function starts only once the page is drawn, too late to press anything): the first move
  * button is pressed as soon as it exists, and the board is interactive when its menu opens.
  */
-const watch = { arrival: 0, menu: 0, cardsAtMenu: 0, all: 0 };
+const watch = { arrival: 0, menu: 0 };
 function watchBoard() {
   watch.arrival = performance.now();
+  watch.menu = 0;
   const check = () => {
-    const cards = document.querySelectorAll('.board-card').length;
     if (!watch.menu && document.querySelector('.board-move-menu')) {
       watch.menu = performance.now() - watch.arrival;
-      watch.cardsAtMenu = cards;
+      observer.disconnect();
+      return;
     }
     const button = document.querySelector<HTMLButtonElement>('.board-card-move[aria-expanded]');
-    if (!watch.menu && button && button.getAttribute('aria-expanded') !== 'true') button.click();
-    if (cards === 5000) {
-      watch.all = performance.now() - watch.arrival;
-      observer.disconnect();
-    }
+    if (button && button.getAttribute('aria-expanded') !== 'true') button.click();
   };
   const observer = new MutationObserver(check);
   observer.observe(document.body, { childList: true, subtree: true });
@@ -169,9 +166,8 @@ function watchBoard() {
 
 /**
  * 5,000 cards (M1-046; 05b: under 1 s to interactive): from the data's arrival until a card's
- * move menu opens, then every card on the page. A cell's first cards are drawn at once and the
- * rest in a transition that yields to input. Timing only: the same board passes axe in the
- * stories above, and axe over 5,000 cards measures axe.
+ * move menu opens. Each cell draws only the cards near the screen (T-193), so the board is whole
+ * at once and passes axe like the small ones.
  */
 export const FiveThousandCards: Story = {
   args: {
@@ -187,14 +183,75 @@ export const FiveThousandCards: Story = {
       };
     })(),
   },
-  parameters: { a11y: { test: 'off' } },
-  play: async () => {
-    await waitFor(() => expect(watch.all).toBeGreaterThan(0), { timeout: 15_000, interval: 50 });
-    expect(watch.menu).toBeGreaterThan(0);
-    // The menu opened before every card was drawn: the rest did not hold the page.
-    expect(watch.cardsAtMenu).toBeLessThan(5000);
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(watch.menu).toBeGreaterThan(0), { timeout: 15_000, interval: 50 });
     await expectWithinBudget(watch.menu, 1000, '5,000-card board interactive (ms)');
-    await expectWithinBudget(watch.all, 4000, 'all 5,000 cards on the page (ms)');
+    // Six cells of hundreds of cards each, and only those near the screen on the page.
+    const drawn = canvasElement.querySelectorAll('.board-card').length;
+    await expect(drawn).toBeGreaterThan(6);
+    await expect(drawn).toBeLessThan(400);
+  },
+};
+
+const inView = (el: Element) => {
+  const box = el.getBoundingClientRect();
+  return box.top >= 0 && box.bottom <= window.innerHeight;
+};
+
+/**
+ * One column of 5,000 cards (T-193): the cards near the screen are drawn, each saying its place;
+ * End and Home reach the last and first card, drawn and brought into view; the Move menu opens
+ * whole, nothing clipping it; and the card with the menu and the focus stays while the page
+ * scrolls far down, where the cards on the screen are drawn.
+ */
+export const LongColumn: Story = {
+  args: { client: fakeBoardClient({ cards: longColumn(5000), lanes: ONE_LANE }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const todo = await canvas.findByRole('list', { name: 'To do' });
+    const items = within(todo).getAllByRole('listitem');
+    await expect(items.length).toBeLessThan(200);
+    await expect(items[0]).toHaveAttribute('aria-posinset', '1');
+    await expect(items[0]).toHaveAttribute('aria-setsize', '5000');
+    // The page keeps the column's whole length, so its scroll bar tells how long it is.
+    await expect(document.documentElement.scrollHeight).toBeGreaterThan(5000 * 60);
+    const link = (n: number) => canvas.getByRole('link', { name: new RegExp(`^SHOP-${n} `) });
+
+    link(1).focus();
+    await userEvent.keyboard('{End}');
+    await expect(link(5000)).toHaveFocus();
+    await waitFor(() => expect(inView(link(5000))).toBe(true));
+    await expect(link(5000).closest('li')).toHaveAttribute('aria-posinset', '5000');
+    await userEvent.keyboard('{ArrowUp}');
+    await expect(link(4999)).toHaveFocus();
+    await userEvent.keyboard('{Home}');
+    await expect(link(1)).toHaveFocus();
+    await waitFor(() => expect(inView(link(1))).toBe(true));
+
+    // Every choice of the menu shows where it is, and a press there reaches it.
+    await userEvent.click(canvas.getByRole('button', { name: 'Move SHOP-1' }));
+    const menu = link(1).closest('li') as HTMLElement;
+    for (const choice of within(menu).getAllByRole('button').slice(2)) {
+      choice.scrollIntoView({ block: 'center' });
+      const box = choice.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      await expect(choice.contains(hit)).toBe(true);
+    }
+
+    // Far down the column: the cards there are drawn, and SHOP-1 with its menu stays.
+    window.scrollTo(0, document.documentElement.scrollHeight / 2);
+    const x = todo.getBoundingClientRect().left + 40;
+    await waitFor(() =>
+      expect(
+        document.elementFromPoint(x, window.innerHeight / 2)?.closest('.board-card'),
+      ).not.toBeNull(),
+    );
+    await expect(canvas.getByRole('button', { name: 'Move SHOP-1' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await expect(todo.querySelectorAll('.board-card').length).toBeLessThan(200);
+    window.scrollTo(0, 0);
   },
 };
 
