@@ -76,6 +76,32 @@ export interface TrackClient {
   board(key: string): Promise<Board>;
   /** The files and web links on the track's tickets the person may see. */
   files(key: string): Promise<TrackFiles>;
+  /** A page of the track's outcomes with their progress; the next page after `cursor`. */
+  outcomes(key: string, cursor?: string): Promise<TrackOutcomes>;
+}
+
+/** An outcome of a track and how far along the tickets under it are (AGL-024). */
+export interface TrackOutcome {
+  id: number;
+  key: string;
+  summary: string;
+  type: string;
+  status: { name: string; stage: 'new' | 'active' | 'closed' };
+  /** Days as `2026-11-02`; null when not set. */
+  startDate: string | null;
+  dueDate: string | null;
+  /** The tickets under it the person may see, and those of them closed. */
+  progress: { total: number; closed: number };
+}
+
+export interface TrackOutcomes {
+  track: { id: number; key: string; name: string };
+  /** The track's ticket types at the outcome level, which make an outcome. */
+  outcomeTypes: string[];
+  /** Open ones first, then closed ones, each in rank order. */
+  outcomes: TrackOutcome[];
+  /** The cursor of the next page, or null on the last. */
+  next: string | null;
 }
 
 export interface TrackFiles {
@@ -145,6 +171,10 @@ export const trackClient: TrackClient = {
   list: async () =>
     (await api<{ tracks: TrackListItem[] }>('/tracks?limit=200')).tracks.filter((t) => t.key),
   files: (key) => api<TrackFiles>(`/tracks/${encodeURIComponent(key)}/files`),
+  outcomes: (key, cursor) =>
+    api<TrackOutcomes>(
+      `${trackPath(key)}/outcomes${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+    ),
   board: async (key) =>
     (await api<{ board: Board }>(`/tracks/${encodeURIComponent(key)}/board`)).board,
 };

@@ -34,6 +34,7 @@ describe('a track is one place with its sections (ADR-116)', () => {
       'List',
       'Calendar',
       'Timeline',
+      'Outcomes',
       'Releases',
       'Files and links',
       'Statistics',

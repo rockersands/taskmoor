@@ -38,6 +38,7 @@ export const messagesEn = {
   'track.section.list': 'List',
   'track.section.calendar': 'Calendar',
   'track.section.timeline': 'Timeline',
+  'track.section.outcomes': 'Outcomes',
   'track.section.releases': 'Releases',
   'track.section.files': 'Files and links',
   'track.section.statistics': 'Statistics',
@@ -56,6 +57,25 @@ export const messagesEn = {
   'track.files.emptyTitle': 'No files or links yet',
   'track.files.empty': 'Files attached to a ticket and web links added to it show here.',
   'track.files.truncated': 'Only the newest 200 of each are listed.',
+  'track.outcomes.title': 'Outcomes',
+  'track.outcomes.purpose':
+    "Each of this track's outcomes, with how many of the tickets under it are closed. Open ones come first, in their planned order, then closed ones.",
+  'track.outcomes.failed': 'The outcomes could not be loaded.',
+  'track.outcomes.progress': '{closed} of {total} closed ({percent}%)',
+  'track.outcomes.count': '{closed} of {total}',
+  'track.outcomes.noTickets': 'No tickets under it yet',
+  'track.outcomes.start': 'Starts {date}',
+  'track.outcomes.due': 'Due {date}',
+  'track.outcomes.more': 'Show more outcomes',
+  'track.outcomes.moreFailed': 'More outcomes could not be loaded. Try again.',
+  'track.outcomes.emptyTitle': 'No outcomes yet',
+  'track.outcomes.empty':
+    'An outcome is a larger goal, such as a launch or a theme, that other tickets sit under. Its progress is how many of those tickets are closed.',
+  'track.outcomes.howTo':
+    'To add one, create a ticket of the type {types}, then add the tickets that work towards it from its page.',
+  'track.outcomes.howToNone':
+    "None of this track's ticket types is at the outcome level. An administrator can add one in the track's settings.",
+  'track.outcomes.create': 'Create a ticket',
   'popover.done': 'Done',
   'tracks.title': 'Tracks',
   'tracks.failed': 'The tracks could not be loaded.',

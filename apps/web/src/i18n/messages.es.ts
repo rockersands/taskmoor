@@ -49,6 +49,7 @@ export const messagesEs: Record<MessageId, string> = {
   'track.section.list': 'Lista',
   'track.section.calendar': 'Calendario',
   'track.section.timeline': 'Cronograma',
+  'track.section.outcomes': 'Objetivos',
   'track.section.releases': 'Versiones',
   'track.section.files': 'Archivos y enlaces',
   'track.section.statistics': 'Estadísticas',
@@ -69,6 +70,25 @@ export const messagesEs: Record<MessageId, string> = {
   'track.files.empty':
     'Aquí aparecen los archivos adjuntos a un ticket y los enlaces web que se le añaden.',
   'track.files.truncated': 'Solo se listan los 200 más recientes de cada tipo.',
+  'track.outcomes.title': 'Objetivos',
+  'track.outcomes.purpose':
+    'Cada objetivo de este track, con cuántos de los tickets que tiene debajo están cerrados. Primero van los abiertos, en el orden planificado, y después los cerrados.',
+  'track.outcomes.failed': 'No se pudieron cargar los objetivos.',
+  'track.outcomes.progress': '{closed} de {total} cerrados ({percent} %)',
+  'track.outcomes.count': '{closed} de {total}',
+  'track.outcomes.noTickets': 'Aún no tiene tickets debajo',
+  'track.outcomes.start': 'Empieza el {date}',
+  'track.outcomes.due': 'Vence el {date}',
+  'track.outcomes.more': 'Mostrar más objetivos',
+  'track.outcomes.moreFailed': 'No se pudieron cargar más objetivos. Inténtalo de nuevo.',
+  'track.outcomes.emptyTitle': 'Aún no hay objetivos',
+  'track.outcomes.empty':
+    'Un objetivo es una meta más amplia, como un lanzamiento o un tema, bajo la que se agrupan otros tickets. Su progreso es cuántos de esos tickets están cerrados.',
+  'track.outcomes.howTo':
+    'Para añadir uno, crea un ticket del tipo {types} y luego, desde su página, añade los tickets que contribuyen a él.',
+  'track.outcomes.howToNone':
+    'Ninguno de los tipos de ticket de este track está en el nivel de objetivo. Un administrador puede añadir uno en la configuración del track.',
+  'track.outcomes.create': 'Crear un ticket',
   'popover.done': 'Listo',
   'tracks.title': 'Tracks',
   'tracks.failed': 'No se pudieron cargar los tracks.',

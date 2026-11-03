@@ -108,6 +108,7 @@ import {
 import { TrackBoardSection } from './tracks/TrackBoardSection';
 import { TrackFilesPage } from './tracks/TrackFilesPage';
 import { TrackLayout, type TrackSection } from './tracks/TrackLayout';
+import { TrackOutcomesPage } from './tracks/TrackOutcomesPage';
 import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
 import { NEW_TRACK_ROUTE, TracksPage } from './tracks/TracksPage';
@@ -215,6 +216,8 @@ const TRACKS = '#/tracks';
 const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 /** A track's files and web links. */
 const TRACK_FILES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/files(?:[/?]|$)/;
+/** A track's outcomes with their progress (AGL-024). */
+const TRACK_OUTCOMES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/outcomes(?:[/?]|$)/;
 /** A track's board, backlog and statistics, which read its one board. */
 const TRACK_BOARD_SECTION =
   /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/(board|backlog|statistics)(?:\/([a-z-]{1,40}))?(?:[/?]|$)/;
@@ -805,6 +808,15 @@ function Pages() {
     content = (
       <TrackLayout trackKey={key} section="files">
         <TrackFilesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
+  } else if (TRACK_OUTCOMES.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_OUTCOMES.exec(hash)?.[1] ?? '';
+    content = (
+      <TrackLayout trackKey={key} section="outcomes">
+        <TrackOutcomesPage key={key} trackKey={key} />
       </TrackLayout>
     );
   } else if (TRACK_BOARD_SECTION.test(hash)) {
