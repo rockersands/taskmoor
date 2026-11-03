@@ -107,8 +107,8 @@ To reschedule a ticket, drag it to another day:
   first.
 
 With the keyboard, focus an entry and press Alt with the left or right arrow to move it a day,
-or with the up or down arrow to move it a week. Enter opens a panel with **Start date** and **Due
-date**; change them and press **Save dates**. Rescheduling needs the **Set due dates**
+or with the up or down arrow to move it a week. Clicking an entry, or Enter, opens the ticket over the
+calendar, where **Start date** and **Due date** are among its details. Rescheduling needs the **Set due dates**
 permission; without it the calendar says the ticket could not be moved.
 
 On a phone, the calendar becomes a list of the month's days.

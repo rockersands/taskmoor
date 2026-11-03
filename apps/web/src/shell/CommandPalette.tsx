@@ -134,7 +134,7 @@ export function CommandPalette({ commands }: CommandPaletteProps) {
           <button
             ref={leaveMotion}
             type="button"
-            className="shell-backdrop"
+            className="shell-backdrop palette-backdrop"
             aria-label={t('palette.close')}
             tabIndex={-1}
             onClick={close}

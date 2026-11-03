@@ -16,6 +16,7 @@ import { useT } from '../i18n/I18nProvider';
 import { replaceRoute } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { readShownPages, useTicketChanges } from '../tickets/view/ticketChanges';
 import { BasicFilters } from './BasicFilters';
 import {
   type BasicQuery,
@@ -140,6 +141,21 @@ export function SearchPage({
     },
     [client, expired, t],
   );
+
+  // An edit in the ticket pop-up over the results: the rows shown, read again where they stand.
+  useTicketChanges(() => {
+    if (results.status !== 'loaded') return;
+    const { query } = results;
+    readShownPages((cursor) => client.search(query, cursor), results.page.tickets.length).then(
+      (page) =>
+        setResults((current) =>
+          current.status === 'loaded' && current.query === query
+            ? { status: 'loaded', page, more: page.next !== null, query }
+            : current,
+        ),
+      () => {},
+    );
+  });
 
   /** Shows a saved search: its query in the mode that can show it, its columns, its results. */
   const openSaved = (saved: SavedSearch) => {

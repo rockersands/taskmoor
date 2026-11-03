@@ -343,7 +343,11 @@ body {
   color: var(--color-accent);
 }
 
-/* Command palette */
+/* Command palette: over everything, a dialog included, as it opens from anywhere. */
+.palette-backdrop {
+  z-index: 85;
+}
+
 .palette-trigger {
   display: inline-flex;
   min-width: 0;
@@ -372,7 +376,7 @@ body {
   top: 12vh;
   inset-inline: 0;
   margin-inline: auto;
-  z-index: 60;
+  z-index: 90;
   width: min(92vw, 560px);
   background: var(--glass-fill-strong);
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));

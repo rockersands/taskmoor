@@ -23,6 +23,7 @@ import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useSyncEngine } from '../sync/SyncProvider';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
+import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { useTrackSections } from '../tracks/trackSections';
 import { refusalMessage } from '../workflow/refusal';
 import { BoardPeopleFilter, peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
@@ -232,6 +233,8 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const pencilAfter = useRef<number | null>(null);
   /** A press that began on a card's button: a drag from there would not be meant. */
   const pressedButton = useRef(false);
+  /** When a drag last ended: a click that follows at once is the drag's, and opens nothing. */
+  const dragEndedAt = useRef(Number.NEGATIVE_INFINITY);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const generation = useRef(0);
 
@@ -289,6 +292,18 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   moving.current = busy || dragging !== null;
   const boardRef = useRef(board);
   boardRef.current = board;
+  const readCards = useCallback(() => {
+    if (moving.current) return;
+    // Only the cards: the board itself (columns, kind) does not move with a ticket.
+    const mine = ++generation.current;
+    const kind = boardRef.current?.kind;
+    client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined, people).then(
+      (d) => {
+        if (mine === generation.current) setData(d);
+      },
+      () => {},
+    );
+  }, [client, boardId, filters, people]);
   useEffect(() => {
     if (!engine) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -296,23 +311,16 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       if (timer) return;
       timer = setTimeout(() => {
         timer = null;
-        if (moving.current) return;
-        // Only the cards: the board itself (columns, kind) does not move with a ticket.
-        const mine = ++generation.current;
-        const kind = boardRef.current?.kind;
-        client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined, people).then(
-          (d) => {
-            if (mine === generation.current) setData(d);
-          },
-          () => {},
-        );
+        readCards();
       }, 100);
     });
     return () => {
       if (timer) clearTimeout(timer);
       unsubscribe();
     };
-  }, [engine, client, boardId, filters, people]);
+  }, [engine, readCards]);
+  // An edit in the ticket pop-up over this board shows at once, socket or no socket.
+  useTicketChanges(readCards);
 
   useEffect(() => {
     if (focusAfter.current === null || !data) return;
@@ -642,6 +650,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           setMenuFor(null);
         }}
         onDragEnd={() => {
+          dragEndedAt.current = performance.now();
           setDragging(null);
           setDropAt(null);
         }}
@@ -659,13 +668,17 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           <a
             className="board-card-link"
             href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
-            onClick={() =>
+            onClick={(event) => {
+              if (performance.now() - dragEndedAt.current < 300) {
+                event.preventDefault();
+                return;
+              }
               rememberBoard(card.key, {
                 id: boardId,
                 name: board.name,
                 ...(people.length > 0 ? { people: people.join(',') } : {}),
-              })
-            }
+              });
+            }}
             aria-describedby={hintId}
             title={`${card.key} ${card.summary}`}
             ref={(el) => {

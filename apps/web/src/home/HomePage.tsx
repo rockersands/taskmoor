@@ -16,6 +16,7 @@ import {
 } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { useTicketChangeCount } from '../tickets/view/ticketChanges';
 import { type HomeClient, type HomeTicket, type HomeTrack, homeClient, homeTracks } from './client';
 
 export interface HomePageProps {
@@ -99,7 +100,9 @@ export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageP
     followed: { status: 'loading' },
   });
   const [trackList, setTrackList] = useState<Loaded<HomeTrack>>({ status: 'loading' });
+  const changes = useTicketChangeCount();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again after an edit in the pop-up
   useEffect(() => {
     let live = true;
     for (const { id } of SECTIONS) {
@@ -115,7 +118,7 @@ export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageP
     return () => {
       live = false;
     };
-  }, [client, tracks]);
+  }, [client, tracks, changes]);
 
   return (
     <section aria-labelledby={titleId} className="home-page">

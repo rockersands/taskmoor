@@ -7,7 +7,7 @@ import { useLockText } from '../locks/useLockText';
 import type { MentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { RichTextView } from '../richtext/RichTextView';
-import { currentRoute, onRouteChange, routeUrl } from '../routing/router';
+import { addressRoute, onRouteChange, routeUrl } from '../routing/router';
 import {
   type Audiences,
   type Comment,
@@ -46,7 +46,7 @@ const parseValue = (value: string): VisibilityChoice => {
 
 /** The comment the address points at (#/tickets/<key>?comment=<id>), if any. */
 function targetComment(): number | null {
-  const match = /[?&]comment=(\d+)/.exec(currentRoute());
+  const match = /[?&]comment=(\d+)/.exec(addressRoute());
   return match ? Number(match[1]) : null;
 }
 
@@ -520,6 +520,7 @@ function CommentItem({
       {mode === 'edit' ? (
         <form
           className="comment-editing"
+          data-no-draft={doc === comment.body || undefined}
           noValidate
           onSubmit={(event) => {
             event.preventDefault();

@@ -12,6 +12,7 @@ import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { useTicketChanges } from '../tickets/view/ticketChanges';
 import {
   dayNumber,
   isoDay,
@@ -113,6 +114,7 @@ export function TimelinePage({
     );
   }, [client, trackKey]);
   useEffect(load, [load]);
+  useTicketChanges(load);
 
   const today = dayNumber(now().toISOString().slice(0, 10));
   const px = SCALE[zoom];

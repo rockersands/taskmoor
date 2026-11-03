@@ -159,6 +159,14 @@
   }
 }
 
+/* The ticket pop-up on a phone is a sheet, so it comes up from the bottom edge. */
+@media (max-width: 767px) {
+  .create-dialog.ticket-popup {
+    --motion-origin: 50% 100%;
+    animation-name: motion-dock;
+  }
+}
+
 /* One card landing after a move, set by playMotion for that card alone. */
 .motion-drop {
   transform-origin: 50% 0%;

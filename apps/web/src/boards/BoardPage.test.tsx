@@ -137,6 +137,24 @@ describe('a card’s title in place', () => {
     expect(screen.getByRole('button', { name: 'Move SHOP-19' })).toBeVisible();
   });
 
+  it('[AGL-006] a click right after a drag opens nothing, and a later one does', async () => {
+    renderBoard();
+    const link = await screen.findByRole('link', { name: /^SHOP-19 / });
+    const card = cardOf('SHOP-19');
+    const clicked = () => !fireEvent.click(link);
+    fireEvent.dragStart(card, { dataTransfer: { setData: () => {}, effectAllowed: '' } });
+    fireEvent.dragEnd(card);
+    expect(clicked()).toBe(true);
+    const now = performance.now();
+    const later = vi.spyOn(performance, 'now').mockReturnValue(now + 1000);
+    // A plain click stays a real link's click, for the router to take.
+    const after = (e: Event) => e.preventDefault();
+    window.addEventListener('click', after, { once: true });
+    expect(fireEvent.click(link)).toBe(false);
+    later.mockRestore();
+    expect(link).toHaveAttribute('href', '#/tickets/SHOP-19');
+  });
+
   it('[AGL-006] the pencil neither starts a drag nor opens the ticket', async () => {
     const user = userEvent.setup();
     renderBoard();

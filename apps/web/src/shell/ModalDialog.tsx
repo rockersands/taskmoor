@@ -9,6 +9,12 @@ export interface ModalDialogProps {
   closeLabel: string;
   /** Starts in the first field rather than on the dialog itself. */
   focusFirstField?: boolean;
+  /** Added to the dialog's own class, for a dialog of another shape. */
+  className?: string;
+  /** Takes Escape pressed inside, for a dialog with things inside that Escape closes first. */
+  onEscape?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  /** Takes over giving focus back, from where it was when the dialog opened. */
+  restoreFocus?: (opener: HTMLElement | null) => void;
   children: ReactNode;
 }
 
@@ -24,17 +30,22 @@ export function ModalDialog({
   labelledBy,
   closeLabel,
   focusFirstField = false,
+  className,
+  onEscape,
+  restoreFocus,
   children,
 }: ModalDialogProps) {
   const box = useRef<HTMLDivElement>(null);
   const boxRef = useLeaveMotion(box);
+  const giveBack = useRef(restoreFocus);
+  giveBack.current = restoreFocus;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: where focus starts is decided once
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const first = focusFirstField ? box.current?.querySelector('input') : null;
     (first ?? box.current)?.focus();
-    return () => opener?.focus();
+    return () => (giveBack.current ? giveBack.current(opener) : opener?.focus());
   }, []);
 
   // A button that turns disabled while it works drops focus to the page. The dialog is still open
@@ -43,6 +54,8 @@ export function ModalDialog({
     const lost = (event: KeyboardEvent) => {
       const inside = box.current?.contains(document.activeElement);
       if (inside || !box.current) return;
+      // In the command palette, over this dialog: those keys are its own.
+      if (document.activeElement?.closest('[role="dialog"]')) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
@@ -57,6 +70,10 @@ export function ModalDialog({
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
+      if (onEscape) {
+        onEscape(event);
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       onClose();
@@ -91,7 +108,7 @@ export function ModalDialog({
       />
       <div
         ref={boxRef}
-        className="create-dialog"
+        className={className ? `create-dialog ${className}` : 'create-dialog'}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}

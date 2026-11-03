@@ -2585,6 +2585,13 @@ export const messagesEn = {
   'ticketView.editLabels': 'Edit labels',
   'ticketView.save': 'Save',
   'ticketView.cancel': 'Cancel',
+  'ticketPopup.closeBackdrop': 'Close this ticket',
+  'ticketPopup.openFull': 'Open full page',
+  'ticketPopup.draft.title': 'Discard what you have not saved?',
+  'ticketPopup.draft.text':
+    'This ticket has text you have not saved. If you leave now, it is lost.',
+  'ticketPopup.draft.keep': 'Keep editing',
+  'ticketPopup.draft.discard': 'Discard it',
   'ticketView.close': 'Close',
   'ticketView.saved': 'Saved.',
   'ticketView.moved': 'Moved to {status}.',
@@ -4070,7 +4077,7 @@ export const messagesEn = {
   'calendar.next': 'Next month',
   'calendar.thisMonth': 'This month',
   'calendar.hint':
-    'Drag a ticket to another day to move it; its start moves along. With the keyboard, Alt and the left or right arrow move it a day, up or down a week; Enter opens its days.',
+    'Drag a ticket to another day to move it; its start moves along. With the keyboard, Alt and the left or right arrow move it a day, up or down a week; Enter opens the ticket.',
   'calendar.days': 'Days',
   'calendar.day': '{date}, {count, plural, =0 {no tickets} one {# ticket} other {# tickets}}',
   'calendar.release': '◆ {name}',
@@ -4079,7 +4086,6 @@ export const messagesEn = {
   'calendar.chipStart': '{key} {summary}, starts this day',
   'calendar.movedDue': '{key} is now due on {date}.',
   'calendar.movedStart': '{key} now starts on {date}.',
-  'calendar.saved': 'The days of {key} were saved.',
   'calendar.moveFailed':
     '{key} could not be moved: you may not schedule it, or its days were refused.',
   'calendar.truncated': 'Only the first 1,000 tickets of these weeks are shown.',

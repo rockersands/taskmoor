@@ -10,6 +10,7 @@ import {
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { useTicketChanges } from '../tickets/view/ticketChanges';
 import {
   type Backlog,
   type BacklogPanels,
@@ -98,6 +99,7 @@ export function BacklogPage({
     );
   }, [client, boardId]);
   useEffect(load, [load]);
+  useTicketChanges(load);
 
   useEffect(() => {
     if (!data) return;

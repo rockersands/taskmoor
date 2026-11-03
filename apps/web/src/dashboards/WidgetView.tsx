@@ -9,6 +9,7 @@ import { LineChart } from '../reports/LineChart';
 import { routeHref } from '../routing/router';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { estimateText } from '../sprints/client';
+import { useTicketChangeCount } from '../tickets/view/ticketChanges';
 import type { DashboardClient, Widget } from './client';
 
 const H = 3600;
@@ -66,7 +67,9 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
   const intl = useIntl();
   const [data, setData] = useState<unknown>(undefined);
   const [failed, setFailed] = useState<'query' | 'other' | null>(null);
+  const changes = useTicketChangeCount();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again after an edit in the pop-up
   useEffect(() => {
     if (STATIC.has(widget.kind)) return;
     let live = true;
@@ -83,7 +86,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
     return () => {
       live = false;
     };
-  }, [client, dashboardId, widget.id, widget.kind]);
+  }, [client, dashboardId, widget.id, widget.kind, changes]);
 
   const title = widgetTitle(t, widget);
   const config = widget.config;

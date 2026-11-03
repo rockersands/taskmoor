@@ -2660,6 +2660,13 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',
+  'ticketPopup.closeBackdrop': 'Cerrar este ticket',
+  'ticketPopup.openFull': 'Abrir la página completa',
+  'ticketPopup.draft.title': '¿Descartar lo que no has guardado?',
+  'ticketPopup.draft.text':
+    'Este ticket tiene texto que no has guardado. Si sales ahora, se pierde.',
+  'ticketPopup.draft.keep': 'Seguir editando',
+  'ticketPopup.draft.discard': 'Descartarlo',
   'ticketView.close': 'Cerrar',
   'ticketView.saved': 'Guardado.',
   'ticketView.moved': 'Movido a {status}.',
@@ -4179,7 +4186,7 @@ export const messagesEs: Record<MessageId, string> = {
   'calendar.next': 'Mes siguiente',
   'calendar.thisMonth': 'Este mes',
   'calendar.hint':
-    'Arrastra un ticket a otro día para moverlo; su inicio se mueve con él. Con el teclado, Alt y la flecha izquierda o derecha lo mueven un día, arriba o abajo una semana; Intro abre sus días.',
+    'Arrastra un ticket a otro día para moverlo; su inicio se mueve con él. Con el teclado, Alt y la flecha izquierda o derecha lo mueven un día, arriba o abajo una semana; Intro abre el ticket.',
   'calendar.days': 'Días',
   'calendar.day': '{date}, {count, plural, =0 {sin tickets} one {# ticket} other {# tickets}}',
   'calendar.release': '◆ {name}',
@@ -4188,7 +4195,6 @@ export const messagesEs: Record<MessageId, string> = {
   'calendar.chipStart': '{key} {summary}, empieza este día',
   'calendar.movedDue': '{key} vence ahora el {date}.',
   'calendar.movedStart': '{key} empieza ahora el {date}.',
-  'calendar.saved': 'Se guardaron los días de {key}.',
   'calendar.moveFailed':
     'No se pudo mover {key}: puede que no puedas programarlo, o se rechazaron sus días.',
   'calendar.truncated': 'Solo se muestran los primeros 1000 tickets de estas semanas.',

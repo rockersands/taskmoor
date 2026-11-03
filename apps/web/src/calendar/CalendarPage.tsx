@@ -2,6 +2,7 @@ import { type DragEvent, type KeyboardEvent, useCallback, useEffect, useId, useS
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
+import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { dayNumber, isoDay } from '../timeline/client';
 import {
   type CalendarClient,
@@ -38,8 +39,8 @@ const addMonths = (month: number, n: number) => {
  * day (and on its start day when that differs, marked as a start), the sprints of the track's
  * boards and its releases on their days, today marked. Drag a ticket to another day to move it
  * (its start moves along, keeping its length; AGL-017 (1)); with the keyboard, Alt and the
- * arrows move it by a day or a week; choosing it opens both days in a panel. Every move is the
- * ticket's own change, so its permission and history apply.
+ * arrows move it by a day or a week; choosing it opens the ticket over the page, with both days. Every
+ * move is the ticket's own change, so its permission and history apply.
  */
 export function CalendarPage({
   trackKey,
@@ -55,7 +56,6 @@ export function CalendarPage({
   const [failed, setFailed] = useState(false);
   const [dragging, setDragging] = useState<Entry | null>(null);
   const [over, setOver] = useState<number | null>(null);
-  const [chosen, setChosen] = useState<CalendarTicket | null>(null);
   const [notice, setNotice] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -76,6 +76,8 @@ export function CalendarPage({
     );
   }, [client, trackKey, first, last]);
   useEffect(load, [load]);
+  // Its days can change in the ticket pop-up.
+  useTicketChanges(load);
 
   if (failed) {
     return (
@@ -265,9 +267,9 @@ export function CalendarPage({
                 </span>
               ))}
               {list.map((entry) => (
-                <button
+                <a
                   key={`${entry.ticket.id}-${entry.kind}`}
-                  type="button"
+                  href={routeHref(`#/tickets/${encodeURIComponent(entry.ticket.key)}`)}
                   draggable
                   className={`calendar-chip${entry.kind === 'start' ? ' is-start' : ''}`}
                   data-stage={entry.ticket.stage}
@@ -286,88 +288,16 @@ export function CalendarPage({
                     setOver(null);
                   }}
                   onKeyDown={(event) => onChipKey(event, entry)}
-                  onClick={() => setChosen(entry.ticket)}
                 >
                   {entry.kind === 'start' ? `${t('calendar.starts')} ` : ''}
                   {entry.ticket.key} {entry.ticket.summary}
-                </button>
+                </a>
               ))}
             </li>
           );
         })}
       </ul>
       {data.truncated && <p className="board-hint">{t('calendar.truncated')}</p>}
-      {chosen && (
-        <DaysPanel
-          key={chosen.id}
-          ticket={chosen}
-          onSave={async (start, due) => {
-            setProblem(null);
-            const outcome = await client.move(chosen.key, { startDate: start, dueDate: due });
-            if (outcome.ok) {
-              setNotice(t('calendar.saved', { key: chosen.key }));
-              setChosen(null);
-            } else {
-              setProblem(t('calendar.moveFailed', { key: chosen.key }));
-            }
-            load();
-          }}
-          onClose={() => setChosen(null)}
-        />
-      )}
     </section>
-  );
-}
-
-/** A ticket's start and due days: the phone's and the keyboard's way to reschedule. */
-function DaysPanel({
-  ticket,
-  onSave,
-  onClose,
-}: {
-  ticket: CalendarTicket;
-  onSave: (start: string | null, due: string | null) => void;
-  onClose: () => void;
-}) {
-  const t = useT();
-  const id = useId();
-  const [start, setStart] = useState(ticket.start ?? '');
-  const [due, setDue] = useState(ticket.due ?? '');
-  const bad = start !== '' && due !== '' && start > due;
-  return (
-    <aside className="calendar-panel" aria-labelledby={`${id}-title`}>
-      <h2 id={`${id}-title`}>{t('timeline.panel.title', { key: ticket.key })}</h2>
-      <p className="timeline-panel-summary">{ticket.summary}</p>
-      <form
-        className="timeline-panel-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!bad) onSave(start || null, due || null);
-        }}
-      >
-        <label className="form-field">
-          <span className="form-label">{t('timeline.panel.start')}</span>
-          <input type="date" value={start} onChange={(event) => setStart(event.target.value)} />
-        </label>
-        <label className="form-field">
-          <span className="form-label">{t('timeline.panel.due')}</span>
-          <input
-            type="date"
-            value={due}
-            aria-invalid={bad || undefined}
-            onChange={(event) => setDue(event.target.value)}
-          />
-        </label>
-        {bad && <p className="form-error">{t('timeline.panel.order')}</p>}
-        <div className="form-actions">
-          <button type="submit" className="button-primary" disabled={bad}>
-            {t('timeline.panel.save')}
-          </button>
-          <button type="button" className="button-secondary" onClick={onClose}>
-            {t('timeline.panel.close')}
-          </button>
-        </div>
-      </form>
-    </aside>
   );
 }

@@ -4,6 +4,7 @@ import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { useTicketChanges } from '../tickets/view/ticketChanges';
 import {
   type InboxClient,
   type InboxItem,
@@ -186,6 +187,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
       if (mine === generation.current) setState((s) => (s === 'loaded' ? s : 'failed'));
     }
   }, [client, view, unreadOnly, type, track]);
+  useTicketChanges(() => void load());
 
   // The tracks to filter by, once; without them the filter offers none.
   useEffect(() => {

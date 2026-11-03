@@ -90,6 +90,7 @@ import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketDialog } from './tickets/CreateTicketDialog';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { TicketPage } from './tickets/view/TicketPage';
+import { TicketPopup } from './tickets/view/TicketPopup';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
@@ -885,6 +886,7 @@ function Pages() {
     return (
       <main className="wallboard-shell">
         <RequireSession>{content}</RequireSession>
+        <TicketPopup />
       </main>
     );
   }
@@ -918,6 +920,7 @@ function Pages() {
     >
       {guarded ? <RequireSession>{content}</RequireSession> : content}
       {creating && signedIn && <CreateTicketDialog onClose={() => setCreating(false)} />}
+      <TicketPopup />
     </AppShell>
   );
 }

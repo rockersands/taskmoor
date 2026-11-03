@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-02
 attestation: own-words
 ---
@@ -78,6 +78,24 @@ Boards' backlogs and a track's list can also make a ticket from a summary alone:
 Each ticket has its own page, at an address ending in `tickets/PAY-42`. Its title is the key
 and the summary; above it are the track and the ticket type. On a wide screen the details sit
 in a column on the right; on a phone everything is in one column.
+
+Clicking a ticket on a board, in a list, a backlog, the calendar, search results, the inbox or
+anywhere else opens it in a pop-up over the page, with everything the ticket's page has. The page
+beneath stays as it is, with its scroll and filters, and shows your edits at once.
+
+- **To close it**: Escape, **Close** or a click outside. Focus goes back to the card or row you
+  opened it from. Escape closes a menu, a dialog or a field first, when one is open.
+- **The address** changes to the ticket's while it is open, so you can copy it from the address
+  bar. Back closes the pop-up, or returns to the ticket before if you followed a link inside it.
+  Reloading brings the pop-up back over its page.
+- **A shared link** opens the ticket's full page. **Open full page** in the pop-up does the same, and
+  so do Ctrl click, Cmd click and a middle click, in a new tab.
+- **Text you have not saved**, such as a comment you are writing, is safe: closing the pop-up, a
+  link inside it and Back all ask before it goes.
+- On a phone the pop-up fills the screen.
+
+The timeline's bars still open their days panel, and links inside a comment or description open in a
+new tab.
 
 A ticket also opens by a key it had before: after a move to another track, or when it came from
 another tracker under a key that changed there. The address then shows its current key. Links
@@ -258,7 +276,7 @@ does not yet have a screen to start a bulk change.
 
 ## Keyboard shortcuts
 
-On a ticket's page, outside text fields:
+On a ticket's page or in its pop-up, outside text fields:
 
 | Key | Action |
 |---|---|
