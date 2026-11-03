@@ -16,6 +16,7 @@ import {
 } from '../tickets/configuration';
 import { DEFAULT_TRASH_RETENTION_DAYS, purgeAfter } from '../tickets/model';
 import { setLevels } from '../tickets/visibility';
+import { belongsSql } from '../tracks/membership';
 import {
   checkKey,
   FEATURE_DEFAULTS,
@@ -47,6 +48,8 @@ import type { BoardRoutes } from './boards';
  *
  * - Everyone sees the tracks they may browse or administer; archived tracks only through
  *   `?archived=include|only`, which is for site and configuration administrators.
+ * - `?member=true` keeps those the caller belongs to (T-194, `tracks/membership.ts`): a role,
+ *   ownership or a team, never only the right to see.
  * - A track is found by id or by key, ignoring case; an old key answers with the track and a
  *   redirect to its current key.
  * - Shared-mode tracks are created by site and configuration administrators and use a shared
@@ -164,6 +167,13 @@ export const listQuery = z
     q: z.string().trim().min(1).max(255).optional(),
     after: z.string().min(1).max(255).optional(),
     limit: z.coerce.number().int().min(1).max(500).default(100),
+    /**
+     * `true` keeps only the tracks the caller belongs to (T-194): a role given to them or to a
+     * group they are in, ownership, or a team of theirs that a board or area of the track
+     * names. Seeing a track because it is open to everyone or as an administrator is not
+     * belonging (`tracks/membership.ts`).
+     */
+    member: z.enum(['true', 'false']).optional(),
   })
   .strict();
 const categoryBody = z
@@ -439,6 +449,7 @@ export function registerTrackRoutes(
     if (q.categoryId !== undefined) query = query.where('t.category_id', '=', q.categoryId);
     if (q.type !== undefined) query = query.where('t.type', '=', q.type);
     if (q.mode !== undefined) query = query.where('t.mode', '=', q.mode);
+    if (q.member === 'true') query = query.where(belongsSql(ws, await request.authz.viewer()));
     if (q.q !== undefined) {
       const pattern = `%${likeEscape(q.q)}%`;
       query = query.where(sql<boolean>`(t.key ILIKE ${pattern} OR t.name ILIKE ${pattern})`);

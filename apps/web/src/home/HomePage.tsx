@@ -87,9 +87,9 @@ const STARTS: {
 ];
 
 /**
- * Home (M1-052; AGL-018, AGL-019; ADR-114): ways to start, the open tickets assigned to the
- * person, the ones they opened lately, the ones they follow and the tracks they can see. Each
- * list loads on its own, so one that fails leaves the others; an empty one says how it fills.
+ * Home (M1-052; AGL-018, AGL-019; ADR-046, ADR-114): the tracks the person belongs to, ways to
+ * start, the open tickets assigned to them, the ones they opened lately and the ones they follow.
+ * Each list loads on its own, so one that fails leaves the others; an empty one says how it fills.
  */
 export function HomePage({ client = homeClient, tracks = homeTracks }: HomePageProps) {
   const t = useT();
@@ -261,7 +261,8 @@ function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
   const { session } = useSession();
   const mayCreate = newTrackModes(session.status === 'signed-in' ? session.user : null).length > 0;
   const items = list.status === 'loaded' ? list.items : [];
-  // The latest opened first, then by name; the server has already left out what is hidden.
+  // The server answers only the tracks the person belongs to and may see (T-194); the latest
+  // opened in this browser first, then by name.
   const recent = recentTracks();
   const rank = (key: string) => {
     const at = recent.indexOf(key);
@@ -278,8 +279,8 @@ function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
         </h2>
         <HelpTip name={title}>{t('home.tracksHelp')}</HelpTip>
         {items.length > TRACKS_SHOWN && (
-          <a className="panel-count" href={routeHref('#/tracks')}>
-            {t('home.tracksAll', { count: items.length })}
+          <a className="panel-count home-tracks-all" href={routeHref('#/tracks')}>
+            {t('home.tracksAll')}
           </a>
         )}
       </div>
@@ -288,17 +289,20 @@ function HomeTracks({ list }: { list: Loaded<HomeTrack> }) {
         <EmptyState
           icon={TracksIcon}
           title={t('home.tracksEmpty')}
-          {...(mayCreate
-            ? {
-                action: (
-                  <a className="button-primary" href={routeHref(NEW_TRACK_ROUTE)}>
-                    {t('tracks.new')}
-                  </a>
-                ),
-              }
-            : {})}
+          action={
+            <>
+              <a className="button-quiet" href={routeHref('#/tracks')}>
+                {t('home.tracksBrowse')}
+              </a>
+              {mayCreate && (
+                <a className="button-primary" href={routeHref(NEW_TRACK_ROUTE)}>
+                  {t('tracks.new')}
+                </a>
+              )}
+            </>
+          }
         >
-          {t(mayCreate ? 'tracks.emptyMayCreate' : 'tracks.empty')}
+          {t('home.tracksEmptyHint')}
         </EmptyState>
       )}
       {list.status === 'loaded' && list.items.length > 0 && (

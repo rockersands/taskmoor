@@ -862,6 +862,11 @@ export class AuthzContext {
     return (await this.track(trackId)).has(permission);
   }
 
+  /** Who the caller is: signed in with an active account or not, and every group they are in. */
+  async viewer(): Promise<Viewer> {
+    return this.authorizer.viewer(this.workspaceId, this.principal, await this.epoch());
+  }
+
   /** The caller's roles in a track and groups; empty for a principal without a user. */
   async audience(trackId: number) {
     if (this.principal.userId === null) {

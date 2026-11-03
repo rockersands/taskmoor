@@ -20,9 +20,16 @@ export interface HomeTrack {
   type: string;
 }
 
-/** The tracks the person can see; a separate call so each list keeps loading on its own. */
+/**
+ * The tracks the person belongs to (T-194): a role given to them or to a group they are in, a
+ * track they own, or one their team works on. The server decides; a track they only see, open to
+ * everyone or as an administrator, is not among them. A separate call, so each list keeps
+ * loading on its own.
+ */
+export const HOME_TRACKS_PATH = '/tracks?member=true&limit=500';
+
 export const homeTracks = async (): Promise<HomeTrack[]> => {
-  const answer = await api<{ tracks?: HomeTrack[] }>('/tracks');
+  const answer = await api<{ tracks?: HomeTrack[] }>(HOME_TRACKS_PATH);
   return Array.isArray(answer.tracks) ? answer.tracks : [];
 };
 

@@ -971,7 +971,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the tracks the caller may browse */
+        /**
+         * List the tracks the caller may browse
+         * @description `member=true` keeps the tracks the caller belongs to: a role given to them or to a group they are in, ownership, or a team of theirs that one of the track’s boards or areas names. A track the caller sees only because it is open to everyone, through a grant of its access policy, or as an administrator is left out.
+         */
         get: operations["listTracks"];
         put?: never;
         /**
@@ -7244,6 +7247,7 @@ export interface operations {
                 archived?: "exclude" | "include" | "only";
                 categoryId?: number;
                 limit?: number;
+                member?: "true" | "false";
                 mode?: "shared" | "local";
                 q?: string;
                 type?: "software" | "business" | "service" | "discovery";
