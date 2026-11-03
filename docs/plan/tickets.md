@@ -124,7 +124,8 @@ reported, and the coordinator checked that it was pushed.
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | Waits for the merges |
 | T-086 | Share a whole group, or set it on another person | To do | Waits for the merges |
 | T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
-| T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | On branch | `claude/t087a-create-tracks-box-1c6ead` (migration 0097, IAM-033, ADR-118). Only site administrators and holders may tick it. Open for the user: removing the manager role leaves the grant |
+| T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | Done | On `main` (migration 0097, IAM-033, ADR-118): new sites let only site administrators create tracks until granted; only site administrators and holders may tick the box |
+| T-087b | When someone loses the manager role, should their permission to create tracks go too? | You | Today it stays until a site administrator removes it, and the people admin page shows who holds it |
 | T-087b | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
 | T-087c | Keep Paneles in the sidebar | Done | Decided by the user; dashboards that can span tracks |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | To do | Paused on `claude/multi-track`; restarts after the merges |

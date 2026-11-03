@@ -112,6 +112,8 @@ These lived only on the last PC. Nothing here is needed to continue:
 
 ### Waiting on the user
 
+- When someone loses the manager role, should their permission to create tracks go too (T-087b)?
+  Today it stays until a site administrator removes it.
 - Should only site administrators copy invitation links on sites where email works (T-053)?
   Recommended: yes. Today every inviter can.
 - The real Google test (T-059), and Google's three small questions (T-061 to T-063).
