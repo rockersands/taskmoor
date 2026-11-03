@@ -62,7 +62,7 @@ them.
   - The track's `backlog` and `sprints` toggles (CORE-002) fit this and are what the rule uses, with
     one addition. Until now nothing read them, and a change of kind left them as they were. Now a
     board's kind sets both, when the board is made and when its kind changes, in the same transaction
-    (`track.updated`); migration 0091 aligned existing tracks.
+    (`track.updated`); migration 0094 aligned existing tracks.
   - `GET /api/v1/tracks/:id` answers `sections: { backlog, sprints }`: a Scrum board and the toggle on.
     The board's kind is still checked there because a Blank track's toggles are on before its first
     board, which will be Kanban, and because someone can set a toggle by hand through the API.

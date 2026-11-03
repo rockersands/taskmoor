@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { up } from './migrations/0091_board_kind_decides_backlog';
+import { up } from './migrations/0094_board_kind_decides_backlog';
 import { useMigratedDatabase } from './testing';
 
-/** Migration 0091 (ADR-116): existing tracks' backlog and sprints follow their board's kind. */
+/** Migration 0094 (ADR-116): existing tracks' backlog and sprints follow their board's kind. */
 describe('backlog and sprints follow the board on upgrade', () => {
   const database = useMigratedDatabase();
 
