@@ -253,7 +253,7 @@ describe('the board page (M1-043)', () => {
     expect(fresh.getByRole('img', { name: '3 points' })).toHaveTextContent('3');
     expect(fresh.getByRole('img', { name: 'Unassigned' })).toBeVisible();
     expect(fresh.queryByText(/in this column/)).toBeNull();
-    expect(screen.queryByText('SHOP-12')).toHaveClass('visually-hidden');
+    expect(screen.getByText('SHOP-12')).toBeVisible();
   });
 
   it('[AGL-003] marks a column over its maximum and one under its minimum', async () => {

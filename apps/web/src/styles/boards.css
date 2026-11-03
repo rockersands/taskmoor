@@ -213,6 +213,12 @@
   outline: none;
 }
 
+.board-card-key {
+  display: block;
+  font-size: var(--font-size-100);
+  color: var(--color-text-muted);
+}
+
 .board-card-summary {
   display: -webkit-box;
   overflow: hidden;

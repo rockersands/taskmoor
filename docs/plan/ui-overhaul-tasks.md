@@ -62,6 +62,13 @@ and drop beyond boards (UI-T08); the layout editor (UI-T15); UI-T21; the phone a
   until the page is read again.
 - No ADR for the pop-up's history design; it is written at the top of `routing/router.ts`.
 - `reports` still lists a board's old "Only my tickets" filter, since "Me" does not exist there.
+- A large board, measured once in headless Chromium on the development PC with motion on, every card in
+  one column (a worst case, with the API's answer multiplied): 500 cards show at once, all drawn in 1.3 s,
+  scrolling at 33 ms a frame (p95 50); 5,000 cards show their first cards in 0.7 s (05b's limit is 1 s), all
+  drawn in 5.5 s, scrolling at 67 ms a frame (p95 83), and a card's drop holds one frame of about 0.9 s.
+  Motion adds no class to every card. A column that long is not smooth; `content-visibility` on cards would
+  help but clips the card's menus, so it needs care.
+- Tickets to add after the merge: an Objetivos tab listing a track's outcomes with progress.
 - Migrations: a database already past a number cannot take a lower one. Fresh installs are fine; a kept
   database on main at 0087 needs its 0084 applied by hand, and the demo likewise.
 - Running e2e rebuilds `apps/web/dist`: restart the demo straight after, or its page breaks. Restarts keep

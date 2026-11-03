@@ -689,8 +689,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
               else links.current.delete(card.id);
             }}
           >
-            {/* The key is for the tooltip and for those who hear the card: the title is the card. */}
-            <span className="visually-hidden">{card.key}</span>{' '}
+            <span className="board-card-key">{card.key}</span>{' '}
             <span className="board-card-summary">{card.summary}</span>
           </a>
         )}

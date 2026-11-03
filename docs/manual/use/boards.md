@@ -44,7 +44,7 @@ the board, never the whole page.
 Each column shows how many tickets it holds and its limits: **min 2**, **max 5**. A column
 above its maximum says **Over the maximum**; below its minimum, **Under the minimum**.
 
-Each card shows the title (the key is in its tooltip and read out by screen readers), the ticket
+Each card shows the key and the title, the ticket
 type's icon and the fields the board chooses: by default the priority's icon, the points where a
 ticket has them, and the assignee as a small round mark with their initials, or a dashed circle for
 nobody. Each icon and mark has its name as a tooltip and for screen readers, and the words appear
