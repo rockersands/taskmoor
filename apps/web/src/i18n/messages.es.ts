@@ -162,9 +162,12 @@ export const messagesEs: Record<MessageId, string> = {
   'home.findTicket': 'Buscar un ticket',
   'home.tracks': 'Tus tracks',
   'home.tracksHelp':
-    'Los tracks que puedes ver, primero los que abriste hace poco. Abre uno para ver su tablero, lista y versiones.',
-  'home.tracksEmpty': 'Aún no hay tracks',
-  'home.tracksAll': 'Todos los tracks ({count})',
+    'Los tracks a los que perteneces: un rol que te dieron a ti o a un grupo en el que estás, un track que tienes a tu cargo o uno en el que trabaja tu equipo. Primero los que abriste hace poco en este navegador. Abre uno para ver su tablero, lista y versiones.',
+  'home.tracksEmpty': 'Aún no estás en ningún track',
+  'home.tracksEmptyHint':
+    'Un track aparece aquí cuando tienes un rol en él, lo tienes a tu cargo o tu equipo trabaja en él. La página Tracks lista todos los tracks que puedes ver.',
+  'home.tracksBrowse': 'Ir a Tracks',
+  'home.tracksAll': 'Todos los tracks',
   'home.trackKey': 'Clave {key}',
   'home.count': '{count, number}',
   'tutorial.title': 'Tutoriales',

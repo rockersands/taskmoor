@@ -43,6 +43,38 @@ Nothing recorded which tickets a person opened.
   other personal or transient state): a visit changes nothing anyone else sees, and an event per
   page view would swamp the log, the audit trail and sync.
 
+### Your tracks: the tracks a person belongs to (T-194, 2026-11-03)
+
+Home's **Your tracks** (T-089h, ADR-114) first listed every track the person could see. It now
+lists the tracks they belong to, which the server decides: `GET /api/v1/tracks?member=true`
+(`tracks/membership.ts`) keeps, among the tracks the caller may see, those where
+
+- they hold a role, given to them or to a group they are in (nested groups included);
+- they are the owner (the track's lead, whom the default policy lets run it);
+- a team of theirs (ADR-076) owns one of the track's areas that is not archived, or the track's
+  board belongs to that team.
+
+Seeing is not belonging: a track open to anyone or to everyone signed in, a grant of the access
+policy to the person or a group (a policy is often shared by many tracks, so such a grant says
+nothing about one track), and the rights of site and configuration administrators all leave a
+track out. A team still grants nothing: it only says who works on a track the person may already
+see, so belonging never shows a hidden track.
+
+- **A filter, not a flag:** the list keeps paging and counting right. A page holds at most 500,
+  and a person can belong to more: whoever makes a track joins the role that runs it, so an
+  administrator who made 600 shared tracks belongs to all 600. Home therefore never relies on the
+  first page alone for the tracks opened lately.
+- **The tracks opened lately are asked for by key:** Home sends the keys this browser remembers
+  (at most twelve; the list takes 50) as `GET /api/v1/tracks?member=true&keys=…`, and the server
+  answers those the person still belongs to and may see. The first page (`limit=500`, by key)
+  fills the rest of the section. Two requests in parallel, never a walk through every page; a
+  key the browser kept that is no longer theirs simply does not come back.
+- **The order stays in the browser:** the latest opened first (`tracks/recentTracks.ts`, local
+  storage), then by name among the first page. Unlike recent tickets it does not follow the
+  person to another browser; the manual says so.
+- **In no track,** the section says so and leads to the Tracks page, with New track beside it for
+  those who may make one. With more than six, **All tracks** leads there too.
+
 ## Consequences
 
 - Any page can put its own actions in the palette; the ticket view is the first.

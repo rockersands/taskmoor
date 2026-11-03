@@ -46,7 +46,7 @@ export const TRACKS: HomeTrack[] = [
   { id: 2, key: 'OPS', name: 'Operations', type: 'business' },
 ];
 
-/** The tracks the person can see; `empty` for a new site, `failing` for an error. */
+/** The tracks the person belongs to; `empty` for someone in none, `failing` for an error. */
 export function fakeHomeTracks(options: { empty?: boolean; failing?: boolean } = {}) {
   return async (): Promise<HomeTrack[]> => {
     if (options.failing) throw new Error('offline');

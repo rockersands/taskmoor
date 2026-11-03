@@ -149,9 +149,12 @@ export const messagesEn = {
   'home.findTicket': 'Find a ticket',
   'home.tracks': 'Your tracks',
   'home.tracksHelp':
-    'The tracks you can see, the latest you opened first. Open one for its board, list and releases.',
-  'home.tracksEmpty': 'No tracks yet',
-  'home.tracksAll': 'All tracks ({count})',
+    'The tracks you belong to: a role given to you or to a group you are in, a track you lead, or one your team works on. The ones you opened lately in this browser come first. Open one for its board, list and releases.',
+  'home.tracksEmpty': 'You are not in any track yet',
+  'home.tracksEmptyHint':
+    'A track shows here once you hold a role in it, lead it, or your team works on it. The Tracks page lists every track you can see.',
+  'home.tracksBrowse': 'Go to Tracks',
+  'home.tracksAll': 'All tracks',
   'home.trackKey': 'Key {key}',
   'home.count': '{count, number}',
   // The guided tutorial (ADR-115): sections a person picks, each making one real thing.

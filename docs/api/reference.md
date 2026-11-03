@@ -1774,6 +1774,8 @@ Responses:
 
 `GET /api/v1/tracks`, operation `listTracks`, access: read.
 
+`member=true` keeps the tracks the caller belongs to: a role given to them or to a group they are in, ownership, or a team of theirs that one of the track’s boards or areas names. A track the caller sees only because it is open to everyone, through a grant of its access policy, or as an administrator is left out. `keys` keeps only the tracks with those keys, so a client finds particular tracks of the caller, such as the ones opened lately, without paging through all of them.
+
 | Parameter | In | Type | Required | Meaning |
 | --- | --- | --- | --- | --- |
 | `archived` | query | `"exclude"`, `"include"`, `"only"` | no |  |
@@ -1783,6 +1785,8 @@ Responses:
 | `q` | query | string | no |  |
 | `after` | query | string | no |  |
 | `limit` | query | integer | no |  |
+| `member` | query | `"true"`, `"false"` | no |  |
+| `keys` | query | string | no | Only these tracks, by current key ignoring case, comma separated, at most 50 (`OPS,SHOP`). |
 
 Responses:
 

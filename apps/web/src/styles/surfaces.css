@@ -803,6 +803,22 @@
   gap: var(--space-3);
 }
 
+/* With no track of theirs: the way to the Tracks page, and New track for those who may. */
+.home-tracks .empty-state-action {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.home-tracks-all {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.home-tracks-all:hover {
+  text-decoration: underline;
+}
+
 .home-list {
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
@@ -873,6 +889,12 @@
   }
 
   .button-quiet {
+    min-height: var(--hit-target-touch);
+  }
+
+  .home-tracks-all {
+    display: inline-flex;
+    align-items: center;
     min-height: var(--hit-target-touch);
   }
 }

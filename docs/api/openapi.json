@@ -28278,6 +28278,7 @@
     },
     "/api/v1/tracks": {
       "get": {
+        "description": "`member=true` keeps the tracks the caller belongs to: a role given to them or to a group they are in, ownership, or a team of theirs that one of the track’s boards or areas names. A track the caller sees only because it is open to everyone, through a grant of its access policy, or as an administrator is left out. `keys` keeps only the tracks with those keys, so a client finds particular tracks of the caller, such as the ones opened lately, without paging through all of them.",
         "operationId": "listTracks",
         "parameters": [
           {
@@ -28359,6 +28360,28 @@
               "maximum": 500,
               "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "member",
+            "required": false,
+            "schema": {
+              "enum": [
+                "true",
+                "false"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only these tracks, by current key ignoring case, comma separated, at most 50 (`OPS,SHOP`).",
+            "in": "query",
+            "name": "keys",
+            "required": false,
+            "schema": {
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{0,254}(,[A-Za-z][A-Za-z0-9_]{0,254}){0,49}$",
+              "type": "string"
             }
           }
         ],
