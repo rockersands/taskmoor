@@ -160,6 +160,7 @@ reported, and the coordinator checked that it was pushed.
 | T-126 | Edit a ticket's title from the card, with a pencil button | To do | With the front sub chat |
 | T-127 | The ticket's type shows as an icon on the card, not a word | To do | With the front sub chat; our own icons; the name stays for screen readers |
 | T-128 | Priority shows as an icon, not a word | To do | With the front sub chat; shape as well as colour; custom priorities too |
+| T-129 | Add a Very low priority and remove the None choice | To do | With the front sub chat; new tickets take the default priority |
 
 ## Search and dashboards
 
