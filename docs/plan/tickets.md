@@ -111,8 +111,9 @@ reported, and the coordinator checked that it was pushed.
 | T-072 | Exactly one board per track, enforced on the server | Done | ADR-116 |
 | T-073 | No board outside a track | Done | ADR-116 |
 | T-074 | Decide about the leftover demo board `rrg` | You | Its sample track is gone; it can go too if the user agrees |
-| T-075 | Summary is a dashboard the track owner can customize | In progress | Migration 0090 exists |
-| T-076 | Statistics holds every report for the track | In progress | Created vs closed and two-dimensional were missing |
+| T-075 | Summary is a dashboard the track owner can customize | Done | On `main` (ADR-116): the owner customizes it with every widget kind, members read it |
+| T-075a | Should members also filter a track's Summary (RPT-006 says "view and filter")? | You | Only the owner's customizing is built, as the user decided |
+| T-076 | Statistics holds every report for the track | Done | On `main` (ADR-116, RPT-001, RPT-002): time since, grouped tickets, time tracking, workload by person, by release and as a pie, and the outcome report; each number equals its search |
 | T-077 | Files and links section | Done | `claude/ui-overhaul` |
 | T-078 | Keep the Lista and Versiones tabs | Done | Decided by the user |
 | T-079 | An Objetivos tab listing outcomes with progress | Done | On `main` (AGL-024, ADR-116): the Outcomes section, with one definition of done shared by subtickets and the backlog's outcome panel |
