@@ -53,6 +53,18 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         labelId: 'settings.permissions',
         hintId: 'settings.permissionsHint',
       },
+      {
+        id: 'visibility',
+        href: '#/admin/visibility',
+        labelId: 'settings.visibility',
+        hintId: 'settings.visibilityHint',
+      },
+      {
+        id: 'permission-explainer',
+        href: '#/admin/permission-explainer',
+        labelId: 'settings.explainer',
+        hintId: 'settings.explainerHint',
+      },
     ],
   },
   {

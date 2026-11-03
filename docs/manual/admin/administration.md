@@ -54,7 +54,7 @@ is for. Addresses of pages did not change, so links you saved keep working.
 
 | Group | Pages |
 |---|---|
-| **People and access** | **People**, **Groups**, **Teams**, **Permissions** (roles, access policies, global permissions) |
+| **People and access** | **People**, **Groups**, **Teams**, **Permissions** (roles, access policies, global permissions), **Visibility policies**, **Permission explainer** |
 | **Tracks and setup** | **Tracks**, **Workflows**, **Workflow maps**, **Fields**, **Configuration sets** |
 | **Sign-in and security** | **Security**, **Single sign-on**, **LDAP and Active Directory**, **Network access**, **Audit log** |
 | **Integrations and AI** | **API tokens**, **Service accounts**, **MCP server**, **Frontends**, **AI**, **AI usage** |

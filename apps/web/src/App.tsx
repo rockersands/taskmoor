@@ -47,7 +47,9 @@ import { ConsentPage } from './oauth/ConsentPage';
 import { GroupsPage } from './people/GroupsPage';
 import { TeamsPage } from './people/TeamsPage';
 import { UsersPage } from './people/UsersPage';
+import { PermissionExplainerPage } from './permissions/PermissionExplainerPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
+import { VisibilityPage } from './permissions/VisibilityPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
@@ -183,6 +185,8 @@ const ADMIN_TRACKS = '#/admin/tracks';
 const ADMIN_WORKFLOW_MAPS = '#/admin/workflow-maps';
 const ADMIN_FIELDS = '#/admin/fields';
 const ADMIN_PERMISSIONS = '#/admin/permissions';
+const ADMIN_VISIBILITY = '#/admin/visibility';
+const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_IMPORTS = '#/admin/imports';
@@ -474,6 +478,22 @@ function Pages() {
               },
             },
             {
+              id: 'go-visibility',
+              labelId: 'settings.visibility' as const,
+              keywords: ['visibility', 'level', 'security level', 'scheme', 'hide'],
+              run: () => {
+                navigate(ADMIN_VISIBILITY);
+              },
+            },
+            {
+              id: 'go-permission-explainer',
+              labelId: 'settings.explainer' as const,
+              keywords: ['why', 'explain', 'permission', 'access', 'cannot'],
+              run: () => {
+                navigate(ADMIN_EXPLAINER);
+              },
+            },
+            {
               id: 'go-configuration-sets',
               labelId: 'admin.sets.title' as const,
               keywords: ['type set', 'field rules', 'required', 'hidden', 'scheme'],
@@ -577,6 +597,10 @@ function Pages() {
     content = <FieldsAdminPage />;
   } else if (isRoute(hash, ADMIN_PERMISSIONS)) {
     content = <PermissionsPage />;
+  } else if (isRoute(hash, ADMIN_VISIBILITY)) {
+    content = <VisibilityPage />;
+  } else if (isRoute(hash, ADMIN_EXPLAINER)) {
+    content = <PermissionExplainerPage />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
   } else if (isRoute(hash, ADMIN_IMPORTS)) {
