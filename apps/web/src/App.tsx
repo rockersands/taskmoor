@@ -84,6 +84,9 @@ import { TicketPage } from './tickets/view/TicketPage';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
+import { InvitationPage } from './trackpeople/InvitationPage';
+import { ManagedTracksPage } from './trackpeople/ManagedTracksPage';
+import { TrackPeoplePage } from './trackpeople/TrackPeoplePage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
 import { WorkflowsPage } from './workflow/WorkflowsPage';
@@ -170,6 +173,9 @@ const TRACK_TIMELINE = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/timeline(?:[/?
 const DASHBOARDS = '#/dashboards';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
+/** An invitation's link (IAM-027) and the pages of the tracks a person runs (IAM-030). */
+const INVITATION = '#/invite';
+const MANAGED_TRACKS = '#/manage/tracks';
 const UNSUBSCRIBE = '#/unsubscribe';
 /** An MCP client's OAuth request waiting for the person's answer (M1-072). */
 const OAUTH_CONSENT = '#/oauth/consent';
@@ -452,6 +458,7 @@ function Pages() {
   // First-run setup and password links stand alone: no shell before someone can sign in.
   if (hash.startsWith('#/setup')) return <SetupPage onDone={goHome} />;
   if (isRoute(hash, PASSWORD_LINK)) return <PasswordLinkPage onDone={goHome} />;
+  if (isRoute(hash, INVITATION)) return <InvitationPage />;
   if (isRoute(hash, UNSUBSCRIBE)) return <UnsubscribePage />;
   if (isRoute(hash, OAUTH_CONSENT)) return <ConsentPage />;
 
@@ -499,6 +506,13 @@ function Pages() {
     content = <GroupsPage />;
   } else if (isRoute(hash, ADMIN_TEAMS)) {
     content = <TeamsPage />;
+  } else if (isRoute(hash, MANAGED_TRACKS)) {
+    const managed = /^#\/manage\/tracks\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    content = managed ? (
+      <TrackPeoplePage key={managed} trackId={Number(managed)} />
+    ) : (
+      <ManagedTracksPage />
+    );
   } else if (isRoute(hash, ADMIN_TRACKS)) {
     content = <TracksAdminPage />;
   } else if (isRoute(hash, ADMIN_WORKFLOW_MAPS)) {

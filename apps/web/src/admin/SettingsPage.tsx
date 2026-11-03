@@ -22,6 +22,10 @@ export function SettingsPage() {
             <a href={routeHref('#/account')}>{t('settings.account')}</a>
             <p className="page-note">{t('settings.accountHint')}</p>
           </li>
+          <li>
+            <a href={routeHref('#/manage/tracks')}>{t('settings.managedTracks')}</a>
+            <p className="page-note">{t('settings.managedTracksHint')}</p>
+          </li>
         </ul>
       </section>
       {admin && (

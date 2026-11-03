@@ -19,6 +19,7 @@ import './styles/bulk.css';
 import './styles/comments.css';
 import './styles/ticket-view.css';
 import './styles/people.css';
+import './styles/invitations.css';
 import './styles/inbox.css';
 import './styles/boards.css';
 import './styles/workflows.css';
