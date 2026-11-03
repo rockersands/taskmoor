@@ -158,7 +158,7 @@ reported, and the coordinator checked that it was pushed.
 | T-103 | The people list floats, and does not push the page down | Done | `claude/ui-overhaul` |
 | T-104 | Filter buttons and checkboxes get the glass style | Done | `claude/ui-overhaul` |
 | T-105 | Check whether "Solo mis tickets" and "Yo" duplicate each other | Done | `claude/ui-overhaul` |
-| T-106 | Complete a sprint from the board, for managers and above, with a confirmation pop-up | On branch | `claude/t106-complete-sprint-board-6e1530`: counts done and open, chooses where open ones go; Complete and Cancel |
+| T-106 | Complete a sprint from the board, for managers and above, with a confirmation pop-up | Done | On `main`: counts done and open, chooses where open ones go; Complete and Cancel (ADR-054) |
 
 ## Tickets
 
