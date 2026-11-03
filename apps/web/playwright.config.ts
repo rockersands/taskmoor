@@ -31,7 +31,9 @@ export default defineConfig({
   outputDir: '../../.verify/e2e-results',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 1 : 0,
+  // On Windows the preview's proxy to the API sometimes loses a connection (ECONNRESET) under a
+  // full gate's load. A test that passes on its retry is still listed as flaky in the summary.
+  retries: process.env.CI || process.platform === 'win32' ? 1 : 0,
   reporter: 'line',
   use: {
     baseURL: `http://localhost:${PORT}`,

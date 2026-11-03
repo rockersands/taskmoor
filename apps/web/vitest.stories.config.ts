@@ -18,6 +18,8 @@ export default defineProject({
       headless: true,
       provider: playwright(),
       instances: [{ browser: 'chromium' }],
+      // In a full gate the browser starts while everything else does too.
+      connectTimeout: 180_000,
     },
     setupFiles: ['./.storybook/vitest.setup.ts'],
     // The skin the stories render in; vitest.stories-dark.config.ts runs them again in dark.
