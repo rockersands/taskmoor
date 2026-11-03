@@ -1,5 +1,48 @@
 # Interface overhaul and guided tutorial: tasks
 
+## Handoff (2026-11-03, from the cloud session)
+
+The work continues in a local session on the user's PC. Start there with: read `CLAUDE.md`,
+`HANDOFF.md` and this file, then continue the UI overhaul on `claude/ui-overhaul`.
+
+- **The user's answers (2026-11-03), all given:** the direction is right, but follow the look of
+  Liquid Glass more closely (the user suggests Gemini image generation through Claude in Chrome
+  for visual assets, which the cloud session could not reach); keep "Manage" as the sidebar
+  heading; add the Tracks directory and split Settings into grouped cards; the layout editor
+  (UI-T15) and board columns (UI-T16) are part of this work. ADR-114 and ADR-115 are Accepted.
+- **What is proposed and not yet reviewed in a browser:** the closer Liquid Glass pass (sheen,
+  rim, navigation lens, glossy pills, four-glow canvas) in `apps/web/src/styles/tokens.css` and
+  `apps/web/src/styles/surfaces.css`. The user has not seen it yet: show it in their Chrome first.
+- **Half-done, and where:**
+  - UI-T02: tokens done; the composited contrast test is not written (`styles/contrast.test.ts`).
+  - UI-T03: `shell/PageHeader.tsx`, `HelpTip.tsx`, `EmptyState.tsx`, `ThemeToggle.tsx` done with
+    tests and stories; the Help menu is not built.
+  - UI-T04: sidebar groups done (`shell/NavList.tsx`, `NAV_ITEMS` in `App.tsx`); no Tracks page.
+  - UI-T07: board (`boards/BoardPage.tsx`, `styles/boards.css`) and ticket header
+    (`tickets/view/TicketPage.tsx`, `styles/ticket-view.css`) done; backlog, reports and the
+    ticket side panel not.
+  - UI-T11: `tutorial/TutorialPicker.tsx` (test, story) and `tutorial/TutorialsPage.tsx`
+    (`#/settings/tutorials`) without storage; the Start buttons do nothing yet.
+  - Everything else is todo; nothing of UI-T10 (server storage) or UI-T15 (layout editor) is on
+    the branch.
+- **Gate:** see the last commit on the branch and HANDOFF for which steps passed.
+- **Numbers:** ADR-114 (interface), ADR-115 (tutorial), ADR-116 spare; migration **0084** exactly
+  for `tutorial_progress`.
+- **See the work:**
+  - `corepack pnpm install`, then `corepack pnpm demo` (embedded PostgreSQL; on Linux as root use
+    the system PostgreSQL and `TASKMOOR_TEST_DATABASE_URL`, see HANDOFF), open
+    http://localhost:8080, set a password with a printed link; `?locale=en` for English.
+  - The demo serves the built frontend: after a change, `corepack pnpm --filter @taskmoor/web
+    build` and restart the demo.
+  - Pages to look at: `/home`, `/boards` (make a Kanban board with the query `track = WEB`),
+    `/tickets/API-12`, `/settings/tutorials`; the sun/moon button switches light and dark.
+  - Screenshots without a browser: Playwright (`require('playwright')`), sign in at `/sign-in`,
+    save the storage state, then `page.screenshot` per page at 1440×1000 and at 390×844 with
+    `hasTouch`; set `localStorage['taskmoor.appearance']` and `data-skin` for a skin.
+  - Storybook: `corepack pnpm --filter @taskmoor/web storybook` (Shell/PageHeader,
+    Shell/ThemeToggle, Tutorial/TutorialPicker, Home/HomePage).
+
+
 Branch `claude/ui-overhaul` (side session). This file is how the user and the main session
 follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 
