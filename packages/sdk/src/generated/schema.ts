@@ -1153,6 +1153,15 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            people: {
+                assignees: {
+                    id: number;
+                    name: string;
+                }[];
+                more: boolean;
+                unassigned: boolean;
+                viewerId: number | null;
+            };
             truncated: boolean;
         } & {
             [key: string]: unknown;
@@ -2199,7 +2208,7 @@ export interface operations {
                         /** @default true */
                         daysInColumn?: boolean;
                         /** @default [] */
-                        fields?: (("assignee" | "priority" | "dueDate" | "startDate" | "labels" | "targetReleases" | "areas" | "requester" | "parent" | "track" | "voteCount" | "followerCount" | "timeTracking" | "createdAt" | "updatedAt") | string)[];
+                        fields?: (("assignee" | "priority" | "points" | "dueDate" | "startDate" | "labels" | "targetReleases" | "areas" | "requester" | "parent" | "track" | "voteCount" | "followerCount" | "timeTracking" | "createdAt" | "updatedAt") | string)[];
                     };
                     columns?: {
                         id?: string;
@@ -2215,7 +2224,7 @@ export interface operations {
                     /** @enum {string} */
                     kind: "scrum" | "kanban";
                     name: string;
-                    source: {
+                    source?: {
                         query: string;
                     } | {
                         savedSearchId: number;
@@ -2433,6 +2442,7 @@ export interface operations {
             query?: {
                 filters?: string;
                 limit?: number;
+                people?: string;
                 sprints?: string;
             };
             header?: never;

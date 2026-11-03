@@ -355,6 +355,11 @@ async function seed(app: FastifyInstance, db: Kysely<Database>): Promise<EvalWor
     );
     const t = body.ticket as { id: number; key: string };
     tickets[spec.name] = { id: t.id, key: t.key, spec, comments: {} };
+    // A new ticket always takes a priority; one with none is what an import can leave (CORE-014),
+    // and `priority IS EMPTY` still has to find it.
+    if (!spec.priority) {
+      await db.updateTable('ticket').set({ priority_id: null }).where('id', '=', t.id).execute();
+    }
     const actor = spec.assignee ?? spec.creator;
     for (const transitionId of PATH[spec.status]) {
       await ok(

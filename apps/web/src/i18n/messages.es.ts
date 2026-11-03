@@ -2093,6 +2093,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.create.later': 'Se define en el ticket una vez creado.',
   'tickets.create.labelsHint': 'Separa las etiquetas con espacios o comas.',
   'tickets.create.none': 'Ninguno',
+  'tickets.templates.priorityDefault': 'La predeterminada del track',
   'tickets.create.childOption': '{label}: segundo nivel',
   'tickets.create.submit': 'Crear',
   'tickets.create.creating': 'Creando…',

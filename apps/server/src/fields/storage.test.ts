@@ -96,7 +96,7 @@ describe('custom field side tables (M1-011)', () => {
     };
     await make('text', { type: 'text' });
     await make('notes', { type: 'paragraph' });
-    await make('points', { type: 'number' });
+    await make('score', { type: 'number' });
     await make('day', { type: 'date' });
     await make('when', { type: 'datetime' });
     await make('one', {
@@ -167,7 +167,7 @@ describe('custom field side tables (M1-011)', () => {
             type: 'doc',
             content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello there' }] }],
           });
-        case 'points':
+        case 'score':
           return fc.oneof(fc.double({ min: -1e6, max: 1e6, noNaN: true }), fc.constant(null));
         case 'day':
           return fc.constantFrom('2026-01-01', '2026-12-31', null);
@@ -201,7 +201,7 @@ describe('custom field side tables (M1-011)', () => {
           type: 'doc',
           content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Hello there' }] }],
         },
-        points: 1.5,
+        score: 1.5,
         day: '2026-01-01',
         when: '2026-10-28T10:00:00+02:00',
         one: options.one?.[0],
@@ -317,7 +317,7 @@ describe('custom field side tables (M1-011)', () => {
     const t = await post('/api/v1/tickets', {
       track: 'SA',
       summary: 'Drift',
-      fields: { [fieldIds.text as number]: 'Kept', [fieldIds.points as number]: 3 },
+      fields: { [fieldIds.text as number]: 'Kept', [fieldIds.score as number]: 3 },
     });
     const id = t.json().ticket.id as number;
     // Damage: a row gone, a wrong value, a row for a field the ticket does not have.
