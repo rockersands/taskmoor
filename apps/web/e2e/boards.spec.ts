@@ -33,7 +33,7 @@ async function seriousAxeViolations(page: Page): Promise<string[]> {
   });
 }
 
-test('[AGL-001] [AGL-002] [AGL-003] [AGL-005] a track\'s board, keyboard moves and settings', async ({
+test("[AGL-001] [AGL-002] [AGL-003] [AGL-005] a track's board, keyboard moves and settings", async ({
   page,
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });

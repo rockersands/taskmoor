@@ -19,8 +19,11 @@ to merge: new work stopped on the coordinator's word, and what is not built wait
   asking for nothing (0089), Files and links, Statistics, a customizable Summary (0090). A Kanban track
   shows no Backlog and nothing else that needs sprints (0094); a board cannot go Kanban while a sprint
   runs.
-- Board: the filter row (popover, People filter, "Me" instead of "Only my tickets"); cards with title,
+- Board: the filter row (popover, People filter, "Me" instead of "Only my tickets"); cards with key, title,
   type and priority icons, assignee, points and the pencil (0093, 0095); column reach and closing column.
+- Home: Your tracks comes first, at most six glass cards with the latest opened first (this browser
+  remembers them), a link to all, and New track for those who may when there are none. It shows the tracks
+  a person can see: the track list cannot yet say which ones they belong to.
 - Ticket: the pop-up from every list, one status control, clone, copy link, the priority picker.
 - Priorities: Very low, and no empty choice (0092). Points seeded as a number field boards estimate with
   (0095). Seeded types and priorities read in Spanish.
@@ -30,6 +33,10 @@ to merge: new work stopped on the coordinator's word, and what is not built wait
   templates are among the setup pages.
 - Search basic filters; tutorial storage only (UI-T10, 0084).
 - origin/main is merged: templates, updates, invitations and manager pages, Google sign-in.
+- E2e: the whole suite passes (179 passed, 45 skipped by their own project rules, none failed or flaky on
+  the last run). The specs caught four real races, now fixed: a redirect that left an empty page; a ticket's
+  change that lost the board's first read; a board page that started twice and lost edits; a late answer
+  writing over unsaved AI and board settings (T-013, and probably T-013a).
 
 **Partly done:**
 
@@ -69,6 +76,8 @@ and drop beyond boards (UI-T08); the layout editor (UI-T15); UI-T21; the phone a
   Motion adds no class to every card. A column that long is not smooth; `content-visibility` on cards would
   help but clips the card's menus, so it needs care.
 - Tickets to add after the merge: an Objetivos tab listing a track's outcomes with progress.
+- Your tracks on Home cannot show "tracks I belong to" until the server can say so.
+- The board's reports page still lists "Only my tickets" on old boards.
 - Migrations: a database already past a number cannot take a lower one. Fresh installs are fine; a kept
   database on main at 0087 needs its 0084 applied by hand, and the demo likewise.
 - Running e2e rebuilds `apps/web/dist`: restart the demo straight after, or its page breaks. Restarts keep

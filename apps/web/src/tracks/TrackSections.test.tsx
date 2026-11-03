@@ -1,9 +1,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { boardClient } from '../boards/client';
 import { BOARD } from '../boards/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { onRouteChange } from '../routing/router';
-import { NoBacklog, Redirect } from './BoardInTrack';
+import { BoardInTrack, NoBacklog, Redirect } from './BoardInTrack';
 import { fakeTrackClient } from './fixtures';
 import { TrackFilesPage } from './TrackFilesPage';
 import { TrackLayout } from './TrackLayout';
@@ -126,6 +128,27 @@ describe('a track is one place with its sections (ADR-116)', () => {
     expect(screen.getByRole('textbox', { name: 'Kept while the tab changes' })).toBe(field);
     expect(region).toHaveClass('motion-rise');
     await screen.findByRole('navigation', { name: /SHOP/ });
+  });
+
+  it("[CORE-001] a board's page starts once, in its track's tabs", async () => {
+    const board = vi.spyOn(boardClient, 'board').mockResolvedValue(BOARD);
+    let starts = 0;
+    function Page() {
+      useEffect(() => {
+        starts += 1;
+      }, []);
+      return <p>the page</p>;
+    }
+    inEnglish(
+      <BoardInTrack boardId={BOARD.id} section="board">
+        <Page />
+      </BoardInTrack>,
+    );
+    expect(screen.queryByText('the page')).toBeNull();
+    expect(await screen.findByText('the page')).toBeVisible();
+    expect(screen.getByRole('navigation', { name: /^Sections of / })).toBeVisible();
+    expect(starts).toBe(1);
+    board.mockRestore();
   });
 
   it('[CORE-001] a redirect tells the app, so the page it leads to shows', () => {

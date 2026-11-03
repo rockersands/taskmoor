@@ -34,7 +34,20 @@ describe('your tracks on the home page', () => {
       <I18nProvider locale="en">
         <SessionProvider
           session={
-            mayCreate ? { ...MEMBER, user: { ...MEMBER.user, mayCreateLocalTracks: true } } : MEMBER
+            mayCreate
+              ? {
+                  status: 'signed-in',
+                  user: {
+                    id: 7,
+                    name: 'Mina',
+                    email: 'mina@example.com',
+                    isSiteAdmin: false,
+                    mayCreateLocalTracks: true,
+                    timeZone: null,
+                    locale: null,
+                  },
+                }
+              : MEMBER
           }
         >
           <main>
