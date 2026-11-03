@@ -164,3 +164,15 @@ the import refused each second track, as it should, and the generator is fixed.
 **The estimate for 1,000,000 issues:** time grew linearly from the 100,000-issue run, so about
 5.7 million records at 2.5 ms is 3 h 57 min, plus about 7 minutes of staging, and about 24 GB of
 database. That is right at the four-hour bar, on this machine, with no margin.
+
+**1,000,000 issues, measured on 2026-11-03** on the same PC, with other work running.
+
+| Issues | Records | Stage | Import | Per record | Peak memory | Database | Fidelity |
+|---|---|---|---|---|---|---|---|
+| 1,000,000 | 5,706,364 | 370 s | 14,290 s (3 h 58 min) | 2.5 ms | 723 MB staging, 582 MB importing (RSS 1,527 MB) | 24.4 GB | 429,501 of 429,501 (every 20th issue) |
+
+The time grew linearly, as estimated. The import alone meets the four-hour bar, with two minutes to
+spare; with staging it takes 4 h 04 min. Six records failed. Generated keys such as BY, IN and IS are words
+a query reserves, so their boards and sprints failed: that was the test data, now fixed. Two sprints
+were too large for one statement, which is a limit of the import: it now writes them in batches.
+Neither fix has been rerun at this size.

@@ -7,6 +7,7 @@ import { stableJson } from '@taskmoor/testkit/golden';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import yauzl from 'yauzl';
 import yazl from 'yazl';
+import { projectsNamed } from './agile-format';
 import { ATTRIBUTE_TEXT_MAX, attachmentPath, ENTITIES, timestamp } from './format';
 import { defaultOptions, generateDcBackup } from './generate';
 import type { Manifest } from './manifest';
@@ -142,7 +143,11 @@ describe('the backup generator', () => {
     // import rightly refused the second track of each.
     const keys = Array.from({ length: 10_000 }, (_, index) => projectKey(index));
     expect(new Set(keys).size).toBe(keys.length);
-    for (const key of keys) expect(key).toMatch(/^[A-Z][A-Z0-9]{1,9}$/);
+    for (const key of keys) {
+      expect(key).toMatch(/^[A-Z][A-Z0-9]{1,9}$/);
+      // Each board's filter names its project, so a key must not be a word a query reserves.
+      expect(projectsNamed(`project = ${key} ORDER BY Rank ASC`)).toEqual([key]);
+    }
     expect(projectKey(0)).toBe('AX');
     expect(projectKey(49)).toBe('AX0');
   });

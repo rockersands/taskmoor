@@ -286,6 +286,16 @@ interface SprintData {
 
 const instant = (v: string | null) => (v === null ? null : new Date(v));
 
+/**
+ * A statement takes at most 65,535 parameters, and a sprint can hold more tickets than that
+ * allows: at a million issues, two sprints failed with Postgres's protocol error 08P01.
+ */
+export function inBatches<T>(items: readonly T[], size = 5_000): T[][] {
+  const parts: T[][] = [];
+  for (let i = 0; i < items.length; i += size) parts.push(items.slice(i, i + size));
+  return parts;
+}
+
 export const sprints: Loader<SprintCommand> = {
   table: { name: 'sprint', id: 'id' },
   async plan(ctx, cmd, existing) {
@@ -348,29 +358,28 @@ export const sprints: Loader<SprintCommand> = {
           .executeTakeFirstOrThrow()
       ).id;
     }
-    if (d.tickets.length === 0) return id;
     const open = cmd.state !== 'closed';
     // A ticket already in another open sprint stays there: one open sprint per ticket.
-    const busy = open
-      ? new Set(
-          (
-            await ctx.trx
-              .selectFrom('sprint_ticket')
-              .select('ticket_id')
-              .where('ticket_id', 'in', d.tickets)
-              .where('open', '=', true)
-              .where('sprint_id', '<>', id)
-              .execute()
-          ).map((r) => r.ticket_id),
-        )
-      : new Set<number>();
+    const busy = new Set<number>();
+    if (open) {
+      for (const part of inBatches(d.tickets)) {
+        const rows = await ctx.trx
+          .selectFrom('sprint_ticket')
+          .select('ticket_id')
+          .where('ticket_id', 'in', part)
+          .where('open', '=', true)
+          .where('sprint_id', '<>', id)
+          .execute();
+        for (const r of rows) busy.add(r.ticket_id);
+      }
+    }
     if (busy.size > 0) ctx.warn({ code: 'ticket_in_another_open_sprint' });
     const adding = d.tickets.filter((t) => !busy.has(t));
-    if (adding.length > 0) {
+    for (const part of inBatches(adding)) {
       await ctx.trx
         .insertInto('sprint_ticket')
         .values(
-          adding.map((ticketId) => ({
+          part.map((ticketId) => ({
             workspace_id: ctx.workspaceId,
             sprint_id: id,
             ticket_id: ticketId,

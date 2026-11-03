@@ -45,9 +45,9 @@ reported, and the coordinator checked that it was pushed.
 | T-012 | Fix the flaky MCP consent e2e test | Done | Passed 10 of 10 |
 | T-013 | Look into the AI settings Strict mode test that needed its retry | To do | Failed in two gates, passed alone |
 | T-014 | 500k-issue import | Done | 100% of sampled entities in 1 h 58 min; ADR-092 |
-| T-015 | Find out why seven records failed in that run | In progress | The test now reports reasons; the 1M run shows them |
-| T-016 | Try the 1M-issue import on this PC | In progress | Estimate 3 h 57 min, right at the 4 h bar |
-| T-017 | Close M1-091 with the results | To do | After T-015 and T-016 |
+| T-015 | Find out why records failed in the large imports | Done | Reserved words as generated keys, and sprints too large for one statement; both fixed; the seven at 500k fit the first cause, as the key BY appears by then, though that run did not capture reasons |
+| T-016 | Try the 1M-issue import on this PC | Done | 3 h 58 min, 100% of sampled entities; ADR-092 |
+| T-017 | Close M1-091 with the results | Done | In progress.csv |
 | T-018 | Merge the finished branches, each with a full gate | To do | Templates, updates, invitations, Google, ticket tools, UI; expect conflicts |
 | T-019 | Fuzz stages (1, 2, 4, 8 hours) | To do | The user's decision: after all merges, about 15 hours |
 | T-020 | Release 1.0 (M1-120) | To do | LTS, changelog, signed release files |
