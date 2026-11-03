@@ -512,6 +512,38 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
       expect(await rolesOf('gus')).toEqual([]);
     });
 
+    it('[IAM-034] a track moved between two groups shared alike keeps its role throughout', async () => {
+      const side = await makeGroup('owen', 'Side', ['DELTA']);
+      await share('owen', launch, 'gus', 'Viewers');
+      await share('owen', side, 'gus', 'Viewers');
+      const all = ['ALPHA:Viewers', 'BETA:Viewers', 'DELTA:Viewers'];
+      expect(await rolesOf('gus')).toEqual(all);
+      const moved = await as('owen', {
+        method: 'PUT',
+        url: `/api/v1/track-groups/${launch}/tracks/${tracks.DELTA}`,
+      });
+      expect(moved.statusCode, moved.body).toBe(200);
+      // Ana, whom the group is also shared with, gets it there; Gus's never went or came.
+      expect((await lastEvent('track_group.track_moved')).payload).toEqual({
+        trackId: tracks.DELTA,
+        fromGroupId: side,
+        toGroupId: launch,
+        position: 3,
+        given: [{ trackId: tracks.DELTA, userId: ids.ana, roleId: roles.Members }],
+        removed: [],
+      });
+      expect(await rolesOf('gus')).toEqual(all);
+      // Now only the first group's share holds it, and taking the track out takes the role.
+      await as('owen', {
+        method: 'DELETE',
+        url: `/api/v1/track-groups/${launch}/tracks/${tracks.DELTA}`,
+      });
+      expect(await rolesOf('gus')).toEqual(['ALPHA:Viewers', 'BETA:Viewers']);
+      await unshare('owen', launch, 'gus');
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${side}` });
+      expect(await rolesOf('gus')).toEqual([]);
+    });
+
     it('[IAM-034] someone who runs no track shares the group and gives nothing', async () => {
       const hers = await makeGroup('eve', 'Eve’s', ['ALPHA']);
       const res = await share('eve', hers, 'gus', 'Administrators');

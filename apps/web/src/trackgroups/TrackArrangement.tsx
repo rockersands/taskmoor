@@ -102,8 +102,9 @@ function MoveMenu({ label, handle, items, onDragStart, onStep, justDragged }: Mo
         aria-haspopup="menu"
         aria-expanded={open}
         {...(open ? { 'aria-controls': menuId } : {})}
-        onClick={() => {
-          if (justDragged()) return;
+        onClick={(event) => {
+          // A pointer's click right after a drag is the drag's; Enter or Space never is.
+          if (event.detail > 0 && justDragged()) return;
           if (open) close(false);
           else openMenu(true);
         }}
@@ -268,14 +269,15 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
   const stepTrack = (group: TrackGroup, trackId: number, direction: -1 | 1) => {
     const index = group.tracks.findIndex((tr) => tr.id === trackId);
     const to = index + direction;
-    if (index < 0 || to < 0 || to >= group.tracks.length) return;
+    // One move at a time: a key held down waits for the last move to show.
+    if (busy || index < 0 || to < 0 || to >= group.tracks.length) return;
     void placeTrack(group.id, trackId, to);
   };
 
   const stepGroup = (groupId: number, direction: -1 | 1) => {
     const index = groups.findIndex((g) => g.id === groupId);
     const to = index + direction;
-    if (index < 0 || to < 0 || to >= groups.length) return;
+    if (busy || index < 0 || to < 0 || to >= groups.length) return;
     void reorderGroups(groupId, to);
   };
 

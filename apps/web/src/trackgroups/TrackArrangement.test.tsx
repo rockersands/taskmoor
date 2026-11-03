@@ -147,6 +147,16 @@ describe('the Tracks page in groups (CORE-034)', () => {
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).toBeNull();
     expect(handle('Web')).toHaveFocus();
+    // The click a drag ends with opens nothing, but Enter right after it does.
+    dragTo(handle('Web'), card('DATA'));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }),
+    );
+    fireEvent.click(handle('Web'), { detail: 1 });
+    expect(screen.queryByRole('menu')).toBeNull();
+    handle('Web').focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('menu', { name: 'Move Web' })).toBeVisible();
   });
 
   it('[CORE-034] every drag has a keyboard path: Alt and the arrows, and the grip’s menu', async () => {

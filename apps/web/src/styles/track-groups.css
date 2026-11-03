@@ -140,8 +140,10 @@
   background: transparent;
   color: var(--color-text-muted);
   cursor: grab;
-  /* A finger on the grip drags the card rather than scrolling the page. */
+  /* A finger on the grip drags the card rather than scrolling the page or selecting text. */
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
   transition: background-color var(--motion-fast) var(--ease-soft);
 }
 

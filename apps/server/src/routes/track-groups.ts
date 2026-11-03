@@ -270,25 +270,36 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     ).map((r) => r.id);
 
   /**
-   * Takes a track out of whichever of the owner's groups holds it: the shares of that group stop
-   * giving their role on it. The group it left, and the roles that went.
+   * Takes a track out of whichever of the owner's groups holds it, and returns that group. The
+   * shares of that group still hold their role on it until `releaseFrom`.
    */
-  async function takeOut(trx: Trx, request: FastifyRequest, ownerId: number, trackId: number) {
+  async function detach(trx: Trx, ownerId: number, trackId: number) {
     const row = await trx
       .deleteFrom('track_group_track')
       .where('owner_id', '=', ownerId)
       .where('track_id', '=', trackId)
       .returning('group_id')
       .executeTakeFirst();
-    if (!row) return { from: null, removed: [] as AccessChange[] };
+    if (!row) return null;
     await writeOrder(trx, row.group_id, await trackIdsOf(trx, row.group_id));
-    const removed = await releaseShares(
-      trx,
-      request.workspaceId,
-      await shareIdsOf(trx, row.group_id),
-      [trackId],
-    );
-    return { from: row.group_id, removed };
+    return row.group_id;
+  }
+
+  /** The shares of the group a track left stop giving their role on it: the roles that went. */
+  const releaseFrom = async (
+    trx: Trx,
+    request: FastifyRequest,
+    groupId: number | null,
+    trackId: number,
+  ) =>
+    groupId === null
+      ? []
+      : releaseShares(trx, request.workspaceId, await shareIdsOf(trx, groupId), [trackId]);
+
+  /** A track out of its group, and what the group's shares gave on it with it. */
+  async function takeOut(trx: Trx, request: FastifyRequest, ownerId: number, trackId: number) {
+    const from = await detach(trx, ownerId, trackId);
+    return { from, removed: await releaseFrom(trx, request, from, trackId) };
   }
 
   /** Gives each share of a group its role on tracks that just came in, where the owner may. */
@@ -575,7 +586,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
         let removed: AccessChange[] = [];
         let given: AccessChange[] = [];
         if (held?.group_id !== group.id) {
-          ({ from, removed } = await takeOut(trx, request, group.owner_id, trackId));
+          from = await detach(trx, group.owner_id, trackId);
           await trx
             .insertInto('track_group_track')
             .values({
@@ -586,7 +597,9 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
               position,
             })
             .execute();
+          // The new group's shares give first, so a role both groups' shares give stays put.
           given = await giveNewcomers(trx, request, group.id, [trackId]);
+          removed = await releaseFrom(trx, request, from, trackId);
         }
         order.splice(position, 0, trackId);
         await writeOrder(trx, group.id, order);
