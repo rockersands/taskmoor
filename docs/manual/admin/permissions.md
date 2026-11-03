@@ -1,7 +1,7 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, docs/adr/0118-track-invitations.md
+sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -59,7 +59,14 @@ On **Global permissions**, **Give a global permission** to **A group**, **A pers
 | **Share saved searches** | `share_saved_searches` | Share saved searches and dashboards beyond "only me" | Anyone signed in |
 | **Subscribe groups to searches** | `manage_group_subscriptions` | Subscribe a group to a saved search | Nobody |
 | **Change many tickets at once** | `bulk_change` | Bulk operations | Anyone signed in |
-| **Create tracks with their own configuration** | `create_local_tracks` | Create local-mode tracks | Anyone signed in |
+| **Create tracks with their own configuration** | `create_local_tracks` | Create local-mode tracks | Nobody on a new site; anyone signed in on a site set up with an earlier version, until you remove that grant |
+
+Site administrators hold every global permission, so they always create tracks. Besides this page,
+**Create tracks with their own configuration** reaches people through a track: whoever gives
+someone the role that runs a track, and may create tracks themselves, can tick **Also let them
+create tracks** ([Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)).
+That writes a grant to that person, listed here with their name. Taking the role away leaves it;
+**Remove** it here.
 
 The list also holds **Manage onboarding**, **Connect goals**, **Manage automation**,
 **Manage AI features** and **Manage extensions**. They belong to features that are not built

@@ -13,6 +13,11 @@ import { recordRejectedLink } from '../audit/record';
 import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import {
+  checkGivingCreateTracks,
+  giveCreateTracks,
+  inviterMayGiveCreateTracks,
+} from '../authz/create-tracks';
+import {
   inviterStillBacks,
   mayGiveRole,
   roleRunsTrack,
@@ -48,6 +53,8 @@ const inviteBody = z
     userIds: z.array(id).max(MAX_ADDRESSES).default([]),
     roleId: id,
     delivery,
+    /** The role that runs the track comes with the permission to create tracks (IAM-033). */
+    createTracks: z.boolean().default(false),
   })
   .strict();
 const resendBody = z.object({ delivery }).strict();
@@ -95,8 +102,10 @@ interface Send {
  * Inviting people into a track and giving them a role (IAM-027 to IAM-030; ADR-118).
  *
  * Only someone who runs the track and holds `invite_people` invites, only into that track, and
- * only with a role they may give (`mayGiveRole`). An invitation holds one track and one role and
- * gives nothing global. No answer says whether an address has an account: an existing person gets
+ * only with a role they may give (`mayGiveRole`). An invitation holds one track and one role; with
+ * a role that runs the track it can also hold the permission to create tracks (IAM-033), the one
+ * global thing it gives, and only when whoever backs it may give that too, both when it is made
+ * and when the role is given. No answer says whether an address has an account: an existing person gets
  * the role at once and a different email, but the inviter sees the same answer and the same open
  * invitation. A link travels only in the email or in the answer that made it; the database keeps
  * its hash. Setting a password never signs anyone in here: the person goes through the ordinary
@@ -395,6 +404,15 @@ export function registerInvitationRoutes(
       .executeTakeFirst();
     if (!role) return reply.code(404).send({ error: 'not_found' });
     if (!(await mayGiveRole(db, request.authz, trackId, role.id))) return refuseRole(reply);
+    if (body.createTracks) {
+      if (!(await roleRunsTrack(db, trackId, role.id))) {
+        return invalid(
+          reply,
+          'the permission to create tracks comes with a role that runs the track',
+        );
+      }
+      if (!(await checkGivingCreateTracks(request, reply))) return reply;
+    }
     const mail = await mailReady();
     if (body.delivery === 'email' && !mail) {
       return reply.code(409).send({ error: 'email_not_set_up' });
@@ -450,6 +468,7 @@ export function registerInvitationRoutes(
             invited_by: user.id,
             delivery: body.delivery,
             expires_at: expiresAt,
+            grants_create_tracks: body.createTracks,
           })
           .onConflict((oc) =>
             oc
@@ -466,12 +485,15 @@ export function registerInvitationRoutes(
         }
         const { person, shut } = await accountAt(trx, ws, email);
         const added = person ? await giveRole(trx, ws, trackId, role.id, person.id) : false;
+        let grantId: number | null = null;
         if (person && added) {
           await trx
             .updateTable('track_invitation')
             .set({ granted_user_id: person.id })
             .where('id', '=', made.id)
             .execute();
+          // The permission goes with the role, at once too (IAM-033).
+          if (body.createTracks) grantId = await giveCreateTracks(trx, ws, person.id);
         }
         // An existing person hears of it by email whichever way the inviter chose; a new one
         // gets an email only when the inviter asked for one. The answer below is the same.
@@ -503,6 +525,8 @@ export function registerInvitationRoutes(
             email,
             delivery: body.delivery,
             grantedUserId: person && added ? person.id : null,
+            createTracks: body.createTracks,
+            ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
           },
         });
         done.push({
@@ -529,10 +553,16 @@ export function registerInvitationRoutes(
         }
         const added = await giveRole(trx, ws, trackId, role.id, person.id);
         if (added) {
+          const grantId = body.createTracks ? await giveCreateTracks(trx, ws, person.id) : null;
           await emit(trx, by, {
             type: 'track_role.actor_added',
             subjectId: trackId,
-            payload: { roleId: role.id, userId: person.id, groupId: null },
+            payload: {
+              roleId: role.id,
+              userId: person.id,
+              groupId: null,
+              ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
+            },
           });
           sends.push({
             to: person.email,
@@ -570,7 +600,7 @@ export function registerInvitationRoutes(
     const row = await db
       .selectFrom('track_invitation as i')
       .innerJoin('role as r', 'r.id', 'i.role_id')
-      .select(['i.id', 'i.email', 'i.role_id', 'r.name as role_name'])
+      .select(['i.id', 'i.email', 'i.role_id', 'i.grants_create_tracks', 'r.name as role_name'])
       .where('i.id', '=', invitationId)
       .where('i.track_id', '=', trackId)
       .where('i.workspace_id', '=', ws)
@@ -592,6 +622,9 @@ export function registerInvitationRoutes(
     const now = new Date();
     const expiresAt = new Date(now.getTime() + INVITATION_TTL_MS);
     const sends: Send[] = [];
+    // A resend makes the invitation the sender's: they back the permission from now on.
+    const createTracks =
+      row.grants_create_tracks && (await inviterMayGiveCreateTracks(authorizer, ws, user.id));
     const found = await db.transaction().execute(async (trx) => {
       const { person, shut } = await accountAt(trx, ws, row.email);
       const added = person ? await giveRole(trx, ws, trackId, row.role_id, person.id) : false;
@@ -612,6 +645,8 @@ export function registerInvitationRoutes(
         .returning('id')
         .executeTakeFirst();
       if (!updated) return false;
+      const grantId =
+        person && added && createTracks ? await giveCreateTracks(trx, ws, person.id) : null;
       if (person) {
         sends.push({
           to: row.email,
@@ -637,7 +672,11 @@ export function registerInvitationRoutes(
         {
           type: 'track_invitation.resent',
           subjectId: trackId,
-          payload: { invitationId: row.id, delivery: parsed.data.delivery },
+          payload: {
+            invitationId: row.id,
+            delivery: parsed.data.delivery,
+            ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
+          },
         },
       );
       return true;
@@ -731,6 +770,7 @@ export function registerInvitationRoutes(
         'i.role_id',
         'i.invited_by',
         'i.expires_at',
+        'i.grants_create_tracks',
         't.key as track_key',
         't.name as track_name',
         'r.name as role_name',
@@ -751,6 +791,18 @@ export function registerInvitationRoutes(
       invitedBy: row.invited_by,
     });
     return backed ? row : null;
+  }
+
+  /**
+   * Whether taking up an invitation also gives the permission to create tracks: it was asked
+   * for, and whoever backs the invitation may still give it (IAM-033).
+   */
+  async function invitationGivesCreateTracks(
+    workspaceId: number,
+    row: { grants_create_tracks: boolean; invited_by: number | null },
+  ): Promise<boolean> {
+    if (!row.grants_create_tracks) return false;
+    return inviterMayGiveCreateTracks(authorizer, workspaceId, row.invited_by);
   }
 
   async function throttled(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
@@ -824,6 +876,7 @@ export function registerInvitationRoutes(
     }
     // Hashed whatever comes next, so the answer takes as long for either kind of address.
     const passwordHash = await options.passwords.hash(body.password);
+    const createTracks = await invitationGivesCreateTracks(ws, row);
     const now = new Date();
     try {
       await db.transaction().execute(async (trx) => {
@@ -856,6 +909,7 @@ export function registerInvitationRoutes(
           .returning('id')
           .executeTakeFirstOrThrow();
         await giveRole(trx, ws, row.track_id, row.role_id, person.id);
+        const grantId = createTracks ? await giveCreateTracks(trx, ws, person.id) : null;
         await emit(
           trx,
           { workspaceId: ws, actorId: person.id },
@@ -867,6 +921,7 @@ export function registerInvitationRoutes(
               roleId: row.role_id,
               userId: person.id,
               accountCreated: true,
+              ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
             },
           },
         );
@@ -891,6 +946,7 @@ export function registerInvitationRoutes(
       return reply.code(403).send({ error: 'other_account', email: row.email });
     }
     const ws = request.workspaceId;
+    const createTracks = await invitationGivesCreateTracks(ws, row);
     const accepted = await db.transaction().execute(async (trx) => {
       const marked = await trx
         .updateTable('track_invitation')
@@ -901,7 +957,9 @@ export function registerInvitationRoutes(
         .returning('id')
         .executeTakeFirst();
       if (!marked) return false;
-      await giveRole(trx, ws, row.track_id, row.role_id, user.id);
+      // A role given when the invitation was made already brought its grant then.
+      const added = await giveRole(trx, ws, row.track_id, row.role_id, user.id);
+      const grantId = added && createTracks ? await giveCreateTracks(trx, ws, user.id) : null;
       await emit(
         trx,
         { workspaceId: ws, actorId: user.id },
@@ -913,6 +971,7 @@ export function registerInvitationRoutes(
             roleId: row.role_id,
             userId: user.id,
             accountCreated: false,
+            ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
           },
         },
       );

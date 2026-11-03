@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { DEFAULT_STORAGE_QUOTA } from '../attachments/quota';
 import { DEFAULT_MAX_FILE_SIZE } from '../attachments/records';
 import { startSession } from '../auth';
+import { CREATE_TRACKS } from '../authz/create-tracks';
 import { emit } from '../events/bus';
 import {
   INSTANCE_KEY,
@@ -110,6 +111,16 @@ export function registerSetupRoutes(
         .insertInto('two_factor_policy')
         .values({ workspace_id: request.workspaceId, required: 'site_admins' })
         .onConflict((oc) => oc.column('workspace_id').doNothing())
+        .execute();
+      // Only site administrators create tracks on a new site (the user's decision of 2026-11-03;
+      // IAM-033): the migrations give everyone signed in that permission, as sites set up
+      // before had it, so setup takes it back. Giving someone a track's managing role can give
+      // it to them; a site administrator can give it on the Permissions page.
+      await trx
+        .deleteFrom('global_grant')
+        .where('workspace_id', '=', request.workspaceId)
+        .where('permission', '=', CREATE_TRACKS)
+        .where('grantee', '=', 'any_user')
         .execute();
       // Storage quotas start generous on a new workspace (CORE-021, the user's decision of
       // 2026-11-02): 1 TiB in all, 20 GiB a person; the guardrails page changes them.

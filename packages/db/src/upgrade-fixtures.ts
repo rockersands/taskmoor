@@ -1544,7 +1544,9 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
   },
   '0087_track_invitations': {
     tables: {
-      track_invitation: "email = 'invited-seed@example.com' AND delivery = 'link'",
+      // An invitation from before 0097 gives no more than it did: the role alone.
+      track_invitation: `email = 'invited-seed@example.com' AND delivery = 'link'
+        AND NOT grants_create_tracks`,
       // Whoever runs a track keeps giving the role that runs it (ADR-118).
       access_grant: `id = (SELECT min(id) FROM access_grant
         WHERE permission = 'appoint_track_admins' AND grantee = 'role')`,
@@ -1629,6 +1631,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       await sql`INSERT INTO ticket_checklist_item (workspace_id, checklist_id, text, state, position)
         SELECT 1, id, 'Seed item', 'rejected', 0 FROM ticket_checklist
          WHERE name = 'Seed checklist'`.execute(db);
+    },
+  },
+  '0097_invitation_create_tracks': {
+    tables: {
+      // An invitation made after may give more; 0087's, from before, is checked below.
+      track_invitation: "email = 'manager-seed@example.com' AND grants_create_tracks",
+      // An existing site keeps who may create tracks: everyone signed in, as 0004 gave it.
+      global_grant: `workspace_id = 1 AND permission = 'create_local_tracks'
+        AND grantee = 'any_user'`,
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO track_invitation (workspace_id, track_id, role_id, email, token_hash,
+          delivery, expires_at, grants_create_tracks)
+        SELECT t.workspace_id, t.id, r.id, 'manager-seed@example.com', 'seed-manager-invitation',
+               'link', now() + interval '7 days', true
+          FROM track t JOIN role r ON r.workspace_id = t.workspace_id
+         ORDER BY t.id, r.id LIMIT 1`.execute(db);
     },
   },
 };

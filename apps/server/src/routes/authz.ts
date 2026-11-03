@@ -4,6 +4,7 @@ import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireSiteAdmin, requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
+import { checkGivingCreateTracks, giveCreateTracks, isActivePerson } from '../authz/create-tracks';
 import {
   GLOBAL_PERMISSIONS,
   isGlobalPermission,
@@ -802,13 +803,21 @@ export function registerAuthzRoutes(
     return { roles: [...roles.values()] };
   });
 
+  // Giving a person a role that runs the track can also give them the permission to create
+  // tracks (IAM-033): a site-wide grant, never for a group.
+  const actorBody = z.object({ createTracks: z.boolean().default(false) }).strict();
   for (const kind of ['users', 'groups'] as const) {
     const paramsSchema = z.object({ id, roleId: id, actorId: id });
     const path = `/api/v1/tracks/:id/roles/:roleId/${kind}/:actorId`;
     app.put(path, async (request, reply) => {
       const params = paramsSchema.safeParse(request.params);
-      if (!params.success) return invalid(reply);
+      const parsed = actorBody.safeParse(request.body ?? {});
+      if (!params.success || !parsed.success) return invalid(reply);
       const { id: trackId, roleId, actorId } = params.data;
+      const { createTracks } = parsed.data;
+      if (createTracks && kind === 'groups') {
+        return invalid(reply, 'the permission to create tracks goes to a person');
+      }
       if (!(await trackAdmin(request, reply, trackId))) return reply;
       const ws = request.workspaceId;
       const exist = await Promise.all([
@@ -819,6 +828,18 @@ export function registerAuthzRoutes(
       // A role that runs the track needs the appointing permission (IAM-028).
       if (!(await mayGiveRole(db, request.authz, trackId, roleId))) {
         return reply.code(403).send({ error: 'forbidden', permission: 'appoint_track_admins' });
+      }
+      if (createTracks) {
+        if (!(await roleRunsTrack(db, trackId, roleId))) {
+          return invalid(
+            reply,
+            'the permission to create tracks comes with a role that runs the track',
+          );
+        }
+        if (!(await isActivePerson(db, ws, actorId))) {
+          return invalid(reply, 'the permission to create tracks goes to an active person');
+        }
+        if (!(await checkGivingCreateTracks(request, reply))) return reply;
       }
       await db.transaction().execute(async (trx) => {
         const added = await trx
@@ -833,6 +854,8 @@ export function registerAuthzRoutes(
           .onConflict((oc) => oc.doNothing())
           .executeTakeFirst();
         if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) {
+          // Only a role given now brings the grant; a role already held changes nothing.
+          const grantId = createTracks ? await giveCreateTracks(trx, ws, actorId) : null;
           await emit(trx, by(request), {
             type: 'track_role.actor_added',
             subjectId: trackId,
@@ -840,6 +863,7 @@ export function registerAuthzRoutes(
               roleId,
               userId: kind === 'users' ? actorId : null,
               groupId: kind === 'groups' ? actorId : null,
+              ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
             },
           });
         }

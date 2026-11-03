@@ -2354,6 +2354,10 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.remove': 'Quitar',
   'trackPeople.giveTo': 'Dar {role} a {name}',
   'trackPeople.roleGiven': '{name} ahora tiene {role}.',
+  'trackPeople.roleGivenWithTracks': '{name} ahora tiene {role} y puede crear tracks.',
+  'trackPeople.createTracks': 'Permitir también crear tracks',
+  'trackPeople.createTracksHint':
+    'Es un permiso para todo el sitio, no solo para este track. Quitar el rol después no lo retira; un administrador del sitio puede hacerlo en la página Permisos.',
   'trackPeople.pending': 'Invitaciones en espera',
   'trackPeople.noPending': 'No hay invitaciones en espera.',
   'trackPeople.pendingMeta': '{role}, invitación de {who}.',
@@ -2402,6 +2406,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.problem.tooMany':
     'Demasiadas invitaciones en poco tiempo. Inténtalo dentro de un rato.',
   'trackPeople.problem.forbidden': 'No puedes hacer eso en este track.',
+  'trackPeople.problem.createTracks':
+    'Solo los administradores del sitio y quienes pueden crear tracks pueden dar ese permiso.',
   'trackPeople.problem.other': 'No funcionó. Inténtalo de nuevo en un momento.',
   'invite.title': 'Tu invitación',
   'invite.titleFor': 'Tu invitación a {key} · {name}',

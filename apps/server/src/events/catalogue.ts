@@ -31,6 +31,11 @@ const ticketLink = z.object({
   sourceId: id,
   targetId: id,
 });
+/**
+ * The grant of the permission to create tracks that came with a role (IAM-033; ADR-118), in the
+ * event of the change that gave the role: absent when none was written, and in older events.
+ */
+const createTracksGrantId = id.optional();
 /** A value deleted, and what tickets that had it took instead. */
 const replaced = z.object({
   name: z.string(),
@@ -280,7 +285,12 @@ export const EVENT_TYPES = {
   'global_grant.removed': { subject: 'workspace', payload: z.object({ grantId: id }) },
   'track_role.actor_added': {
     subject: 'track',
-    payload: z.object({ roleId: id, userId: id.nullable(), groupId: id.nullable() }),
+    payload: z.object({
+      roleId: id,
+      userId: id.nullable(),
+      groupId: id.nullable(),
+      createTracksGrantId,
+    }),
   },
   'track_role.actor_removed': {
     subject: 'track',
@@ -297,11 +307,18 @@ export const EVENT_TYPES = {
       delivery: z.enum(['email', 'link']),
       /** The account that got the role at once; null when it waits for the person. */
       grantedUserId: id.nullable(),
+      /** The role comes with the permission to create tracks (IAM-033). */
+      createTracks: z.boolean().optional(),
+      createTracksGrantId,
     }),
   },
   'track_invitation.resent': {
     subject: 'track',
-    payload: z.object({ invitationId: id, delivery: z.enum(['email', 'link']) }),
+    payload: z.object({
+      invitationId: id,
+      delivery: z.enum(['email', 'link']),
+      createTracksGrantId,
+    }),
   },
   'track_invitation.revoked': {
     subject: 'track',
@@ -315,6 +332,7 @@ export const EVENT_TYPES = {
       userId: id,
       /** The person made their account with the link. */
       accountCreated: z.boolean(),
+      createTracksGrantId,
     }),
   },
 

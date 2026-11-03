@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { CreateTracksBox } from './CreateTracksBox';
 import {
   type Delivery,
   type Invitation,
@@ -51,6 +52,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   const [inviting, setInviting] = useState(false);
   const [freshLink, setFreshLink] = useState<{ email: string; url: string } | null>(null);
   const [role, setRole] = useState('');
+  const [createTracks, setCreateTracks] = useState(true);
   const [search, setSearch] = useState('');
   const [found, setFound] = useState<Named[]>([]);
   const inviteButton = useRef<HTMLButtonElement>(null);
@@ -101,6 +103,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
     const body = error.body as { error?: string; permission?: string } | null;
     if (body?.error === 'last_track_admin') return t('trackPeople.problem.lastAdmin');
     if (body?.permission === 'appoint_track_admins') return t('trackPeople.problem.appoint');
+    if (body?.permission === 'create_local_tracks') return t('trackPeople.problem.createTracks');
     if (body?.error === 'too_many_invitations') return t('trackPeople.problem.tooMany');
     if (body?.error === 'email_not_set_up') return t('trackPeople.emailOff');
     if (error.status === 403) return t('trackPeople.problem.forbidden');
@@ -146,9 +149,16 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
 
   const { track, roles, holders, view } = state;
   const siteAdmin = session.status === 'signed-in' && session.user.isSiteAdmin;
+  // Site administrators and people who may create tracks can give that too (IAM-033).
+  const mayGrantCreateTracks =
+    session.status === 'signed-in' &&
+    (session.user.isSiteAdmin || Boolean(session.user.mayCreateLocalTracks));
   const givable = new Set(roles.filter((r) => r.givable).map((r) => r.id));
   const appointLocked = roles.some((r) => r.runsTrack && !r.givable);
-  const roleName = roles.find((r) => String(r.id) === role)?.name ?? '';
+  const chosen = roles.find((r) => String(r.id) === role);
+  const roleName = chosen?.name ?? '';
+  const offerCreateTracks = mayGrantCreateTracks && Boolean(chosen?.runsTrack);
+  const givingTracks = offerCreateTracks && createTracks;
   const anyHolder = holders.some((h) => h.users.length + h.groups.length > 0);
 
   const resend = (invitation: Invitation, delivery: Delivery) => {
@@ -259,6 +269,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           ))}
         </select>
       </div>
+      {offerCreateTracks && <CreateTracksBox checked={createTracks} onChange={setCreateTracks} />}
       <div className="form-field">
         <label htmlFor={`${id}-person`} className="form-label">
           {t('trackPeople.findByName')}
@@ -283,10 +294,20 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
                 onClick={() =>
                   void run(
                     async () => {
-                      await client.setRole(track.id, Number(role), 'users', person.id, true);
+                      await client.setRole(
+                        track.id,
+                        Number(role),
+                        'users',
+                        person.id,
+                        true,
+                        givingTracks ? { createTracks: true } : undefined,
+                      );
                       setSearch('');
                     },
-                    t('trackPeople.roleGiven', { name: person.name, role: roleName }),
+                    t(givingTracks ? 'trackPeople.roleGivenWithTracks' : 'trackPeople.roleGiven', {
+                      name: person.name,
+                      role: roleName,
+                    }),
                   )
                 }
               >
@@ -382,6 +403,7 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           track={track}
           roles={roles}
           emailAvailable={view.emailAvailable}
+          mayGrantCreateTracks={mayGrantCreateTracks}
           client={client}
           onSent={() => void load()}
           onClose={() => {

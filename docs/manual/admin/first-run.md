@@ -1,7 +1,7 @@
 ---
 title: "First-run setup"
 audience: admins
-sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
+sources: apps/server/src/setup.ts, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/cli.ts, apps/web/src/setup/SetupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/iam/src/policy.ts, deploy/README.md, deploy/compose/install.sh, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/NOTES.txt, packages/builder-core/src/backend.ts, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/email/smtp.ts
 accessed: 2026-11-01
 attestation: own-words
 ---
@@ -56,7 +56,9 @@ The link opens **Set up Taskmoor**. Fill in:
 | **Outgoing mail (optional)** | **Configure outgoing mail now** | Shows **SMTP host**, **SMTP port** (587), **Use TLS from the start (SMTPS)**, **SMTP user name** and **Sender address** |
 
 **Finish setup** creates the account as a site administrator, records the instance name, marks
-setup as done, deletes the token, signs you in and opens **Home**. Taskmoor does not yet let you
+setup as done, deletes the token, signs you in and opens **Home**. On the new site only site
+administrators may create tracks, until they give that permission to someone
+([Tracks](tracks.md#who-may-create-one)). Taskmoor does not yet let you
 change the instance name after setup.
 
 The mail fields are stored with the instance, and the server sends email through that server

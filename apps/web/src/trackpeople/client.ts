@@ -68,6 +68,13 @@ export interface NewInvitations {
   userIds: number[];
   roleId: number;
   delivery: Delivery;
+  /** With a role that runs the track: also the permission to create tracks (IAM-033). */
+  createTracks?: boolean;
+}
+
+/** How a role is given: with a role that runs the track, also the permission to create tracks. */
+export interface RoleOptions {
+  createTracks?: boolean;
 }
 
 /** The endpoints a track's Manage page uses. Stories and tests pass their own. */
@@ -82,6 +89,7 @@ export interface TrackPeopleClient {
     kind: 'users' | 'groups',
     actorId: number,
     on: boolean,
+    options?: RoleOptions,
   ) => Promise<void>;
   findPeople: (trackKey: string, query: string) => Promise<Named[]>;
   invitations: (trackId: number) => Promise<InvitationsView>;
@@ -96,9 +104,10 @@ export const trackPeopleClient: TrackPeopleClient = {
   roles: async (trackId) => (await api<{ roles: TrackRole[] }>(`/tracks/${trackId}/roles`)).roles,
   roleHolders: async (trackId) =>
     (await api<{ roles: RoleHolders[] }>(`/tracks/${trackId}/role-actors`)).roles,
-  setRole: async (trackId, roleId, kind, actorId, on) => {
+  setRole: async (trackId, roleId, kind, actorId, on, options) => {
     await api<unknown>(`/tracks/${trackId}/roles/${roleId}/${kind}/${actorId}`, {
       method: on ? 'PUT' : 'DELETE',
+      ...(on && options?.createTracks ? { body: { createTracks: true } } : {}),
     });
   },
   findPeople: async (trackKey, query) =>

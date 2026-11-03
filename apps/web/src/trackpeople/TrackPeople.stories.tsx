@@ -4,6 +4,7 @@ import { MEMBER } from '../admin/fixtures';
 import { ApiError } from '../api/client';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakeSignInSso } from '../sso/fixtures';
+import { CreateTracksBox } from './CreateTracksBox';
 import { fakeInvitationClient, fakeTrackPeopleClient, ROLES } from './fixtures';
 import { InvitationPage } from './InvitationPage';
 import { InviteDialog } from './InviteDialog';
@@ -66,6 +67,63 @@ export const DialogAlone: StoryObj<typeof InviteDialog> = {
       onSent={() => {}}
     />
   ),
+};
+
+/** A manager who may create tracks, and so give that permission with the role (IAM-033). */
+const creator = {
+  status: 'signed-in' as const,
+  user: {
+    ...(MEMBER as Extract<typeof MEMBER, { status: 'signed-in' }>).user,
+    mayCreateLocalTracks: true,
+  },
+};
+const asCreator: Story['decorators'] = [
+  (Story) => (
+    <SessionProvider session={creator}>
+      <Story />
+    </SessionProvider>
+  ),
+];
+
+/** The role that runs the track is chosen: the box is ticked under it. */
+export const GivingCreateTracks: Story = {
+  decorators: asCreator,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('checkbox', { name: 'Also let them create tracks' }),
+    ).toBeChecked();
+  },
+};
+
+export const GivingCreateTracksPhone: Story = {
+  decorators: asCreator,
+  globals: { viewport: { value: 'mobile1' } },
+};
+
+export const DialogWithCreateTracks: StoryObj<typeof InviteDialog> = {
+  render: () => (
+    <InviteDialog
+      track={{ id: 3, key: 'SHOP' }}
+      roles={ROLES}
+      emailAvailable
+      mayGrantCreateTracks
+      client={fakeTrackPeopleClient()}
+      onClose={() => {}}
+      onSent={() => {}}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.selectOptions(canvas.getByLabelText('Role'), 'Administrators');
+    await expect(
+      canvas.getByRole('checkbox', { name: 'Also let them create tracks' }),
+    ).toBeChecked();
+  },
+};
+
+export const CreateTracksBoxAlone: StoryObj<typeof CreateTracksBox> = {
+  render: () => <CreateTracksBox checked onChange={() => {}} />,
 };
 
 export const TracksYouRun: StoryObj<typeof ManagedTracksPage> = {

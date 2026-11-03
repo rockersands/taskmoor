@@ -2283,6 +2283,10 @@ export const messagesEn = {
   'trackPeople.remove': 'Remove',
   'trackPeople.giveTo': 'Give {role} to {name}',
   'trackPeople.roleGiven': '{name} now holds {role}.',
+  'trackPeople.roleGivenWithTracks': '{name} now holds {role} and can create tracks.',
+  'trackPeople.createTracks': 'Also let them create tracks',
+  'trackPeople.createTracksHint':
+    'A permission for the whole site, not only this track. Taking the role away later does not remove it; a site administrator can, on the Permissions page.',
   'trackPeople.pending': 'Invitations waiting',
   'trackPeople.noPending': 'No invitations are waiting.',
   'trackPeople.pendingMeta': '{role}, invited by {who}.',
@@ -2329,6 +2333,8 @@ export const messagesEn = {
     'This is the last person who runs the track: give the role to someone else first.',
   'trackPeople.problem.tooMany': 'Too many invitations in a short time. Try again in a while.',
   'trackPeople.problem.forbidden': 'You may not do that in this track.',
+  'trackPeople.problem.createTracks':
+    'Only site administrators and people who can create tracks themselves can give that permission.',
   'trackPeople.problem.other': 'That did not work. Try again in a moment.',
   'invite.title': 'Your invitation',
   'invite.titleFor': 'Your invitation to {key} · {name}',
