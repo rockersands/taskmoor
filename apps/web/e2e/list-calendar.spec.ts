@@ -6,8 +6,8 @@ import { expect, type Page, test } from '@playwright/test';
  * List and calendar views end to end (M1-049; AGL-016, AGL-017), on tracks of their own:
  * fifty rows of a track's list edited in place one after another (five on a phone), the list
  * grouped by priority with its count, a format rule naming and colouring the rows it finds,
- * and on the calendar a ticket dragged to another day (on a phone, its days changed in the
- * panel) with its due day saved. No serious axe issue and no sideways page scroll. It uses the
+ * and on the calendar a ticket dragged to another day (on a phone, its days changed in its
+ * pop-up) with its due day saved. No serious axe issue and no sideways page scroll. It uses the
  * attachments database (preview 4174), whose administrator (Ada Attach) the API server made.
  */
 const BASE = 'http://localhost:4174';
@@ -124,17 +124,18 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
   await page.goto(`${BASE}/#/tracks/${key}`);
   await page.getByRole('link', { name: 'Calendar', exact: true }).click();
   const calendar = page.getByRole('region', { name: `Calendar of Calendar ${key}` });
-  const chip = calendar.getByRole('button', { name: `${ticket} Launch party, due this day` });
+  const chip = calendar.getByRole('link', { name: `${ticket} Launch party, due this day` });
   await expect(chip).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
   if (isMobile) {
     await chip.click();
-    const panel = calendar.getByRole('complementary', { name: `Days of ${ticket}` });
-    await panel.getByLabel('Due date').fill(day(17));
-    await panel.getByRole('button', { name: 'Save dates' }).click();
-    await expect(calendar.getByRole('status')).toHaveText(`The days of ${ticket} were saved.`);
+    const popup = page.getByRole('dialog', { name: new RegExp(`^${ticket} `) });
+    await popup.getByLabel('Due date').fill(day(17));
+    await expect(popup.getByText('Saved.')).toBeVisible();
+    await popup.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(popup).toBeHidden();
   } else {
     await chip.dragTo(calendar.getByRole('listitem', { name: new RegExp(`^${label(17)}, `) }));
     await expect(calendar.getByRole('status')).toHaveText(`${ticket} is now due on ${label(17)}.`);
@@ -144,6 +145,6 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
   await expect(
     calendar
       .getByRole('listitem', { name: new RegExp(`^${label(17)}, `) })
-      .getByRole('button', { name: `${ticket} Launch party, due this day` }),
+      .getByRole('link', { name: `${ticket} Launch party, due this day` }),
   ).toBeVisible();
 });

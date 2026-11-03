@@ -126,7 +126,12 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
   const ticketKey = ((await made.textContent()) ?? '').split(' ')[0] as string;
   await dialog.getByRole('link', { name: `Open ${ticketKey}` }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(ticketKey);
+  // It opens in the pop-up, over the page the dialog was on.
+  await expect(
+    page.getByRole('dialog', { name: new RegExp(`^${ticketKey} `) }).getByRole('heading', {
+      level: 1,
+    }),
+  ).toContainText(ticketKey);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -168,5 +173,7 @@ test('[AGL-019] the home page lists what is assigned to me, what I opened and wh
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await assigned.getByRole('link', { name: link }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(ticket.key);
+  await expect(
+    page.getByRole('dialog', { name: link }).getByRole('heading', { level: 1 }),
+  ).toContainText(ticket.key);
 });
