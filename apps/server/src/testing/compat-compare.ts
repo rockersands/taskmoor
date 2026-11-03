@@ -24,6 +24,9 @@ const DROPPED = new Set([
   'mentionSuggestionChar',
   'effortRatio',
   'mayManage',
+  // What the reader may change: access, not content, and in the order of each side's layout.
+  'mayEdit',
+  'editableFields',
   'lock',
   'next',
 ]);

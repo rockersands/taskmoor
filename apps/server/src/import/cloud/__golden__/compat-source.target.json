@@ -171,7 +171,6 @@
       ],
       "key": "ALP-1",
       "labels": [],
-      "mayEdit": true,
       "number": 1,
       "parent": null,
       "priority": {
@@ -276,7 +275,6 @@
         "synthetic",
         "wave-1"
       ],
-      "mayEdit": true,
       "number": 10,
       "parent": null,
       "priority": {
@@ -366,7 +364,6 @@
       "history": [],
       "key": "ALP-11",
       "labels": [],
-      "mayEdit": true,
       "number": 11,
       "parent": null,
       "priority": {
@@ -495,7 +492,6 @@
         "synthetic",
         "wave-0"
       ],
-      "mayEdit": true,
       "number": 12,
       "parent": null,
       "priority": {
@@ -596,7 +592,6 @@
       ],
       "key": "ALP-13",
       "labels": [],
-      "mayEdit": true,
       "number": 13,
       "parent": "ALP-1",
       "priority": {
@@ -657,7 +652,6 @@
       "history": [],
       "key": "ALP-14",
       "labels": [],
-      "mayEdit": true,
       "number": 14,
       "parent": "ALP-1",
       "priority": {
@@ -749,7 +743,6 @@
       "history": [],
       "key": "ALP-15",
       "labels": [],
-      "mayEdit": true,
       "number": 15,
       "parent": "ALP-5",
       "priority": {
@@ -833,7 +826,6 @@
         "synthetic",
         "wave-2"
       ],
-      "mayEdit": true,
       "number": 2,
       "parent": null,
       "priority": {
@@ -977,7 +969,6 @@
       ],
       "key": "ALP-3",
       "labels": [],
-      "mayEdit": true,
       "number": 3,
       "parent": null,
       "priority": {
@@ -1101,7 +1092,6 @@
         "synthetic",
         "wave-1"
       ],
-      "mayEdit": true,
       "number": 4,
       "parent": null,
       "priority": {
@@ -1203,7 +1193,6 @@
       ],
       "key": "ALP-5",
       "labels": [],
-      "mayEdit": true,
       "number": 5,
       "parent": null,
       "priority": {
@@ -1343,7 +1332,6 @@
         "synthetic",
         "wave-0"
       ],
-      "mayEdit": true,
       "number": 6,
       "parent": null,
       "priority": {
@@ -1471,7 +1459,6 @@
       ],
       "key": "ALP-7",
       "labels": [],
-      "mayEdit": true,
       "number": 7,
       "parent": null,
       "priority": {
@@ -1552,7 +1539,6 @@
         "synthetic",
         "wave-2"
       ],
-      "mayEdit": true,
       "number": 8,
       "parent": null,
       "priority": {
@@ -1678,7 +1664,6 @@
       "history": [],
       "key": "ALP-9",
       "labels": [],
-      "mayEdit": true,
       "number": 9,
       "parent": null,
       "priority": {
@@ -1802,7 +1787,6 @@
       ],
       "key": "BET-1",
       "labels": [],
-      "mayEdit": true,
       "number": 1,
       "parent": null,
       "priority": {
@@ -1871,7 +1855,6 @@
         "synthetic",
         "wave-2"
       ],
-      "mayEdit": true,
       "number": 2,
       "parent": null,
       "priority": {
@@ -1996,7 +1979,6 @@
       "history": [],
       "key": "BET-3",
       "labels": [],
-      "mayEdit": true,
       "number": 3,
       "parent": null,
       "priority": {
@@ -2096,7 +2078,6 @@
         "synthetic",
         "wave-1"
       ],
-      "mayEdit": true,
       "number": 4,
       "parent": null,
       "priority": {
@@ -2184,7 +2165,6 @@
       "history": [],
       "key": "BET-5",
       "labels": [],
-      "mayEdit": true,
       "number": 5,
       "parent": null,
       "priority": {
@@ -2309,7 +2289,6 @@
         "synthetic",
         "wave-0"
       ],
-      "mayEdit": true,
       "number": 6,
       "parent": null,
       "priority": {
@@ -2378,7 +2357,6 @@
       ],
       "key": "BET-7",
       "labels": [],
-      "mayEdit": true,
       "number": 7,
       "parent": "BET-2",
       "priority": {
