@@ -82,6 +82,7 @@ export const messagesEn = {
   'home.tracksHelp': 'The tracks you can see. Open one for its summary, list, board and releases.',
   'home.tracksEmpty': 'No tracks yet. A site administrator creates the first one in Manage.',
   'home.trackKey': 'Key {key}',
+  'home.count': '{count, number}',
   // The guided tutorial (ADR-115): sections a person picks, each making one real thing.
   'tutorial.title': 'Tutorials',
   'tutorial.purpose':

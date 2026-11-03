@@ -66,7 +66,7 @@ export const messagesEs: Record<MessageId, string> = {
   'help.menu': 'Ayuda',
   'help.tutorials': 'Tutoriales',
   'help.shortcuts': 'Atajos de teclado',
-  'help.manual': 'Manual',
+  'help.manual': 'Manual de uso',
   'theme.toLight': 'Cambiar al modo claro',
   'theme.toDark': 'Cambiar al modo oscuro',
   'home.start': 'Empieza algo',
@@ -94,6 +94,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Los tracks que puedes ver. Abre uno para ver su resumen, lista, tablero y versiones.',
   'home.tracksEmpty': 'Aún no hay tracks. Un administrador del sitio crea el primero en Gestionar.',
   'home.trackKey': 'Clave {key}',
+  'home.count': '{count, number}',
   'tutorial.title': 'Tutoriales',
   'tutorial.purpose':
     'Aprende Taskmoor haciendo: cada sección te guía para crear algo real en esta instancia. Elige las secciones que quieras; puedes saltarlas, pausarlas y volver cuando quieras.',

@@ -6,7 +6,7 @@ import type { Locale } from '../i18n/locale';
 import { SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { fakeHomeClient } from './fixtures';
+import { fakeHomeClient, fakeHomeTracks } from './fixtures';
 import { HomePage } from './HomePage';
 
 function renderPage(client = fakeHomeClient(), locale: Locale = 'en') {
@@ -14,7 +14,7 @@ function renderPage(client = fakeHomeClient(), locale: Locale = 'en') {
     <I18nProvider locale={locale}>
       <SessionProvider session={MEMBER}>
         <main>
-          <HomePage client={client} />
+          <HomePage client={client} tracks={fakeHomeTracks()} />
         </main>
       </SessionProvider>
     </I18nProvider>,
@@ -68,6 +68,10 @@ describe('the home page (M1-052)', () => {
       'Active',
       'New',
       'Closed',
+      'Shop',
+      'Operations',
+      'SHO',
+      'OPS',
     ]);
     const texts = visibleTexts(main).filter((t) => !data.has(t));
     expect(untranslated(texts)).toEqual([]);

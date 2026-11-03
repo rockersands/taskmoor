@@ -1,4 +1,4 @@
-import type { HomeClient, HomeTicket } from './client';
+import type { HomeClient, HomeTicket, HomeTrack } from './client';
 
 const ticket = (
   id: number,
@@ -38,5 +38,18 @@ export function fakeHomeClient(
     assigned: answer('assigned', ASSIGNED),
     recent: answer('recent', RECENT),
     followed: answer('followed', FOLLOWED),
+  };
+}
+
+export const TRACKS: HomeTrack[] = [
+  { id: 1, key: 'SHOP', name: 'Shop', type: 'software' },
+  { id: 2, key: 'OPS', name: 'Operations', type: 'business' },
+];
+
+/** The tracks the person can see; `empty` for a new site, `failing` for an error. */
+export function fakeHomeTracks(options: { empty?: boolean; failing?: boolean } = {}) {
+  return async (): Promise<HomeTrack[]> => {
+    if (options.failing) throw new Error('offline');
+    return options.empty ? [] : structuredClone(TRACKS);
   };
 }

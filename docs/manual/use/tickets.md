@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md
+sources: apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-02
 attestation: own-words
 ---
@@ -11,9 +11,18 @@ A ticket is one piece of tracked work. It lives in a track and has a key such as
 page covers finding your tickets, creating them, and everything on a ticket's own page. For the
 terms used here, see [Concepts and terms](../concepts.md).
 
+## Getting around
+
+The navigation on the left is in three sections: **Your work** (Home, Inbox), **Plan and track**
+(Tracks, Boards, Search, Dashboards) and **Manage** (Settings). Every page says in one line under
+its title what it is for; the round **?** button beside a title, or beside a panel's name,
+explains more and closes again with Escape.
+
 ## Home
 
-**Home** is the first entry in the navigation. Signed in, it greets you and shows three lists:
+**Home** is the first entry in the navigation. Signed in, it greets you and offers four ways to
+start: a new ticket, a board, a search, and the tutorials (**Take the tour**, see
+[Tutorials](account.md#tutorials)). Under them are three lists and the tracks you can see:
 
 | List | What it holds |
 |---|---|
@@ -21,7 +30,8 @@ terms used here, see [Concepts and terms](../concepts.md).
 | **Opened lately** | Tickets you opened lately, newest first, whichever browser you used |
 | **You follow** | Tickets you follow |
 
-Each list loads on its own, so if one cannot be read the others still show. A ticket appears in
+An empty list says how it fills and offers a next step. Each list loads on its own, so if one
+cannot be read the others still show. A ticket appears in
 these lists only while you may see it: following or having opened a ticket gives no access.
 
 ## The command palette

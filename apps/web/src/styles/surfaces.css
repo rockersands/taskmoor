@@ -5,7 +5,7 @@
 
 /* A translucent card over the canvas: blur, a hairline edge that catches the light, depth. */
 .glass-card {
-  background: var(--glass-surface);
+  background: var(--glass-fill);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border: 1px solid var(--glass-edge);
@@ -131,7 +131,7 @@
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--glass-surface-strong);
+  background: var(--glass-fill-strong);
   -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
   box-shadow: var(--glass-highlight), var(--shadow-3);
@@ -299,7 +299,7 @@
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-3);
-  background: var(--glass-surface);
+  background: var(--glass-fill);
   box-shadow: var(--glass-highlight), var(--shadow-1);
 }
 
@@ -532,5 +532,143 @@
   .tutorial-card-pick input {
     width: 28px;
     height: 28px;
+  }
+}
+
+/*
+ * Liquid glass details (ADR-114): a rim that catches the light, drawn as a 1px gradient ring
+ * masked out of the middle, on the floating surfaces. Purely decorative: no pointer events, gone
+ * in forced colours and where glass falls back to opaque.
+ */
+/* Already placed (sticky, fixed or absolute): only a stacking context for the rim. */
+.shell-topbar,
+.shell-sidebar,
+.shell-drawer,
+.help-tip-body,
+.user-menu-popup,
+.palette {
+  isolation: isolate;
+}
+
+.glass-card,
+.home-list,
+.board-column-head,
+.board-card,
+.ticket-text,
+.ticket-details,
+.ticket-info,
+.ticket-links,
+.ticket-activity,
+.attachment-panel {
+  position: relative;
+  isolation: isolate;
+}
+
+.shell-topbar::before,
+.shell-sidebar::before,
+.shell-drawer::before,
+.glass-card::before,
+.home-list::before,
+.board-column-head::before,
+.board-card::after,
+.ticket-text::before,
+.ticket-details::before,
+.ticket-info::before,
+.ticket-links::before,
+.ticket-activity::before,
+.attachment-panel::before,
+.help-tip-body::before,
+.user-menu-popup::before,
+.palette::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--glass-rim);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* Floating chrome sits a little higher and softer than the cards. */
+.shell-topbar,
+.shell-sidebar {
+  box-shadow:
+    var(--glass-highlight),
+    0 1px 1px rgb(40 30 60 / 4%),
+    0 10px 30px rgb(40 30 60 / 10%);
+}
+
+[data-skin="dark"] .shell-topbar,
+[data-skin="dark"] .shell-sidebar {
+  box-shadow:
+    var(--glass-highlight),
+    0 10px 30px rgb(0 0 0 / 35%);
+}
+
+/* The current place is a lens of brighter glass on the sidebar, not a flat tint. */
+.nav-link[aria-current="page"] {
+  background: var(--glass-fill-strong);
+  box-shadow:
+    var(--glass-highlight),
+    0 2px 8px rgb(40 30 60 / 10%);
+}
+
+/* Filled pills keep their tint under a gloss that fades halfway down. */
+.button-primary,
+.create-open {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 38%), rgb(255 255 255 / 0%) 55%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 70%),
+    inset 0 -1px 0 rgb(0 0 0 / 6%),
+    0 4px 14px rgb(200 110 70 / 28%);
+}
+
+[data-skin="dark"] .button-primary,
+[data-skin="dark"] .create-open {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 28%), rgb(255 255 255 / 0%) 55%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 55%),
+    0 4px 14px rgb(0 0 0 / 35%);
+}
+
+/* The search field in the top bar is clear glass. */
+.palette-trigger {
+  border-color: var(--glass-edge);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight);
+}
+
+/* Quiet pills, help buttons and the theme switch are clear glass too. */
+.button-quiet,
+.theme-toggle {
+  box-shadow: var(--glass-highlight);
+}
+
+@media (forced-colors: active) {
+  .shell-topbar::before,
+  .shell-sidebar::before,
+  .shell-drawer::before,
+  .glass-card::before,
+  .home-list::before,
+  .board-column-head::before,
+  .board-card::after,
+  .ticket-text::before,
+  .ticket-details::before,
+  .ticket-info::before,
+  .ticket-links::before,
+  .ticket-activity::before,
+  .attachment-panel::before,
+  .help-tip-body::before,
+  .user-menu-popup::before,
+  .palette::before {
+    display: none;
   }
 }

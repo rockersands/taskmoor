@@ -197,7 +197,7 @@ function HomeList({
         </h2>
         <HelpTip name={title}>{help}</HelpTip>
         {list.status === 'loaded' && list.items.length > 0 && (
-          <span className="panel-count">{list.items.length}</span>
+          <span className="panel-count">{t('home.count', { count: list.items.length })}</span>
         )}
       </div>
       <ListStatus list={list} />

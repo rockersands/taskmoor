@@ -112,7 +112,7 @@
   border-top: 3px solid
     color-mix(in oklab, var(--color-flow-first), var(--color-flow-last) var(--flow-at, 0%));
   border-radius: var(--radius-2);
-  background: var(--glass-surface);
+  background: var(--glass-fill);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow: var(--glass-highlight), var(--shadow-1);
@@ -194,7 +194,7 @@
   padding: var(--space-3) var(--space-3) var(--space-2) calc(var(--space-3) + 4px);
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
-  background: var(--glass-surface-strong);
+  background: var(--glass-fill-strong);
   box-shadow: var(--glass-highlight), var(--shadow-1);
   overflow-wrap: anywhere;
   cursor: grab;

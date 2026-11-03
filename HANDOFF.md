@@ -2,32 +2,40 @@
 
 Read this first in every session, then update it before you stop.
 
-## Side session 2026-11-02 (cloud, branch `claude/ui-overhaul`): interface overhaul and tutorial
+## Side session 2026-11-02 to 03 (cloud, branch `claude/ui-overhaul`): interface overhaul and tutorial
 
 The user asked for the whole web interface to be reworked (clear sections, every panel saying
-what it is for, glass surfaces, drag and drop, light and dark) and a sectioned guided tutorial
-(offered at first sign-in, skippable, all sections again under Settings, Tutorials).
-- **State: waiting for the user's go-ahead on the direction** (ADR-114 the interface, ADR-115
-  the tutorial, both Proposed). Nothing is pushed yet: the branch is local until the direction
-  is agreed and `pnpm verify --e2e` passes.
-- **Tasks are tracked in `docs/plan/ui-overhaul-tasks.md`** (UI-T01 to UI-T14), at the main
-  session's request; this branch does not edit `backlog.csv` or `progress.csv`.
-- **Prototype on the branch:** glass tokens and fallbacks (`tokens.css`), the shell in glass with
-  grouped navigation (`NAV_GROUPS` in `shell/NavList.tsx`), `shell/PageHeader.tsx`,
-  `shell/HelpTip.tsx`, `shell/EmptyState.tsx`, `shell/ThemeToggle.tsx`, `styles/surfaces.css`;
-  Home, the board and the ticket header reworked; `tutorial/` (sections, picker, the
-  Settings, Tutorials page at `#/settings/tutorials`, no storage yet).
-- **Numbers given by the main session:** ADR-114, ADR-115 (ADR-116 spare); migration 0084 or
-  later for `tutorial_progress` (the task file records the final one). ADR-112 belongs to the
-  Flutter mobile session.
-- **Not done yet:** component tests and stories for the new pieces (old HomePage and NavList
-  tests still expect the previous markup), the rollout to every other page, the tutorial's
-  coach card, first-run offer, server storage and route, drag for dashboard widgets and board
-  columns, the manual pages.
+what it is for, translucent "Liquid Glass" surfaces, drag and drop, light and dark) and a
+sectioned guided tutorial (offered at first sign-in, skippable, every section again under
+Settings, Tutorials). On 2026-11-03 they accepted the direction (closer to Liquid Glass), kept
+"Manage" as the sidebar heading, approved the Tracks directory and the Settings hub, and added
+a layout editor and easier board columns; then asked to wrap up.
+- **Decisions:** ADR-114 (interface) and ADR-115 (tutorial), both Accepted.
+- **Tasks:** `docs/plan/ui-overhaul-tasks.md`, UI-T01 to UI-T16, with a "Next session: start
+  here" list. This branch does not edit `backlog.csv` or `progress.csv` (the main session's).
+- **Numbers:** ADR-114, ADR-115 (ADR-116 spare); migration **0084** exactly for
+  `tutorial_progress` (0085 and ADR-113 belong to the ticket-templates session; ADR-112 to the
+  Flutter mobile session).
+- **On the branch:** glass tokens with sheen, rim and highlight plus opaque fallbacks
+  (`tokens.css`, `--glass-fill`); rims, the navigation lens and glossy pills in
+  `styles/surfaces.css`; the shell in glass with grouped navigation (`NAV_GROUPS` in
+  `shell/NavList.tsx`); `PageHeader`, `HelpTip`, `EmptyState`, `ThemeToggle` (tests and
+  stories); Home reworked (ways to start, explaining lists, the person's tracks); the board
+  (purpose line, column colour ramp, quieter cards with a round Move button, an empty Scrum
+  board pointing to the backlog); the ticket header (workflow moves as primary actions, help);
+  `tutorial/` (sections, picker with test and story, Settings, Tutorials page at
+  `#/settings/tutorials` without storage).
+- **Not started:** the server storage (a helper began it and was stopped before committing),
+  the layout editor, the Help menu, the Tracks directory, the Settings hub, the other pages,
+  widget and column drag, the coach card and first-run offer, the manual pages.
 - **Running the demo here (root container):** `service postgresql start`, a password for the
   `postgres` user, `TASKMOOR_TEST_DATABASE_URL` pointed at it, then `pnpm demo`. The demo
   caches the built frontend: rebuild (`pnpm --filter @taskmoor/web build`) and restart it to see
-  changes.
+  changes. Stories need `PLAYWRIGHT_BROWSERS_PATH` pointing at a folder that links the
+  container's Chromium build under Playwright's expected names (see "Notes for cloud sessions").
+- **Chrome and Gemini:** this cloud session had no Claude in Chrome tools and no linked
+  computer, so no generated artwork was used. A session linked to the user's PC can make
+  tutorial illustrations there; record their source if they are added.
 
 ## Start here: 2026-11-02 (cloud session): M1-079 merged, M1-117 done, the ASVS gaps next
 

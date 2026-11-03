@@ -1,7 +1,8 @@
 # ADR-114: The glass interface and clear sections
 
-- Status: Proposed (a draft for the user's review; the prototype is on `claude/ui-overhaul`)
-- Date: 2026-11-02
+- Status: Accepted (the user, 2026-11-03: the direction yes, closer to Liquid Glass; "Manage" kept;
+  the Tracks directory and the Settings hub yes; the layout editor and board columns in scope)
+- Date: 2026-11-02 (accepted 2026-11-03)
 - Tasks: `docs/plan/ui-overhaul-tasks.md` (UI-T01 to UI-T09); the tutorial is ADR-115
 
 ## Context
@@ -106,6 +107,20 @@ become **translucent glass**:
   - Without `backdrop-filter`, or under `prefers-reduced-transparency: reduce`, every glass
     token falls back to the skin's opaque surface. Under `forced-colors` the edges become
     system colours.
+- **Closer to Liquid Glass** (the user, 2026-11-03). Glass is clearer (about 52 % opaque for
+  cards and chrome, 78 % for floating surfaces) and carries three more layers, all tokens:
+  - `--glass-sheen`: a gradient of light across the surface, under its tint
+    (`--glass-fill` and `--glass-fill-strong` combine the two).
+  - `--glass-rim`: a 1 px ring, bright where the light falls (top left) and nearly gone on the
+    far side, drawn as a masked pseudo-element on the floating surfaces.
+  - `--glass-highlight`: inner light on the top, sides and inside.
+  - The current navigation item is a lens of brighter glass; filled pills carry a gloss that
+    fades halfway down; the search field and quiet pills are clear glass.
+  - The canvas has four glows (warm, cool, lilac, mint) so the glass has colour to bend.
+  - Sheen and rim turn off with the opaque fallbacks and in forced colours.
+  - No real refraction filter: SVG displacement in `backdrop-filter` works in one engine only.
+  - Generated artwork (for example tutorial illustrations made with an image model) may be
+    added later as original assets with their source recorded; none is used now.
 - **Geometry:** radii 10, 16, 24 and 32 px and pills, as ADR-036.
 - **Motion:**
   - A settling curve (`--ease-settle`) at 120, 180 or 280 ms: cards lift 1 to 2 px on hover,
@@ -156,7 +171,29 @@ sentences. Examples:
 
 Every drop is announced in a live region, as the board does now.
 
-### 8. Strings, accessibility and tests
+### 8. The layout editor
+
+Layout sets (`/api/v1/layout-sets`) arrange the create, edit and view forms per ticket type and
+had no web page. A page under Settings, Configuration sets edits them:
+
+- Fields are dragged from a palette into tabs and sections (the main column or the side column)
+  and reordered within and across them; a section can be "Hide when empty".
+- "Show only the fields I placed" is `others: "omit"`.
+- A live preview shows the form for the chosen ticket type and operation (create, edit, view).
+- Every drag has a keyboard path: a Move menu on each field and section, and Alt with the arrow
+  keys; each move is announced.
+- The layout editor and the field rules page link to each other, and each says how they
+  combine: layouts decide where fields appear and in what order; field rules decide whether a
+  field is required, hidden or has help text; a hidden field never appears even when a layout
+  places it, and a required field always appears.
+
+### 9. Board columns
+
+On the board and in its settings, columns are added, renamed, reordered by drag (and by Move
+left and Move right) and given a minimum and a maximum. The limit stays 30 per board
+(`MAX_COLUMNS`); the page says so when it is reached.
+
+### 10. Strings, accessibility and tests
 
 - Every string is in `messages.en.ts` with a Spanish draft in `messages.es.ts`.
   `pnpm i18n:check` stays clean.

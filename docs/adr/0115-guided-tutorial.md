@@ -1,6 +1,6 @@
 # ADR-115: The guided tutorial
 
-- Status: Proposed (a draft for the user's review, with ADR-114)
+- Status: Accepted (the user, 2026-11-03, with ADR-114)
 - Date: 2026-11-02
 - Tasks: `docs/plan/ui-overhaul-tasks.md` (UI-T10 to UI-T13)
 
@@ -39,7 +39,7 @@ server. The interface it runs in is ADR-114.
   - Targets are marked with `data-tutorial="<step>"` attributes, so restyling a page does not
     break the tutorial.
 - **Progress is stored per person on the server:**
-  - Migration 0084 (or the next free one at merge), `tutorial_progress`: workspace, person,
+  - Migration 0084 (exactly; 0085 belongs to another session), `tutorial_progress`: workspace, person,
     section, state, step, updated at, plus one row for the offer (shown or dismissed).
   - `GET /api/v1/account/tutorial` and `PUT /api/v1/account/tutorial/:section`, session-only
     like the other self routes.
@@ -66,6 +66,5 @@ server. The interface it runs in is ADR-114.
   stories, so a removed marker fails before release.
 - What a person makes in a section is real data in their instance. The coach card says so at
   the start, and the last step offers the page to delete it.
-- The migration number is 0084 unless the main session takes it first; the task file records
-  the final number before the merge.
+- The migration number is 0084, agreed with the main session.
 - Revisit if sections prove too long (split them) or people want a section per role.

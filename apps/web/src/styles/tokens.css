@@ -44,9 +44,12 @@
   --ease-settle: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* Glass (ADR-114): how much a translucent surface blurs and lifts the colour behind it. */
-  --glass-blur: 22px;
-  --glass-saturate: 165%;
-  --glass-blur-strong: 32px;
+  --glass-blur: 26px;
+  --glass-saturate: 185%;
+  --glass-blur-strong: 40px;
+  /* A surface's fill: the sheen of light across it over its tint (ADR-114). */
+  --glass-fill: var(--glass-sheen), var(--glass-surface);
+  --glass-fill-strong: var(--glass-sheen), var(--glass-surface-strong);
 }
 
 /* Soft daylight: cream, peach, blush and powder blue on a warm lavender-grey canvas. */
@@ -57,8 +60,9 @@
     radial-gradient(ellipse 60% 50% at 6% -6%, var(--canvas-glow-1), transparent 70%),
     radial-gradient(ellipse 50% 45% at 98% 2%, var(--canvas-glow-2), transparent 70%),
     radial-gradient(ellipse 55% 50% at 78% 108%, var(--canvas-glow-3), transparent 70%),
-    radial-gradient(ellipse 40% 35% at 20% 95%, rgb(251 222 230 / 70%), transparent 70%),
-    linear-gradient(160deg, #ece8f0 0%, #f3ece6 100%);
+    radial-gradient(ellipse 40% 35% at 20% 95%, rgb(251 210 222 / 80%), transparent 70%),
+    radial-gradient(ellipse 35% 30% at 45% 45%, var(--canvas-glow-4), transparent 70%),
+    linear-gradient(160deg, #ebe6f2 0%, #f3ebe4 100%);
   --color-surface: #fcfaf7;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #f3efea;
@@ -117,16 +121,36 @@
 
   /* Glass (ADR-114): translucent surfaces over the canvas. Opaque enough that text keeps the
      ADR-036 ratios over the darkest point of the canvas (contrast.test.ts composites them). */
-  --glass-surface: rgb(255 253 250 / 68%);
-  --glass-surface-strong: rgb(255 253 250 / 86%);
-  --glass-surface-sunken: rgb(243 239 234 / 62%);
-  --glass-edge: rgb(255 255 255 / 75%);
-  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 80%);
-  --glass-tint-accent: rgb(253 230 217 / 72%);
-  /* The canvas glows that glass picks up: warm, cool and lilac. */
-  --canvas-glow-1: rgb(253 206 182 / 90%);
-  --canvas-glow-2: rgb(196 220 248 / 95%);
-  --canvas-glow-3: rgb(222 206 246 / 80%);
+  --glass-surface: rgb(255 255 255 / 52%);
+  --glass-surface-strong: rgb(255 255 255 / 78%);
+  --glass-surface-sunken: rgb(255 255 255 / 34%);
+  --glass-edge: rgb(255 255 255 / 62%);
+  /* The rim catches light at the top and fades along the sides; a soft glow inside. */
+  --glass-highlight:
+    inset 0 1px 0 rgb(255 255 255 / 95%), inset 0 -1px 0 rgb(255 255 255 / 35%),
+    inset 1px 0 0 rgb(255 255 255 / 45%), inset -1px 0 0 rgb(255 255 255 / 25%),
+    inset 0 0 20px rgb(255 255 255 / 22%);
+  --glass-sheen: linear-gradient(
+    160deg,
+    rgb(255 255 255 / 55%) 0%,
+    rgb(255 255 255 / 10%) 36%,
+    rgb(255 255 255 / 0%) 62%,
+    rgb(255 255 255 / 16%) 100%
+  );
+  /* The rim's gradient: bright where the light falls, nearly gone on the far side. */
+  --glass-rim: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 95%),
+    rgb(255 255 255 / 20%) 35%,
+    rgb(255 255 255 / 5%) 60%,
+    rgb(255 255 255 / 55%)
+  );
+  --glass-tint-accent: rgb(253 222 205 / 70%);
+  /* The canvas glows that glass picks up: warm, cool, lilac and mint. */
+  --canvas-glow-1: rgb(255 190 160 / 95%);
+  --canvas-glow-2: rgb(170 205 250 / 100%);
+  --canvas-glow-3: rgb(210 186 248 / 90%);
+  --canvas-glow-4: rgb(186 236 216 / 80%);
 
   /* M0 names, kept so older styles follow the skin. */
   --color-bg: var(--color-canvas);
@@ -141,7 +165,8 @@
     radial-gradient(ellipse 60% 50% at 6% -6%, var(--canvas-glow-1), transparent 70%),
     radial-gradient(ellipse 50% 45% at 98% 2%, var(--canvas-glow-2), transparent 70%),
     radial-gradient(ellipse 55% 50% at 78% 108%, var(--canvas-glow-3), transparent 70%),
-    linear-gradient(160deg, #1b1922 0%, #231d24 100%);
+    radial-gradient(ellipse 35% 30% at 45% 45%, var(--canvas-glow-4), transparent 70%),
+    linear-gradient(160deg, #18161f 0%, #211b23 100%);
   --color-surface: #26222e;
   --color-surface-raised: #2e2937;
   --color-surface-sunken: #1f1c26;
@@ -195,15 +220,33 @@
   --color-flow-first: #1c5cab;
   --color-flow-last: #b7d3f6;
 
-  --glass-surface: rgb(40 36 50 / 64%);
-  --glass-surface-strong: rgb(40 36 50 / 86%);
-  --glass-surface-sunken: rgb(24 22 31 / 55%);
-  --glass-edge: rgb(255 255 255 / 10%);
-  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 8%);
-  --glass-tint-accent: rgb(67 47 42 / 78%);
-  --canvas-glow-1: rgb(150 82 64 / 42%);
-  --canvas-glow-2: rgb(52 88 140 / 45%);
-  --canvas-glow-3: rgb(96 64 140 / 40%);
+  --glass-surface: rgb(38 34 48 / 52%);
+  --glass-surface-strong: rgb(38 34 48 / 80%);
+  --glass-surface-sunken: rgb(16 14 22 / 38%);
+  --glass-edge: rgb(255 255 255 / 12%);
+  --glass-highlight:
+    inset 0 1px 0 rgb(255 255 255 / 20%), inset 0 -1px 0 rgb(255 255 255 / 5%),
+    inset 1px 0 0 rgb(255 255 255 / 8%), inset -1px 0 0 rgb(255 255 255 / 4%),
+    inset 0 0 20px rgb(255 255 255 / 4%);
+  --glass-sheen: linear-gradient(
+    160deg,
+    rgb(255 255 255 / 12%) 0%,
+    rgb(255 255 255 / 3%) 36%,
+    rgb(255 255 255 / 0%) 62%,
+    rgb(255 255 255 / 5%) 100%
+  );
+  --glass-rim: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 35%),
+    rgb(255 255 255 / 6%) 35%,
+    rgb(255 255 255 / 2%) 60%,
+    rgb(255 255 255 / 18%)
+  );
+  --glass-tint-accent: rgb(90 60 50 / 62%);
+  --canvas-glow-1: rgb(170 84 60 / 50%);
+  --canvas-glow-2: rgb(40 96 170 / 55%);
+  --canvas-glow-3: rgb(110 60 170 / 50%);
+  --canvas-glow-4: rgb(30 120 110 / 35%);
 
   --color-bg: var(--color-canvas);
 
@@ -221,6 +264,8 @@
     --glass-surface-strong: var(--color-surface-raised);
     --glass-surface-sunken: var(--color-surface-sunken);
     --glass-tint-accent: var(--color-accent-soft);
+    --glass-sheen: linear-gradient(transparent, transparent);
+    --glass-rim: linear-gradient(var(--color-border), var(--color-border));
   }
 }
 
@@ -233,5 +278,7 @@
     --glass-tint-accent: var(--color-accent-soft);
     --glass-blur: 0px;
     --glass-blur-strong: 0px;
+    --glass-sheen: linear-gradient(transparent, transparent);
+    --glass-rim: linear-gradient(var(--color-border), var(--color-border));
   }
 }
