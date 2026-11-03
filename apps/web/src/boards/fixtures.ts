@@ -157,6 +157,9 @@ const card = (
   ...extra,
 });
 
+/** The person looking at the fake board. */
+export const VIEWER_ID = 5;
+
 export const CARDS: FakeCard[] = [
   card(12, 'Checkout fails for expired cards', 'Active', 'expedite', {
     colour: '#c4314b',
@@ -168,7 +171,9 @@ export const CARDS: FakeCard[] = [
     fields: { assignee: { id: 5, name: 'Kalo Smith' }, priority: { id: 3, name: 'Normal' } },
     mine: true,
   }),
-  card(23, 'Gift cards cannot be combined', 'Active', 'other'),
+  card(23, 'Gift cards cannot be combined', 'Active', 'other', {
+    fields: { assignee: { id: 6, name: 'Rin Okafor' }, priority: { id: 3, name: 'Normal' } },
+  }),
   card(24, 'Apple Pay button misaligned on small screens', 'Active', 'other'),
 ];
 
@@ -205,6 +210,8 @@ export const TEAMS = [
 export interface FakeBoardClient extends BoardClient {
   moves: MoveRequest[];
   dataCalls: string[][];
+  /** The person filter of each data request. */
+  peopleCalls: string[][];
   patches: BoardPatch[];
 }
 
@@ -239,6 +246,7 @@ export function fakeBoardClient(
   const client: FakeBoardClient = {
     moves: [],
     dataCalls: [],
+    peopleCalls: [],
     patches: [],
     list: async () => boards,
     tracks: async () => [
@@ -307,11 +315,31 @@ export function fakeBoardClient(
     },
     numberFields: async () => numberFields,
     teams: async () => TEAMS,
-    data: async (_id, filters): Promise<BoardData> => {
+    data: async (_id, filters, _sprints, people = []): Promise<BoardData> => {
       client.dataCalls.push([...filters]);
+      client.peopleCalls.push([...people]);
       const all = [...cards].sort((a, b) => (a.rank < b.rank ? -1 : 1));
+      const assigneeOf = (c: FakeCard) =>
+        (c.fields.assignee as { id: number; name: string } | null | undefined) ?? null;
+      const forPerson = (c: FakeCard) => {
+        const assignee = assigneeOf(c);
+        return (
+          people.length === 0 ||
+          (assignee === null
+            ? people.includes('none')
+            : people.includes(String(assignee.id)) ||
+              (people.includes('me') && assignee.id === VIEWER_ID))
+        );
+      };
       const shown = all.filter(
-        (c) => columnOf(c.status.id) !== null && (!filters.includes('mine') || c.mine),
+        (c) =>
+          columnOf(c.status.id) !== null && (!filters.includes('mine') || c.mine) && forPerson(c),
+      );
+      const assigned = new Map(
+        all.flatMap((c) => {
+          const assignee = assigneeOf(c);
+          return assignee ? [[assignee.id, assignee.name] as const] : [];
+        }),
       );
       return {
         columns: board.columns.map((c) => {
@@ -338,6 +366,14 @@ export function fakeBoardClient(
         truncated: false,
         warnings: [],
         activeFilters: [...filters],
+        people: {
+          viewerId: VIEWER_ID,
+          assignees: [...assigned]
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+          unassigned: all.some((c) => assigneeOf(c) === null),
+          more: false,
+        },
       };
     },
     manageWorkflow: async (_id, managed) => {

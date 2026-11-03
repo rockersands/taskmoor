@@ -3455,6 +3455,20 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.filters': 'Filtros del tablero',
   'boards.filters.summary':
     '{count, plural, =0 {Filtros del tablero} one {Filtros del tablero (# activo)} other {Filtros del tablero (# activos)}}',
+  'boards.people': 'Filtrar por persona',
+  'boards.people.me': 'Yo',
+  'boards.people.menu':
+    '{count, plural, =0 {Personas} one {Personas (# elegida)} other {Personas (# elegidas)}}',
+  'boards.people.find': 'Buscar a una persona',
+  'boards.people.noMatch': 'Nadie con ese nombre tiene tickets asignados aquí.',
+  'boards.people.nobody': 'Nadie más tiene tickets asignados en este tablero.',
+  'boards.people.more': 'Se muestran las primeras {count} personas.',
+  'boards.people.notHere': 'Alguien sin tickets aquí',
+  'boards.people.clear': 'Quitar personas',
+  'boards.people.shown': '{count, plural, one {# tarjeta visible} other {# tarjetas visibles}}',
+  'boards.people.emptyTitle': 'Ninguna tarjeta de estas personas',
+  'boards.people.emptyBody':
+    'Nada de lo que puedes ver en este tablero está asignado a las personas elegidas. Elige otras o quítalas.',
   'boards.unmapped':
     '{count, plural, one {# ticket está} other {# tickets están}} en estados que ninguna columna muestra: {statuses}',
   'boards.truncated': 'Se muestran las primeras {count} tarjetas por orden.',

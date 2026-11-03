@@ -8,6 +8,8 @@ const KEY = 'taskmoor.ticketFromBoard';
 export interface BoardBehind {
   id: number;
   name: string;
+  /** The person filter the board was showing, so the way back shows the same cards. */
+  people?: string;
 }
 
 export function rememberBoard(ticket: string, board: BoardBehind) {
@@ -23,7 +25,12 @@ export function boardBehind(ticket: string): BoardBehind | null {
     const saved = JSON.parse(window.sessionStorage.getItem(KEY) ?? 'null') as
       | (BoardBehind & { ticket: string })
       | null;
-    return saved?.ticket === ticket ? { id: saved.id, name: saved.name } : null;
+    if (saved?.ticket !== ticket) return null;
+    return {
+      id: saved.id,
+      name: saved.name,
+      ...(saved.people ? { people: saved.people } : {}),
+    };
   } catch {
     return null;
   }

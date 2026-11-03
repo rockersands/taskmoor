@@ -497,6 +497,104 @@ describe('boards (M1-043)', () => {
     ]);
   });
 
+  it('[AGL-005] filters by person as a board filter, for a plain member, with counts whole', async () => {
+    const board = await createBoard('alice', {
+      name: 'People',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      boardFilters: [{ id: 'blue', name: 'Blue', query: 'labels = blue' }],
+    });
+    const shown = async (who: string, query: string) => {
+      const res = await get(who, `/api/v1/boards/${board.id}/data?${query}`);
+      expect(res.statusCode, res.body).toBe(200);
+      return (res.json() as Data).cards.map((c) => c.key).sort();
+    };
+    const keys = (...names: string[]) => names.map((n) => T(n).key).sort();
+    const alice = users.alice?.id as number;
+    const bob = users.bob?.id as number;
+    // Bob is an ordinary member and may not configure this board; he filters it all the same.
+    expect((await get('bob', `/api/v1/boards/${board.id}`)).json().board.mayConfigure).toBe(false);
+    expect(await shown('bob', 'people=me')).toEqual(keys('a2'));
+    expect(await shown('alice', 'people=me')).toEqual(keys('a1', 'b2'));
+    expect(await shown('bob', `people=${alice}`)).toEqual(keys('a1', 'b2'));
+    expect(await shown('bob', 'people=none')).toEqual(keys('b1', 'c1', 'c2'));
+    // Choosing several shows any of them.
+    expect(await shown('bob', `people=${alice},${bob}`)).toEqual(keys('a1', 'a2', 'b2'));
+    expect(await shown('bob', 'people=me,none')).toEqual(keys('a2', 'b1', 'c1', 'c2'));
+    // Together with a board filter both must hold: "any of them" stays inside its parentheses.
+    expect(await shown('bob', 'people=me,none&filters=blue')).toEqual(keys('b1'));
+    // Someone with no tickets here finds nothing, and no error says who exists.
+    expect(await shown('bob', 'people=2147483647')).toEqual([]);
+
+    const res = await get('bob', `/api/v1/boards/${board.id}/data?people=me`);
+    const narrowed = res.json() as Data & {
+      people: {
+        viewerId: number;
+        assignees: { id: number; name: string }[];
+        unassigned: boolean;
+        more: boolean;
+      };
+    };
+    // The list stays whole while the cards narrow, and the column counts stay whole too.
+    expect(narrowed.people).toEqual({
+      viewerId: bob,
+      assignees: [
+        { id: alice, name: 'alice' },
+        { id: bob, name: 'bob' },
+      ],
+      unassigned: true,
+      more: false,
+    });
+    expect(narrowed.columns.reduce((sum, c) => sum + c.count, 0)).toBe(6);
+    expect(narrowed.columns.reduce((sum, c) => sum + c.shown, 0)).toBe(1);
+
+    for (const bad of ['robert', 'me,,none', '12;drop', '99999999999', '3000000000']) {
+      const refused = await get('bob', `/api/v1/boards/${board.id}/data?people=${bad}`);
+      expect(refused.statusCode, bad).toBe(400);
+    }
+  });
+
+  it('[QRY-008] [AGL-005] never widens: no ticket or name from a track the viewer cannot see', async () => {
+    const hidden = await ticket('hidden1', 'BC', { assigneeId: users.alice?.id });
+    await database.db
+      .updateTable('ticket')
+      .set({ assignee_id: users.carol?.id as number })
+      .where('id', '=', hidden.id)
+      .execute();
+    const board = await createBoard('alice', {
+      name: 'Two tracks',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+    });
+    // A board imported from before the one-board rule can still span tracks.
+    await database.db
+      .updateTable('board')
+      .set({ filter_query: 'track IN (BA, BC)' })
+      .where('id', '=', board.id)
+      .execute();
+    const carol = users.carol?.id as number;
+    const read = async (who: string) => {
+      const res = await get(who, `/api/v1/boards/${board.id}/data?people=${carol}`);
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json() as Data & { people: { assignees: { id: number }[] } };
+    };
+    // Alice browses both tracks, so she sees Carol's ticket and Carol in the list.
+    const seen = await read('alice');
+    expect(seen.cards.map((c) => c.key)).toEqual([hidden.key]);
+    expect(seen.people.assignees.map((p) => p.id)).toContain(carol);
+    // Bob does not browse BC: asking for Carol by id shows nothing, and she is not listed.
+    const refused = await read('bob');
+    expect(refused.cards).toEqual([]);
+    expect(refused.people.assignees.map((p) => p.id)).not.toContain(carol);
+    await database.db
+      .updateTable('ticket')
+      .set({ deleted_at: new Date() })
+      .where('id', '=', hidden.id)
+      .execute();
+  });
+
   it('[AGL-004] puts a ticket in the first query lane it matches, before the catch-all', async () => {
     const board = await createBoard('alice', {
       name: 'Lanes',

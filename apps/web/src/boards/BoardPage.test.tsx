@@ -1,13 +1,14 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
 import { setViewportWidth } from '../test/viewport';
 import { BoardPage, boardFilterName } from './BoardPage';
+import { peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
 import { BoardsPage } from './BoardsPage';
 import { dataPath } from './client';
-import { CARDS, fakeBoardClient } from './fixtures';
+import { CARDS, fakeBoardClient, manyCards, VIEWER_ID } from './fixtures';
 
 function renderBoard(client = fakeBoardClient()) {
   render(
@@ -67,6 +68,156 @@ describe('the board page (M1-043)', () => {
       'true',
     );
     expect(dataPath(7, ['mine', 'recent'])).toBe('/boards/7/data?filters=mine%2Crecent');
+  });
+
+  describe('the person filter', () => {
+    afterEach(() => {
+      window.history.replaceState(null, '', window.location.pathname);
+    });
+    const shownKeys = () =>
+      screen
+        .getAllByRole('link', { name: /^SHOP-/ })
+        .map((a) => a.textContent?.split(' ')[0])
+        .sort();
+
+    it('[AGL-005] lets a plain member pick Me, Unassigned and people; several show any of them', async () => {
+      const user = userEvent.setup();
+      const client = renderBoard(fakeBoardClient({ board: { mayConfigure: false } }));
+      const board = await page();
+      expect(board.queryByRole('link', { name: 'Board settings' })).toBeNull();
+      const group = within(board.getByRole('group', { name: 'Filter by person' }));
+      await user.click(group.getByRole('button', { name: 'Me', pressed: false }));
+      await waitFor(() => expect(shownKeys()).toEqual(['SHOP-12', 'SHOP-21']));
+      expect(client.peopleCalls.at(-1)).toEqual(['me']);
+      // Counts stay whole, as for any board filter.
+      expect(board.getByText('Over the maximum')).toBeVisible();
+      await user.click(group.getByRole('button', { name: 'Unassigned', pressed: false }));
+      await waitFor(() =>
+        expect(shownKeys()).toEqual(['SHOP-12', 'SHOP-19', 'SHOP-21', 'SHOP-24']),
+      );
+      // The person is in the menu, and once chosen shows beside it; the viewer is "Me", not a name.
+      await user.click(group.getByText('People'));
+      expect(group.queryByRole('checkbox', { name: 'Kalo Smith' })).toBeNull();
+      await user.click(group.getByRole('checkbox', { name: 'Rin Okafor' }));
+      await waitFor(() => expect(shownKeys()).toContain('SHOP-23'));
+      expect(client.peopleCalls.at(-1)).toEqual(['me', 'none', '6']);
+      expect(group.getByRole('button', { name: 'Rin Okafor', pressed: true })).toBeVisible();
+      await user.click(group.getByRole('button', { name: 'Clear people' }));
+      await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual([]));
+      expect(shownKeys()).toHaveLength(5);
+    });
+
+    it('[AGL-005] stays in the address, reads a shared link, and follows a change of address', async () => {
+      const user = userEvent.setup();
+      window.history.replaceState(null, '', '#/boards/7?people=6,bad%20one,none');
+      const client = renderBoard();
+      const board = await page();
+      expect(client.peopleCalls.at(-1)).toEqual(['6', 'none']);
+      expect(board.getByRole('button', { name: 'Rin Okafor', pressed: true })).toBeVisible();
+      expect(board.getByRole('button', { name: 'Unassigned', pressed: true })).toBeVisible();
+      await user.click(board.getByRole('button', { name: 'Unassigned' }));
+      await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual(['6']));
+      expect(window.location.hash).toBe('#/boards/7?people=6');
+      await user.click(board.getByRole('button', { name: 'Clear people' }));
+      await waitFor(() => expect(window.location.hash).toBe('#/boards/7'));
+      // Someone choosing a link to the same board: the page stays and the filter follows.
+      window.location.hash = '#/boards/7?people=me';
+      await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual(['me']));
+      expect(board.getByRole('button', { name: 'Me', pressed: true })).toBeVisible();
+      expect(routeWithPeople('#/boards/7?x=1&people=2', ['me', '3'])).toBe(
+        '#/boards/7?x=1&people=me,3',
+      );
+      expect(peopleFromRoute('#/boards/7')).toEqual([]);
+      expect(dataPath(7, [], undefined, ['me', '6'])).toBe('/boards/7/data?people=me%2C6');
+    });
+
+    it('[AGL-005] shows the viewer as Me and someone with no tickets here without a name', async () => {
+      const user = userEvent.setup();
+      window.history.replaceState(null, '', `#/boards/7?people=${VIEWER_ID},999`);
+      const client = renderBoard();
+      const board = await page();
+      expect(board.getByRole('button', { name: 'Me', pressed: true })).toBeVisible();
+      await user.click(
+        board.getByRole('button', { name: 'Someone with no tickets here', pressed: true }),
+      );
+      await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual([String(VIEWER_ID)]));
+      await user.click(board.getByRole('button', { name: 'Me', pressed: true }));
+      await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual([]));
+    });
+
+    it('[AGL-005] asks one read per change, however many cards there are', async () => {
+      const user = userEvent.setup();
+      const client = fakeBoardClient({ cards: manyCards(300) });
+      const data = vi.spyOn(client, 'data');
+      renderBoard(client);
+      const board = await page();
+      expect(data).toHaveBeenCalledTimes(1);
+      await user.click(board.getByRole('button', { name: 'Unassigned' }));
+      await waitFor(() => expect(data).toHaveBeenCalledTimes(2));
+    });
+
+    it('[AGL-005] works from the keyboard, and says what it found', async () => {
+      const user = userEvent.setup();
+      const client = renderBoard();
+      const board = await page();
+      board.getByRole('button', { name: 'Me' }).focus();
+      await user.keyboard(' ');
+      await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual(['me']));
+      expect(await screen.findByText('2 cards shown')).toBeInTheDocument();
+      // Enter on the menu's summary is the browser's own; the e2e test presses it for real.
+      const summary = board.getByText('People');
+      await user.click(summary);
+      expect(summary.closest('details')).toHaveAttribute('open');
+      const person = await board.findByRole('checkbox', { name: 'Rin Okafor' });
+      person.focus();
+      await user.keyboard(' ');
+      await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual(['me', '6']));
+      await user.keyboard('{Escape}');
+      expect(board.getByText('People (1 chosen)').closest('details')).not.toHaveAttribute('open');
+    });
+
+    it('[AGL-005] says so when the people chosen have no cards, with a way out', async () => {
+      const user = userEvent.setup();
+      renderBoard(fakeBoardClient({ cards: CARDS.filter((c) => !c.mine) }));
+      const board = await page();
+      await user.click(board.getByRole('button', { name: 'Me' }));
+      expect(await board.findByText('No cards for these people')).toBeVisible();
+      await user.click(board.getAllByRole('button', { name: 'Clear people' })[0] as HTMLElement);
+      await waitFor(() => expect(shownKeys()).toHaveLength(3));
+    });
+
+    it('[AGL-005] finds a name in a long list', async () => {
+      const user = userEvent.setup();
+      const crowd = Array.from({ length: 12 }, (_, i) => ({
+        ...(CARDS[1] as (typeof CARDS)[number]),
+        id: 500 + i,
+        key: `SHOP-${500 + i}`,
+        fields: { assignee: { id: 20 + i, name: `Person ${i}` } },
+      }));
+      renderBoard(fakeBoardClient({ cards: crowd }));
+      const board = await page();
+      await user.click(board.getByText('People'));
+      expect(board.getAllByRole('checkbox')).toHaveLength(12);
+      await user.type(board.getByRole('searchbox', { name: 'Find a person' }), 'person 11');
+      expect(board.getAllByRole('checkbox').map((b) => b.closest('label')?.textContent)).toEqual([
+        'Person 11',
+      ]);
+      await user.type(board.getByRole('searchbox', { name: 'Find a person' }), 'zzz');
+      expect(board.getByText('Nobody by that name is assigned here.')).toBeVisible();
+    });
+
+    it('[AGL-005] speaks Spanish and fits a small phone', async () => {
+      setViewportWidth(375);
+      render(
+        <I18nProvider locale="es">
+          <BoardPage boardId={7} client={fakeBoardClient()} />
+        </I18nProvider>,
+      );
+      const group = await screen.findByRole('group', { name: 'Filtrar por persona' });
+      expect(within(group).getByRole('button', { name: 'Yo' })).toBeVisible();
+      expect(within(group).getByText('Personas')).toBeVisible();
+      setViewportWidth(1440);
+    });
   });
 
   it('[AGL-002] moves a card to the next column with Alt+Right, keeping focus on it', async () => {

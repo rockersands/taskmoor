@@ -3360,6 +3360,20 @@ export const messagesEn = {
   'ticketPage.backToBoard': 'Back to {name}',
   'boards.filters.summary':
     '{count, plural, =0 {Board filters} one {Board filters (# on)} other {Board filters (# on)}}',
+  'boards.people': 'Filter by person',
+  'boards.people.me': 'Me',
+  'boards.people.menu':
+    '{count, plural, =0 {People} one {People (# chosen)} other {People (# chosen)}}',
+  'boards.people.find': 'Find a person',
+  'boards.people.noMatch': 'Nobody by that name is assigned here.',
+  'boards.people.nobody': 'Nobody else is assigned to tickets on this board.',
+  'boards.people.more': 'Showing the first {count} people.',
+  'boards.people.notHere': 'Someone with no tickets here',
+  'boards.people.clear': 'Clear people',
+  'boards.people.shown': '{count, plural, one {# card shown} other {# cards shown}}',
+  'boards.people.emptyTitle': 'No cards for these people',
+  'boards.people.emptyBody':
+    'Nothing you can see on this board is assigned to the people you chose. Choose others, or clear them.',
   'boards.unmapped':
     '{count, plural, one {# ticket is} other {# tickets are}} in statuses no column shows: {statuses}',
   'boards.truncated': 'Showing the first {count} cards in rank order.',

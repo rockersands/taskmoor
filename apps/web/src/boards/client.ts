@@ -170,6 +170,14 @@ export interface BoardLane {
   parent?: { id: number; key: string; summary: string } | null;
 }
 
+/** Who a viewer can filter a board by: those assigned to the tickets they see on it. */
+export interface BoardPeople {
+  viewerId: number | null;
+  assignees: { id: number; name: string }[];
+  unassigned: boolean;
+  more: boolean;
+}
+
 /** What the board shows (`GET /api/v1/boards/:id/data`). */
 export interface BoardData {
   columns: (BoardColumn & { count: number; shown: number; wip: 'over' | 'under' | null })[];
@@ -179,6 +187,7 @@ export interface BoardData {
   truncated: boolean;
   warnings: string[];
   activeFilters: string[];
+  people: BoardPeople;
 }
 
 export interface Transition {
@@ -245,8 +254,16 @@ export interface BoardClient {
   numberFields(): Promise<NumberField[]>;
   /** The site's teams, for the board's team (M1-123). */
   teams(): Promise<{ id: number; name: string }[]>;
-  /** `sprints: 'active'` shows a Scrum board's active sprints only (M1-044). */
-  data(id: number, filters: readonly string[], sprints?: 'active'): Promise<BoardData>;
+  /**
+   * `sprints: 'active'` shows a Scrum board's active sprints only (M1-044); `people` only the
+   * cards of these people, `me`, `none` or ids (AGL-005 (3)).
+   */
+  data(
+    id: number,
+    filters: readonly string[],
+    sprints?: 'active',
+    people?: readonly string[],
+  ): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
   /** What a ticket can do next, to ask for the fields a refused move needs. */
   transitions(ticket: number): Promise<TicketTransition[]>;
@@ -260,10 +277,16 @@ export interface BoardClient {
 }
 
 /** The query string of a data request. */
-export function dataPath(id: number, filters: readonly string[], sprints?: 'active'): string {
+export function dataPath(
+  id: number,
+  filters: readonly string[],
+  sprints?: 'active',
+  people: readonly string[] = [],
+): string {
   const params = [
     ...(filters.length > 0 ? [`filters=${encodeURIComponent(filters.join(','))}`] : []),
     ...(sprints ? [`sprints=${sprints}`] : []),
+    ...(people.length > 0 ? [`people=${encodeURIComponent(people.join(','))}`] : []),
   ];
   return params.length === 0 ? `/boards/${id}/data` : `/boards/${id}/data?${params.join('&')}`;
 }
@@ -329,7 +352,7 @@ export const boardClient: BoardClient = {
       id: t.id,
       name: t.name,
     })),
-  data: (id, filters, sprints) => api<BoardData>(dataPath(id, filters, sprints)),
+  data: (id, filters, sprints, people) => api<BoardData>(dataPath(id, filters, sprints, people)),
   move: async (id, move) => {
     try {
       await api(`/boards/${id}/moves`, { method: 'POST', body: move });

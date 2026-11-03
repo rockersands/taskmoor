@@ -394,6 +394,40 @@ export interface LaneView {
   parent?: { id: number; key: string; summary: string } | null;
 }
 
+/**
+ * The people whose work a viewer can pick on a board (AGL-005 (3)): who is assigned to the
+ * board's tickets the viewer sees, in a mapped status, before any board filter, so the list stays
+ * whole while the cards narrow.
+ */
+export interface BoardPeople {
+  /** The viewer, whom the board offers as "Me". */
+  viewerId: number | null;
+  assignees: { id: number; name: string }[];
+  /** Some of those tickets have nobody assigned. */
+  unassigned: boolean;
+  /** More people are assigned than `assignees` lists. */
+  more: boolean;
+}
+
+/** At most this many people are listed: a board's picker, not a directory. */
+const MAX_BOARD_PEOPLE = 500;
+
+/** One choice in the person filter: `me`, `none`, or a person's id. */
+export type PersonChoice = 'me' | 'none' | `${number}`;
+
+/**
+ * The person filter as a board filter's query (AGL-005 (3)): any of the people chosen, so it goes
+ * through the same compiler and permission filter as every other board filter and only narrows.
+ */
+export function personFilter(choices: readonly PersonChoice[]): BoardFilter {
+  const people = choices.flatMap((c) => (c === 'none' ? [] : [c === 'me' ? 'currentUser()' : c]));
+  const parts = [
+    ...(people.length > 0 ? [`assignee IN (${people.join(', ')})`] : []),
+    ...(choices.includes('none') ? ['assignee IS EMPTY'] : []),
+  ];
+  return { id: 'people', name: '', description: '', query: parts.join(' OR ') };
+}
+
 export interface BoardData {
   columns: (Column & {
     /** Tickets in the column, those a board filter hides included (AGL-003 (2)). */
@@ -409,6 +443,7 @@ export interface BoardData {
   /** More cards matched than `limit`; the board shows the first ones in rank order. */
   truncated: boolean;
   warnings: string[];
+  people: BoardPeople;
 }
 
 /** A card property, for the extra fields of the card rules. */
@@ -614,6 +649,11 @@ export async function loadBoardData(input: {
     ]);
   }
 
+  /** Who is assigned to the board's tickets, with a row of null for those nobody has. */
+  interface AssignedRow {
+    id: number | null;
+    name: string | null;
+  }
   interface CardRow {
     id: number;
     status_id: number;
@@ -622,8 +662,12 @@ export async function loadBoardData(input: {
     lane: number;
     colour: number;
   }
-  const { counts, rows } = nothing
-    ? { counts: [] as { status_id: number; n: number }[], rows: [] as CardRow[] }
+  const { counts, rows, assigned } = nothing
+    ? {
+        counts: [] as { status_id: number; n: number }[],
+        rows: [] as CardRow[],
+        assigned: [] as AssignedRow[],
+      }
     : await readOnly(db, timeoutMs, async (trx) => {
         const counted = await sql<{ status_id: number; n: number }>`
           SELECT k.status_id, count(*)::int AS n FROM ticket k
@@ -639,7 +683,20 @@ export async function loadBoardData(input: {
              AND k.status_id = ANY(${mapped}::int[])
            ORDER BY k.rank
            LIMIT ${limit + 1}`.execute(trx);
-        return { counts: counted.rows, rows: cards.rows };
+        // One statement over the same tickets, not a read per card; the board filters and the
+        // person filter stay out of it, so choosing a person does not empty the list.
+        const people =
+          mapped.length === 0
+            ? { rows: [] as AssignedRow[] }
+            : await sql<AssignedRow>`
+          SELECT p.id, u.name FROM (
+            SELECT DISTINCT k.assignee_id AS id FROM ticket k
+             WHERE ${compiled.scope} AND k.status_id = ANY(${mapped}::int[])
+          ) p
+          LEFT JOIN app_user u ON u.id = p.id
+          ORDER BY (p.id IS NULL) DESC, lower(u.name), p.id
+          LIMIT ${MAX_BOARD_PEOPLE + 2}`.execute(trx);
+        return { counts: counted.rows, rows: cards.rows, assigned: people.rows };
       });
   const truncated = rows.length > limit;
   const shownRows = rows.slice(0, limit);
@@ -710,6 +767,10 @@ export async function loadBoardData(input: {
       );
     }
   }
+
+  const assignees = assigned.flatMap((p) =>
+    p.id === null ? [] : [{ id: p.id, name: p.name ?? '' }],
+  );
 
   // Lanes.
   const lanes: LaneView[] = [];
@@ -841,5 +902,11 @@ export async function loadBoardData(input: {
     },
     truncated,
     warnings: compiled.warnings,
+    people: {
+      viewerId: scope.userId,
+      assignees: assignees.slice(0, MAX_BOARD_PEOPLE),
+      unassigned: assigned.some((p) => p.id === null),
+      more: assignees.length > MAX_BOARD_PEOPLE,
+    },
   };
 }

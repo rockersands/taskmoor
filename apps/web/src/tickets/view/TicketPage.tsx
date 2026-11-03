@@ -488,7 +488,12 @@ export function TicketPage({
     <article aria-labelledby={titleId} className="ticket-page ticket-view">
       <header className="ticket-header">
         {behind && (
-          <a className="ticket-back" href={routeHref(`#/boards/${behind.id}`)}>
+          <a
+            className="ticket-back"
+            href={routeHref(
+              `#/boards/${behind.id}${behind.people ? `?people=${behind.people}` : ''}`,
+            )}
+          >
             {t('ticketPage.backToBoard', { name: behind.name })}
           </a>
         )}

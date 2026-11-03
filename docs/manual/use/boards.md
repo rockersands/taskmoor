@@ -1,8 +1,8 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: apps/web/src/boards/BoardsPage.tsx, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
-accessed: 2026-10-30
+sources: apps/web/src/boards/BoardsPage.tsx, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Boards, sprints and the backlog
@@ -68,6 +68,26 @@ Board filters are buttons above the columns (or a **Board filters** menu, if the
 that way). Press one to narrow the cards; press it again to drop it. Several filters together
 must all match. Column counts still include the hidden cards, and a column says how many of
 its cards the filters hide.
+
+### Filtering by person
+
+Anyone who can see a board can filter it to see one person's work, or several people's. It takes
+no administrator rights and no access to the board's settings, and it changes the board only for
+you. Above the columns:
+
+- **Me** shows the cards assigned to you;
+- **Unassigned** shows the cards nobody has;
+- **People** opens a list of the people assigned to tickets on this board, and only to tickets
+  you can see. Tick a name to add that person. In a long list, **Find a person** narrows it.
+
+Choosing several shows the cards of any of them, and the names you chose stay on show beside the
+menu: press one to take it away, or **Clear people** to take them all away. The filter works with
+board filters: a card must match both. It never shows you a ticket you could not already see, and
+column counts still cover every card.
+
+The people you chose are part of the page's address, so you can send the link to someone and they
+see the same people's cards, as far as they may see them. **Me** in a shared link means whoever
+opens it.
 
 ### Swimlanes
 

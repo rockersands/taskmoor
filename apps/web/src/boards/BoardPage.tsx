@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import { rememberBoard } from '../routing/cameFrom';
-import { routeHref } from '../routing/router';
+import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon, MoreIcon } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
@@ -19,6 +19,7 @@ import { useSyncEngine } from '../sync/SyncProvider';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
 import { refusalMessage } from '../workflow/refusal';
+import { BoardPeopleFilter, peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
 import {
   type Board,
   type BoardCard,
@@ -146,7 +147,8 @@ export function boardFilterName(t: Translate, filter: { id: string; name: string
  * moves with Alt and the arrow keys (another column left or right, up or down in its column),
  * with its Move menu, or by dragging it to a place in a column (M1-046); a move runs the
  * ticket's transition on the server and asks which one when several lead into the column.
- * Board filters narrow the cards; counts stay whole.
+ * Board filters and the person filter (AGL-005 (3), in the address as `?people=`) narrow the
+ * cards; counts stay whole.
  */
 export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const t = useT();
@@ -158,6 +160,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const [data, setData] = useState<BoardData | null>(null);
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
   const [filters, setFilters] = useState<string[]>([]);
+  const [people, setPeople] = useState<string[]>(() => peopleFromRoute(currentRoute()));
   const [announcement, setAnnouncement] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
@@ -184,17 +187,31 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const generation = useRef(0);
 
+  /** After a change of person, the page says how many cards there are once they are here. */
+  const sayShown = useRef(false);
+  const tRef = useRef(t);
+  tRef.current = t;
+
   const load = useCallback(
-    async (active: readonly string[]) => {
+    async (active: readonly string[], chosen: readonly string[]) => {
       const mine = ++generation.current;
       try {
         // A Scrum board shows its active sprints' tickets (M1-044); the rest are in the backlog.
         const b = await client.board(boardId);
-        const d = await client.data(boardId, active, b.kind === 'scrum' ? 'active' : undefined);
+        const d = await client.data(
+          boardId,
+          active,
+          b.kind === 'scrum' ? 'active' : undefined,
+          chosen,
+        );
         if (mine !== generation.current) return;
         setBoard(b);
         setData(d);
         setState('loaded');
+        if (sayShown.current) {
+          sayShown.current = false;
+          setAnnouncement(tRef.current('boards.people.shown', { count: d.cards.length }));
+        }
       } catch {
         if (mine === generation.current) setState('failed');
       }
@@ -203,8 +220,18 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   );
 
   useEffect(() => {
-    void load(filters);
-  }, [load, filters]);
+    void load(filters, people);
+  }, [load, filters, people]);
+
+  // A link or the browser's Back can change the address while the page stays: it follows.
+  useEffect(
+    () =>
+      onRouteChange(() => {
+        const next = peopleFromRoute(currentRoute());
+        setPeople((current) => (current.join() === next.join() ? current : next));
+      }),
+    [],
+  );
 
   // Changes made elsewhere reach the local copy through the socket (NTF-008 (1): on the board
   // within a second): the board reads its data again, at most once in 100 ms, and
@@ -225,7 +252,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         // Only the cards: the board itself (columns, kind) does not move with a ticket.
         const mine = ++generation.current;
         const kind = boardRef.current?.kind;
-        client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined).then(
+        client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined, people).then(
           (d) => {
             if (mine === generation.current) setData(d);
           },
@@ -237,7 +264,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       if (timer) clearTimeout(timer);
       unsubscribe();
     };
-  }, [engine, client, boardId, filters]);
+  }, [engine, client, boardId, filters, people]);
 
   useEffect(() => {
     if (focusAfter.current === null || !data) return;
@@ -352,7 +379,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       }
       setAnnouncement(done);
       focusAfter.current = card.id;
-      await load(filters);
+      await load(filters, people);
     } catch {
       setProblem(t('boards.refusedOther', { key: card.key }));
     } finally {
@@ -457,6 +484,13 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
     );
   }
 
+  /** Changes who the board shows; the address says so too, so the view can be shared. */
+  function choosePeople(next: string[]) {
+    sayShown.current = true;
+    setPeople(next);
+    replaceRoute(routeWithPeople(currentRoute(), next));
+  }
+
   const location =
     board.location.type === 'track'
       ? t('boards.location.track', { track: board.location.track.name ?? '' })
@@ -503,7 +537,13 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         <a
           className="board-card-link"
           href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
-          onClick={() => rememberBoard(card.key, { id: boardId, name: board.name })}
+          onClick={() =>
+            rememberBoard(card.key, {
+              id: boardId,
+              name: board.name,
+              ...(people.length > 0 ? { people: people.join(',') } : {}),
+            })
+          }
           aria-describedby={hintId}
           ref={(el) => {
             if (el) links.current.set(card.id, el);
@@ -620,6 +660,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             {filterButtons}
           </fieldset>
         ))}
+      <BoardPeopleFilter people={data.people} chosen={people} onChange={choosePeople} />
       {data.unmapped.count > 0 && (
         <p className="board-unmapped">
           {t('boards.unmapped', {
@@ -643,7 +684,19 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         {t('boards.keyboardHint')}
       </p>
       {data.cards.length === 0 &&
-        (board.kind === 'scrum' && filters.length === 0 ? (
+        (people.length > 0 ? (
+          <EmptyState
+            icon={BoardsIcon}
+            title={t('boards.people.emptyTitle')}
+            action={
+              <button type="button" className="button-quiet" onClick={() => choosePeople([])}>
+                {t('boards.people.clear')}
+              </button>
+            }
+          >
+            {t('boards.people.emptyBody')}
+          </EmptyState>
+        ) : board.kind === 'scrum' && filters.length === 0 ? (
           <EmptyState
             icon={BoardsIcon}
             title={t('boards.emptyScrumTitle')}

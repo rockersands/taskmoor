@@ -40,6 +40,32 @@ export const FilterOn: Story = {
   },
 };
 
+/** The person filter: "Me" and a person from the menu; any of them shows (AGL-005 (3)). */
+export const PersonFilter: Story = {
+  args: { client: fakeBoardClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
+    await expect(await canvas.findByRole('link', { name: /SHOP-21/ })).toBeVisible();
+    await userEvent.click(canvas.getByText('People'));
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Rin Okafor' }));
+    await expect(await canvas.findByRole('link', { name: /SHOP-23/ })).toBeVisible();
+    await expect(canvas.queryByRole('link', { name: /SHOP-19/ })).toBeNull();
+  },
+};
+
+/** Nobody's cards: the board says so and offers to clear the filter. */
+export const PersonFilterEmpty: Story = {
+  args: {
+    client: fakeBoardClient({ cards: CARDS.filter((c) => !c.mine) }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
+    await expect(await canvas.findByText('No cards for these people')).toBeVisible();
+  },
+};
+
 /** A move into the last column, where two transitions lead: the board asks which. */
 export const ChooseTransition: Story = {
   args: { client: fakeBoardClient() },

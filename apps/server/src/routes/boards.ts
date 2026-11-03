@@ -14,6 +14,8 @@ import {
   compileBoard,
   editorScope,
   loadBoardData,
+  type PersonChoice,
+  personFilter,
   type Scope,
   statusesOfTracks,
 } from '../boards/data';
@@ -67,9 +69,10 @@ import { ticketRoutes } from './tickets';
  *   (seen by them and its board admins) until saved searches bring sharing (M1-063). Board
  *   admins, the location track's administrators and site and configuration administrators
  *   change it (AGL-001 (2)).
- * - `GET /api/v1/boards/:id/data?filters=a,b` gives the columns with their counts and WIP
- *   state, the lanes and the cards in rank order, with the given board filters applied
- *   (`boards/data.ts`). Every statement carries the viewer's ticket filter.
+ * - `GET /api/v1/boards/:id/data?filters=a,b&people=me,12` gives the columns with their counts
+ *   and WIP state, the lanes and the cards in rank order, with the given board filters and person
+ *   filter applied, and who the viewer can filter by (`boards/data.ts`). Every statement carries
+ *   the viewer's ticket filter.
  * - `POST /api/v1/boards/:id/moves` moves a card to a column and, with `before` or `after`, to
  *   a place in the rank: it runs the ticket routes themselves (the transition, then the rank),
  *   so every check, event and history row is theirs. Several transitions into the column answer
@@ -91,6 +94,14 @@ export const dataQuery = z
   .object({
     /** Active board filters, by id, comma separated. */
     filters: z.string().max(2000).optional(),
+    /**
+     * Only the cards of these people, any of them: `me`, `none` (nobody assigned) or a person's
+     * id, comma separated (AGL-005 (3)).
+     */
+    people: z
+      .string()
+      .regex(/^(me|none|\d{1,10})(,(me|none|\d{1,10})){0,49}$/)
+      .optional(),
     limit: z.coerce.number().int().min(1).max(50_000).default(5000),
     /** Scrum boards: `active` shows the active sprints' tickets, or sprint ids (M1-044). */
     sprints: z
@@ -1103,6 +1114,10 @@ export function registerBoardRoutes(
       if (!filter) return invalidFields(reply, { filters: 'not_found' });
       active.push(filter);
     }
+    const people = (parsed.data.people?.split(',') ?? []) as PersonChoice[];
+    if (people.some((c) => Number(c) > MAX_INT)) {
+      return invalidFields(reply, { people: 'out_of_range' });
+    }
     const scope = await boardScope(db, catalogs, request);
     let sprintIds: number[] | undefined;
     if (parsed.data.sprints !== undefined) {
@@ -1125,7 +1140,8 @@ export function registerBoardRoutes(
         catalogs,
         scope,
         board,
-        active,
+        // The person filter is one more board filter: same compiler, same viewer's filter.
+        active: people.length > 0 ? [...active, personFilter(people)] : active,
         limit: parsed.data.limit,
         timeoutMs,
       });
