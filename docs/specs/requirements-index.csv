@@ -27,6 +27,8 @@ CORE-025,CORE,"Archive, trash and restore",M1,Must,Jira Premium (space archiving
 CORE-026,CORE,Configuration guardrails,M1,Must,Jira Free (2026 limits); exceeds Jira (limits fixed)
 CORE-027,CORE,Teams,M1,Must,Jira Free (Atlassian Teams)
 CORE-028,CORE,Work intake forms,M2,Must,Jira Free
+CORE-029,CORE,Ticket templates,M1,Must,User requirement
+CORE-030,CORE,Creating a ticket from a template,M1,Must,User requirement
 WF-001,WF,Workflow model,M1,Must,Jira Free
 WF-002,WF,Workflow editor,M1,Must,Jira Free (new editor); exceeds Jira (rollback)
 WF-003,WF,Guards,M1,Must,Jira Free

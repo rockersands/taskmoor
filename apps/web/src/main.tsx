@@ -27,6 +27,7 @@ import './styles/search.css';
 import './styles/charts.css';
 import './styles/dashboards.css';
 import './styles/releases.css';
+import './styles/ticket-templates.css';
 import './styles/timeline.css';
 import './styles/views.css';
 import './styles/ai.css';

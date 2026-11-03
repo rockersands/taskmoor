@@ -4369,6 +4369,83 @@ export const messagesEn = {
   'duplicates.likely': 'Likely the same. ',
   'duplicates.reason': '{reason}',
   'duplicates.byAi': 'Ordered by AI, with its reasons. Check them before you rely on them.',
+  'summary.templates': 'Ticket templates',
+  'settings.ticketTemplates': 'Ticket templates',
+  'settings.ticketTemplatesHint': 'Templates offered when a ticket is created in any track.',
+  'tickets.templates.adminTitle': 'Ticket templates for every track',
+  'tickets.templates.trackTitle': 'Ticket templates of {name}',
+  'tickets.templates.toSummary': 'Back to the summary',
+  'tickets.templates.intro':
+    'A template starts a new ticket with a summary, an outline, default values and subtickets. People review the values in the create form before the ticket is made, and what they may not set is left out.',
+  'tickets.templates.loading': 'Loading the templates…',
+  'tickets.templates.failed':
+    'The templates could not be loaded. Check the address, or try again in a moment.',
+  'tickets.templates.readOnlyTrack':
+    'Only the administrators of this track can change its templates.',
+  'tickets.templates.readOnlyEveryTrack':
+    'Only configuration administrators can change these templates.',
+  'tickets.templates.none': 'There are no templates here yet.',
+  'tickets.templates.new': 'New template',
+  'tickets.templates.saved': 'Template {name} was saved.',
+  'tickets.templates.deleted': 'Template {name} was deleted.',
+  'tickets.templates.everyTrack': 'Every track',
+  'tickets.templates.everyType': 'Every ticket type',
+  'tickets.templates.subticketCount': '{count, plural, one {# subticket} other {# subtickets}}',
+  'tickets.templates.edit': 'Edit',
+  'tickets.templates.editOf': 'Edit template {name}',
+  'tickets.templates.delete': 'Delete',
+  'tickets.templates.deleteOf': 'Delete template {name}',
+  'tickets.templates.confirmDelete': 'Delete it',
+  'tickets.templates.confirmDeleteOf': 'Yes, delete template {name}',
+  'tickets.templates.keep': 'Keep it',
+  'tickets.templates.name': 'Name',
+  'tickets.templates.purpose': 'What it is for',
+  'tickets.templates.types': 'Ticket types it fits',
+  'tickets.templates.typesHint': 'Choose none for every ticket type.',
+  'tickets.templates.summaryHint':
+    '{date} becomes today, {track} the track key, {user} the name of the person creating the ticket.',
+  'tickets.templates.startInDays': 'Start date, in days from today',
+  'tickets.templates.dueInDays': 'Due date, in days from today',
+  'tickets.templates.assigneeHint': 'Type a name to find someone.',
+  'tickets.templates.removeAssignee': 'Remove {name} as assignee',
+  'tickets.templates.remove': 'Remove',
+  'tickets.templates.customFields': 'Custom fields',
+  'tickets.templates.addFieldLabel': 'Add a value for a field',
+  'tickets.templates.addField': 'Add the field',
+  'tickets.templates.removeField': 'Remove the value of {name}',
+  'tickets.templates.keptFields':
+    '{count, plural, one {# value of a field this form cannot show stays as it is.} other {# values of fields this form cannot show stay as they are.}}',
+  'tickets.templates.subtickets': 'Subtickets',
+  'tickets.templates.subticketSummary': 'Subticket {number}: summary',
+  'tickets.templates.subticketType': 'Subticket {number}: type',
+  'tickets.templates.subticketTypeFirst': 'The track’s first subticket type',
+  'tickets.templates.removeSubticket': 'Remove subticket {number}',
+  'tickets.templates.addSubticket': 'Add a subticket',
+  'tickets.templates.save': 'Save the template',
+  'tickets.templates.cancel': 'Cancel',
+  'tickets.templates.problem.nameTaken': 'Another template here already has that name.',
+  'tickets.templates.problem.conflict':
+    'Someone else changed this template. Reload the page and try again.',
+  'tickets.templates.problem.limit':
+    'There are as many templates here as allowed. Delete one first.',
+  'tickets.templates.problem.archived': 'This track is archived, so its templates cannot change.',
+  'tickets.templates.problem.invalid':
+    'Some values cannot be used. Check the days, the fields and the subtickets.',
+  'tickets.templates.problem.forbidden': 'You may not change this template.',
+  'tickets.templates.problem.other': 'That did not work. Try again in a moment.',
+  'tickets.templates.pick': 'Start from a template',
+  'tickets.templates.pickNone': 'No template',
+  'tickets.templates.pickFailed': 'That template could not be loaded. Try again in a moment.',
+  'tickets.templates.filled': 'The values of {name} are filled in: change what differs.',
+  'tickets.templates.also': 'Also from this template',
+  'tickets.templates.alsoSubtickets':
+    '{count, plural, one {Create its # subticket} other {Create its # subtickets}}',
+  'tickets.templates.fieldNumber': 'field {id}',
+  'tickets.templates.left': 'Left out, because they cannot be set here: {fields}.',
+  'tickets.templates.subticketsMade':
+    '{count, plural, one {Subticket created: {keys}.} other {Subtickets created: {keys}.}}',
+  'tickets.templates.subticketsFailed':
+    'The ticket was created, but these subtickets could not be:',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

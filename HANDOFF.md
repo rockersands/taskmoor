@@ -45,6 +45,11 @@ from its brief.
 
 ### What changed on 2026-11-03
 
+Ticket templates are merged (ADR-113, migration 0085, CORE-029, CORE-030): server, picker in the
+create form, management pages, e2e spec, manual. Details are in `docs/plan/ticket-templates-tasks.md`.
+Custom fields of types the form has no control for, and an assignee on an every-track template, are
+API-only, and a save keeps them.
+
 Today's new work is M1-135 to M1-144 in `docs/plan/backlog.csv`, with the user's decisions in
 `docs/plan/decisions.csv`. The order below changed: after the 1M import, the finished branches
 merge with a full gate each, and only then the fuzz stages run, so the 8-hour clean run covers the

@@ -1511,6 +1511,23 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM app_user WHERE workspace_id = 1 ORDER BY id LIMIT 1`.execute(db);
     },
   },
+  '0085_ticket_templates': {
+    tables: {
+      ticket_template:
+        "name = 'Seed bug report' AND summary = 'Bug: {date}' AND defaults->>'dueInDays' = '7' AND jsonb_array_length(subtickets) = 1",
+    },
+    seed: async (db) => {
+      // A template of the seed track (ADR-113): a pattern, an outline, two defaults and one
+      // subticket.
+      await sql`INSERT INTO ticket_template (workspace_id, track_id, name, summary, description,
+          defaults, subtickets, created_by)
+        SELECT 1, t.id, 'Seed bug report', 'Bug: {date}',
+          '{"type": "doc", "content": [{"type": "paragraph"}]}',
+          '{"labels": ["seed"], "dueInDays": 7}', '[{"summary": "Write a test"}]', u.id
+          FROM track t, app_user u
+         WHERE t.key = 'SEED' AND u.email = 'seed@example.com'`.execute(db);
+    },
+  },
 };
 
 /**

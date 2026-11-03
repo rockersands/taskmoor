@@ -115,6 +115,9 @@ export function TrackSummaryPage({ trackKey, client = trackClient }: TrackSummar
         <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/releases`)}>
           {t('summary.releases')}
         </a>
+        <a href={routeHref(`#/tracks/${encodeURIComponent(summary.track.key)}/templates`)}>
+          {t('summary.templates')}
+        </a>
       </div>
       <dl className="report-stats">
         {summary.overview.map((item) => (

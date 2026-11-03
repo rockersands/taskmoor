@@ -80,6 +80,7 @@ import { IdentityProvidersPage } from './sso/IdentityProvidersPage';
 import { SyncProvider } from './sync/SyncProvider';
 import { CreateTicketDialog } from './tickets/CreateTicketDialog';
 import { CreateTicketPage } from './tickets/CreateTicketPage';
+import { TicketTemplatesPage } from './tickets/templates/TicketTemplatesPage';
 import { TicketPage } from './tickets/view/TicketPage';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
@@ -148,6 +149,7 @@ const ADMIN_FIELDS = '#/admin/fields';
 const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ADMIN_SETS = '#/admin/configuration-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
+const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
@@ -160,6 +162,8 @@ const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
+/** A track's ticket templates (CORE-029). */
+const TRACK_TEMPLATES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/templates(?:[/?]|$)/;
 /** A track's calendar (M1-049). */
 const TRACK_CALENDAR = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/calendar(?:[/?]|$)/;
 /** A track's list (M1-049). */
@@ -404,6 +408,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-ticket-templates',
+              labelId: 'tickets.templates.adminTitle' as const,
+              keywords: ['template', 'ticket template', 'subtickets', 'outline'],
+              run: () => {
+                navigate(ADMIN_TICKET_TEMPLATES);
+              },
+            },
+            {
               id: 'go-configuration-sets',
               labelId: 'admin.sets.title' as const,
               keywords: ['type set', 'field rules', 'required', 'hidden', 'scheme'],
@@ -513,6 +525,8 @@ function Pages() {
     content = <ImportsPage />;
   } else if (isRoute(hash, ADMIN_GUARDRAILS)) {
     content = <GuardrailsPage />;
+  } else if (isRoute(hash, ADMIN_TICKET_TEMPLATES)) {
+    content = <TicketTemplatesPage />;
   } else if (isRoute(hash, CREATE_TICKET)) {
     active = 'tracks';
     content = <CreateTicketPage />;
@@ -581,6 +595,11 @@ function Pages() {
     guarded = true;
     const key = TRACK_RELEASES.exec(hash)?.[1] ?? '';
     content = <ReleasesPage key={key} trackKey={key} />;
+  } else if (TRACK_TEMPLATES.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_TEMPLATES.exec(hash)?.[1] ?? '';
+    content = <TicketTemplatesPage key={key} trackKey={key} />;
   } else if (RELEASE.test(hash)) {
     active = 'tracks';
     guarded = true;

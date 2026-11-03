@@ -24,6 +24,9 @@ import {
   SYSTEM_FIELDS,
   type TicketForm,
 } from './form';
+import { type AppliedTemplate, type PickerClient, pickerClient } from './templates/client';
+import { omitKeys } from './templates/start';
+import { type PickedTemplate, TemplateOutcome, TemplatePicker } from './templates/TemplatePicker';
 
 export interface TrackChoice {
   id: number;
@@ -46,6 +49,8 @@ export interface CreateClient {
   template?: (key: string) => Promise<TicketTemplate>;
   /** People to mention in rich text fields (M1-017); none when left out. */
   mentions?: (track: string) => MentionSource;
+  /** Ticket templates (CORE-030); the form offers them only when the client has them. */
+  ticketTemplates?: PickerClient;
 }
 
 export const createClient: CreateClient = {
@@ -65,6 +70,7 @@ export const createClient: CreateClient = {
   create: async (body) =>
     (await api<{ ticket: { key: string } }>('/tickets', { method: 'POST', body })).ticket,
   mentions: (track) => mentionSource({ track }),
+  ticketTemplates: pickerClient,
   template: async (key) =>
     templateOf(
       (await api<{ ticket: TemplateSource }>(`/tickets/${encodeURIComponent(key)}`)).ticket,
@@ -165,6 +171,11 @@ export function CreateTicketPage({
   /** The ticket just created, to open it (M1-051). */
   const [created, setCreated] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [picked, setPicked] = useState<PickedTemplate | null>(null);
+  const [outcome, setOutcome] = useState<AppliedTemplate | null>(null);
+  // A template fits the track and type it was chosen for; what it filled in stays as typed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the choice changes
+  useEffect(() => setPicked(null), [track, typeId]);
   const trackId =
     tracks.status === 'loaded' ? tracks.value.find((k) => k.key === track)?.id : undefined;
   // Re-ranked duplicates with reasons only where the feature is on and the AI notice was read:
@@ -284,6 +295,7 @@ export function CreateTicketPage({
         setTypes([]);
         setTrack(from.track);
       }
+      setPicked(null);
       setValues(from.values);
       setDocs(from.docs);
       setSeed(from.docs);
@@ -302,9 +314,23 @@ export function CreateTicketPage({
     setProblem(null);
     setMessage('');
     setCreated(null);
+    setOutcome(null);
     setErrors({});
     try {
-      const made = await client.create(createBody(track, typeId, form.value, values, docs));
+      const body = createBody(track, typeId, form.value, values, docs);
+      let made: { key: string };
+      if (picked && client.ticketTemplates) {
+        const applied = await client.ticketTemplates.apply(picked.template.id, {
+          ...body,
+          omit: omitKeys(picked.start, form.value, body, picked.off),
+          subtickets: picked.subtickets,
+        });
+        setOutcome(applied);
+        made = applied;
+      } else {
+        made = await client.create(body);
+      }
+      setPicked(null);
       clearForm();
       setMessage(t('tickets.create.created', { key: made.key }));
       setCreated(made.key);
@@ -650,6 +676,25 @@ export function CreateTicketPage({
               </select>
             </div>
           </div>
+          {client.ticketTemplates && (
+            <TemplatePicker
+              client={client.ticketTemplates}
+              track={track}
+              typeId={typeId}
+              form={form?.status === 'loaded' ? form.value : null}
+              picked={picked}
+              onChange={setPicked}
+              onPick={(next, fill) => {
+                setPicked(next);
+                setValues(fill?.values ?? {});
+                setDocs(fill?.docs ?? {});
+                setSeed(fill?.docs ?? {});
+                setFormKey((k) => k + 1);
+                setErrors({});
+                setMessage(next ? t('tickets.templates.filled', { name: next.template.name }) : '');
+              }}
+            />
+          )}
           <DraftFromText
             track={track}
             {...(trackId !== undefined ? { trackId } : {})}
@@ -713,6 +758,12 @@ export function CreateTicketPage({
                 {t('tickets.create.open', { key: created })}
               </a>
             </p>
+          )}
+          {outcome && (
+            <TemplateOutcome
+              outcome={outcome}
+              form={form?.status === 'loaded' ? form.value : null}
+            />
           )}
           <div className="form-actions">
             <button
