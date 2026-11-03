@@ -151,6 +151,7 @@ reported, and the coordinator checked that it was pushed.
 | T-103 | The people list floats, and does not push the page down | To do | With the front sub chat |
 | T-104 | Filter buttons and checkboxes get the glass style | To do | With the front sub chat |
 | T-105 | Check whether "Solo mis tickets" and "Yo" duplicate each other | To do | With the front sub chat |
+| T-106 | Complete a sprint from the board, for managers and above, with a confirmation pop-up | To do | Waits for the merges; says how many tickets are done and open, and where open ones go; Complete and Cancel |
 
 ## Tickets
 
