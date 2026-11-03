@@ -44,8 +44,11 @@ from its brief.
 1. `corepack pnpm verify --e2e`, then fast-forward `main`. On Windows, use WSL 2 (the image and
    kit scripts are bash). The e2e suite needs `127.0.0.1 api.taskmoor.localhost
    app.taskmoor.localhost evil.taskmoor.localhost kit2.taskmoor.localhost` in `/etc/hosts`.
-2. **Flaky e2e:** `e2e/a11y-keyboard.spec.ts` fails as the first spec on a cold server (the
-   skip link is not focused yet) and passes alone. Make it wait for the app to be ready.
+2. **Flaky e2e:** `e2e/a11y-keyboard.spec.ts:37` ("Skip to content" not focused) fails 4 of 8
+   runs on `main` with `--repeat-each=8` (measured by the Flutter session). It is not only a
+   cold-server problem: find why the first Tab sometimes misses the skip link (focus still in
+   the address bar, or a late re-render after sign-in), fix it, and prove it with
+   `--repeat-each=20` green.
 3. **M1-091, the 500k-issue import** (the user's decision: 500k measured, 1M as an estimate).
    The cloud run was started 2026-11-02 23:30 UTC; if `progress.csv` has no result, run:
    `TASKMOOR_LARGE_DC_IMPORT=1 TASKMOOR_LARGE_DC_IMPORT_ISSUES=500000
