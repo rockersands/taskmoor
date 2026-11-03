@@ -68,7 +68,7 @@ long-term-support release) to a new one, with no step per version (OPS-006, ADR-
 
 | Kit | Upgrade |
 |---|---|
-| Compose | `bash upgrade.sh ghcr.io/rockersands/taskmoor:<version>` in `deploy/compose` |
+| Compose | `bash update.sh` in `deploy/compose`: the newest release, its signature checked (OPS-025, ADR-117); or `bash upgrade.sh <image>` for an image you name |
 | All-in-one | Start the new image on the same volume: it upgrades before it serves |
 | Helm | `helm upgrade` ([`helm/README.md`](helm/README.md)) |
 

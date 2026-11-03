@@ -23,8 +23,8 @@ bash install-offline.sh        # verify, load the images, install without contac
 ```
 
 The installer prints the one-time setup link. The instance makes no outbound connections by
-default: no telemetry, no update check, and AI features stay off until a local model is
-configured.
+default: no telemetry, no update check (the installer writes `TASKMOOR_UPDATE_CHECK=off` into
+`compose/.env`), and AI features stay off until a local model is configured.
 
 ## Upgrade with Docker Compose
 

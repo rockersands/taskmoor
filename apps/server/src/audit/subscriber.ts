@@ -185,6 +185,7 @@ export const AUDITED_EVENTS = [
   'visibility_level.member_removed',
   'time_tracking.settings_updated',
   'attachment_settings.updated',
+  'update_check.updated',
   // Malware found, or a file the scanner could not judge: a security event.
   'attachment.quarantined',
   'status.created',

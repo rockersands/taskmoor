@@ -1176,6 +1176,27 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.frontends.invalidRedirect':
     'Cada dirección de retorno debe ser una dirección completa en el mismo origen, sin fragmento.',
   'admin.frontends.addFailed': 'No se pudo añadir el frontend. Inténtalo de nuevo.',
+  'admin.updates.noticeTitle': 'Taskmoor {latest} está disponible.',
+  'admin.updates.noticeBody':
+    'Este servidor usa la {version}. Para actualizar, ejecuta esto en la carpeta del kit en el servidor:',
+  'admin.updates.copy': 'Copiar el comando',
+  'admin.updates.copied': 'Copiado',
+  'admin.updates.releaseNotes': 'Novedades',
+  'admin.updates.title': 'Actualizaciones',
+  'admin.updates.running': 'En uso',
+  'admin.updates.newest': 'Versión más reciente',
+  'admin.updates.lastChecked': 'Última consulta',
+  'admin.updates.notKnown': 'Aún no se sabe',
+  'admin.updates.runThis':
+    'Hay una versión más reciente. Para actualizar, ejecuta esto en la carpeta del kit en el servidor:',
+  'admin.updates.toggle': 'Buscar versiones nuevas una vez al día',
+  'admin.updates.toggleHelp':
+    'El servidor consulta las versiones públicas del proyecto en GitHub, como mucho una vez al día, y no les dice nada sobre esta instalación. Si no puede llegar a ellas, no dice nada y vuelve a intentarlo al día siguiente.',
+  'admin.updates.environmentOff':
+    'Desactivado en el servidor con TASKMOOR_UPDATE_CHECK=off: no se hace ninguna petición.',
+  'admin.updates.development':
+    'Una versión de desarrollo no tiene con qué compararse, así que no busca.',
+  'admin.updates.saveFailed': 'No se pudo guardar el ajuste. Inténtalo de nuevo en un momento.',
   'admin.system.title': 'Estado del sistema',
   'admin.system.refresh': 'Actualizar',
   'admin.system.loading': 'Leyendo el estado del sistema…',

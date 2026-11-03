@@ -1055,6 +1055,8 @@ export const EVENT_TYPES = {
     }),
   },
   'attachment_settings.updated': { subject: 'workspace', payload: z.object({ changes }) },
+  /** The site administrator's switch for the new-version check (OPS-026, ADR-117). */
+  'update_check.updated': { subject: 'workspace', payload: z.object({ changes }) },
   // Audit log
   'audit.settings_updated': { subject: 'workspace', payload: z.object({ changes }) },
   /** The schedule, retention and verification of scheduled backups (M1-101, OPS-008). */

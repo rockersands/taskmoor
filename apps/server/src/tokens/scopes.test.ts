@@ -134,6 +134,9 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/admin/frontends']).toBe('admin');
     expect(classes['PATCH /api/v1/admin/frontends/:id']).toBe('admin');
     expect(classes['DELETE /api/v1/admin/frontends/:id']).toBe('admin');
+    // The new-version notice (OPS-026).
+    expect(classes['GET /api/v1/admin/update-check']).toBe('admin');
+    expect(classes['PUT /api/v1/admin/update-check']).toBe('admin');
     // AI provider settings and write-only credentials (M1-075).
     expect(classes['GET /api/v1/admin/ai']).toBe('admin');
     expect(classes['PUT /api/v1/admin/ai/credentials/:slot']).toBe('admin');

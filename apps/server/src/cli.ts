@@ -5,6 +5,7 @@
 //                                       failed with the database as before, 3 when the rollback
 //                                       failed too. The last line is the report as JSON
 //   node cli.mjs check-upgrade          pre-upgrade check (OPS-006); exit 1 while anything blocks
+//   node cli.mjs frontends              frontends on other hosts, one origin a line (OPS-025)
 //   node cli.mjs migrate                apply pending migrations and exit (no backup: the
 //                                       advanced path; the server does this at start too)
 //   node cli.mjs status                 migration status as JSON
@@ -72,6 +73,7 @@ import { httpRequest, IMPORT_EXIT, importCommand } from './import/cli';
 import { bridgeStdio } from './mcp/stdio';
 import { replayCheck } from './reports/events';
 import { purgeExpired } from './trash/purge';
+import { otherFrontends } from './updates/check';
 import { formatOutcome, upgrade, upgradeExitCode } from './upgrade';
 import { checkUpgrade, formatChecks } from './upgrade-check';
 import { defaultWorkspaceId } from './workspace';
@@ -114,7 +116,7 @@ const { positionals, values } = parseArgs({
 });
 const command = positionals[0] ?? 'help';
 const USAGE =
-  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | embeddings [--rebuild] | mcp | import <start|follow|report|status|list|cancel>>';
+  'Usage: node cli.mjs <upgrade [--dry-run] [--no-backup] [--unattended] | check-upgrade | frontends | migrate | status | backup [--out dir] | restore <dir> --yes | drill [dir] [--keep] | purge-trash | field-values [--repair] | export <dir> [--tracks KEY,KEY] | checksum | password-link <email> | audit-verify | allowlist-off | report-verify | embeddings [--rebuild] | mcp | import <start|follow|report|status|list|cancel>>';
 
 if (command === 'help' || command === '--help') {
   process.stdout.write(`${USAGE}\n`);
@@ -178,6 +180,12 @@ try {
       process.stdout.write(formatOutcome(report));
       say(JSON.stringify(report));
       process.exitCode = upgradeExitCode(report.outcome);
+      break;
+    }
+    case 'frontends': {
+      // The frontends on other hosts (OPS-025): update.sh's last message names them.
+      const origins = await otherFrontends(db, config.publicUrl, config.allowedOrigins);
+      for (const origin of origins) say(origin);
       break;
     }
     case 'check-upgrade': {

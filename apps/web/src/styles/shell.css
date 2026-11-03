@@ -561,6 +561,57 @@ body {
   gap: var(--space-2);
 }
 
+/* A newer release, for a site administrator (OPS-026): the command wraps on a phone. */
+.update-notice {
+  align-items: flex-start;
+}
+
+.update-notice-text {
+  display: grid;
+  gap: var(--space-2);
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.update-banner-actions a {
+  text-decoration: none;
+}
+
+.update-command {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.update-command code {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-1);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-200);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.update-card-command {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-top: var(--space-3);
+}
+
+.update-card-command p {
+  margin: 0;
+}
+
+.update-card-switch {
+  margin-top: var(--space-2);
+}
+
 /* The frontend is older than the backend serves: this page instead of the app. */
 .update-required {
   max-width: 36rem;

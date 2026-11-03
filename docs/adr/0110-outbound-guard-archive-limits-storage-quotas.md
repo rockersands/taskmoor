@@ -32,6 +32,7 @@ address goes through it:
 | AI providers (Anthropic API with a base URL, Bedrock, Vertex AI, Foundry, OpenAI-compatible) | `app.ts` passes `adapterOptions.fetch` to `AiService`, so every adapter of `packages/ai` uses it | site administrator |
 | OpenID Connect discovery, key set, token endpoint, user info | `sso/oidc.ts` (`openid-client`'s `customFetch`) | site administrator |
 | Cloud REST import | `import/cloud/client.ts` `fetchTransport` | site administrator |
+| The new-version check (ADR-117) | `updates/check.ts` `githubReleases` | nobody: a fixed address |
 
 - **Checked addresses.** The host is resolved and every address it resolves to is checked; one
   that may not be reached refuses the request. Refused: unspecified, loopback, private

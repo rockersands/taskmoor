@@ -1,8 +1,8 @@
 ---
 title: "Upgrades"
 audience: admins
-sources: apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/cli.ts, apps/server/src/main.ts, apps/server/src/frontend.ts, apps/server/src/routes/meta.ts, packages/db/src/releases.ts, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/README.md, deploy/compose/upgrade.sh, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/upgrade-check.yaml, docs/adr/0022-upgrades-and-migrations.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05b-administration-security-and-self-hosting.md, packages/builder-core/src/postgres-tls.ts, docs/adr/0111-personal-data-and-database-tls.md
-accessed: 2026-11-02
+sources: deploy/compose/update.sh, tools/release/sign-update-manifest.sh, packages/builder-core/src/backend.ts, apps/server/src/updates/check.ts, apps/server/src/routes/update-check.ts, apps/web/src/admin/UpdateNotice.tsx, docs/adr/0117-update-command-and-new-version-notice.md, tools/airgap/install-offline.sh, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/cli.ts, apps/server/src/main.ts, apps/server/src/frontend.ts, apps/server/src/routes/meta.ts, packages/db/src/releases.ts, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/README.md, deploy/compose/upgrade.sh, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/upgrade-check.yaml, docs/adr/0022-upgrades-and-migrations.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05b-administration-security-and-self-hosting.md, packages/builder-core/src/postgres-tls.ts, docs/adr/0111-personal-data-and-database-tls.md
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Upgrades
@@ -12,11 +12,89 @@ long-term-support release, to a new one. There is no step per version in between
 checks first, backs up, applies every migration, verifies the result and rolls back on any
 failure.
 
+## Updating to the newest release
+
+In the folder of the Compose kit or the Builder's backend kit, on the server:
+
+```bash
+bash update.sh                # the newest release
+bash update.sh 1.4.0          # that release
+bash update.sh --dry-run      # says what it would do; nothing changes or stops
+```
+
+It needs Docker, `curl` or `wget`, `openssl` and `base64`. On Windows with Docker Desktop, run it
+from Git Bash. `update.sh`:
+
+1. asks the project's public GitHub releases for the newest stable version, unless you named one;
+2. checks the release's signature against `taskmoor-release.pub`, the release key's public half
+   beside the script. The signed statement names the image by digest, so the image itself is
+   checked when it downloads;
+3. runs `upgrade.sh` with that image, which backs up, migrates and puts everything back on failure
+   ([Compose](#compose) below).
+
+**It never installs a release it cannot verify.** A release with no signature, a signature that
+does not match, a statement for another version, or a missing `openssl` stops it before anything
+is pulled or stopped, and there is no option to skip the check. If you have decided to trust an
+image some other way, `bash upgrade.sh <image>` is still there.
+
+It sends the release source nothing except ordinary requests for public files. It does nothing on
+the newest version, and refuses to go back to an older one: for that, see [Which releases can
+upgrade](#which-releases-can-upgrade). With `TASKMOOR_PULL=never` it stops and points you to the
+air-gap bundle's own steps.
+
+| Exit code | Meaning |
+|---|---|
+| 0 | Updated, or nothing to do, or a dry run that found nothing in the way |
+| 1 | Not updated: the previous version is running on the database as it was. The message says why |
+| 2 | Wrong arguments |
+| 3 | The update and its rollback failed; the previous version is not back and the backend stays stopped (see [If an upgrade fails](#if-an-upgrade-fails)) |
+| 4 | A backend or PostgreSQL did not come back; nothing vouches for what is running. Read the log the message names |
+
+### A frontend on another host
+
+A frontend the backend serves updates with it, and there is nothing more to do. A frontend on a
+separate host keeps its version until you replace it, so `update.sh` ends by naming it and giving
+the steps:
+
+1. Open the new Builder, which you download from the release page.
+2. Load your saved project file.
+3. Upload the new frontend to that host.
+
+See [The Builder's kits](builder-kits.md). Taskmoor stores no hosting login, so this step stays
+yours. Until then, the app itself shows people the notices in [Frontend and backend
+versions](#frontend-and-backend-versions).
+
+## The new-version notice
+
+Once a day, the worker looks at the project's public GitHub releases and remembers the newest
+version. Site administrators then see a notice above every page with the new version and the exact
+command to run. **Not now** hides it on that browser until a newer release. **Settings**, **System
+status** has an **Updates** card with the same command, when the server last looked, and the
+switch. Nobody else sees any of this.
+
+There is no "Update" button in the app, on purpose: it would need the app to control Docker on its
+server.
+
+| Question | Answer |
+|---|---|
+| What is sent? | One ordinary request for a public file, through the [outbound guard](configuration.md). It carries no version, instance id or cookie. GitHub sees what any request shows: your server's address |
+| How do I turn it off? | **Look for new versions once a day** on the **Updates** card, or `TASKMOOR_UPDATE_CHECK=off` in the server's environment, which also locks the switch. Off, no request is made |
+| What if there is no internet, or GitHub is down? | Nothing: a failed look shows nothing, logs only at debug level, and is tried again the next day |
+| Behind a proxy? | The check does not use an outgoing proxy, so it fails quietly. Run `bash update.sh` from a shell with your proxy settings, as `curl` and `wget` use them |
+| Air-gapped? | The bundle's installer turns it off in `.env`. On Helm, set `updateCheck.enabled=false` |
+
+The notice shows `bash update.sh <version>` unless the kit says otherwise: the Helm chart and the
+all-in-one image set their own in `TASKMOOR_UPDATE_COMMAND`, and you can set yours the same way.
+It is text for you to read, and Taskmoor never runs it.
+
+`GET /api/v1/admin/update-check` reads the same facts; `PUT` with `{"enabled": false}` is the
+switch, and the audit log records the change.
+
 ## Upgrading each kit
 
 | Kit | Upgrade |
 |---|---|
-| Compose | `bash upgrade.sh <image>` in the kit's directory |
+| Compose | `bash update.sh`, or `bash upgrade.sh <image>` in the kit's directory |
 | All-in-one | Start the new image on the same volume: it upgrades before it serves |
 | Helm | `helm upgrade` |
 
@@ -52,9 +130,10 @@ environment or in `.env`, and adds the files named in `TASKMOOR_COMPOSE_OVERRIDE
 | Exit code | Meaning |
 |---|---|
 | 0 | Upgraded, or nothing to do; the new image is running |
-| 1 | Not upgraded; the database is as it was and the previous image is running. Also used when Docker is missing or a backend does not become ready in two minutes: the message says which |
+| 1 | Not upgraded; the database is as it was and the previous image is running. Also used when Docker is missing: the message says so |
 | 2 | Wrong arguments |
 | 3 | The upgrade and its rollback failed; the backend stays stopped (see [If an upgrade fails](#if-an-upgrade-fails)) |
+| 4 | A backend did not become ready in two minutes, the backend could not be stopped, or PostgreSQL did not come back: the message says which, and its log says why |
 
 ### All-in-one
 
@@ -197,6 +276,10 @@ and `frontend.recommended`; see [Monitoring and logs](monitoring.md).
 
 - **Exit 1.** The database is as it was. The Compose kit already runs the previous image again;
   with the all-in-one image, start the previous image. Read the report, fix the cause and retry.
+- **Exit 4 (Compose).** A backend or PostgreSQL did not come back. If it was the new image, the
+  upgrade itself succeeded and `.env` names it: read `docker compose logs taskmoor`, fix the cause
+  and run `docker compose up -d`. If you must go back, restore the pre-upgrade backup with the
+  command below and set `TASKMOOR_IMAGE` in `.env` to the previous image.
 - **Exit 3.** Keep every Taskmoor process stopped and restore the pre-upgrade backup the output
   names; the output also prints the exact command. In the Compose kit (add
   `-f docker-compose.external.yml` for an external database):

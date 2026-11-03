@@ -10,6 +10,13 @@ Jira's API and query language where people and tools expect them, and an importe
 Data Center or Cloud instance across. 1.0 is a long-term-support release: its 1.0.x line gets
 security fixes for 24 months.
 
+### Updating
+- `bash update.sh` in the Compose kits finds the newest release, checks its signature and upgrades
+  with a backup and a rollback; it never installs a release it cannot verify.
+- Site administrators see a notice with the new version and the exact command. The server looks at
+  the public releases once a day, says nothing about the install, stays quiet on failure, and can
+  be turned off; the air-gap bundle has it off.
+
 ### Work tracking
 - Tracks, ticket types and hierarchy levels; tickets with change history, rich text, comments
   (with role and group visibility, reactions, edit history), attachments, links, followers,

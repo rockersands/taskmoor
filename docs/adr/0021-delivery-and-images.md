@@ -41,5 +41,9 @@ installs from a signed bundle (OPS-005); Docker, Podman and Kubernetes on amd64 
 
 ## Consequences
 
+The bundle's "no update check" holds: its installer writes `TASKMOOR_UPDATE_CHECK=off`. Other
+installs look at the public releases once a day, with an off switch, by the user's decision of
+2026-11-03 (ADR-117).
+
 The nightly install matrix (M0-028) runs the kits on Ubuntu 22.04 and 24.04, Debian 12 and
 RHEL 9 on amd64 and arm64, and the no-egress test proves the air-gap claim on every release.

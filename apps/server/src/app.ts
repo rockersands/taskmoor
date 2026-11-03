@@ -102,6 +102,7 @@ import { registerTrackSummaryRoutes } from './routes/track-summary';
 import { registerTrackRoutes, type TrackRouteHooks } from './routes/tracks';
 import { registerTrashRoutes } from './routes/trash';
 import { registerTwoFactorRoutes } from './routes/two-factor';
+import { registerUpdateCheckRoutes } from './routes/update-check';
 import { registerUserRoutes } from './routes/users';
 import { registerVisibilityRoutes } from './routes/visibility';
 import { registerWebhookRoutes } from './routes/webhooks';
@@ -152,6 +153,8 @@ export interface AppDeps {
   publicUrl?: string;
   /** Serve the Jira-compatible API under /rest (M1-069; on unless false). */
   jiraCompat?: boolean;
+  /** The new-version notice (OPS-026, ADR-117): TASKMOOR_UPDATE_CHECK and its command. */
+  updateCheck?: { environmentOff: boolean; command?: string | undefined };
   /**
    * Frontends on other origins (M1-107, ADR-080): CORS, WebSockets and OAuth sign-in are
    * open to these exact origins besides this instance's own.
@@ -593,6 +596,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       servesFrontend: roles.includes('web') && deps.webDir !== undefined,
     });
     registerBackupRoutes(app, db);
+    // What the worker's look at the public releases found, for site administrators (OPS-026).
+    registerUpdateCheckRoutes(app, db, {
+      version: deps.version,
+      environmentOff: deps.updateCheck?.environmentOff ?? false,
+      command: deps.updateCheck?.command,
+    });
     // AI provider settings and sealed credentials (M1-075; IAM-020; ADR-098), with spend
     // limits, the usage dashboard, the AI audit log and data controls (M1-077; ADR-100).
     const aiKeys = deps.aiKeys ?? aiKeyRing({ peppers: deps.peppers });

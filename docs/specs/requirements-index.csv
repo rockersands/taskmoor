@@ -333,6 +333,8 @@ OPS-021,OPS,Admin insights and change control,M2,Must,"Jira Premium (admin insig
 OPS-022,OPS,Multiple workspaces,M2,Should,Jira Enterprise (up to 150 sites)
 OPS-023,OPS,Single-binary backend,M2,Should,User requirement (Builder)
 OPS-024,OPS,Compliance builds,M4,Must,Report recommendation (regulated buyers)
+OPS-025,OPS,One update command,M1,Must,User requirement (2026-11-03)
+OPS-026,OPS,New-version notice for administrators,M1,Must,User requirement (2026-11-03)
 NFR-001,NFR,Performance budgets,M1,Must,exceeds Jira (slowness is the top complaint)
 NFR-002,NFR,Scale targets,M1,Must,Jira Cloud and DC guardrails
 NFR-003,NFR,Concurrency,M1,Must,Jira DC OpenSearch benchmark (500 ms at about 210 users)

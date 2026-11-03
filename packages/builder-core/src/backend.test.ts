@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { backendKit, DEFAULT_IMAGE, POSTGRES_IMAGE } from './backend';
 import { validateInputs } from './inputs';
@@ -29,6 +30,31 @@ async function kit(raw: Record<string, unknown> = {}) {
 }
 
 describe('the backend kit (M1-110)', () => {
+  const repoFile = (path: string) =>
+    readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
+
+  it("[OPS-025] carries the Compose kit's own update scripts and the release key, byte for byte", async () => {
+    const { files } = await kit();
+    const stale = 'run: node tools/compose/kit-scripts.mjs';
+    expect(files['update.sh'], stale).toBe(repoFile('deploy/compose/update.sh'));
+    expect(files['upgrade.sh'], stale).toBe(repoFile('deploy/compose/upgrade.sh'));
+    expect(files['taskmoor-release.pub'], stale).toBe(
+      repoFile('tools/airgap/taskmoor-release.pub'),
+    );
+    expect(repoFile('deploy/compose/taskmoor-release.pub')).toBe(
+      repoFile('tools/airgap/taskmoor-release.pub'),
+    );
+  });
+
+  it('[OPS-025] the README tells a separate frontend what an update leaves to them, and a served one nothing', async () => {
+    const separate = await kit();
+    expect(separate.files['README.md']).toContain('bash update.sh');
+    expect(separate.files['README.md']).toContain('load your saved project file');
+    const served = await kit({ frontendUrl: 'https://api.acme.example/' });
+    expect(served.files['README.md']).toContain('bash update.sh');
+    expect(served.files['README.md']).not.toContain('load your saved project file');
+  });
+
   it('[OPS-015] brings Compose with PostgreSQL, the pinned backend and Caddy, the installers and the README', async () => {
     const { files, kits } = await kit();
     expect(Object.keys(files).sort()).toEqual([
@@ -39,6 +65,9 @@ describe('the backend kit (M1-110)', () => {
       'docker-compose.yml',
       'install.ps1',
       'install.sh',
+      'taskmoor-release.pub',
+      'update.sh',
+      'upgrade.sh',
     ]);
     // (3) The pinned image is the version the manifest records.
     expect(files[ENV_FILE]).toContain(`TASKMOOR_IMAGE=${DEFAULT_IMAGE}:1.4.2\n`);
