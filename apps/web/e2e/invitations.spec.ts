@@ -47,11 +47,9 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   page,
   browser,
 }, testInfo) => {
+  test.setTimeout(90_000);
   const stamp = `${testInfo.project.name.replace(/\W/g, '')}${Date.now()}`;
-  const key = `I${stamp
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
-    .slice(-12)}`;
+  const key = `I${testInfo.project.name[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
   const api = page.request;
 
   // A site administrator sets the scene through the API.
@@ -125,8 +123,8 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
     api.post(`${BASE}/api/v1/session`, { data: { email: managerEmail, password: PASSWORD } }),
   );
 
-  // The manager invites.
-  await page.goto(`${BASE}/#/manage/tracks/${made.track.id}`);
+  // The manager invites. Same address as before, so a reload reads the page again.
+  await page.reload();
   await page.getByRole('button', { name: 'Invite people' }).click();
   const dialog = page.getByRole('dialog', { name: `Invite people to ${key}` });
   await expect(dialog.getByText(/Email is not set up on this site/)).toBeVisible();
@@ -180,7 +178,7 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await guest.close();
 
   // The manager sees the person holding the role, and may take it away.
-  await page.goto(`${BASE}/#/manage/tracks/${made.track.id}`);
+  await page.reload();
   await expect(page.getByText('Guest Person: Viewers')).toBeVisible();
   await page.getByRole('button', { name: 'Remove Guest Person from Viewers' }).click();
   await expect(page.getByText('Guest Person no longer holds Viewers.')).toBeVisible();

@@ -76,6 +76,7 @@ const anonymous = (children: React.ReactNode) => (
 );
 const invited = {
   beforeEach: () => {
+    window.sessionStorage.clear();
     window.location.hash = '#/invite?token=story-token';
   },
 };

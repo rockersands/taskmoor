@@ -14,14 +14,41 @@ import { SecondFactorStep } from '../session/SecondFactorStep';
 import type { SecondFactorMethod, SessionUser } from '../session/SessionProvider';
 import { useSession } from '../session/SessionProvider';
 import { SignInForm } from '../session/SignInForm';
-import { hashParam } from '../sso/client';
+import { hashParam, type SignInSsoClient } from '../sso/client';
 import { type InvitationClient, type InvitationLink, invitationClient } from './client';
+
+/**
+ * A single sign-on leaves this site and comes back. The token must not travel in the address the
+ * sign-in starts with, where a server or proxy log could keep it (the same reason it goes in POST
+ * bodies), so it waits in this tab's storage and the sign-in comes back to the bare route.
+ */
+const TOKEN_KEY = 'taskmoor.invitation';
+function rememberToken(token: string | null): string | null {
+  try {
+    if (token) {
+      window.sessionStorage.setItem(TOKEN_KEY, token);
+      return token;
+    }
+    return window.sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    return token;
+  }
+}
+function forgetToken() {
+  try {
+    window.sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // Nothing was kept, then.
+  }
+}
 
 export interface InvitationPageProps {
   /** Stories and tests pass their own endpoints; the page calls the backend otherwise. */
   client?: InvitationClient;
   /** Where the person lands; the page navigates there otherwise. */
   onJoined?: (trackKey: string) => void;
+  /** Stories and tests pass their own single sign-on endpoints. */
+  ssoClient?: SignInSsoClient;
 }
 
 type State =
@@ -43,11 +70,15 @@ type Step =
  * enabled (a password, or a provider that vouches for this address). Choosing a password leads
  * straight into the ordinary sign-in, which asks for a second factor where the site requires one.
  */
-export function InvitationPage({ client = invitationClient, onJoined }: InvitationPageProps) {
+export function InvitationPage({
+  client = invitationClient,
+  onJoined,
+  ssoClient,
+}: InvitationPageProps) {
   const t = useT();
   const { session, signIn, signOut, setUser } = useSession();
   const id = useId();
-  const token = passwordTokenFromHash(currentRoute());
+  const [token] = useState(() => rememberToken(passwordTokenFromHash(currentRoute())));
   const [state, setState] = useState<State>(
     token ? { status: 'checking' } : { status: 'no-token' },
   );
@@ -80,6 +111,7 @@ export function InvitationPage({ client = invitationClient, onJoined }: Invitati
             ? { status: 'invalid' }
             : { status: 'unavailable', error },
         );
+        if (error instanceof ApiError && error.status === 404) forgetToken();
       },
     );
     return () => {
@@ -94,6 +126,7 @@ export function InvitationPage({ client = invitationClient, onJoined }: Invitati
 
   const land = useCallback(
     (key: string) => {
+      forgetToken();
       if (onJoined) onJoined(key);
       else navigate(`#/tracks/${encodeURIComponent(key)}`);
     },
@@ -367,7 +400,11 @@ export function InvitationPage({ client = invitationClient, onJoined }: Invitati
           </button>
         </form>
       ) : (
-        <SignInForm initialEmail={link.email} />
+        <SignInForm
+          initialEmail={link.email}
+          ssoReturnRoute="#/invite"
+          {...(ssoClient ? { ssoClient } : {})}
+        />
       )}
     </main>
   );

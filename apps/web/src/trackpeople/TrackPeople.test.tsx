@@ -255,6 +255,7 @@ describe('the page an invitation leads to (IAM-027, IAM-029)', () => {
   });
 
   beforeEach(() => {
+    window.sessionStorage.clear();
     window.location.hash = '#/invite?token=the-token';
   });
   afterEach(() => {
@@ -362,6 +363,46 @@ describe('the page an invitation leads to (IAM-027, IAM-029)', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     await waitFor(() => expect(onJoined).toHaveBeenCalledWith('SHOP'));
     expect(client.calls).toEqual([{ action: 'accept', args: ['the-token'] }]);
+  });
+
+  it('[IAM-029] a single sign-on starts without the token in its address, and the page finds it again', async () => {
+    window.location.hash = '#/invite?token=the-token&account=1';
+    const user = userEvent.setup();
+    const go = vi.fn();
+    const ssoClient = {
+      providers: async () => [{ id: 1, name: 'Staff' }],
+      discover: async () => ({ provider: null, password: true }),
+      go,
+    };
+    const client = fakeInvitationClient();
+    const inspect = vi.spyOn(client, 'inspect');
+    const { unmount } = render(
+      <I18nProvider locale="en">
+        <SessionProvider session={{ status: 'anonymous' }}>
+          <InvitationPage client={client} ssoClient={ssoClient} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: /Staff/ }));
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(String(go.mock.calls[0]?.[0])).not.toContain('the-token');
+    expect(decodeURIComponent(String(go.mock.calls[0]?.[0]))).toContain('#/invite');
+    unmount();
+
+    // Back from the provider, signed in, at the bare route.
+    window.location.hash = '#/invite';
+    const onJoined = vi.fn();
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={{ status: 'signed-in', user: signedIn(LINK.email) }}>
+          <InvitationPage client={client} onJoined={onJoined} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Join SHOP' }));
+    await waitFor(() => expect(onJoined).toHaveBeenCalledWith('SHOP'));
+    expect(inspect).toHaveBeenLastCalledWith('the-token');
+    expect(window.sessionStorage.getItem('taskmoor.invitation')).toBe(null);
   });
 
   it('[IAM-027] someone already signed in joins with one click', async () => {

@@ -30,6 +30,8 @@ export interface SignInFormProps {
   ssoClient?: SignInSsoClient;
   /** The address to start from, where the page already knows it (an invitation's). */
   initialEmail?: string;
+  /** Where a single sign-on comes back to, when the current address must not travel. */
+  ssoReturnRoute?: string;
 }
 
 const normalized = (email: string) => email.trim().toLowerCase();
@@ -46,7 +48,11 @@ const looksLikeEmail = (email: string) => /^[^@\s]+@[^@\s]+$/.test(email);
  * a recovery code, or the authenticator-app setup a two-factor policy requires. Going back
  * keeps the email.
  */
-export function SignInForm({ ssoClient = signInSsoClient, initialEmail = '' }: SignInFormProps) {
+export function SignInForm({
+  ssoClient = signInSsoClient,
+  initialEmail = '',
+  ssoReturnRoute,
+}: SignInFormProps) {
   const t = useT();
   const { signIn, setUser } = useSession();
   const id = useId();
@@ -131,7 +137,7 @@ export function SignInForm({ ssoClient = signInSsoClient, initialEmail = '' }: S
   const others = providers.filter((p) => p.id !== organisation?.id);
 
   const start = (provider: SsoProviderSummary) =>
-    ssoClient.go(startUrl(provider, returnTo(currentRoute(), appBase())));
+    ssoClient.go(startUrl(provider, returnTo(ssoReturnRoute ?? currentRoute(), appBase())));
 
   const promptFor = (provider: SsoProviderSummary) => {
     const answer: Discovery = { provider, password: false };

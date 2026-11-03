@@ -1,7 +1,7 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx
+sources: apps/server/src/authz/track-admins.ts, docs/adr/0118-track-invitations.md, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx
 accessed: 2026-10-30
 attestation: own-words
 ---
@@ -71,12 +71,17 @@ holds them. New installs have three:
 | **Members** | Do the work: create, edit, move and close tickets |
 | **Viewers** | Read and comment |
 
+A role that holds **Run the track** in a track's policy runs that track. Giving or taking it needs
+**Give the role that runs the track**, which goes with **Run the track** by default and which a
+policy can take away; see [Inviting people and running a track](invitations.md).
+
 Under **Roles**, **Add a role** asks for a **Role name** and **What the role does**. **Change**
 renames, **Delete** removes a role no policy uses.
 
 To put people in a role, open **Settings** > **Tracks**, **Manage** the track, choose the
 **Role**, then **Give the role to a person** or **Give the role to a group**. Anyone with
-**Run the track** in that track may do this.
+**Run the track** in that track may do this, for the roles they may give, from **Settings** >
+**Tracks you run**, without being a site administrator.
 
 ## Access policies
 
@@ -121,7 +126,7 @@ site or configuration administrator.
 
 | Group | Permissions |
 |---|---|
-| Administration | **Run the track**, **Change layouts**, **Edit workflows** |
+| Administration | **Run the track**, **Change layouts**, **Edit workflows**, **Give the role that runs the track**, **Invite people** |
 | Track | **See the track**, **Manage sprints**, **Answer service requests**, **See reports**, **See development links**, **See the workflow** |
 | Tickets | **Archive tickets**, **Be given tickets**, **Give tickets to people**, **Close tickets**, **Create tickets**, **Delete tickets**, **Edit tickets**, **Link tickets**, **Change the requester**, **Move tickets**, **Set the close reason**, **Set due dates**, **Set visibility levels**, **Move tickets through the workflow**, **Restore archived tickets**, **Send tickets by email** |
 | Followers | **Manage followers**, **See voters and followers** |
@@ -133,7 +138,8 @@ In the default policy, **Viewers** see the track, its reports, its workflow, vot
 followers, and add, edit and delete their own comments. **Members** get the everyday work on
 top. **Administrators** get what members get plus the administration permissions, deleting,
 archiving and restoring tickets, and changing anyone's comments, attachments and time entries.
-Nobody gets **Answer service requests** by default. The track owner may see and run their
+Nobody gets **Answer service requests** or **Invite people** by default; the second is off until
+a site administrator gives it. The track owner may see and run their
 track.
 
 ## Visibility levels

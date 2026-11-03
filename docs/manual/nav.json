@@ -32,6 +32,7 @@
       "title": "People and access",
       "pages": [
         "admin/people-and-groups.md",
+        "admin/invitations.md",
         "admin/permissions.md",
         "admin/sso.md",
         "admin/ldap.md",

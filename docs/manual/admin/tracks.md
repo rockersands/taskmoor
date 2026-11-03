@@ -146,6 +146,10 @@ track's access policy; see [permissions and access](permissions.md). Through the
 administrators read `GET /api/v1/tracks/:id/role-actors` and change roles with
 `PUT` or `DELETE /api/v1/tracks/:id/roles/:roleId/users/:userId` (or `groups/:groupId`).
 
+A track's administrators manage its roles from **Settings** > **Tracks you run**, and may be allowed
+to invite people; see [Inviting people and running a track](invitations.md). A role that runs the
+track needs a further permission, and the track's last administrator cannot be removed.
+
 ### Configuration sets
 
 A track names the configuration sets it uses. `null` means the site's default.

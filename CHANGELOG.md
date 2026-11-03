@@ -40,6 +40,9 @@ security fixes for 24 months.
   digests; live updates on every open screen; works offline and catches up.
 
 ### Identity and administration
+- Invitations into a track by email or copied link, with a set role, off until a site
+  administrator turns them on; web pages for the people who run a track; a removable permission
+  for appointing a track's administrators.
 - Passwords (Argon2id, breached-password check), two-factor sign-in (required for site
   administrators by default), OpenID Connect, SAML 2.0, LDAP and Active Directory, SCIM 2.0.
 - Roles, access policies and an explainer for who may do what; an audit log; API tokens and
