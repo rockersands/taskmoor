@@ -252,6 +252,19 @@ export async function compileQuery(
 }
 
 /**
+ * A query's condition alone on the ticket `k`, without the viewer's base: for a condition ANDed
+ * to one `compileQuery` already gave (a plan's filters, ADR-122). Throws as `compileQuery` does.
+ */
+export async function compileCondition(
+  db: Db,
+  scope: Scope,
+  text: string,
+  now: Date,
+): Promise<RawBuilder<boolean>> {
+  return compileCond(await bindCondition(db, scope, text, now), compileContext(scope));
+}
+
+/**
  * The board's conditions for a viewer. A bad filter query or sub-filter throws (the board
  * cannot be shown); a lane or colour query the viewer's catalogue cannot read matches nothing
  * and adds a warning, so the rest of the board still shows.

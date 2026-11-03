@@ -46,8 +46,10 @@ export const Quarters: Story = {
 const arrival = { at: 0 };
 
 /**
- * The render budget (M1-048): 2,000 tickets, every one dated, drawn within 1.5 s of their
- * arrival. Axe is off here only: it would time 2,000 rows' worth of checks, not the timeline.
+ * The render budget (M1-048): 2,000 tickets, every one dated, on screen within 1.5 s of their
+ * arrival. Past 200 rows only those in view are drawn (ADR-122), so the grid holds the height of
+ * all 2,000 and the page far fewer rows. Axe is off here only: it would time the checks, not the
+ * timeline.
  */
 export const TwoThousandTickets: Story = {
   args: {
@@ -66,10 +68,13 @@ export const TwoThousandTickets: Story = {
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvasElement }) => {
     await waitFor(
-      () => expect(canvasElement.querySelectorAll('.timeline-row')).toHaveLength(2000),
+      () => expect(canvasElement.querySelectorAll('.timeline-row').length).toBeGreaterThan(10),
       { timeout: 10_000, interval: 10 },
     );
     const took = performance.now() - arrival.at;
+    const grid = canvasElement.querySelector<HTMLElement>('.timeline-grid');
+    await expect(grid?.style.height).toBe(`${2000 * 44}px`);
+    await expect(canvasElement.querySelectorAll('.timeline-row').length).toBeLessThan(200);
     await expectWithinBudget(took, 1500, '2,000 timeline rows on screen (ms)');
   },
 };

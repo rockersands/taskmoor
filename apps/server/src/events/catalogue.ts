@@ -1042,6 +1042,18 @@ export const EVENT_TYPES = {
     subject: 'workspace',
     payload: z.object({ dashboardId: id.nullable(), previousId: id.nullable() }),
   },
+  // Multi-track plans (ADR-122): sources and share scopes as keys (`track:12`,
+  // `saved_search:3`, `any_user`), never the tickets they find.
+  'plan.created': {
+    subject: 'plan',
+    payload: z.object({
+      name: z.string(),
+      sources: z.array(z.string()),
+      shares: z.array(z.string()),
+    }),
+  },
+  'plan.updated': { subject: 'plan', payload: z.object({ changes }) },
+  'plan.deleted': { subject: 'plan', payload: z.object({ name: z.string() }) },
   /**
    * Along a workflow transition (M1-024): the workflow version that ran it, the event it fired
    * (generic or custom, WF-006) and how many webhook effects it queued; webhook addresses stay

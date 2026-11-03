@@ -1104,6 +1104,43 @@ export interface DashboardShareTable {
   role_id: number | null;
 }
 
+/** A Multi-track plan (PLN-001; ADR-122): a view over tracks and saved searches; no tickets. */
+export interface PlanTable {
+  id: Generated<number>;
+  workspace_id: number;
+  owner_id: number;
+  name: string;
+  description: Generated<string>;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+export type PlanSourceKind = 'track' | 'saved_search';
+
+/** One source of a plan, in the order chosen: a track or a saved search (never a board). */
+export interface PlanSourceTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  kind: PlanSourceKind;
+  track_id: number | null;
+  saved_search_id: number | null;
+  position: number;
+}
+
+/** Who besides its owner sees a plan: a dashboard's scopes except `public` (ADR-122). */
+export interface PlanShareTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  scope: Exclude<SavedSearchShareScope, 'public'>;
+  user_id: number | null;
+  group_id: number | null;
+  track_id: number | null;
+  role_id: number | null;
+}
+
 /** Who besides its owner sees a saved search; no row means private (QRY-011). */
 export interface SavedSearchShareTable {
   id: Generated<number>;
@@ -2805,6 +2842,9 @@ export interface Database {
   track_group_track: TrackGroupTrackTable;
   track_group_share: TrackGroupShareTable;
   track_group_access: TrackGroupAccessTable;
+  plan: PlanTable;
+  plan_source: PlanSourceTable;
+  plan_share: PlanShareTable;
   saved_search_star: SavedSearchStarTable;
   saved_search_subscription: SavedSearchSubscriptionTable;
   ticket_vote: TicketPersonTable;

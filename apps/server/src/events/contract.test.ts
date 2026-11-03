@@ -3524,6 +3524,35 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'dashboard.deleted',
       run: () => admin({ method: 'DELETE', url: `/api/v1/dashboards/${state.dashboard}` }),
     },
+    // Multi-track plans (ADR-122): made over a track, changed and shared, removed.
+    {
+      route: 'POST /api/v1/plans',
+      expect: 'plan.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/plans',
+          payload: { name: 'Contract plan', sources: [{ kind: 'track', trackId: state.track }] },
+        });
+        state.plan = res.json().plan?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/plans/:id',
+      expect: 'plan.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}`,
+          payload: { name: 'Contract plan, shared', shares: [{ scope: 'any_user' }] },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/plans/:id',
+      expect: 'plan.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/plans/${state.plan}` }),
+    },
     {
       route: 'DELETE /api/v1/workflows/:id',
       expect: 'workflow.deleted',

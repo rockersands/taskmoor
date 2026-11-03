@@ -206,7 +206,7 @@ AI-023,AI,Virtual service agent,M3,Must,JSM virtual service agent; exceeds Jira 
 AI-024,AI,Operations AI,M3,Must,JSM Premium AIOps
 AI-025,AI,Custom agents and scheduled agent jobs,M3,Should,Rovo Studio; Linear Loops
 AI-026,AI,Discovery and customer-service AI,M4,Must,JPD; JSM customer service
-PLN-001,PLN,Roadmaps,M2,Must,"Jira Premium; exceeds Jira (10,000 items, 200 spaces)"
+PLN-001,PLN,Roadmaps,M1,Must,"Jira Premium; exceeds Jira (10,000 items, 200 spaces)"
 PLN-002,PLN,Sandbox and selective commit,M2,Must,Jira Premium
 PLN-003,PLN,Scenarios,M2,Must,Jira Premium
 PLN-004,PLN,Auto-scheduler,M2,Must,Jira Premium
@@ -217,6 +217,7 @@ PLN-008,PLN,Program board,M2,Must,"Jira Premium; exceeds Jira (2 boards, not rea
 PLN-009,PLN,Individual capacity,M2,Must,Jira Premium; exceeds Jira (fixed 40-hour week)
 PLN-010,PLN,Hierarchy grid,M2,Must,Structure app; JXL app
 PLN-011,PLN,Gantt baselines and resource levelling,M4,Should,OpenProject; BigPicture app
+PLN-012,PLN,"Plan views, grouping, filters and rescheduling",M1,Must,Jira Premium; exceeds Jira (one value per filter at first)
 TIM-001,TIM,Estimates and time entries,M1,Must,Jira Free (needed by the M1 importer)
 TIM-002,TIM,Timers,M2,Should,YouTrack; Jira Free events
 TIM-003,TIM,Timesheets and approvals,M2,Must,Tempo Timesheets app

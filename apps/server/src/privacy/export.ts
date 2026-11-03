@@ -324,7 +324,7 @@ export async function writePersonalData(
     .where('user_id', '=', userId)
     .orderBy('section')
     .execute();
-  const [preference, notificationSettings, properties, savedSearches] = await Promise.all([
+  const [preference, notificationSettings, properties, savedSearches, plans] = await Promise.all([
     db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
     db
       .selectFrom('notification_preference')
@@ -342,6 +342,14 @@ export async function writePersonalData(
     db
       .selectFrom('saved_search')
       .select(['name', 'description', 'query', 'created_at'])
+      .where('workspace_id', '=', ws)
+      .where('owner_id', '=', userId)
+      .orderBy('id')
+      .execute(),
+    // Multi-track plans they own (ADR-122): what they named them, not the tickets they find.
+    db
+      .selectFrom('plan')
+      .select(['name', 'description', 'created_at'])
       .where('workspace_id', '=', ws)
       .where('owner_id', '=', userId)
       .orderBy('id')
@@ -373,6 +381,11 @@ export async function writePersonalData(
         description: s.description,
         query: s.query,
         createdAt: iso(s.created_at),
+      })),
+      plans: plans.map((p) => ({
+        name: p.name,
+        description: p.description,
+        createdAt: iso(p.created_at),
       })),
     }),
   );

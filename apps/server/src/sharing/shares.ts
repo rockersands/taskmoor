@@ -5,10 +5,10 @@ import { z } from 'zod';
 import { shareReaches } from '../search/saved';
 
 /**
- * Shares of saved searches (M1-063; ADR-053) and dashboards (M1-064; ADR-060): one row per
- * scope (a person, a group, a track with an optional role, every signed-in person, the public),
- * no row for private. Both kinds keep them in a table of the same shape; this module reads,
- * checks and writes either.
+ * Shares of saved searches (M1-063; ADR-053), dashboards (M1-064; ADR-060) and Multi-track plans
+ * (ADR-122): one row per scope (a person, a group, a track with an optional role, every
+ * signed-in person, the public), no row for private. Each kind keeps them in a table of the same
+ * shape; this module reads, checks and writes any of them.
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -50,9 +50,9 @@ export const shareKey = (s: ShareInput | ShareView) =>
 
 /** Where a kind keeps its shares. */
 export interface ShareTable {
-  table: 'saved_search_share' | 'dashboard_share';
+  table: 'saved_search_share' | 'dashboard_share' | 'plan_share';
   /** The column naming what is shared. */
-  owner: 'saved_search_id' | 'dashboard_id';
+  owner: 'saved_search_id' | 'dashboard_id' | 'plan_id';
 }
 
 export const SAVED_SEARCH_SHARES: ShareTable = {
@@ -60,6 +60,8 @@ export const SAVED_SEARCH_SHARES: ShareTable = {
   owner: 'saved_search_id',
 };
 export const DASHBOARD_SHARES: ShareTable = { table: 'dashboard_share', owner: 'dashboard_id' };
+/** Multi-track plans (ADR-122): the same scopes except `public`. */
+export const PLAN_SHARES: ShareTable = { table: 'plan_share', owner: 'plan_id' };
 
 /** Whether a share of the thing with id `idSql` reaches the person (null: anonymous). */
 export function sharedWith(

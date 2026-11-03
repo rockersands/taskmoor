@@ -38,11 +38,12 @@ describe('command palette', () => {
     const dialog = screen.getByRole('dialog', { name: 'Command palette' });
     const input = within(dialog).getByRole('combobox');
     expect(input).toHaveFocus();
-    expect(within(dialog).getAllByRole('option')).toHaveLength(6);
+    expect(within(dialog).getAllByRole('option')).toHaveLength(7);
 
     await user.keyboard('trac');
     const options = within(dialog).getAllByRole('option');
-    expect(options.map((o) => o.textContent)).toEqual(['Tracks']);
+    // Multi-track (ADR-122) matches too, after the label that starts with the letters typed.
+    expect(options.map((o) => o.textContent)).toEqual(['Tracks', 'Multi-track']);
     expect(options[0]).toHaveAttribute('aria-selected', 'true');
     expect(input).toHaveAttribute('aria-activedescendant', options[0]?.id);
 

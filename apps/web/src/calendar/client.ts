@@ -1,4 +1,5 @@
 import { ApiError, api } from '../api/client';
+import { type Refusal, refusalOf } from '../timeline/client';
 
 /** A ticket with a start or due day in the range shown (M1-049; AGL-017). */
 export interface CalendarTicket {
@@ -20,7 +21,7 @@ export interface CalendarData {
   truncated: boolean;
 }
 
-export type Moved = { ok: true } | { ok: false; code: string };
+export type Moved = { ok: true } | Refusal;
 
 export interface CalendarClient {
   calendar(trackKey: string, from: string, to: string): Promise<CalendarData>;
@@ -42,7 +43,7 @@ export const calendarClient: CalendarClient = {
       return { ok: true };
     } catch (error) {
       if (!(error instanceof ApiError)) throw error;
-      return { ok: false, code: error.code ?? String(error.status) };
+      return refusalOf(error);
     }
   },
 };

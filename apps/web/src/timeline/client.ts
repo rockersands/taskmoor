@@ -30,7 +30,29 @@ export interface Timeline {
   truncated: boolean;
 }
 
-export type Rescheduled = { ok: true } | { ok: false; code: string };
+/**
+ * Why the ticket route refused new dates: its code, the permission it names, and whether a status
+ * or field lock refused them (WF-007), which a missing permission does not.
+ */
+export interface Refusal {
+  ok: false;
+  code: string;
+  permission?: string;
+  locked?: boolean;
+}
+
+export type Rescheduled = { ok: true } | Refusal;
+
+/** A refusal as the ticket route's answer says it. */
+export function refusalOf(error: ApiError): Refusal {
+  const body = (error.body ?? {}) as { permission?: unknown; locks?: unknown };
+  return {
+    ok: false,
+    code: error.code ?? String(error.status),
+    ...(typeof body.permission === 'string' ? { permission: body.permission } : {}),
+    ...(Array.isArray(body.locks) ? { locked: true } : {}),
+  };
+}
 
 export interface TimelineClient {
   timeline(trackKey: string): Promise<Timeline>;
@@ -49,7 +71,7 @@ export const timelineClient: TimelineClient = {
       return { ok: true };
     } catch (error) {
       if (!(error instanceof ApiError)) throw error;
-      return { ok: false, code: error.code ?? String(error.status) };
+      return refusalOf(error);
     }
   },
 };
