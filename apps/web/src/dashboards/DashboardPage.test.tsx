@@ -132,6 +132,19 @@ describe('a dashboard (M1-064)', () => {
     expect(screen.getByRole('figure', { name: 'Time to close' })).toBeVisible();
     expect(screen.getByRole('figure', { name: 'Average time in status' })).toBeVisible();
     expect(screen.getByRole('figure', { name: 'Recently created' })).toBeVisible();
+    expect(screen.getByRole('figure', { name: 'Tickets by date' })).toBeVisible();
+    const grouped = within(widget('Grouped tickets'));
+    expect(grouped.getByText('1 of 3 done')).toBeVisible();
+    expect(grouped.getByText('2 tickets of 3')).toBeVisible();
+    const work = within(widget('Workload')).getByRole('table');
+    expect(within(work).getAllByRole('row')[1]?.textContent).toBe('Ada Lovelace414h1');
+    const time = within(widget('Time tracking'));
+    // 40h estimated, 31h spent and 12h left: 3h over the estimate.
+    expect(time.getByText('3h over the estimate')).toBeVisible();
+    expect(time.getByRole('link', { name: 'SHOP-12' })).toHaveAttribute(
+      'href',
+      '#/tickets/SHOP-12',
+    );
   });
 
   it('[RPT-005] says why a widget shows nothing', async () => {
@@ -280,6 +293,7 @@ describe('a dashboard (M1-064)', () => {
       'Show the order total',
       'Send the receipt',
       'Save the address',
+      'Save the card',
       'Active',
       'New',
       'Closed',

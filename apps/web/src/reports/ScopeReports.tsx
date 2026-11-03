@@ -5,10 +5,15 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { estimateText } from '../sprints/client';
 import { ColumnChart } from './ColumnChart';
-import type { ReleaseReport, ReportClient, ScopeBurndown } from './client';
+import type { OutcomeReport, ReleaseReport, ReportClient, ScopeBurndown } from './client';
 import { LineChart } from './LineChart';
 
-export const SCOPE_REPORTS = ['release-burndown', 'outcome-burndown', 'release-report'] as const;
+export const SCOPE_REPORTS = [
+  'release-burndown',
+  'outcome-burndown',
+  'release-report',
+  'outcome-report',
+] as const;
 export type ScopeReportKind = (typeof SCOPE_REPORTS)[number];
 
 export interface ScopeReportProps {
@@ -20,8 +25,10 @@ export interface ScopeReportProps {
 /**
  * A Scrum board's release and outcome reports (M1-062; RPT-001): the release or outcome burndown
  * (the remaining work at each sprint, completed and added work per sprint, and a forecast at the
- * board's velocity) and the release report (scope and completed work by day, the planned date
- * and a forecast at the recent pace). Values follow the board's estimation statistic.
+ * board's velocity), the release report (scope and completed work by day, the planned date
+ * and a forecast at the recent pace) and the outcome report (the same for an outcome, with its
+ * tickets done, still open and without an estimate). Values follow the board's estimation
+ * statistic.
  */
 export function ScopeReport({ board, kind, client }: ScopeReportProps) {
   const t = useT();
@@ -34,8 +41,9 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
   const [outcome, setOutcome] = useState<string | null>(null);
   const [burndown, setBurndown] = useState<ScopeBurndown | null>(null);
   const [report, setReport] = useState<ReleaseReport | null>(null);
+  const [outcomeReport, setOutcomeReport] = useState<OutcomeReport | null>(null);
   const [failed, setFailed] = useState(false);
-  const forRelease = kind !== 'outcome-burndown';
+  const forRelease = kind !== 'outcome-burndown' && kind !== 'outcome-report';
 
   useEffect(() => {
     if (!forRelease) return;
@@ -62,12 +70,17 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
     setFailed(false);
     setBurndown(null);
     setReport(null);
+    setOutcomeReport(null);
     const fail = () => {
       if (live) setFailed(true);
     };
     if (kind === 'outcome-burndown') {
       if (outcome !== null) {
         client.outcomeBurndown(board.id, outcome).then((r) => live && setBurndown(r), fail);
+      }
+    } else if (kind === 'outcome-report') {
+      if (outcome !== null) {
+        client.outcomeReport(board.id, outcome).then((r) => live && setOutcomeReport(r), fail);
       }
     } else if (release !== null) {
       if (kind === 'release-burndown') {
@@ -81,7 +94,11 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
     };
   }, [client, board.id, kind, release, outcome]);
 
-  const statistic = burndown?.statistic.statistic ?? report?.statistic.statistic ?? 'ticketCount';
+  const statistic =
+    burndown?.statistic.statistic ??
+    report?.statistic.statistic ??
+    outcomeReport?.statistic.statistic ??
+    'ticketCount';
   const time = statistic === 'originalEstimate';
   const value = (v: number) => estimateText(t, v, statistic);
   const day = (date: string) =>
@@ -238,61 +255,127 @@ export function ScopeReport({ board, kind, client }: ScopeReportProps) {
     );
   };
 
-  const releaseView = (r: ReleaseReport) => {
-    const last = r.days[r.days.length - 1];
+  const byDay = (days: ReleaseReport['days']) => {
+    const last = days[days.length - 1];
     return (
-      <>
-        <p className="report-note">
-          {r.release.shippedAt
-            ? t('reports.release.shipped', { date: day(r.release.shippedAt.slice(0, 10)) })
-            : r.release.releaseDate
-              ? t('reports.release.planned', { date: day(r.release.releaseDate) })
-              : t('reports.release.unplanned')}{' '}
-          {r.forecast
-            ? t('reports.release.forecast', { date: day(r.forecast) })
-            : t('reports.release.noForecast')}
-        </p>
-        <LineChart
-          title={t('reports.release.title')}
-          summary={t('reports.release.summary', {
-            completed: value(last?.completed ?? 0),
-            scope: value(last?.scope ?? 0),
-          })}
-          xLabels={r.days.map((d) => day(d.date))}
-          series={[
-            {
-              id: 'completed',
-              label: t('reports.release.completed'),
-              tone: 'one',
-              values: r.days.map((d) => d.completed),
-            },
-            {
-              id: 'scope',
-              label: t('reports.release.scope'),
-              tone: 'two',
-              values: r.days.map((d) => d.scope),
-            },
-          ]}
-          format={value}
-          unit={time ? 3600 : 1}
-          tableLabel={t('reports.table')}
-          xHeader={t('reports.day')}
-        />
-      </>
+      <LineChart
+        title={t('reports.release.title')}
+        summary={t('reports.release.summary', {
+          completed: value(last?.completed ?? 0),
+          scope: value(last?.scope ?? 0),
+        })}
+        xLabels={days.map((d) => day(d.date))}
+        series={[
+          {
+            id: 'completed',
+            label: t('reports.release.completed'),
+            tone: 'one',
+            values: days.map((d) => d.completed),
+          },
+          {
+            id: 'scope',
+            label: t('reports.release.scope'),
+            tone: 'two',
+            values: days.map((d) => d.scope),
+          },
+        ]}
+        format={value}
+        unit={time ? 3600 : 1}
+        tableLabel={t('reports.table')}
+        xHeader={t('reports.day')}
+      />
     );
   };
+
+  const outcomeView = (r: OutcomeReport) => (
+    <>
+      <p className="report-note">
+        <a href={routeHref(`#/tickets/${encodeURIComponent(r.outcome.key)}`)}>{r.outcome.key}</a>{' '}
+        {r.outcome.summary}
+      </p>
+      <dl className="report-stats">
+        <div>
+          <dt>{t('reports.outcome.done')}</dt>
+          <dd>{r.counts.done}</dd>
+        </div>
+        <div>
+          <dt>{t('reports.outcome.open')}</dt>
+          <dd>{r.counts.open}</dd>
+        </div>
+        <div>
+          <dt>{t('reports.outcome.unestimated')}</dt>
+          <dd>{r.counts.unestimated}</dd>
+        </div>
+      </dl>
+      <p className="report-note">
+        {r.forecast
+          ? t('reports.release.forecast', { date: day(r.forecast) })
+          : t('reports.release.noForecast')}
+      </p>
+      {byDay(r.days)}
+      {r.tickets.length === 0 ? (
+        <p className="report-empty">{t('reports.outcome.empty')}</p>
+      ) : (
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
+        <section className="report-table" aria-label={t('reports.outcome.tickets')} tabIndex={0}>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">{t('reports.outcome.ticket')}</th>
+                <th scope="col">{t('reports.outcome.status')}</th>
+                <th scope="col">{t('reports.outcome.value')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.tickets.map((x) => (
+                <tr key={x.id}>
+                  <th scope="row">
+                    <a href={routeHref(`#/tickets/${encodeURIComponent(x.key)}`)}>{x.key}</a>{' '}
+                    {x.summary}
+                  </th>
+                  <td>{x.done ? t('reports.outcome.isDone', { status: x.status }) : x.status}</td>
+                  <td>{x.estimated ? value(x.value) : t('reports.outcome.noEstimate')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+    </>
+  );
+
+  const releaseView = (r: ReleaseReport) => (
+    <>
+      <p className="report-note">
+        {r.release.shippedAt
+          ? t('reports.release.shipped', { date: day(r.release.shippedAt.slice(0, 10)) })
+          : r.release.releaseDate
+            ? t('reports.release.planned', { date: day(r.release.releaseDate) })
+            : t('reports.release.unplanned')}{' '}
+        {r.forecast
+          ? t('reports.release.forecast', { date: day(r.forecast) })
+          : t('reports.release.noForecast')}
+      </p>
+      {byDay(r.days)}
+    </>
+  );
 
   let body = null;
   if (failed) {
     body = (
       <p className="board-problem" role="alert">
-        {kind === 'outcome-burndown' ? t('reports.scope.notFound') : t('reports.failed')}
+        {forRelease ? t('reports.failed') : t('reports.scope.notFound')}
       </p>
     );
-  } else if (kind === 'outcome-burndown' && outcome === null) {
-    body = <p className="report-empty">{t('reports.scope.pick')}</p>;
+  } else if (!forRelease && outcome === null) {
+    body = (
+      <p className="report-empty">
+        {t(kind === 'outcome-report' ? 'reports.outcome.pick' : 'reports.scope.pick')}
+      </p>
+    );
   } else if (burndown) body = burndownView(burndown);
   else if (report) body = releaseView(report);
+  else if (outcomeReport) body = outcomeView(outcomeReport);
   else if (!(forRelease && releases?.length === 0)) {
     body = <p className="report-empty">{t('reports.loading')}</p>;
   }

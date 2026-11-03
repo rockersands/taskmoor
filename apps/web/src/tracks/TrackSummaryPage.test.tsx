@@ -53,6 +53,10 @@ describe('a Summary on a Kanban track (ADR-116)', () => {
       .map((o) => o.textContent)
       .join();
     expect(offered).toContain('Created vs closed');
+    // The reports of tickets and time need no sprint, so a Kanban track offers them too.
+    for (const kind of ['Tickets by date', 'Grouped tickets', 'Workload', 'Time tracking']) {
+      expect(offered).toContain(kind);
+    }
     expect(offered).not.toMatch(/Scrum|Sprint/);
   });
 });
@@ -185,6 +189,41 @@ describe('a customized track summary (ADR-116)', () => {
         layout: 'two',
         widgets: [
           expect.objectContaining({ kind: 'created-vs-closed', config: expect.anything() }),
+          { kind: 'track-summary', column: 0, title: '', config: {} },
+        ],
+      },
+    ]);
+  });
+
+  it('[RPT-002] [RPT-006] adds a workload as a pie, by the measure chosen, for the open tickets only', async () => {
+    const user = userEvent.setup();
+    const { client } = open('en', customizable());
+    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Widget to add' }), 'Workload');
+    await user.click(screen.getByRole('button', { name: 'Add widget' }));
+    const form = await screen.findByRole('form', { name: /Workload/ });
+    expect(within(form).getByRole('checkbox', { name: 'Open tickets only' })).toBeChecked();
+    await user.selectOptions(within(form).getByRole('combobox', { name: 'Measure' }), 'Time spent');
+    await user.selectOptions(within(form).getByRole('combobox', { name: 'Show as' }), 'Pie chart');
+    await user.click(within(form).getByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('button', { name: 'Save the summary' }));
+    await screen.findByRole('status');
+    expect(client.saved).toEqual([
+      {
+        layout: 'one',
+        widgets: [
+          {
+            kind: 'workload',
+            column: 0,
+            title: '',
+            config: {
+              query: '',
+              field: 'assignee',
+              statistic: 'timeSpent',
+              open: true,
+              view: 'pie',
+            },
+          },
           { kind: 'track-summary', column: 0, title: '', config: {} },
         ],
       },

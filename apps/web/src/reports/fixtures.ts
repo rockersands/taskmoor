@@ -5,6 +5,7 @@ import type {
   CycleParams,
   CyclePointView,
   CycleTime,
+  OutcomeReport,
   ReleaseReport,
   ReportClient,
   ReportParams,
@@ -229,6 +230,38 @@ export function releaseReportFixture(): ReleaseReport {
   };
 }
 
+export function outcomeReportFixture(): OutcomeReport {
+  const days = Array.from({ length: 15 }, (_, i) => ({
+    date: new Date(Date.parse('2026-10-15T00:00:00Z') + i * DAY_MS).toISOString().slice(0, 10),
+    scope: 13 + Math.min(8, i),
+    completed: Math.round(i * 0.9),
+  }));
+  const ticket = (n: number, summary: string, done: boolean, value: number, estimated = true) => ({
+    id: 70 + n,
+    key: `SHOP-${70 + n}`,
+    summary,
+    status: done ? 'Closed' : 'Active',
+    done,
+    value,
+    estimated,
+  });
+  return {
+    outcome: { id: 77, key: 'SHOP-7', summary: 'One-page checkout' },
+    statistic: { statistic: 'field', fieldId: 31 },
+    timeZone: 'UTC',
+    days,
+    pace: 0.9,
+    forecast: '2026-11-12',
+    tickets: [
+      ticket(1, 'Address form on one page', false, 5),
+      ticket(2, 'Remember the card', false, 0, false),
+      ticket(3, 'Pay with one click', true, 8),
+      ticket(4, 'Show the total early', true, 5),
+    ],
+    counts: { done: 2, open: 2, unestimated: 1 },
+  };
+}
+
 export interface FakeReportClient extends ReportClient {
   calls: { report: string; params: CycleParams | { release: number } | { outcome: string } }[];
 }
@@ -267,5 +300,10 @@ export function fakeReportClient(board: Board = REPORT_BOARD): FakeReportClient 
       };
     },
     releaseReport: async () => releaseReportFixture(),
+    outcomeReport: async (_board, outcome) => {
+      calls.push({ report: 'outcome-report', params: { outcome } });
+      if (outcome !== 'SHOP-7') throw new Error('not_found');
+      return outcomeReportFixture();
+    },
   };
 }

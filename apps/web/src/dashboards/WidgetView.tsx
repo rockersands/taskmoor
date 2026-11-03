@@ -22,6 +22,14 @@ interface Value {
   kind: 'value' | 'none' | 'other';
   total: number;
 }
+interface GroupedTicket {
+  id: number;
+  key: string;
+  summary: string;
+  status: string;
+  closed: boolean;
+  assignee: string | null;
+}
 interface TicketRow {
   id: number;
   key: string;
@@ -518,6 +526,252 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
           tableLabel={t('reports.table')}
           categoryHeader={t('reports.time.status')}
         />
+      );
+    }
+    case 'time-since': {
+      const d = data as {
+        field: string;
+        periods: string[];
+        counts: number[];
+        cumulative: boolean;
+      };
+      const fieldName = t(`dashboards.dateField.${d.field}` as MessageId);
+      const shown = d.cumulative ? (d.counts.at(-1) ?? 0) : d.counts.reduce((s, v) => s + v, 0);
+      const series = [{ id: 'tickets', label: fieldName, tone: 'one' as const, values: d.counts }];
+      const summary = t('dashboards.widget.sinceSummary', { count: shown, field: fieldName });
+      return d.cumulative ? (
+        <LineChart
+          title={title}
+          summary={summary}
+          xLabels={d.periods.map(periodLabel)}
+          series={series}
+          format={count}
+          tableLabel={t('reports.table')}
+          xHeader={t('dashboards.widget.period')}
+        />
+      ) : (
+        <ColumnChart
+          title={title}
+          summary={summary}
+          categories={d.periods.map((p) => ({ key: p, label: periodLabel(p) }))}
+          series={series}
+          format={count}
+          tableLabel={t('reports.table')}
+          categoryHeader={t('dashboards.widget.period')}
+        />
+      );
+    }
+    case 'group-by': {
+      const d = data as {
+        values: (Value & { closed: number; tickets: GroupedTicket[] })[];
+        total: number;
+        closed: number;
+      };
+      if (d.total === 0) return <p className="report-empty">{t('dashboards.widget.noTickets')}</p>;
+      return (
+        <ul className="widget-groups" aria-label={title}>
+          {d.values.map((v) => (
+            <li key={`${v.kind}-${v.id}`}>
+              <p className="widget-group-head">
+                <strong>{valueName(v)}</strong>
+                <span className="widget-share">
+                  <span
+                    className="widget-share-bar"
+                    style={{ width: `${v.total === 0 ? 0 : (v.closed / v.total) * 100}%` }}
+                    aria-hidden="true"
+                  />
+                  {t('dashboards.widget.groupDone', {
+                    closed: count(v.closed),
+                    total: count(v.total),
+                  })}
+                </span>
+              </p>
+              {v.tickets.length > 0 && (
+                <ul className="widget-tickets">
+                  {v.tickets.map((x) => (
+                    <li key={x.id}>
+                      <span className="widget-ticket-key">
+                        <a href={routeHref(`#/tickets/${encodeURIComponent(x.key)}`)}>{x.key}</a>
+                      </span>
+                      <span className="widget-ticket-summary">{x.summary}</span>
+                      <span className="widget-ticket-status">{x.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {v.tickets.length < v.total && v.kind !== 'other' && (
+                <p className="report-note">
+                  {t('dashboards.widget.shown', { shown: v.tickets.length, total: v.total })}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    case 'workload': {
+      const d = data as {
+        statistic: 'remainingEstimate' | 'originalEstimate' | 'timeSpent';
+        values: (Value & { seconds: number; unestimated: number })[];
+        total: number;
+        seconds: number;
+        unestimated: number;
+      };
+      const hours = (v: number) =>
+        t('reports.hours', { value: intl.formatNumber(v / H, { maximumFractionDigits: 1 }) });
+      const statistic = t(`dashboards.statistic.${d.statistic}` as MessageId);
+      if (d.total === 0) return <p className="report-empty">{t('dashboards.widget.noTickets')}</p>;
+      if (config.view === 'pie') {
+        const sorted = [...d.values]
+          .filter((v) => v.seconds > 0)
+          .sort((a, b) => b.seconds - a.seconds);
+        const slice = (v: (typeof sorted)[number]) => ({
+          id: v.id ?? v.kind,
+          label: valueName(v),
+          value: v.seconds,
+        });
+        const slices =
+          sorted.length <= MAX_SLICES
+            ? sorted.map(slice)
+            : [
+                ...sorted.slice(0, MAX_SLICES - 1).map(slice),
+                {
+                  id: '*rest',
+                  label: t('dashboards.value.other'),
+                  value: sorted.slice(MAX_SLICES - 1).reduce((s, v) => s + v.seconds, 0),
+                },
+              ];
+        return slices.length === 0 ? (
+          <p className="report-empty">{t('dashboards.widget.noTime', { statistic })}</p>
+        ) : (
+          <DonutChart
+            title={title}
+            summary={t('dashboards.widget.workSummary', {
+              statistic,
+              value: hours(d.seconds),
+              count: d.total,
+            })}
+            slices={slices}
+            format={hours}
+            formatShare={percent}
+            formatEntry={(v, s) =>
+              t('dashboards.widget.slice', { value: hours(v), share: percent(s) })
+            }
+            tableLabel={t('reports.table')}
+            headers={[t('dashboards.widget.value'), statistic, t('dashboards.widget.share')]}
+          />
+        );
+      }
+      return (
+        <section className="report-table" aria-label={title}>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">{t('dashboards.widget.value')}</th>
+                <th scope="col">{t('dashboards.widget.tickets')}</th>
+                <th scope="col">{statistic}</th>
+                <th scope="col">{t('dashboards.widget.unestimated')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.values.map((v) => (
+                <tr key={`${v.kind}-${v.id}`}>
+                  <th scope="row">{valueName(v)}</th>
+                  <td>{count(v.total)}</td>
+                  <td>{hours(v.seconds)}</td>
+                  <td>{count(v.unestimated)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">{t('dashboards.widget.total')}</th>
+                <td>{count(d.total)}</td>
+                <td>{hours(d.seconds)}</td>
+                <td>{count(d.unestimated)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </section>
+      );
+    }
+    case 'time-tracking': {
+      const d = data as {
+        tickets: number;
+        estimated: number;
+        original: number;
+        remaining: number;
+        spent: number;
+        rows: (GroupedTicket & {
+          original: number | null;
+          remaining: number | null;
+          spent: number;
+        })[];
+      };
+      const hours = (v: number | null) =>
+        v === null
+          ? t('dashboards.value.none')
+          : t('reports.hours', { value: intl.formatNumber(v / H, { maximumFractionDigits: 1 }) });
+      // Ahead when the estimate is more than the time spent and still to spend.
+      const ahead = d.original - d.spent - d.remaining;
+      return (
+        <>
+          <dl className="report-stats">
+            <div>
+              <dt>{t('dashboards.time.original')}</dt>
+              <dd>{hours(d.original)}</dd>
+            </div>
+            <div>
+              <dt>{t('dashboards.time.spent')}</dt>
+              <dd>{hours(d.spent)}</dd>
+            </div>
+            <div>
+              <dt>{t('dashboards.time.remaining')}</dt>
+              <dd>{hours(d.remaining)}</dd>
+            </div>
+            <div>
+              <dt>{t('dashboards.time.accuracy')}</dt>
+              <dd>
+                {ahead === 0
+                  ? t('dashboards.time.onEstimate')
+                  : t(ahead > 0 ? 'dashboards.time.under' : 'dashboards.time.over', {
+                      value: hours(Math.abs(ahead)),
+                    })}
+              </dd>
+            </div>
+          </dl>
+          <p className="report-note">
+            {t('dashboards.time.estimated', { estimated: d.estimated, tickets: d.tickets })}
+          </p>
+          {d.rows.length > 0 && (
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
+            <section className="report-table" aria-label={title} tabIndex={0}>
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">{t('dashboards.widget.ticket')}</th>
+                    <th scope="col">{t('dashboards.time.original')}</th>
+                    <th scope="col">{t('dashboards.time.spent')}</th>
+                    <th scope="col">{t('dashboards.time.remaining')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.rows.map((r) => (
+                    <tr key={r.id}>
+                      <th scope="row">
+                        <a href={routeHref(`#/tickets/${encodeURIComponent(r.key)}`)}>{r.key}</a>{' '}
+                        <span className="widget-ticket-summary">{r.summary}</span>
+                      </th>
+                      <td>{hours(r.original)}</td>
+                      <td>{hours(r.spent)}</td>
+                      <td>{hours(r.remaining)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+        </>
       );
     }
     default:

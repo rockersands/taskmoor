@@ -28,6 +28,10 @@ export const WIDGET_KINDS = [
   'sprint-health',
   'days-remaining',
   'average-time-in-status',
+  'time-since',
+  'group-by',
+  'workload',
+  'time-tracking',
 ] as const;
 /** The kinds a dashboard offers, and one only a track's Summary can hold (ADR-116). */
 export type WidgetKind = (typeof WIDGET_KINDS)[number] | 'track-summary';

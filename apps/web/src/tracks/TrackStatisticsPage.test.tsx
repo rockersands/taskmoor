@@ -58,9 +58,17 @@ describe('a track’s statistics (ADR-116)', () => {
       'Recently created',
       'Average age',
       'Time to close',
+      'Tickets by date',
+      'Pie chart',
       'Ticket statistics',
       'Two-dimensional statistics',
+      'Grouped tickets',
+      'Time tracking',
+      'Workload by person',
+      'Release workload',
+      'Workload pie chart',
     ]);
+    expect(within(nav).getByRole('group', { name: 'Time and workload' })).toBeVisible();
     expect(within(nav).queryByRole('group', { name: 'Sprints' })).toBeNull();
     expect(within(nav).queryByRole('group', { name: 'Releases' })).toBeNull();
   });
@@ -82,12 +90,20 @@ describe('a track’s statistics (ADR-116)', () => {
       'Release burndown',
       'Outcome burndown',
       'Release report',
+      'Outcome report',
       'Created vs closed',
       'Recently created',
       'Average age',
       'Time to close',
+      'Tickets by date',
+      'Pie chart',
       'Ticket statistics',
       'Two-dimensional statistics',
+      'Grouped tickets',
+      'Time tracking',
+      'Workload by person',
+      'Release workload',
+      'Workload pie chart',
     ]);
     for (const link of links) {
       expect(link.getAttribute('href')).toMatch(/^#\/tracks\/SHOP\/statistics\/[a-z-]+$/);
@@ -106,6 +122,7 @@ describe('a track’s statistics (ADR-116)', () => {
       'release-burndown',
       'outcome-burndown',
       'release-report',
+      'outcome-report',
     ] as const) {
       const { container } = open(report);
       expect(within(container).queryByRole('alert')).toBeNull();
@@ -172,6 +189,142 @@ describe('a track’s statistics (ADR-116)', () => {
     );
   });
 
+  it('[RPT-002] tickets by date counts by the date chosen, with running totals', async () => {
+    const user = userEvent.setup();
+    const { client } = open('time-since');
+    expect(await screen.findByRole('figure', { name: 'Tickets by date' })).toBeVisible();
+    expect(client.statisticCalls.at(-1)).toEqual({
+      kind: 'time-since',
+      settings: { field: 'created', days: 30, period: 'day', cumulative: false },
+    });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Date' }), 'Due');
+    await user.click(screen.getByRole('checkbox', { name: 'Running totals' }));
+    await waitFor(() =>
+      expect(client.statisticCalls.at(-1)?.settings).toEqual({
+        field: 'due',
+        days: 30,
+        period: 'day',
+        cumulative: true,
+      }),
+    );
+  });
+
+  it('[RPT-002] a pie chart and grouped tickets group the track by the field chosen', async () => {
+    const user = userEvent.setup();
+    const pie = open('pie');
+    expect(await screen.findByRole('figure', { name: 'Pie chart' })).toBeVisible();
+    expect(pie.client.statisticCalls.at(-1)).toEqual({
+      kind: 'pie',
+      settings: { field: 'status' },
+    });
+    pie.container.remove();
+    const grouped = open('group-by');
+    const groups = await screen.findByRole('list', { name: 'Grouped tickets' });
+    expect(within(groups).getByText('Ada Lovelace')).toBeVisible();
+    expect(within(groups).getByText('1 of 3 done')).toBeVisible();
+    expect(within(groups).getByRole('link', { name: 'SHOP-41' })).toHaveAttribute(
+      'href',
+      '#/tickets/SHOP-41',
+    );
+    // Two of three listed: the rest is a search away.
+    expect(within(groups).getByText('2 tickets of 3')).toBeVisible();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Field' }), 'Assignee');
+    await waitFor(() =>
+      expect(grouped.client.statisticCalls.at(-1)).toEqual({
+        kind: 'group-by',
+        settings: { field: 'assignee' },
+      }),
+    );
+  });
+
+  it('[RPT-002] time tracking adds up the track, or one release', async () => {
+    const user = userEvent.setup();
+    const { client } = open('time-tracking', SCRUM);
+    expect(await screen.findByText('10h')).toBeVisible();
+    expect(screen.getByText('1h under the estimate')).toBeVisible();
+    expect(screen.getByText('4 of 6 tickets have an original estimate.')).toBeVisible();
+    const rows = screen.getByRole('region', { name: 'Time tracking' });
+    expect(within(rows).getByRole('link', { name: 'SHOP-41' })).toBeVisible();
+    expect(client.statisticCalls.at(-1)).toEqual({ kind: 'time-tracking', settings: {} });
+    const release = screen.getByRole('combobox', { name: 'Release' });
+    expect(release).toHaveDisplayValue('The whole track');
+    await user.selectOptions(release, 'Checkout 2.0');
+    await waitFor(() =>
+      expect(client.statisticCalls.at(-1)).toEqual({
+        kind: 'time-tracking',
+        settings: { release: 31 },
+      }),
+    );
+  });
+
+  it('[RPT-002] workload by person, of a release and as a pie read one report set three ways', async () => {
+    const user = userEvent.setup();
+    const person = open('user-workload');
+    const table = await screen.findByRole('region', { name: 'Workload by person' });
+    expect(within(table).getByRole('rowheader', { name: 'Ada Lovelace' })).toBeVisible();
+    expect(within(table).getByRole('cell', { name: '3h' })).toBeVisible();
+    expect(person.client.statisticCalls.at(-1)).toEqual({
+      kind: 'workload',
+      settings: { field: 'assignee', statistic: 'remainingEstimate', open: true },
+    });
+    person.container.remove();
+
+    const release = open('release-workload', SCRUM);
+    await screen.findByRole('region', { name: 'Release workload' });
+    expect(release.client.statisticCalls.at(-1)?.settings).toEqual({
+      field: 'assignee',
+      statistic: 'remainingEstimate',
+      open: true,
+      release: 31,
+    });
+    expect(screen.getByRole('combobox', { name: 'Release' })).toHaveDisplayValue('Checkout 2.0');
+    release.container.remove();
+
+    const pie = open('workload-pie');
+    expect(await screen.findByRole('figure', { name: 'Workload pie chart' })).toBeVisible();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Measure' }), 'Time spent');
+    await user.click(screen.getByRole('checkbox', { name: 'Open tickets only' }));
+    await waitFor(() =>
+      expect(pie.client.statisticCalls.at(-1)?.settings).toEqual({
+        field: 'assignee',
+        statistic: 'timeSpent',
+        open: false,
+        view: 'pie',
+      }),
+    );
+  });
+
+  it('[RPT-002] a release’s workload explains a track with no releases', async () => {
+    const reports = fakeReportClient(SCRUM);
+    reports.releases = async () => [];
+    render(
+      <I18nProvider locale="en">
+        <TrackStatisticsPage
+          trackKey="SHOP"
+          board={SCRUM}
+          report="release-workload"
+          reports={reports}
+          sprints={fakeSprintClient()}
+          client={fakeTrackClient()}
+        />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText('No releases yet')).toBeVisible();
+  });
+
+  it('[RPT-001] the outcome report lists the outcome’s tickets, done and open', async () => {
+    const user = userEvent.setup();
+    open('outcome-report', SCRUM);
+    expect(await screen.findByText('Enter an outcome’s key to see its report.')).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
+    await user.click(screen.getByRole('button', { name: 'Show' }));
+    expect(await screen.findByRole('figure', { name: 'Release progress' })).toBeVisible();
+    const tickets = screen.getByRole('region', { name: 'Tickets under the outcome' });
+    expect(within(tickets).getAllByRole('cell', { name: 'Closed (done)' })).toHaveLength(2);
+    expect(within(tickets).getByRole('cell', { name: 'No estimate' })).toBeVisible();
+    expect(screen.getByText('Open without an estimate')).toBeVisible();
+  });
+
   it('[RPT-001] fits a phone without sideways scrolling', async () => {
     setViewportWidth(375);
     open('created-vs-closed');
@@ -185,5 +338,31 @@ describe('a track’s statistics (ADR-116)', () => {
     const texts = visibleTexts(container).filter((t) => t !== 'Shop');
     expect(untranslated(texts)).toEqual([]);
     expect(errors).toEqual([]);
+  });
+
+  it('[RPT-002] the new reports put every text through the catalogue too (en-XA)', async () => {
+    // Names, keys and summaries come from the data, not the catalogue.
+    const data = /^(SHOP-\d+|Shop|Team|Ada Lovelace|Grace Hopper|Checkout 2\.0|Active|Closed)$/;
+    for (const report of [
+      'time-since',
+      'group-by',
+      'time-tracking',
+      'user-workload',
+      'workload-pie',
+    ] as const) {
+      const { container, errors } = open(report, SCRUM, { locale: 'en-XA' });
+      await waitFor(() => expect(container.querySelector('.report-empty')).toBeNull());
+      const texts = visibleTexts(container).filter(
+        (t) =>
+          !data.test(t) &&
+          !/^[\d.,\s:%h]+$/.test(t) &&
+          // Dates come formatted by the browser, not the catalogue.
+          !/^[A-Z][a-z]{2} \d{1,2}$/.test(t) &&
+          !/[Cc]ard|[Cc]heckout|Gift/.test(t),
+      );
+      expect(untranslated(texts), report).toEqual([]);
+      expect(errors, report).toEqual([]);
+      container.remove();
+    }
   });
 });

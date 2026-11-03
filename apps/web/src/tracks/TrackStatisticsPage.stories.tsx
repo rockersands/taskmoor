@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import type { Board } from '../boards/client';
 import { fakeReportClient, REPORT_BOARD, SCRUM_REPORT_BOARD } from '../reports/fixtures';
 import { fakeSprintClient } from '../sprints/fixtures';
@@ -90,7 +90,71 @@ export const Velocity: Story = {
   },
 };
 
+/** Tickets counted by one of their dates, period by period (RPT-002). */
+export const TicketsByDate: Story = {
+  args: { report: 'time-since' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('figure', { name: 'Tickets by date' })).toBeVisible();
+  },
+};
+
+/** The track's tickets grouped by one field, each group with its done share and first tickets. */
+export const GroupedTickets: Story = {
+  args: { report: 'group-by' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('list', { name: 'Grouped tickets' })).toBeVisible();
+  },
+};
+
+/** Estimates and time spent added up, with the tickets that carry them. */
+export const TimeTracking: Story = {
+  args: { report: 'time-tracking', board: SCRUM, reports: fakeReportClient(SCRUM) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('region', { name: 'Time tracking' })).toBeVisible();
+  },
+};
+
+/** The remaining estimate of the open tickets, by assignee. */
+export const WorkloadByPerson: Story = {
+  args: { report: 'user-workload' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('region', { name: 'Workload by person' })).toBeVisible();
+  },
+};
+
+/** A time statistic by any field, as a pie. */
+export const WorkloadPie: Story = {
+  args: { report: 'workload-pie' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('figure', { name: 'Workload pie chart' })).toBeVisible();
+  },
+};
+
+/** An outcome's work day by day, with its tickets done and still open (RPT-001). */
+export const OutcomeReport: Story = {
+  args: { report: 'outcome-report', board: SCRUM, reports: fakeReportClient(SCRUM) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByRole('textbox', { name: 'Outcome' }), 'SHOP-7');
+    await userEvent.click(canvas.getByRole('button', { name: 'Show' }));
+    await expect(
+      await canvas.findByRole('region', { name: 'Tickets under the outcome' }),
+    ).toBeVisible();
+  },
+};
+
 export const Phone: Story = {
   args: { report: 'created-vs-closed' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+/** The longest table of the new reports, on a phone. */
+export const PhoneTimeTracking: Story = {
+  args: { report: 'time-tracking', board: SCRUM, reports: fakeReportClient(SCRUM) },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
