@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
@@ -19,6 +20,23 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  const edge = box.getBoundingClientRect().right;
+  // The columns scroll inside the board, so what is in them may reach beyond it.
+  const out = [...box.querySelectorAll('*')]
+    .filter((el) => !el.parentElement?.closest('.board-scroll'))
+    .filter((el) => el.getBoundingClientRect().right > edge + 0.5)
+    .map((el) => `${el.tagName} ${el.getAttribute('class') ?? ''}`);
+  await expect(out).toEqual([]);
+};
 
 /** Three columns, an Expedite lane above the catch-all; Doing is over its maximum of 2. */
 export const Board: Story = {
@@ -146,5 +164,18 @@ export const FiveThousandCards: Story = {
     expect(watch.cardsAtMenu).toBeLessThan(5000);
     await expectWithinBudget(watch.menu, 1000, '5,000-card board interactive (ms)');
     await expectWithinBudget(watch.all, 4000, 'all 5,000 cards on the page (ms)');
+  },
+};
+
+/** The person filter at the width of a small phone: only the columns scroll sideways. */
+export const PersonFilterAtPhoneWidth: Story = {
+  args: { client: fakeBoardClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
+    await userEvent.click(canvas.getByText('People'));
+    await expect(canvas.getByRole('checkbox', { name: 'Rin Okafor' })).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
@@ -22,6 +23,17 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/** The width of a small phone; nothing inside may stick out sideways. */
+const atPhoneWidth = (Story: () => ReactElement) => (
+  <div data-testid="phone-width" style={{ width: 360 }}>
+    <Story />
+  </div>
+);
+const fitsPhoneWidth = async (canvas: ReturnType<typeof within>) => {
+  const box = canvas.getByTestId('phone-width');
+  await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+};
 
 /** The basic mode, before a search. */
 export const Basic: Story = {};
@@ -90,5 +102,19 @@ export const SavedSearchOpened: Story = {
       await canvas.findByRole('heading', { name: 'Saved search: Shop releases' }),
     ).toBeVisible();
     await expect(await canvas.findByRole('table')).toBeVisible();
+  },
+};
+
+/** The page with filters at the width of a small phone: only the results table scrolls sideways. */
+export const FiltersAtPhoneWidth: Story = {
+  args: {
+    initialQuery:
+      'type = Bug AND labels = refunds AND created >= 2026-10-01 AND created < 2026-11-01 AND due = 2026-12-01 ORDER BY updated DESC',
+  },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('table');
+    await fitsPhoneWidth(canvas);
   },
 };
