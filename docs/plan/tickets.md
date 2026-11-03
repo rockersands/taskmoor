@@ -247,8 +247,8 @@ reported, and the coordinator checked that it was pushed.
 
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
-| T-190 | The full ticket page has no protection for unsaved text | To do | The pop-up has it |
-| T-191 | Controls follow edit permission up front, not only priority | To do | Today other fields show controls and the server refuses |
+| T-190 | The full ticket page has no protection for unsaved text | Done | On `main`: links, Back, code-driven navigation in both routing modes and the tab's close or reload ask while a draft exists (NFR-005) |
+| T-191 | Controls follow edit permission up front, not only priority | Done | On `main`: the ticket view, edit and transition answers say which fields the person may change; a locked field does not yet say why (WF-007 (2)) |
 | T-192 | Turning a track's sprints off while a sprint runs is not guarded | To do | Changing a board to Kanban during a sprint is refused already |
 | T-193 | A 5,000-card column is not smooth | To do | About 15 frames a second scrolling and a 0.9 s pause on a drop; `content-visibility` might help, but clips card menus |
 | T-194 | Home's "Your tracks" should show the tracks a person belongs to | To do | Today, tracks they can see; "latest opened" is remembered per browser |
