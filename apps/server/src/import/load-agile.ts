@@ -9,6 +9,7 @@ import {
   DEFAULT_CARD_RULES,
   DEFAULT_SWIMLANES,
 } from '../boards/model';
+import { confinedTrackKey, trackBoardQuery } from '../boards/one-per-track';
 import { SearchError } from '../search/bind';
 import { queryCatalogue } from '../search/catalogue';
 import { DEFAULT_SPRINT_SETTINGS } from '../sprints/model';
@@ -36,6 +37,9 @@ import type { BoardCommand, Ref, SprintCommand } from './model';
  * saved search of the track's owner and a warning naming it. A track with no owner has nobody to
  * keep the query for: the warning says so and nothing is made up. Linking, not updating, is what
  * keeps a later run from writing the other board's name and columns over the track's.
+ *
+ * A track's board also stays inside its track: a query that could reach another track is narrowed
+ * to `track = KEY`, and the warning `board_query_narrowed_to_track` keeps the source's query.
  */
 
 interface BoardData {
@@ -116,6 +120,23 @@ async function linkToTrackBoard(
     fingerprint: read.get(board) ?? fingerprint,
     data: { ...data, ...(owner == null ? {} : { savedSearchOwner: owner }) },
   };
+}
+
+/**
+ * The query a track's board is written with. In a dry run a track made in the same batch has no
+ * key to compare with yet, so only a query that names no one track counts as leaving it.
+ */
+function queryInsideTrack(
+  ctx: LoadContext,
+  cmd: BoardCommand,
+  query: string,
+  key: string | null,
+): string {
+  const confined = confinedTrackKey(query)?.toLowerCase();
+  const inside = key === null ? confined !== undefined : confined === key.toLowerCase();
+  if (inside) return query;
+  ctx.warn({ code: 'board_query_narrowed_to_track', detail: `${cmd.name}: ${query}` });
+  return key === null ? query : trackBoardQuery(key);
 }
 
 /** Keeps a board's query as a saved search, under a name its owner does not have yet. */
@@ -240,19 +261,17 @@ export const boards: Loader<BoardCommand> = {
         ctx.warn({ code: 'board_query_not_imported', ...(checked ? { detail: problem } : {}) });
       }
     }
-    if (query === null) {
-      const key =
-        track === PENDING
-          ? null
-          : (
-              await ctx.trx
-                .selectFrom('track')
-                .select('key')
-                .where('id', '=', track)
-                .executeTakeFirst()
-            )?.key;
-      query = `track = ${key ?? 'PENDING'}`;
-    }
+    const trackKey =
+      track === PENDING
+        ? null
+        : ((
+            await ctx.trx
+              .selectFrom('track')
+              .select('key')
+              .where('id', '=', track)
+              .executeTakeFirst()
+          )?.key ?? null);
+    if (query === null) query = `track = ${trackKey ?? 'PENDING'}`;
     const columns: Column[] = cmd.columns.map((c, i) => ({
       id: `c${i + 1}`,
       name: c.name,
@@ -305,6 +324,8 @@ export const boards: Loader<BoardCommand> = {
       if (await linkedToAnotherBoard(ctx, existing, sourceId, cmd.name)) {
         return linkToTrackBoard(ctx, cmd, data, existing, fingerprint);
       }
+      // An update writes the query only from a command that gives the board in full.
+      if (checked) data.query = queryInsideTrack(ctx, cmd, data.query, trackKey);
       return { action: 'update', targetId: existing, fingerprint, data };
     }
     if (track !== PENDING) {
@@ -329,6 +350,7 @@ export const boards: Loader<BoardCommand> = {
         return { action: 'link', targetId: PENDING, fingerprint, data };
       } else return linkToTrackBoard(ctx, cmd, data, PENDING, fingerprint);
     }
+    data.query = queryInsideTrack(ctx, cmd, data.query, trackKey);
     return { action: 'create', targetId: null, fingerprint, data };
   },
   async apply(ctx, cmd, plan) {

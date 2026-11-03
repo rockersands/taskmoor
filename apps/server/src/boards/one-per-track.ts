@@ -1,4 +1,6 @@
+import type { Database } from '@taskmoor/db';
 import { parseQuery } from '@taskmoor/query';
+import type { Kysely } from 'kysely';
 
 /**
  * A board belongs to one track and shows only that track (ADR-116). The key a query is confined
@@ -27,3 +29,26 @@ export function confinedTrackKey(query: string): string | null {
 
 /** The query of a track's board. Quoted, so a key that is a word of the grammar stays a key. */
 export const trackBoardQuery = (key: string) => `track = ${JSON.stringify(key)}`;
+
+/**
+ * The boards a saved search carries that this query would take out of their track (ADR-116): a
+ * track's board shows only that track, so a saved search under one has to stay confined to it.
+ * Boards an upgrade left kept by a person have no track to leave.
+ */
+export async function boardsLeftByQuery(
+  db: Kysely<Database>,
+  workspaceId: number,
+  savedSearchId: number,
+  query: string,
+): Promise<{ id: number; name: string; trackKey: string }[]> {
+  const boards = await db
+    .selectFrom('board as b')
+    .innerJoin('track as t', 't.id', 'b.location_track_id')
+    .select(['b.id', 'b.name', 't.key as trackKey'])
+    .where('b.workspace_id', '=', workspaceId)
+    .where('b.saved_search_id', '=', savedSearchId)
+    .orderBy('b.id')
+    .execute();
+  const confined = confinedTrackKey(query)?.toLowerCase();
+  return boards.filter((b) => b.trackKey.toLowerCase() !== confined);
+}

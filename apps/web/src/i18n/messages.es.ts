@@ -349,6 +349,8 @@ export const messagesEs: Record<MessageId, string> = {
   'saved.subscribed': 'Estás suscrito a {name}. El primer correo sale {when}.',
   'saved.nameTaken': 'Ya tienes una búsqueda guardada con ese nombre.',
   'saved.forbidden': 'No puedes hacer eso con esta búsqueda guardada.',
+  'saved.boardOutsideTrack':
+    'El tablero {board} se basa en esta búsqueda guardada, así que su consulta debe quedarse dentro del track {track}. Empiézala con track = {track} AND, o guárdala como una búsqueda nueva.',
   'importedLink.title': 'Abriendo un enlace de tu herramienta anterior',
   'importedLink.looking': 'Buscando en qué se convirtió este enlace…',
   'importedLink.missing': 'Nada de lo importado coincide con este enlace, o no puedes verlo.',

@@ -334,6 +334,8 @@ export const messagesEn = {
   'saved.subscribed': 'You are subscribed to {name}. The first email goes out {when}.',
   'saved.nameTaken': 'You have a saved search of that name already.',
   'saved.forbidden': 'You may not do that with this saved search.',
+  'saved.boardOutsideTrack':
+    'The board {board} stands on this saved search, so its query has to stay inside the track {track}. Start it with track = {track} AND, or save it as a new search.',
   'importedLink.title': 'Opening a link from your earlier tracker',
   'importedLink.looking': 'Looking for what this link became…',
   'importedLink.missing': 'Nothing that was imported matches this link, or you may not see it.',

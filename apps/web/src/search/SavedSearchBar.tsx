@@ -75,6 +75,13 @@ export function SavedSearchBar({
     if (body?.fields && (body.fields as Record<string, string>).name === 'taken') {
       return t('saved.nameTaken');
     }
+    if (body?.error === 'board_outside_track') {
+      const boards = (body.boards as { name: string; trackKey: string }[] | undefined) ?? [];
+      return t('saved.boardOutsideTrack', {
+        board: boards[0]?.name ?? '',
+        track: boards[0]?.trackKey ?? '',
+      });
+    }
     if (body?.error === 'forbidden') return t('saved.forbidden');
     if (typeof body?.message === 'string') return body.message;
     return t('saved.failed');

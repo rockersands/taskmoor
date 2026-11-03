@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import { boardsLeftByQuery } from '../boards/one-per-track';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { DEFAULT_QUERY_TIMEOUT_MS, prepareSearch } from '../search/run';
@@ -32,6 +33,9 @@ import { searchPerson, searchRefusal, searchScope } from './search';
  *   one that leads back to itself is refused (QRY-011 (2)). Running a saved search is running
  *   its query (`/api/v1/search`) as the person, so nobody sees a ticket through a saved search
  *   that they could not find with the query themselves.
+ * - A track's board may stand on a saved search; its query then has to stay inside that track
+ *   (ADR-116), and a change that would take the board elsewhere is refused
+ *   (`409 board_outside_track`, naming the boards).
  * - A saved search an import could not translate (M1-094) keeps the source's text and says why
  *   in `importProblem`; saving a query clears it.
  * - `PUT` and `DELETE /api/v1/saved-searches/:id/star` star and unstar it for the person.
@@ -373,6 +377,10 @@ export function registerSavedSearchRoutes(
     }
     if (body.query !== undefined) {
       if (await refuseQuery(request, reply, body.query, { id: row.id, name })) return reply;
+      const left = await boardsLeftByQuery(db, ws, row.id, body.query);
+      if (left.length > 0) {
+        return reply.code(409).send({ error: 'board_outside_track', boards: left });
+      }
     }
     const outcome = await db.transaction().execute(async (trx) => {
       const current = await trx

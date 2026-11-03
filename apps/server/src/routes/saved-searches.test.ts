@@ -676,6 +676,31 @@ describe('saved searches (M1-063)', () => {
     expect(narrowed.statusCode, narrowed.body).toBe(200);
     const after = await get('alice', `/api/v1/boards/${board.id}/data`);
     expect((after.json().cards as { key: string }[]).map((c) => c.key)).toEqual([keys.a2]);
+    // A board stays inside its track (ADR-116): its saved search cannot take it elsewhere.
+    for (const query of [
+      'track = SB',
+      'track IN (SA, SB)',
+      'track = SA OR track = SB',
+      'assignee IS EMPTY',
+    ]) {
+      const away = await patch('alice', `/api/v1/saved-searches/${source.id}`, { query });
+      expect(away.statusCode, query).toBe(409);
+      expect(away.json()).toEqual({
+        error: 'board_outside_track',
+        boards: [{ id: board.id, name: 'On a saved search', trackKey: 'SA' }],
+      });
+    }
+    const stayed = await get('alice', `/api/v1/saved-searches/${source.id}`);
+    expect(stayed.json().savedSearch.query).toBe(`track = SA AND key = ${keys.a2}`);
+    // Its other settings still change, and a saved search no board stands on goes anywhere.
+    const renamed = await patch('alice', `/api/v1/saved-searches/${source.id}`, {
+      name: 'Board source, renamed',
+    });
+    expect(renamed.statusCode, renamed.body).toBe(200);
+    const free = await patch('alice', `/api/v1/saved-searches/${hidden.id}`, {
+      query: 'track IN (SA, SB)',
+    });
+    expect(free.statusCode, free.body).toBe(200);
     // Back to a query of its own, then the saved search may go.
     const own = await patch('alice', `/api/v1/boards/${board.id}`, {
       source: { query: 'track = SA' },
