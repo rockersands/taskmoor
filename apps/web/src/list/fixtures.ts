@@ -38,6 +38,8 @@ const valuesOf = (field: GroupField, t: SearchTicket): { id: string; name: strin
     return t.priority ? { id: String(t.priority.id), name: t.priority.name } : null;
   if (field === 'assignee')
     return t.assignee ? { id: String(t.assignee.id), name: t.assignee.name } : null;
+  // The query language takes a type by its name too.
+  if (field === 'type') return { id: t.ticketType.name, name: t.ticketType.name };
   return null;
 };
 

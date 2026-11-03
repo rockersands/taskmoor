@@ -84,6 +84,12 @@ export const STARTING_CHECKLISTS: Checklist[] = [
   },
 ];
 
+/** The custom fields on a subticket's create form, as the fake answers for every type. */
+export const CHILD_FORM_FIELDS = [
+  { id: 12, name: 'Customer' },
+  { id: 41, name: 'Points' },
+];
+
 export interface FakeToolsClient extends TicketToolsClient {
   calls: { action: string; args: unknown[] }[];
 }
@@ -215,6 +221,10 @@ export function fakeToolsClient(
     },
     children: async () => ({ tickets: structuredClone(children), next: null }),
     childTypes: async () => start.childTypes ?? [{ id: 9, name: 'Subticket' }],
+    childFields: async (track, ticketTypeId) => {
+      calls.push({ action: 'childFields', args: [track, ticketTypeId] });
+      return CHILD_FORM_FIELDS;
+    },
     createChild: async (ticket) => {
       calls.push({ action: 'createChild', args: [ticket] });
       const made = {

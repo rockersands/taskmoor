@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MEMBER } from '../admin/fixtures';
@@ -206,6 +206,39 @@ describe('the search page (M1-041)', () => {
     expect(group.getByLabelText('Día')).toHaveAttribute('type', 'date');
     expect(group.getByRole('button', { name: 'Quitar filtro: Fecha de cierre' })).toBeVisible();
     setViewportWidth(1440);
+  });
+
+  it('[NFR-006] [QRY-014] words every filter from the catalogue, and seeded values in Spanish', async () => {
+    const user = userEvent.setup();
+    renderPage(undefined, 'en-XA');
+    const basic = (await screen.findByRole('main')).querySelector('form') as HTMLFormElement;
+    await within(basic).findAllByRole('checkbox');
+    // Every filter "Add a filter" offers, one after another, until it offers none.
+    for (let add = basic.querySelector('.search-filter-add select'); add !== null; ) {
+      const field = (add as HTMLSelectElement).options[1]?.value as string;
+      await user.selectOptions(add, field);
+      await user.click(within(add.parentElement as HTMLElement).getByRole('button'));
+      add = basic.querySelector('.search-filter-add select');
+    }
+    expect(basic.querySelectorAll('.search-filter')).toHaveLength(13);
+    for (const when of basic.querySelectorAll('.search-filter select')) {
+      await user.selectOptions(when, 'between');
+    }
+    await within(basic).findByRole('checkbox', { name: '[Ĥíğĥ~~]' });
+    // Types and priorities the workspace did not start with are its data, as written.
+    expect(untranslated(visibleTexts(basic))).toEqual(['Story', 'Task', 'Medium']);
+    cleanup();
+
+    renderPage(undefined, 'es');
+    const add = await screen.findByRole('combobox', { name: 'Añadir un filtro' });
+    for (const field of ['type', 'priority']) {
+      await user.selectOptions(add, field);
+      await user.click(screen.getByRole('button', { name: 'Añadir filtro' }));
+    }
+    const type = within(screen.getByRole('group', { name: 'Tipo' }));
+    expect(await type.findByRole('checkbox', { name: 'Error' })).toBeVisible();
+    const priority = within(screen.getByRole('group', { name: 'Prioridad' }));
+    expect(await priority.findByRole('checkbox', { name: 'Alta' })).toBeVisible();
   });
 
   it('[QRY-001] suggests at the caret and takes a suggestion with the keyboard', async () => {

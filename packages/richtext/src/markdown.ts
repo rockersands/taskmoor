@@ -28,7 +28,7 @@ import { gfmAutolinkLiteral } from 'micromark-extension-gfm-autolink-literal';
 import { gfmStrikethrough } from 'micromark-extension-gfm-strikethrough';
 import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTaskListItem } from 'micromark-extension-gfm-task-list-item';
-import { type AdfNode, isAttachmentName, layoutSpan, MAX_TITLE_LENGTH, TICKET_KEY } from './adf';
+import { type AdfNode, expandTitleLine, isAttachmentName, layoutSpan, TICKET_KEY } from './adf';
 import { fromAdfJson, type PmJson } from './convert';
 import { schema } from './schema';
 
@@ -798,7 +798,7 @@ function quoteIn(children: readonly RootContent[], defs: Definitions): PmJson {
       ];
       return {
         type: 'expand',
-        attrs: { title: titleLine(expand[1] ?? '') },
+        attrs: { title: expandTitleLine(expand[1] ?? '') },
         content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }],
       };
     }
@@ -825,21 +825,6 @@ function quoteIn(children: readonly RootContent[], defs: Definitions): PmJson {
   }
   const blocks = blocksIn(children, defs);
   return { type: 'blockquote', content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }] };
-}
-
-/**
- * A section title as the document may hold it (NTF-014): one line with no control characters.
- * Tabs and other controls read as spaces, so a title like `Step<tab>1` is not refused on save.
- */
-function titleLine(text: string): string {
-  return (
-    text
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it replaces
-      .replace(/[\u0000-\u001f\u007f\s]+/g, ' ')
-      .trim()
-      .slice(0, MAX_TITLE_LENGTH)
-      .trimEnd()
-  );
 }
 
 function listIn(list: List, defs: Definitions): PmJson {

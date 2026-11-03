@@ -615,9 +615,10 @@ function ChecklistRow({
   }, [item, chosen]);
   const box = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    // Something is under way: neither ticked nor empty, for sight and for screen readers.
-    if (box.current) box.current.indeterminate = state === 'in_progress';
-  }, [state]);
+    // Something is under way: neither ticked nor empty, for sight and for screen readers. The
+    // edit form stands in the box's place, so the box drawn again when it closes is set too.
+    if (!editing && box.current) box.current.indeterminate = state === 'in_progress';
+  }, [state, editing]);
 
   if (editing) {
     return (

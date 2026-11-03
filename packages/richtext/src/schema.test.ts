@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { DOMParser, DOMSerializer } from '@tiptap/pm/model';
 import { describe, expect, it } from 'vitest';
+import { docShapeProblem, isExpandTitle, MAX_TITLE_LENGTH } from './adf';
 import { schema } from './schema';
 
 /** jsdom's page; the package's types leave the DOM out, since the server has none. */
@@ -67,5 +68,32 @@ describe('the schema as HTML (NTF-014)', () => {
       type: 'link',
       attrs: { href: 'https://example.test/d' },
     });
+  });
+});
+
+describe('a collapsible section pasted as HTML (NTF-014)', () => {
+  /** HTML as the clipboard holds it, read through the schema's parse rules. */
+  const pasted = (html: string) => {
+    const holder = page.createElement('div') as unknown as { innerHTML: string };
+    holder.innerHTML = html;
+    return DOMParser.fromSchema(schema)
+      .parse(holder as never)
+      .toJSON() as { content: { type: string; attrs: { title: string } }[] };
+  };
+  const section = (title: string) =>
+    `<details data-expand=""><summary>${title}</summary><div data-expand-body=""><p>Text</p></div></details>`;
+
+  it('[NTF-014] reads control characters in its title as spaces, as the editor and Markdown do', () => {
+    const doc = pasted(section('Step\t1\u0007 and\n\r\u001f2\u007f'));
+    const title = doc.content[0]?.attrs.title;
+    expect(title).toBe('Step 1 and 2');
+    expect(isExpandTitle(title)).toBe(true);
+    expect(docShapeProblem(doc)).toBeNull();
+  });
+
+  it('[NTF-014] holds a pasted title to the length the document takes', () => {
+    const doc = pasted(section(`${'a'.repeat(300)}`));
+    expect(doc.content[0]?.attrs.title).toBe('a'.repeat(MAX_TITLE_LENGTH));
+    expect(docShapeProblem(doc)).toBeNull();
   });
 });
