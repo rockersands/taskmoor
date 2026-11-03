@@ -118,7 +118,7 @@ reported, and the coordinator checked that it was pushed.
 | T-084 | Personal track groups: drag tracks together, name the group | To do | With the front sub chat; private to the person |
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | With the front sub chat |
 | T-086 | Share a whole group, or set it on another person | To do | With the front sub chat |
-| T-087 | Does sharing a group give access to its tracks? | You | Built so it does not, until the user says |
+| T-087 | Sharing a group gives access to its tracks | To do | Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
 
 ## Boards and moving tickets
 
