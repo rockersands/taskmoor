@@ -19,7 +19,7 @@ States:
 
 Work runs in waves, the user's decision on 2026-11-03: a ticket waits here rather than start beside too much else. First the finished branches merge, then the front work, then the rest.
 
-A ticket is only Done on `main` after a green full gate. "On branch" means what its sub chat
+A ticket is only Done on `main` after a green full gate. `main` holds the first wave since 2026-11-03: ticket templates, easier updates, invitations and manager pages, and Google sign-in (not yet tried with real Google). "On branch" means what its sub chat
 reported, and the coordinator checked that it was pushed.
 
 ## Setup and repository
@@ -95,9 +95,9 @@ reported, and the coordinator checked that it was pushed.
 | T-055 | Site administrators give track administrators permission to invite | Done | Off by default |
 | T-056 | Managers appoint managers by default, through a removable permission | Done | Decided by the user |
 | T-057 | Track managers' web pages | Done | Settings > Tracks you run; moves into the panel on merge |
-| T-058 | Google sign-in option, invited people only | On branch | `claude/google-signin`; tested against a fake provider |
+| T-058 | Google sign-in option, invited people only | Done | `claude/google-signin`; tested against a fake provider |
 | T-059 | Real Google test | You | Create the client and enter the secret on a demo; the user said later |
-| T-060 | A provider sign-in does not need Taskmoor's second factor | On branch | Decided by the user; the guide says so plainly |
+| T-060 | A provider sign-in does not need Taskmoor's second factor | Done | Decided by the user; the guide says so plainly |
 | T-061 | Google's logo on the button? | You | Recommended: plain text for now |
 | T-062 | Treat Gmail spellings as the same address? | You | Recommended: no |
 | T-063 | Allow `@googlemail.com`? | You | Recommended: no for now |
