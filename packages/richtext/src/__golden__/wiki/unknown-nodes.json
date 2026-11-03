@@ -35,15 +35,24 @@
     },
     {
       "attrs": {
-        "adfAttrs": null
+        "adfAttrs": null,
+        "title": "Details"
       },
       "content": [
         {
-          "text": "Hidden detail.",
-          "type": "text"
+          "attrs": {
+            "adfAttrs": null
+          },
+          "content": [
+            {
+              "text": "Hidden detail.",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
         }
       ],
-      "type": "paragraph"
+      "type": "expand"
     },
     {
       "attrs": {

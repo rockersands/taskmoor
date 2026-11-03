@@ -58,3 +58,49 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
   no such file and imports as before. Erasure leaves the items, whose author becomes the placeholder
   account like any other record; the person's own items are in their data download.
 - Limits: 20 checklists a ticket, 200 items a checklist, 200 and 1,000 characters.
+
+### The slash menu and new blocks (NTF-013, NTF-014)
+
+- "/" at the start of a line or after a space opens the menu, through the same suggestion plugin as
+  mentions. Blocks that need something ask for it in a small form above the text: a code block's
+  language, a status label's words and colour, a date, an emoji, a file, a ticket.
+- Four new nodes, all with Taskmoor's names: `expand`, `columnLayout` with `column`, `attachmentRef`
+  and `ticketRef`. Panels, status labels, dates and emoji were already in the schema.
+- **A file is referred to by its name, not its id or address.** A clone and an import give a file a
+  new id, and a document that holds no address cannot point anywhere else. Whoever shows it looks the
+  name up among the ticket's attachments, with the reader's rights; a name that is not there shows as
+  text. Two files of one name resolve to the first listed.
+- **A ticket reference holds only the key.** It shows no summary, so a document never shows what a
+  reader may not see. Old keys resolve (CORE-023), so it survives a move.
+- A collapsible section is the browser's own `details` element in read mode, so it needs no script;
+  in the editor it stays open, with its title as a field.
+- Values are checked at the door (`docShapeProblem`): a key must be a ticket key, a name and a title a
+  line of text within a length. No block holds HTML or an address.
+- What a document format cannot hold follows the existing rule for losses:
+
+| Block | Jira-compatible format | Markdown | Wiki markup | Plain text and email |
+|---|---|---|---|---|
+| Collapsible section | `expand` | `> [!EXPAND] Title` | `{expand:Title}`; a section in a section loses its frame, `}` in a title is dropped | title, then its text |
+| Columns | `layoutSection`, `layoutColumn` with width | **lost:** their blocks, one column after the other; widths lost | **lost:** the same | blocks in order |
+| File of the ticket | `mediaSingle` or `mediaGroup` with `media` of our own collection | `![n](attachment:n)` or `[n](attachment:n)` | **lost:** its name, reading back as text | its name |
+| Ticket reference | `inlineCard` with `/browse/KEY` | `[KEY](ticket:KEY)` | **lost:** its key, reading back as text | its key |
+
+  Other `expand`, `mediaSingle`, `mediaGroup`, `layoutSection` and `inlineCard` nodes that do not fit
+  stay kept whole as before (`unknownBlock`, `unknownInline`). An imported `expand` or layout that fits
+  now shows and edits as these blocks, instead of the placeholder.
+- The menu's list and order are our own and came from general editor patterns and what this repository
+  already supports; no other product's menu was opened or consulted (ADR-003).
+
+## Options considered
+
+| Option | For | Against |
+|---|---|---|
+| File by id in the document | Exact when names repeat | A clone or an import points at the wrong file or none; an import loads files after the documents that name them |
+| File by name (chosen) | Survives clone and import; holds no address | Two files of one name show the first |
+| Checklist items as rich text | The same editor | Conversions, Yjs and limits for what is a line of text |
+
+## Consequences
+
+Checklists, links and subtickets need no new permission. A new document node needs every writer in
+`packages/richtext` updated, and the corpus says so when one is missed. What would make us revisit
+this: people asking for columns in Markdown, or for a ticket reference that shows its summary.

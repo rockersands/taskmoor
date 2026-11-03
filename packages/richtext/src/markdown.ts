@@ -28,7 +28,7 @@ import { gfmAutolinkLiteral } from 'micromark-extension-gfm-autolink-literal';
 import { gfmStrikethrough } from 'micromark-extension-gfm-strikethrough';
 import { gfmTable } from 'micromark-extension-gfm-table';
 import { gfmTaskListItem } from 'micromark-extension-gfm-task-list-item';
-import { type AdfNode, layoutSpan } from './adf';
+import { type AdfNode, isAttachmentName, layoutSpan, MAX_TITLE_LENGTH, TICKET_KEY } from './adf';
 import { fromAdfJson, type PmJson } from './convert';
 import { schema } from './schema';
 
@@ -40,6 +40,9 @@ import { schema } from './schema';
  * - mentions are links with the `mention:` scheme: `[@Kalo](mention:42)`;
  * - panels are alert quotes, `> [!INFO]` (GitHub's NOTE, TIP and WARNING are panel types too;
  *   IMPORTANT reads as info and CAUTION as error);
+ * - a collapsible section is a quote that starts `> [!EXPAND] Its title`;
+ * - a file of the ticket is a paragraph of one link or image with the `attachment:` scheme, a
+ *   ticket reference a link with the `ticket:` scheme: `[PAY-42](ticket:PAY-42)`;
  * - underline, subscript, superscript and text colour are the inline HTML tags `<ins>`,
  *   `<sub>`, `<sup>` and `<span style="color: #36b37e">`; `<u>` reads as underline and `<br>`
  *   as a line break. No other HTML is interpreted: it stays as the text it is.
@@ -56,6 +59,9 @@ import { schema } from './schema';
  *   `<br>` and cells with other blocks keep only their text;
  * - an ordered task list reads as a task list; a list where only some items have a checkbox
  *   reads as a plain list with `[ ]` or `[x]` as text;
+ * - columns are written as their blocks, one column after the other, and read back as that;
+ * - a collapsible section's title that holds a web address ends where the address starts: the
+ *   address reads as the section's first paragraph;
  * - nodes and marks the editor keeps whole for the other format (`unknownBlock`,
  *   `unknownInline`, `unknownMark`) are written as the readable content they hold;
  * - a line break at the end of a paragraph is dropped, and a line feed inside one reads as a
@@ -89,6 +95,8 @@ const FROM_MARKDOWN = [
 const SYNTAX = [gfmTable(), gfmStrikethrough(), gfmTaskListItem(), gfmAutolinkLiteral()];
 
 const MENTION_SCHEME = 'mention:';
+const TICKET_SCHEME = 'ticket:';
+const ATTACHMENT_SCHEME = 'attachment:';
 
 /** Inline node types of the other format, known or not, for reading unknown blocks. */
 const ADF_INLINE = new Set([
@@ -242,6 +250,40 @@ function blockOut(n: PmJson): RootContent[] {
         {
           type: 'blockquote',
           children: [{ type: 'paragraph', children: [marker] }, ...flowOut(content)],
+        },
+      ];
+    }
+    case 'expand': {
+      const marker: Html = { type: 'html', value: '[!EXPAND]' };
+      const title = String(a.title ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return [
+        {
+          type: 'blockquote',
+          children: [
+            {
+              type: 'paragraph',
+              children: title === '' ? [marker] : [marker, { type: 'text', value: ` ${title}` }],
+            },
+            ...flowOut(content),
+          ],
+        },
+      ];
+    }
+    case 'columnLayout':
+      return content.flatMap((column) => blocksOut(column.content ?? []));
+    case 'attachmentRef': {
+      const name = String(a.name ?? '');
+      const url = `${ATTACHMENT_SCHEME}${encodeURIComponent(wellFormed(name))}`;
+      return [
+        {
+          type: 'paragraph',
+          children: [
+            a.image
+              ? { type: 'image', url, alt: name, title: null }
+              : { type: 'link', url, title: null, children: [{ type: 'text', value: name }] },
+          ],
         },
       ];
     }
@@ -582,6 +624,19 @@ function leafOut(n: PmJson): PhrasingContent[] {
         },
       ];
     }
+    case 'ticketRef': {
+      const key = String(a.key ?? '');
+      return key
+        ? [
+            {
+              type: 'link',
+              url: `${TICKET_SCHEME}${encodeURIComponent(wellFormed(key))}`,
+              title: null,
+              children: [{ type: 'text', value: key }],
+            },
+          ]
+        : [];
+    }
     case 'emoji': {
       const text = typeof a.text === 'string' && a.text !== '' ? a.text : String(a.shortName ?? '');
       return text ? [{ type: 'text', value: text }] : [];
@@ -643,8 +698,10 @@ function blocksIn(nodes: readonly RootContent[], defs: Definitions): PmJson[] {
 
 function blockIn(n: RootContent, defs: Definitions): PmJson[] {
   switch (n.type) {
-    case 'paragraph':
-      return [{ type: 'paragraph', content: inlinesIn(n.children, [], defs) }];
+    case 'paragraph': {
+      const attachment = attachmentIn(n.children);
+      return [attachment ?? { type: 'paragraph', content: inlinesIn(n.children, [], defs) }];
+    }
     case 'heading':
       return [
         { type: 'heading', attrs: { level: n.depth }, content: inlinesIn(n.children, [], defs) },
@@ -688,6 +745,24 @@ function quoteIn(children: readonly RootContent[], defs: Definitions): PmJson {
   if (first?.type === 'paragraph') {
     const lead = first.children[0];
     const value = lead?.type === 'text' || lead?.type === 'html' ? lead.value : '';
+    const expand = /^\[!EXPAND\][ \t]*([^\r\n]*)(?:\r?\n|$)/i.exec(value);
+    if (expand) {
+      const remaining = value.slice(expand[0].length);
+      const leadRest: PhrasingContent[] =
+        remaining === '' ? [] : [{ type: 'text', value: remaining }];
+      const paragraph = [...leadRest, ...first.children.slice(1)];
+      const blocks = [
+        ...(paragraph.length > 0
+          ? [{ type: 'paragraph', content: inlinesIn(paragraph, [], defs) } as PmJson]
+          : []),
+        ...blocksIn(rest, defs),
+      ];
+      return {
+        type: 'expand',
+        attrs: { title: (expand[1] ?? '').trim().slice(0, MAX_TITLE_LENGTH) },
+        content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }],
+      };
+    }
     const match = /^\[!([A-Za-z]+)\][ \t]*(?:\r?\n|$)/.exec(value);
     const name = match?.[1]?.toLowerCase() ?? '';
     const panelType = ALERT_ALIASES[name] ?? (PANEL_TYPES.includes(name) ? name : null);
@@ -871,6 +946,24 @@ function inlinesIn(
   return out;
 }
 
+/** The file a paragraph names, when it is one link or image with the `attachment:` scheme. */
+function attachmentIn(children: readonly PhrasingContent[]): PmJson | null {
+  const [only, ...rest] = children;
+  if (!only || rest.length > 0) return null;
+  if ((only.type !== 'link' && only.type !== 'image') || !only.url.startsWith(ATTACHMENT_SCHEME)) {
+    return null;
+  }
+  const encoded = only.url.slice(ATTACHMENT_SCHEME.length);
+  let name: string;
+  try {
+    name = decodeURIComponent(encoded);
+  } catch {
+    name = encoded;
+  }
+  if (!isAttachmentName(name)) return null;
+  return { type: 'attachmentRef', attrs: { name, image: only.type === 'image' } };
+}
+
 function linkIn(
   url: string,
   title: string | null,
@@ -878,6 +971,10 @@ function linkIn(
   marks: readonly MarkJson[],
   defs: Definitions,
 ): PmJson[] {
+  if (url.startsWith(TICKET_SCHEME)) {
+    const key = url.slice(TICKET_SCHEME.length);
+    if (TICKET_KEY.test(key)) return [{ type: 'ticketRef', attrs: { key } }];
+  }
   if (url.startsWith(MENTION_SCHEME)) {
     const [only] = children;
     if (children.length === 1 && only?.type === 'text' && only.value.startsWith('@')) {

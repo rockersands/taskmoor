@@ -7,10 +7,11 @@ import type { AiClient } from '../../ai/client';
 import { SummaryPanel } from '../../ai/SummaryPanel';
 import { ApiError } from '../../api/client';
 import { AttachmentPanel } from '../../attachments/AttachmentPanel';
-import type { AttachmentClient } from '../../attachments/client';
+import { type AttachmentClient, attachmentClient } from '../../attachments/client';
 import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
+import { type EditorTools, EditorToolsProvider } from '../../richtext/EditorTools';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
 import { boardBehind } from '../../routing/cameFrom';
 import { navigate, replaceRoute, routeHref } from '../../routing/router';
@@ -24,7 +25,7 @@ import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
 import { ChecklistsPanel } from '../tools/ChecklistsPanel';
-import { type TicketToolsClient, ticketToolsClient } from '../tools/client';
+import { pickerQuery, type TicketToolsClient, ticketToolsClient } from '../tools/client';
 import { LinksPanel } from '../tools/LinksPanel';
 import { SubticketsPanel } from '../tools/SubticketsPanel';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
@@ -172,6 +173,33 @@ export function TicketPage({
 
   const loaded = state.status === 'loaded' && !state.partial ? state.ticket : null;
   const ticketId = state.status === 'loaded' ? state.ticket.id : null;
+
+  // What the blocks of its description and comments reach (NTF-013, NTF-014): the ticket's files,
+  // read once per page unless the menu asks again, and tickets through search.
+  const editorTools = useMemo<EditorTools>(() => {
+    if (ticketId === null) return {};
+    const files = attachments ?? attachmentClient(ticketId);
+    let read: ReturnType<NonNullable<EditorTools['attachments']>> | null = null;
+    return {
+      attachments: (fresh) => {
+        if (fresh || !read) {
+          read = files.list().then(({ attachments: list }) =>
+            list.map((file) => ({
+              name: file.name,
+              image: file.kind === 'image',
+              href: files.urls.content(file),
+              thumbnail: file.thumbnail ? files.urls.thumbnail(file) : null,
+            })),
+          );
+        }
+        return read;
+      },
+      tickets: (typed) => {
+        const query = pickerQuery(typed);
+        return query ? toolsClient.pick(query) : Promise.resolve([]);
+      },
+    };
+  }, [ticketId, attachments, toolsClient]);
 
   // A change made elsewhere reaches the local copy through the socket (NTF-008): when this
   // ticket's row there moves on, the page reads the ticket again, so the open view follows
@@ -607,85 +635,87 @@ export function TicketPage({
         )}
       </header>
 
-      <div className="ticket-columns">
-        <div className="ticket-main">
-          <section aria-labelledby={descriptionId} className="ticket-text">
-            <h2 id={descriptionId} className="facts-title">
-              {t('ticketPage.description')}
-            </h2>
-            <CollaborativeEditor
-              ticketId={shown.id}
-              field="description"
-              labelledBy={descriptionId}
-              fallback={shown.description ?? null}
-              user={me}
-              {...(findPeople ? { mentions: findPeople } : {})}
-              {...(connect ? { connect } : {})}
-            />
-          </section>
-          {loaded && (
-            <SummaryPanel
-              ticket={{ id: loaded.id, key: loaded.key }}
-              trackId={loaded.track.id}
-              {...(ai.client ? { client: ai.client } : {})}
-              {...(ai.notice ? { notice: ai.notice } : {})}
-              {...(ai.features ? { features: ai.features } : {})}
-            />
-          )}
-          {loaded && (
-            <ChecklistsPanel
-              ticket={loaded}
-              client={toolsClient}
-              revision={revision}
-              onChanged={() => setRevision((r) => r + 1)}
-            />
-          )}
-          {loaded && (
-            <SubticketsPanel
-              ticket={loaded}
-              client={toolsClient}
-              revision={revision}
-              onChanged={() => setRevision((r) => r + 1)}
-            />
-          )}
-          {loaded && (
-            <LinksPanel
-              ticket={loaded}
-              client={toolsClient}
-              revision={revision}
-              onChanged={() => setRevision((r) => r + 1)}
-            />
-          )}
-          <AttachmentPanel ticket={shown.id} {...(attachments ? { client: attachments } : {})} />
-          <ActivityPanel
-            ticket={{ id: shown.id, key: shown.key }}
-            client={client}
-            comments={comments}
-            mentions={findPeople}
-            tab={tab}
-            onTab={setTab}
-            revision={revision}
-          />
-        </div>
-        {loaded && (
-          <div className="ticket-side">
-            <section aria-labelledby={detailsId} className="ticket-details">
-              <h2 id={detailsId} className="ticket-section-title">
-                {t('ticketView.details')}
+      <EditorToolsProvider value={editorTools}>
+        <div className="ticket-columns">
+          <div className="ticket-main">
+            <section aria-labelledby={descriptionId} className="ticket-text">
+              <h2 id={descriptionId} className="facts-title">
+                {t('ticketPage.description')}
               </h2>
-              <Details
-                ticket={loaded}
-                me={me}
-                client={client}
-                when={when}
-                onEdit={edit}
-                onAssignToMe={assignToMe}
+              <CollaborativeEditor
+                ticketId={shown.id}
+                field="description"
+                labelledBy={descriptionId}
+                fallback={shown.description ?? null}
+                user={me}
+                {...(findPeople ? { mentions: findPeople } : {})}
+                {...(connect ? { connect } : {})}
               />
             </section>
-            <InfoPanel ticketId={loaded.id} client={client} revision={revision} />
+            {loaded && (
+              <SummaryPanel
+                ticket={{ id: loaded.id, key: loaded.key }}
+                trackId={loaded.track.id}
+                {...(ai.client ? { client: ai.client } : {})}
+                {...(ai.notice ? { notice: ai.notice } : {})}
+                {...(ai.features ? { features: ai.features } : {})}
+              />
+            )}
+            {loaded && (
+              <ChecklistsPanel
+                ticket={loaded}
+                client={toolsClient}
+                revision={revision}
+                onChanged={() => setRevision((r) => r + 1)}
+              />
+            )}
+            {loaded && (
+              <SubticketsPanel
+                ticket={loaded}
+                client={toolsClient}
+                revision={revision}
+                onChanged={() => setRevision((r) => r + 1)}
+              />
+            )}
+            {loaded && (
+              <LinksPanel
+                ticket={loaded}
+                client={toolsClient}
+                revision={revision}
+                onChanged={() => setRevision((r) => r + 1)}
+              />
+            )}
+            <AttachmentPanel ticket={shown.id} {...(attachments ? { client: attachments } : {})} />
+            <ActivityPanel
+              ticket={{ id: shown.id, key: shown.key }}
+              client={client}
+              comments={comments}
+              mentions={findPeople}
+              tab={tab}
+              onTab={setTab}
+              revision={revision}
+            />
           </div>
-        )}
-      </div>
+          {loaded && (
+            <div className="ticket-side">
+              <section aria-labelledby={detailsId} className="ticket-details">
+                <h2 id={detailsId} className="ticket-section-title">
+                  {t('ticketView.details')}
+                </h2>
+                <Details
+                  ticket={loaded}
+                  me={me}
+                  client={client}
+                  when={when}
+                  onEdit={edit}
+                  onAssignToMe={assignToMe}
+                />
+              </section>
+              <InfoPanel ticketId={loaded.id} client={client} revision={revision} />
+            </div>
+          )}
+        </div>
+      </EditorToolsProvider>
       {cloning && loaded && (
         <CloneDialog
           ticket={{

@@ -9,6 +9,7 @@ import {
   docShapeProblem,
 } from './adf';
 import { fromAdf, fromAdfJson, toAdf, toAdfFromJson } from './convert';
+import { schema } from './schema';
 import { generateAdfDocument, generateAdfDocuments } from './testing';
 
 /** Round trip through the editor schema, comparing canonical forms. */
@@ -134,7 +135,7 @@ const sample: AdfNode = adfDoc([
     },
   },
   {
-    type: 'expand',
+    type: 'bodiedExtension',
     attrs: { title: 'More' },
     content: [
       {
@@ -163,7 +164,7 @@ describe('document format round trip', () => {
     const unknown = pm.content?.filter((n) => n.type === 'unknownBlock') ?? [];
     expect(unknown.map((n) => (n.attrs as { adf: AdfNode }).adf.type)).toEqual([
       'extension',
-      'expand',
+      'bodiedExtension',
     ]);
     const back = toAdfFromJson(pm);
     expect(back.content?.at(-1)).toEqual(sample.content?.at(-1));
@@ -312,5 +313,158 @@ describe('document format round trip', () => {
 
   it('rejects a root that is not a document', () => {
     expect(() => fromAdf({ type: 'paragraph' })).toThrow(/Expected a doc node/);
+  });
+});
+
+describe('the new blocks (NTF-014)', () => {
+  const para = (text: string): AdfNode => ({
+    type: 'paragraph',
+    content: [{ type: 'text', text }],
+  });
+  const blocks: [string, AdfNode, string][] = [
+    [
+      'a collapsible section',
+      { type: 'expand', attrs: { title: 'More' }, content: [para('x')] },
+      'expand',
+    ],
+    [
+      'columns',
+      {
+        type: 'layoutSection',
+        content: [
+          { type: 'layoutColumn', attrs: { width: 33.33 }, content: [para('a')] },
+          { type: 'layoutColumn', attrs: { width: 66.66 }, content: [para('b')] },
+        ],
+      },
+      'columnLayout',
+    ],
+    [
+      'an image of the ticket',
+      {
+        type: 'mediaSingle',
+        attrs: { layout: 'center' },
+        content: [
+          {
+            type: 'media',
+            attrs: { type: 'file', id: 'a.png', collection: 'taskmoor-attachments' },
+          },
+        ],
+      },
+      'attachmentRef',
+    ],
+    [
+      'a file of the ticket',
+      {
+        type: 'mediaGroup',
+        content: [
+          {
+            type: 'media',
+            attrs: { type: 'file', id: 'a.pdf', collection: 'taskmoor-attachments' },
+          },
+        ],
+      },
+      'attachmentRef',
+    ],
+  ];
+  for (const [name, node, type] of blocks) {
+    it(`[NTF-014] (1) maps ${name} and brings it back unchanged`, () => {
+      const doc = adfDoc([node]);
+      const pm = fromAdf(doc);
+      pm.check();
+      expect(pm.firstChild?.type.name).toBe(type);
+      expect(canonicalAdf(toAdf(pm))).toEqual(canonicalAdf(doc));
+    });
+  }
+
+  it('[NTF-014] (1) maps a ticket reference and brings it back unchanged', () => {
+    const doc = adfDoc([
+      {
+        type: 'paragraph',
+        content: [{ type: 'inlineCard', attrs: { url: '/browse/PAY-42', extra: 'kept' } }],
+      },
+    ]);
+    const pm = fromAdf(doc);
+    expect(pm.firstChild?.firstChild?.type.name).toBe('ticketRef');
+    expect(pm.firstChild?.firstChild?.attrs.key).toBe('PAY-42');
+    expect(canonicalAdf(toAdf(pm))).toEqual(canonicalAdf(doc));
+  });
+
+  it('[NTF-014] keeps whole what does not fit: other media, cards, empty sections, too many columns', () => {
+    const column: AdfNode = { type: 'layoutColumn', content: [para('c')] };
+    for (const node of [
+      { type: 'expand' },
+      { type: 'expand', attrs: { title: 'two\nlines' }, content: [para('x')] },
+      {
+        type: 'mediaSingle',
+        content: [{ type: 'media', attrs: { type: 'file', id: 'x', collection: 'other' } }],
+      },
+      { type: 'mediaGroup', content: [] },
+      { type: 'layoutSection', content: Array.from({ length: 7 }, () => column) },
+      { type: 'layoutSection', content: [para('not a column')] },
+      { type: 'layoutSection', content: [{ type: 'layoutColumn', content: [] }] },
+    ] as AdfNode[]) {
+      const doc = adfDoc([node]);
+      const pm = fromAdf(doc);
+      expect(pm.firstChild?.type.name).toBe('unknownBlock');
+      expect(canonicalAdf(toAdf(pm))).toEqual(canonicalAdf(doc));
+    }
+    for (const url of [
+      'https://example.test/browse/PAY-1',
+      '/browse/not a key',
+      '/browse/PAY-1/x',
+    ]) {
+      const doc = adfDoc([
+        { type: 'paragraph', content: [{ type: 'inlineCard', attrs: { url } }] },
+      ]);
+      expect(fromAdf(doc).firstChild?.firstChild?.type.name).toBe('unknownInline');
+    }
+  });
+
+  it('[NTF-014] (2) refuses values that are not what a block may hold', () => {
+    const inside = (node: Record<string, unknown>) => ({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [node] }],
+    });
+    expect(docShapeProblem(inside({ type: 'ticketRef', attrs: { key: 'PAY-42' } }))).toBeNull();
+    for (const key of ['', 'PAY', 'PAY-', '-1', 'PAY-1 ', '"><img>-1', 'javascript:x-1', 1]) {
+      expect(docShapeProblem(inside({ type: 'ticketRef', attrs: { key } })), String(key)).toMatch(
+        /ticket reference/,
+      );
+    }
+    expect(docShapeProblem(inside({ type: 'ticketRef' }))).toMatch(/ticket reference/);
+    const block = (node: Record<string, unknown>) => ({ type: 'doc', content: [node] });
+    expect(docShapeProblem(block({ type: 'attachmentRef', attrs: { name: 'a.png' } }))).toBeNull();
+    for (const name of ['', '   ', 'a'.repeat(256), 'two\nlines', 7]) {
+      expect(docShapeProblem(block({ type: 'attachmentRef', attrs: { name } }))).toMatch(
+        /attachment reference/,
+      );
+    }
+    expect(
+      docShapeProblem(block({ type: 'expand', attrs: { title: 'x'.repeat(256) }, content: [] })),
+    ).toMatch(/collapsible/);
+  });
+
+  it('[NTF-014] (2) writes no raw HTML and no address from what a block holds', () => {
+    const doc = schema.nodeFromJSON({
+      type: 'doc',
+      content: [
+        {
+          type: 'expand',
+          attrs: { title: '<img src=x onerror=y>' },
+          content: [{ type: 'paragraph' }],
+        },
+        { type: 'attachmentRef', attrs: { name: '"><script>x</script>' } },
+        {
+          type: 'paragraph',
+          content: [{ type: 'ticketRef', attrs: { key: '"><img src=x>-1' } }],
+        },
+      ],
+    });
+    const seen = JSON.stringify(doc.toJSON());
+    expect(seen).toContain('<img src=x onerror=y>'); // Text in an attribute, for the renderer to escape.
+    const spec = schema.nodes.ticketRef?.spec.toDOM?.(
+      doc.lastChild?.firstChild as never,
+    ) as unknown[];
+    expect((spec[1] as Record<string, unknown>).href).toBeUndefined();
   });
 });

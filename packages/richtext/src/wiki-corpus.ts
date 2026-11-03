@@ -96,6 +96,64 @@ export interface CorpusDocument {
 }
 
 const HAND: CorpusDocument[] = [
+  // The new blocks (NTF-014) ---------------------------------------------------------------------
+  {
+    name: 'expand',
+    lossless: true,
+    doc: doc(
+      {
+        type: 'expand',
+        attrs: { title: 'Steps to reproduce' },
+        content: [p(t('First open the page.')), panel('note', p(t('Then wait.')))],
+      },
+      { type: 'expand', attrs: { title: '' }, content: [p(t('No title here.'))] },
+    ),
+  },
+  {
+    name: 'expand-in-panel',
+    lossless: true,
+    doc: doc(
+      panel('info', { type: 'expand', attrs: { title: 'Inside' }, content: [p(t('Body.'))] }),
+    ),
+  },
+  {
+    name: 'expand-in-expand',
+    lossless: false,
+    doc: doc({
+      type: 'expand',
+      attrs: { title: 'Outer' },
+      content: [{ type: 'expand', attrs: { title: 'Inner' }, content: [p(t('Body.'))] }],
+    }),
+  },
+  {
+    name: 'expand-title-brace',
+    lossless: false,
+    doc: doc({ type: 'expand', attrs: { title: 'a } b' }, content: [p(t('Body.'))] }),
+  },
+  {
+    name: 'columns',
+    lossless: false,
+    doc: doc({
+      type: 'columnLayout',
+      content: [
+        { type: 'column', content: [h(2, t('Left')), p(t('One.'))] },
+        { type: 'column', content: [p(t('Two.'))] },
+      ],
+    }),
+  },
+  {
+    name: 'attachment-reference',
+    lossless: false,
+    doc: doc(
+      { type: 'attachmentRef', attrs: { name: 'screen shot (1).png', image: true } },
+      { type: 'attachmentRef', attrs: { name: 'notes.pdf', image: false } },
+    ),
+  },
+  {
+    name: 'ticket-reference',
+    lossless: false,
+    doc: doc(p(t('Blocked by '), { type: 'ticketRef', attrs: { key: 'PAY-42' } }, t('.'))),
+  },
   // Text and paragraphs -----------------------------------------------------------------------
   { name: 'empty-document', lossless: true, doc: doc(p()) },
   { name: 'plain-paragraph', lossless: true, doc: doc(p(t('The export button does nothing.'))) },

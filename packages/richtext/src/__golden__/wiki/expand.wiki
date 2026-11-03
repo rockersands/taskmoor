@@ -1,0 +1,11 @@
+{expand:Steps to reproduce}
+First open the page.
+
+{panel:bgColor=#eae6ff}
+Then wait.
+{panel}
+{expand}
+
+{expand}
+No title here.
+{expand}

@@ -348,7 +348,8 @@ describe('rich text formats and mentions (M1-017)', () => {
       ['wiki', { type: 'doc' }],
       // Plain text is for reading only.
       ['text', 'Title'],
-      ['doc', ADF],
+      // The other format's own node, which the stored form does not have.
+      ['doc', adfDoc([{ type: 'rule' }])],
     ] as const) {
       const res = await write(format, value);
       expect(res.statusCode, `${format} ${JSON.stringify(value)}`).toBe(400);

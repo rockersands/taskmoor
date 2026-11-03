@@ -94,6 +94,60 @@ export interface CorpusDocument {
 }
 
 export const DOCUMENTS: CorpusDocument[] = [
+  {
+    name: 'expand',
+    lossless: true,
+    doc: doc(
+      {
+        type: 'expand',
+        attrs: { title: 'Steps to reproduce' },
+        content: [p(t('First open the page.')), ul([p(t('then wait'))], [p(t('then look'))])],
+      },
+      { type: 'expand', attrs: { title: '' }, content: [p(t('No title here.'))] },
+    ),
+  },
+  {
+    name: 'expand-title-symbols',
+    lossless: true,
+    doc: doc({
+      type: 'expand',
+      attrs: { title: 'Costs *are* [high] & _odd_' },
+      content: [p(t('Body.'))],
+    }),
+  },
+  {
+    name: 'ticket-reference',
+    lossless: true,
+    doc: doc(
+      p(
+        t('Blocked by '),
+        { type: 'ticketRef', attrs: { key: 'PAY-42' } },
+        t(' and '),
+        { type: 'ticketRef', attrs: { key: 'OPS_2-7' } },
+        t('.'),
+      ),
+    ),
+  },
+  {
+    name: 'attachment-reference',
+    lossless: true,
+    doc: doc(
+      { type: 'attachmentRef', attrs: { name: 'screen shot (1).png', image: true } },
+      { type: 'attachmentRef', attrs: { name: 'notes [final].pdf', image: false } },
+      p(t('After them.')),
+    ),
+  },
+  {
+    name: 'columns',
+    lossless: false,
+    doc: doc({
+      type: 'columnLayout',
+      content: [
+        { type: 'column', content: [h(2, t('Left')), p(t('One.'))] },
+        { type: 'column', content: [p(t('Two.'))] },
+      ],
+    }),
+  },
   { name: 'plain-paragraph', lossless: true, doc: doc(p(t('The export button does nothing.'))) },
   {
     name: 'paragraphs',

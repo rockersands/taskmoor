@@ -118,6 +118,7 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [111](0111-personal-data-and-database-tls.md) | A person's data as a background ZIP download and erasure to a stable placeholder, the audit log kept intact and masked on read; TLS with verify-full to the bundled PostgreSQL, the all-in-one on its Unix socket | Accepted |
 | [114](0114-glass-interface-and-clear-sections.md) | The glass interface on the ADR-036 tokens: sectioned navigation with a purpose line on every page, explaining empty states, "What is this for?" help, drag with a keyboard path everywhere, a layout editor and easier board columns | Accepted |
 | [115](0115-guided-tutorial.md) | A sectioned guided tutorial that makes one real thing per section, offered at first sign-in, skippable, every section again in Settings, Tutorials; progress per person on the server | Accepted |
+| [120](0120-ticket-tools.md) | Ticket tools: links, subtickets, checklists and a slash menu | Accepted |
 | [116](0116-one-place-per-track.md) | One place per track with its own sections, one board per track, a column is a status, and moves that ask for nothing by default | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

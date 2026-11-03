@@ -99,13 +99,20 @@ export function commentText(body: JsonValue, max = 600): string {
   let text: string;
   try {
     const node = schema.nodeFromJSON(body);
-    text = node.textBetween(0, node.content.size, '\n', (leaf) =>
-      leaf.type.name === 'hardBreak'
-        ? '\n'
-        : leaf.type.name === 'mention'
-          ? `@${leaf.attrs.label ?? leaf.attrs.id ?? ''}`
-          : '',
-    );
+    text = node.textBetween(0, node.content.size, '\n', (leaf) => {
+      switch (leaf.type.name) {
+        case 'hardBreak':
+          return '\n';
+        case 'mention':
+          return `@${leaf.attrs.label ?? leaf.attrs.id ?? ''}`;
+        case 'ticketRef':
+          return String(leaf.attrs.key ?? '');
+        case 'attachmentRef':
+          return String(leaf.attrs.name ?? '');
+        default:
+          return '';
+      }
+    });
   } catch {
     return '';
   }
