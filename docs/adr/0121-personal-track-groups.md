@@ -35,6 +35,8 @@ and surfaces (ADR-114) and nothing else.
   each. Tracks in no group follow, in the directory's order.
 - A group shows only the tracks the person sees in the track list. A track they lose sight of
   stays in the group, unseen, and comes back if they see it again; nothing about it is shown.
+  A place given for a move counts the tracks the person sees, as the page shows them, so unseen
+  tracks never shift a move.
 - Searching the Tracks page shows the plain list of matches, as before.
 
 ### On the page (T-085)
@@ -77,9 +79,16 @@ and surfaces (ADR-114) and nothing else.
   owner may give it at the time; a track moved out takes back what the shares held there.
   Deleting a shared group takes back everything its shares held.
 - **Taking a share back removes only what shares gave.** A role still held by another share
-  stays. A role given on the People page, or by an invitation, after a share gave it becomes the
-  person's own: the shares stop holding it, and the `track_role.actor_added` event says so with
-  `keptFromGroupShares`. A role removed on the People page leaves no record behind.
+  stays. A role given on the People page, by an invitation or by an import, after a share gave
+  it becomes the person's own: the shares stop holding it, and the change's event says so with
+  `keptFromGroupShares` (`track_role.actor_added` on the People page and for an invitation by
+  name, `track_invitation.created`, `.resent` or `.accepted` otherwise). A role removed on the
+  People page or by revoking an invitation leaves no record behind.
+- **One change at a time.** A change to a person's groups takes an advisory lock on that
+  person's arrangement and a row lock on the group before it reads anything, and every write of
+  a person's role in a track (shares, the People page, invitations, imports) first locks the
+  track row. A give, a take-back and a role made the person's own therefore never interleave,
+  and a share's record never outlives or misses the role it stands for.
 - **Never the last one to run a track.** If taking back would leave a track with nobody to run it
   (IAM-028's rule for the People page), the change is refused with `last_track_admin` and the
   tracks, and nothing changes.
@@ -99,7 +108,8 @@ name and tracks, in their arrangement, marked with who gave it. It is theirs fro
 rename it, move tracks and delete it, and neither side's later changes reach the other. Tracks
 they already keep in one of their groups stay where they put them. A role, if chosen, is given by
 the same rule as a share, but **as an ordinary role, held by no share**: deleting either group
-takes nothing, and a track's administrators remove it on its People page. This is a reading the
+takes nothing, and a track's administrators remove it on its People page. A role the person
+held only through shares becomes theirs too, and `track_group.copied` lists it as `kept`. This is a reading the
 user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/copies`.
 
 ### Events, audit and tokens
@@ -125,7 +135,8 @@ user has not confirmed; changing it touches only `POST /api/v1/track-groups/:id/
 
 - A group becomes a way to grant a role on many tracks at once, bounded by what the sharer could
   grant track by track; the audit log shows each role that came and went.
-- Any new way of giving or removing a track role must call `keepRole` (from
-  `apps/server/src/trackgroups/access.ts`) so the shares' record stays exact.
+- Any new way of giving or removing a person's track role must lock the track (`lockTracks`)
+  and call `keepRole` (both in `apps/server/src/trackgroups/access.ts`) so the shares' record
+  stays exact.
 - Revisit if the user wants "set on" to mean something else, wants a person to leave a group
   shared with them, or wants a share to follow later changes in the sharer's rights.

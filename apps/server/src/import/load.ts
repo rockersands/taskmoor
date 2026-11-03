@@ -19,6 +19,7 @@ import { type FieldChange, linkChange, recordChanges, ticketChanges } from '../t
 import { canonicalJson, ticketKey } from '../tickets/model';
 import { sequenceKey, sequenceValueOf } from '../tickets/rank';
 import { loadTicket, loadTickets, type TicketRow, ticketQuery } from '../tickets/store';
+import { keepRole, lockTracks } from '../trackgroups/access';
 import { checkKey } from '../tracks/model';
 import {
   type Command,
@@ -895,9 +896,17 @@ async function addFormerKeys(ctx: LoadContext, trackId: number, keys: readonly s
   }
 }
 
-/** Adds a track's role actors; the ones it has already stay. */
-async function addRoleActors(ctx: LoadContext, trackId: number, actors: TrackData['actors']) {
+/**
+ * Adds a track's role actors; the ones it has already stay. A person's role the import names is
+ * theirs, so shared track groups stop holding it (IAM-034).
+ */
+export async function addRoleActors(
+  ctx: Pick<LoadContext, 'trx' | 'workspaceId'>,
+  trackId: number,
+  actors: TrackData['actors'],
+) {
   if (actors.length === 0) return;
+  await lockTracks(ctx.trx, [trackId]);
   await ctx.trx
     .insertInto('track_role_actor')
     .values(
@@ -911,6 +920,9 @@ async function addRoleActors(ctx: LoadContext, trackId: number, actors: TrackDat
     )
     .onConflict((oc) => oc.doNothing())
     .execute();
+  for (const a of actors) {
+    if (a.user !== null) await keepRole(ctx.trx, trackId, a.role, a.user);
+  }
 }
 
 /** The valid earlier keys of a track command other than its key. */

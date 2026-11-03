@@ -65,6 +65,22 @@ const heldByShares = async (db: Db, trackId: number, roleId: number, userId: num
     .executeTakeFirst()) !== undefined;
 
 /**
+ * Locks track rows in id order. Every change to a person's role in a track takes this lock
+ * first, here, on the People page and in invitations, so a give, a take-back and a role made the
+ * person's own (`keepRole`) on one track run one after another and the record stays exact.
+ */
+export async function lockTracks(db: Db, trackIds: readonly number[]): Promise<void> {
+  if (trackIds.length === 0) return;
+  await db
+    .selectFrom('track')
+    .select('id')
+    .where('id', 'in', [...new Set(trackIds)])
+    .orderBy('id')
+    .forUpdate()
+    .execute();
+}
+
+/**
  * Gives a share's role on tracks the caller has already checked with `givableTracks`. Returns
  * the roles it added; those the person already held are not changes.
  */
@@ -76,6 +92,7 @@ export async function giveThroughShare(
   const given: AccessChange[] = [];
   let alreadyHeld = 0;
   const { workspaceId, userId, roleId } = share;
+  await lockTracks(trx, trackIds);
   for (const trackId of trackIds) {
     const added = await trx
       .insertInto('track_role_actor')
@@ -105,7 +122,7 @@ export async function giveThroughShare(
 
 /**
  * Gives a role on tracks as an ordinary role, held by no share: what setting a group on someone
- * gives (ADR-121). A role shares held becomes the person's own.
+ * gives (ADR-121). A role shares held becomes the person's own, and is listed as `kept`.
  */
 export async function giveOutright(
   trx: Transaction<Database>,
@@ -113,22 +130,27 @@ export async function giveOutright(
   userId: number,
   roleId: number,
   trackIds: readonly number[],
-): Promise<{ given: AccessChange[]; alreadyHeld: number }> {
+): Promise<{ given: AccessChange[]; kept: AccessChange[]; alreadyHeld: number }> {
   const given: AccessChange[] = [];
+  const kept: AccessChange[] = [];
   let alreadyHeld = 0;
+  await lockTracks(trx, trackIds);
   for (const trackId of trackIds) {
     const added = await trx
       .insertInto('track_role_actor')
       .values({ workspace_id: workspaceId, track_id: trackId, role_id: roleId, user_id: userId })
       .onConflict((oc) => oc.doNothing())
       .executeTakeFirst();
-    if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) given.push({ trackId, userId, roleId });
+    const isNew = Number(added.numInsertedOrUpdatedRows ?? 0) > 0;
+    // A new row clears any record left behind; an existing one becomes the person's own.
+    const fromShares = await keepRole(trx, trackId, roleId, userId);
+    if (isNew) given.push({ trackId, userId, roleId });
     else {
       alreadyHeld++;
-      await keepRole(trx, trackId, roleId, userId);
+      if (fromShares) kept.push({ trackId, userId, roleId });
     }
   }
-  return { given, alreadyHeld };
+  return { given, kept, alreadyHeld };
 }
 
 /**
@@ -153,13 +175,10 @@ export async function releaseShares(
   if (held.length === 0) return [];
   // One change at a time per track, as on the People page, so two removals cannot both leave
   // the track with no one to run it.
-  await trx
-    .selectFrom('track')
-    .select('id')
-    .where('id', 'in', [...new Set(held.map((h) => h.track_id))])
-    .orderBy('id')
-    .forUpdate()
-    .execute();
+  await lockTracks(
+    trx,
+    held.map((h) => h.track_id),
+  );
   let release = trx.deleteFrom('track_group_access').where('share_id', 'in', [...shareIds]);
   if (trackIds) release = release.where('track_id', 'in', [...trackIds]);
   await release.execute();

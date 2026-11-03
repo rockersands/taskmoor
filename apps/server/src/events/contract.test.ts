@@ -3389,6 +3389,53 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { userId: state.bo, roleId: state.role },
         }),
     },
+    // A role only a share held becomes the person's own: by an invitation, then by a copy.
+    {
+      route: 'POST /api/v1/tracks/:id/invitations',
+      expect: 'track_role.actor_added',
+      prepare: async () => {
+        const lou = await database.db
+          .insertInto('app_user')
+          .values({ workspace_id: 1, email: 'lou@example.com', name: 'Lou' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        state.lou = lou.id;
+        await admin({
+          method: 'POST',
+          url: `/api/v1/track-groups/${state.trackGroup}/shares`,
+          payload: { userId: state.lou, roleId: state.role },
+        });
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/tracks/${state.track}/invitations`,
+          payload: { userIds: [state.lou], roleId: state.role, delivery: 'link' },
+        }),
+    },
+    {
+      route: 'POST /api/v1/track-groups/:id/copies',
+      expect: 'track_group.copied',
+      prepare: async () => {
+        const kim = await database.db
+          .insertInto('app_user')
+          .values({ workspace_id: 1, email: 'kim@example.com', name: 'Kim' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        state.kim = kim.id;
+        await admin({
+          method: 'POST',
+          url: `/api/v1/track-groups/${state.trackGroup}/shares`,
+          payload: { userId: state.kim, roleId: state.role },
+        });
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/track-groups/${state.trackGroup}/copies`,
+          payload: { userId: state.kim, roleId: state.role },
+        }),
+    },
     {
       route: 'DELETE /api/v1/track-groups/:id/shares/:userId',
       expect: 'track_group.unshared',

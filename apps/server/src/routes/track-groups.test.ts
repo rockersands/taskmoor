@@ -1,12 +1,14 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { passwordHasher, pepperFromSecret, pepperRing } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { EventBus } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
+import { addRoleActors } from '../import/load';
 import { issueSetupToken } from '../setup';
 import { loopbackOutbound } from '../testing/outbound';
 import type { GroupView } from './track-groups';
@@ -138,6 +140,8 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
       roles: ['api'],
       passwords,
       peppers,
+      publicUrl: 'http://tracker.test',
+      invitationMail: async () => null,
     });
     const setup = await app.inject({
       method: 'POST',
@@ -746,7 +750,252 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
         roleId: roles.Viewers,
         trackIds: [tracks.BETA, tracks.GAMMA],
         given: [{ trackId: tracks.BETA, userId: ids.ben, roleId: roles.Viewers }],
+        kept: [],
       });
+    });
+  });
+
+  describe('changes that run at once, and every other way a role is written (IAM-034)', () => {
+    /** The shares' records of a person's role in a track. */
+    const records = (track: string, role: string, user: string) =>
+      database.db
+        .selectFrom('track_group_access')
+        .select('share_id')
+        .where('track_id', '=', tracks[track] as number)
+        .where('role_id', '=', roles[role] as number)
+        .where('user_id', '=', ids[user] as number)
+        .execute();
+    const shareOf = (group: number, user: string) =>
+      database.db
+        .selectFrom('track_group_share')
+        .select('id')
+        .where('group_id', '=', group)
+        .where('user_id', '=', ids[user] as number)
+        .executeTakeFirstOrThrow();
+
+    it('[IAM-034] taking a share back waits for a give in progress on the group, and takes that too', async () => {
+      const race = await makeGroup('owen', 'Race', ['DELTA']);
+      await share('owen', race, 'fay', 'Viewers');
+      const s = await shareOf(race, 'fay');
+      let finish!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      let held!: () => void;
+      const holding = new Promise<void>((resolve) => {
+        held = resolve;
+      });
+      // Moving BETA into the group, half done: the change holds its locks as the route does and
+      // has given fay the share's role on BETA, not yet committed.
+      const inFlight = database.db.transaction().execute(async (trx) => {
+        await sql`SELECT pg_advisory_xact_lock(hashtext('track-groups'), ${ids.owen}::int)`.execute(
+          trx,
+        );
+        await trx
+          .selectFrom('track_group')
+          .select('id')
+          .where('id', '=', race)
+          .forUpdate()
+          .execute();
+        await trx
+          .insertInto('track_group_track')
+          .values({
+            workspace_id: 1,
+            group_id: race,
+            owner_id: ids.owen as number,
+            track_id: tracks.BETA as number,
+            position: 1,
+          })
+          .execute();
+        const beta = {
+          workspace_id: 1,
+          track_id: tracks.BETA as number,
+          role_id: roles.Viewers as number,
+          user_id: ids.fay as number,
+        };
+        await trx.insertInto('track_role_actor').values(beta).execute();
+        await trx
+          .insertInto('track_group_access')
+          .values({ ...beta, share_id: s.id })
+          .execute();
+        held();
+        await gate;
+      });
+      await holding;
+      const back = unshare('owen', race, 'fay');
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      finish();
+      await inFlight;
+      expect((await back).statusCode).toBe(204);
+      expect(await rolesOf('fay')).toEqual([]);
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${race}` });
+    });
+
+    it('[CORE-034] two moves of one track into different groups at once both land, one after the other', async () => {
+      const a = await makeGroup('owen', 'A', []);
+      const b = await makeGroup('owen', 'B', []);
+      const moves = await Promise.all(
+        [a, b].map((g) =>
+          as('owen', { method: 'PUT', url: `/api/v1/track-groups/${g}/tracks/${tracks.BETA}` }),
+        ),
+      );
+      expect(moves.map((m) => m.statusCode)).toEqual([200, 200]);
+      const holding = (await layout('owen')).filter((g) => keysOf(g)?.includes('BETA'));
+      expect(holding).toHaveLength(1);
+      for (const g of [a, b])
+        await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+    });
+
+    it('[CORE-034] a place counts the tracks the person sees, so hidden ones never shift a move', async () => {
+      // Owen sees HIDDEN while he groups it, then loses it: the group keeps it, unseen.
+      expect((await give('HIDDEN', 'Viewers', 'owen')).statusCode).toBe(204);
+      const g = await makeGroup('owen', 'With a hidden one', ['DELTA', 'HIDDEN', 'BETA']);
+      expect((await take('HIDDEN', 'Viewers', 'owen')).statusCode).toBe(204);
+      const shown = async () => keysOf((await layout('owen')).find((x) => x.id === g));
+      expect(await shown()).toEqual(['DELTA', 'BETA']);
+      // One place later, as the page counts it: after BETA.
+      const later = await as('owen', {
+        method: 'PUT',
+        url: `/api/v1/track-groups/${g}/tracks/${tracks.DELTA}`,
+        payload: { position: 1 },
+      });
+      expect(later.statusCode).toBe(200);
+      expect(await shown()).toEqual(['BETA', 'DELTA']);
+      // And back to the start: before BETA.
+      await as('owen', {
+        method: 'PUT',
+        url: `/api/v1/track-groups/${g}/tracks/${tracks.DELTA}`,
+        payload: { position: 0 },
+      });
+      expect(await shown()).toEqual(['DELTA', 'BETA']);
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+    });
+
+    it('[IAM-034] revoking an invitation that gave a role clears the shares’ record of it', async () => {
+      // An invitation gives cy Members on BETA at once; the role is then taken on the People page.
+      const invited = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/tracks/${tracks.BETA}/invitations`,
+        payload: { addresses: ['cy@example.com'], roleId: roles.Members, delivery: 'link' },
+      });
+      expect(invited.statusCode, invited.body).toBe(201);
+      const invitationId = invited.json().results[0].invitationId;
+      expect(await rolesOf('cy')).toEqual(['BETA:Members']);
+      expect((await take('BETA', 'Members', 'cy')).statusCode).toBe(204);
+      // A share gives it again; then the invitation is revoked, which removes the role.
+      const g = await makeGroup('owen', 'Stale', ['BETA']);
+      await share('owen', g, 'cy', 'Members');
+      expect(await records('BETA', 'Members', 'cy')).toHaveLength(1);
+      const revoked = await as('admin', {
+        method: 'DELETE',
+        url: `/api/v1/tracks/${tracks.BETA}/invitations/${invitationId}`,
+      });
+      expect(revoked.statusCode).toBe(204);
+      expect(await rolesOf('cy')).toEqual([]);
+      expect(await records('BETA', 'Members', 'cy')).toEqual([]);
+      // Given again on the People page, it is cy's: taking the share back leaves it.
+      expect((await give('BETA', 'Members', 'cy')).statusCode).toBe(204);
+      await unshare('owen', g, 'cy');
+      expect(await rolesOf('cy')).toEqual(['BETA:Members']);
+      await take('BETA', 'Members', 'cy');
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+    });
+
+    it('[IAM-034] a role given on the People page is the person’s own even past a stale record', async () => {
+      const g = await makeGroup('owen', 'Old record', ['BETA']);
+      await share('owen', g, 'cy', null);
+      const s = await shareOf(g, 'cy');
+      // A record with no role behind it, as an older release could leave.
+      await database.db
+        .insertInto('track_group_access')
+        .values({
+          workspace_id: 1,
+          share_id: s.id,
+          track_id: tracks.BETA as number,
+          role_id: roles.Viewers as number,
+          user_id: ids.cy as number,
+        })
+        .execute();
+      expect((await give('BETA', 'Viewers', 'cy')).statusCode).toBe(204);
+      expect(await records('BETA', 'Viewers', 'cy')).toEqual([]);
+      await unshare('owen', g, 'cy');
+      expect(await rolesOf('cy')).toEqual(['BETA:Viewers']);
+      await take('BETA', 'Viewers', 'cy');
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+    });
+
+    it('[IAM-034] a role an import names is the person’s own, not the share’s', async () => {
+      const g = await makeGroup('owen', 'Imported', ['BETA']);
+      await share('owen', g, 'cy', 'Viewers');
+      await database.db
+        .transaction()
+        .execute((trx) =>
+          addRoleActors({ trx, workspaceId: 1 }, tracks.BETA as number, [
+            { role: roles.Viewers as number, user: ids.cy as number, group: null },
+          ]),
+        );
+      expect(await records('BETA', 'Viewers', 'cy')).toEqual([]);
+      await unshare('owen', g, 'cy');
+      expect(await rolesOf('cy')).toEqual(['BETA:Viewers']);
+      await take('BETA', 'Viewers', 'cy');
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+    });
+
+    it('[IAM-034] an invitation to a role a share held makes it the person’s own, and says so', async () => {
+      const g = await makeGroup('owen', 'Invited', ['BETA']);
+      await share('owen', g, 'cy', 'Viewers');
+      // By name, as the People page's Invite does for someone with an account.
+      const byName = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/tracks/${tracks.BETA}/invitations`,
+        payload: { userIds: [ids.cy], roleId: roles.Viewers, delivery: 'link' },
+      });
+      expect(byName.statusCode, byName.body).toBe(201);
+      expect((await lastEvent('track_role.actor_added')).payload).toEqual({
+        roleId: roles.Viewers,
+        userId: ids.cy,
+        groupId: null,
+        keptFromGroupShares: true,
+      });
+      await unshare('owen', g, 'cy');
+      expect(await rolesOf('cy')).toEqual(['BETA:Viewers']);
+      await take('BETA', 'Viewers', 'cy');
+      // By address: the invitation's own event says it.
+      await share('owen', g, 'cy', 'Viewers');
+      const byAddress = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/tracks/${tracks.BETA}/invitations`,
+        payload: { addresses: ['cy@example.com'], roleId: roles.Viewers, delivery: 'link' },
+      });
+      expect(byAddress.statusCode, byAddress.body).toBe(201);
+      expect((await lastEvent('track_invitation.created')).payload).toMatchObject({
+        grantedUserId: null,
+        keptFromGroupShares: true,
+      });
+      await unshare('owen', g, 'cy');
+      expect(await rolesOf('cy')).toEqual(['BETA:Viewers']);
+      await take('BETA', 'Viewers', 'cy');
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+    });
+
+    it('[IAM-034] setting a group on someone lists the roles it made theirs from shares', async () => {
+      const g = await makeGroup('owen', 'Handed over', ['BETA']);
+      await share('owen', g, 'cy', 'Viewers');
+      const res = await as('owen', {
+        method: 'POST',
+        url: `/api/v1/track-groups/${g}/copies`,
+        payload: { userId: ids.cy, roleId: roles.Viewers },
+      });
+      expect(res.statusCode).toBe(201);
+      expect((await lastEvent('track_group.copied')).payload).toMatchObject({
+        given: [],
+        kept: [{ trackId: tracks.BETA, userId: ids.cy, roleId: roles.Viewers }],
+      });
+      await unshare('owen', g, 'cy');
+      expect(await rolesOf('cy')).toEqual(['BETA:Viewers']);
+      await take('BETA', 'Viewers', 'cy');
+      await as('owen', { method: 'DELETE', url: `/api/v1/track-groups/${g}` });
+      await as('cy', { method: 'DELETE', url: `/api/v1/track-groups/${res.json().groupId}` });
     });
   });
 

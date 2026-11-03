@@ -154,8 +154,25 @@
   color: var(--color-text);
 }
 
-.track-move-popup {
+/*
+ * A card's grip sits at its end, so its menu opens towards the start; a group's grip leads its
+ * head, so its menu opens towards the end. Neither runs off the page.
+ */
+.track-card .track-move-popup {
   inset-inline: auto 0;
+}
+
+.track-group-head .track-move-popup {
+  inset-inline: 0 auto;
+}
+
+/*
+ * Every card and group is glass, each its own stacking context: an open menu's card, and the
+ * group around it, rise above the cards and groups after them, which would cover the menu.
+ */
+.track-card:has(.track-move-popup),
+.track-group:has(.track-move-popup) > section {
+  z-index: 2;
 }
 
 /* While dragging: what moves fades, and where it would land is outlined. */

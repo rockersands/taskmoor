@@ -18,7 +18,7 @@ import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { ticketKey } from '../tickets/model';
 import { loadTicket, resolveTicket } from '../tickets/store';
-import { keepRole } from '../trackgroups/access';
+import { keepRole, lockTracks } from '../trackgroups/access';
 import { trackInTrash } from '../trash/policy';
 
 const id = z.coerce.number().int().positive();
@@ -843,6 +843,8 @@ export function registerAuthzRoutes(
         if (!(await checkGivingCreateTracks(request, reply))) return reply;
       }
       await db.transaction().execute(async (trx) => {
+        // After shares that give or take this role on this track, never between (IAM-034).
+        await lockTracks(trx, [trackId]);
         const added = await trx
           .insertInto('track_role_actor')
           .values({
@@ -854,6 +856,8 @@ export function registerAuthzRoutes(
           })
           .onConflict((oc) => oc.doNothing())
           .executeTakeFirst();
+        // A role given here is the person's own: no share holds it from now on (IAM-034).
+        const fromShares = kind === 'users' && (await keepRole(trx, trackId, roleId, actorId));
         if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) {
           // Only a role given now brings the grant; a role already held changes nothing.
           const grantId = createTracks ? await giveCreateTracks(trx, ws, actorId) : null;
@@ -867,8 +871,8 @@ export function registerAuthzRoutes(
               ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
             },
           });
-        } else if (kind === 'users' && (await keepRole(trx, trackId, roleId, actorId))) {
-          // A role only shared track groups held becomes the person's own (IAM-034).
+        } else if (fromShares) {
+          // A role only shared track groups held becomes the person's own.
           await emit(trx, by(request), {
             type: 'track_role.actor_added',
             subjectId: trackId,

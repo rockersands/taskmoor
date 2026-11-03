@@ -93,6 +93,25 @@ async function drag(page: Page, from: Locator, to: Locator, touch: boolean) {
 
 const keysIn = (region: Locator) => region.locator('.tracks-item-key').allTextContents();
 
+/**
+ * Whether every item of the open menu is on the screen and is what a press at its centre hits:
+ * not off the page's start, and not under the cards and groups that follow it.
+ */
+async function menuReachable(page: Page): Promise<string[]> {
+  await expect(page.getByRole('menu')).toBeVisible();
+  return page.evaluate(() => {
+    const problems: string[] = [];
+    for (const item of document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')) {
+      item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const box = item.getBoundingClientRect();
+      if (box.left < 0 || box.right > innerWidth) problems.push(`${item.textContent}: off screen`);
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      if (hit?.closest('[role="menuitem"]') !== item) problems.push(`${item.textContent}: covered`);
+    }
+    return problems;
+  });
+}
+
 test('[CORE-034] [IAM-034] groups of tracks: made by dragging, arranged by keyboard, remembered, shared and taken back', async ({
   page,
 }, testInfo) => {
@@ -161,6 +180,15 @@ test('[CORE-034] [IAM-034] groups of tracks: made by dragging, arranged by keybo
   const bubble = page.getByRole('region', { name: group });
   await expect(bubble.getByRole('link', { name: new RegExp(names.two) })).toBeVisible();
   expect(await keysIn(bubble)).toEqual([tracks.two?.key, tracks.one?.key]);
+
+  // The menus open on the page and above what follows them: Beta's card has Alpha's after it,
+  // and on a phone the group's grip sits at the page's start.
+  await page.getByRole('button', { name: `Move ${names.two}` }).click();
+  expect(await menuReachable(page)).toEqual([]);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: `Move or change the group ${group}` }).click();
+  expect(await menuReachable(page)).toEqual([]);
+  await page.keyboard.press('Escape');
 
   // Gamma goes in from the keyboard, through its grip's menu, then one place earlier.
   const gamma = page.getByRole('button', { name: `Move ${names.three}` });

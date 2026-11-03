@@ -100,7 +100,7 @@ describe('the Tracks page in groups (CORE-034)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Create group' }));
     await waitFor(() => expect(linksIn('Insights')).toEqual(['DATA', 'WEB']));
     expect(client.calls).toContainEqual({ method: 'create', args: ['Insights', [6, 2]] });
-    expect(screen.getByRole('status')).toHaveTextContent('Insights made.');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Insights made.'));
     expect(screen.getByRole('button', { name: 'Move or change the group Insights' })).toHaveFocus();
   });
 
@@ -154,6 +154,10 @@ describe('the Tracks page in groups (CORE-034)', () => {
     );
     fireEvent.click(handle('Web'), { detail: 1 });
     expect(screen.queryByRole('menu')).toBeNull();
+    // Another grip's click is its own, at once.
+    fireEvent.click(handle('Data'), { detail: 1 });
+    expect(screen.getByRole('menu', { name: 'Move Data' })).toBeVisible();
+    await user.keyboard('{Escape}');
     handle('Web').focus();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('menu', { name: 'Move Web' })).toBeVisible();
@@ -282,6 +286,116 @@ describe('the Tracks page in groups (CORE-034)', () => {
   });
 });
 
+describe('after the review of the Tracks page in groups (CORE-034)', () => {
+  /** Every text the status takes, in order, as a screen reader would be told. */
+  function heard() {
+    const status = screen.getByRole('status');
+    const texts: string[] = [];
+    const watch = new MutationObserver(() => texts.push(status.textContent ?? ''));
+    watch.observe(status, { childList: true, characterData: true, subtree: true });
+    return texts;
+  }
+
+  it('[CORE-034] says where a moved track or group now sits', async () => {
+    const user = userEvent.setup();
+    open();
+    handle('Shop').focus();
+    await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Shop is now 2 of 2 in Launch.'),
+    );
+    screen.getByRole('button', { name: 'Move or change the group Grace’s picks' }).focus();
+    await user.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Grace’s picks is now 2 of 3.'),
+    );
+  });
+
+  it('[CORE-034] the same words twice in a row are announced twice', async () => {
+    const user = userEvent.setup();
+    open([]);
+    const texts = heard();
+    for (const [i, name] of ['Web', 'Data'].entries()) {
+      await user.click(handle(name));
+      await user.click(screen.getByRole('menuitem', { name: 'New group with this track' }));
+      await user.type(
+        within(screen.getByRole('dialog', { name: 'New group' })).getByLabelText('Group name'),
+        'Twin{Enter}',
+      );
+      await waitFor(() =>
+        expect(screen.getAllByRole('region', { name: 'Twin' })).toHaveLength(i + 1),
+      );
+      // Each announcement is heard before the next change starts.
+      await waitFor(() =>
+        expect(texts.filter((text) => text === 'Twin made.')).toHaveLength(i + 1),
+      );
+    }
+  });
+
+  it('[CORE-034] after deleting a group, focus goes to the next group, or to a track', async () => {
+    const user = userEvent.setup();
+    open([ownGroup(1, 'Launch', [1]), ownGroup(2, 'Back office', [4])]);
+    const remove = async (name: string) => {
+      await user.click(screen.getByRole('button', { name: `Move or change the group ${name}` }));
+      await user.click(screen.getByRole('menuitem', { name: 'Delete group' }));
+      await user.click(
+        within(screen.getByRole('dialog', { name: `Delete ${name}?` })).getByRole('button', {
+          name: 'Delete group',
+        }),
+      );
+      await waitFor(() => expect(screen.queryByRole('region', { name })).toBeNull());
+    };
+    await remove('Launch');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Move or change the group Back office' }),
+      ).toHaveFocus(),
+    );
+    await remove('Back office');
+    await waitFor(() => expect(handle('Shop')).toHaveFocus());
+  });
+
+  it('[CORE-034] a change refused as out of date reads the arrangement again', async () => {
+    const user = userEvent.setup();
+    // Since the page loaded, Grace shared another group: the server knows four.
+    const later = sharedGroup(4, 'New from Grace', [6]);
+    const client = fakeTrackGroupClient({
+      groups: [...ARRANGED, later],
+      failNext: new ApiError(400, { error: 'invalid_request', detail: 'groupIds' }),
+    });
+    open(ARRANGED, client);
+    screen.getByRole('button', { name: 'Move or change the group Launch' }).focus();
+    await user.keyboard('{Alt>}{ArrowDown}{/Alt}');
+    expect(await screen.findByRole('alert')).toHaveTextContent('did not go through');
+    expect(await screen.findByRole('region', { name: 'New from Grace' })).toBeVisible();
+    expect(client.calls.map((c) => c.method)).toEqual(['order', 'layout']);
+  });
+
+  it('[CORE-034] tells two groups of one name apart in a track’s menu', async () => {
+    const user = userEvent.setup();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    open([
+      ownGroup(1, 'Launch', [1]),
+      ownGroup(2, 'Launch', [3], { givenBy: { id: 7, name: 'Grace Hopper' } }),
+    ]);
+    await user.click(handle('Web'));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'Move to Launch (group 1)',
+      'Move to Launch (group 2)',
+      'New group with this track',
+    ]);
+    await user.click(screen.getByRole('menuitem', { name: 'Move to Launch (group 2)' }));
+    await waitFor(() =>
+      expect(
+        within(screen.getAllByRole('region', { name: 'Launch' })[1] as HTMLElement)
+          .getAllByRole('link')
+          .map((link) => link.querySelector('.tracks-item-key')?.textContent),
+      ).toEqual(['PAY', 'WEB']),
+    );
+    expect(errors.mock.calls.flat().join(' ')).not.toMatch(/same key/);
+  });
+});
+
 describe('sharing a group (IAM-034)', () => {
   function share(mode: 'share' | 'setOn', client = fakeTrackGroupClient(), onChanged = vi.fn()) {
     render(
@@ -334,6 +448,33 @@ describe('sharing a group (IAM-034)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Take back from Ana Pérez' }));
     expect(await within(dialog).findByText('Taken back from Ana Pérez.')).toBeVisible();
     expect(client.calls).toContainEqual({ method: 'unshare', args: [1, 9] });
+  });
+
+  it('[IAM-034] keeps focus on what comes next after choosing, changing and taking back', async () => {
+    const user = userEvent.setup();
+    share('share');
+    const dialog = screen.getByRole('dialog', { name: 'Share Launch' });
+    await within(dialog).findByText('Grace Hopper: Members, on 2 tracks');
+    await user.type(within(dialog).getByLabelText('Find a person by name'), 'Al');
+    await user.click(await within(dialog).findByRole('button', { name: 'Choose Alan Turing' }));
+    const role = within(dialog).getByLabelText('Role on its tracks');
+    expect(role).toHaveFocus();
+    expect(role).toHaveAccessibleDescription('For Alan Turing');
+    await user.click(within(dialog).getByRole('button', { name: 'Choose someone else' }));
+    expect(within(dialog).getByLabelText('Find a person by name')).toHaveFocus();
+    // Taking the first share back: the row now in its place takes focus, then the heading.
+    await user.click(within(dialog).getByRole('button', { name: 'Take back from Grace Hopper' }));
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole('button', { name: 'Take back from Former colleague' }),
+      ).toHaveFocus(),
+    );
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Take back from Former colleague' }),
+    );
+    await waitFor(() =>
+      expect(within(dialog).getByRole('heading', { name: 'Shared with' })).toHaveFocus(),
+    );
   });
 
   it('[IAM-034] sets a copy on someone, with no role unless one is chosen', async () => {

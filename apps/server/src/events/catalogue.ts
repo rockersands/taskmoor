@@ -41,6 +41,11 @@ const createTracksGrantId = id.optional();
  * share gave or took back, never a role the person held otherwise.
  */
 const groupAccess = z.array(z.object({ trackId: id, userId: id, roleId: id }));
+/**
+ * The role was held only through shared track groups and is now the person's own (IAM-034;
+ * ADR-121): taking the shares back leaves it. Absent otherwise, and in older events.
+ */
+const keptFromGroupShares = z.literal(true).optional();
 /** A value deleted, and what tickets that had it took instead. */
 const replaced = z.object({
   name: z.string(),
@@ -295,11 +300,7 @@ export const EVENT_TYPES = {
       userId: id.nullable(),
       groupId: id.nullable(),
       createTracksGrantId,
-      /**
-       * The person held the role only through shared track groups, and it is now their own
-       * (IAM-034): taking the shares back leaves it. Absent otherwise, and in older events.
-       */
-      keptFromGroupShares: z.literal(true).optional(),
+      keptFromGroupShares,
     }),
   },
   'track_role.actor_removed': {
@@ -320,6 +321,7 @@ export const EVENT_TYPES = {
       /** The role comes with the permission to create tracks (IAM-033). */
       createTracks: z.boolean().optional(),
       createTracksGrantId,
+      keptFromGroupShares,
     }),
   },
   'track_invitation.resent': {
@@ -328,6 +330,7 @@ export const EVENT_TYPES = {
       invitationId: id,
       delivery: z.enum(['email', 'link']),
       createTracksGrantId,
+      keptFromGroupShares,
     }),
   },
   'track_invitation.revoked': {
@@ -343,6 +346,7 @@ export const EVENT_TYPES = {
       /** The person made their account with the link. */
       accountCreated: z.boolean(),
       createTracksGrantId,
+      keptFromGroupShares,
     }),
   },
 
@@ -1729,6 +1733,8 @@ export const EVENT_TYPES = {
       roleId: id.nullable(),
       trackIds: z.array(id),
       given: groupAccess,
+      /** Roles only shares held that the person now holds outright; absent in older events. */
+      kept: groupAccess.optional(),
     }),
   },
   'ai_notice.acknowledged': { subject: 'user', payload: z.object({}) },

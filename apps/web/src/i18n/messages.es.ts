@@ -187,9 +187,11 @@ export const messagesEs: Record<MessageId, string> = {
     'Ya lo compartes con esa persona. Deja de compartirlo primero para cambiar el rol.',
   'trackGroups.problem.inactive': 'Esa persona está desactivada, así que no se dio nada.',
   'trackGroups.announce.created': 'Grupo {name} creado.',
-  'trackGroups.announce.movedInto': '{track} está en {group}.',
+  'trackGroups.announce.trackPlace':
+    '{track} está ahora en el lugar {position} de {count} en {group}.',
+  'trackGroups.announce.groupPlace': '{name} está ahora en el lugar {position} de {count}.',
+  'trackGroups.moveToAt': 'Mover a {name} (grupo {position})',
   'trackGroups.announce.takenOut': '{track} no está en ningún grupo.',
-  'trackGroups.announce.moved': '{name} movido.',
   'trackGroups.announce.deleted': '{name} eliminado.',
   'trackGroups.announce.renamed': 'Ahora se llama {name}.',
   'trackGroups.announce.minimized': '{name} minimizado.',

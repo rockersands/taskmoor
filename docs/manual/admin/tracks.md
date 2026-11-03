@@ -64,8 +64,8 @@ group only**:
 - A track you later move into a shared group brings the role, if you may give it there; a track
   you move out takes it back.
 - **Take back** (or deleting the group) removes only the roles the share gave. A role the person
-  already had, or that someone gives them on the track's page afterwards, stays. A role two
-  shared groups gave stays until both are taken back.
+  already had, or that someone gives them afterwards on the track's page, by an invitation or by
+  an import, stays. A role two shared groups gave stays until both are taken back.
 - Nothing is taken back that would leave a track with nobody to run it; give someone else that
   role on the track first.
 - Only active people can receive a group. A person deactivated after you shared stays listed as
@@ -89,7 +89,8 @@ that no share holds: deleting either group takes nothing away.
 change answers the same. `POST /api/v1/track-groups` makes a group (`name`, `trackIds`),
 `PATCH /api/v1/track-groups/:id` renames or minimizes it, `PUT /api/v1/track-groups/order` sets
 the order, `PUT` and `DELETE /api/v1/track-groups/:id/tracks/:trackId` move a track in (with an
-optional `position`) and out, and `DELETE /api/v1/track-groups/:id` deletes a group.
+optional `position`, counted among the tracks you see) and out, and
+`DELETE /api/v1/track-groups/:id` deletes a group.
 `GET`, `POST /api/v1/track-groups/:id/shares` and `DELETE …/shares/:userId` list, make and take
 back shares (`userId`, `roleId` or `null`); `POST /api/v1/track-groups/:id/copies` sets the group
 on someone. A refusal to take back answers `409` with `last_track_admin` and the tracks; a

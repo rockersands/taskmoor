@@ -57,16 +57,23 @@ function GripIcon() {
   );
 }
 
+/** One move in a grip's menu; the key is stable, since two groups may share a name. */
+interface MenuItem {
+  key: string;
+  label: string;
+  onSelect: () => void;
+}
+
 interface MoveMenuProps {
   label: string;
   /** Which element this handle moves, so focus can find it again after a change. */
   handle: string;
-  items: { label: string; onSelect: () => void }[];
+  items: MenuItem[];
   onDragStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   /** Alt and an arrow key: -1 earlier, 1 later. */
   onStep?: (direction: -1 | 1) => void;
-  /** True right after a drag, whose click must not open the menu. */
-  justDragged: () => boolean;
+  /** True right after this handle's own drag, whose click must not open the menu. */
+  justDragged: (handle: string) => boolean;
 }
 
 /**
@@ -104,7 +111,7 @@ function MoveMenu({ label, handle, items, onDragStart, onStep, justDragged }: Mo
         {...(open ? { 'aria-controls': menuId } : {})}
         onClick={(event) => {
           // A pointer's click right after a drag is the drag's; Enter or Space never is.
-          if (event.detail > 0 && justDragged()) return;
+          if (event.detail > 0 && justDragged(handle)) return;
           if (open) close(false);
           else openMenu(true);
         }}
@@ -125,7 +132,7 @@ function MoveMenu({ label, handle, items, onDragStart, onStep, justDragged }: Mo
           >
             {items.map((item) => (
               <button
-                key={item.label}
+                key={item.key}
                 role="menuitem"
                 tabIndex={-1}
                 type="button"
@@ -169,10 +176,22 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
   );
   const [deleting, setDeleting] = useState<TrackGroup | null>(null);
   const [said, setSaid] = useState('');
+  const saying = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /**
+   * Tells screen readers what changed. The status empties first and takes the words a moment
+   * later, so the same words twice in a row are announced twice.
+   */
+  const say = (words: string) => {
+    clearTimeout(saying.current);
+    setSaid('');
+    saying.current = setTimeout(() => setSaid(words), 60);
+  };
+  useEffect(() => () => clearTimeout(saying.current), []);
   const [problem, setProblem] = useState<string | null>(null);
   /** The handle to focus once the change shows: what was moved stays under the keyboard. */
   const pendingFocus = useRef<((next: TrackGroup[]) => string | null) | null>(null);
-  const dragEndedAt = useRef(Number.NEGATIVE_INFINITY);
+  /** The handle a drag last ended on, and when: the click it ends with is the drag's. */
+  const dragEnded = useRef({ handle: '', at: Number.NEGATIVE_INFINITY });
   const live = useRef(groups);
   live.current = groups;
 
@@ -207,13 +226,18 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
       const next = await work();
       pendingFocus.current = focus ?? null;
       onGroups(next);
-      setSaid(announce(next));
+      say(announce(next));
     } catch (error) {
       setProblem(
         error instanceof ApiError && error.code === 'last_track_admin'
           ? t('trackGroups.lastAdmin')
           : t('trackGroups.changeFailed'),
       );
+      // Refused as out of date (a group shared or taken back since the page loaded, say): the
+      // arrangement is read again, so the next try starts from what the server has.
+      if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
+        client.layout().then(onGroups, () => {});
+      }
     } finally {
       setBusy(false);
     }
@@ -224,15 +248,21 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     groups.flatMap((g) => g.tracks).find((tr) => tr.id === trackId)?.name ??
     '';
 
-  const placeTrack = (groupId: number, trackId: number, position?: number) => {
-    const group = live.current.find((g) => g.id === groupId);
-    return run(
+  const placeTrack = (groupId: number, trackId: number, position?: number) =>
+    run(
       () => client.place(groupId, trackId, position),
-      () =>
-        t('trackGroups.announce.movedInto', { track: nameOf(trackId), group: group?.name ?? '' }),
+      (next) => {
+        const group = next.find((g) => g.id === groupId);
+        const tracksIn = group?.tracks ?? [];
+        return t('trackGroups.announce.trackPlace', {
+          track: nameOf(trackId),
+          group: group?.name ?? '',
+          position: tracksIn.findIndex((tr) => tr.id === trackId) + 1,
+          count: tracksIn.length,
+        });
+      },
       trackHandle(trackId),
     );
-  };
 
   const takeOut = (groupId: number, trackId: number) =>
     run(
@@ -260,7 +290,12 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     const name = live.current.find((g) => g.id === groupId)?.name ?? '';
     return run(
       () => client.order(ids),
-      () => t('trackGroups.announce.moved', { name }),
+      (next) =>
+        t('trackGroups.announce.groupPlace', {
+          name,
+          position: next.findIndex((g) => g.id === groupId) + 1,
+          count: next.length,
+        }),
       () => `group-${groupId}`,
     );
   };
@@ -359,7 +394,10 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onCancel);
       if (!moving) return;
-      dragEndedAt.current = performance.now();
+      dragEnded.current = {
+        handle: item.kind === 'track' ? `track-${item.trackId}` : `group-${item.groupId}`,
+        at: performance.now(),
+      };
       const to = landed ? dropAt(e.clientX, e.clientY, item) : null;
       setDrag(null);
       setGhost(null);
@@ -373,20 +411,24 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     window.addEventListener('pointercancel', onCancel);
   }
 
-  const justDragged = () => performance.now() - dragEndedAt.current < 300;
+  // Only the dragged handle's own click is the drag's: any other grip opens its menu at once.
+  const justDragged = (handle: string) =>
+    dragEnded.current.handle === handle && performance.now() - dragEnded.current.at < 300;
 
   const trackItems = (track: GroupTrack, group: TrackGroup | null) => {
-    const items: { label: string; onSelect: () => void }[] = [];
+    const items: MenuItem[] = [];
     if (group) {
       const index = group.tracks.findIndex((tr) => tr.id === track.id);
       if (index > 0) {
         items.push({
+          key: 'earlier',
           label: t('trackGroups.moveEarlier'),
           onSelect: () => stepTrack(group, track.id, -1),
         });
       }
       if (index < group.tracks.length - 1) {
         items.push({
+          key: 'later',
           label: t('trackGroups.moveLater'),
           onSelect: () => stepTrack(group, track.id, 1),
         });
@@ -394,18 +436,28 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
     }
     for (const other of mine) {
       if (other.id === group?.id) continue;
+      // Two of the person's groups may share a name: then their place on the page tells them apart.
+      const twin = mine.some((g) => g.id !== other.id && g.name === other.name);
       items.push({
-        label: t('trackGroups.moveTo', { name: other.name }),
+        key: `move-${other.id}`,
+        label: twin
+          ? t('trackGroups.moveToAt', {
+              name: other.name,
+              position: groups.findIndex((g) => g.id === other.id) + 1,
+            })
+          : t('trackGroups.moveTo', { name: other.name }),
         onSelect: () => void placeTrack(other.id, track.id),
       });
     }
     if (group) {
       items.push({
+        key: 'out',
         label: t('trackGroups.takeOut', { name: group.name }),
         onSelect: () => void takeOut(group.id, track.id),
       });
     }
     items.push({
+      key: 'new',
       label: t('trackGroups.newGroupWith'),
       onSelect: () => setNaming({ mode: 'new', trackIds: [track.id] }),
     });
@@ -414,19 +466,39 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
 
   const groupItems = (group: TrackGroup) => {
     const index = groups.findIndex((g) => g.id === group.id);
-    const items: { label: string; onSelect: () => void }[] = [];
+    const items: MenuItem[] = [];
     if (index > 0) {
-      items.push({ label: t('trackGroups.moveEarlier'), onSelect: () => stepGroup(group.id, -1) });
+      items.push({
+        key: 'earlier',
+        label: t('trackGroups.moveEarlier'),
+        onSelect: () => stepGroup(group.id, -1),
+      });
     }
     if (index < groups.length - 1) {
-      items.push({ label: t('trackGroups.moveLater'), onSelect: () => stepGroup(group.id, 1) });
+      items.push({
+        key: 'later',
+        label: t('trackGroups.moveLater'),
+        onSelect: () => stepGroup(group.id, 1),
+      });
     }
     if (group.mine) {
       items.push(
-        { label: t('trackGroups.rename'), onSelect: () => setNaming({ mode: 'rename', group }) },
-        { label: t('trackGroups.share'), onSelect: () => setSharing({ mode: 'share', group }) },
-        { label: t('trackGroups.setOn'), onSelect: () => setSharing({ mode: 'setOn', group }) },
-        { label: t('trackGroups.delete'), onSelect: () => setDeleting(group) },
+        {
+          key: 'rename',
+          label: t('trackGroups.rename'),
+          onSelect: () => setNaming({ mode: 'rename', group }),
+        },
+        {
+          key: 'share',
+          label: t('trackGroups.share'),
+          onSelect: () => setSharing({ mode: 'share', group }),
+        },
+        {
+          key: 'set-on',
+          label: t('trackGroups.setOn'),
+          onSelect: () => setSharing({ mode: 'setOn', group }),
+        },
+        { key: 'delete', label: t('trackGroups.delete'), onSelect: () => setDeleting(group) },
       );
     }
     return items;
@@ -581,7 +653,7 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
 
   return (
     <div className="track-arrangement" aria-busy={busy}>
-      <p className="page-note track-arrangement-hint">
+      <p className="page-note track-arrangement-hint" data-handle="hint" tabIndex={-1}>
         {t(compact ? 'trackGroups.hintCompact' : 'trackGroups.hint')}
       </p>
       <p role="status" className="visually-hidden">
@@ -669,10 +741,21 @@ export function TrackArrangement({ tracks, groups, client, onGroups }: TrackArra
               className="button-danger"
               onClick={() => {
                 const group = deleting;
+                const at = groups.findIndex((g) => g.id === group.id);
                 setDeleting(null);
                 void run(
                   () => client.remove(group.id),
                   () => t('trackGroups.announce.deleted', { name: group.name }),
+                  // Focus stays where the person was: the next group, the one before, the
+                  // first track in no group, or the page's hint when nothing else is left.
+                  (next) => {
+                    const near = next[at] ?? next[at - 1];
+                    if (near) return `group-${near.id}`;
+                    const first = tracks.find(
+                      (tr) => !next.some((g) => g.mine && g.tracks.some((x) => x.id === tr.id)),
+                    );
+                    return first ? `track-${first.id}` : 'hint';
+                  },
                 );
               }}
             >

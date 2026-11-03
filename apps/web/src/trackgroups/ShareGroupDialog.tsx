@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { ModalDialog } from '../shell/ModalDialog';
@@ -36,6 +36,14 @@ export function ShareGroupDialog({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const roleField = useRef<HTMLSelectElement>(null);
+  const searchField = useRef<HTMLInputElement>(null);
+  const whoTitle = useRef<HTMLHeadingElement>(null);
+  const whoList = useRef<HTMLUListElement>(null);
+  /** Where focus goes once a person is chosen or let go: what they would do next. */
+  const afterChoice = useRef<'role' | 'search' | null>(null);
+  /** The row a take-back removed: focus goes to the row now in its place. */
+  const afterTakeBack = useRef<number | null>(null);
 
   const [unreadable, setUnreadable] = useState(false);
   const load = useCallback(
@@ -45,6 +53,23 @@ export function ShareGroupDialog({
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The control that held focus has just gone; focus moves to what comes next instead of the page.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the chosen person changes
+  useEffect(() => {
+    const to = afterChoice.current;
+    afterChoice.current = null;
+    if (to === 'role') roleField.current?.focus();
+    if (to === 'search') searchField.current?.focus();
+  }, [person]);
+
+  useEffect(() => {
+    const at = afterTakeBack.current;
+    if (at === null || !sharing) return;
+    afterTakeBack.current = null;
+    const buttons = [...(whoList.current?.querySelectorAll<HTMLElement>('button') ?? [])];
+    (buttons[at] ?? buttons[at - 1] ?? whoTitle.current)?.focus();
+  }, [sharing]);
 
   useEffect(() => {
     const q = search.trim();
@@ -99,6 +124,7 @@ export function ShareGroupDialog({
           ? t(chosenRole ? 'trackGroups.sharedWithRole' : 'trackGroups.shared', values)
           : t(chosenRole ? 'trackGroups.setDoneWithRole' : 'trackGroups.setDone', values),
       );
+      afterChoice.current = 'search';
       setPerson(null);
       setSearch('');
       setRole('');
@@ -118,6 +144,7 @@ export function ShareGroupDialog({
     try {
       await client.unshare(group.id, share.userId);
       setMessage(t('trackGroups.unshared', { name: share.name }));
+      afterTakeBack.current = sharing?.shares.findIndex((s) => s.userId === share.userId) ?? 0;
       await load();
       onChanged();
     } catch (error) {
@@ -159,8 +186,15 @@ export function ShareGroupDialog({
       >
         {person ? (
           <p className="track-share-person">
-            <span>{t('trackGroups.chosenPerson', { name: person.name })}</span>
-            <button type="button" className="button-quiet" onClick={() => setPerson(null)}>
+            <span id={`${id}-chosen`}>{t('trackGroups.chosenPerson', { name: person.name })}</span>
+            <button
+              type="button"
+              className="button-quiet"
+              onClick={() => {
+                afterChoice.current = 'search';
+                setPerson(null);
+              }}
+            >
               {t('trackGroups.changePerson')}
             </button>
           </p>
@@ -171,6 +205,7 @@ export function ShareGroupDialog({
                 {t('trackGroups.person')}
               </label>
               <input
+                ref={searchField}
                 id={`${id}-person`}
                 type="search"
                 value={search}
@@ -186,7 +221,10 @@ export function ShareGroupDialog({
                       type="button"
                       className="button-secondary people-action"
                       aria-label={t('trackGroups.choose', { name: p.name })}
-                      onClick={() => setPerson(p)}
+                      onClick={() => {
+                        afterChoice.current = 'role';
+                        setPerson(p);
+                      }}
                     >
                       {t('trackGroups.chooseShort')}
                     </button>
@@ -200,7 +238,13 @@ export function ShareGroupDialog({
           <label htmlFor={`${id}-role`} className="form-label">
             {t('trackGroups.role')}
           </label>
-          <select id={`${id}-role`} value={role} onChange={(event) => setRole(event.target.value)}>
+          <select
+            ref={roleField}
+            id={`${id}-role`}
+            value={role}
+            {...(person ? { 'aria-describedby': `${id}-chosen` } : {})}
+            onChange={(event) => setRole(event.target.value)}
+          >
             <option value="">{t('trackGroups.noRole')}</option>
             {sharing?.roles.map((r) => (
               <option key={r.id} value={r.id}>
@@ -227,13 +271,13 @@ export function ShareGroupDialog({
       </form>
       {mode === 'share' && sharing && (
         <section aria-labelledby={`${id}-who`} className="track-share-list">
-          <h3 id={`${id}-who`} className="section-title">
+          <h3 id={`${id}-who`} ref={whoTitle} tabIndex={-1} className="section-title">
             {t('trackGroups.sharedWithList')}
           </h3>
           {sharing.shares.length === 0 ? (
             <p className="page-note">{t('trackGroups.notShared')}</p>
           ) : (
-            <ul className="people-sublist">
+            <ul ref={whoList} className="people-sublist">
               {sharing.shares.map((share) => (
                 <li key={share.userId}>
                   <span>

@@ -73,6 +73,9 @@ const invalid = (reply: FastifyReply, detail?: string) =>
   reply.code(400).send({ error: 'invalid_request', ...(detail ? { detail } : {}) });
 const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
 
+/** What a change was about went while it waited for its lock. */
+class Gone extends Error {}
+
 const accessList = (changes: readonly AccessChange[]) =>
   changes.map((c) => ({ trackId: c.trackId, userId: c.userId, roleId: c.roleId }));
 
@@ -233,8 +236,12 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     ).map((r) => r.track_id);
 
   /** A group's tracks the caller sees, in the group's order. */
-  async function visibleInOrder(request: FastifyRequest, groupId: number) {
-    const all = await trackIdsOf(db, groupId);
+  async function visibleInOrder(
+    request: FastifyRequest,
+    groupId: number,
+    executor: Trx | Kysely<Database> = db,
+  ) {
+    const all = await trackIdsOf(executor, groupId);
     const visible = await visibleOf(request, all);
     return all.filter((t) => visible.has(t));
   }
@@ -357,11 +364,41 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     return row !== undefined;
   }
 
-  /** Runs a change that may take roles back; a track left with nobody to run it answers 409. */
+  /**
+   * Locks what a change touches before it reads anything: the arrangement of each person whose
+   * groups it changes (an advisory lock per person, in id order), then the group itself. Changes
+   * to one person's groups, or to one group and its shares, run one after another, so a role a
+   * share gave never loses its record and a track never lands in two of a person's groups.
+   * Throws `Gone` when the group went in the meantime.
+   */
+  async function lockFor(trx: Trx, ownerIds: readonly number[], groupId?: number) {
+    for (const ownerId of [...new Set(ownerIds)].sort((a, b) => a - b)) {
+      await sql`SELECT pg_advisory_xact_lock(hashtext('track-groups'), ${ownerId}::int)`.execute(
+        trx,
+      );
+    }
+    if (groupId === undefined) return;
+    const row = await trx
+      .selectFrom('track_group')
+      .select('id')
+      .where('id', '=', groupId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!row) throw new Gone();
+  }
+
+  /**
+   * Runs a change that may take roles back: a track left with nobody to run it answers 409, and
+   * a group or share that went while it waited answers 404.
+   */
   async function guarded<T>(reply: FastifyReply, change: () => Promise<T>): Promise<T | null> {
     try {
       return await change();
     } catch (error) {
+      if (error instanceof Gone) {
+        await notFound(reply);
+        return null;
+      }
       if (!(error instanceof LastTrackAdministrator)) throw error;
       await reply.code(409).send({ error: 'last_track_admin', trackIds: error.trackIds });
       return null;
@@ -383,6 +420,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     if (trackIds.some((t) => !visible.has(t))) return invalid(reply, 'trackIds');
     const made = await guarded(reply, () =>
       db.transaction().execute(async (trx) => {
+        await lockFor(trx, [user.id]);
         const group = await trx
           .insertInto('track_group')
           .values({
@@ -437,6 +475,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     }
     const mine = new Set(current.filter((g) => g.mine).map((g) => g.id));
     await db.transaction().execute(async (trx) => {
+      await lockFor(trx, [user.id]);
       for (const [position, groupId] of groupIds.entries()) {
         if (mine.has(groupId)) {
           await trx
@@ -543,6 +582,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     if (!group) return reply;
     const done = await guarded(reply, () =>
       db.transaction().execute(async (trx) => {
+        await lockFor(trx, [group.owner_id], group.id);
         const trackIds = await trackIdsOf(trx, group.id);
         const removed = await releaseShares(
           trx,
@@ -563,7 +603,9 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
   });
 
   // A track into the group, at a place among its tracks; from another group of the owner's, or
-  // from none. Within the same group it only moves.
+  // from none. Within the same group it only moves. `position` counts the tracks the caller sees,
+  // as the page shows them: the track goes just before the one at that place among them, or
+  // last, so tracks the caller no longer sees stay where they were.
   app.put('/api/v1/track-groups/:id/tracks/:trackId', async (request, reply) => {
     const params = z.object({ id, trackId: id }).safeParse(request.params);
     const parsed = placeBody.safeParse(request.body ?? {});
@@ -574,6 +616,7 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     if (!(await visibleOf(request, [trackId])).has(trackId)) return notFound(reply);
     const done = await guarded(reply, () =>
       db.transaction().execute(async (trx) => {
+        await lockFor(trx, [group.owner_id], group.id);
         const held = await trx
           .selectFrom('track_group_track')
           .select('group_id')
@@ -581,7 +624,10 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
           .where('track_id', '=', trackId)
           .executeTakeFirst();
         const order = (await trackIdsOf(trx, group.id)).filter((t) => t !== trackId);
-        const position = Math.min(parsed.data.position ?? order.length, order.length);
+        const seen = await visibleOf(request, order);
+        const shown = order.filter((t) => seen.has(t));
+        const before = parsed.data.position === undefined ? undefined : shown[parsed.data.position];
+        const position = before === undefined ? order.length : order.indexOf(before);
         let from: number | null = held?.group_id ?? null;
         let removed: AccessChange[] = [];
         let given: AccessChange[] = [];
@@ -629,15 +675,16 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     const group = await owned(request, reply, params.data.id);
     if (!group) return reply;
     const { trackId } = params.data;
-    const held = await db
-      .selectFrom('track_group_track')
-      .select('group_id')
-      .where('group_id', '=', group.id)
-      .where('track_id', '=', trackId)
-      .executeTakeFirst();
-    if (!held) return notFound(reply);
     const done = await guarded(reply, () =>
       db.transaction().execute(async (trx) => {
+        await lockFor(trx, [group.owner_id], group.id);
+        const held = await trx
+          .selectFrom('track_group_track')
+          .select('group_id')
+          .where('group_id', '=', group.id)
+          .where('track_id', '=', trackId)
+          .executeTakeFirst();
+        if (!held) throw new Gone();
         const { removed } = await takeOut(trx, request, group.owner_id, trackId);
         await emit(trx, by(request), {
           type: 'track_group.track_moved',
@@ -705,10 +752,19 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     };
   });
 
-  /** What a role reaches on a group's tracks, for the answer after sharing or setting it. */
-  async function reachOf(request: FastifyRequest, groupId: number, roleId: number | null) {
-    const trackIds = await visibleInOrder(request, groupId);
-    const givable = roleId === null ? [] : await givableTracks(db, request.authz, roleId, trackIds);
+  /**
+   * What a role reaches on a group's tracks, read inside the change's transaction once it holds
+   * its locks, so a track moved out meanwhile is never given.
+   */
+  async function reachOf(
+    trx: Trx,
+    request: FastifyRequest,
+    groupId: number,
+    roleId: number | null,
+  ) {
+    const trackIds = await visibleInOrder(request, groupId, trx);
+    const givable =
+      roleId === null ? [] : await givableTracks(trx, request.authz, roleId, trackIds);
     return { trackIds, givable };
   }
 
@@ -721,43 +777,47 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     const { userId, roleId } = parsed.data;
     if (!(await recipient(request, reply, userId))) return reply;
     if (!(await roleExists(request, roleId))) return notFound(reply);
-    const { trackIds, givable } = await reachOf(request, group.id, roleId);
-    const result = await db.transaction().execute(async (trx) => {
-      const share = await trx
-        .insertInto('track_group_share')
-        .values({
-          workspace_id: request.workspaceId,
-          group_id: group.id,
-          user_id: userId,
-          role_id: roleId,
-          shared_by: request.user?.id ?? null,
-          position: await nextPosition(trx, userId),
-        })
-        .onConflict((oc) => oc.doNothing())
-        .returning('id')
-        .executeTakeFirst();
-      if (!share) return null;
-      const outcome =
-        roleId === null
-          ? { given: [] as AccessChange[], alreadyHeld: 0 }
-          : await giveThroughShare(
-              trx,
-              { id: share.id, workspaceId: request.workspaceId, userId, roleId },
-              givable,
-            );
-      await emit(trx, by(request), {
-        type: 'track_group.shared',
-        subjectId: group.id,
-        payload: { shareId: share.id, userId, roleId, given: accessList(outcome.given) },
-      });
-      return outcome;
-    });
-    if (!result) return reply.code(409).send({ error: 'already_shared' });
+    const result = await guarded(reply, () =>
+      db.transaction().execute(async (trx) => {
+        await lockFor(trx, [group.owner_id], group.id);
+        const { trackIds, givable } = await reachOf(trx, request, group.id, roleId);
+        const share = await trx
+          .insertInto('track_group_share')
+          .values({
+            workspace_id: request.workspaceId,
+            group_id: group.id,
+            user_id: userId,
+            role_id: roleId,
+            shared_by: request.user?.id ?? null,
+            position: await nextPosition(trx, userId),
+          })
+          .onConflict((oc) => oc.doNothing())
+          .returning('id')
+          .executeTakeFirst();
+        if (!share) return 'already_shared' as const;
+        const outcome =
+          roleId === null
+            ? { given: [] as AccessChange[], alreadyHeld: 0 }
+            : await giveThroughShare(
+                trx,
+                { id: share.id, workspaceId: request.workspaceId, userId, roleId },
+                givable,
+              );
+        await emit(trx, by(request), {
+          type: 'track_group.shared',
+          subjectId: group.id,
+          payload: { shareId: share.id, userId, roleId, given: accessList(outcome.given) },
+        });
+        return { ...outcome, tracks: trackIds.length, givable: givable.length };
+      }),
+    );
+    if (result === null) return reply;
+    if (result === 'already_shared') return reply.code(409).send({ error: 'already_shared' });
     return reply.code(201).send({
-      tracks: trackIds.length,
+      tracks: result.tracks,
       given: result.given.length,
       alreadyHeld: result.alreadyHeld,
-      notGivable: roleId === null ? 0 : trackIds.length - givable.length,
+      notGivable: roleId === null ? 0 : result.tracks - result.givable,
     });
   });
 
@@ -767,15 +827,16 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     if (!params.success) return invalid(reply);
     const group = await owned(request, reply, params.data.id);
     if (!group) return reply;
-    const share = await db
-      .selectFrom('track_group_share')
-      .select(['id', 'role_id'])
-      .where('group_id', '=', group.id)
-      .where('user_id', '=', params.data.userId)
-      .executeTakeFirst();
-    if (!share) return notFound(reply);
     const done = await guarded(reply, () =>
       db.transaction().execute(async (trx) => {
+        await lockFor(trx, [group.owner_id], group.id);
+        const share = await trx
+          .selectFrom('track_group_share')
+          .select(['id', 'role_id'])
+          .where('group_id', '=', group.id)
+          .where('user_id', '=', params.data.userId)
+          .executeTakeFirst();
+        if (!share) throw new Gone();
         const removed = await releaseShares(trx, request.workspaceId, [share.id]);
         await trx.deleteFrom('track_group_share').where('id', '=', share.id).execute();
         await emit(trx, by(request), {
@@ -805,66 +866,72 @@ export function registerTrackGroupRoutes(app: FastifyInstance, db: Kysely<Databa
     const { userId, roleId } = parsed.data;
     if (!(await recipient(request, reply, userId))) return reply;
     if (!(await roleExists(request, roleId))) return notFound(reply);
-    const { trackIds, givable } = await reachOf(request, group.id, roleId);
-    const result = await db.transaction().execute(async (trx) => {
-      const copy = await trx
-        .insertInto('track_group')
-        .values({
-          workspace_id: request.workspaceId,
-          owner_id: userId,
-          name: group.name,
-          position: await nextPosition(trx, userId),
-          copied_from: group.id,
-          given_by: request.user?.id ?? null,
-        })
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      // Tracks the person already keeps in a group of theirs stay where they put them.
-      const kept = new Set(
-        (
-          await trx
-            .selectFrom('track_group_track')
-            .select('track_id')
-            .where('owner_id', '=', userId)
-            .execute()
-        ).map((r) => r.track_id),
-      );
-      const placed = trackIds.filter((t) => !kept.has(t));
-      for (const [position, trackId] of placed.entries()) {
-        await trx
-          .insertInto('track_group_track')
+    const result = await guarded(reply, () =>
+      db.transaction().execute(async (trx) => {
+        await lockFor(trx, [group.owner_id, userId], group.id);
+        const { trackIds, givable } = await reachOf(trx, request, group.id, roleId);
+        const copy = await trx
+          .insertInto('track_group')
           .values({
             workspace_id: request.workspaceId,
-            group_id: copy.id,
             owner_id: userId,
-            track_id: trackId,
-            position,
+            name: group.name,
+            position: await nextPosition(trx, userId),
+            copied_from: group.id,
+            given_by: request.user?.id ?? null,
           })
-          .execute();
-      }
-      const outcome =
-        roleId === null
-          ? { given: [] as AccessChange[], alreadyHeld: 0 }
-          : await giveOutright(trx, request.workspaceId, userId, roleId, givable);
-      await emit(trx, by(request), {
-        type: 'track_group.copied',
-        subjectId: copy.id,
-        payload: {
-          fromGroupId: group.id,
-          userId,
-          roleId,
-          trackIds: placed,
-          given: accessList(outcome.given),
-        },
-      });
-      return { groupId: copy.id, ...outcome };
-    });
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        // Tracks the person already keeps in a group of theirs stay where they put them.
+        const theirs = new Set(
+          (
+            await trx
+              .selectFrom('track_group_track')
+              .select('track_id')
+              .where('owner_id', '=', userId)
+              .execute()
+          ).map((r) => r.track_id),
+        );
+        const placed = trackIds.filter((t) => !theirs.has(t));
+        for (const [position, trackId] of placed.entries()) {
+          await trx
+            .insertInto('track_group_track')
+            .values({
+              workspace_id: request.workspaceId,
+              group_id: copy.id,
+              owner_id: userId,
+              track_id: trackId,
+              position,
+            })
+            .execute();
+        }
+        const outcome =
+          roleId === null
+            ? { given: [] as AccessChange[], kept: [] as AccessChange[], alreadyHeld: 0 }
+            : await giveOutright(trx, request.workspaceId, userId, roleId, givable);
+        await emit(trx, by(request), {
+          type: 'track_group.copied',
+          subjectId: copy.id,
+          payload: {
+            fromGroupId: group.id,
+            userId,
+            roleId,
+            trackIds: placed,
+            given: accessList(outcome.given),
+            // Roles only shares held, now the person's own.
+            kept: accessList(outcome.kept),
+          },
+        });
+        return { groupId: copy.id, ...outcome, tracks: trackIds.length, givable: givable.length };
+      }),
+    );
+    if (result === null) return reply;
     return reply.code(201).send({
       groupId: result.groupId,
-      tracks: trackIds.length,
+      tracks: result.tracks,
       given: result.given.length,
       alreadyHeld: result.alreadyHeld,
-      notGivable: roleId === null ? 0 : trackIds.length - givable.length,
+      notGivable: roleId === null ? 0 : result.tracks - result.givable,
     });
   });
 }
