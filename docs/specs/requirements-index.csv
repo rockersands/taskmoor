@@ -32,6 +32,7 @@ CORE-030,CORE,Creating a ticket from a template,M1,Must,User requirement
 CORE-031,CORE,Links from the ticket page,M1,Must,User requirement
 CORE-032,CORE,Subtickets on the ticket page,M1,Must,User requirement
 CORE-033,CORE,Checklists,M1,Must,User requirement
+CORE-034,CORE,Personal track groups,M1,Must,User requirement
 WF-001,WF,Workflow model,M1,Must,Jira Free
 WF-002,WF,Workflow editor,M1,Must,Jira Free (new editor); exceeds Jira (rollback)
 WF-003,WF,Guards,M1,Must,Jira Free
@@ -324,6 +325,7 @@ IAM-030,IAM,Track managers' pages,M1,Must,User requirement
 IAM-031,IAM,Google sign-in settings,M1,Must,User requirement
 IAM-032,IAM,Who gets in through Google,M1,Must,User requirement
 IAM-033,IAM,Who may create tracks,M1,Must,User requirement
+IAM-034,IAM,Sharing a track group,M1,Must,User requirement
 OPS-001,OPS,One-command install,M1,Must,User requirement; Plane; GitLab Omnibus
 OPS-002,OPS,"Dependencies, footprint and sizing",M1,Must,OpenProject sizing; exceeds Sentry and Huly footprints
 OPS-003,OPS,First-run setup,M1,Must,User requirement

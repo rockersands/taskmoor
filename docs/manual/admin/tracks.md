@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -25,6 +25,77 @@ Everything else is done through the [REST API](rest-api.md) under `/api/v1/track
 **Tracks** in the sidebar opens the page that lists every track you can see, with a box to find one
 by name or key. It stays marked as the current place while you are inside a track, on a ticket or on a
 board.
+
+## Groups of tracks
+
+Everyone arranges the **Tracks** page in groups of their own. A group is yours alone until you
+share it. An open group is a glass bubble with its tracks inside; a minimized group takes the
+place of one track card and shows its name, how many tracks it holds and a small square for each.
+Tracks in no group follow under **Tracks in no group**. Typing in **Find a track** lists the
+matches plainly, without groups.
+
+Each card and each group has a grip at its corner. Drag it with the mouse or a finger, or press
+it for a menu of the same moves; with the grip in focus, Alt and the arrow keys move a track
+within its group or a group within your order.
+
+| To | Drag | Or from the grip's menu |
+|---|---|---|
+| Make a group | A track onto another track in no group, then name the group | **New group with this track** |
+| Put a track in a group | The track onto the group, or onto a track in it for that place | **Move to** and the group |
+| Take a track out | The track down to **Tracks in no group** | **Take out of** and the group |
+| Change the order | A track within its group, or a group onto another | **Move earlier**, **Move later** |
+
+A group's own menu also has **Rename**, **Share…**, **Set on someone…** and **Delete group**;
+the arrow beside its name minimizes and opens it. A track sits in only one of your groups:
+moving it into another takes it out of the first. Your arrangement is kept on the server, so it
+is the same on every device. A group shows only the tracks you may see.
+
+### Sharing a group
+
+**Share…** shows the group on another person's **Tracks** page as you keep it: when you rename
+it or move tracks, they see the change. They may minimize it and put it where they like among
+their groups, nothing more. You choose a person and a **Role on its tracks**, or **No role: the
+group only**:
+
+- With a role, they get it on each of the group's tracks where you could give it on that track's
+  **Who does what** page: tracks you run, and for a role that runs the track, tracks where you may
+  also appoint who runs it. Each role in the list says on how many of the group's tracks you may
+  give it. Where you may not, the share gives nothing.
+- A track you later move into a shared group brings the role, if you may give it there; a track
+  you move out takes it back.
+- **Take back** (or deleting the group) removes only the roles the share gave. A role the person
+  already had, or that someone gives them on the track's page afterwards, stays. A role two
+  shared groups gave stays until both are taken back.
+- Nothing is taken back that would leave a track with nobody to run it; give someone else that
+  role on the track first.
+- Only active people can receive a group. A person deactivated after you shared stays listed as
+  deactivated, and you can still take the share back.
+
+To change the role, take the share back and share again. The roles a share gives are ordinary
+roles: they show on each track's **Who does what** page, where its administrators can remove
+them, and every share, take-back and role that came or went is in the audit log.
+
+### Setting a group on someone
+
+**Set on someone…** gives a person a group of their own: a copy with the same name and tracks,
+marked **From** and your name. From then on it is theirs to rename, rearrange or delete, and
+later changes on either side do not reach the other. Tracks they already keep in one of their
+groups stay where they put them. A role works as for sharing, but it is given as an ordinary role
+that no share holds: deleting either group takes nothing away.
+
+### Groups through the API
+
+`GET /api/v1/track-groups` answers your groups and those shared with you, in your order; every
+change answers the same. `POST /api/v1/track-groups` makes a group (`name`, `trackIds`),
+`PATCH /api/v1/track-groups/:id` renames or minimizes it, `PUT /api/v1/track-groups/order` sets
+the order, `PUT` and `DELETE /api/v1/track-groups/:id/tracks/:trackId` move a track in (with an
+optional `position`) and out, and `DELETE /api/v1/track-groups/:id` deletes a group.
+`GET`, `POST /api/v1/track-groups/:id/shares` and `DELETE …/shares/:userId` list, make and take
+back shares (`userId`, `roleId` or `null`); `POST /api/v1/track-groups/:id/copies` sets the group
+on someone. A refusal to take back answers `409` with `last_track_admin` and the tracks; a
+deactivated person answers `400` with `person_inactive`. Reading needs a token's `read` scope and
+changing its `write` scope; finding people (`GET /api/v1/track-groups/people?q=`) needs the
+**Browse users** permission.
 
 ## Creating a track
 
@@ -161,6 +232,8 @@ administrators read `GET /api/v1/tracks/:id/role-actors` and change roles with
 A track's administrators manage its roles from **Administration** > **Tracks you run**, and may be allowed
 to invite people; see [Inviting people and running a track](invitations.md). A role that runs the
 track needs a further permission, and the track's last administrator cannot be removed.
+A person may also hold a role through a [shared group of tracks](#sharing-a-group); it shows here
+like any other. Giving them that role here makes it theirs, so taking the share back leaves it.
 
 ### Configuration sets
 
