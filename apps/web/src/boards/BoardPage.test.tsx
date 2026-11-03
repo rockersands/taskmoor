@@ -1,16 +1,17 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
+import type { CompleteTarget, Sprint } from '../sprints/client';
 import { setViewportWidth } from '../test/viewport';
 import { announceTicketChange } from '../tickets/view/ticketChanges';
 import { TrackSectionsContext } from '../tracks/trackSections';
-import { BoardPage, boardFilterName, offeredBoardFilters } from './BoardPage';
+import { BoardPage, boardFilterName, offeredBoardFilters, sprintCounts } from './BoardPage';
 import { peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
 import { dataPath } from './client';
-import { BOARD, CARDS, fakeBoardClient, manyCards, VIEWER_ID } from './fixtures';
+import { BOARD, CARDS, fakeBoardClient, manyCards, SCRUM_BOARD, VIEWER_ID } from './fixtures';
 
 function renderBoard(client = fakeBoardClient()) {
   render(
@@ -715,5 +716,162 @@ describe('dragging cards (M1-046)', () => {
     const before = client.moves.length;
     drag('SHOP-24', doing, cardOf('SHOP-23'), -1);
     expect(client.moves).toHaveLength(before);
+  });
+});
+
+describe('completing a sprint from the board (T-106)', () => {
+  const sprint = (id: number, name: string, state: Sprint['state']): Sprint => ({
+    id,
+    boardId: 7,
+    name,
+    goal: '',
+    state,
+    sequence: id,
+    startAt: null,
+    endAt: null,
+    startedAt: null,
+    completedAt: null,
+    version: 1,
+  });
+  /** The board's sprints as the server lists them; a completed one closes, as there. */
+  function fakeSprints(
+    list: Sprint[],
+    options: { mayManage?: boolean; refusal?: () => Error } = {},
+  ) {
+    let sprints = list;
+    const completions: [number, CompleteTarget][] = [];
+    return {
+      completions,
+      boardSprints: async () => ({ sprints, mayManage: options.mayManage ?? true }),
+      complete: async (id: number, to: CompleteTarget) => {
+        completions.push([id, to]);
+        if (options.refusal) throw options.refusal();
+        sprints = sprints.map((s) => (s.id === id ? { ...s, state: 'closed' as const } : s));
+      },
+    };
+  }
+  const ACTIVE = sprint(11, 'Checkout Sprint 1', 'active');
+  const PLANNED = sprint(12, 'Checkout Sprint 2', 'future');
+  // Eight cards, two in each status: New and Active open, In Review and Closed in the rightmost column.
+  const scrumBoard = () => fakeBoardClient({ board: SCRUM_BOARD, cards: manyCards(8) });
+  function open(
+    client = scrumBoard(),
+    sprints = fakeSprints([sprint(10, 'Old', 'closed'), ACTIVE, PLANNED]),
+  ) {
+    render(
+      <I18nProvider locale="en">
+        <TrackSectionsContext.Provider value={{ backlog: true, sprints: true }}>
+          <BoardPage boardId={7} client={client} sprints={sprints} />
+        </TrackSectionsContext.Provider>
+      </I18nProvider>,
+    );
+    return { client, sprints };
+  }
+
+  it('[AGL-010] counts the sprint’s done tickets in the rightmost column and the rest as open', async () => {
+    const user = userEvent.setup();
+    open();
+    await user.click(await (await page()).findByRole('button', { name: 'Complete sprint' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Complete Checkout Sprint 1?' }));
+    expect(dialog.getByText('4 tickets are done and 4 are open.')).toBeVisible();
+    expect(
+      within(dialog.getByRole('combobox', { name: 'Open tickets go to' }))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Backlog', 'Checkout Sprint 2', 'A new sprint']);
+  });
+
+  it('[AGL-010] counts a status no column takes as open, as the server carries it over', () => {
+    const columns = SCRUM_BOARD.columns.map((c, i) => ({
+      ...c,
+      count: i + 1,
+      shown: i + 1,
+      wip: null,
+    }));
+    expect(sprintCounts({ columns, unmapped: { count: 2, statuses: [] } })).toEqual({
+      done: 3,
+      open: 5,
+    });
+  });
+
+  it('[AGL-010] Escape cancels, nothing completes, and focus returns to the button', async () => {
+    const user = userEvent.setup();
+    const { sprints } = open();
+    const button = await (await page()).findByRole('button', { name: 'Complete sprint' });
+    button.focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('dialog')).toBeVisible();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(button).toHaveFocus();
+    expect(sprints.completions).toEqual([]);
+  });
+
+  it('[AGL-010] completes into a planned sprint and shows the next state without a reload', async () => {
+    const user = userEvent.setup();
+    const { client, sprints } = open();
+    const board = await page();
+    await user.click(await board.findByRole('button', { name: 'Complete sprint' }));
+    const reads = client.dataCalls.length;
+    const dialog = within(screen.getByRole('dialog'));
+    await user.selectOptions(dialog.getByRole('combobox'), 'Checkout Sprint 2');
+    await user.click(dialog.getByRole('button', { name: 'Complete sprint' }));
+    expect(sprints.completions).toEqual([[11, { type: 'sprint', sprintId: 12 }]]);
+    await waitFor(() =>
+      expect(board.queryByRole('button', { name: 'Complete sprint' })).toBeNull(),
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(client.dataCalls.length).toBeGreaterThan(reads);
+    expect(board.getByRole('link', { name: 'Backlog' })).toHaveFocus();
+    expect(screen.getByText('Checkout Sprint 1 completed.')).toBeInTheDocument();
+  });
+
+  it('[AGL-010] shows a refusal in plain words and keeps the pop-up open', async () => {
+    const user = userEvent.setup();
+    open(
+      scrumBoard(),
+      fakeSprints([ACTIVE], {
+        refusal: () => new ApiError(409, { error: 'sprint_not_active' }),
+      }),
+    );
+    await user.click(await (await page()).findByRole('button', { name: 'Complete sprint' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Complete sprint' }),
+    );
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(
+      'This sprint is no longer active: someone may have completed it already.',
+    );
+  });
+
+  it('[AGL-010] is not offered to someone who may not manage the sprints', async () => {
+    open(scrumBoard(), fakeSprints([ACTIVE], { mayManage: false }));
+    const board = await page();
+    expect(board.getByRole('link', { name: 'Backlog' })).toBeVisible();
+    expect(board.queryByRole('button', { name: /^Complete/ })).toBeNull();
+  });
+
+  it('[AGL-010] is not offered without an active sprint, nor on a Kanban board', async () => {
+    open(scrumBoard(), fakeSprints([PLANNED]));
+    expect((await page()).queryByRole('button', { name: /^Complete/ })).toBeNull();
+    cleanup();
+    const kanban = fakeSprints([ACTIVE]);
+    const asked = vi.spyOn(kanban, 'boardSprints');
+    open(fakeBoardClient({ cards: manyCards(8) }), kanban);
+    expect((await page()).queryByRole('button', { name: /^Complete/ })).toBeNull();
+    expect(asked).not.toHaveBeenCalled();
+  });
+
+  it('[AGL-011] with two active sprints, offers each and counts each one alone', async () => {
+    const user = userEvent.setup();
+    const client = scrumBoard();
+    const data = vi.spyOn(client, 'data');
+    open(client, fakeSprints([ACTIVE, sprint(13, 'Mobile Sprint 1', 'active'), PLANNED]));
+    const board = await page();
+    await user.click(await board.findByRole('button', { name: 'Complete Mobile Sprint 1' }));
+    expect(board.getByRole('button', { name: 'Complete Checkout Sprint 1' })).toBeVisible();
+    expect(data).toHaveBeenLastCalledWith(7, [], [13]);
+    expect(
+      await screen.findByRole('dialog', { name: 'Complete Mobile Sprint 1?' }),
+    ).toHaveTextContent('4 tickets are done and 4 are open.');
   });
 });

@@ -3806,6 +3806,7 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.choose.intro': 'Varias transiciones llevan allí. ¿Cuál?',
   'boards.choose.option': '{name} (a {status})',
   'boards.choose.cancel': 'Cancelar',
+  'boards.sprint.complete': 'Completar {name}',
   'boards.list.title': 'Tableros',
   'boards.list.failed': 'No se pudieron cargar los tableros.',
   'boards.list.emptyTitle': 'Aún no hay tableros',
@@ -3956,6 +3957,24 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.complete.newSprint': 'Un sprint nuevo',
   'sprints.complete.submit': 'Completar el sprint',
   'sprints.complete.failed': 'No se pudo completar el sprint.',
+  'sprints.complete.forbidden':
+    'Solo quienes gestionan los sprints de este tablero pueden completarlos.',
+  'sprints.complete.notActive':
+    'Este sprint ya no está activo: puede que alguien ya lo haya completado.',
+  'sprints.complete.gone': 'Este sprint o su tablero ya no está.',
+  'sprints.complete.targetGone':
+    'El sprint que elegiste para los tickets abiertos ya no está planificado. Elige otro destino.',
+  'sprints.completeDialog.title': '¿Completar {name}?',
+  'sprints.completeDialog.counts':
+    '{done, plural, =0 {Ningún ticket está terminado} one {# ticket está terminado} other {# tickets están terminados}} y {open, plural, one {# está abierto} other {# están abiertos}}.',
+  'sprints.completeDialog.allDone':
+    '{done, plural, one {Su único ticket está terminado} other {Los # tickets están terminados}}, así que no se mueve nada.',
+  'sprints.completeDialog.empty': 'El sprint no tiene tickets.',
+  'sprints.completeDialog.uncounted':
+    'No se pudieron contar los tickets. Los abiertos irán adonde elijas.',
+  'sprints.completeDialog.target': 'Los tickets abiertos van a',
+  'sprints.completeDialog.cancel': 'Cancelar',
+  'sprints.completeDialog.close': 'Cerrar sin completar',
   'sprints.move.label': 'Mover {key} a',
   'sprints.move.placeholder': 'Mover a…',
   'sprints.move.failed': 'No se pudieron mover los tickets.',

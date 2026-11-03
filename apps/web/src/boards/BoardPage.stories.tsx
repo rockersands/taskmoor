@@ -2,9 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
+import { fakeSprintClient } from '../sprints/fixtures';
 import { expectWithinBudget } from '../test/budget';
 import { BoardPage } from './BoardPage';
-import { CARDS, fakeBoardClient, manyCards } from './fixtures';
+import { CARDS, fakeBoardClient, manyCards, SCRUM_BOARD } from './fixtures';
 
 const meta = {
   title: 'Boards/BoardPage',
@@ -206,6 +207,40 @@ export const PersonFilterAtPhoneWidth: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
     await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await expect(canvas.getByRole('checkbox', { name: 'Rin Okafor' })).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * A Scrum board with an active sprint, for someone who manages its sprints (T-106; AGL-010):
+ * Complete sprint opens a pop-up that counts its done and open tickets from the board.
+ */
+export const CompleteSprint: Story = {
+  args: {
+    client: fakeBoardClient({ board: SCRUM_BOARD, cards: manyCards(8) }),
+    sprints: fakeSprintClient(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Complete sprint' }));
+    const dialog = within(
+      await canvas.findByRole('dialog', { name: 'Complete Checkout Sprint 1?' }),
+    );
+    await expect(dialog.getByText('4 tickets are done and 4 are open.')).toBeVisible();
+    await expect(dialog.getByRole('combobox', { name: 'Open tickets go to' })).toBeVisible();
+  },
+};
+
+/** The same board at a phone's width: the header's buttons wrap, nothing sticks out. */
+export const CompleteSprintAtPhoneWidth: Story = {
+  args: {
+    client: fakeBoardClient({ board: SCRUM_BOARD, cards: manyCards(8) }),
+    sprints: fakeSprintClient(),
+  },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('button', { name: 'Complete sprint' })).toBeVisible();
     await fitsPhoneWidth(canvas);
   },
 };

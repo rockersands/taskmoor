@@ -251,13 +251,13 @@ export interface BoardClient {
   /** The site's teams, for the board's team (M1-123). */
   teams(): Promise<{ id: number; name: string }[]>;
   /**
-   * `sprints: 'active'` shows a Scrum board's active sprints only (M1-044); `people` only the
-   * cards of these people, `me`, `none` or ids (AGL-005 (3)).
+   * `sprints: 'active'` shows a Scrum board's active sprints only (M1-044), sprint ids those
+   * sprints; `people` only the cards of these people, `me`, `none` or ids (AGL-005 (3)).
    */
   data(
     id: number,
     filters: readonly string[],
-    sprints?: 'active',
+    sprints?: 'active' | readonly number[],
     people?: readonly string[],
   ): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
@@ -284,12 +284,12 @@ export interface BoardClient {
 export function dataPath(
   id: number,
   filters: readonly string[],
-  sprints?: 'active',
+  sprints?: 'active' | readonly number[],
   people: readonly string[] = [],
 ): string {
   const params = [
     ...(filters.length > 0 ? [`filters=${encodeURIComponent(filters.join(','))}`] : []),
-    ...(sprints ? [`sprints=${sprints}`] : []),
+    ...(sprints ? [`sprints=${typeof sprints === 'string' ? sprints : sprints.join(',')}`] : []),
     ...(people.length > 0 ? [`people=${encodeURIComponent(people.join(','))}`] : []),
   ];
   return params.length === 0 ? `/boards/${id}/data` : `/boards/${id}/data?${params.join('&')}`;

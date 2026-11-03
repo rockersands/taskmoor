@@ -180,6 +180,8 @@ export interface SprintClient {
   backlog(boardId: number): Promise<Backlog>;
   /** Every sprint of a board, whatever its state. */
   sprints(boardId: number): Promise<Sprint[]>;
+  /** The board's sprints and whether the caller may manage them (start, complete, plan). */
+  boardSprints(boardId: number): Promise<{ sprints: Sprint[]; mayManage: boolean }>;
   create(boardId: number): Promise<Sprint>;
   start(sprintId: number, endAt: string): Promise<{ ok: true } | { ok: false; code: string }>;
   complete(sprintId: number, moveTo: CompleteTarget): Promise<void>;
@@ -216,6 +218,12 @@ export const sprintClient: SprintClient = {
   backlog: (boardId) => api<Backlog>(`/boards/${boardId}/backlog`),
   sprints: async (boardId) =>
     (await api<{ sprints: Sprint[] }>(`/boards/${boardId}/sprints`)).sprints,
+  boardSprints: async (boardId) => {
+    const { sprints, mayManage } = await api<{ sprints: Sprint[]; mayManage: boolean }>(
+      `/boards/${boardId}/sprints`,
+    );
+    return { sprints, mayManage };
+  },
   create: async (boardId) =>
     (await api<{ sprint: Sprint }>(`/boards/${boardId}/sprints`, { method: 'POST', body: {} }))
       .sprint,

@@ -149,6 +149,10 @@ export function fakeSprintClient(): SprintClient & { state: () => Backlog } {
     state: () => data,
     backlog: async () => structuredClone(data),
     sprints: async () => structuredClone(data.sprints),
+    boardSprints: async () => ({
+      sprints: structuredClone(data.sprints).map(({ tickets: _t, totals: _s, ...s }) => s),
+      mayManage: data.mayManage,
+    }),
     create: async () => {
       const made = section(++next, `Checkout Sprint ${++named}`, 'future', []);
       data.sprints.push(made);
