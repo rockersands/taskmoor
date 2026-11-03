@@ -730,6 +730,66 @@ describe('boards (M1-043)', () => {
     expect(many.statusCode).toBe(400);
   });
 
+  it('[AGL-006] starts a new board on the default cards, with points only where there is one', async () => {
+    const field = (await post('admin', '/api/v1/fields', { name: 'Points', type: 'number' })).json()
+      .field.id as number;
+    const other = (await post('admin', '/api/v1/fields', { name: 'Value', type: 'number' })).json()
+      .field.id as number;
+    const pointed = await ticket('pointed', 'BA', { fields: { [field]: 5, [other]: 8 } });
+    const made = await createBoard('alice', {
+      name: 'Plain',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+    });
+    const read = await get('alice', `/api/v1/boards/${made.id}`);
+    expect(read.json().board.cardRules).toEqual({
+      colourBy: 'none',
+      colours: [],
+      fields: ['priority', 'assignee', 'points'],
+      daysInColumn: false,
+    });
+    const pointsOf = async (id: number) =>
+      (await data('alice', id)).cards.find((c) => c.id === pointed.id)?.fields.points;
+    const d = await data('alice', made.id);
+    const card = d.cards.find((c) => c.id === pointed.id) as Card;
+    // Cards read the number field named Points, a priority's level, and no days marker.
+    expect(card.fields).toMatchObject({
+      points: 5,
+      priority: { name: 'Normal', level: 4 },
+    });
+    expect(card.daysInColumn).toBeNull();
+    expect(card.colour).toBeNull();
+    expect(d.cards.find((c) => c.id === T('a1').id)?.fields.points).toBeNull();
+
+    // A board estimating with a number field shows that one.
+    const estimating = await createBoard('alice', {
+      name: 'Estimating',
+      kind: 'scrum',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+      sprintSettings: {
+        estimation: { statistic: 'field', fieldId: other },
+        timeTracking: 'none',
+        parallelSprints: false,
+      },
+    });
+    expect(await pointsOf(estimating.id)).toBe(8);
+
+    // The full view reads it too, when another field on the card needs that view.
+    const full = await createBoard('alice', {
+      name: 'Full',
+      kind: 'kanban',
+      trackId: tracks.BA,
+      source: { query: 'track = BA' },
+      columns: COLUMNS(),
+      cardRules: { colourBy: 'none', fields: ['points', 'areas'] },
+    });
+    expect(await pointsOf(full.id)).toBe(5);
+  });
+
   it('[AGL-006] resets days in column only when the card changes column', async () => {
     const board = await createBoard('alice', {
       name: 'Days',
@@ -737,6 +797,7 @@ describe('boards (M1-043)', () => {
       trackId: tracks.BA,
       source: { query: 'track = BA' },
       columns: COLUMNS(),
+      cardRules: { colourBy: 'none', fields: [], daysInColumn: true },
     });
     const day = 86_400_000;
     const now = Date.now();

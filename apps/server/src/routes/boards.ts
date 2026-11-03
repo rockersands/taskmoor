@@ -1178,9 +1178,11 @@ export function registerBoardRoutes(
           : sprints.where('id', 'in', parsed.data.sprints.split(',').map(Number));
       sprintIds = (await sprints.execute()).map((s) => s.id);
     }
+    const { estimation } = readSprintSettings(found.row.sprint_settings);
     try {
       const data = await loadBoardData({
         ...(sprintIds !== undefined ? { sprintIds } : {}),
+        estimateFieldId: estimation.statistic === 'field' ? (estimation.fieldId ?? null) : null,
         db,
         request,
         catalogs,

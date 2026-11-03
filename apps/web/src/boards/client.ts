@@ -61,6 +61,7 @@ export interface CardRules {
 export const CARD_FIELDS = [
   'assignee',
   'priority',
+  'points',
   'dueDate',
   'startDate',
   'labels',

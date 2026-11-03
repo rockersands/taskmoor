@@ -76,6 +76,7 @@ import * as m0088 from './0088_one_board_per_track';
 import * as m0089 from './0089_seamless_default_workflow';
 import * as m0090 from './0090_track_summary_layout';
 import * as m0092 from './0092_very_low_priority';
+import * as m0093 from './0093_board_card_defaults';
 import * as m0094 from './0094_board_kind_decides_backlog';
 
 /**
@@ -163,5 +164,6 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0089_seamless_default_workflow': m0089,
   '0090_track_summary_layout': m0090,
   '0092_very_low_priority': m0092,
+  '0093_board_card_defaults': m0093,
   '0094_board_kind_decides_backlog': m0094,
 };

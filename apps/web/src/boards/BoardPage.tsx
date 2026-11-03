@@ -13,7 +13,7 @@ import { type Translate, useT } from '../i18n/I18nProvider';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
-import { BoardsIcon, MoreIcon } from '../shell/icons';
+import { BoardsIcon, ClockIcon, MoreIcon, NobodyIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
@@ -66,11 +66,9 @@ const nameOf = (value: unknown): string | null =>
 /** How many cards of a cell are drawn before the rest: more than a screen holds. */
 const FIRST_CELL = 50;
 
+/** What a card says in words, beyond its icons: only the fields someone added. */
 function cardMeta(t: Translate, card: BoardCard): string[] {
   const out: string[] = [];
-  if ('assignee' in card.fields) {
-    out.push(nameOf(card.fields.assignee) ?? t('boards.card.unassigned'));
-  }
   if (typeof card.fields.dueDate === 'string') {
     out.push(t('boards.card.due', { date: card.fields.dueDate }));
   }
@@ -78,6 +76,29 @@ function cardMeta(t: Translate, card: BoardCard): string[] {
     out.push(card.fields.labels.join(', '));
   }
   return out;
+}
+
+/** Up to two letters for a person's small round mark on a card. */
+const initialsOf = (name: string): string =>
+  name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.slice(0, 1).toLocaleUpperCase())
+    .join('');
+
+/** The assignee as a small mark, with the name as its accessible name and tooltip (AGL-006). */
+function CardPerson({ name, nobody }: { name: string | null; nobody: string }) {
+  return (
+    <span
+      className={name ? 'board-card-person' : 'board-card-person is-nobody'}
+      role="img"
+      aria-label={name ?? nobody}
+      title={name ?? nobody}
+    >
+      {name ? initialsOf(name) : <NobodyIcon width={20} height={20} />}
+    </span>
+  );
 }
 
 /** The column's count, limits and breach, as its header reads them (AGL-003). */
@@ -568,12 +589,14 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             })
           }
           aria-describedby={hintId}
+          title={`${card.key} ${card.summary}`}
           ref={(el) => {
             if (el) links.current.set(card.id, el);
             else links.current.delete(card.id);
           }}
         >
-          <span className="board-card-key">{card.key}</span>{' '}
+          {/* The key is for the tooltip and for those who hear the card: the title is the card. */}
+          <span className="visually-hidden">{card.key}</span>{' '}
           <span className="board-card-summary">{card.summary}</span>
         </a>
         <p className="board-card-meta">
@@ -581,12 +604,34 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             <TypeIcon name={card.ticketType.name} icon={card.ticketType.icon} />
             {priority && <PriorityIcon name={priority.name} level={priority.level} />}
           </span>
+          {typeof card.fields.points === 'number' && (
+            <span
+              className="board-card-points"
+              role="img"
+              aria-label={t('boards.card.points', { points: card.fields.points })}
+              title={t('boards.card.points', { points: card.fields.points })}
+            >
+              {card.fields.points}
+            </span>
+          )}
           {cardMeta(t, card).map((part, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: parts are fixed in order per card
             <span key={i}>{part}</span>
           ))}
-          {card.daysInColumn !== null && (
-            <span>{t('boards.card.days', { days: card.daysInColumn })}</span>
+          {/* Saying a card just arrived tells nothing on a column of them: only waiting shows. */}
+          {card.daysInColumn !== null && card.daysInColumn > 0 && (
+            <span
+              className="board-card-age"
+              role="img"
+              aria-label={t('boards.card.days', { days: card.daysInColumn })}
+              title={t('boards.card.days', { days: card.daysInColumn })}
+            >
+              <ClockIcon width={14} height={14} />
+              {card.daysInColumn}
+            </span>
+          )}
+          {'assignee' in card.fields && (
+            <CardPerson name={nameOf(card.fields.assignee)} nobody={t('boards.card.unassigned')} />
           )}
         </p>
         <button

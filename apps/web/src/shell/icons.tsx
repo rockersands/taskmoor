@@ -237,6 +237,21 @@ export const PriorityLevelIcon = ({ level, ...p }: IconProps & { level: number }
     </Icon>
   );
 
+/** A dial: how long something has waited. */
+export const ClockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </Icon>
+);
+
+/** Nobody yet: the outline of a person's place, dashed. */
+export const NobodyIcon = (p: IconProps) => (
+  <Icon {...p} strokeDasharray="3 3">
+    <circle cx="12" cy="12" r="9" />
+  </Icon>
+);
+
 export const ChevronDownIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="m6 9.5 6 6 6-6" />

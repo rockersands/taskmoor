@@ -3478,6 +3478,7 @@ export const messagesEn = {
   'boards.lane.count': '{count, plural, one {# ticket} other {# tickets}}',
   'boards.cell': '{column} in {lane}',
   'boards.card.unassigned': 'Unassigned',
+  'boards.card.points': '{points, plural, one {# point} other {# points}}',
   'boards.card.due': 'Due {date}',
   'boards.card.days':
     '{days, plural, =0 {new in this column} one {# day in this column} other {# days in this column}}',
@@ -3623,6 +3624,7 @@ export const messagesEn = {
   'boards.settings.ruleColour': 'Colour of {rule}',
   'boards.settings.addRule': 'Add a colour rule',
   'boards.settings.fields': 'Fields on cards (up to {max})',
+  'boards.settings.field.points': 'Points',
   'boards.settings.field.assignee': 'Assignee',
   'boards.settings.field.priority': 'Priority',
   'boards.settings.field.dueDate': 'Due date',

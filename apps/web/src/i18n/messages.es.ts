@@ -3562,6 +3562,7 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {# ticket está} other {# tickets están}} en estados que ninguna columna muestra: {statuses}',
   'boards.truncated': 'Se muestran las primeras {count} tarjetas por orden.',
   'boards.warnings': 'No se pudieron leer algunos carriles o colores: {list}',
+  'boards.card.points': '{points, plural, one {# punto} other {# puntos}}',
   'boards.keyboardHint':
     'Alt+Izquierda y Alt+Derecha mueven una tarjeta a la columna siguiente; Alt+Arriba y Alt+Abajo la mueven dentro de su columna.',
   'boards.empty': 'Ningún ticket de este tablero coincide.',
@@ -3727,6 +3728,7 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.settings.ruleColour': 'Color de {rule}',
   'boards.settings.addRule': 'Añadir una regla de color',
   'boards.settings.fields': 'Campos en las tarjetas (hasta {max})',
+  'boards.settings.field.points': 'Puntos',
   'boards.settings.field.assignee': 'Responsable',
   'boards.settings.field.priority': 'Prioridad',
   'boards.settings.field.dueDate': 'Fecha límite',

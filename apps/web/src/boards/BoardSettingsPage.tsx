@@ -280,6 +280,7 @@ const MANAGE_PROBLEMS: Record<string, MessageId> = {
 const FIELD_LABELS: Record<(typeof CARD_FIELDS)[number], MessageId> = {
   assignee: 'boards.settings.field.assignee',
   priority: 'boards.settings.field.priority',
+  points: 'boards.settings.field.points',
   dueDate: 'boards.settings.field.dueDate',
   startDate: 'boards.settings.field.startDate',
   labels: 'boards.settings.field.labels',

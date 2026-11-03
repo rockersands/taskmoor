@@ -44,6 +44,27 @@ describe('the board page (M1-043)', () => {
     );
   });
 
+  it('[AGL-006] shows a card as its title, type and priority icons, assignee and points', async () => {
+    renderBoard();
+    await page();
+    const cardOf = (key: string) =>
+      within(
+        screen.getByRole('link', { name: new RegExp(`^${key} `) }).closest('li') as HTMLElement,
+      );
+    const urgent = cardOf('SHOP-12');
+    expect(urgent.getByRole('img', { name: 'Task' })).toBeVisible();
+    expect(urgent.getByRole('img', { name: 'Urgent' })).toHaveAttribute('title', 'Urgent');
+    expect(urgent.getByRole('img', { name: 'Kalo Smith' })).toHaveTextContent('KS');
+    // Points only where there is a value; days only once a card has waited.
+    expect(urgent.queryByRole('img', { name: /point/ })).toBeNull();
+    expect(urgent.getByRole('img', { name: '4 days in this column' })).toHaveTextContent('4');
+    const fresh = cardOf('SHOP-19');
+    expect(fresh.getByRole('img', { name: '3 points' })).toHaveTextContent('3');
+    expect(fresh.getByRole('img', { name: 'Unassigned' })).toBeVisible();
+    expect(fresh.queryByText(/in this column/)).toBeNull();
+    expect(screen.queryByText('SHOP-12')).toHaveClass('visually-hidden');
+  });
+
   it('[AGL-003] marks a column over its maximum and one under its minimum', async () => {
     renderBoard();
     const board = await page();

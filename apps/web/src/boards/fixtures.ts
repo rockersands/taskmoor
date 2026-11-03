@@ -163,10 +163,18 @@ export const VIEWER_ID = 5;
 export const CARDS: FakeCard[] = [
   card(12, 'Checkout fails for expired cards', 'Active', 'expedite', {
     colour: '#c4314b',
-    fields: { assignee: { id: 5, name: 'Kalo Smith' }, priority: { id: 1, name: 'Urgent' } },
+    fields: {
+      assignee: { id: 5, name: 'Kalo Smith' },
+      priority: { id: 1, name: 'Urgent', level: 1 },
+      points: null,
+    },
+    daysInColumn: 4,
     mine: true,
   }),
-  card(19, 'Refunds show the wrong currency', 'New', 'other'),
+  card(19, 'Refunds show the wrong currency', 'New', 'other', {
+    fields: { assignee: null, priority: { id: 3, name: 'Normal', level: 4 }, points: 3 },
+    daysInColumn: 0,
+  }),
   card(21, 'Saved addresses lose the postcode', 'New', 'other', {
     fields: { assignee: { id: 5, name: 'Kalo Smith' }, priority: { id: 3, name: 'Normal' } },
     mine: true,
@@ -329,9 +337,7 @@ export function fakeBoardClient(
       };
       const shown = all.filter(
         (c) =>
-          columnOf(c.status.id) !== null &&
-          (!filters.includes('mine') || c.mine) &&
-          forPerson(c),
+          columnOf(c.status.id) !== null && (!filters.includes('mine') || c.mine) && forPerson(c),
       );
       const assigned = new Map(
         all.flatMap((c) => {

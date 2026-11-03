@@ -1564,6 +1564,11 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
     tables: { priority: "name = 'Seed priority' AND workspace_id = 1" },
     seed: async () => {},
   },
+  '0093_board_card_defaults': {
+    // Data only: the seed's boards hold no default card rules, so they stay as they were.
+    tables: { board: "name = 'Seed one-track board' AND card_rules = '{}'::jsonb" },
+    seed: async () => {},
+  },
   '0094_board_kind_decides_backlog': {
     // Data only, over tracks: the seed's first track is still there with its board.
     tables: { track: "key = 'SEED' AND workspace_id = 1" },

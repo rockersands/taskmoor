@@ -214,19 +214,59 @@
   outline: none;
 }
 
-.board-card-key {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-200);
-  font-weight: 600;
+.board-card-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .board-card-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-height: 24px;
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-100);
+}
+
+.board-card-points {
+  min-width: 1.25rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-weight: 600;
+  text-align: center;
+}
+
+.board-card-age {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* The assignee sits at the card's far corner, the same place on every card. */
+.board-card-person {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-inline-start: auto;
+  border-radius: 50%;
+  background: var(--color-blush-soft);
+  color: var(--color-blush);
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.board-card-person.is-nobody {
+  background: transparent;
+  color: var(--color-text-muted);
 }
 
 .board-card-move {

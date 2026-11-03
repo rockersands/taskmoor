@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -22,9 +22,14 @@ board, and a board cannot sit outside a track or cross tracks. For a view across
 search or a dashboard.
 
 A new board starts with one column per status of the track's workflow, named after the status and
-ordered from new to closed, the board filter "Recently updated" (changed in the last day), cards
-coloured by ticket type, and the assignee and priority on each card. Change any
-of it in the board's settings.
+ordered from new to closed, the board filter "Recently updated" (changed in the last day), and cards
+that show the priority, the assignee and the points, with no colour strip and no days marker. Change
+any of it in the board's settings.
+
+Upgrading moved boards still on the old default fields (assignee, then priority) to these; a board
+whose card fields are anything else keeps them. If its colour and days were still the old default
+too, they changed with it; a colour or days setting someone changed stays. Choosing the same two
+fields on purpose looks the same as never choosing, so those boards moved as well: choose again.
 
 A site upgraded from before this rule keeps its older boards. A board whose query was exactly one
 track became that track's board, if the track had none; the others stay readable, kept by a person.
@@ -39,9 +44,18 @@ the board, never the whole page.
 Each column shows how many tickets it holds and its limits: **min 2**, **max 5**. A column
 above its maximum says **Over the maximum**; below its minimum, **Under the minimum**.
 
-Each card shows the key, the summary, the assignee (or **Unassigned**), the due date, the
-fields the board chooses and, if the board shows it, how many days the ticket has been in its
-column. Cards are in rank order.
+Each card shows the title (the key is in its tooltip and read out by screen readers), the ticket
+type's icon and the fields the board chooses: by default the priority's icon, the points where a
+ticket has them, and the assignee as a small round mark with their initials, or a dashed circle for
+nobody. Each icon and mark has its name as a tooltip and for screen readers, and the words appear
+beside the icons while the keyboard is on the card.
+
+Points are a number field: the one the board estimates with (see [Sprint settings](#sprint-settings)),
+else a number field named Points, Story points or Puntos. Taskmoor does not create one, so without
+such a field cards show none.
+
+If the board shows days in column, a card that has waited a day or more shows a small clock with the
+number, and a card that has just arrived shows nothing. Cards are in rank order.
 
 A Scrum board shows the tickets of its active sprints; a Kanban board shows every ticket of its
 track, so tickets that waited in a backlog are on the board after a change to Kanban. Sprints are kept,
@@ -119,7 +133,7 @@ has these sections, saved together with **Save settings**:
 | **Which column shows each status** | On a board that does not manage its workflow: a column for each status, or **None (unmapped)** |
 | **Swimlanes** | **Group cards**: **Not at all**, **By queries**, **By assignee** or **By parent**; for assignee lanes, whether **Unassigned tickets** come **First** or **Last**; for query lanes, each lane's name and query and the name of the lane for everything else |
 | **Board filters** | Each filter's name, query and description; **Show board filters as** **Buttons** or **A menu** |
-| **Cards** | **Colour cards by** **Nothing**, **Ticket type**, **Priority**, **Assignee** or **Queries (the first that matches)**; up to 10 **Fields on cards**; **Show days in column** |
+| **Cards** | **Colour cards by** **Nothing**, **Ticket type**, **Priority**, **Assignee** or **Queries (the first that matches)**; up to 10 **Fields on cards**, such as **Priority**, **Assignee** and **Points**; **Show days in column** |
 | **Sprints** | Scrum boards only; see [Sprint settings](#sprint-settings) |
 
 The server checks every query when you save, and a problem shows next to its field. A query that

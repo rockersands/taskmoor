@@ -447,8 +447,23 @@ export interface BoardData {
   people: BoardPeople;
 }
 
+/** Names a number field goes by when it holds a ticket's points. */
+const POINTS_NAMES = new Set(['points', 'story points', 'puntos']);
+
+/**
+ * The number field a card's points read: the one the board estimates with, else the workspace's
+ * number field named Points (the oldest, if there are several). None: cards show no points.
+ */
+function pointsFieldOf(catalog: Catalog, estimateFieldId: number | null): number | null {
+  if (estimateFieldId !== null) return estimateFieldId;
+  const named = [...catalog.fields.values()]
+    .filter((f) => f.type === 'number' && POINTS_NAMES.has(f.name.trim().toLowerCase()))
+    .sort((a, b) => a.id - b.id);
+  return named[0]?.id ?? null;
+}
+
 /** A card property, for the extra fields of the card rules. */
-function cardField(view: TicketView, name: string): unknown {
+function cardField(view: TicketView, name: string, pointsField: number | null): unknown {
   const custom = /^cf\[(\d+)\]$/.exec(name);
   if (custom) return view.fields[custom[1] as string] ?? null;
   switch (name) {
@@ -462,6 +477,10 @@ function cardField(view: TicketView, name: string): unknown {
           level: view.priority.level,
         }
       );
+    case 'points': {
+      const value = pointsField === null ? null : view.fields[String(pointsField)];
+      return typeof value === 'number' ? value : null;
+    }
     case 'parent':
       return view.parent?.key ? view.parent : null;
     case 'track':
@@ -490,6 +509,7 @@ interface CardSource {
 const SLIM_FIELDS = new Set([
   'assignee',
   'priority',
+  'points',
   'dueDate',
   'startDate',
   'createdAt',
@@ -508,10 +528,16 @@ async function cardSources(
   fields: readonly string[],
   visibleParents: ReadonlySet<number>,
   catalogs: FieldCatalogs,
+  estimateFieldId: number | null,
 ): Promise<Map<number, CardSource>> {
   const out = new Map<number, CardSource>();
   if (ids.length === 0) return out;
-  const levels = await priorityLevels(db, scope.ws);
+  const levels = fields.includes('priority')
+    ? await priorityLevels(db, scope.ws)
+    : new Map<number, number>();
+  const pointsField = fields.includes('points')
+    ? pointsFieldOf(await catalogs.get(scope.ws), estimateFieldId)
+    : null;
   const idList = sql<boolean>`k.id = ANY(${[...ids]}::int[])`;
   if (fields.every((f) => SLIM_FIELDS.has(f))) {
     const rows = await db
@@ -543,6 +569,10 @@ async function cardSources(
         'k.version',
         'k.created_at',
         'k.updated_at',
+        (pointsField === null
+          ? sql<null>`NULL`
+          : sql<unknown>`k.fields -> ${String(pointsField)}::text`
+        ).as('points_value'),
       ])
       .where(idList)
       .where('k.deleted_at', 'is', null)
@@ -562,6 +592,7 @@ async function cardSources(
           name: priority.name,
           level: levels.get(priority.id) ?? 4,
         },
+        points: typeof r.points_value === 'number' ? r.points_value : null,
         dueDate: r.due_date,
         startDate: r.start_date,
         createdAt: r.created_at.toISOString(),
@@ -593,7 +624,7 @@ async function cardSources(
     .where('k.deleted_at', 'is', null)
     .where(scope.filter.sql)
     .execute();
-  const custom = fields.some((f) => f.startsWith('cf['))
+  const custom = fields.some((f) => f.startsWith('cf[') || f === 'points')
     ? await customFieldViews(db, scope.ws, await catalogs.get(scope.ws), details)
     : new Map<number, Record<string, JsonValue>>();
   for (const d of details) {
@@ -622,7 +653,7 @@ async function cardSources(
       rank: view.rank,
       version: view.version,
       createdAt: d.created_at,
-      fields: Object.fromEntries(fields.map((f) => [f, cardField(view, f)])),
+      fields: Object.fromEntries(fields.map((f) => [f, cardField(view, f, pointsField)])),
     });
   }
   return out;
@@ -644,6 +675,8 @@ export async function loadBoardData(input: {
   now?: Date;
   /** On a Scrum board, only the tickets of these sprints (the active ones, M1-044). */
   sprintIds?: readonly number[];
+  /** The number field the board estimates with, which its cards show as points (AGL-007). */
+  estimateFieldId?: number | null;
 }): Promise<BoardData> {
   const { db, request, scope, board, limit, timeoutMs } = input;
   const now = input.now ?? new Date();
@@ -741,6 +774,7 @@ export async function loadBoardData(input: {
     board.cardRules.fields,
     visibleParents,
     input.catalogs,
+    input.estimateFieldId ?? null,
   );
 
   // Days in column: from the status changes of the cards shown.
