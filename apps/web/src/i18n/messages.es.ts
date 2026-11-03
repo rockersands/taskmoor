@@ -3898,6 +3898,11 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.setting.linkAdd': 'Añadir un enlace',
   'dashboards.setting.query': 'Consulta',
   'dashboards.setting.queryHint': 'Vacía para todos los tickets que ves',
+  'dashboards.setting.queryInvalid':
+    'Taskmoor no puede leer esto como una consulta. Una consulta es así: track = API AND priority = High. Déjala vacía para todos los tickets que ves.',
+  'dashboards.setting.needsScrumBoard': '{name} (necesita un tablero Scrum)',
+  'dashboards.widget.badQuery':
+    'Taskmoor no puede leer la consulta de este widget, así que no muestra nada. Edita el panel y corrige la consulta en la configuración del widget.',
   'dashboards.setting.limit': 'Tickets que mostrar',
   'dashboards.setting.days': 'Días hacia atrás',
   'dashboards.setting.period': 'Agrupar por',

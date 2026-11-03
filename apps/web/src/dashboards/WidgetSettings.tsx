@@ -77,10 +77,18 @@ export interface WidgetSettingsProps {
   boards: { id: number; name: string; kind: 'scrum' | 'kanban' }[];
   onSave: (title: string, config: Record<string, unknown>) => void;
   onCancel: () => void;
+  /** Asks the server whether a query can be read; saved as written without it. */
+  checkQuery?: (query: string) => Promise<boolean>;
 }
 
 /** A widget's title and settings, one form per kind (M1-064; RPT-005). */
-export function WidgetSettings({ widget, boards, onSave, onCancel }: WidgetSettingsProps) {
+export function WidgetSettings({
+  widget,
+  boards,
+  onSave,
+  onCancel,
+  checkQuery,
+}: WidgetSettingsProps) {
   const t = useT();
   const id = useId();
   const [title, setTitle] = useState(widget.title);
@@ -88,6 +96,8 @@ export function WidgetSettings({ widget, boards, onSave, onCancel }: WidgetSetti
   const set = (key: string, value: unknown) => setConfig((c) => ({ ...c, [key]: value }));
   const links = (config.links as { label: string; url: string }[] | undefined) ?? [];
   const scrum = boards.filter((b) => b.kind === 'scrum');
+  const [badQuery, setBadQuery] = useState(false);
+  const needsBoard = SETTINGS[widget.kind].includes('board') && config.boardId === undefined;
 
   const field = (key: Setting) => {
     const fid = `${id}-${key}`;
@@ -170,8 +180,18 @@ export function WidgetSettings({ widget, boards, onSave, onCancel }: WidgetSetti
               rows={2}
               value={String(config.query ?? '')}
               placeholder={t('dashboards.setting.queryHint')}
-              onChange={(e) => set('query', e.target.value)}
+              aria-invalid={badQuery}
+              aria-describedby={badQuery ? `${fid}-problem` : undefined}
+              onChange={(e) => {
+                setBadQuery(false);
+                set('query', e.target.value);
+              }}
             />
+            {badQuery && (
+              <p id={`${fid}-problem`} className="form-error" role="alert">
+                {t('dashboards.setting.queryInvalid')}
+              </p>
+            )}
           </div>
         );
       case 'limit':
@@ -287,6 +307,18 @@ export function WidgetSettings({ widget, boards, onSave, onCancel }: WidgetSetti
       aria-label={t('dashboards.settingsOf', { kind: t(`dashboards.kind.${widget.kind}`) })}
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
+        const query = String(config.query ?? '').trim();
+        // A query the server cannot read would leave the widget failing on the dashboard.
+        if (query && checkQuery) {
+          void checkQuery(query).then(
+            (ok) => {
+              if (ok) onSave(title.trim(), config);
+              else setBadQuery(true);
+            },
+            () => onSave(title.trim(), config),
+          );
+          return;
+        }
         onSave(title.trim(), config);
       }}
     >
@@ -306,7 +338,7 @@ export function WidgetSettings({ widget, boards, onSave, onCancel }: WidgetSetti
       </div>
       {SETTINGS[widget.kind].map(field)}
       <div className="form-actions">
-        <button type="submit" className="button-primary">
+        <button type="submit" className="button-primary" disabled={needsBoard}>
           {t('dashboards.setting.apply')}
         </button>
         <button type="button" className="button-secondary" onClick={onCancel}>

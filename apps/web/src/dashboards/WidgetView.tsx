@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { ApiError } from '../api/client';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { ColumnChart } from '../reports/ColumnChart';
@@ -60,15 +61,20 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
   const t = useT();
   const intl = useIntl();
   const [data, setData] = useState<unknown>(undefined);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'query' | 'other' | null>(null);
 
   useEffect(() => {
     if (STATIC.has(widget.kind)) return;
     let live = true;
-    setFailed(false);
+    setFailed(null);
     client.widget(dashboardId, widget.id).then(
       (d) => live && setData(d),
-      () => live && setFailed(true),
+      (error) => {
+        if (live)
+          setFailed(
+            error instanceof ApiError && error.code === 'invalid_query' ? 'query' : 'other',
+          );
+      },
     );
     return () => {
       live = false;
@@ -130,7 +136,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
   if (failed) {
     return (
       <p className="board-problem" role="alert">
-        {t('dashboards.widget.failed')}
+        {t(failed === 'query' ? 'dashboards.widget.badQuery' : 'dashboards.widget.failed')}
       </p>
     );
   }

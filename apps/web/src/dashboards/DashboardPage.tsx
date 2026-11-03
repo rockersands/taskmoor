@@ -14,7 +14,7 @@ import {
   type Widget,
   type WidgetKind,
 } from './client';
-import { defaultConfig, WidgetSettings } from './WidgetSettings';
+import { defaultConfig, SETTINGS, WidgetSettings } from './WidgetSettings';
 import { WidgetView, widgetTitle } from './WidgetView';
 
 type Visibility = 'private' | 'any_user' | 'public' | 'custom';
@@ -327,11 +327,17 @@ export function DashboardPage({
               value={adding}
               onChange={(e) => setAdding(e.target.value as WidgetKind)}
             >
-              {WIDGET_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {t(`dashboards.kind.${k}`)}
-                </option>
-              ))}
+              {WIDGET_KINDS.map((k) => {
+                // A sprint widget reads a Scrum board: with none, it could not be saved.
+                const blocked =
+                  SETTINGS[k].includes('board') && !boards.some((b) => b.kind === 'scrum');
+                const name = t(`dashboards.kind.${k}`);
+                return (
+                  <option key={k} value={k} disabled={blocked}>
+                    {blocked ? t('dashboards.setting.needsScrumBoard', { name }) : name}
+                  </option>
+                );
+              })}
             </select>
           </div>
           <button type="button" className="button-secondary" onClick={add}>
@@ -440,6 +446,7 @@ export function DashboardPage({
                           setSettingsOf(null);
                         }}
                         onCancel={() => setSettingsOf(null)}
+                        checkQuery={(q) => client.checkQuery(q)}
                       />
                     ) : editing && w.id.startsWith('new-') ? (
                       <p className="report-empty">{t('dashboards.unsaved')}</p>

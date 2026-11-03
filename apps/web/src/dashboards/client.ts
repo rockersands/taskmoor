@@ -89,6 +89,8 @@ export interface DashboardClient {
   setDefault(id: number | null): Promise<void>;
   /** A widget's data as the viewer sees it; its shape depends on the kind. */
   widget(dashboardId: number, widgetId: string): Promise<unknown>;
+  /** Whether a widget's query can be read, before it is saved. */
+  checkQuery(query: string): Promise<boolean>;
   /** Boards for the sprint widgets' settings. */
   boards(): Promise<{ id: number; name: string; kind: 'scrum' | 'kanban' }[]>;
 }
@@ -136,6 +138,8 @@ export const dashboardClient: DashboardClient = {
         `/dashboards/${dashboardId}/widgets/${encodeURIComponent(widgetId)}`,
       )
     ).data,
+  checkQuery: async (query) =>
+    (await api<{ ok: boolean }>(`/search/check?q=${encodeURIComponent(query)}`)).ok,
   boards: async () =>
     (await api<{ boards: { id: number; name: string; kind: 'scrum' | 'kanban' }[] }>('/boards'))
       .boards,

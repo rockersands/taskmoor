@@ -3753,6 +3753,8 @@ export const messagesEn = {
   'dashboards.value.none': 'None',
   'dashboards.value.other': 'Other',
   'dashboards.widget.failed': 'This widget could not be loaded.',
+  'dashboards.widget.badQuery':
+    "Taskmoor cannot read the query in this widget, so it shows nothing. Edit the dashboard and fix the query in the widget's settings.",
   'dashboards.widget.noLinks': 'No links yet.',
   'dashboards.widget.noTickets': 'No tickets.',
   'dashboards.widget.noData': 'Nothing to show yet.',
@@ -3798,6 +3800,9 @@ export const messagesEn = {
   'dashboards.setting.linkAdd': 'Add a link',
   'dashboards.setting.query': 'Query',
   'dashboards.setting.queryHint': 'Empty for every ticket you see',
+  'dashboards.setting.queryInvalid':
+    'Taskmoor cannot read this as a query. A query looks like: track = API AND priority = High. Leave it empty for every ticket you see.',
+  'dashboards.setting.needsScrumBoard': '{name} (needs a Scrum board)',
   'dashboards.setting.limit': 'Tickets to show',
   'dashboards.setting.days': 'Days back',
   'dashboards.setting.period': 'Group by',
