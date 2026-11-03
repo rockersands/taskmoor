@@ -35,6 +35,23 @@ function renderApp(handlers: Record<string, Handler> = {}) {
 }
 
 describe('the create dialog (M1-052)', () => {
+  it('[AGL-018] still closes with Escape after focus falls out of it, as when Create is pressed', async () => {
+    const user = userEvent.setup();
+    renderApp();
+    const opener = await screen.findByRole('button', { name: 'New ticket' });
+    opener.focus();
+    await user.keyboard('c');
+    const dialog = await screen.findByRole('dialog', { name: 'Create ticket' });
+    // What a submit button does when it turns disabled under the pointer.
+    (document.activeElement as HTMLElement).blur();
+    expect(dialog).not.toContainElement(document.activeElement as HTMLElement);
+    await user.keyboard('{Tab}');
+    expect(dialog).toHaveFocus();
+    (document.activeElement as HTMLElement).blur();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Create ticket' })).toBeNull();
+  });
+
   it('[AGL-018] opens with C anywhere outside a field, closes with Escape and gives focus back', async () => {
     const user = userEvent.setup();
     renderApp();

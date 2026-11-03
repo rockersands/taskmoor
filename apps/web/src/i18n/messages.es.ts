@@ -3444,6 +3444,9 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.meta': '{kind} · {location}',
   'boards.location.track': 'en {track}',
   'boards.location.user': 'de {name}',
+  'boards.filter.mine': 'Solo mis tickets',
+  'boards.filter.recent': 'Actualizados hace poco',
+  'ticketPage.backToBoard': 'Volver a {name}',
   'boards.filters': 'Filtros del tablero',
   'boards.filters.summary':
     '{count, plural, =0 {Filtros del tablero} one {Filtros del tablero (# activo)} other {Filtros del tablero (# activos)}}',

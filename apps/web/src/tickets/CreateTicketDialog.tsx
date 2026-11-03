@@ -26,6 +26,24 @@ export function CreateTicketDialog({ onClose, client }: CreateTicketDialogProps)
     return () => opener?.focus();
   }, []);
 
+  // A button that turns disabled while it works (Create) drops focus to the page. The dialog is
+  // still open and modal, so Escape still closes it and Tab goes back in.
+  useEffect(() => {
+    const lost = (event: KeyboardEvent) => {
+      const inside = box.current?.contains(document.activeElement);
+      if (inside || !box.current) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      } else if (event.key === 'Tab') {
+        event.preventDefault();
+        box.current.focus();
+      }
+    };
+    document.addEventListener('keydown', lost);
+    return () => document.removeEventListener('keydown', lost);
+  }, [onClose]);
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
       event.preventDefault();

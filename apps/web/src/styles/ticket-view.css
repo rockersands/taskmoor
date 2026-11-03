@@ -10,6 +10,21 @@
   margin-bottom: var(--space-4);
 }
 
+.ticket-back {
+  justify-self: start;
+  color: var(--color-accent);
+  font-size: var(--font-size-200);
+  font-weight: 500;
+}
+
+.ticket-back::before {
+  content: "\2190\00a0";
+}
+
+[dir="rtl"] .ticket-back::before {
+  content: "\2192\00a0";
+}
+
 .ticket-crumbs {
   margin: 0;
   color: var(--color-text-muted);

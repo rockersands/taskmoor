@@ -91,14 +91,15 @@
 .board-grid {
   display: grid;
   gap: var(--space-2);
-  width: max-content;
-  min-width: 100%;
+  /* Columns share the width of the page; past what fits, the region scrolls sideways. */
+  width: 100%;
+  min-width: calc(var(--board-columns, 3) * 16rem + (var(--board-columns, 3) - 1) * var(--space-3));
 }
 
 .board-row {
   display: grid;
-  /* Columns wide enough to read a card, narrow enough that several fit (ADR-114). */
-  grid-template-columns: repeat(var(--board-columns, 3), minmax(16rem, 22rem));
+  /* Columns wide enough to read a card, sharing what the page has (ADR-114). */
+  grid-template-columns: repeat(var(--board-columns, 3), minmax(16rem, 1fr));
   gap: var(--space-3);
 }
 
@@ -486,6 +487,11 @@
 }
 
 @media (max-width: 640px) {
+  .board-grid {
+    width: max-content;
+    min-width: 100%;
+  }
+
   .board-row {
     grid-template-columns: repeat(var(--board-columns, 3), minmax(0, min(80vw, 18rem)));
   }

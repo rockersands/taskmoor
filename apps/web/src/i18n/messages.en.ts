@@ -3350,6 +3350,9 @@ export const messagesEn = {
   'boards.location.track': 'in {track}',
   'boards.location.user': 'kept by {name}',
   'boards.filters': 'Board filters',
+  'boards.filter.mine': 'Only my tickets',
+  'boards.filter.recent': 'Recently updated',
+  'ticketPage.backToBoard': 'Back to {name}',
   'boards.filters.summary':
     '{count, plural, =0 {Board filters} one {Board filters (# on)} other {Board filters (# on)}}',
   'boards.unmapped':

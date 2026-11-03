@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { I18nProvider } from '../i18n/I18nProvider';
+import { I18nProvider, type Translate } from '../i18n/I18nProvider';
+import { boardBehind, rememberBoard } from '../routing/cameFrom';
 import { setViewportWidth } from '../test/viewport';
-import { BoardPage } from './BoardPage';
+import { BoardPage, boardFilterName } from './BoardPage';
 import { BoardsPage } from './BoardsPage';
 import { dataPath } from './client';
 import { CARDS, fakeBoardClient } from './fixtures';
@@ -216,6 +217,30 @@ describe('the boards list (M1-043)', () => {
     await user.type(screen.getByLabelText('Tickets (a query)'), 'track = PAY');
     await user.click(screen.getByRole('button', { name: 'Create board' }));
     await waitFor(() => expect(made).toEqual([9]));
+  });
+});
+
+describe('a card leads to its ticket and back (ADR-114)', () => {
+  it('[AGL-001] remembers the board for the ticket a person opens, and only that one', () => {
+    window.sessionStorage.clear();
+    expect(boardBehind('PAY-1')).toBeNull();
+    rememberBoard('PAY-1', { id: 7, name: 'Checkout team' });
+    expect(boardBehind('PAY-1')).toEqual({ id: 7, name: 'Checkout team' });
+    expect(boardBehind('PAY-2')).toBeNull();
+  });
+});
+
+describe("a new board's filters in the person's language", () => {
+  const t = ((id: string) => `translated ${id}`) as unknown as Translate;
+
+  it('[AGL-001] translates the two defaults, and leaves a renamed filter alone', () => {
+    expect(boardFilterName(t, { id: 'mine', name: 'Only my tickets' })).toBe(
+      'translated boards.filter.mine',
+    );
+    expect(boardFilterName(t, { id: 'recent', name: 'Recently updated' })).toBe(
+      'translated boards.filter.recent',
+    );
+    expect(boardFilterName(t, { id: 'mine', name: 'Mine' })).toBe('Mine');
   });
 });
 

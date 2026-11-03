@@ -12,6 +12,7 @@ import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
+import { boardBehind } from '../../routing/cameFrom';
 import { navigate, replaceRoute, routeHref } from '../../routing/router';
 import { useSession } from '../../session/SessionProvider';
 import type { Command } from '../../shell/CommandPalette';
@@ -482,12 +483,18 @@ export function TicketPage({
     );
   }
   const shown = state.ticket;
+  const behind = boardBehind(ticket);
   const when = (iso: string) =>
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
     <article aria-labelledby={titleId} className="ticket-page ticket-view">
       <header className="ticket-header">
+        {behind && (
+          <a className="ticket-back" href={routeHref(`#/boards/${behind.id}`)}>
+            {t('ticketPage.backToBoard', { name: behind.name })}
+          </a>
+        )}
         <p className="ticket-crumbs page-eyebrow">
           {shown.track.name ? `${shown.track.name} · ${shown.ticketType.name}` : ''}
         </p>

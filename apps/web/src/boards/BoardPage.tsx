@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
+import { rememberBoard } from '../routing/cameFrom';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon, MoreIcon } from '../shell/icons';
@@ -87,6 +88,18 @@ function ColumnHead({ column, t, at }: { column: Column; t: Translate; at: numbe
       )}
     </div>
   );
+}
+
+/**
+ * A new board's two filters come from the server in English and stay as they are until someone
+ * renames them; shown here in the person's language. A renamed filter shows its own name.
+ */
+export function boardFilterName(t: Translate, filter: { id: string; name: string }): string {
+  if (filter.id === 'mine' && filter.name === 'Only my tickets') return t('boards.filter.mine');
+  if (filter.id === 'recent' && filter.name === 'Recently updated') {
+    return t('boards.filter.recent');
+  }
+  return filter.name;
 }
 
 /**
@@ -375,7 +388,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       title={f.description || f.query}
       onClick={() => toggleFilter(f.id)}
     >
-      {f.name}
+      {boardFilterName(t, f)}
     </button>
   ));
 
@@ -407,6 +420,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         <a
           className="board-card-link"
           href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
+          onClick={() => rememberBoard(card.key, { id: boardId, name: board.name })}
           aria-describedby={hintId}
           ref={(el) => {
             if (el) links.current.set(card.id, el);

@@ -1,5 +1,5 @@
 import { writeDocToYDoc } from '@taskmoor/richtext';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
@@ -9,6 +9,7 @@ import { fakeCommentClient } from '../../comments/fixtures';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/locale';
 import type { Connect } from '../../richtext/CollaborativeEditor';
+import { rememberBoard } from '../../routing/cameFrom';
 import { type Session, SessionProvider } from '../../session/SessionProvider';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
@@ -82,6 +83,22 @@ describe('the ticket view (M1-051)', () => {
       'aria-pressed',
       'false',
     );
+  });
+
+  it('[CORE-022] leads back to the board it was opened from, and only then', async () => {
+    window.sessionStorage.clear();
+    renderPage();
+    await heading();
+    expect(screen.queryByRole('link', { name: /^Back to/ })).toBeNull();
+    cleanup();
+    rememberBoard('SHOP-41', { id: 7, name: 'Checkout team' });
+    renderPage();
+    await heading();
+    expect(screen.getByRole('link', { name: 'Back to Checkout team' })).toHaveAttribute(
+      'href',
+      '#/boards/7',
+    );
+    window.sessionStorage.clear();
   });
 
   it('[CORE-022] edits the summary, priority, labels and dates in place', async () => {

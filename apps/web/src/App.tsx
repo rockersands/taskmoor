@@ -47,6 +47,7 @@ import { PermissionsPage } from './permissions/PermissionsPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
+import { boardBehind } from './routing/cameFrom';
 import { ImportedLinkPage, sourceLinkRoute } from './routing/ImportedLinkPage';
 import { currentRoute, navigate, useRoute } from './routing/router';
 import { runtimeConfig } from './runtime/config';
@@ -541,8 +542,8 @@ function Pages() {
   } else if (isRoute(hash, TUTORIALS)) {
     content = <TutorialsPage />;
   } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {
-    active = 'tracks';
     const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
+    active = boardBehind(ticket) ? 'boards' : 'tracks';
     content = <TicketPage key={ticket} ticket={ticket} />;
   } else if (isRoute(hash, BOARDS)) {
     active = 'boards';
