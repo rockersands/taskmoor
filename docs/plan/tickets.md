@@ -104,7 +104,7 @@ reported, and the coordinator checked that it was pushed.
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
 | T-070 | "Tableros" leaves the sidebar; each track is one place with sections | On branch | `claude/ui-overhaul`; the name stays Track |
-| T-071 | Tracks in the sidebar is one link, with no list under it | To do | With the front sub chat; replaces the expanding list, as there could be many tracks |
+| T-071 | Tracks in the sidebar is one link, with no list under it | On branch | replaces the expanding list, as there could be many tracks |
 | T-072 | Exactly one board per track, enforced on the server | On branch | ADR-116 |
 | T-073 | No board outside a track | On branch | ADR-116 |
 | T-074 | Decide about the leftover demo board `rrg` | You | Its sample track is gone; it can go too if the user agrees |
@@ -113,14 +113,16 @@ reported, and the coordinator checked that it was pushed.
 | T-077 | Files and links section | On branch | `claude/ui-overhaul` |
 | T-078 | Keep the Lista and Versiones tabs? | You | Recommended: keep both |
 | T-079 | An Objetivos tab listing outcomes with progress | You | Recommended: add it |
-| T-080 | A New track button on the Tracks page | To do | With the front sub chat |
-| T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | To do | With the front sub chat |
+| T-080 | A New track button on the Tracks page | On branch | `claude/ui-overhaul` |
+| T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | On branch | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
 | T-083 | A cross-track timeline | In progress | Part of T-088 |
 | T-084 | Personal track groups: drag tracks together, name the group | To do | Waits for the merges; private to the person |
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | Waits for the merges |
 | T-086 | Share a whole group, or set it on another person | To do | Waits for the merges |
 | T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
+| T-087a | Who can create tracks by default on a new site? | You | Today everyone signed in sees New track, for their own local tracks; recommended: site and configuration administrators only |
+| T-087b | One customizable Summary per track, with Dashboards for more | You | Replaces the spec's limitless dashboards per track; recommended: yes |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | To do | Paused on `claude/multi-track`; restarts after the merges |
 | T-089 | Multi-track: dependencies view | To do | In 1.0; starts after T-088 |
 | T-089b | Multi-track: teams and capacity | To do | In 1.0 |
@@ -148,9 +150,9 @@ reported, and the coordinator checked that it was pushed.
 | T-100 | Should demo tracks stop sharing one workflow? | Done | Settled: the three real tracks each have their own |
 | T-101 | Track picker in the board form, raw query under advanced | On branch | `claude/ui-overhaul` |
 | T-102 | Filter a board by person, for ordinary members | On branch | `claude/ui-overhaul` |
-| T-103 | The people list floats, and does not push the page down | To do | With the front sub chat |
-| T-104 | Filter buttons and checkboxes get the glass style | To do | With the front sub chat |
-| T-105 | Check whether "Solo mis tickets" and "Yo" duplicate each other | To do | With the front sub chat |
+| T-103 | The people list floats, and does not push the page down | On branch | `claude/ui-overhaul` |
+| T-104 | Filter buttons and checkboxes get the glass style | On branch | `claude/ui-overhaul` |
+| T-105 | Check whether "Solo mis tickets" and "Yo" duplicate each other | On branch | `claude/ui-overhaul` |
 | T-106 | Complete a sprint from the board, for managers and above, with a confirmation pop-up | To do | Waits for the merges; says how many tickets are done and open, and where open ones go; Complete and Cancel |
 
 ## Tickets
@@ -202,7 +204,7 @@ reported, and the coordinator checked that it was pushed.
 | T-144 | The design is consistent through the whole app | To do | Waits for the merges; shared styles, a guard, then a sweep of every route |
 | T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | On branch | The user's own skin choice is kept |
 | T-146 | Fix the English filters in the Spanish interface | To do | With the front sub chat |
-| T-147 | A watery look for every animation in the app | To do | Waits for the merges; off with reduced motion |
+| T-147 | A watery look for every animation in the app | On branch | off with reduced motion |
 
 ## Administration
 
