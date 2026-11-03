@@ -81,6 +81,14 @@ corepack pnpm install
   `::1` because macOS has only 127.0.0.1 on loopback.
 - **Side sessions** hold every test run while `/tmp/taskmoor-gate.lock` exists and take the lock for
   their own Playwright spec; the coordinator holds it for each full gate.
+- **Disk** (the Mac filled up on 2026-11-03): each worktree is 1 to 2 GB, and its test runs leave
+  embedded Postgres servers running. After merging a branch, stop its clusters
+  (`<bin>/pg_ctl stop -D <worktree>/.cache/pg-test/<name> -m fast`, with `<bin>` the worktree's own
+  `@embedded-postgres` native bin) and `git worktree remove` it; the branch stays. The e2e servers now
+  drop their clusters' leftover databases at start (they had grown to 9 GB), and the docs check skips
+  `.claude`.
+- **Agents' tests at size** go behind an env var like `TASKMOOR_LARGE_SPRINTS`; the outcomes test reads
+  10,000 tickets in a gate and 100,000 with `TASKMOOR_LARGE_OUTCOMES=1`.
 - **Only one Playwright run on a machine at a time.** All worktrees share the e2e ports. `pnpm verify`
   now sets CI, so it starts its own servers and fails loudly if a port is held; before that, a gate
   could test another worktree's code.
