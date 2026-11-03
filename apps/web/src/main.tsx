@@ -33,6 +33,7 @@ import './styles/releases.css';
 import './styles/ticket-templates.css';
 import './styles/timeline.css';
 import './styles/views.css';
+import './styles/plans.css';
 import './styles/ai.css';
 import './styles/surfaces.css';
 import './styles/motion.css';

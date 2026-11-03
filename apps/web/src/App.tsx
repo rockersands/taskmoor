@@ -52,6 +52,9 @@ import { UsersPage } from './people/UsersPage';
 import { PermissionExplainerPage } from './permissions/PermissionExplainerPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
 import { VisibilityPage } from './permissions/VisibilityPage';
+import { PLAN_ROUTE, type PlanSection } from './plans/address';
+import { PlanPage } from './plans/PlanPage';
+import { PlansPage } from './plans/PlansPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
@@ -75,6 +78,7 @@ import {
   DashboardsIcon,
   HomeIcon,
   InboxIcon,
+  MultiTrackIcon,
   SearchIcon,
   SettingsIcon,
   TracksIcon,
@@ -136,6 +140,15 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
     labelId: 'nav.dashboards',
     href: '#/dashboards',
     icon: DashboardsIcon,
+    requiresSession: true,
+    group: 'work',
+  },
+  // Multi-track plans over several tracks and saved searches (ADR-122).
+  {
+    id: 'plans',
+    labelId: 'nav.plans',
+    href: '#/plans',
+    icon: MultiTrackIcon,
     requiresSession: true,
     group: 'work',
   },
@@ -234,6 +247,8 @@ const TRACK_LIST = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/list(?:[/?]|$)/;
 const TRACK_TIMELINE = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/timeline(?:[/?]|$)/;
 /** Dashboards (M1-064): the list, one by id, and one as a wallboard turning to the next. */
 const DASHBOARDS = '#/dashboards';
+/** Multi-track: the plans, and one plan's sections (ADR-122). */
+const PLANS = '#/plans';
 const SIGN_IN = '#/sign-in';
 const PASSWORD_LINK = '#/password';
 /** An invitation's link (IAM-027) and the pages of the tracks a person runs (IAM-030). */
@@ -861,6 +876,19 @@ function Pages() {
     // Public like the rest of the sidebar: a track the visitor may see, if any, shows.
     guarded = false;
     content = <TracksPage />;
+  } else if (isRoute(hash, PLANS)) {
+    active = 'plans';
+    guarded = true;
+    const plan = PLAN_ROUTE.exec(hash);
+    content = plan ? (
+      <PlanPage
+        key={plan[1]}
+        id={Number(plan[1])}
+        section={(plan[2] as PlanSection | undefined) ?? 'summary'}
+      />
+    ) : (
+      <PlansPage />
+    );
   } else if (isRoute(hash, DASHBOARDS)) {
     active = 'dashboards';
     guarded = true;

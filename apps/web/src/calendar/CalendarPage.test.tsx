@@ -85,7 +85,9 @@ describe('a track’s calendar (M1-049)', () => {
     renderCalendar(fakeCalendarClient({ refuse: true }));
     (await screen.findByRole('link', { name: 'CAL-2 Press kit, due this day' })).focus();
     await user.keyboard('{Alt>}{ArrowRight}{/Alt}');
-    expect(await screen.findByRole('alert')).toHaveTextContent('CAL-2 could not be moved');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'CAL-2 could not be rescheduled: you may not schedule tickets in its track.',
+    );
     await user.click(screen.getByRole('button', { name: 'Next month' }));
     expect(await screen.findByRole('heading', { name: 'December 2026' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'This month' }));

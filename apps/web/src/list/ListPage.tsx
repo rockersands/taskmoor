@@ -322,8 +322,11 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
   );
 }
 
-/** A group's tickets (or all of them): fifty at a time, in the list's order. */
-function GroupSection({
+/**
+ * A group's tickets (or all of them): fifty at a time, in the list's order; a track's list and a
+ * Multi-track plan's (ADR-122), which stops at `cap` rows and says so.
+ */
+export function GroupSection({
   sectionKey,
   title,
   count,
@@ -334,6 +337,7 @@ function GroupSection({
   fields,
   format,
   onTickets,
+  cap,
 }: {
   sectionKey: string;
   title: string | null;
@@ -346,6 +350,8 @@ function GroupSection({
   fields: SearchField[];
   format: ((ticket: SearchTicket) => RowFormat | null) | undefined;
   onTickets: (key: string, tickets: SearchTicket[]) => void;
+  /** At most this many rows, and the words that say so when there are more. */
+  cap?: { rows: number; text: string };
 }) {
   const t = useT();
   const id = useId();
@@ -413,11 +419,12 @@ function GroupSection({
             setTickets((current) => current.map((x) => (x.id === saved.id ? saved : x)))
           }
         />
-        {cursor && (
+        {cursor && (!cap || tickets.length < cap.rows) && (
           <button type="button" className="button-secondary" onClick={() => load(cursor)}>
             {t('list.more')}
           </button>
         )}
+        {cursor && cap && tickets.length >= cap.rows && <p className="board-hint">{cap.text}</p>}
       </>
     );
   if (title === null)

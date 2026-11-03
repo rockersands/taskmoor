@@ -37,8 +37,11 @@ export interface RuleMatches {
 
 export interface ListClient {
   track(key: string): Promise<{ id: number; key: string; name: string }>;
-  /** Tickets per value of a field, for the query (the two-dimensional report against the track: one column). */
-  groups(query: string, field: GroupField): Promise<GroupValue[]>;
+  /**
+   * Tickets per value of a field, for the query (the two-dimensional report against the track:
+   * one column); a Multi-track plan also groups by track (ADR-122).
+   */
+  groups(query: string, field: GroupField | 'track'): Promise<GroupValue[]>;
   /** Which of these tickets each rule's condition matches, as the viewer. */
   formatRules(ids: number[], rules: Pick<FormatRule, 'id' | 'query'>[]): Promise<RuleMatches>;
   createTicket(track: string, summary: string): Promise<{ id: number; key: string }>;
@@ -72,7 +75,7 @@ export const listClient: ListClient = {
 const quoted = (text: string) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
 /** The condition that finds a group's tickets; null for the rest gathered as other. */
-export function groupClause(field: GroupField, value: GroupValue): string | null {
+export function groupClause(field: GroupField | 'track', value: GroupValue): string | null {
   if (value.kind === 'other') return null;
   if (value.kind === 'none' || value.id === null) return `${field} IS EMPTY`;
   return field === 'labels' ? `labels = ${quoted(value.id)}` : `${field} = ${value.id}`;

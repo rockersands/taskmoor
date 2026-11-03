@@ -72,6 +72,15 @@ export const DashboardsIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** Multi-track (ADR-122): bars of several tracks on one timeline. */
+export const MultiTrackIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="4.5" width="10" height="3.5" rx="1" />
+    <rect x="8" y="10.25" width="12.5" height="3.5" rx="1" />
+    <rect x="5" y="16" width="9" height="3.5" rx="1" />
+  </Icon>
+);
+
 export const SettingsIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="3" />

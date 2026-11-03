@@ -21,8 +21,14 @@ async function everything(search: FakeSearchClient): Promise<SearchTicket[]> {
   return out;
 }
 
+/** The tracks of the search fixtures' tickets, by id. */
+const TRACK_KEYS: Record<string, string> = { '1': 'SHOP', '2': 'OPS' };
+
 /** What a group or filter clause keeps, for the clauses a list sends. */
 function keeps(q: string, t: SearchTicket): boolean {
+  // A plan's group by track (ADR-122): the two-dimensional report names tracks by id.
+  const track = /track = (\d+)/.exec(q);
+  if (track && !t.key.startsWith(`${TRACK_KEYS[track[1] ?? ''] ?? ''}-`)) return false;
   const priority = /priority = (\d+)/.exec(q);
   if (priority && String(t.priority?.id) !== priority[1]) return false;
   if (q.includes('priority IS EMPTY') && t.priority) return false;
@@ -33,7 +39,16 @@ function keeps(q: string, t: SearchTicket): boolean {
   return true;
 }
 
-const valuesOf = (field: GroupField, t: SearchTicket): { id: string; name: string } | null => {
+const valuesOf = (
+  field: GroupField | 'track',
+  t: SearchTicket,
+): { id: string; name: string } | null => {
+  // A plan's list groups by track (ADR-122): by the id of the key's track, in these fixtures.
+  if (field === 'track') {
+    const key = t.key.split('-')[0] ?? '';
+    const id = Object.entries(TRACK_KEYS).find(([, k]) => k === key)?.[0] ?? '';
+    return { id, name: key };
+  }
   if (field === 'priority')
     return t.priority ? { id: String(t.priority.id), name: t.priority.name } : null;
   if (field === 'assignee')
