@@ -136,6 +136,31 @@ describe('subticket progress (CORE-032)', () => {
     expect(await progress('alice', [lone.id, one.id])).toEqual({});
   });
 
+  it('[CORE-032] the page lists them through search, in key order, as far as the person sees', async () => {
+    const parent = await create({ track: 'SUB', summary: 'Listed parent' });
+    const sub = await typeAt('SUB', -1);
+    const one = await create({ track: 'SUB', summary: 'A', ticketTypeId: sub, parent: parent.key });
+    const two = await create({ track: 'SUB', summary: 'B', ticketTypeId: sub, parent: parent.key });
+    const list = (who: string) =>
+      as(who, {
+        method: 'POST',
+        url: '/api/v1/search',
+        payload: {
+          q: `parent = "${parent.key}" ORDER BY key ASC`,
+          limit: 50,
+          fields: 'summary,status',
+          count: false,
+        },
+      });
+    const seen = await list('alice');
+    expect(seen.statusCode, seen.body).toBe(200);
+    expect(seen.json().tickets).toMatchObject([
+      { key: one.key, summary: 'A', status: { stage: 'new' } },
+      { key: two.key, summary: 'B', status: { stage: 'new' } },
+    ]);
+    expect((await list('nobody')).json().tickets).toEqual([]);
+  });
+
   it('[CORE-032] counts nothing for someone who may not see the tickets', async () => {
     const parent = await create({ track: 'SUB', summary: 'Hidden parent' });
     const sub = await typeAt('SUB', -1);

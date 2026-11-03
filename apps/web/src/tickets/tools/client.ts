@@ -168,7 +168,7 @@ export interface TicketToolsClient {
   removeItem: (ticketId: number, checklistId: number, itemId: number) => Promise<TicketChecklists>;
   orderItems: (ticketId: number, checklistId: number, ids: number[]) => Promise<TicketChecklists>;
   subticketProgress: (ids: number[]) => Promise<Record<string, SubticketProgress>>;
-  /** The tickets under a ticket, in rank order; through search, so only what the person sees. */
+  /** The tickets under a ticket, in key order; through search, so only what the person sees. */
   children: (
     key: string,
     cursor?: string,
@@ -254,7 +254,7 @@ export const ticketToolsClient: TicketToolsClient = {
     const page = await api<{ tickets: ChildTicket[]; next: string | null }>('/search', {
       method: 'POST',
       body: {
-        q: `parent = ${quoted(key)} ORDER BY rank ASC`,
+        q: `parent = ${quoted(key)} ORDER BY key ASC`,
         limit: 50,
         fields: 'summary,status',
         count: false,

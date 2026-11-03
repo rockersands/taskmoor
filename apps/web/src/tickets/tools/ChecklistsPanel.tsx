@@ -106,11 +106,15 @@ export function ChecklistsPanel({
     return t('ticketView.problem.other');
   };
 
+  const writes = useRef(0);
   const run: Run = async (call, words = '', after) => {
+    const write = ++writes.current;
     setBusy(true);
     setProblem(null);
     try {
-      setData(await call());
+      const answer = await call();
+      // Boxes can be ticked faster than the server answers: the last answer has them all.
+      if (write === writes.current) setData(answer);
       setSaid(words);
       after?.();
       onChanged?.();
@@ -121,7 +125,7 @@ export function ChecklistsPanel({
       client.checklists(ticket.id).then(setData, () => {});
       return false;
     } finally {
-      setBusy(false);
+      if (write === writes.current) setBusy(false);
     }
   };
 
@@ -408,7 +412,7 @@ function ChecklistBlock({
               canMoveUp={at > 0}
               canMoveDown={at < list.items.length - 1}
               onState={(state) =>
-                void run(() => client.updateItem(ticketId, list.id, item.id, { state }))
+                run(() => client.updateItem(ticketId, list.id, item.id, { state }))
               }
               onText={(words) =>
                 run(() => client.updateItem(ticketId, list.id, item.id, { text: words }))
@@ -471,7 +475,7 @@ function ChecklistRow({
   busy: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
-  onState: (state: ItemState) => void;
+  onState: (state: ItemState) => Promise<boolean>;
   onText: (text: string) => Promise<boolean>;
   onMove: (step: -1 | 1, button: HTMLElement) => void;
   onRemove: () => void;
@@ -479,11 +483,18 @@ function ChecklistRow({
   const t = useT();
   const boxId = useId();
   const [editing, setEditing] = useState(false);
+  // What was just chosen, shown at once while the server answers; a refusal puts it back.
+  const [chosen, setChosen] = useState<ItemState | null>(null);
+  const state = chosen ?? item.state;
+  const choose = (next: ItemState) => {
+    setChosen(next);
+    void onState(next).finally(() => setChosen(null));
+  };
   const box = useRef<HTMLInputElement>(null);
   useEffect(() => {
     // Something is under way: neither ticked nor empty, for sight and for screen readers.
-    if (box.current) box.current.indeterminate = item.state === 'in_progress';
-  }, [item.state]);
+    if (box.current) box.current.indeterminate = state === 'in_progress';
+  }, [state]);
 
   if (editing) {
     return (
@@ -504,14 +515,14 @@ function ChecklistRow({
     );
   }
   return (
-    <li className="checklist-item" data-state={item.state}>
+    <li className="checklist-item" data-state={state}>
       <input
         ref={box}
         id={boxId}
         type="checkbox"
-        checked={item.state === 'done'}
-        disabled={!canEdit || busy}
-        onChange={(event) => onState(event.target.checked ? 'done' : 'open')}
+        checked={state === 'done'}
+        disabled={!canEdit}
+        onChange={(event) => choose(event.target.checked ? 'done' : 'open')}
       />
       <label htmlFor={boxId} className="checklist-item-text">
         {item.text}
@@ -519,10 +530,9 @@ function ChecklistRow({
       {canEdit ? (
         <span className="checklist-item-controls">
           <select
-            value={item.state}
-            disabled={busy}
+            value={state}
             aria-label={t('ticketTools.checklists.stateOf', { text: item.text })}
-            onChange={(event) => onState(event.target.value as ItemState)}
+            onChange={(event) => choose(event.target.value as ItemState)}
           >
             {ITEM_STATES.map((state) => (
               <option key={state} value={state}>
@@ -571,7 +581,7 @@ function ChecklistRow({
           </button>
         </span>
       ) : (
-        <span className="checklist-item-state">{t(ITEM_STATE_LABELS[item.state])}</span>
+        <span className="checklist-item-state">{t(ITEM_STATE_LABELS[state])}</span>
       )}
     </li>
   );
