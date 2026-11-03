@@ -149,6 +149,13 @@ export const accessPolicies: Loader<AccessPolicyCommand> = {
         continue;
       }
       grants.set(`${g.permission}|${granteeKey(row)}`, { ...row, permission: g.permission });
+      // Whoever runs a track may appoint others there, removable like any grant (ADR-118).
+      if (g.permission === 'administer_track') {
+        grants.set(`appoint_track_admins|${granteeKey(row)}`, {
+          ...row,
+          permission: 'appoint_track_admins',
+        });
+      }
     }
     if (pending && !ctx.dryRun) throw new PlanFailure('missing_reference:grants');
     const data: AccessData = { grants: [...grants.values()], tracks: trackIds(ctx, cmd.tracks) };

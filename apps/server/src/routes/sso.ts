@@ -5,6 +5,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { recordSsoRefusal } from '../audit/record';
 import { requireSiteAdmin } from '../auth';
+import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
 import type { OriginPolicy } from '../origins';
 import type { OutboundGuard } from '../outbound/guard';
@@ -184,6 +185,7 @@ export function registerSsoRoutes(
   db: Kysely<Database>,
   options: {
     secureCookies: boolean;
+    authorizer: Authorizer;
     peppers: PepperRing | undefined;
     publicUrl: string;
     /** Frontends a sign-in may return to (M1-107, M1-108). */
@@ -374,7 +376,7 @@ export function registerSsoRoutes(
       reply,
       { id: provider.id, protocol: 'oidc', domains: provider.domains, jit: provider.jit },
       identity,
-      { secureCookies: options.secureCookies },
+      { secureCookies: options.secureCookies, authorizer: options.authorizer },
     );
     if (outcome.error) {
       await recordSsoRefusal(db, {

@@ -81,6 +81,11 @@ export const AUDITED_EVENTS = [
   'global_grant.removed',
   'track_role.actor_added',
   'track_role.actor_removed',
+  // Who was let into a track, and who let them in (IAM-027; ADR-118).
+  'track_invitation.created',
+  'track_invitation.resent',
+  'track_invitation.revoked',
+  'track_invitation.accepted',
   'track.created',
   'track.updated',
   'track.archived',

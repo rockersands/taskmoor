@@ -1528,6 +1528,21 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          WHERE t.key = 'SEED' AND u.email = 'seed@example.com'`.execute(db);
     },
   },
+  '0087_track_invitations': {
+    tables: {
+      track_invitation: "email = 'invited-seed@example.com' AND delivery = 'link'",
+      // Whoever runs a track keeps giving the role that runs it (ADR-118).
+      access_grant: "permission = 'appoint_track_admins' AND grantee = 'role'",
+    },
+    seed: async (db) => {
+      await sql`INSERT INTO track_invitation (workspace_id, track_id, role_id, email, token_hash,
+          delivery, expires_at)
+        SELECT t.workspace_id, t.id, r.id, 'invited-seed@example.com', 'seed-invitation', 'link',
+               now() + interval '7 days'
+          FROM track t JOIN role r ON r.workspace_id = t.workspace_id
+         ORDER BY t.id, r.id LIMIT 1`.execute(db);
+    },
+  },
 };
 
 /**

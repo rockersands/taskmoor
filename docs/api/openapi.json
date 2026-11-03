@@ -13612,6 +13612,82 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/invitations/accept": {
+      "post": {
+        "operationId": "internal-post-invitations-accept",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "session",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/invitations/inspect": {
+      "post": {
+        "operationId": "internal-post-invitations-inspect",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "public",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/invitations/redeem": {
+      "post": {
+        "operationId": "internal-post-invitations-redeem",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "public",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/labels": {
       "get": {
         "operationId": "internal-get-labels",
@@ -14182,6 +14258,39 @@
     "/api/v1/me/followed-tickets": {
       "get": {
         "operationId": "internal-get-me-followed-tickets",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/me/managed-tracks": {
+      "get": {
+        "operationId": "internal-get-me-managed-tracks",
         "responses": {
           "default": {
             "content": {
@@ -27499,6 +27608,192 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/tracks/{id}/invitations": {
+      "get": {
+        "operationId": "internal-get-tracks-by-id-invitations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      },
+      "post": {
+        "operationId": "internal-post-tracks-by-id-invitations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/tracks/{id}/invitations/{invitationId}": {
+      "delete": {
+        "operationId": "internal-delete-tracks-by-id-invitations-by-invitationId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/tracks/{id}/invitations/{invitationId}/resend": {
+      "post": {
+        "operationId": "internal-post-tracks-by-id-invitations-by-invitationId-resend",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "invitationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/tracks/{id}/layout": {
       "get": {
         "operationId": "internal-get-tracks-by-id-layout",
@@ -28348,6 +28643,49 @@
     "/api/v1/tracks/{id}/role-actors": {
       "get": {
         "operationId": "internal-get-tracks-by-id-role-actors",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "read"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "read",
+        "x-taskmoor-stability": "internal"
+      }
+    },
+    "/api/v1/tracks/{id}/roles": {
+      "get": {
+        "operationId": "internal-get-tracks-by-id-roles",
         "parameters": [
           {
             "in": "path",

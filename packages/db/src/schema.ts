@@ -2560,6 +2560,28 @@ export interface PersonalExportTable {
   expires_at: Timestamp | null;
 }
 
+/** An address invited into a track with a role (IAM-027; ADR-118). */
+export interface TrackInvitationTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number;
+  role_id: number;
+  /** Lower case. */
+  email: string;
+  /** The link's token is only ever kept as this hash. */
+  token_hash: string;
+  invited_by: number | null;
+  /** The account that got the role when the invitation was made, if it did. */
+  granted_user_id: number | null;
+  delivery: 'email' | 'link';
+  last_error: string | null;
+  created_at: DefaultTimestamp;
+  last_sent_at: DefaultTimestamp;
+  expires_at: Timestamp;
+  accepted_at: Timestamp | null;
+  revoked_at: Timestamp | null;
+}
+
 /** Who has read the AI data-egress notice (M1-077; IAM-022). */
 export interface AiNoticeAckTable {
   workspace_id: number;
@@ -2600,6 +2622,7 @@ export interface Database {
   app_user: AppUserTable;
   personal_export: PersonalExportTable;
   ticket_template: TicketTemplateTable;
+  track_invitation: TrackInvitationTable;
   user_group: UserGroupTable;
   group_member: GroupMemberTable;
   team: TeamTable;

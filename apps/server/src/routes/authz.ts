@@ -12,6 +12,7 @@ import {
   TRACK_LEVEL_GRANTEES,
   TRACK_PERMISSION_GROUPS,
 } from '../authz/permissions';
+import { mayGiveRole, roleRunsTrack, trackKeepsAdministrator } from '../authz/track-admins';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { ticketKey } from '../tickets/model';
@@ -86,6 +87,28 @@ export function registerAuthzRoutes(
     if (owner !== null && (await request.authz.can('administer_track', owner))) return true;
     await reply.code(403).send({ error: 'forbidden' });
     return false;
+  }
+
+  /**
+   * Whether this person may change grants of this permission on this policy (IAM-027, IAM-028).
+   * Only a site administrator decides who may invite. Who runs a track, and who appoints them,
+   * is for the policy's editors, except that a local-mode track's own administrators must hold
+   * the appointing permission themselves: without it they could give it back to themselves, or
+   * appoint through the policy what they may not appoint through a role.
+   */
+  async function mayChangeGrant(request: FastifyRequest, policyId: number, permission: string) {
+    const global = await request.authz.global();
+    if (global.has('site_admin')) return true;
+    if (permission === 'invite_people') return false;
+    if (permission !== 'administer_track' && permission !== 'appoint_track_admins') return true;
+    if (global.has('configuration_admin')) return true;
+    const policy = await db
+      .selectFrom('access_policy')
+      .select('owner_track_id')
+      .where('id', '=', policyId)
+      .executeTakeFirst();
+    const owner = policy?.owner_track_id ?? null;
+    return owner !== null && request.authz.can('appoint_track_admins', owner);
   }
 
   async function inWorkspace(
@@ -329,6 +352,7 @@ export function registerAuthzRoutes(
     if (!(await inWorkspace('access_policy', ws, parsed.data.copyFrom))) {
       return reply.code(404).send({ error: 'not_found' });
     }
+    const copiesInviting = await request.authz.isSiteAdmin();
     try {
       const policy = await db.transaction().execute(async (trx) => {
         const row = await trx
@@ -341,11 +365,14 @@ export function registerAuthzRoutes(
           .returning(['id', 'name', 'description'])
           .executeTakeFirstOrThrow();
         if (parsed.data.copyFrom !== undefined) {
+          // Only a site administrator gives the right to invite (ADR-118), so only their copy
+          // keeps it.
           await sql`
             INSERT INTO access_grant (workspace_id, policy_id, permission, grantee, role_id,
                                       group_id, user_id, field_key)
             SELECT workspace_id, ${row.id}, permission, grantee, role_id, group_id, user_id, field_key
-              FROM access_grant WHERE policy_id = ${parsed.data.copyFrom}`.execute(trx);
+              FROM access_grant WHERE policy_id = ${parsed.data.copyFrom}
+               AND (${copiesInviting} OR permission <> 'invite_people')`.execute(trx);
         }
         await emit(trx, by(request), {
           type: 'access_policy.created',
@@ -493,6 +520,9 @@ export function registerAuthzRoutes(
     if (!(await policyEditor(request, reply, params.data.id))) return reply;
     const g = parsed.data;
     if (!isTrackPermission(g.permission)) return invalid(reply, 'unknown permission');
+    if (!(await mayChangeGrant(request, params.data.id, g.permission))) {
+      return reply.code(403).send({ error: 'forbidden', permission: g.permission });
+    }
     // Exactly the reference the grantee kind needs, and no other.
     const needs = {
       roleId: g.grantee === 'role',
@@ -569,6 +599,31 @@ export function registerAuthzRoutes(
     const params = z.object({ id, grantId: id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
     if (!(await policyEditor(request, reply, params.data.id))) return reply;
+    const grant = await db
+      .selectFrom('access_grant as g')
+      .innerJoin('access_policy as p', 'p.id', 'g.policy_id')
+      .select(['g.permission', 'p.owner_track_id'])
+      .where('g.id', '=', params.data.grantId)
+      .where('g.policy_id', '=', params.data.id)
+      .where('g.workspace_id', '=', request.workspaceId)
+      .executeTakeFirst();
+    if (grant) {
+      if (!(await mayChangeGrant(request, params.data.id, grant.permission))) {
+        return reply.code(403).send({ error: 'forbidden', permission: grant.permission });
+      }
+      // A local-mode track's own policy must keep someone who runs that track (IAM-028). A
+      // shared policy is checked by no one track: its editors change it for all of them.
+      if (
+        grant.permission === 'administer_track' &&
+        grant.owner_track_id !== null &&
+        !(await trackKeepsAdministrator(db, request.workspaceId, grant.owner_track_id, {
+          kind: 'grant',
+          grantId: params.data.grantId,
+        }))
+      ) {
+        return reply.code(409).send({ error: 'last_track_admin' });
+      }
+    }
     const deleted = await db.transaction().execute(async (trx) => {
       const row = await trx
         .deleteFrom('access_grant')
@@ -761,6 +816,10 @@ export function registerAuthzRoutes(
         inWorkspace(kind === 'users' ? 'app_user' : 'user_group', ws, actorId),
       ]);
       if (exist.includes(false)) return reply.code(404).send({ error: 'not_found' });
+      // A role that runs the track needs the appointing permission (IAM-028).
+      if (!(await mayGiveRole(db, request.authz, trackId, roleId))) {
+        return reply.code(403).send({ error: 'forbidden', permission: 'appoint_track_admins' });
+      }
       await db.transaction().execute(async (trx) => {
         const added = await trx
           .insertInto('track_role_actor')
@@ -792,7 +851,21 @@ export function registerAuthzRoutes(
       if (!params.success) return invalid(reply);
       const { id: trackId, roleId, actorId } = params.data;
       if (!(await trackAdmin(request, reply, trackId))) return reply;
+      // Taking a role that runs the track needs the same permission as giving it (IAM-028).
+      if (!(await mayGiveRole(db, request.authz, trackId, roleId))) {
+        return reply.code(403).send({ error: 'forbidden', permission: 'appoint_track_admins' });
+      }
       const removed = await db.transaction().execute(async (trx) => {
+        // One change at a time per track, so two removals cannot both leave no one behind.
+        await trx.selectFrom('track').select('id').where('id', '=', trackId).forUpdate().execute();
+        const keeps = await trackKeepsAdministrator(trx, request.workspaceId, trackId, {
+          kind: 'actor',
+          roleId,
+          userId: kind === 'users' ? actorId : null,
+          groupId: kind === 'groups' ? actorId : null,
+        });
+        const running = await roleRunsTrack(trx, trackId, roleId);
+        if (running && !keeps) return 'last' as const;
         const result = await trx
           .deleteFrom('track_role_actor')
           .where('track_id', '=', trackId)
@@ -813,6 +886,7 @@ export function registerAuthzRoutes(
         }
         return count;
       });
+      if (removed === 'last') return reply.code(409).send({ error: 'last_track_admin' });
       if (removed === 0) return reply.code(404).send({ error: 'not_found' });
       return reply.code(204).send();
     });

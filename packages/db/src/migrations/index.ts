@@ -72,6 +72,7 @@ import * as m0081 from './0081_security_events';
 import * as m0082 from './0082_storage_quota';
 import * as m0083 from './0083_personal_data';
 import * as m0085 from './0085_ticket_templates';
+import * as m0087 from './0087_track_invitations';
 
 /**
  * Every migration, in order. Migrations are forward-only: never edit or remove one that has
@@ -154,4 +155,5 @@ export const migrations: Record<string, TaskmoorMigration> = {
   '0082_storage_quota': m0082,
   '0083_personal_data': m0083,
   '0085_ticket_templates': m0085,
+  '0087_track_invitations': m0087,
 };

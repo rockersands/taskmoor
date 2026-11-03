@@ -283,6 +283,37 @@ export const EVENT_TYPES = {
     payload: z.object({ roleId: id, userId: id.nullable(), groupId: id.nullable() }),
   },
 
+  // Invitations into a track (IAM-027; ADR-118). Never a token or a link.
+  'track_invitation.created': {
+    subject: 'track',
+    payload: z.object({
+      invitationId: id,
+      roleId: id,
+      email: z.string(),
+      delivery: z.enum(['email', 'link']),
+      /** The account that got the role at once; null when it waits for the person. */
+      grantedUserId: id.nullable(),
+    }),
+  },
+  'track_invitation.resent': {
+    subject: 'track',
+    payload: z.object({ invitationId: id, delivery: z.enum(['email', 'link']) }),
+  },
+  'track_invitation.revoked': {
+    subject: 'track',
+    payload: z.object({ invitationId: id, roleRemoved: z.boolean() }),
+  },
+  'track_invitation.accepted': {
+    subject: 'track',
+    payload: z.object({
+      invitationId: id,
+      roleId: id,
+      userId: id,
+      /** The person made their account with the link. */
+      accountCreated: z.boolean(),
+    }),
+  },
+
   // Tracks and categories (M1-006)
   'track.created': {
     subject: 'track',

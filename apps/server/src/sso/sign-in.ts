@@ -2,7 +2,9 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { startSession } from '../auth';
+import type { Authorizer } from '../authz/authorizer';
 import { emit } from '../events/bus';
+import { invitationOpensAccount } from '../routes/invitations';
 import { emailDomain, syncGroups } from './oidc';
 
 /**
@@ -39,7 +41,8 @@ export interface SsoProviderRules {
  * transaction with its `sso.signed_in` event. The subject identifies the person after the
  * first sign-in; that first sign-in links an existing account or creates one only for a
  * verified address of a domain the provider serves. Service accounts and deactivated accounts
- * stay out.
+ * stay out. A provider that makes no accounts still makes one for a verified address with a
+ * live invitation (IAM-029; ADR-118): someone who may invite asked for that person.
  */
 export async function completeSsoSignIn(
   db: Kysely<Database>,
@@ -47,9 +50,14 @@ export async function completeSsoSignIn(
   reply: FastifyReply,
   provider: SsoProviderRules,
   identity: SsoIdentity,
-  options: { secureCookies: boolean },
+  options: { secureCookies: boolean; authorizer: Authorizer },
 ): Promise<{ error: null } | { error: SsoRefusal; userId?: number }> {
   const ws = request.workspaceId;
+  // Read before the transaction, which never waits for a second pooled connection.
+  const invited =
+    !provider.jit && identity.email && identity.emailVerified
+      ? await invitationOpensAccount(db, options.authorizer, ws, identity.email)
+      : false;
   return db.transaction().execute(async (trx) => {
     const linked = await trx
       .selectFrom('user_identity as i')
@@ -83,7 +91,7 @@ export async function completeSsoSignIn(
       if (existing) {
         userId = existing.id;
       } else {
-        if (!provider.jit) return { error: 'no_account' as const };
+        if (!provider.jit && !invited) return { error: 'no_account' as const };
         const row = await trx
           .insertInto('app_user')
           .values({

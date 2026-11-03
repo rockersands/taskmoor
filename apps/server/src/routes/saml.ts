@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { recordSsoRefusal } from '../audit/record';
+import type { Authorizer } from '../authz/authorizer';
 import type { OriginPolicy } from '../origins';
 import { PROVIDER_COLUMNS, type Provider, returnAddress, safeReturnTo } from '../sso/oidc';
 import {
@@ -55,6 +56,7 @@ export async function registerSamlRoutes(
   db: Kysely<Database>,
   options: {
     secureCookies: boolean;
+    authorizer: Authorizer;
     publicUrl: string;
     /** Frontends a sign-in may return to (M1-107, M1-108). */
     origins: OriginPolicy;
@@ -284,7 +286,7 @@ export async function registerSamlRoutes(
       reply,
       { id: provider.id, protocol: 'saml', domains: provider.domains, jit: provider.jit },
       person,
-      { secureCookies: options.secureCookies },
+      { secureCookies: options.secureCookies, authorizer: options.authorizer },
     );
     if (outcome.error) {
       await audit(request, provider, outcome.error, {

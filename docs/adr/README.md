@@ -118,5 +118,6 @@ Records not yet written are listed in the plan with their intended decision. Use
 | [111](0111-personal-data-and-database-tls.md) | A person's data as a background ZIP download and erasure to a stable placeholder, the audit log kept intact and masked on read; TLS with verify-full to the bundled PostgreSQL, the all-in-one on its Unix socket | Accepted |
 | [113](0113-ticket-templates.md) | Ticket templates in one table, for a track or every track; made through the ticket create route as the person, template values refused for them left out and listed, their own refused; one `ticket.created` per ticket made | Accepted |
 | [117](0117-update-command-and-new-version-notice.md) | One update command that installs only a signed release, and a new-version notice for administrators from the public releases, with off switches | Accepted |
+| [118](0118-track-invitations.md) | Invitations into a track by email or copied link, off until a site administrator gives the permission; a separate, removable permission for appointing a track's administrators, on by default; a track keeps its last administrator; web pages for track managers | Accepted |
 
 ADR-008 and ADR-010 become Accepted when the 10M-ticket runs (M0-016, M0-017) confirm their budgets.

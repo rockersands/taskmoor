@@ -181,6 +181,7 @@ const app = await buildApp({
   embedder,
   ...(vectorSearch ? { vectorSearch } : {}),
   rateLimits: {},
+  ...(config.smtp ? { smtp: config.smtp } : {}),
   passwords: passwordHasher(peppers),
   ...(peppers ? { peppers } : {}),
   aiKeys,

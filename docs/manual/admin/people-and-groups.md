@@ -28,7 +28,7 @@ administrators.
 | **LDAP and Active Directory** | `#/admin/directories` | See [LDAP directories](ldap.md) |
 
 The account made during [first-run setup](first-run.md) is a site administrator. People can
-also arrive through [single sign-on](sso.md), a [directory sync](ldap.md) or
+also be [invited into a track](invitations.md), or arrive through [single sign-on](sso.md), a [directory sync](ldap.md) or
 [SCIM provisioning](scim.md).
 
 ## The people directory

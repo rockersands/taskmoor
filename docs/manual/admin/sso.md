@@ -136,7 +136,8 @@ changed address at the provider changes nothing. At a first sign-in Taskmoor:
    any valid address).
 2. Requires the address to be in one of the provider's domains.
 3. Links the account with that address, or, when **Create accounts at a first sign-in** is on,
-   creates one. Created accounts have no password.
+   creates one. Created accounts have no password. With that option off, an address with a live
+   [invitation](invitations.md) still gets an account.
 
 Deactivated accounts and service accounts never sign in this way. When a sign-in is refused,
 the sign-in page explains why:

@@ -1,0 +1,37 @@
+/* The invite dialog (IAM-027): the ticket dialog, with room for a list, on any screen. */
+.invite-dialog {
+  width: min(32rem, 100%);
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+}
+
+.invite-dialog textarea,
+.invite-dialog input[type='search'],
+.invite-result input {
+  width: 100%;
+  min-width: 0;
+}
+
+.invite-result {
+  flex-wrap: wrap;
+}
+
+.invite-delivery {
+  display: grid;
+  gap: var(--space-2);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.invite-delivery label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+@media (pointer: coarse) {
+  .invite-delivery label {
+    min-height: 44px;
+  }
+}

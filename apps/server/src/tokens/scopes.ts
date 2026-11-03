@@ -36,6 +36,9 @@ export const PUBLIC_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/session',
   'POST /api/v1/password-links/inspect',
   'POST /api/v1/password-links/redeem',
+  // An invitation's link (IAM-027): its token is the proof.
+  'POST /api/v1/invitations/inspect',
+  'POST /api/v1/invitations/redeem',
   'POST /api/v1/password-check',
   'POST /api/v1/session/second-factor',
   'POST /api/v1/session/second-factor/webauthn',
@@ -85,6 +88,8 @@ export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/oauth/requests/:id',
   // Reading the AI data-egress notice is a person's own answer at their browser (M1-077).
   'POST /api/v1/ai/notice',
+  // Taking up an invitation is a person's own answer at their browser (IAM-027).
+  'POST /api/v1/invitations/accept',
   // A person's own data (ASVS 8.3.2, ADR-111): a token cannot take it out.
   'POST /api/v1/account/data-exports',
   'GET /api/v1/account/data-exports',
@@ -126,6 +131,8 @@ export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/identity-providers',
   '/api/v1/directories',
   '/api/v1/audit',
+  // Invitations let people in, and can make accounts (IAM-027; ADR-118).
+  '/api/v1/tracks/:id/invitations',
   // Webhooks send the instance's data to another host (M1-067).
   '/api/v1/webhooks',
 ];

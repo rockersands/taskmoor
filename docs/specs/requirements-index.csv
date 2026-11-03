@@ -311,6 +311,10 @@ IAM-023,IAM,Agent and prompt-injection safety,M1,Must,User requirement
 IAM-024,IAM,Cross-origin authentication,M1,Must,User requirement (Builder)
 IAM-025,IAM,Frontend security controls,M1,Must,User requirement (Builder)
 IAM-026,IAM,Secret-free frontend kit,M1,Must,User requirement (Builder)
+IAM-027,IAM,Invitations into a track,M1,Must,User requirement
+IAM-028,IAM,Appointing a track's administrators,M1,Must,User requirement
+IAM-029,IAM,Invitations and sign-in rules,M1,Must,User requirement
+IAM-030,IAM,Track managers' pages,M1,Must,User requirement
 OPS-001,OPS,One-command install,M1,Must,User requirement; Plane; GitLab Omnibus
 OPS-002,OPS,"Dependencies, footprint and sizing",M1,Must,OpenProject sizing; exceeds Sentry and Huly footprints
 OPS-003,OPS,First-run setup,M1,Must,User requirement
