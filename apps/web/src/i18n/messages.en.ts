@@ -4972,6 +4972,46 @@ export const messagesEn = {
   'admin.aiLimits.longContext': 'A dearer rate above a prompt size (optional)',
   'admin.aiLimits.above': 'Above this many tokens',
   'admin.aiLimits.savePrice': 'Save the rate',
+  'settings.trackSets': 'Which sets a track uses',
+  'settings.trackSetsHint':
+    'Choose a track’s layouts, priorities, visibility policy and notifications.',
+  'admin.trackSets.title': 'Which sets a track uses',
+  'admin.trackSets.purpose':
+    'Choose a track’s layouts, priorities, visibility policy and notifications from the sets that exist.',
+  'admin.trackSets.about':
+    'This page only chooses. Visibility policies have their own page; layout sets, priority sets and notification policies are made through the API for now. Type sets, field rule sets and workflow maps are chosen where they are made.',
+  'admin.trackSets.forbidden':
+    'Only site and configuration administrators choose a track’s sets here.',
+  'admin.trackSets.loading': 'Reading…',
+  'admin.trackSets.loadFailed': 'The tracks could not be read. Try again in a moment.',
+  'admin.trackSets.choicesFailed':
+    'The sets to choose from could not be read. Try again in a moment.',
+  'admin.trackSets.emptyTitle': 'No tracks yet',
+  'admin.trackSets.empty': 'Add a track on the Tracks page, then come back to choose what it uses.',
+  'admin.trackSets.track': 'Track',
+  'admin.trackSets.formOf': 'Sets of {key}',
+  'admin.trackSets.layout': 'Layouts',
+  'admin.trackSets.layoutNone': 'The site’s default layouts',
+  'admin.trackSets.layoutHint': 'Where fields appear on the create, edit and view forms.',
+  'admin.trackSets.priority': 'Priorities',
+  'admin.trackSets.priorityNone': 'The site’s default priorities',
+  'admin.trackSets.priorityHint':
+    'The priorities tickets choose from. A ticket keeps a priority its track stops offering.',
+  'admin.trackSets.visibility': 'Visibility policy',
+  'admin.trackSets.visibilityNone': 'None: tickets have no level',
+  'admin.trackSets.visibilityHint':
+    'Changing it moves tickets at a level the new policy lacks to its default level, so some may become visible to more people.',
+  'admin.trackSets.notification': 'Notifications',
+  'admin.trackSets.notificationNone': 'The site’s default notifications',
+  'admin.trackSets.notificationHint': 'Who hears about which changes in this track.',
+  'admin.trackSets.own': '{name} (its own)',
+  'admin.trackSets.save': 'Save',
+  'admin.trackSets.saved': '{key} was saved.',
+  'admin.trackSets.nothing': 'Nothing changed.',
+  'admin.trackSets.problem.forbidden':
+    'You may not choose that for this track. A site or configuration administrator can.',
+  'admin.trackSets.problem.other': 'That could not be saved. Try again in a moment.',
+  'admin.tracks.setsLink': 'Choose the sets {key} uses',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

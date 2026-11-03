@@ -23,6 +23,7 @@ import { BoardPage } from './boards/BoardPage';
 import { BoardSettingsPage } from './boards/BoardSettingsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { CalendarPage } from './calendar/CalendarPage';
+import { TrackSetsPage } from './configuration/TrackSetsPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
 import { WorkflowMapsPage } from './configuration/WorkflowMapsPage';
 import { DashboardPage } from './dashboards/DashboardPage';
@@ -192,6 +193,7 @@ const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ADMIN_VISIBILITY = '#/admin/visibility';
 const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
+const ADMIN_TRACK_SETS = '#/admin/track-sets';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_IMPORTS = '#/admin/imports';
 const ACCOUNT = '#/account';
@@ -625,6 +627,9 @@ function Pages() {
     content = <VisibilityPage />;
   } else if (isRoute(hash, ADMIN_EXPLAINER)) {
     content = <PermissionExplainerPage />;
+  } else if (isRoute(hash, ADMIN_TRACK_SETS)) {
+    const trackId = Number(/[?&]track=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
+    content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
   } else if (isRoute(hash, ADMIN_IMPORTS)) {

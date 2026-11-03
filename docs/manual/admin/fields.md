@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -278,12 +278,26 @@ every one of those tracks.
 |---|---|---|---|
 | Type set | `typeSetId` | The track type's default set | **Configuration sets** |
 | Field rule set | `fieldRuleSetId` | Default field rules | **Configuration sets** |
-| Layout set | `layoutSetId` | Default layouts | API only |
-| Priority set | `prioritySetId` | Default priority set | API only |
+| Layout set | `layoutSetId` | Default layouts | Chosen on **Which sets a track uses**; made through the API |
+| Priority set | `prioritySetId` | Default priority set | Chosen on **Which sets a track uses**; made through the API |
 | Workflow map | `workflowMapId` | Default workflow map | **Workflow maps** |
 | Access policy | `accessPolicyId` | Default access policy | **Permissions** |
-| Visibility policy | `visibilityPolicyId` | None | API only |
-| Notification policy | `notificationPolicyId` | The site's default | API only |
+| Visibility policy | `visibilityPolicyId` | None | Chosen on **Which sets a track uses**; made on **Visibility policies** |
+| Notification policy | `notificationPolicyId` | The site's default | Chosen on **Which sets a track uses**; made through the API |
+
+### Which sets a track uses
+
+**Administration** > **Which sets a track uses** (`#/admin/track-sets`), for site and configuration
+administrators, chooses a track's **Layouts**, **Priorities**, **Visibility policy** and
+**Notifications**. Pick the **Track**, change what you want and press **Save**; only what changed is
+sent. Each list holds the shared sets and a local-mode track's own, marked **(its own)**. The first
+choice in each list is the default, which for a visibility policy means none. **Manage** on the
+**Tracks** page has a link here for that track.
+
+Changing the visibility policy moves tickets at a level the new policy lacks to its default level, so
+some may become visible to more people.
+
+### Who changes a set
 
 - A shared set is changed by site and configuration administrators. A local-mode track owns its
   type set, access policy and workflow map, and may own field rule and layout sets (`trackId` on

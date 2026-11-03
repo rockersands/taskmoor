@@ -148,7 +148,8 @@ administrators read `GET /api/v1/tracks/:id/role-actors` and change roles with
 
 ### Configuration sets
 
-A track names the configuration sets it uses. `null` means the site's default.
+A track names the configuration sets it uses. `null` means the site's default. Layouts, priorities,
+visibility policy and notifications are chosen on [Which sets a track uses](fields.md#which-sets-a-track-uses).
 
 | API field | What it chooses | Who may change it |
 |---|---|---|

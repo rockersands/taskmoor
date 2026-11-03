@@ -5094,4 +5094,45 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.longContext': 'Una tarifa más cara a partir de un tamaño de prompt (opcional)',
   'admin.aiLimits.above': 'Por encima de estos tokens',
   'admin.aiLimits.savePrice': 'Guardar la tarifa',
+  'settings.trackSets': 'Qué conjuntos usa un track',
+  'settings.trackSetsHint':
+    'Elegir los diseños, prioridades, política de visibilidad y notificaciones de un track.',
+  'admin.trackSets.title': 'Qué conjuntos usa un track',
+  'admin.trackSets.purpose':
+    'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
+  'admin.trackSets.about':
+    'Esta página solo elige. Las políticas de visibilidad tienen su página; los conjuntos de diseños y de prioridades y las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+  'admin.trackSets.forbidden':
+    'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
+  'admin.trackSets.loading': 'Leyendo…',
+  'admin.trackSets.loadFailed': 'No se pudieron leer los tracks. Inténtalo de nuevo en un momento.',
+  'admin.trackSets.choicesFailed':
+    'No se pudieron leer los conjuntos para elegir. Inténtalo de nuevo en un momento.',
+  'admin.trackSets.emptyTitle': 'Aún no hay tracks',
+  'admin.trackSets.empty': 'Añade un track en la página de Tracks y vuelve para elegir qué usa.',
+  'admin.trackSets.track': 'Track',
+  'admin.trackSets.formOf': 'Conjuntos de {key}',
+  'admin.trackSets.layout': 'Diseños',
+  'admin.trackSets.layoutNone': 'Los diseños predeterminados del sitio',
+  'admin.trackSets.layoutHint':
+    'Dónde aparecen los campos en los formularios de crear, editar y ver.',
+  'admin.trackSets.priority': 'Prioridades',
+  'admin.trackSets.priorityNone': 'Las prioridades predeterminadas del sitio',
+  'admin.trackSets.priorityHint':
+    'Las prioridades entre las que eligen los tickets. Un ticket conserva una prioridad que su track deja de ofrecer.',
+  'admin.trackSets.visibility': 'Política de visibilidad',
+  'admin.trackSets.visibilityNone': 'Ninguna: los tickets no tienen nivel',
+  'admin.trackSets.visibilityHint':
+    'Al cambiarla, los tickets en un nivel que la nueva política no tiene pasan a su nivel predeterminado, así que algunos pueden ser visibles para más personas.',
+  'admin.trackSets.notification': 'Notificaciones',
+  'admin.trackSets.notificationNone': 'Las notificaciones predeterminadas del sitio',
+  'admin.trackSets.notificationHint': 'Quién se entera de qué cambios en este track.',
+  'admin.trackSets.own': '{name} (propio)',
+  'admin.trackSets.save': 'Guardar',
+  'admin.trackSets.saved': 'Se guardó {key}.',
+  'admin.trackSets.nothing': 'No cambió nada.',
+  'admin.trackSets.problem.forbidden':
+    'No puedes elegir eso para este track. Un administrador del sitio o de la configuración puede.',
+  'admin.trackSets.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  'admin.tracks.setsLink': 'Elegir los conjuntos que usa {key}',
 };

@@ -2,7 +2,7 @@
 title: "Email and notification policies"
 audience: admins
 sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/email/transport.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/routes/email.ts, apps/server/src/routes/setup.ts, apps/server/src/notifications/model.ts, apps/server/src/notifications/subscriber.ts, apps/server/src/routes/notifications.ts, apps/server/src/routes/tracks.ts, apps/server/src/audit/subscriber.ts, packages/db/src/migrations/0030_notifications.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/account/AccountPage.tsx, deploy/README.md, deploy/compose/docker-compose.yml, deploy/helm/taskmoor/values.yaml, docs/adr/0041-notification-recipients.md, docs/specs/01c-core-work-tracking.md, apps/server/src/email/smtp.ts
-accessed: 2026-10-30
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Email and notification policies
@@ -181,7 +181,7 @@ Taskmoor has no page for notification policies yet; manage them through the API.
 | Create one | `POST /api/v1/notification-policies` |
 | Change one | `PATCH /api/v1/notification-policies/<id>` |
 | Delete one | `DELETE /api/v1/notification-policies/<id>` |
-| Choose a track's policy | `PATCH /api/v1/tracks/<track id>` with `notificationPolicyId` (`null` for the default) |
+| Choose a track's policy | [Which sets a track uses](fields.md#which-sets-a-track-uses) in the web app, or `PATCH /api/v1/tracks/<track id>` with `notificationPolicyId` (`null` for the default) |
 
 A new policy, for example:
 

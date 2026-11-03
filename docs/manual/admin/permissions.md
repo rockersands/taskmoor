@@ -177,7 +177,8 @@ Site administrators open **Administration** > **Visibility policies**:
    The ticket's history records it.
 6. **Delete policy** works only when no track uses it.
 
-A track chooses its policy on [Which sets a track uses](fields.md#which-sets-a-track-uses).
+A track chooses its policy on [Which sets a track uses](fields.md#which-sets-a-track-uses), which
+configuration administrators can use too.
 
 People and groups named in a field of the ticket can be members only through the API. So can a
 local-mode track's own policy. A configuration administrator may also change policies through the

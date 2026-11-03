@@ -46,7 +46,8 @@ under its title.
 | | Boards | A board shows tickets as cards in columns, one column per step of the work. |
 | | Search | Find tickets with filters or the query language, and save the searches you reuse. |
 | | Dashboards | Charts and lists that sum up the work at a glance, for you or a team. |
-| Manage | Settings | Your account and tutorials for everyone; administration for site administrators. |
+| Manage | Settings | Your own account, how Taskmoor looks for you and your tutorials. |
+| | Administration | How this instance is doing and what is waiting for you. Shown to site and configuration administrators. |
 
 - **Tracks** becomes a real page: a directory of tracks (key, name, type, owner) with a search
   box. Inside a track, a tab bar holds Summary, List, Board, Backlog, Calendar, Timeline and
@@ -65,8 +66,12 @@ under its title.
   - System: System status, Backups, API usage, Imports, Trash, Guardrails.
 - **Who sees it:** a site administrator sees every group. A configuration administrator sees only
   the setup pages, and those must work in the web app without the API, which they need today.
+- **What a configuration administrator needs:** the session says whether the person holds Change
+  configuration, and two reads open for them, only to give a track's role: `GET /api/v1/groups`, and
+  `GET /api/v1/people/lookup` (a name and an id; the list of people stays with site administrators).
 - **The overview page** opens the section: system health, pending invitations and recent security
-  alerts.
+  alerts. Invitations have no read on this branch yet (they come with `claude/track-invites`), so the
+  panel lists people who have an account, no password and no sign-in so far, from `GET /api/v1/users`.
 - **Controls that only the API has today get pages**, in this order: visibility policies and the
   permission explainer; webhooks; AI limits and prices; which layout, priority, visibility and
   notification sets a track uses. The rest of what the manual marks as API-only is listed in
