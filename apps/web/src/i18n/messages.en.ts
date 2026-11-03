@@ -2022,6 +2022,7 @@ export const messagesEn = {
   'tickets.create.later': 'Set on the ticket once it is created.',
   'tickets.create.labelsHint': 'Separate labels with spaces or commas.',
   'tickets.create.none': 'None',
+  'tickets.templates.priorityDefault': 'The track’s default',
   'tickets.create.childOption': '{label}: second level',
   'tickets.create.submit': 'Create',
   'tickets.create.creating': 'Creating…',

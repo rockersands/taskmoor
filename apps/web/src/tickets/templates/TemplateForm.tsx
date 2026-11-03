@@ -373,7 +373,7 @@ export function TemplateForm({
             value={draft.priorityId}
             onChange={(e) => change({ priorityId: e.target.value })}
           >
-            <option value="">{t('tickets.create.none')}</option>
+            <option value="">{t('tickets.templates.priorityDefault')}</option>
             {options.priorities.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

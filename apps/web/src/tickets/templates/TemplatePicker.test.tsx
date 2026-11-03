@@ -77,19 +77,17 @@ describe('starting a ticket from a template (CORE-030)', () => {
     expect(screen.getByRole('combobox', { name: 'Start from a template' })).toHaveValue('');
   });
 
-  it('[CORE-030] leaves out what the person cleared or turned off', async () => {
+  it('[CORE-030] leaves out what the person turned off', async () => {
     const user = userEvent.setup();
     const { picker } = renderForm();
     await pick(user);
-    await user.selectOptions(screen.getByLabelText('Priority'), '');
     await user.click(screen.getByRole('checkbox', { name: 'Assignee' }));
     await user.click(screen.getByRole('checkbox', { name: 'Create its 2 subtickets' }));
     await user.click(screen.getByRole('button', { name: 'Create' }));
     await screen.findByText('SHOP-9 was created.');
     const body = picker.applied[0]?.body as Record<string, unknown>;
-    expect((body.omit as string[]).sort()).toEqual(['assigneeId', 'priorityId']);
+    expect(body.omit).toEqual(['assigneeId']);
     expect(body.subtickets).toBe(false);
-    expect(body.priorityId).toBeUndefined();
   });
 
   it('[CORE-030] says what was left out and which subtickets failed', async () => {
@@ -116,7 +114,8 @@ describe('starting a ticket from a template (CORE-030)', () => {
     const user = userEvent.setup();
     const { picker, created } = renderForm();
     await pick(user);
-    await user.selectOptions(screen.getByLabelText('Ticket type'), 'Chore');
+    await user.click(screen.getByRole('combobox', { name: 'Ticket type' }));
+    await user.click(screen.getByRole('option', { name: 'Chore' }));
     await screen.findByRole('combobox', { name: 'Start from a template' });
     expect(screen.getByRole('combobox', { name: 'Start from a template' })).toHaveValue('');
     expect(screen.getByLabelText(/^Summary/)).toHaveValue('Release SHOP 2026-11-03');

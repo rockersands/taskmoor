@@ -361,36 +361,55 @@ export const fields: Loader<FieldCommand> = {
       track: real(track),
     };
     const data = { track, config };
+    const named = async (name: string) =>
+      track === PENDING
+        ? undefined
+        : ctx.trx
+            .selectFrom('field')
+            .select(['id', 'type', 'multiple'])
+            .where('workspace_id', '=', ctx.workspaceId)
+            .where(sql<number>`coalesce(track_id, 0)`, '=', track ?? 0)
+            .where(sql<string>`lower(name)`, '=', lower(name))
+            .executeTakeFirst();
     if (existing !== null) {
       await existingTarget(ctx, 'field', existing);
-      return { action: 'update', targetId: existing, fingerprint, data };
+      // A field that came in under another name keeps it while the name stays taken.
+      const holder = await named(cmd.name);
+      const keepName = holder !== undefined && holder.id !== existing;
+      return { action: 'update', targetId: existing, fingerprint, data: { ...data, keepName } };
     }
-    if (track !== PENDING) {
-      const found = await ctx.trx
-        .selectFrom('field')
-        .select(['id', 'type', 'multiple'])
-        .where('workspace_id', '=', ctx.workspaceId)
-        .where(sql<number>`coalesce(track_id, 0)`, '=', track ?? 0)
-        .where(sql<string>`lower(name)`, '=', lower(cmd.name))
-        .executeTakeFirst();
-      if (found && (found.type !== cmd.type || found.multiple !== cmd.multiple)) {
-        throw new PlanFailure('field_type_differs');
+    const found = await named(cmd.name);
+    if (found && found.type === cmd.type && found.multiple === cmd.multiple) {
+      return { action: 'link', targetId: found.id, fingerprint, data };
+    }
+    if (found) {
+      // The name is taken by a field of another kind, such as the Points every workspace starts
+      // with (0095). The source's values still have to arrive, so the field does under a name of
+      // its own, and the report says so.
+      const name = `${cmd.name} (imported)`;
+      const twin = await named(name);
+      if (twin && twin.type === cmd.type && twin.multiple === cmd.multiple) {
+        return { action: 'link', targetId: twin.id, fingerprint, data };
       }
-      if (found) return { action: 'link', targetId: found.id, fingerprint, data };
+      if (twin) throw new PlanFailure('field_type_differs');
+      ctx.warn({ code: 'field_name_taken', detail: cmd.name });
+      return { action: 'create', targetId: null, fingerprint, data: { ...data, name } };
     }
     return { action: 'create', targetId: null, fingerprint, data };
   },
   async apply(ctx, cmd, plan) {
     if (plan.action === 'link') return plan.targetId as number;
-    const { track, config } = plan.data as {
+    const { track, config, name, keepName } = plan.data as {
       track: number | null;
       config: Record<string, JsonValue>;
+      name?: string;
+      keepName?: boolean;
     };
     if (plan.action === 'update') {
       await ctx.trx
         .updateTable('field')
         .set({
-          name: cmd.name,
+          ...(keepName ? {} : { name: cmd.name }),
           description: cmd.description,
           config: JSON.stringify(config),
           updated_at: new Date(),
@@ -404,7 +423,7 @@ export const fields: Loader<FieldCommand> = {
       .values({
         workspace_id: ctx.workspaceId,
         track_id: track,
-        name: cmd.name,
+        name: name ?? cmd.name,
         description: cmd.description,
         type: cmd.type,
         multiple: cmd.multiple,

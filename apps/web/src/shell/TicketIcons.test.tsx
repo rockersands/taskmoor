@@ -10,19 +10,23 @@ const shapeOf = (element: Element) => element.querySelector('svg')?.innerHTML ??
 
 describe('ticket type icons', () => {
   it('[CORE-005] names the type for assistive technology and in a tooltip', () => {
-    render(<TypeIcon name="Bug" icon="bug" />);
+    render(
+      <I18nProvider locale="en">
+        <TypeIcon name="Bug" icon="bug" />
+      </I18nProvider>,
+    );
     expect(screen.getByRole('img', { name: 'Bug' })).toHaveAttribute('title', 'Bug');
   });
 
   it('[CORE-005] draws a different shape per default type, and one for a custom type', () => {
     const { container } = render(
-      <div>
+      <I18nProvider locale="en">
         {['outcome', 'feature', 'bug', 'chore', 'to-do', 'idea', 'subticket', 'rocket'].map(
           (icon) => (
             <TypeIcon key={icon} name={`Named ${icon}`} icon={icon} />
           ),
         )}
-      </div>,
+      </I18nProvider>,
     );
     const shapes = [...container.querySelectorAll('.ticket-icon')].map(shapeOf);
     expect(new Set(shapes).size).toBe(8);
