@@ -25,6 +25,22 @@ const keysIn = (name: string) =>
     .map((a) => a.textContent?.split(' ')[0]);
 
 describe('the board page (M1-043)', () => {
+  it('[CORE-032] shows how many subtickets are closed on the cards that have any', async () => {
+    const asked: number[][] = [];
+    renderBoard({
+      ...fakeBoardClient(),
+      subticketProgress: async (ids) => {
+        asked.push(ids);
+        return { 112: { total: 4, closed: 1 } };
+      },
+    });
+    const board = await page();
+    expect(await board.findByText('1/4')).toBeVisible();
+    expect(board.getByText('1 of 4 closed (25%)')).toBeInTheDocument();
+    expect(board.getAllByText(/^[0-9]+.[0-9]+$/)).toHaveLength(1);
+    expect(asked[0]).toContain(112);
+  });
+
   it('[AGL-004] shows columns per lane, the query lane before the catch-all, in rank order', async () => {
     renderBoard();
     const board = await page();

@@ -5,6 +5,8 @@ import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
+import type { SubticketProgress } from '../tickets/tools/client';
+import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
 import type { SearchClient, SearchTicket } from './client';
 import {
   type CellEditor,
@@ -56,6 +58,7 @@ export function ResultTable({
 }: ResultTableProps) {
   const t = useT();
   const nameOf = useColumnName(fields);
+  const progress = useSubticketProgress(tickets, client.subticketProgress);
   const [priorities, setPriorities] = useState<{ id: number; name: string }[] | null>(null);
   const wantsPriorities = columns.includes('priority');
   useEffect(() => {
@@ -93,6 +96,9 @@ export function ResultTable({
                   <a href={routeHref(`#/tickets/${encodeURIComponent(ticket.key)}`)}>
                     {ticket.key}
                   </a>
+                  {progress[ticket.id] && (
+                    <SubticketProgressMini progress={progress[ticket.id] as SubticketProgress} />
+                  )}
                   {marks && marks.names.length > 0 && (
                     <span className="format-marks">
                       {marks.names.map((name) => (

@@ -25,6 +25,7 @@ import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
 import { type TicketToolsClient, ticketToolsClient } from '../tools/client';
 import { LinksPanel } from '../tools/LinksPanel';
+import { SubticketsPanel } from '../tools/SubticketsPanel';
 import { ActivityPanel, type ActivityTab } from './ActivityPanel';
 import {
   type Priority,
@@ -628,6 +629,14 @@ export function TicketPage({
               {...(ai.client ? { client: ai.client } : {})}
               {...(ai.notice ? { notice: ai.notice } : {})}
               {...(ai.features ? { features: ai.features } : {})}
+            />
+          )}
+          {loaded && (
+            <SubticketsPanel
+              ticket={loaded}
+              client={toolsClient}
+              revision={revision}
+              onChanged={() => setRevision((r) => r + 1)}
             />
           )}
           {loaded && (

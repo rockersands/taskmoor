@@ -91,6 +91,26 @@ export function pickerQuery(
   return `${where.join(' AND ')} ORDER BY updated DESC`;
 }
 
+/** How far along the tickets under a ticket are (CORE-032). */
+export interface SubticketProgress {
+  total: number;
+  closed: number;
+}
+
+/** A ticket under another, as its parent's page lists it. */
+export interface ChildTicket {
+  id: number;
+  key: string;
+  summary: string;
+  status: { name: string; stage: 'new' | 'active' | 'closed' };
+}
+
+/** A ticket type that may sit one level under a ticket. */
+export interface ChildType {
+  id: number;
+  name: string;
+}
+
 /** The endpoints the ticket's tools use. Stories and tests pass their own. */
 export interface TicketToolsClient {
   linkTypes: () => Promise<{ enabled: boolean; linkTypes: LinkType[] }>;
@@ -102,7 +122,30 @@ export interface TicketToolsClient {
   removeLink: (ticketId: number, linkId: number) => Promise<void>;
   /** Tickets for the picker, from a query `pickerQuery` wrote. */
   pick: (query: string) => Promise<PickedTicket[]>;
+  subticketProgress: (ids: number[]) => Promise<Record<string, SubticketProgress>>;
+  /** The tickets under a ticket, in rank order; through search, so only what the person sees. */
+  children: (
+    key: string,
+    cursor?: string,
+  ) => Promise<{ tickets: ChildTicket[]; next: string | null }>;
+  /** The track's ticket types one level under `rank`. */
+  childTypes: (track: string, rank: number) => Promise<ChildType[]>;
+  createChild: (ticket: {
+    track: string;
+    parent: string;
+    ticketTypeId: number;
+    summary: string;
+  }) => Promise<{ id: number; key: string }>;
 }
+
+/** Progress for a board or a list: the same route the ticket page reads. */
+export const loadSubticketProgress = async (ids: number[]) =>
+  (
+    await api<{ progress: Record<string, SubticketProgress> }>('/tickets/subticket-progress', {
+      method: 'POST',
+      body: { ids },
+    })
+  ).progress;
 
 export const ticketToolsClient: TicketToolsClient = {
   linkTypes: () => api<{ enabled: boolean; linkTypes: LinkType[] }>('/link-types'),
@@ -124,4 +167,33 @@ export const ticketToolsClient: TicketToolsClient = {
         body: { q: query, limit: 8, fields: 'summary,status', count: false },
       })
     ).tickets,
+  subticketProgress: loadSubticketProgress,
+  children: async (key, cursor) => {
+    const page = await api<{ tickets: ChildTicket[]; next: string | null }>('/search', {
+      method: 'POST',
+      body: {
+        q: `parent = ${quoted(key)} ORDER BY rank ASC`,
+        limit: 50,
+        fields: 'summary,status',
+        count: false,
+        ...(cursor ? { cursor } : {}),
+      },
+    });
+    return { tickets: page.tickets, next: page.next };
+  },
+  childTypes: async (track, rank) =>
+    (
+      await api<{ ticketTypes: { id: number; name: string; level: { rank: number } }[] }>(
+        `/tracks/${encodeURIComponent(track)}/ticket-types`,
+      )
+    ).ticketTypes
+      .filter((type) => type.level.rank === rank - 1)
+      .map((type) => ({ id: type.id, name: type.name })),
+  createChild: async (ticket) =>
+    (
+      await api<{ ticket: { id: number; key: string } }>('/tickets', {
+        method: 'POST',
+        body: ticket,
+      })
+    ).ticket,
 };

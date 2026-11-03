@@ -57,7 +57,8 @@ A customized summary is not a dashboard: it belongs to the track, and it does no
 
 **List** shows the track's tickets in a table, fifty at a time; **Show more** adds the next
 fifty. It is the search results table, so cells such as the summary, assignee, priority, labels
-and dates can be edited in place (see [search results](search.md#search-results)).
+and dates can be edited in place (see [search results](search.md#search-results)). A ticket with
+subtickets shows how many are closed under its key, with a small bar.
 
 | Control | What it does |
 |---|---|

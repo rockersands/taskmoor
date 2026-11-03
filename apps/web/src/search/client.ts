@@ -1,4 +1,5 @@
 import { API_BASE, api } from '../api/client';
+import { loadSubticketProgress, type SubticketProgress } from '../tickets/tools/client';
 import type { ChoiceField } from './basic';
 
 interface Named {
@@ -70,6 +71,8 @@ const MAX_OPTION_TRACKS = 20;
 /** The endpoints the search page uses. Stories and tests pass their own. */
 export interface SearchClient {
   search: (q: string, cursor?: string) => Promise<SearchPage>;
+  /** How far along the tickets under these results are (CORE-032); left out, rows show none. */
+  subticketProgress?: (ids: number[]) => Promise<Record<string, SubticketProgress>>;
   check: (q: string) => Promise<CheckResult>;
   tracks: () => Promise<SearchTrack[]>;
   /**
@@ -145,6 +148,7 @@ async function choiceOptions(
 }
 
 export const searchClient: SearchClient = {
+  subticketProgress: loadSubticketProgress,
   search: (q, cursor) =>
     api<SearchPage>('/search', {
       method: 'POST',

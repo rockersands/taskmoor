@@ -48,6 +48,8 @@ track. A board shows the first 5,000 cards in rank order and says when it shows 
 If some tickets are in statuses that no column shows, the board names those statuses and how
 many tickets are in them. Someone who may change the board can give them a column.
 
+A card whose ticket has subtickets shows how many are closed, with a small bar, such as **1/2**.
+
 ### Moving cards
 
 Moving a card to another column changes the ticket's status to that column's. On the workflow a new

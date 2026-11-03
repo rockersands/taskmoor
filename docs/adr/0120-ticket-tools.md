@@ -27,3 +27,13 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
   may see. Only letters and digits reach the text search, so typing cannot change the query.
 - `GET /api/v1/tickets/:id/links` gains `mayLink` and `enabled`, for what the panel offers; the
   write routes keep checking both.
+
+### Subtickets (CORE-032)
+
+- A subticket is an ordinary ticket and follows the track's workflow (the user's answer, 2026-11-03).
+- Progress is direct children in a status of the closed stage, over all direct children the person
+  may see. `POST /api/v1/tickets/subticket-progress` answers for many tickets in one statement,
+  with the permission filter in it, for the page, board cards and lists; the percent is worked out
+  where it shows.
+- A ticket above the standard level holds the next level down in the same section, under its own
+  title, because the hierarchy has no subtickets under an outcome (spec 01a section 1.2).

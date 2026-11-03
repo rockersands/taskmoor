@@ -5153,4 +5153,19 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.links.disabled': 'Los enlaces entre tickets están desactivados en este sitio.',
   'ticketTools.links.archived':
     'El track de ese ticket está archivado, así que sus enlaces no pueden cambiar.',
+  'ticketTools.subtickets.title': 'Subtickets',
+  'ticketTools.children.title': 'Tickets debajo de este',
+  'ticketTools.subtickets.empty': 'Todavía ninguno.',
+  'ticketTools.subtickets.noType':
+    'Este track no tiene un tipo de ticket para este nivel, así que aquí no se puede añadir ninguno.',
+  'ticketTools.subtickets.progress': '{closed} de {total} cerrados ({percent} %)',
+  'ticketTools.subtickets.mini': '{closed}/{total}',
+  'ticketTools.subtickets.summary': 'Resumen de uno nuevo',
+  'ticketTools.subtickets.add': 'Añadir',
+  'ticketTools.subtickets.addOpen': 'Añadir y abrir',
+  'ticketTools.subtickets.added': 'Se añadió {key}.',
+  'ticketTools.subtickets.more': 'Mostrar más',
+  'ticketTools.subtickets.forbidden': 'No puedes crear tickets en este track.',
+  'ticketTools.subtickets.fields':
+    'Este track también pide: {fields}. Usa el formulario de creación para este.',
 };

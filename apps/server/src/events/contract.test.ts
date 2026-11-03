@@ -83,6 +83,8 @@ const EXEMPT: Record<string, string> = {
   'DELETE /api/v1/mcp': 'ends an MCP session kept in memory; nothing stored changes (M1-072)',
   'POST /api/v1/admin/ai/test':
     'reads only: asks the AI provider for its models with the saved or given settings, stores nothing (M1-076)',
+  'POST /api/v1/tickets/subticket-progress':
+    'reads only: how many tickets under shown tickets are closed, as the viewer (CORE-032)',
   'POST /api/v1/search/format-rules':
     'reads only: which shown tickets each format rule matches, as the viewer (M1-049)',
   'PUT /api/v1/me/recent-tickets/:id':

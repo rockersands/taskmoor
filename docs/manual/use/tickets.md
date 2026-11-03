@@ -1,7 +1,7 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
+sources: apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md
 accessed: 2026-11-02
 attestation: own-words
 ---
@@ -163,6 +163,23 @@ upload that would pass yours, or the workspace's, is refused with what is used a
 **Preview** opens images, PDF files, videos, text and the
 contents of ZIP files; **Download all as ZIP** takes every file at once. Deleting a file asks
 first and is for good. If the server checks files for viruses, a file is held until it passes.
+
+### Subtickets
+
+The **Subtickets** section lists the tickets under this one, each with its status, and how far
+along they are: a bar, and the numbers in text, such as **1 of 2 closed (50%)**. A subticket counts
+as closed when its status is in the closed stage of its workflow. You only see, and count, the ones
+you may see.
+
+To add one, type its summary and press **Add**, or Enter, to stay here and add another; **Add and
+open** takes you to it. If the track has several subticket types, the form asks which. When the
+track asks for more fields than the summary, the page names them. Subtickets are ordinary tickets:
+they move through the track's workflow like any other, by their own page or on a board. A subticket
+has no subtickets of its own, so its page has no such section. On an outcome, the section is called
+**Tickets under this** and holds the tickets one level down, the same way.
+
+The same small progress shows on [board cards](boards.md) and in [the list view](views.md#the-list-view)
+and search results, for tickets that have any.
 
 ### Links
 

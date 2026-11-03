@@ -96,6 +96,8 @@ export const READ_ONLY_ROUTES: ReadonlySet<string> = new Set([
   'POST /api/v1/search',
   // Which shown tickets format rules match (M1-049): a read.
   'POST /api/v1/search/format-rules',
+  // How far along the tickets under some tickets are (CORE-032): a read, with the ids in the body.
+  'POST /api/v1/tickets/subticket-progress',
   // Tickets similar to a text being written (M1-078): a read, with the text in the body.
   'POST /api/v1/tickets/similar',
   // The AI features (M1-079): each answers text or proposals and changes no ticket; drafts and

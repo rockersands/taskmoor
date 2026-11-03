@@ -5028,6 +5028,21 @@ export const messagesEn = {
   'ticketTools.links.exists': 'That link is already there.',
   'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
   'ticketTools.links.archived': 'That ticket\'s track is archived, so its links cannot change.',
+  'ticketTools.subtickets.title': 'Subtickets',
+  'ticketTools.children.title': 'Tickets under this',
+  'ticketTools.subtickets.empty': 'None yet.',
+  'ticketTools.subtickets.noType':
+    'This track has no ticket type for this level, so none can be added here.',
+  'ticketTools.subtickets.progress': '{closed} of {total} closed ({percent}%)',
+  'ticketTools.subtickets.mini': '{closed}/{total}',
+  'ticketTools.subtickets.summary': 'Summary of a new one',
+  'ticketTools.subtickets.add': 'Add',
+  'ticketTools.subtickets.addOpen': 'Add and open',
+  'ticketTools.subtickets.added': '{key} was added.',
+  'ticketTools.subtickets.more': 'Show more',
+  'ticketTools.subtickets.forbidden': 'You may not create tickets in this track.',
+  'ticketTools.subtickets.fields':
+    'This track also asks for: {fields}. Use the create form for this one.',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

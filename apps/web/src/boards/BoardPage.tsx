@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+
 import { type Translate, useT } from '../i18n/I18nProvider';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
@@ -16,6 +17,8 @@ import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon, MoreIcon } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
 import { useSyncEngine } from '../sync/SyncProvider';
+import type { SubticketProgress } from '../tickets/tools/client';
+import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
 import { refusalMessage } from '../workflow/refusal';
@@ -158,6 +161,7 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   const askingTitleId = useId();
   const [board, setBoard] = useState<Board | null>(null);
   const [data, setData] = useState<BoardData | null>(null);
+  const progress = useSubticketProgress(data?.cards ?? null, client.subticketProgress);
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
   const [filters, setFilters] = useState<string[]>([]);
   const [people, setPeople] = useState<string[]>(() => peopleFromRoute(currentRoute()));
@@ -560,6 +564,9 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           ))}
           {card.daysInColumn !== null && (
             <span>{t('boards.card.days', { days: card.daysInColumn })}</span>
+          )}
+          {progress[card.id] && (
+            <SubticketProgressMini progress={progress[card.id] as SubticketProgress} />
           )}
         </p>
         <button

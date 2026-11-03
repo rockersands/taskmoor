@@ -91,6 +91,7 @@ import { registerSessionRoutes } from './routes/session';
 import { registerSetupRoutes } from './routes/setup';
 import { registerSimilarRoutes } from './routes/similar';
 import { registerSsoRoutes } from './routes/sso';
+import { registerSubticketRoutes } from './routes/subtickets';
 import { registerSyncRoutes } from './routes/sync';
 import { registerTeamRoutes } from './routes/teams';
 import { registerTicketTypeRoutes } from './routes/ticket-types';
@@ -488,6 +489,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPriorityRoutes(app, db);
     registerReleaseRoutes(app, db, authorizer);
     registerLinkRoutes(app, db, authorizer);
+    registerSubticketRoutes(app, db);
     // Entity properties (M1-129); boards and sprints register theirs with the board routes.
     registerCorePropertyRoutes(app, db);
     registerTimeRoutes(app, db, fieldCatalogs);

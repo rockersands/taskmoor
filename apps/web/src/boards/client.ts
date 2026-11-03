@@ -1,5 +1,6 @@
 import { ApiError, api } from '../api/client';
 import type { NumberField, SprintSettings } from '../sprints/client';
+import { loadSubticketProgress, type SubticketProgress } from '../tickets/tools/client';
 import { type Transition as TicketTransition, ticketClient } from '../tickets/view/client';
 import type { TransitionRefusal } from '../workflow/refusal';
 
@@ -257,6 +258,8 @@ export interface BoardClient {
     people?: readonly string[],
   ): Promise<BoardData>;
   move(id: number, move: MoveRequest): Promise<MoveOutcome>;
+  /** How far along the tickets under these cards are (CORE-032); left out, cards show none. */
+  subticketProgress?: (ids: number[]) => Promise<Record<string, SubticketProgress>>;
   /** What a ticket can do next, to ask for the fields a refused move needs. */
   transitions(ticket: number): Promise<TicketTransition[]>;
   closeReasons(): Promise<{ id: number; name: string }[]>;
@@ -284,6 +287,7 @@ export function dataPath(
 }
 
 export const boardClient: BoardClient = {
+  subticketProgress: loadSubticketProgress,
   list: async () => (await api<{ boards: BoardSummary[] }>('/boards')).boards,
   create: async (board) =>
     (
