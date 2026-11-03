@@ -135,6 +135,7 @@ reported, and the coordinator checked that it was pushed.
 | T-089e | Multi-track: draft changes and scenarios | To do | In 1.0 |
 | T-089f | Multi-track: auto-scheduler | To do | In 1.0 |
 | T-089g | Multi-track: duplicate a plan, link to a view, CSV and image export | To do | In 1.0 |
+| T-089h | A "Your tracks" section at the top of Home | To do | With the front sub chat |
 | T-089a | Multi-track: hierarchy grid (PLN-010) and baselines (PLN-011) | You | Not in what the user described; 2.0 and 4.0 unless the user says otherwise |
 
 ## Boards and moving tickets
