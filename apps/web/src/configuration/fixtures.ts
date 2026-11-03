@@ -1,5 +1,12 @@
 import { ApiError } from '../api/client';
-import type { ConfigurationClient, Named, RoleActors, Track, WorkflowMap } from './client';
+import type {
+  ConfigurationClient,
+  Named,
+  RoleActors,
+  Track,
+  TrackBoard,
+  WorkflowMap,
+} from './client';
 
 export const WORKFLOWS: Named[] = [
   { id: 1, name: 'Default workflow' },
@@ -22,7 +29,11 @@ export interface FakeConfigurationClient extends ConfigurationClient {
 
 /** An in-memory backend for stories and tests: it answers as the API would. */
 export function fakeConfigurationClient(
-  start: { refuseMapping?: boolean } = {},
+  start: {
+    refuseMapping?: boolean;
+    /** A sprint running in SHOP, so its sprints cannot be turned off (AGL-010). */
+    runningSprint?: string;
+  } = {},
 ): FakeConfigurationClient {
   let tracks: Track[] = [
     {
@@ -33,6 +44,7 @@ export function fakeConfigurationClient(
       mode: 'shared',
       workflowMapId: null,
       archived: false,
+      features: { sprints: true },
     },
     {
       id: 4,
@@ -42,6 +54,7 @@ export function fakeConfigurationClient(
       mode: 'local',
       workflowMapId: 21,
       archived: false,
+      features: { sprints: false },
     },
     {
       id: 9,
@@ -53,6 +66,11 @@ export function fakeConfigurationClient(
       archived: true,
     },
   ];
+  /** Each track's board (ADR-116): SHOP's is Scrum, OPS's Kanban, and OLD has none. */
+  const boards: Record<number, TrackBoard> = {
+    3: { id: 30, kind: 'scrum' },
+    4: { id: 40, kind: 'kanban' },
+  };
   let maps: WorkflowMap[] = [
     {
       id: 20,
@@ -100,6 +118,8 @@ export function fakeConfigurationClient(
       log('createTrack', body);
       if (tracks.some((t) => t.key === body.key)) throw new ApiError(409, { error: 'key_taken' });
       const source = tracks.find((t) => t.id === body.copyFrom);
+      // A Scrum template's track has sprints; Blank's are on until its first board, a Kanban one.
+      const scrum = body.template === 'scrum';
       const made: Track = {
         id: ++next,
         key: body.key,
@@ -108,11 +128,13 @@ export function fakeConfigurationClient(
         description: '',
         workflowMapId: source?.workflowMapId ?? null,
         archived: false,
+        features: { sprints: scrum || !body.template || body.template === 'blank' },
       };
       tracks = [...tracks, made];
       // Every template but Blank makes a board named after the track (M1-054).
       const board =
         body.template && body.template !== 'blank' ? { id: ++next, name: body.name } : undefined;
+      if (board) boards[made.id] = { id: board.id, kind: scrum ? 'scrum' : 'kanban' };
       return structuredClone({ track: made, ...(board ? { board } : {}) });
     },
     updateTrack: async (id, change) => {
@@ -124,13 +146,27 @@ export function fakeConfigurationClient(
         });
       }
       const track = tracks.find((t) => t.id === id) as Track;
-      Object.assign(track, change);
+      if (change.features?.sprints === false && start.runningSprint && track.key === 'SHOP') {
+        throw new ApiError(409, {
+          error: 'sprint_running',
+          sprintId: 41,
+          sprintName: start.runningSprint,
+        });
+      }
+      // Sprints go on only with a Scrum board, as the server says (ADR-116).
+      const board = boards[id];
+      if (change.features?.sprints === true && board?.kind !== 'scrum') {
+        throw new ApiError(409, { error: 'not_scrum', boardId: board?.id ?? null });
+      }
+      const { features, ...rest } = change;
+      Object.assign(track, rest, features ? { features: { ...track.features, ...features } } : {});
       return structuredClone(track);
     },
     archiveTrack: async (id, archive) => {
       log('archiveTrack', id, archive);
       Object.assign(tracks.find((t) => t.id === id) as Track, { archived: archive });
     },
+    trackBoard: async (trackId) => structuredClone(boards[trackId] ?? null),
     roles: async () => structuredClone(ROLES),
     roleActors: async (trackId) => structuredClone(actors[trackId] ?? []),
     setRoleActor: async (trackId, roleId, kind, actorId, on) => {

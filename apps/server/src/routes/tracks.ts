@@ -831,6 +831,22 @@ export function registerTrackRoutes(
     }
     try {
       const updated = await db.transaction().execute(async (trx) => {
+        // Turning sprints off reads the track's board for a running sprint, and turning them on
+        // reads its kind, so its lock comes first: a board that changes kind takes its own lock,
+        // then the track's, and a sprint that starts takes the board's. Neither slips by, and the
+        // order is the same (AGL-010; ADR-116).
+        const boards =
+          body.features?.sprints !== undefined
+            ? await trx
+                .selectFrom('board')
+                .select(['id', 'kind'])
+                .where('location_track_id', '=', trackId)
+                .where('workspace_id', '=', ws)
+                .orderBy('id')
+                .forUpdate()
+                .execute()
+            : [];
+        const boardIds = boards.map((b) => b.id);
         const locked = await trx
           .selectFrom('track')
           .selectAll()
@@ -885,6 +901,29 @@ export function registerTrackRoutes(
           ),
         };
         const changes = diff(before, next);
+        // Sprints cannot go off while one runs: nothing would show it to complete (AGL-010). It
+        // has to end first, as before a board goes Kanban; with parallel sprints (AGL-011), every
+        // one of them. Refused before anything is written, so the refusal leaves no event.
+        if (changes['features.sprints'] && body.features?.sprints === false && boardIds.length) {
+          const running = await trx
+            .selectFrom('sprint')
+            .select(['id', 'name'])
+            .where('board_id', 'in', boardIds)
+            .where('state', '=', 'active')
+            .orderBy('id')
+            .executeTakeFirst();
+          if (running) return { sprintRunning: running };
+        }
+        // Sprints need a Scrum board (CORE-002 (2); ADR-116): the board's kind decides them, so
+        // they do not go on by hand for a Kanban board, or for a track with no board yet, whose
+        // first board is Kanban. The stored toggle never disagrees with the kind; nothing written.
+        if (
+          changes['features.sprints'] &&
+          body.features?.sprints === true &&
+          !(boards.length > 0 && boards.every((b) => b.kind === 'scrum'))
+        ) {
+          return { notScrum: boards[0]?.id ?? null };
+        }
         let mapped: { fromTypeId: number; toTypeId: number; ticketCount: number }[] = [];
         if (changes.typeSetId && body.typeSetId !== undefined && locked.type_set_id !== null) {
           // Types the new set lacks leave the track: their tickets there take the types the
@@ -1056,6 +1095,16 @@ export function registerTrackRoutes(
       });
       if ('missing' in updated) return notFound(reply);
       if ('archived' in updated) return reply.code(409).send({ error: 'track_archived' });
+      if ('sprintRunning' in updated) {
+        return reply.code(409).send({
+          error: 'sprint_running',
+          sprintId: updated.sprintRunning.id,
+          sprintName: updated.sprintRunning.name,
+        });
+      }
+      if ('notScrum' in updated) {
+        return reply.code(409).send({ error: 'not_scrum', boardId: updated.notScrum });
+      }
       if ('refused' in updated) {
         return reply.code(updated.refused.status).send(updated.refused.body);
       }

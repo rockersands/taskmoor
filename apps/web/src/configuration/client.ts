@@ -14,6 +14,14 @@ export interface Track {
   mode: 'shared' | 'local';
   workflowMapId: number | null;
   archived: boolean;
+  /** Its feature toggles (CORE-002), as far as this page changes them. */
+  features?: { sprints?: boolean };
+}
+
+/** A track's one board (ADR-116), as far as its sprints need: Scrum has them, Kanban not. */
+export interface TrackBoard {
+  id: number;
+  kind: 'scrum' | 'kanban';
 }
 
 export interface RoleActors {
@@ -71,9 +79,16 @@ export interface ConfigurationClient {
   createTrack: (body: NewTrack) => Promise<{ track: Track; board?: Named }>;
   updateTrack: (
     id: number,
-    change: { name?: string; description?: string; workflowMapId?: number | null },
+    change: {
+      name?: string;
+      description?: string;
+      workflowMapId?: number | null;
+      features?: { sprints: boolean };
+    },
   ) => Promise<Track>;
   archiveTrack: (id: number, archive: boolean) => Promise<void>;
+  /** The track's board, or null while it has none (one is made when the track is first opened). */
+  trackBoard: (trackId: number) => Promise<TrackBoard | null>;
   roles: () => Promise<Named[]>;
   roleActors: (trackId: number) => Promise<RoleActors[]>;
   setRoleActor: (
@@ -108,6 +123,12 @@ export const configurationClient: ConfigurationClient = {
     (await api<{ track: Track }>(`/tracks/${id}`, { method: 'PATCH', body: change })).track,
   archiveTrack: async (id, archive) => {
     await api<unknown>(`/tracks/${id}/${archive ? 'archive' : 'restore'}`, { method: 'POST' });
+  },
+  // The list reads without making a board, as opening the track would (ADR-116).
+  trackBoard: async (trackId) => {
+    const { boards } = await api<{ boards: TrackBoard[] }>(`/boards?trackId=${trackId}`);
+    const board = boards[0];
+    return board ? { id: board.id, kind: board.kind } : null;
   },
   roles: async () => (await api<{ roles: Named[] }>('/roles')).roles,
   roleActors: async (trackId) =>

@@ -583,6 +583,151 @@ describe('sprints (M1-044)', () => {
     ).toBe(200);
   });
 
+  // The track's own sprints setting follows the same rule as the board's kind (T-192).
+  const LATER = '2030-01-15T09:00:00Z';
+  const sprintsOn = (on: boolean) =>
+    patch('admin', `/api/v1/tracks/${tracks.SP}`, { features: { sprints: on } });
+  const eventCount = async () =>
+    Number(
+      (
+        await database.db
+          .selectFrom('domain_event')
+          .select(({ fn }) => fn.countAll<number>().as('n'))
+          .executeTakeFirstOrThrow()
+      ).n,
+    );
+  const storedSprints = async () =>
+    (
+      await database.db
+        .selectFrom('track')
+        .select('feature_sprints')
+        .where('id', '=', tracks.SP as number)
+        .executeTakeFirstOrThrow()
+    ).feature_sprints;
+
+  it("[AGL-010] a track's sprints cannot be turned off while a sprint runs, and can once it is complete", async () => {
+    const board = await scrumBoard('Sprints going off', 'track = SP');
+    const one = await sprint(board.id, { name: 'Running one' });
+    // A planned sprint does not stand in the way, so this goes off and on again.
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    // While they are off, a planned sprint cannot start either: the rule from the other side.
+    const planned = await start(one.id, { endAt: LATER });
+    expect(planned.statusCode).toBe(409);
+    expect(planned.json()).toEqual({ error: 'sprints_off' });
+    expect((await sprintsOn(true)).statusCode).toBe(200);
+
+    expect((await start(one.id, { endAt: LATER })).statusCode).toBe(200);
+    const before = await eventCount();
+    const refused = await sprintsOn(false);
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toEqual({
+      error: 'sprint_running',
+      sprintId: one.id,
+      sprintName: 'Running one',
+    });
+    // Nothing moved and nothing was recorded.
+    expect(await eventCount()).toBe(before);
+    expect(await storedSprints()).toBe(true);
+    let read = await get('alice', '/api/v1/tracks/SP');
+    expect(read.json().track.sections).toEqual({ backlog: true, sprints: true });
+    // Other settings of the track still save while it runs.
+    const other = await patch('admin', `/api/v1/tracks/${tracks.SP}`, { description: 'Running' });
+    expect(other.statusCode, other.body).toBe(200);
+
+    const done = await post('alice', `/api/v1/sprints/${one.id}/complete`, {
+      moveTo: { type: 'backlog' },
+    });
+    expect(done.statusCode, done.body).toBe(200);
+    const off = await sprintsOn(false);
+    expect(off.statusCode, off.body).toBe(200);
+    expect(off.json().track.features.sprints).toBe(false);
+    read = await get('alice', '/api/v1/tracks/SP');
+    expect(read.json().track.sections).toEqual({ backlog: true, sprints: false });
+    expect((await sprintsOn(true)).statusCode).toBe(200);
+  });
+
+  it('[AGL-011] with parallel sprints, every running sprint has to end before sprints go off', async () => {
+    const board = await scrumBoard('Parallel going off', 'track = SP', {
+      sprintSettings: {
+        estimation: { statistic: 'originalEstimate' },
+        timeTracking: 'remainingEstimate',
+        parallelSprints: true,
+      },
+    });
+    const a = await sprint(board.id, { name: 'Team A' });
+    const b = await sprint(board.id, { name: 'Team B' });
+    expect((await start(a.id, { endAt: LATER })).statusCode).toBe(200);
+    expect((await start(b.id, { endAt: LATER })).statusCode).toBe(200);
+    const complete = async (id: number) => {
+      const res = await post('alice', `/api/v1/sprints/${id}/complete`, {
+        moveTo: { type: 'backlog' },
+      });
+      expect(res.statusCode, res.body).toBe(200);
+    };
+
+    let refused = await sprintsOn(false);
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({ error: 'sprint_running', sprintName: 'Team A' });
+    await complete(a.id);
+    // One still runs, and the refusal names it.
+    refused = await sprintsOn(false);
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toMatchObject({
+      error: 'sprint_running',
+      sprintId: b.id,
+      sprintName: 'Team B',
+    });
+    expect(await storedSprints()).toBe(true);
+    await complete(b.id);
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    expect(await storedSprints()).toBe(false);
+    expect((await sprintsOn(true)).statusCode).toBe(200);
+  });
+
+  it("[CORE-002] a track's sprints go on only with a Scrum board, so the setting follows its kind", async () => {
+    const board = await scrumBoard('Kind decides', 'track = SP');
+    // A Scrum board lets them go off and on by hand.
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    expect((await sprintsOn(true)).statusCode).toBe(200);
+    const kanban = await patch('alice', `/api/v1/boards/${board.id}`, { kind: 'kanban' });
+    expect(kanban.statusCode, kanban.body).toBe(200);
+    expect(await storedSprints()).toBe(false);
+
+    // A Kanban board has no sprints: turning them on is refused, and nothing is written.
+    let before = await eventCount();
+    const onKanban = await sprintsOn(true);
+    expect(onKanban.statusCode).toBe(409);
+    expect(onKanban.json()).toEqual({ error: 'not_scrum', boardId: board.id });
+    expect(await eventCount()).toBe(before);
+    expect(await storedSprints()).toBe(false);
+    let read = await get('alice', '/api/v1/tracks/SP');
+    expect(read.json().track.features.sprints).toBe(false);
+    expect(read.json().track.sections).toEqual({ backlog: false, sprints: false });
+    // Asking for what is already so, and the track's other settings, still save.
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    const other = await patch('admin', `/api/v1/tracks/${tracks.SP}`, { description: 'Kanban' });
+    expect(other.statusCode, other.body).toBe(200);
+
+    // A track with no board yet gets a Kanban one when first opened: refused too.
+    await dropBoard(tracks.SP as number);
+    before = await eventCount();
+    const noBoard = await sprintsOn(true);
+    expect(noBoard.statusCode).toBe(409);
+    expect(noBoard.json()).toEqual({ error: 'not_scrum', boardId: null });
+    expect(await eventCount()).toBe(before);
+    expect(await storedSprints()).toBe(false);
+
+    // With a Scrum board again they are on, and go off and on by hand.
+    await scrumBoard('Kind decides again', 'track = SP');
+    expect(await storedSprints()).toBe(true);
+    expect((await sprintsOn(false)).statusCode).toBe(200);
+    const on = await sprintsOn(true);
+    expect(on.statusCode, on.body).toBe(200);
+    expect(on.json().track.features.sprints).toBe(true);
+    read = await get('alice', '/api/v1/tracks/SP');
+    expect(read.json().track.sections).toEqual({ backlog: true, sprints: true });
+  });
+
   it('[AGL-010] sprints need a Scrum board the caller sees', async () => {
     await dropBoard(tracks.SP as number);
     const res = await post('alice', '/api/v1/boards', {

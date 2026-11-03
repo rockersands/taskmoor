@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -15,8 +15,8 @@ tracks, see [concepts and terms](../concepts.md).
 ## Where tracks are managed
 
 Site and configuration administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
-tracks, renames them, chooses their workflow map, gives roles to people and groups, and archives
-and restores them.
+tracks, renames them, chooses their workflow map, turns their sprints on or off, gives roles to
+people and groups, and archives and restores them.
 
 Everything else is done through the [REST API](rest-api.md) under `/api/v1/tracks`.
 `GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the
@@ -128,7 +128,8 @@ the shared defaults no longer reach it.
 ### Details
 
 These are changed by the track's administrators (the permission **Run the track**) with
-`PATCH /api/v1/tracks/:id`. In the web app, **Manage** on a track offers **Rename**.
+`PATCH /api/v1/tracks/:id`. In the web app, **Manage** on a track offers **Rename** and the
+**Sprints in** box for the track.
 
 | Setting | API field | Notes |
 |---|---|---|
@@ -146,6 +147,21 @@ Scrum board turns both on and a Kanban board turns both off, also when the kind 
 a change of the track. The web app shows a Backlog and reports that follow sprints only on a track
 with a Scrum board and those features on. For the other features, Taskmoor stores the choice, but the
 web app and the API do not yet hide the parts a track has turned off.
+
+**Sprints** cannot be turned off while a sprint is running on the track's board, as the board cannot
+change to Kanban then: the answer is `409 sprint_running`, with `sprintId` and `sprintName` naming
+the sprint, nothing changes and nothing is recorded. With several active sprints, each has to be
+completed first. In the web app, the **Sprints in** box stays ticked, names the sprint and links to
+the track's board, where **Complete sprint** finishes it. While sprints are off, starting a planned
+sprint is refused too (`409 sprints_off`), and the backlog offers no **Start sprint**; turning them
+on again lets it start.
+
+**Sprints** go on only for a track whose board is Scrum, since the board's kind decides them. For a
+Kanban board, or a track with no board yet (its first board is Kanban), turning them on is refused
+with `409 not_scrum` and `boardId` (`null` when there is no board), and nothing changes. In the web
+app, **Manage** shows the **Sprints in** box only on a track with a Scrum board. Elsewhere it says
+why: for a Kanban board it links to the board's settings, where its kind changes to Scrum; for a
+track with no board it links to the track's board, which is made when it is first opened.
 
 ### People and roles
 

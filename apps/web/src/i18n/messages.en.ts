@@ -2415,6 +2415,20 @@ export const messagesEn = {
   'admin.tracks.rename': 'Rename',
   'admin.tracks.workflowMap': 'Workflow map',
   'admin.tracks.mapSaved': 'Track {key} uses {map} now.',
+  'admin.tracks.sprints': 'Sprints in {key}',
+  'admin.tracks.sprintsHint':
+    'Changing the board between Scrum and Kanban turns sprints on or off too. Turning them off deletes no sprint, and waits until none is running.',
+  'admin.tracks.sprintsOnSaid': 'Track {key} has sprints now.',
+  'admin.tracks.sprintsOffSaid': 'Track {key} has its sprints turned off now.',
+  'admin.tracks.sprintRunning':
+    'The sprint “{sprint}” is still running in {key}. Complete it first, then turn sprints off.',
+  'admin.tracks.sprintRunningLink': 'Complete it on the board of {key}',
+  'admin.tracks.sprintsKanban':
+    'No sprints in {key}: its board is Kanban, and only a Scrum board has sprints. To have them, change the board to Scrum in its settings.',
+  'admin.tracks.sprintsKanbanLink': 'Settings of the board of {key}',
+  'admin.tracks.sprintsNoBoard':
+    'No sprints in {key}: it has no board yet, and only a Scrum board has sprints. Its board is made as Kanban the first time someone opens it; to have sprints, change it to Scrum in its settings.',
+  'admin.tracks.sprintsNoBoardLink': 'Go to the board of {key}',
   'admin.tracks.members': 'Who does what in {key}',
   'admin.tracks.noMembers': 'Nobody has a role here yet.',
   'admin.tracks.inRole': '{name}: {role}',
@@ -3871,6 +3885,8 @@ export const messagesEn = {
   'sprints.start.submit': 'Start sprint',
   'sprints.start.failed':
     'The sprint could not be started. Another sprint may be active; complete it first.',
+  'sprints.start.sprintsOff':
+    'This track has its sprints turned off, so none can start. An administrator turns them on under Administration, Tracks.',
   'sprints.complete.target': 'Move unfinished tickets to',
   'sprints.complete.newSprint': 'A new sprint',
   'sprints.complete.submit': 'Complete sprint',
