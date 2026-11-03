@@ -2596,6 +2596,32 @@
       "CREATE UNIQUE INDEX track_category_workspace_name_idx ON public.track_category USING btree (workspace_id, lower(name))"
     ]
   },
+  "track_invitation": {
+    "columns": [
+      "id integer not null default nextval('track_invitation_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "track_id integer not null",
+      "role_id integer not null",
+      "email text not null",
+      "token_hash text not null",
+      "invited_by integer",
+      "granted_user_id integer",
+      "delivery text not null",
+      "last_error text",
+      "created_at timestamp with time zone not null default now()",
+      "last_sent_at timestamp with time zone not null default now()",
+      "expires_at timestamp with time zone not null",
+      "accepted_at timestamp with time zone",
+      "revoked_at timestamp with time zone"
+    ],
+    "indexes": [
+      "CREATE INDEX track_invitation_email_idx ON public.track_invitation USING btree (workspace_id, email)",
+      "CREATE INDEX track_invitation_expiry_idx ON public.track_invitation USING btree (expires_at)",
+      "CREATE UNIQUE INDEX track_invitation_open_idx ON public.track_invitation USING btree (track_id, email) WHERE ((accepted_at IS NULL) AND (revoked_at IS NULL))",
+      "CREATE UNIQUE INDEX track_invitation_pkey ON public.track_invitation USING btree (id)",
+      "CREATE UNIQUE INDEX track_invitation_token_hash_key ON public.track_invitation USING btree (token_hash)"
+    ]
+  },
   "track_key_history": {
     "columns": [
       "id integer not null default nextval('track_key_history_id_seq'::regclass)",

@@ -22,7 +22,9 @@ import { presentedToken, resolveSession } from './auth';
 import { Authorizer } from './authz/authorizer';
 import { Collaboration } from './collab/server';
 import { registerJiraCompat } from './compat/register';
-import type { Role, ServerConfig } from './config';
+import type { Role, ServerConfig, SmtpConfig } from './config';
+import { effectiveSmtp } from './email/smtp';
+import { smtpTransport } from './email/transport';
 import { EmbeddingService, sharedLocalEmbedder } from './embeddings/service';
 import type { VectorSearch } from './embeddings/vector';
 import { FieldCatalogs } from './fields/catalog';
@@ -63,6 +65,7 @@ import { registerHomeRoutes } from './routes/home';
 import { registerImportedLinkRoutes } from './routes/imported-links';
 import { registerImportRoutes } from './routes/imports';
 import { registerInboxRoutes } from './routes/inbox';
+import { type InvitationMail, registerInvitationRoutes } from './routes/invitations';
 import { registerAllowlist, registerAllowlistRoutes } from './routes/ip-allowlist';
 import { registerLayoutRoutes } from './routes/layouts';
 import { registerLinkRoutes } from './routes/links';
@@ -210,6 +213,10 @@ export interface AppDeps {
   smtpConfigured?: boolean;
   /** TASKMOOR_SMTP_PASSWORD, for the setup form's mail server when it names a user. */
   smtpPassword?: string;
+  /** The SMTP server the environment names (TASKMOOR_SMTP_URL), for invitation emails. */
+  smtp?: SmtpConfig;
+  /** How invitation emails leave (IAM-027); tests pass their own, the server the SMTP server. */
+  invitationMail?: InvitationMail;
   /** Quiet time before collaborative edits are saved (M1-017); tests shorten it. */
   collabDebounceMs?: number;
   /** How long a search statement may run, in milliseconds (QRY-010; default 30 s). */
@@ -439,6 +446,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPasswordLinkRoutes(app, db, cookieOptions);
     registerPasswordCheckRoute(app);
     registerAuthzRoutes(app, db, authorizer);
+    registerInvitationRoutes(app, db, {
+      authorizer,
+      passwords,
+      publicUrl: deps.publicUrl ?? 'http://localhost:8080',
+      mail:
+        deps.invitationMail ??
+        (async () => {
+          const smtp = await effectiveSmtp(db, deps.smtp, deps.smtpPassword);
+          return smtp ? { transport: smtpTransport(smtp), from: smtp.from } : null;
+        }),
+    });
     registerSecurityAlertRoutes(app, db);
     registerTwoFactorRoutes(app, db, {
       ...cookieOptions,
@@ -448,6 +466,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     registerSsoRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
+      authorizer,
       peppers: deps.peppers,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       origins,
@@ -455,6 +474,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     await registerSamlRoutes(app, db, {
       secureCookies: cookieOptions.secureCookies,
+      authorizer,
       publicUrl: deps.publicUrl ?? 'http://localhost:8080',
       origins,
     });

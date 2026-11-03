@@ -119,6 +119,18 @@ export async function pruneIdentityData(db: Kysely<Database>, now = new Date()):
     .deleteFrom('password_link')
     .where((eb) => eb.or([eb('expires_at', '<', now), eb('used_at', 'is not', null)]))
     .execute();
+  // Invitations stay on the track's list for a while after they ran out, then go (IAM-027).
+  const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  await db
+    .deleteFrom('track_invitation')
+    .where((eb) =>
+      eb.or([
+        eb('expires_at', '<', monthAgo),
+        eb('accepted_at', '<', monthAgo),
+        eb('revoked_at', '<', monthAgo),
+      ]),
+    )
+    .execute();
   await db
     .deleteFrom('sign_in_throttle')
     .where('updated_at', '<', dayAgo)
