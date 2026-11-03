@@ -98,7 +98,7 @@ test('[NFR-005] every page passes axe at WCAG 2.1 AA', async ({ page }, testInfo
     ['search', `#/search?q=${encodeURIComponent(`track = ${key}`)}`],
     ['ticket', `#/tickets/${first.key}`],
     ['create', '#/create'],
-    ['boards', '#/boards'],
+    ['tracks', '#/tracks'],
     ['board', `#/boards/${board.id}`],
     ['board settings', `#/boards/${board.id}/settings`],
     ['backlog', `#/boards/${board.id}/backlog`],

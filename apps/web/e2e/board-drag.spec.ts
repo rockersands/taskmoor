@@ -20,17 +20,18 @@ test('[AGL-003] a mouse drag moves a card to any column with nothing asked', asy
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const word = `drag${Date.now()}`;
+  const key = `D${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const track = await page.request.post(`${BASE}/api/v1/tracks`, {
+    data: { key, name: `Drag ${key}`, mode: 'shared' },
+  });
+  expect(track.status(), await track.text()).toBe(201);
   const made = await page.request.post(`${BASE}/api/v1/tickets`, {
-    data: { track: 'ATT', summary: `${word} one`, assigneeId: null },
+    data: { track: key, summary: `${word} one`, assigneeId: null },
   });
   expect(made.ok(), await made.text()).toBe(true);
   const { ticket } = await made.json();
 
-  await page.goto(`${BASE}/#/boards`);
-  await page.getByLabel('Name').fill(`Drag ${word}`);
-  await page.getByRole('button', { name: 'Advanced: choose the tickets with a query' }).click();
-  await page.getByLabel('Tickets (a query)').fill(`track = ATT AND summary ~ ${word}`);
-  await page.getByRole('button', { name: 'Create board' }).click();
+  await page.goto(`${BASE}/#/tracks/${key}/board`);
   await expect(page.getByRole('link', { name: new RegExp(word) })).toBeVisible();
 
   // New to Active: one transition, no fields.

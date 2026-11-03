@@ -8,7 +8,7 @@ import { expect, type Page, test } from '@playwright/test';
  * chart with nothing finished yet, and time in status with every ticket, over the period and
  * board filters picked; no serious axe issue and no sideways page scroll, on a phone either.
  * It uses the attachments database (preview 4174), whose administrator (Ada Attach) the API
- * server made with the ATT track.
+ * server made.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -40,10 +40,16 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const word = `flw${testInfo.project.name}${Date.now().toString(36)}`;
+  const key = `F${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const track = await page.request.post(`${BASE}/api/v1/tracks`, {
+    data: { key, name: `Flow ${word}`, mode: 'shared' },
+  });
+  expect(track.status(), await track.text()).toBe(201);
+  const trackId = (await track.json()).track.id as number;
   const keys: string[] = [];
   for (const summary of ['Refund totals', 'Coupon stacking', 'Receipt layout']) {
     const res = await page.request.post(`${BASE}/api/v1/tickets`, {
-      data: { track: 'ATT', summary: `${summary} ${word}` },
+      data: { track: key, summary: `${summary} ${word}` },
     });
     expect(res.status(), await res.text()).toBe(201);
     keys.push((await res.json()).ticket.key as string);
@@ -52,7 +58,7 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
     data: {
       name: `Flow ${word}`,
       kind: 'kanban',
-      source: { query: `summary ~ ${word}` },
+      trackId,
       boardFilters: [{ name: 'Assigned to me', query: 'assignee = currentUser()' }],
     },
   });

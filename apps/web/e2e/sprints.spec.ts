@@ -8,7 +8,7 @@ import { expect, type Page, test } from '@playwright/test';
  * started, the board shows its tickets only, its report opens, and it is completed with the
  * unfinished tickets sent back to the backlog; no serious axe issue and no sideways page
  * scroll, on a phone either. It uses the attachments database (preview 4174), whose
- * administrator (Ada Attach) the API server made with the ATT track.
+ * administrator (Ada Attach) the API server made.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -40,17 +40,33 @@ test('[AGL-010] [AGL-008] a sprint planned, started, reported and completed from
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const word = `spr${testInfo.project.name}${Date.now().toString(36)}`;
+  const key = `S${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const track = await page.request.post(`${BASE}/api/v1/tracks`, {
+    data: { key, name: `Sprint ${word}`, mode: 'shared' },
+  });
+  expect(track.status(), await track.text()).toBe(201);
+  const trackId = (await track.json()).track.id as number;
   const keys: string[] = [];
   for (const summary of ['Card payments', 'Order total', 'Gift cards']) {
     const res = await page.request.post(`${BASE}/api/v1/tickets`, {
-      data: { track: 'ATT', summary: `${summary} ${word}`, originalEstimate: '2h' },
+      data: { track: key, summary: `${summary} ${word}`, originalEstimate: '2h' },
     });
     expect(res.status(), await res.text()).toBe(201);
     keys.push((await res.json()).ticket.key as string);
   }
   const [first, second, third] = keys as [string, string, string];
   const made = await page.request.post(`${BASE}/api/v1/boards`, {
-    data: { name: `Sprint ${word}`, kind: 'scrum', source: { query: `summary ~ ${word}` } },
+    // Estimated in time here; a new board otherwise estimates with Points (AGL-007).
+    data: {
+      name: `Sprint ${word}`,
+      kind: 'scrum',
+      trackId,
+      sprintSettings: {
+        estimation: { statistic: 'originalEstimate' },
+        timeTracking: 'remainingEstimate',
+        parallelSprints: false,
+      },
+    },
   });
   expect(made.status(), await made.text()).toBe(201);
   const boardId = (await made.json()).board.id as number;
