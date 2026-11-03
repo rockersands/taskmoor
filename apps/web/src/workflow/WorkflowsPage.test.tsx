@@ -36,7 +36,7 @@ function openPage(handlers: Record<string, Handler> = {}, session = ADMIN) {
     'GET /statuses': () => jsonResponse(200, { statuses: STATUSES }),
     ...handlers,
   });
-  window.location.hash = '#/settings';
+  window.location.hash = '#/admin';
   render(<App session={session} />);
   return calls;
 }
@@ -98,7 +98,7 @@ const workflowItem = async (name: string) => {
 };
 
 describe('workflows administration (M1-030)', () => {
-  it('[WF-001] [WF-002] Settings leads to the workflows, with their versions, drafts and tracks', async () => {
+  it('[WF-001] [WF-002] Administration leads to the workflows, with their versions, drafts and tracks', async () => {
     const user = userEvent.setup();
     openPage();
     await user.click(await screen.findByRole('link', { name: 'Workflows' }));
@@ -115,7 +115,11 @@ describe('workflows administration (M1-030)', () => {
       'href',
       '#/admin/workflows/2',
     );
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Administration',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it('[WF-001] creates an empty workflow with an initial status and opens it', async () => {

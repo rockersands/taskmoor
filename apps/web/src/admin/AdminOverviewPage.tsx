@@ -144,7 +144,7 @@ function HealthPanel({ read }: { read: OverviewClient['system'] }) {
       {state.status === 'loaded' && (
         <>
           {healthProblems(state.value).length === 0 ? (
-            <p className="status-ok">{t('admin.overview.health.ok')}</p>
+            <p>{t('admin.overview.health.ok')}</p>
           ) : (
             <ul className="admin-panel-list">
               {healthProblems(state.value).map((id) => (

@@ -45,8 +45,8 @@ A configuration administrator sees the list of setup pages instead.
 
 ## Finding a page
 
-The section has its own list of pages: beside the page on a wide screen, and folded above it on a
-narrow one, under **Administration pages**. Each page shows where it sits with a breadcrumb,
+The section has its own list of pages: beside the page on a wide screen, and on a narrow one under
+**Administration pages**, folded above each page and open below the overview. Each page shows where it sits with a breadcrumb,
 **Administration**, then its group, then the page. The group's own page says what each of its pages
 is for. Addresses of pages did not change, so links you saved keep working.
 

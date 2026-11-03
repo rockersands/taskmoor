@@ -14,13 +14,12 @@ tracks, see [concepts and terms](../concepts.md).
 
 ## Where tracks are managed
 
-Site administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
+Site and configuration administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
 tracks, renames them, chooses their workflow map, gives roles to people and groups, and archives
 and restores them.
 
 Everything else is done through the [REST API](rest-api.md) under `/api/v1/tracks`.
-`GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. Configuration administrators who are not
-site administrators work through the API. A token that changes shared configuration needs the
+`GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the
 `admin` scope; see [API tokens](api-tokens.md).
 
 Taskmoor does not yet have a page that lists every track for everyone; the **Tracks** entry of

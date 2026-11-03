@@ -144,6 +144,11 @@
   cursor: pointer;
 }
 
+.admin-section-main + .admin-nav-fold {
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+}
+
 .admin-nav-list {
   display: grid;
   gap: 2px;
@@ -226,8 +231,13 @@
   margin-top: var(--space-4);
 }
 
-.admin-panel .section-title {
-  margin-bottom: var(--space-3);
+.admin-panel > * + * {
+  margin-top: var(--space-3);
+}
+
+.admin-page > .form-field {
+  max-width: 30rem;
+  margin-top: var(--space-3);
 }
 
 .admin-panel-list {

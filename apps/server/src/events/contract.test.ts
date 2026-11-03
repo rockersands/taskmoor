@@ -2740,7 +2740,10 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           method: 'PATCH',
           url: `/api/v1/boards/${state.pathBoard}`,
           payload: {
-            columns: [...board.json().board.columns, { id: 'parked', name: 'Parked', statusIds: [] }],
+            columns: [
+              ...board.json().board.columns,
+              { id: 'parked', name: 'Parked', statusIds: [] },
+            ],
           },
         });
       },

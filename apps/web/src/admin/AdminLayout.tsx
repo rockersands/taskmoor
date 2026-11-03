@@ -20,21 +20,35 @@ export function AdminLayout({ hash, children }: { hash: string; children: ReactN
   if (!access || access === 'none') return <>{children}</>;
   const overview = hash === ADMIN_HOME || hash.startsWith(`${ADMIN_HOME}?`);
   const nav = <AdminNav hash={hash} overview={overview} />;
+  const side = narrow ? (
+    // On a page it folds away above the content. On the overview, the list of pages is the way in,
+    // so it stays open, under the panels so that they are not pushed off the first screen.
+    <details key={hash} className="admin-nav-fold glass-card" open={overview}>
+      <summary>{t('admin.nav.menu')}</summary>
+      {nav}
+    </details>
+  ) : (
+    <aside className="admin-nav-side glass-card">{nav}</aside>
+  );
+  const main = (
+    <div className="admin-section-main">
+      {!overview && <AdminBreadcrumb hash={hash} />}
+      {children}
+    </div>
+  );
   return (
     <div className="admin-section">
-      {narrow ? (
-        // Open on the overview, where the list is the way in; folded on a page, so it comes first.
-        <details key={hash} className="admin-nav-fold glass-card" open={overview}>
-          <summary>{t('admin.nav.menu')}</summary>
-          {nav}
-        </details>
+      {narrow && overview ? (
+        <>
+          {main}
+          {side}
+        </>
       ) : (
-        <aside className="admin-nav-side glass-card">{nav}</aside>
+        <>
+          {side}
+          {main}
+        </>
       )}
-      <div className="admin-section-main">
-        {!overview && <AdminBreadcrumb hash={hash} />}
-        {children}
-      </div>
     </div>
   );
 }

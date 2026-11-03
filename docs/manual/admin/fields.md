@@ -11,8 +11,8 @@ This page covers the fields a ticket holds, the custom fields you add, formula f
 types and hierarchy levels, and the configuration sets that tell each track which types,
 priorities, rules and forms it uses.
 
-In the web app, site administrators use **Administration**, **Fields** and **Administration**,
-**Configuration sets**. The rest is done through the [REST API](rest-api.md); a token that
+In the web app, site and configuration administrators use **Administration**, **Fields** and
+**Administration**, **Configuration sets**. The rest is done through the [REST API](rest-api.md); a token that
 changes shared configuration needs the `admin` scope ([API tokens](api-tokens.md)). Everyone
 signed in may read these lists.
 
