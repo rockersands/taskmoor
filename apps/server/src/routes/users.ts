@@ -114,7 +114,7 @@ export function registerUserRoutes(
     if (!(await requireGlobal(request, reply, 'site_admin', 'configuration_admin'))) return reply;
     const parsed = lookupQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const text = parsed.data.q.toLowerCase().replace(/[\%_]/g, (c) => `\${c}`);
+    const text = parsed.data.q.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`);
     const people = await db
       .selectFrom('app_user')
       .select(['id', 'name'])
