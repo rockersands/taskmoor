@@ -1,9 +1,11 @@
-import { type ReactNode, useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
+import { Fact, Facts } from './Facts';
+import { httpUpdateCheckClient, type UpdateCheckClient, UpdateCheckSection } from './UpdateNotice';
 
 /** What `GET /api/v1/admin/system` returns (OPS-010, M1-103). */
 export interface SystemInfo {
@@ -64,10 +66,15 @@ const DAY = 86_400;
 export interface SystemPageProps {
   /** Stories and tests pass their own source; the page calls the backend otherwise. */
   load?: () => Promise<SystemInfo>;
+  /** The new-version card's source (OPS-026), likewise. */
+  updates?: UpdateCheckClient;
 }
 
 /** The admin status page: one place to see whether this instance is healthy. */
-export function SystemPage({ load = loadSystemInfo }: SystemPageProps) {
+export function SystemPage({
+  load = loadSystemInfo,
+  updates = httpUpdateCheckClient,
+}: SystemPageProps) {
   const t = useT();
   const { session } = useSession();
   const titleId = useId();
@@ -118,12 +125,12 @@ export function SystemPage({ load = loadSystemInfo }: SystemPageProps) {
           {t('admin.system.failed')}
         </p>
       )}
-      {state.status === 'loaded' && <Details info={state.info} />}
+      {state.status === 'loaded' && <Details info={state.info} updates={updates} />}
     </section>
   );
 }
 
-function Details({ info }: { info: SystemInfo }) {
+function Details({ info, updates }: { info: SystemInfo; updates: UpdateCheckClient }) {
   const t = useT();
   const intl = useIntl();
   const plain = (value: string | number) => t('admin.system.plain', { value });
@@ -155,6 +162,7 @@ function Details({ info }: { info: SystemInfo }) {
         <Fact label={t('admin.system.started')}>{plain(when(info.startedAt))}</Fact>
         <Fact label={t('admin.system.uptime')}>{duration(info.uptimeSeconds)}</Fact>
       </Facts>
+      <UpdateCheckSection client={updates} />
       <Facts title={t('admin.system.database')}>
         <Fact label={t('admin.system.connection')}>
           <span className={db.reachable ? 'status-ok' : 'status-bad'}>
@@ -314,26 +322,5 @@ function Backups({
         )}
       </Fact>
     </Facts>
-  );
-}
-
-function Facts({ title, children }: { title: string; children: ReactNode }) {
-  const id = useId();
-  return (
-    <section aria-labelledby={id} className="facts">
-      <h2 id={id} className="facts-title">
-        {title}
-      </h2>
-      <dl className="facts-list">{children}</dl>
-    </section>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="fact">
-      <dt>{label}</dt>
-      <dd>{children}</dd>
-    </div>
   );
 }

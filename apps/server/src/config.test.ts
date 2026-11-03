@@ -26,12 +26,25 @@ describe('loadConfig', () => {
       shutdownDrainMs: 2000,
       queryTimeoutMs: 30_000,
       jiraCompat: true,
+      updateCheck: true,
       storage: { urlTtl: 300 },
       previousMasterKeys: [],
       aiEnvironment: {},
       embeddings: { mode: 'local' },
       vectorSearch: 'auto',
     });
+  });
+
+  it('[OPS-026] looks for new versions unless the environment says off; Compose passes an unset one as empty', () => {
+    expect(loadConfig({ DATABASE_URL: DB }).updateCheck).toBe(true);
+    expect(loadConfig({ DATABASE_URL: DB, TASKMOOR_UPDATE_CHECK: '' }).updateCheck).toBe(true);
+    expect(loadConfig({ DATABASE_URL: DB, TASKMOOR_UPDATE_CHECK: 'off' }).updateCheck).toBe(false);
+    expect(() => loadConfig({ DATABASE_URL: DB, TASKMOOR_UPDATE_CHECK: 'no' })).toThrow(
+      'TASKMOOR_UPDATE_CHECK',
+    );
+    expect(
+      loadConfig({ DATABASE_URL: DB, TASKMOOR_UPDATE_COMMAND: 'x {version}' }).updateCommand,
+    ).toBe('x {version}');
   });
 
   it('[AI-012] uses the bundled embedding model unless an endpoint is configured or they are off', () => {

@@ -11,7 +11,8 @@
 # anything fails), then starts the new image and records it in .env. When the upgrade fails,
 # the database is as it was and the previous image starts again. Exit codes: 0 upgraded (or
 # nothing to do), 1 not upgraded and running the previous image, 3 the rollback failed too:
-# the backend stays stopped and the output says which backup to restore.
+# the backend stays stopped and the output says which backup to restore, 4 a backend or
+# PostgreSQL did not come back: the output says which, and nothing vouches for what is running.
 #
 # Like install.sh it uses docker-compose.external.yml when DATABASE_URL is set (in the
 # environment or .env), honours TASKMOOR_COMPOSE_OVERRIDE, and TASKMOOR_PULL=never never
@@ -30,7 +31,8 @@ if [ "${2:-}" = "--dry-run" ]; then dry=--dry-run; elif [ -n "${2:-}" ]; then di
 command -v docker >/dev/null 2>&1 || die "Docker is not installed"
 docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is missing (the 'docker compose' command)"
 
-if [ -n "${DATABASE_URL:-}" ] || grep -qE '^DATABASE_URL=' .env 2>/dev/null; then
+# The Builder's backend kit has one Compose file, with its database in it.
+if [ -f docker-compose.external.yml ] && { [ -n "${DATABASE_URL:-}" ] || grep -qE '^DATABASE_URL=' .env 2>/dev/null; }; then
   file=docker-compose.external.yml
 else
   file=docker-compose.yml
@@ -70,7 +72,7 @@ start() { # image
     sleep 1
   done
   compose logs --tail 40 taskmoor
-  die "the backend ($1) did not become ready in 2 minutes; the log above says why"
+  die "the backend ($1) did not become ready in 2 minutes; the log above says why" 4
 }
 
 # TLS to the bundled PostgreSQL (ASVS 1.9.1, ADR-111). A kit file with the postgres-tls service
@@ -100,11 +102,11 @@ if [ -n "$tls" ]; then
     if db_ready; then break; fi
     sleep 1
   done
-  db_ready || die "PostgreSQL did not come back with TLS; see: docker compose logs postgres-tls postgres"
+  db_ready || die "PostgreSQL did not come back with TLS; see: docker compose logs postgres-tls postgres" 4
 fi
 
 say "upgrading from $old to $new; the backend stops for the backup and the migrations"
-compose stop taskmoor >/dev/null
+compose stop taskmoor >/dev/null || die "could not stop the backend; see: docker compose ps" 4
 set +e
 upgrade
 code=$?

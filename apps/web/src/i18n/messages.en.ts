@@ -1138,6 +1138,27 @@ export const messagesEn = {
   'admin.frontends.invalidRedirect':
     'Each return address must be a full address on the same origin, without a fragment.',
   'admin.frontends.addFailed': 'The frontend could not be added. Try again.',
+  'admin.updates.noticeTitle': 'Taskmoor {latest} is available.',
+  'admin.updates.noticeBody':
+    'This server runs {version}. To update, run this in the kit’s folder on the server:',
+  'admin.updates.copy': 'Copy command',
+  'admin.updates.copied': 'Copied',
+  'admin.updates.releaseNotes': 'What is new',
+  'admin.updates.title': 'Updates',
+  'admin.updates.running': 'Running',
+  'admin.updates.newest': 'Newest version',
+  'admin.updates.lastChecked': 'Last looked',
+  'admin.updates.notKnown': 'Not known yet',
+  'admin.updates.runThis':
+    'A newer version is available. To update, run this in the kit’s folder on the server:',
+  'admin.updates.toggle': 'Look for new versions once a day',
+  'admin.updates.toggleHelp':
+    'The server asks the project’s public releases on GitHub, at most once a day, and tells them nothing about this install. If it cannot reach them, it says nothing and tries again the next day.',
+  'admin.updates.environmentOff':
+    'Turned off on the server with TASKMOOR_UPDATE_CHECK=off: no request is made.',
+  'admin.updates.development':
+    'A development build has no version to compare, so it does not look.',
+  'admin.updates.saveFailed': 'The setting could not be saved. Try again in a moment.',
   'admin.system.title': 'System status',
   'admin.system.refresh': 'Refresh',
   'admin.system.loading': 'Reading the system status…',

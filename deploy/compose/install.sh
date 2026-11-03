@@ -34,6 +34,12 @@ else
   fi
 fi
 
+# A switch given for this install stays in .env, so later upgrades keep it. The air-gap bundle
+# turns the new-version check off this way (OPS-005, OPS-026).
+if [ -n "${TASKMOOR_UPDATE_CHECK:-}" ] && ! grep -qE '^TASKMOOR_UPDATE_CHECK=' .env 2>/dev/null; then
+  printf 'TASKMOOR_UPDATE_CHECK=%s\n' "$TASKMOOR_UPDATE_CHECK" >> .env
+fi
+
 # The port as Compose resolves it: the environment first, then .env, then 8080. grep finds
 # nothing on most installs; that must not trip set -e.
 port=${TASKMOOR_PORT:-$(grep -E '^TASKMOOR_PORT=' .env 2>/dev/null | cut -d= -f2 || true)}

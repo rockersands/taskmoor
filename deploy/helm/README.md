@@ -16,6 +16,12 @@ kubectl logs deploy/taskmoor-app | grep first-run   # the one-time setup link
 helm test taskmoor
 ```
 
+## New-version notice
+
+The worker looks at the project's public releases once a day and tells site administrators when
+a newer version exists, with the `helm upgrade` command to run (OPS-026). On a cluster with no
+route to the internet, set `updateCheck.enabled=false`.
+
 ## Highly available
 
 ```

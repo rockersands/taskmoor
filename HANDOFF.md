@@ -50,6 +50,12 @@ create form, management pages, e2e spec, manual. Details are in `docs/plan/ticke
 Custom fields of types the form has no control for, and an assignee on an every-track template, are
 API-only, and a save keeps them.
 
+Easier updates are merged (OPS-025, OPS-026, ADR-117). `bash update.sh` installs only a signed
+release; site administrators get a notice with the command. Every release must now attach
+`taskmoor-release.txt` and `.sig` (`tools/release/sign-update-manifest.sh`, see `docs/ops/releases.md`)
+or `update.sh` refuses it. After editing `deploy/compose/update.sh` or `upgrade.sh`, run
+`node tools/compose/kit-scripts.mjs`.
+
 Today's new work is M1-135 to M1-144 in `docs/plan/backlog.csv`, with the user's decisions in
 `docs/plan/decisions.csv`. The order below changed: after the 1M import, the finished branches
 merge with a full gate each, and only then the fuzz stages run, so the 8-hour clean run covers the

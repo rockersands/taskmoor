@@ -57,6 +57,11 @@ trustedProxies: "loopback,uniquelocal"
 logLevel: info
 extraEnv: []
 
+# The new-version notice for site administrators (OPS-026): the worker looks at the project's
+# public releases once a day. Set false on a cluster with no route to the internet (OPS-005).
+updateCheck:
+  enabled: true
+
 # OpenTelemetry traces (ADR-023); off unless an endpoint is set.
 otel:
   endpoint: ""

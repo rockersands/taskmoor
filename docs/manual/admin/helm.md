@@ -2,7 +2,7 @@
 title: "Kubernetes with Helm"
 audience: admins
 sources: deploy/helm/README.md, deploy/helm/taskmoor/Chart.yaml, deploy/helm/taskmoor/values.yaml, deploy/helm/taskmoor/templates/_helpers.tpl, deploy/helm/taskmoor/templates/workloads.yaml, deploy/helm/taskmoor/templates/service.yaml, deploy/helm/taskmoor/templates/secret.yaml, deploy/helm/taskmoor/templates/pepper-secret.yaml, deploy/helm/taskmoor/templates/upgrade-check.yaml, deploy/helm/taskmoor/templates/NOTES.txt, deploy/helm/taskmoor/templates/tests/test-ready.yaml, apps/server/src/main.ts, apps/server/src/setup.ts, apps/server/src/upgrade-check.ts, apps/server/src/config.ts, deploy/README.md, docs/adr/0021-delivery-and-images.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-10-30
+accessed: 2026-11-03
 attestation: own-words
 ---
 # Kubernetes with Helm
@@ -78,6 +78,7 @@ Names start with the release name when it contains `taskmoor`, otherwise with
 | `*.nodeSelector`, `*.tolerations`, `*.affinity`, `*.podAnnotations` | none | Placement per deployment |
 | `drainSeconds`, `terminationGracePeriodSeconds` | 10, 40 | Graceful shutdown |
 | `upgradeCheck.enabled` | true | The pre-upgrade check |
+| `updateCheck.enabled` | true | The new-version notice's daily look at the public releases (see [Upgrades](upgrades.md#the-new-version-notice)); set it to false on a cluster with no route out |
 | `service.type`, `service.port` | `ClusterIP`, 80 | The app's Service |
 | `ingress.enabled`, `.className`, `.annotations`, `.host`, `.tls` | off, none, none, `taskmoor.local`, none | The Ingress |
 | `serviceAccount.create`, `serviceAccount.name` | true, the same name as the other objects | The pods' service account |

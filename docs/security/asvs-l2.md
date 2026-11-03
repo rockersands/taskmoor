@@ -167,7 +167,7 @@ ADR-111).
 | 5.2.3 | Input to mail is sanitised against header injection | Met | Nodemailer encodes headers; addresses from accounts only (`apps/server/src/email`) |
 | 5.2.4 | No `eval` or dynamic code from input | Met | CSP without `unsafe-eval`; formulas are interpreted (`packages/formula`, fuzzed) |
 | 5.2.5 | No template injection | Met | No server templates from input; email templates are code (`email/render.ts`) |
-| 5.2.6 | Protection against SSRF | Met | One outbound guard for every request to a typed address: webhooks, AI providers, OpenID Connect, Cloud import (ADR-110). It resolves the host, refuses loopback, private, CGNAT, link-local, unique-local, multicast, reserved and metadata addresses (IPv4, IPv6 and IPv4 inside IPv6), connects to the address it checked (no rebinding), checks every redirect, sends only http and https; `TASKMOOR_OUTBOUND_ALLOW` names exceptions (`outbound/guard.ts`, `addresses.ts`; `guard.test.ts`, `webhooks.test.ts`, `routes/ai.test.ts`) |
+| 5.2.6 | Protection against SSRF | Met | One outbound guard for every request to a typed address: webhooks, AI providers, OpenID Connect, Cloud import (ADR-110), and the new-version check's fixed one (ADR-117). It resolves the host, refuses loopback, private, CGNAT, link-local, unique-local, multicast, reserved and metadata addresses (IPv4, IPv6 and IPv4 inside IPv6), connects to the address it checked (no rebinding), checks every redirect, sends only http and https; `TASKMOOR_OUTBOUND_ALLOW` names exceptions (`outbound/guard.ts`, `addresses.ts`; `guard.test.ts`, `webhooks.test.ts`, `routes/ai.test.ts`) |
 | 5.2.7 | SVG content is sanitised or isolated | Met | Attachments served under the sandboxing CSP and as their sniffed type (`routes/attachments.ts`); images in rich text are links, not inline SVG |
 | 5.2.8 | Markup languages (Markdown, wiki markup) sanitised | Met | Readers keep only safe links, read as browsers read them (fixed in M1-118: `isSafeHref`, `packages/richtext/src/markdown.ts`; `markdown.test.ts`; `pnpm fuzz href`) |
 | 5.3.1 | Output encoded for its interpreter | Met | React; `escapeHtml` in email; JSON by Fastify |
@@ -259,7 +259,7 @@ ADR-111).
 
 | ID | Requirement | State | Evidence or fix |
 |---|---|---|---|
-| 10.2.1 | No phoning home or hidden data collection | Met | No telemetry; the network policy of the Builder page allows nothing (ADR-088); AI only when an administrator configures it |
+| 10.2.1 | No phoning home or hidden data collection | Met | No telemetry; the network policy of the Builder page allows nothing (ADR-088); AI only when an administrator configures it. The one request of its own is the new-version check (ADR-117): once a day, a public file, nothing about the install, documented, with off switches, off in the air-gap bundle |
 | 10.2.2 | No needless permissions or sensors | Met | The web app asks for no device permission |
 | 10.3.1 | Updates over secure channels and signed | N/A | No auto-update; the operator upgrades (`deploy/compose/upgrade.sh`); signing as 1.14.2 |
 | 10.3.2 | Integrity protection; no code from untrusted sources | Met | CSP `script-src 'self'` or hashes; single-file kit lists hashes (`packages/webconfig/src/csp.ts`) |

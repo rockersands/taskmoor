@@ -42,8 +42,12 @@ Every release, on every channel but preview:
   frontend build and the CycloneDX SBOM, with `SHA256SUMS` signed by the release key;
 - the Builder page (`apps/web/dist-builder/index.html`), the frontend artefact and the server
   bundle, all stamped with the version (ADR-066);
+- `taskmoor-release.txt` and `taskmoor-release.txt.sig`, the signed statement of which image is
+  this version, without which `update.sh` refuses the release (ADR-117);
 - release notes: what changed, migrations and their expected time, anything an administrator
-  must decide, and the security fixes with their advisories.
+  must decide, and the security fixes with their advisories. Say so when a release changes
+  `update.sh`, `upgrade.sh` or a Compose file: an installed kit keeps its own until it is
+  replaced.
 
 ## Signing
 
@@ -54,6 +58,24 @@ repository or in CI; it signs on the maintainer's machine.
 
 `bash verify.sh` in a bundle checks the signature and every checksum, and stops on any
 mismatch.
+
+## Publishing a release so that kits can update to it
+
+The update command (`update.sh`, OPS-025) and the administrators' notice (OPS-026) read the
+GitHub releases of `Rockersands/taskmoor`. For each release:
+
+1. Push the image, then read its digest, which covers every platform:
+   `docker buildx imagetools inspect ghcr.io/rockersands/taskmoor:<version> --format '{{.Manifest.Digest}}'`
+2. Sign the statement on the maintainer's machine:
+   `SIGNING_KEY=<file> bash tools/release/sign-update-manifest.sh <version> ghcr.io/rockersands/taskmoor@<digest>`
+   It refuses a key other than `tools/airgap/taskmoor-release.pub`.
+3. Create the GitHub release with the tag `v<version>` (a plain `x.y.z` after the `v`: anything
+   else is not offered to anyone) and attach both files from `dist/release`, with the Builder page.
+4. An LTS patch released after a newer stable one must not become GitHub's "latest": create it
+   with "Set as the latest release" off, or the notice stays quiet for everyone on the newer line
+   and offers the older release to no one.
+
+A preview build gets no signed statement and no release marked as latest.
 
 ## Supported upgrades
 

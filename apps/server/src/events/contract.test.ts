@@ -2455,6 +2455,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
         }),
     },
     {
+      route: 'PUT /api/v1/admin/update-check',
+      expect: 'update_check.updated',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/admin/update-check',
+          payload: { enabled: false },
+        }),
+    },
+    {
       route: 'PUT /api/v1/admin/attachment-settings',
       expect: 'attachment_settings.updated',
       run: () =>

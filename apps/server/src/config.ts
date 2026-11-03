@@ -170,6 +170,14 @@ const envSchema = z.object({
   /** The Jira-compatible API under /rest (M1-069, ADR-086): on unless `off`. */
   TASKMOOR_JIRA_COMPAT: z.enum(['on', 'off']).default('on'),
   /**
+   * The daily look at the project's public releases behind the administrators' new-version notice
+   * (OPS-026, ADR-117). `off` stops it for good, whatever the setting in the app says; the
+   * air-gap bundle's installer writes that into its `.env`.
+   */
+  TASKMOOR_UPDATE_CHECK: z.enum(['on', 'off']).default('on'),
+  /** The command the notice shows, with `{version}`, for a kit that updates some other way. */
+  TASKMOOR_UPDATE_COMMAND: z.string().min(1).max(500).optional(),
+  /**
    * The key AI credentials' data keys are wrapped with (M1-075, IAM-020, ADR-098): the Builder's
    * backend kit writes 32 random bytes in base64url; any secret of 32 characters or more works.
    * Unset, the install's password pepper wraps them.
@@ -250,6 +258,10 @@ export interface ServerConfig {
   queryTimeoutMs: number;
   /** Whether the Jira-compatible API is served (M1-069). */
   jiraCompat: boolean;
+  /** TASKMOOR_UPDATE_CHECK (OPS-026). */
+  updateCheck: boolean;
+  /** TASKMOOR_UPDATE_COMMAND (OPS-026). */
+  updateCommand: string | undefined;
   /** The master key and the ones before it (M1-075, ADR-098). */
   masterKey: string | undefined;
   previousMasterKeys: string[];
@@ -456,6 +468,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     shutdownDrainMs: e.TASKMOOR_SHUTDOWN_DRAIN_MS,
     queryTimeoutMs: e.TASKMOOR_QUERY_TIMEOUT_MS,
     jiraCompat: e.TASKMOOR_JIRA_COMPAT === 'on',
+    updateCheck: e.TASKMOOR_UPDATE_CHECK === 'on',
+    updateCommand: e.TASKMOOR_UPDATE_COMMAND,
     storage: {
       backend: e.TASKMOOR_STORAGE,
       filesDir: e.TASKMOOR_FILES_DIR,
