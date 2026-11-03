@@ -159,6 +159,16 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['POST /api/v1/ai/query']).toBe('read');
     expect(classes['POST /api/v1/ai/drafts']).toBe('read');
     expect(classes['POST /api/v1/tickets/:id/ai/breakdown']).toBe('read');
+    // Multi-track plans (ADR-122): reads and writes like dashboards.
+    expect(classes['GET /api/v1/plans']).toBe('read');
+    expect(classes['POST /api/v1/plans']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id']).toBe('read');
+    expect(classes['PATCH /api/v1/plans/:id']).toBe('write');
+    expect(classes['DELETE /api/v1/plans/:id']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/choices']).toBe('read');
+    expect(classes['GET /api/v1/plans/:id/summary']).toBe('read');
+    expect(classes['GET /api/v1/plans/:id/timeline']).toBe('read');
+    expect(classes['GET /api/v1/plans/:id/calendar']).toBe('read');
     const adminOnly = api.filter(
       (r) =>
         /^(GET|POST|PUT|PATCH|DELETE) \/api\/v1\/(users|groups|roles|access-policies|global-grants|admin|service-accounts|security|identity-providers|directories|audit)/.test(

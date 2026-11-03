@@ -229,6 +229,10 @@ export const AUDITED_EVENTS = [
   'dashboard.updated',
   'dashboard.deleted',
   'dashboard.default_set',
+  // Multi-track plans (ADR-122): configuration others may see, like dashboards.
+  'plan.created',
+  'plan.updated',
+  'plan.deleted',
   'track.summary_layout_set',
   'track.summary_layout_removed',
   'audit.settings_updated',

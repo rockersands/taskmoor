@@ -1650,6 +1650,33 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
          ORDER BY t.id, r.id LIMIT 1`.execute(db);
     },
   },
+  '0101_plans': {
+    tables: {
+      plan: "name = 'Seed plan' AND version = 1",
+      // Its second source, a saved search, is written too; one row is checked per table.
+      plan_source: `plan_id IN (SELECT id FROM plan WHERE name = 'Seed plan')
+        AND kind = 'track' AND position = 0`,
+      plan_share:
+        "scope = 'any_user' AND plan_id IN (SELECT id FROM plan WHERE name = 'Seed plan')",
+    },
+    seed: async (db) => {
+      // A plan of the seed person over the first track and the first saved search, shared with
+      // everyone signed in (ADR-122).
+      await sql`INSERT INTO plan (workspace_id, owner_id, name, description)
+        SELECT 1, id, 'Seed plan', 'Two teams'
+          FROM app_user WHERE email = 'seed@example.com'`.execute(db);
+      await sql`INSERT INTO plan_source (workspace_id, plan_id, kind, track_id, position)
+        SELECT 1, p.id, 'track', t.id, 0
+          FROM plan p, (SELECT id FROM track WHERE workspace_id = 1 ORDER BY id LIMIT 1) t
+         WHERE p.name = 'Seed plan'`.execute(db);
+      await sql`INSERT INTO plan_source (workspace_id, plan_id, kind, saved_search_id, position)
+        SELECT 1, p.id, 'saved_search', s.id, 1
+          FROM plan p, (SELECT id FROM saved_search WHERE workspace_id = 1 ORDER BY id LIMIT 1) s
+         WHERE p.name = 'Seed plan'`.execute(db);
+      await sql`INSERT INTO plan_share (workspace_id, plan_id, scope)
+        SELECT 1, id, 'any_user' FROM plan WHERE name = 'Seed plan'`.execute(db);
+    },
+  },
 };
 
 /**

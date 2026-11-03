@@ -133,7 +133,7 @@ check and effects.
 
 | Taskmoor | Atlassian |
 |---|---|
-| **roadmaps** | Plans, Advanced Roadmaps |
+| **roadmaps**, which the product calls **Multi-track**; one is a **plan** (the user's name, 2026-11-03; ADR-122) | Plans, Advanced Roadmaps |
 | **service desk**, **service track** | Jira Service Management, service project |
 | **request form** | request type |
 | **help portal** | help center, customer portal |

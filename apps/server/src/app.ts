@@ -77,6 +77,8 @@ import { registerNotificationRoutes } from './routes/notifications';
 import { registerOAuthRoutes, resourceMetadataUrl } from './routes/oauth';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPersonalDataRoutes } from './routes/personal-data';
+import { registerPlanViewRoutes } from './routes/plan-views';
+import { registerPlanRoutes } from './routes/plans';
 import { registerPriorityRoutes } from './routes/priorities';
 import { registerCorePropertyRoutes } from './routes/properties';
 import { registerRateLimitRoutes, registerRateLimits } from './routes/rate-limits';
@@ -578,6 +580,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     });
     // A track's timeline (M1-048): dated tickets, roll-ups, dependencies and markers.
     registerTimelineRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // Multi-track plans (ADR-122): tracks and saved searches, each viewer's tickets only.
+    registerPlanRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    registerPlanViewRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
