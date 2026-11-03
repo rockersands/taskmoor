@@ -45,7 +45,7 @@ export const BOARD: Board = {
     },
   ],
   boardFilters: [
-    { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()', description: '' },
+    { id: 'mine', name: 'My work', query: 'assignee = currentUser()', description: '' },
     { id: 'recent', name: 'Recently updated', query: 'updated >= -1d', description: '' },
   ],
   boardFilterDisplay: 'buttons',
@@ -329,7 +329,9 @@ export function fakeBoardClient(
       };
       const shown = all.filter(
         (c) =>
-          columnOf(c.status.id) !== null && (!filters.includes('mine') || c.mine) && forPerson(c),
+          columnOf(c.status.id) !== null &&
+          (!filters.includes('mine') || c.mine) &&
+          forPerson(c),
       );
       const assigned = new Map(
         all.flatMap((c) => {

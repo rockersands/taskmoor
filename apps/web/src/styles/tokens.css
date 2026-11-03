@@ -53,6 +53,8 @@
   --glass-fill: var(--glass-sheen), var(--glass-surface);
   --glass-fill-chrome: var(--glass-sheen), var(--glass-surface-chrome);
   --glass-fill-strong: var(--glass-sheen), var(--glass-surface-strong);
+  /* The tick of a selected chip or check box: an original drawing, used as a mask. */
+  --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 5' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 /* Soft daylight: cream, peach, blush and powder blue on a pale dawn canvas. */

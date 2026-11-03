@@ -55,6 +55,7 @@ export const messagesEn = {
   'track.files.emptyTitle': 'No files or links yet',
   'track.files.empty': 'Files attached to a ticket and web links added to it show here.',
   'track.files.truncated': 'Only the newest 200 of each are listed.',
+  'popover.done': 'Done',
   'tracks.title': 'Tracks',
   'tracks.failed': 'The tracks could not be loaded.',
   'tracks.emptyTitle': 'No tracks yet',
@@ -3426,13 +3427,13 @@ export const messagesEn = {
   'boards.location.track': 'in {track}',
   'boards.location.user': 'kept by {name}',
   'boards.filters': 'Board filters',
-  'boards.filter.mine': 'Only my tickets',
   'boards.filter.recent': 'Recently updated',
   'ticketPage.backToBoard': 'Back to {name}',
   'boards.filters.summary':
     '{count, plural, =0 {Board filters} one {Board filters (# on)} other {Board filters (# on)}}',
   'boards.people': 'Filter by person',
   'boards.people.me': 'Me',
+  'boards.people.title': 'People on this board',
   'boards.people.menu':
     '{count, plural, =0 {People} one {People (# chosen)} other {People (# chosen)}}',
   'boards.people.find': 'Find a person',

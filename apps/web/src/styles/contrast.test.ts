@@ -265,6 +265,13 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
       expect(short).toEqual([]);
     });
 
+    it(`[NFR-005] keeps a chip that is on readable over the canvas in the ${name} skin`, () => {
+      // `.filter-chip[aria-pressed="true"]`: its label at 4.5:1, its tick at 3:1.
+      const tint = layer(name, 'glass-tint-accent');
+      expect(worstOnGlass('color-text', tint, saturation)).toBeGreaterThanOrEqual(4.5);
+      expect(worstOnGlass('color-accent', tint, saturation)).toBeGreaterThanOrEqual(3);
+    });
+
     it(`[NFR-005] keeps a filled pill's text at AA under its gloss in the ${name} skin`, () => {
       const fill = textOf('color-primary');
       const text = textOf('color-on-primary');

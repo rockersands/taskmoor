@@ -153,7 +153,7 @@ describe('board settings (M1-043)', () => {
     await screen.findByRole('status');
     const patch = client.patches[0];
     expect(patch?.swimlanes).toMatchObject({ mode: 'assignees', unassigned: 'first' });
-    expect(patch?.boardFilters?.map((f) => f.name)).toEqual(['Only my tickets', 'Bugs']);
+    expect(patch?.boardFilters?.map((f) => f.name)).toEqual(['My work', 'Bugs']);
     expect(patch?.boardFilterDisplay).toBe('dropdown');
   });
 

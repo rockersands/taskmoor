@@ -48,12 +48,12 @@ export const Board: Story = {
   },
 };
 
-/** "Only my tickets" on: cards narrow, counts stay whole. */
+/** A board filter on: cards narrow, counts stay whole, and the chip shows a tick. */
 export const FilterOn: Story = {
   args: { client: fakeBoardClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Only my tickets' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'My work' }));
     await expect(await canvas.findByText('2 hidden by board filters')).toBeVisible();
   },
 };
@@ -65,7 +65,7 @@ export const PersonFilter: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
     await expect(await canvas.findByRole('link', { name: /SHOP-21/ })).toBeVisible();
-    await userEvent.click(canvas.getByText('People'));
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Rin Okafor' }));
     await expect(await canvas.findByRole('link', { name: /SHOP-23/ })).toBeVisible();
     await expect(canvas.queryByRole('link', { name: /SHOP-19/ })).toBeNull();
@@ -174,7 +174,7 @@ export const PersonFilterAtPhoneWidth: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Me' }));
-    await userEvent.click(canvas.getByText('People'));
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await expect(canvas.getByRole('checkbox', { name: 'Rin Okafor' })).toBeVisible();
     await fitsPhoneWidth(canvas);
   },

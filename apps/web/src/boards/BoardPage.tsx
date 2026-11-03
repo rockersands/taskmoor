@@ -15,6 +15,7 @@ import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing
 import { EmptyState } from '../shell/EmptyState';
 import { BoardsIcon, MoreIcon } from '../shell/icons';
 import { PageHeader } from '../shell/PageHeader';
+import { Popover } from '../shell/Popover';
 import { useSyncEngine } from '../sync/SyncProvider';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
@@ -130,11 +131,24 @@ function refusedText(
 }
 
 /**
- * A new board's two filters come from the server in English and stay as they are until someone
- * renames them; shown here in the person's language. A renamed filter shows its own name.
+ * "Only my tickets", which boards used to start with, finds the same cards as "Me" in the person
+ * filter, and "Me" combines with other people, so a board no longer offers it (AGL-005). A filter
+ * someone renamed or wrote, whatever its query, stays.
+ */
+export function offeredBoardFilters<T extends { id: string; name: string; query: string }>(
+  filters: readonly T[],
+): T[] {
+  return filters.filter(
+    (f) =>
+      !(f.id === 'mine' && f.name === 'Only my tickets' && f.query === 'assignee = currentUser()'),
+  );
+}
+
+/**
+ * A new board's filter comes from the server in English and stays as it is until someone renames
+ * it; shown here in the person's language. A renamed filter shows its own name.
  */
 export function boardFilterName(t: Translate, filter: { id: string; name: string }): string {
-  if (filter.id === 'mine' && filter.name === 'Only my tickets') return t('boards.filter.mine');
   if (filter.id === 'recent' && filter.name === 'Recently updated') {
     return t('boards.filter.recent');
   }
@@ -496,11 +510,12 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       ? t('boards.location.track', { track: board.location.track.name ?? '' })
       : t('boards.location.user', { name: board.location.user.name ?? '' });
   const showLanes = data.lanes.length > 1 || data.lanes.some((l) => !l.catchAll);
-  const filterButtons = board.boardFilters.map((f) => (
+  const offered = offeredBoardFilters(board.boardFilters);
+  const filterButtons = offered.map((f) => (
     <button
       key={f.id}
       type="button"
-      className="board-filter"
+      className="filter-chip"
       aria-pressed={filters.includes(f.id)}
       title={f.description || f.query}
       onClick={() => toggleFilter(f.id)}
@@ -652,22 +667,27 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
           </>
         }
       />
-      {board.boardFilters.length > 0 &&
-        (board.boardFilterDisplay === 'dropdown' ? (
-          <details className="board-filters-menu">
-            <summary>{t('boards.filters.summary', { count: filters.length })}</summary>
-            <fieldset className="board-filters">
+      <div className="filter-row">
+        {offered.length > 0 &&
+          (board.boardFilterDisplay === 'dropdown' ? (
+            <Popover
+              label={t('boards.filters.summary', { count: filters.length })}
+              title={t('boards.filters')}
+              on={filters.length > 0}
+            >
+              <fieldset className="filter-chips">
+                <legend className="visually-hidden">{t('boards.filters')}</legend>
+                {filterButtons}
+              </fieldset>
+            </Popover>
+          ) : (
+            <fieldset className="filter-chips">
               <legend className="visually-hidden">{t('boards.filters')}</legend>
               {filterButtons}
             </fieldset>
-          </details>
-        ) : (
-          <fieldset className="board-filters">
-            <legend className="visually-hidden">{t('boards.filters')}</legend>
-            {filterButtons}
-          </fieldset>
-        ))}
-      <BoardPeopleFilter people={data.people} chosen={people} onChange={choosePeople} />
+          ))}
+        <BoardPeopleFilter people={data.people} chosen={people} onChange={choosePeople} />
+      </div>
       {data.unmapped.count > 0 && (
         <p className="board-unmapped">
           {t('boards.unmapped', {

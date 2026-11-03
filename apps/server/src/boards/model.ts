@@ -226,8 +226,8 @@ export const DEFAULT_SWIMLANES: Swimlanes = {
   unassigned: 'last',
   otherName: 'Everything else',
 };
+/** No "Only my tickets": the person filter's "Me" finds the same cards and combines (AGL-005). */
 export const DEFAULT_BOARD_FILTERS: BoardFilter[] = [
-  { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()', description: '' },
   { id: 'recent', name: 'Recently updated', query: 'updated >= -1d', description: '' },
 ];
 export const DEFAULT_CARD_RULES: CardRules = {

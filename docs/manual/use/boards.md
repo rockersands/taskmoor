@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -21,8 +21,8 @@ board, and a board cannot sit outside a track or cross tracks. For a view across
 search or a dashboard.
 
 A new board starts with one column per status of the track's workflow, named after the status and
-ordered from new to closed, the board filters "Only my tickets" and "Recently updated" (changed in
-the last day), cards coloured by ticket type, and the assignee and priority on each card. Change any
+ordered from new to closed, the board filter "Recently updated" (changed in the last day), cards
+coloured by ticket type, and the assignee and priority on each card. Change any
 of it in the board's settings.
 
 A site upgraded from before this rule keeps its older boards. A board whose query was exactly one
@@ -79,8 +79,14 @@ you. Above the columns:
 
 - **Me** shows the cards assigned to you;
 - **Unassigned** shows the cards nobody has;
-- **People** opens a list of the people assigned to tickets on this board, and only to tickets
-  you can see. Tick a name to add that person. In a long list, **Find a person** narrows it.
+- **People** opens a list over the board, or at the bottom of the screen on a phone, of the people
+  assigned to tickets on this board, and only to tickets you can see. Tick a name to add that
+  person. In a long list, **Find a person** narrows it. Escape or a click elsewhere closes it.
+
+A filter that is on shows a tick and a heavier label. Boards used to start with a board filter called
+"Only my tickets". It finds the same cards as **Me**, and **Me** combines with other people, so the
+filter row no longer shows it, and new boards do not get it. A filter of that kind that someone
+renamed or wrote themselves stays, and a board's reports still list the old one.
 
 Choosing several shows the cards of any of them, and the names you chose stay on show beside the
 menu: press one to take it away, or **Clear people** to take them all away. The filter works with

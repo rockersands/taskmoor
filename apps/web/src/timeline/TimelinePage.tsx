@@ -334,7 +334,7 @@ export function TimelinePage({
             <button
               key={z.id}
               type="button"
-              className="board-filter"
+              className="filter-chip"
               aria-pressed={zoom === z.id}
               onClick={() => setZoom(z.id)}
             >

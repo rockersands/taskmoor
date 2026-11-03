@@ -165,6 +165,10 @@ become **translucent glass**:
     popovers fade and rise 4 px, a dragged card's column tints and a line marks the drop place.
   - Under `prefers-reduced-motion` nothing moves; state changes still show by colour and
     outline.
+- **Shared filter controls** (the user, 2026-11-03, after testing the demo): `filter-chip` (a tick
+  and a heavier label when on, never colour alone), `Popover` (`shell/Popover.tsx`: over the content,
+  closed by Escape or a click outside with focus back on its button, docked at the bottom of the
+  screen below 768 px), `glass-check` and `thin-scroll`, for any page to reuse.
 - **Own assets only.** Icons are original line drawings on a 24 px grid (`shell/icons.tsx`).
   Nothing is taken from Apple's or Atlassian's assets, screenshots, colours or layouts. The
   translucent depth is the idea we borrow, not any asset.

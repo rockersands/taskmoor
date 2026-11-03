@@ -49,7 +49,12 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
     keys.push((await res.json()).ticket.key as string);
   }
   const made = await page.request.post(`${BASE}/api/v1/boards`, {
-    data: { name: `Flow ${word}`, kind: 'kanban', source: { query: `summary ~ ${word}` } },
+    data: {
+      name: `Flow ${word}`,
+      kind: 'kanban',
+      source: { query: `summary ~ ${word}` },
+      boardFilters: [{ name: 'Assigned to me', query: 'assignee = currentUser()' }],
+    },
   });
   expect(made.status(), await made.text()).toBe(201);
   const boardId = (await made.json()).board.id as number;
@@ -85,8 +90,8 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
     reports.getByText('No ticket moved past the chosen columns in this period.'),
   ).toBeVisible();
   await reports.getByRole('combobox', { name: 'Period' }).selectOption({ label: 'Last 14 days' });
-  await reports.getByRole('checkbox', { name: 'Only my tickets' }).check();
-  await expect(reports.getByRole('checkbox', { name: 'Only my tickets' })).toBeChecked();
+  await reports.getByRole('checkbox', { name: 'Assigned to me' }).check();
+  await expect(reports.getByRole('checkbox', { name: 'Assigned to me' })).toBeChecked();
   await expect(
     reports.getByText('No ticket moved past the chosen columns in this period.'),
   ).toBeVisible();
@@ -97,7 +102,7 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   await expect(
     reports.getByText('No ticket of this board was in a status in this period.'),
   ).toBeVisible();
-  await reports.getByRole('checkbox', { name: 'Only my tickets' }).uncheck();
+  await reports.getByRole('checkbox', { name: 'Assigned to me' }).uncheck();
   const times = reports.getByRole('figure', { name: 'Average time in status' });
   await expect(times).toBeVisible();
   await expect(reports.getByRole('rowheader', { name: 'Active' }).last()).toBeVisible();

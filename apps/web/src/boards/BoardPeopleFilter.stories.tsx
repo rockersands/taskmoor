@@ -73,7 +73,7 @@ export const ManyPeople: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByText('People'));
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await userEvent.type(canvas.getByRole('searchbox', { name: 'Find a person' }), 'person 2');
     await expect(canvas.getByRole('checkbox', { name: 'Person 20' })).toBeVisible();
   },
@@ -84,7 +84,7 @@ export const OnlyMe: Story = {
   args: { people: { ...PEOPLE, assignees: [{ id: 5, name: 'Kalo Smith' }] } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByText('People'));
+    await userEvent.click(canvas.getByRole('button', { name: 'People' }));
     await expect(
       canvas.getByText('Nobody else is assigned to tickets on this board.'),
     ).toBeVisible();
@@ -97,7 +97,7 @@ export const PhoneWidth: Story = {
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByText(/^People/));
+    await userEvent.click(canvas.getByRole('button', { name: /^People/ }));
     await expect(canvas.getByRole('checkbox', { name: 'Rin Okafor' })).toBeVisible();
     await fitsPhoneWidth(canvas);
   },

@@ -68,6 +68,7 @@ export const messagesEs: Record<MessageId, string> = {
   'track.files.empty':
     'Aquí aparecen los archivos adjuntos a un ticket y los enlaces web que se le añaden.',
   'track.files.truncated': 'Solo se listan los 200 más recientes de cada tipo.',
+  'popover.done': 'Listo',
   'tracks.title': 'Tracks',
   'tracks.failed': 'No se pudieron cargar los tracks.',
   'tracks.emptyTitle': 'Aún no hay tracks',
@@ -3523,7 +3524,6 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.meta': '{kind} · {location}',
   'boards.location.track': 'en {track}',
   'boards.location.user': 'de {name}',
-  'boards.filter.mine': 'Solo mis tickets',
   'boards.filter.recent': 'Actualizados hace poco',
   'ticketPage.backToBoard': 'Volver a {name}',
   'boards.filters': 'Filtros del tablero',
@@ -3531,6 +3531,7 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, =0 {Filtros del tablero} one {Filtros del tablero (# activo)} other {Filtros del tablero (# activos)}}',
   'boards.people': 'Filtrar por persona',
   'boards.people.me': 'Yo',
+  'boards.people.title': 'Personas de este tablero',
   'boards.people.menu':
     '{count, plural, =0 {Personas} one {Personas (# elegida)} other {Personas (# elegidas)}}',
   'boards.people.find': 'Buscar a una persona',

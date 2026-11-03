@@ -457,6 +457,7 @@ describe('boards (M1-043)', () => {
       trackId: tracks.BA,
       source: { query: 'track = BA' },
       columns: COLUMNS(),
+      boardFilters: [{ id: 'mine', name: 'Mine', query: 'assignee = currentUser()' }],
     });
     for (const name of ['a1', 'a2', 'b1', 'b2']) await setStatus(name, 'Active');
     await setStatus('c1', 'Closed');
@@ -465,7 +466,7 @@ describe('boards (M1-043)', () => {
     const done = d.columns.find((c) => c.id === 'done');
     expect([doing?.count, doing?.wip]).toEqual([4, 'over']);
     expect([done?.count, done?.wip]).toEqual([1, 'under']);
-    // "Only my tickets" hides cards, never counts.
+    // A board filter hides cards, never counts.
     d = await data('alice', board.id, ['mine']);
     const mine = d.columns.find((c) => c.id === 'doing');
     expect([mine?.count, mine?.shown, mine?.wip]).toEqual([4, 2, 'over']);
@@ -496,7 +497,8 @@ describe('boards (M1-043)', () => {
     ]);
     const unknown = await get('alice', `/api/v1/boards/${board.id}/data?filters=nope`);
     expect(unknown.json()).toEqual({ error: 'invalid_fields', fields: { filters: 'not_found' } });
-    // A new board comes with the two default board filters.
+    // A new board comes with the default board filter, and no longer "Only my tickets": the
+    // person filter's "Me" finds the same cards.
     const plain = await createBoard('alice', {
       name: 'Defaults',
       kind: 'kanban',
@@ -505,13 +507,10 @@ describe('boards (M1-043)', () => {
     });
     const read = (await get('alice', `/api/v1/boards/${plain.id}`)).json();
     expect(read.board.boardFilters.map((f: { name: string }) => f.name)).toEqual([
-      'Only my tickets',
       'Recently updated',
     ]);
-    expect((await data('alice', plain.id, ['mine', 'recent'])).cards.map((c) => c.key)).toEqual([
-      T('a1').key,
-      T('b2').key,
-    ]);
+    const refused = await get('alice', `/api/v1/boards/${plain.id}/data?filters=mine`);
+    expect(refused.json()).toEqual({ error: 'invalid_fields', fields: { filters: 'not_found' } });
   });
 
   it('[AGL-005] filters by person as a board filter, for a plain member, with counts whole', async () => {

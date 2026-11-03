@@ -93,20 +93,41 @@ test('[AGL-005] a board filtered by person, by keyboard and from a shared addres
   await expect(links).toHaveCount(1);
   await expect(links).toContainText(nobodys);
 
-  // The menu with the real keyboard: Enter opens, Escape closes and comes back to it.
-  const summary = filter.getByText(/^People/);
-  await summary.focus();
+  // The popover with the real keyboard: Enter opens it over the board, which stays where it is;
+  // Escape closes it and comes back to its button.
+  const columns = board.getByRole('region', { name: 'Columns', exact: true });
+  const opener = filter.getByRole('button', { name: /^People/ });
+  const panel = filter.getByRole('group', { name: 'People on this board' });
+  const top = async () => (await columns.boundingBox())?.y;
+  const before = await top();
+  await opener.focus();
   await page.keyboard.press('Enter');
-  const panel = filter.locator('.board-people-panel');
   await expect(panel).toBeVisible();
+  expect(await top()).toBe(before);
   expect(await seriousAxeViolations(page)).toEqual([]);
   await page.keyboard.press('Escape');
   await expect(panel).toBeHidden();
-  await expect(summary).toBeFocused();
+  await expect(opener).toBeFocused();
 
-  // A phone: nothing scrolls sideways.
+  // A click outside closes it too, and focus comes back.
+  await opener.click();
+  await expect(panel).toBeVisible();
+  await page.getByRole('heading', { level: 1 }).click();
+  await expect(panel).toBeHidden();
+  await expect(opener).toBeFocused();
+
+  // A phone: nothing scrolls sideways, and the popover docks at the bottom of the screen.
   await page.setViewportSize({ width: 360, height: 700 });
   await expect.poll(() => sidewaysOverflow(page)).toEqual([]);
+  await opener.click();
+  await expect(panel).toBeVisible();
+  const docked = await panel.boundingBox();
+  expect(docked?.x).toBe(0);
+  expect(docked?.width).toBe(360);
+  expect(Math.round((docked?.y ?? 0) + (docked?.height ?? 0))).toBe(700);
+  await expect.poll(() => sidewaysOverflow(page)).toEqual([]);
+  await panel.getByRole('button', { name: 'Done' }).click();
+  await expect(panel).toBeHidden();
   await filter.getByRole('button', { name: 'Clear people' }).click();
   await expect(links).toHaveCount(2);
   await expect(page).not.toHaveURL(/people=/);

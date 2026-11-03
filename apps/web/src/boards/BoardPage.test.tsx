@@ -4,10 +4,10 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { I18nProvider, type Translate } from '../i18n/I18nProvider';
 import { boardBehind, rememberBoard } from '../routing/cameFrom';
 import { setViewportWidth } from '../test/viewport';
-import { BoardPage, boardFilterName } from './BoardPage';
+import { BoardPage, boardFilterName, offeredBoardFilters } from './BoardPage';
 import { peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
 import { dataPath } from './client';
-import { CARDS, fakeBoardClient, manyCards, VIEWER_ID } from './fixtures';
+import { BOARD, CARDS, fakeBoardClient, manyCards, VIEWER_ID } from './fixtures';
 
 function renderBoard(client = fakeBoardClient()) {
   render(
@@ -59,13 +59,10 @@ describe('the board page (M1-043)', () => {
     const user = userEvent.setup();
     const client = renderBoard();
     const board = await page();
-    await user.click(board.getByRole('button', { name: 'Only my tickets', pressed: false }));
+    await user.click(board.getByRole('button', { name: 'My work', pressed: false }));
     await waitFor(() => expect(client.dataCalls.at(-1)).toEqual(['mine']));
     expect(await board.findByText('2 hidden by board filters')).toBeVisible();
-    expect(board.getByRole('button', { name: 'Only my tickets' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(board.getByRole('button', { name: 'My work' })).toHaveAttribute('aria-pressed', 'true');
     expect(dataPath(7, ['mine', 'recent'])).toBe('/boards/7/data?filters=mine%2Crecent');
   });
 
@@ -163,16 +160,18 @@ describe('the board page (M1-043)', () => {
       await user.keyboard(' ');
       await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual(['me']));
       expect(await screen.findByText('2 cards shown')).toBeInTheDocument();
-      // Enter on the menu's summary is the browser's own; the e2e test presses it for real.
-      const summary = board.getByText('People');
-      await user.click(summary);
-      expect(summary.closest('details')).toHaveAttribute('open');
+      const opener = board.getByRole('button', { name: 'People', expanded: false });
+      opener.focus();
+      await user.keyboard('{Enter}');
+      expect(opener).toHaveAttribute('aria-expanded', 'true');
       const person = await board.findByRole('checkbox', { name: 'Rin Okafor' });
       person.focus();
       await user.keyboard(' ');
       await waitFor(() => expect(client.peopleCalls.at(-1)).toEqual(['me', '6']));
       await user.keyboard('{Escape}');
-      expect(board.getByText('People (1 chosen)').closest('details')).not.toHaveAttribute('open');
+      const closed = board.getByRole('button', { name: 'People (1 chosen)', expanded: false });
+      expect(closed).toHaveFocus();
+      expect(board.queryByRole('checkbox', { name: 'Rin Okafor' })).toBeNull();
     });
 
     it('[AGL-005] says so when the people chosen have no cards, with a way out', async () => {
@@ -195,7 +194,7 @@ describe('the board page (M1-043)', () => {
       }));
       renderBoard(fakeBoardClient({ cards: crowd }));
       const board = await page();
-      await user.click(board.getByText('People'));
+      await user.click(board.getByRole('button', { name: 'People' }));
       expect(board.getAllByRole('checkbox')).toHaveLength(12);
       await user.type(board.getByRole('searchbox', { name: 'Find a person' }), 'person 11');
       expect(board.getAllByRole('checkbox').map((b) => b.closest('label')?.textContent)).toEqual([
@@ -353,13 +352,32 @@ describe('a card leads to its ticket and back (ADR-114)', () => {
   });
 });
 
-describe("a new board's filters in the person's language", () => {
+describe('the old "Only my tickets" filter', () => {
+  const mine = { id: 'mine', name: 'Only my tickets', query: 'assignee = currentUser()' };
+
+  it('[AGL-005] is not offered, as "Me" finds the same cards and combines with other people', async () => {
+    const client = fakeBoardClient({
+      board: { ...BOARD, boardFilters: [{ ...mine, description: '' }] },
+    });
+    renderBoard(client);
+    const board = await page();
+    expect(board.queryByRole('button', { name: 'Only my tickets' })).toBeNull();
+    expect(board.queryByRole('group', { name: 'Board filters' })).toBeNull();
+    expect(board.getByRole('button', { name: 'Me' })).toBeVisible();
+  });
+
+  it('[AGL-005] stays when someone renamed it or wrote their own', () => {
+    const renamed = { ...mine, name: 'Mine' };
+    const written = { ...mine, id: 'f3', name: 'Assigned to me' };
+    const wider = { ...mine, query: 'assignee = currentUser() OR assignee IS EMPTY' };
+    expect(offeredBoardFilters([mine, renamed, written, wider])).toEqual([renamed, written, wider]);
+  });
+});
+
+describe("a new board's filter in the person's language", () => {
   const t = ((id: string) => `translated ${id}`) as unknown as Translate;
 
-  it('[AGL-001] translates the two defaults, and leaves a renamed filter alone', () => {
-    expect(boardFilterName(t, { id: 'mine', name: 'Only my tickets' })).toBe(
-      'translated boards.filter.mine',
-    );
+  it('[AGL-001] translates the default, and leaves a renamed filter alone', () => {
     expect(boardFilterName(t, { id: 'recent', name: 'Recently updated' })).toBe(
       'translated boards.filter.recent',
     );

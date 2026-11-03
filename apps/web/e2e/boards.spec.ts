@@ -64,11 +64,11 @@ test('[AGL-001] [AGL-002] [AGL-003] [AGL-005] a board from a query, keyboard mov
   await expect(cell('New').getByRole('link').first()).toContainText(first);
   expect(await seriousAxeViolations(page)).toEqual([]);
 
-  // "Only my tickets": none is Ada's; the count stays whole.
-  await board.getByRole('button', { name: 'Only my tickets' }).click();
+  // "Me": none is Ada's; the count stays whole.
+  await board.getByRole('button', { name: 'Me', exact: true }).click();
   await expect(cell('New').getByRole('link')).toHaveCount(0);
   await expect(board.getByText('3 hidden by board filters')).toBeVisible();
-  await board.getByRole('button', { name: 'Only my tickets' }).click();
+  await board.getByRole('button', { name: 'Me', exact: true }).click();
   await expect(cell('New').getByRole('link')).toHaveCount(3);
 
   // Alt+Right: the second card starts (New to Active) and keeps the focus.
