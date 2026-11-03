@@ -34,6 +34,7 @@ import {
   type WebLink,
 } from './client';
 import { InfoPanel } from './InfoPanel';
+import { TICKET_SHORTCUTS } from './shortcuts';
 
 export interface TicketPageProps {
   /** The ticket key or id from the address (#/tickets/<key>). */
@@ -58,16 +59,6 @@ export interface TicketPageProps {
 
 /** Layout fields the page can fill in itself when a transition asks for them (WF-006). */
 const FILLABLE = ['close-reason', 'priority'];
-
-/** Keys pressed outside a field that act on the ticket (AGL-018 (2)). */
-const SHORTCUTS = [
-  ['m', 'ticketView.shortcut.comment'],
-  ['w', 'ticketView.shortcut.follow'],
-  ['a', 'ticketView.shortcut.assign'],
-  ['t', 'ticketView.shortcut.transition'],
-  ['e', 'ticketView.shortcut.edit'],
-  ['?', 'ticketView.shortcut.help'],
-] as const;
 
 const typing = (target: EventTarget | null) => {
   const el = target as HTMLElement | null;
@@ -1162,7 +1153,7 @@ function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           {t('ticketView.shortcuts')}
         </h2>
         <dl className="ticket-shortcuts">
-          {SHORTCUTS.map(([key, label]) => (
+          {TICKET_SHORTCUTS.map(([key, label]) => (
             <div key={key}>
               <dt>
                 <kbd>{key.toUpperCase()}</kbd>

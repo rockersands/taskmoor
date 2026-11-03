@@ -1,6 +1,7 @@
-import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import { navigate, routeHref } from '../routing/router';
+import { useMenuButton } from '../shell/useMenuButton';
 import { useSession } from './SessionProvider';
 
 export interface UserMenuProps {
@@ -9,10 +10,6 @@ export interface UserMenuProps {
 }
 
 const ACCOUNT = '#/account';
-
-function menuItems(menu: HTMLElement | null): HTMLElement[] {
-  return [...(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
-}
 
 /**
  * The signed-in person's menu at the end of the top bar, built as an APG menu button: the
@@ -24,31 +21,19 @@ function menuItems(menu: HTMLElement | null): HTMLElement[] {
 export function UserMenu({ onSignedOut }: UserMenuProps) {
   const t = useT();
   const { session, signOut } = useSession();
-  const [open, setOpen] = useState(false);
-  const [focusFirst, setFocusFirst] = useState(true);
+  const {
+    open,
+    openMenu: showMenu,
+    close,
+    container,
+    button,
+    menu,
+    buttonId,
+    menuId,
+    onButtonKeyDown,
+    onMenuKeyDown,
+  } = useMenuButton();
   const [failed, setFailed] = useState(false);
-  const container = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  const buttonId = useId();
-  const menuId = useId();
-
-  const close = useCallback((returnFocus: boolean) => {
-    setOpen(false);
-    if (returnFocus) button.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const items = menuItems(menu.current);
-    (focusFirst ? items[0] : items[items.length - 1])?.focus();
-    // A press anywhere outside closes the menu and leaves focus where the press put it.
-    const onPointerDown = (event: Event) => {
-      if (!container.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, [open, focusFirst]);
 
   if (session.status === 'loading') return null;
   if (session.status === 'anonymous') {
@@ -64,53 +49,7 @@ export function UserMenu({ onSignedOut }: UserMenuProps) {
 
   const openMenu = (first: boolean, keepError = false) => {
     if (!keepError) setFailed(false);
-    setFocusFirst(first);
-    setOpen(true);
-  };
-
-  const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      openMenu(event.key === 'ArrowDown');
-    }
-  };
-
-  const onMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const items = menuItems(menu.current);
-    const index = items.indexOf(document.activeElement as HTMLElement);
-    const focusAt = (next: number) => {
-      event.preventDefault();
-      items[(next + items.length) % items.length]?.focus();
-    };
-    switch (event.key) {
-      case 'ArrowDown':
-        focusAt(index + 1);
-        break;
-      case 'ArrowUp':
-        focusAt(index - 1);
-        break;
-      case 'Home':
-        focusAt(0);
-        break;
-      case 'End':
-        focusAt(items.length - 1);
-        break;
-      case 'Escape':
-        event.preventDefault();
-        close(true);
-        break;
-      case 'Tab':
-        setOpen(false);
-        break;
-      default:
-        if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-          const key = event.key.toLocaleLowerCase();
-          const after = [...items.slice(index + 1), ...items.slice(0, index + 1)];
-          after
-            .find((item) => item.textContent?.trim().toLocaleLowerCase().startsWith(key))
-            ?.focus();
-        }
-    }
+    showMenu(first);
   };
 
   const runSignOut = async () => {

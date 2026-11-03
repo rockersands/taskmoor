@@ -147,6 +147,26 @@
   display: none;
 }
 
+/* Help at the top bar: the same round glass button as the theme switch. */
+.help-menu-button {
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-surface-sunken);
+  box-shadow: var(--glass-highlight-flat);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.help-shortcuts-group {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-200);
+}
+
+.help-shortcuts {
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+}
+
 /* Empty states say what would be here, how it gets here, and offer the next step. */
 .empty-state {
   display: grid;

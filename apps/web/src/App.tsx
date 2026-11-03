@@ -62,6 +62,7 @@ import { ConfigurationSetsPage } from './sets/ConfigurationSetsPage';
 import { SetupPage } from './setup/SetupPage';
 import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
+import { HelpMenu } from './shell/HelpMenu';
 import {
   BoardsIcon,
   DashboardsIcon,
@@ -696,6 +697,7 @@ function Pages() {
             </button>
           )}
           <CommandPalette commands={[...commands, ...registered]} />
+          {signedIn && <HelpMenu />}
           {signedIn && <ThemeToggle onChoose={appear} />}
           <UserMenu onSignedOut={showSignIn} />
         </>
