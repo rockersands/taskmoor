@@ -257,10 +257,3 @@
     padding-inline-end: calc(var(--hit-target-touch) + var(--space-2));
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .track-group-toggle svg,
-  .track-move-handle {
-    transition: none;
-  }
-}
