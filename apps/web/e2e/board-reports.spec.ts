@@ -64,7 +64,8 @@ test('[RPT-001] a board’s cumulative flow, control chart and time in status', 
   await expect(cell('Active').getByRole('link')).toHaveCount(1);
 
   await board.getByRole('link', { name: 'Reports' }).click();
-  const reports = page.getByRole('region', { name: `Reports of Flow ${word}` });
+  // The link goes to the Statistics section of the board's track (ADR-116).
+  const reports = page.getByRole('region', { name: /^Statistics of / });
   const flow = reports.getByRole('figure', { name: 'Cumulative flow' });
   await expect(flow.getByRole('img')).toHaveAttribute(
     'aria-label',

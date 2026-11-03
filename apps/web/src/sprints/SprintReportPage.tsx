@@ -19,6 +19,89 @@ export interface SprintReportPageProps {
   boardId: number;
   sprintId: number;
   client?: SprintClient;
+  /** Inside a page that has its own title: the report's title is a level lower. */
+  embedded?: boolean;
+  /** Where the link to the backlog goes; the board's own backlog otherwise. */
+  backlogHref?: string;
+}
+
+/** A board's velocity: committed and completed per sprint, and the average (RPT-001 (2)). */
+function VelocityChart({ velocity }: { velocity: Velocity }) {
+  const t = useT();
+  const s = velocity.statistic.statistic;
+  const format = (v: number) => estimateText(t, v, s);
+  if (velocity.sprints.length === 0) {
+    return <p className="sprint-empty">{t('sprints.charts.velocityNone')}</p>;
+  }
+  return (
+    <div className="chart-group">
+      <ColumnChart
+        title={t('sprints.charts.velocity')}
+        summary={t('sprints.charts.velocitySummary', {
+          count: velocity.sprints.length,
+          average: format(velocity.average),
+        })}
+        categories={velocity.sprints.map((x) => ({ key: String(x.id), label: x.name }))}
+        series={[
+          {
+            id: 'committed',
+            label: t('sprints.charts.committed'),
+            tone: 'two',
+            values: velocity.sprints.map((x) => x.committed),
+          },
+          {
+            id: 'completed',
+            label: t('sprints.charts.completed'),
+            tone: 'one',
+            values: velocity.sprints.map((x) => x.completed),
+          },
+        ]}
+        format={format}
+        unit={s === 'originalEstimate' ? 3600 : 1}
+        tableLabel={t('sprints.charts.table')}
+        categoryHeader={t('sprints.charts.sprint')}
+      />
+      <p className="sprint-empty">
+        {t('sprints.charts.velocityAverage', { average: format(velocity.average) })}
+      </p>
+    </div>
+  );
+}
+
+/** The velocity chart alone, as a report of a track (ADR-116). */
+export function VelocityReport({
+  boardId,
+  client = sprintClient,
+}: {
+  boardId: number;
+  client?: SprintClient;
+}) {
+  const t = useT();
+  const [velocity, setVelocity] = useState<Velocity | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    client.velocity(boardId).then(
+      (v) => live && setVelocity(v),
+      () => live && setFailed(true),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, boardId]);
+  if (failed) {
+    return (
+      <p className="board-problem" role="alert">
+        {t('sprints.charts.failed')}
+      </p>
+    );
+  }
+  if (!velocity) return <p className="report-empty">{t('reports.loading')}</p>;
+  return (
+    <div className="reports-body">
+      <VelocityChart velocity={velocity} />
+    </div>
+  );
 }
 
 /**
@@ -31,6 +114,8 @@ export function SprintReportPage({
   boardId,
   sprintId,
   client = sprintClient,
+  embedded = false,
+  backlogHref,
 }: SprintReportPageProps) {
   const t = useT();
   const id = useId();
@@ -124,49 +209,7 @@ export function SprintReportPage({
         />,
       );
     }
-    if (velocity) {
-      const s = velocity.statistic.statistic;
-      const format = chartValue(s, s === 'originalEstimate');
-      out.push(
-        velocity.sprints.length === 0 ? (
-          <p key="velocity" className="sprint-empty">
-            {t('sprints.charts.velocityNone')}
-          </p>
-        ) : (
-          <div key="velocity" className="chart-group">
-            <ColumnChart
-              title={t('sprints.charts.velocity')}
-              summary={t('sprints.charts.velocitySummary', {
-                count: velocity.sprints.length,
-                average: format(velocity.average),
-              })}
-              categories={velocity.sprints.map((x) => ({ key: String(x.id), label: x.name }))}
-              series={[
-                {
-                  id: 'committed',
-                  label: t('sprints.charts.committed'),
-                  tone: 'two',
-                  values: velocity.sprints.map((x) => x.committed),
-                },
-                {
-                  id: 'completed',
-                  label: t('sprints.charts.completed'),
-                  tone: 'one',
-                  values: velocity.sprints.map((x) => x.completed),
-                },
-              ]}
-              format={format}
-              unit={s === 'originalEstimate' ? 3600 : 1}
-              tableLabel={t('sprints.charts.table')}
-              categoryHeader={t('sprints.charts.sprint')}
-            />
-            <p className="sprint-empty">
-              {t('sprints.charts.velocityAverage', { average: format(velocity.average) })}
-            </p>
-          </div>
-        ),
-      );
-    }
+    if (velocity) out.push(<VelocityChart key="velocity" velocity={velocity} />);
     return <div className="sprint-charts">{out}</div>;
   };
 
@@ -207,15 +250,22 @@ export function SprintReportPage({
     </section>
   );
 
+  const title = report
+    ? t('sprints.report.title', { name: report.sprint.name })
+    : t('sprints.report.link');
   return (
     <section className="backlog-page" aria-labelledby={`${id}-title`}>
       <div className="board-header">
-        <h1 id={`${id}-title`} className="page-title">
-          {report
-            ? t('sprints.report.title', { name: report.sprint.name })
-            : t('sprints.report.link')}
-        </h1>
-        <a href={routeHref(`#/boards/${boardId}/backlog`)}>{t('sprints.report.toBacklog')}</a>
+        {embedded ? (
+          <h2 id={`${id}-title`}>{title}</h2>
+        ) : (
+          <h1 id={`${id}-title`} className="page-title">
+            {title}
+          </h1>
+        )}
+        <a href={backlogHref ?? routeHref(`#/boards/${boardId}/backlog`)}>
+          {t('sprints.report.toBacklog')}
+        </a>
       </div>
       {failed && (
         <p className="board-problem" role="alert">

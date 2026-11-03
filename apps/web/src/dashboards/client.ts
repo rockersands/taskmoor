@@ -29,7 +29,8 @@ export const WIDGET_KINDS = [
   'days-remaining',
   'average-time-in-status',
 ] as const;
-export type WidgetKind = (typeof WIDGET_KINDS)[number];
+/** The kinds a dashboard offers, and one only a track's Summary can hold (ADR-116). */
+export type WidgetKind = (typeof WIDGET_KINDS)[number] | 'track-summary';
 
 export interface Widget {
   id: string;

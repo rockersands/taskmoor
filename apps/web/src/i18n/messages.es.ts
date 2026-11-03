@@ -3957,6 +3957,7 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.kind.sprint-burndown': 'Burndown del sprint',
   'dashboards.kind.sprint-health': 'Salud del sprint',
   'dashboards.kind.days-remaining': 'Días que quedan del sprint',
+  'dashboards.kind.track-summary': 'Los números de este track',
   'dashboards.kind.average-time-in-status': 'Tiempo medio en cada estado',
   'dashboards.value.none': 'Ninguno',
   'dashboards.value.other': 'Otro',
@@ -4091,11 +4092,55 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.startWallboard':
     'Empezar la pantalla mural con {count, plural, one {# panel} other {# paneles}}',
   'dashboards.chooseHint': 'Elige paneles para mostrarlos por turnos en una pantalla mural.',
+  'summary.purpose':
+    'Cómo va este track, de un vistazo: cada número abre la búsqueda que hay detrás.',
+  'summary.about':
+    'Hasta que alguien la personalice, esta página muestra los números del track. Su propietario y sus administradores pueden cambiarla por cualquier widget, y los demás que pueden ver el track la leen tal como está. Un widget nunca muestra un ticket que no podrías encontrar con una búsqueda.',
+  'summary.customize': 'Personalizar',
+  'summary.backToDefault': 'Volver al predeterminado',
+  'summary.confirmDefault':
+    '¿Volver al resumen predeterminado? Se quitan los widgets elegidos para este track, para todos.',
+  'summary.backToDefaultDone': 'Este track vuelve a mostrar su resumen predeterminado.',
+  'summary.save': 'Guardar el resumen',
+  'summary.conflict':
+    'Alguien cambió este resumen mientras tanto. Recarga la página e inténtalo de nuevo.',
+  'summary.forbidden':
+    'Solo el propietario y los administradores del track pueden cambiar su resumen.',
+  'summary.unsaved': 'Guarda el resumen para ver este widget.',
+  'summary.queryHint': 'Vacío para este track',
+  'summary.numbersFailed': 'No se pudieron cargar los números de este track.',
+  'summary.emptyTitle': 'Este resumen no tiene widgets',
+  'summary.empty': 'Los administradores del track aún no eligieron widgets para él.',
+  'summary.emptyEditable':
+    'Elige Personalizar para añadir algunos, o Volver al predeterminado para los números con los que empieza esta página.',
+  'statistics.title': 'Estadísticas de {name}',
+  'statistics.purpose':
+    'Todos los informes de este track en un solo lugar: cómo fluye su trabajo, sus sprints, sus versiones y sus tickets.',
+  'statistics.about':
+    'Cada informe cuenta solo los tickets que puedes ver en este track, así que dos personas pueden leer números distintos. Los informes que siguen sprints necesitan que el tablero del track sea Scrum; los demás funcionan con cualquier tablero.',
+  'statistics.group.flow': 'Flujo',
+  'statistics.group.sprints': 'Sprints',
+  'statistics.group.releases': 'Versiones',
+  'statistics.group.tickets': 'Tickets',
+  'statistics.needsScrum.title': '{report} necesita un tablero Scrum',
+  'statistics.needsScrum':
+    'Este informe sigue sprints, y el tablero de este track es Kanban, que no tiene. Los informes de flujo y de tickets funcionan con cualquier tablero.',
+  'statistics.noSprints.title': 'Aún no ha empezado ningún sprint',
+  'statistics.noSprints':
+    'El informe de un sprint aparece aquí cuando empieza un sprint de este tablero.',
+  'statistics.sprint': 'Sprint',
+  'statistics.axis.status': 'Estado',
+  'statistics.axis.priority': 'Prioridad',
+  'statistics.axis.type': 'Tipo',
+  'statistics.axis.assignee': 'Asignado',
+  'statistics.axis.requester': 'Solicitante',
+  'statistics.axis.creator': 'Creador',
+  'statistics.axis.closeReason': 'Motivo de cierre',
+  'statistics.axis.labels': 'Etiquetas',
+  'statistics.axis.targetRelease': 'Versión objetivo',
+  'statistics.axis.foundInRelease': 'Encontrado en la versión',
+  'statistics.axis.area': 'Área',
   'summary.title': '{name} ({key})',
-  'summary.releases': 'Versiones',
-  'summary.timeline': 'Cronograma',
-  'summary.list': 'Lista',
-  'summary.calendar': 'Calendario',
   'calendar.title': 'Calendario de {name}',
   'calendar.notFound': 'Este track no existe, o no puedes verlo.',
   'calendar.previous': 'Mes anterior',

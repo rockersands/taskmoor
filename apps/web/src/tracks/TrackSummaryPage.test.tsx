@@ -1,27 +1,30 @@
-import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
-import { fakeTrackClient, SHOP_SUMMARY } from './fixtures';
+import type { FakeTrackClient } from './fixtures';
+import { CUSTOM_WIDGETS, fakeTrackClient, SHOP_SUMMARY } from './fixtures';
 import { TrackSummaryPage } from './TrackSummaryPage';
 
-function open(locale: Locale = 'en', client = fakeTrackClient()) {
+function open(locale: Locale = 'en', client: FakeTrackClient = fakeTrackClient()) {
   const errors: Error[] = [];
   const view = render(
     <I18nProvider locale={locale} onError={(e) => errors.push(e)}>
-      <TrackSummaryPage trackKey="SHOP" client={client} />
+      <TrackSummaryPage trackKey="SHOP" client={client} checkQuery={async () => true} />
     </I18nProvider>,
   );
-  return { errors, container: view.container };
+  return { client, errors, container: view.container };
 }
+const CUSTOM = { layout: 'two' as const, version: 3, widgets: CUSTOM_WIDGETS };
 
 describe('track summary page (M1-064)', () => {
   it('[RPT-006] every number opens the search that counts it', async () => {
     open();
     expect(await screen.findByRole('heading', { level: 1, name: 'Shop (SHOP)' })).toBeVisible();
-    const open26 = screen.getByRole('link', { name: '26' });
+    const open26 = await screen.findByRole('link', { name: '26' });
     expect(open26).toHaveAttribute(
       'href',
       `#/search?q=${encodeURIComponent('track = SHOP AND closeReason IS EMPTY').replace(/%20/g, '+')}`,
@@ -73,9 +76,150 @@ describe('track summary page (M1-064)', () => {
   it('[RPT-006] every text goes through the catalogue (en-XA)', async () => {
     const { container, errors } = open('en-XA');
     await screen.findByRole('heading', { level: 1 });
+    await waitFor(() => expect(container.querySelector('.summary-sections')).not.toBeNull());
     const data = new Set(['High', 'Medium', 'Bug', 'Feature', 'Ada Lovelace', 'Grace Hopper']);
     const texts = visibleTexts(container).filter((t) => !/\d/.test(t) && !data.has(t));
     expect(untranslated(texts)).toEqual([]);
     expect(errors).toEqual([]);
+  });
+});
+
+describe('a customized track summary (ADR-116)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+  const customizable = (custom: Parameters<typeof fakeTrackClient>[1] = {}) =>
+    fakeTrackClient(SHOP_SUMMARY, { mayCustomize: true, ...custom });
+
+  it('[RPT-006] someone who may only read sees no way to change it', async () => {
+    open();
+    await screen.findByRole('heading', { level: 1 });
+    expect(screen.queryByRole('button', { name: 'Customize' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back to the default' })).toBeNull();
+  });
+
+  it('[RPT-006] a viewer reads the widgets chosen, without the tools that change them', async () => {
+    open('en', fakeTrackClient(SHOP_SUMMARY, { custom: CUSTOM }));
+    expect(await screen.findByRole('article', { name: 'Open bugs' })).toBeVisible();
+    expect(await screen.findByRole('link', { name: 'SHOP-41' })).toBeVisible();
+    expect(screen.getByText('Releases go out on Thursdays.')).toBeVisible();
+    expect(await screen.findByRole('link', { name: '26' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Customize' })).toBeNull();
+  });
+
+  it('[RPT-006] customizing starts from today’s numbers, so nothing is lost', async () => {
+    const user = userEvent.setup();
+    const { client } = open('en', customizable());
+    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    const numbers = await screen.findByRole('article', { name: "This track's numbers" });
+    expect(await within(numbers).findByRole('link', { name: '26' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save the summary' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('Saved.');
+    expect(client.saved).toEqual([
+      {
+        layout: 'one',
+        widgets: [{ kind: 'track-summary', column: 0, title: '', config: {} }],
+      },
+    ]);
+    expect(screen.getByRole('button', { name: 'Back to the default' })).toBeVisible();
+  });
+
+  it('[RPT-005] [RPT-006] adds a widget with the settings of its kind, an empty query meaning the track', async () => {
+    const user = userEvent.setup();
+    const { client } = open('en', customizable());
+    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'Two columns');
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Widget to add' }),
+      'Created vs closed',
+    );
+    await user.click(screen.getByRole('button', { name: 'Add widget' }));
+    const form = await screen.findByRole('form', { name: /Created vs closed/ });
+    expect(within(form).getByRole('textbox', { name: /query/i })).toHaveAttribute(
+      'placeholder',
+      'Empty for this track',
+    );
+    await user.click(within(form).getByRole('button', { name: 'Apply' }));
+    await user.click(screen.getByRole('button', { name: 'Save the summary' }));
+    await screen.findByRole('status');
+    expect(client.saved).toEqual([
+      {
+        layout: 'two',
+        widgets: [
+          expect.objectContaining({ kind: 'created-vs-closed', config: expect.anything() }),
+          { kind: 'track-summary', column: 0, title: '', config: {} },
+        ],
+      },
+    ]);
+  });
+
+  it('[RPT-006] moves and removes widgets, keeping the version it read', async () => {
+    const user = userEvent.setup();
+    const { client } = open('en', customizable({ custom: CUSTOM }));
+    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.click(
+      await screen.findByRole('button', { name: /Open bugs.*left|left.*Open bugs/i }),
+    );
+    await user.click(screen.getByRole('button', { name: /Remove.*Introduction/i }));
+    await user.click(screen.getByRole('button', { name: 'Save the summary' }));
+    await screen.findByRole('status');
+    expect(client.saved).toEqual([
+      expect.objectContaining({
+        layout: 'two',
+        version: 3,
+        widgets: [
+          expect.objectContaining({ id: 'w-numbers', column: 0 }),
+          expect.objectContaining({ id: 'w-open', column: 0 }),
+        ],
+      }),
+    ]);
+  });
+
+  it('[RPT-006] says when someone else changed it, or when the server refuses', async () => {
+    const user = userEvent.setup();
+    const stale = customizable({ custom: CUSTOM, saveError: 'version_conflict' });
+    const first = open('en', stale);
+    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    await user.click(screen.getByRole('button', { name: 'Save the summary' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Someone changed this summary');
+    first.container.remove();
+    const refused = customizable({ custom: CUSTOM, saveError: 'forbidden' });
+    const second = open('en', refused);
+    await user.click(await within(second.container).findByRole('button', { name: 'Customize' }));
+    await user.click(within(second.container).getByRole('button', { name: 'Save the summary' }));
+    expect(await within(second.container).findByRole('alert')).toHaveTextContent(
+      "Only the track's owner and administrators",
+    );
+  });
+
+  it('[RPT-006] goes back to the default when asked, and not otherwise', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+    open('en', customizable({ custom: CUSTOM }));
+    const back = await screen.findByRole('button', { name: 'Back to the default' });
+    await user.click(back);
+    expect(screen.getByRole('article', { name: 'Open bugs' })).toBeVisible();
+    await user.click(back);
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'This track shows its default summary again.',
+    );
+    expect(screen.queryByRole('article', { name: 'Open bugs' })).toBeNull();
+    expect(await screen.findByRole('region', { name: 'Open by priority' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Back to the default' })).toBeNull();
+  });
+
+  it('[RPT-006] explains a summary with no widgets', async () => {
+    open('en', fakeTrackClient(SHOP_SUMMARY, { custom: { ...CUSTOM, widgets: [] } }));
+    expect(await screen.findByText('No widgets on this summary')).toBeVisible();
+  });
+
+  it('[RPT-006] fits a phone while customizing, without sideways scrolling', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    open('en', customizable({ custom: CUSTOM }));
+    await user.click(await screen.findByRole('button', { name: 'Customize' }));
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
   });
 });

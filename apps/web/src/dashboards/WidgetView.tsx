@@ -12,7 +12,7 @@ import type { DashboardClient, Widget } from './client';
 
 const H = 3600;
 const DAY = 86_400;
-const STATIC = new Set<Widget['kind']>(['introduction', 'quick-links']);
+const STATIC = new Set<Widget['kind']>(['introduction', 'quick-links', 'track-summary']);
 
 interface Value {
   id: string | null;
@@ -32,7 +32,7 @@ interface TicketRow {
 export interface WidgetViewProps {
   dashboardId: number;
   widget: Widget;
-  client: DashboardClient;
+  client: Pick<DashboardClient, 'widget'>;
 }
 
 /** Durations in hours, or in days once they pass three. */

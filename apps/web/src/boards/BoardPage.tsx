@@ -634,7 +634,14 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
                 {t('sprints.backlog.link')}
               </a>
             )}
-            <a className="button-quiet" href={routeHref(`#/boards/${boardId}/reports`)}>
+            <a
+              className="button-quiet"
+              href={routeHref(
+                board.location.type === 'track' && board.location.track.key
+                  ? `#/tracks/${encodeURIComponent(board.location.track.key)}/statistics`
+                  : `#/boards/${boardId}/reports`,
+              )}
+            >
               {t('reports.link')}
             </a>
             {board.mayConfigure && (

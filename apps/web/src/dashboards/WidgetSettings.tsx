@@ -34,6 +34,7 @@ export const SETTINGS: Readonly<Record<WidgetKind, readonly Setting[]>> = {
   'sprint-health': ['board'],
   'days-remaining': ['board'],
   'average-time-in-status': ['query', 'days'],
+  'track-summary': [],
 };
 
 /** Fields a widget can group by (the server's axes); custom fields as `cf[<id>]`. */
@@ -79,6 +80,8 @@ export interface WidgetSettingsProps {
   onCancel: () => void;
   /** Asks the server whether a query can be read; saved as written without it. */
   checkQuery?: (query: string) => Promise<boolean>;
+  /** What an empty query means where the widget lives; every ticket the viewer sees otherwise. */
+  queryHint?: string;
 }
 
 /** A widget's title and settings, one form per kind (M1-064; RPT-005). */
@@ -88,6 +91,7 @@ export function WidgetSettings({
   onSave,
   onCancel,
   checkQuery,
+  queryHint,
 }: WidgetSettingsProps) {
   const t = useT();
   const id = useId();
@@ -179,7 +183,7 @@ export function WidgetSettings({
               id={fid}
               rows={2}
               value={String(config.query ?? '')}
-              placeholder={t('dashboards.setting.queryHint')}
+              placeholder={queryHint ?? t('dashboards.setting.queryHint')}
               aria-invalid={badQuery}
               aria-describedby={badQuery ? `${fid}-problem` : undefined}
               onChange={(e) => {

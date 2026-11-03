@@ -46,6 +46,43 @@ export function BoardInTrack({
   );
 }
 
+/**
+ * A report addressed by its board goes to its track's Statistics, so the track's tabs stay in
+ * place (ADR-116). A board an upgrade left outside a track keeps the page at its own address.
+ */
+export function StatisticsOfBoard({
+  boardId,
+  path,
+  children,
+}: {
+  boardId: number;
+  /** The report's path under the Statistics section, with its slash. */
+  path: string;
+  children: ReactNode;
+}) {
+  const [key, setKey] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    boardClient.board(boardId).then(
+      (board) => {
+        if (live) setKey(board.location.type === 'track' ? board.location.track.key : null);
+      },
+      () => {
+        if (live) setKey(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [boardId]);
+  if (key === undefined) return null;
+  return key ? (
+    <Redirect to={`#/tracks/${encodeURIComponent(key)}/statistics${path}`} />
+  ) : (
+    children
+  );
+}
+
 /** A Kanban board has no backlog: says so, and where to change it. */
 export function KanbanHasNoBacklog({ boardId }: { boardId: number }) {
   const t = useT();

@@ -84,11 +84,17 @@ import { TicketPage } from './tickets/view/TicketPage';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
-import { BoardInTrack, KanbanHasNoBacklog, Redirect } from './tracks/BoardInTrack';
+import {
+  BoardInTrack,
+  KanbanHasNoBacklog,
+  Redirect,
+  StatisticsOfBoard,
+} from './tracks/BoardInTrack';
 import { TrackBoardSection } from './tracks/TrackBoardSection';
 import { TrackFilesPage } from './tracks/TrackFilesPage';
 import { TrackLayout, type TrackSection } from './tracks/TrackLayout';
 import { TrackNavList } from './tracks/TrackNavList';
+import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
 import { TracksPage } from './tracks/TracksPage';
 import { TutorialsPage } from './tutorial/TutorialsPage';
@@ -570,13 +576,21 @@ function Pages() {
     ) : backlog ? (
       <BacklogPage key={`${boardId}-backlog`} boardId={Number(boardId)} />
     ) : report ? (
-      <SprintReportPage
-        key={`${boardId}-report-${report}`}
-        boardId={Number(boardId)}
-        sprintId={Number(report)}
-      />
+      <StatisticsOfBoard boardId={Number(boardId)} path={`/sprint-report/${report}`}>
+        <SprintReportPage
+          key={`${boardId}-report-${report}`}
+          boardId={Number(boardId)}
+          sprintId={Number(report)}
+        />
+      </StatisticsOfBoard>
     ) : reports ? (
-      <BoardReportsPage key={`${boardId}-reports`} boardId={Number(boardId)} report={flowReport} />
+      <StatisticsOfBoard boardId={Number(boardId)} path={`/${flowReport}`}>
+        <BoardReportsPage
+          key={`${boardId}-reports`}
+          boardId={Number(boardId)}
+          report={flowReport}
+        />
+      </StatisticsOfBoard>
     ) : settings ? (
       <BoardSettingsPage key={`${boardId}-settings`} boardId={Number(boardId)} />
     ) : (
@@ -651,7 +665,8 @@ function Pages() {
     active = 'tracks';
     guarded = true;
     const [, key = '', section = 'board', report] = TRACK_BOARD_SECTION.exec(hash) ?? [];
-    const flowReport = BOARD_REPORTS.find((r) => r === report) ?? 'cumulative-flow';
+    const statisticsReport = TRACK_REPORTS.find((r) => r === report) ?? 'cumulative-flow';
+    const statisticsSprint = /\/statistics\/sprint-report\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
     content = (
       <TrackLayout key={key} trackKey={key} section={section as TrackSection}>
         <TrackBoardSection trackKey={key}>
@@ -663,7 +678,13 @@ function Pages() {
                 <KanbanHasNoBacklog boardId={board.id} />
               )
             ) : section === 'statistics' ? (
-              <BoardReportsPage key={board.id} boardId={board.id} report={flowReport} />
+              <TrackStatisticsPage
+                key={board.id}
+                trackKey={key}
+                board={board}
+                report={statisticsReport}
+                sprintId={statisticsSprint ? Number(statisticsSprint) : null}
+              />
             ) : (
               <BoardPage key={board.id} boardId={board.id} />
             )
