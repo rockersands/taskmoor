@@ -225,8 +225,8 @@ export function fakeTrackClient(
     },
     groupFields: async () => [{ id: 'cf[9]', name: 'Team' }],
     list: async () => [
-      { key: 'SHOP', name: 'Shop', owner: { id: 1, name: 'Ada Lovelace' } },
-      { key: 'WEB', name: 'Web', owner: null },
+      { id: 1, key: 'SHOP', name: 'Shop', owner: { id: 1, name: 'Ada Lovelace' } },
+      { id: 2, key: 'WEB', name: 'Web', owner: null },
     ],
     sections: async () => options.sections ?? { backlog: true, sprints: true },
     board: async () => BOARD,
