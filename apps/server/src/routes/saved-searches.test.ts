@@ -627,9 +627,29 @@ describe('saved searches (M1-063)', () => {
   });
 
   it('[AGL-001] a board on a saved search shows its tickets and keeps it from deletion', async () => {
+    // Checked as the editor could run it: one they cannot see reads as missing.
+    const hidden = await save('alice', { name: 'Not for boards', query: 'track = SA' });
+    const refused = await post('bob', '/api/v1/boards', {
+      name: 'Bob tries',
+      kind: 'kanban',
+      trackId: tracks.SA,
+      source: { savedSearchId: hidden.id },
+    });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json().fields).toEqual({ 'source.savedSearchId': 'not_found' });
+    // A saved search across tracks cannot carry a board (ADR-116).
+    const across = await save('alice', { name: 'Across', query: 'track IN (SA, SB)' });
+    const outside = await post('alice', '/api/v1/boards', {
+      name: 'Across',
+      kind: 'kanban',
+      trackId: tracks.SA,
+      source: { savedSearchId: across.id },
+    });
+    expect(outside.statusCode).toBe(400);
+    expect(outside.json().fields).toEqual({ source: 'outside_track' });
     const source = await save('alice', {
       name: 'Board source',
-      query: 'track IN (SA, SB)',
+      query: 'track = SA',
       shares: [{ scope: 'track', trackId: tracks.SA }],
     });
     const created = await post('alice', '/api/v1/boards', {
@@ -644,28 +664,18 @@ describe('saved searches (M1-063)', () => {
     const data = await get('alice', `/api/v1/boards/${board.id}/data`);
     expect(data.statusCode, data.body).toBe(200);
     expect((data.json().cards as { key: string }[]).map((c) => c.key).sort()).toEqual(
-      [keys.a1, keys.a2, keys.b1].sort(),
+      [keys.a1, keys.a2].sort(),
     );
-    // Checked as the editor could run it: one they cannot see reads as missing.
-    const hidden = await save('alice', { name: 'Not for boards', query: 'track = SA' });
-    const refused = await post('bob', '/api/v1/boards', {
-      name: 'Bob tries',
-      kind: 'kanban',
-      trackId: tracks.SA,
-      source: { savedSearchId: hidden.id },
-    });
-    expect(refused.statusCode).toBe(400);
-    expect(refused.json().fields).toEqual({ 'source.savedSearchId': 'not_found' });
     const inUse = await del('alice', `/api/v1/saved-searches/${source.id}`);
     expect(inUse.statusCode).toBe(409);
     expect(inUse.json()).toEqual({ error: 'in_use', boards: [board.id] });
     // The board's query changes with the saved search.
     const narrowed = await patch('alice', `/api/v1/saved-searches/${source.id}`, {
-      query: 'track = SB',
+      query: `track = SA AND key = ${keys.a2}`,
     });
     expect(narrowed.statusCode, narrowed.body).toBe(200);
     const after = await get('alice', `/api/v1/boards/${board.id}/data`);
-    expect((after.json().cards as { key: string }[]).map((c) => c.key)).toEqual([keys.b1]);
+    expect((after.json().cards as { key: string }[]).map((c) => c.key)).toEqual([keys.a2]);
     // Back to a query of its own, then the saved search may go.
     const own = await patch('alice', `/api/v1/boards/${board.id}`, {
       source: { query: 'track = SA' },

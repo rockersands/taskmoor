@@ -29,6 +29,9 @@ import type { Manifest } from './dc-backup/manifest';
 import { schemeWorldOf, securityOf } from './dc-backup/schemes';
 import { buildWorld, type IssueFacts, type World, walkIssues } from './dc-backup/world';
 import { registerImportJobs } from './jobs';
+import { type LoadContext, PENDING } from './load';
+import { boards as boardLoader } from './load-agile';
+import type { BoardCommand, Warning } from './model';
 import { type FidelityReport, fidelityReport } from './report';
 
 // Made at run time: tests keep no credentials in the repository.
@@ -60,7 +63,9 @@ const day = (ms: number | null) => iso(ms)?.slice(0, 10) ?? null;
  * IMP-006, IMP-010; AGL-001 to AGL-011; CORE-015, CORE-016): a seeded synthetic backup with
  * Scrum and Kanban boards, one spanning two projects through its filter, columns with limits,
  * quick filters, sub-queries, sprints in every state with their issues, a rank on every issue,
- * versions and components imports through the route and the job. Every board and sprint of the
+ * versions and components imports through the route and the job. The fixture has three boards on
+ * one project: a track keeps one board (ADR-116), the first; the others become saved searches
+ * and their sprints stay on the track's board. Every board and sprint of the
  * fixture is compared with the target: columns, queries, board filters, sprint states and
  * dates, membership and the rank order; and the boards are read through the board and backlog
  * routes, card by card, against what the fixture says each must show.
@@ -239,6 +244,12 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
       ? `track IN (${b.projects.map((p) => p.key).join(', ')})`
       : `track = ${b.projects[0]?.key}`) + (b.component ? ` AND area = "${b.component.name}"` : '');
 
+  /** The board a fixture board's track keeps: the first of the track in the backup. */
+  const trackBoard = (b: AgileBoard) =>
+    agileWorldOf(world).boards.find((x) => x.projects[0] === b.projects[0]) as AgileBoard;
+  const keptBoards = () => agileWorldOf(world).boards.filter((b) => trackBoard(b) === b);
+  const foldedBoards = () => agileWorldOf(world).boards.filter((b) => trackBoard(b) !== b);
+
   async function boardRow(b: AgileBoard) {
     return database.db
       .selectFrom('board')
@@ -251,7 +262,8 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
     const aw = agileWorldOf(world);
     expect(report.failures).toEqual([]);
     expect(entity('board')?.source).toBe(manifest.activeObjects.AO_60DB71_RAPIDVIEW);
-    expect(entity('board')?.outcomes.created).toBe(aw.boards.length);
+    expect(entity('board')?.outcomes.created).toBe(keptBoards().length);
+    expect(entity('board')?.outcomes.linked).toBe(foldedBoards().length);
     expect(entity('sprint')?.outcomes.created).toBe(aw.sprints.length);
     expect(entity('release')?.outcomes.created).toBe(manifest.entities.Version);
     expect(entity('area')?.outcomes.created).toBe(manifest.entities.Component);
@@ -265,9 +277,103 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
     const appFilters = aw.boards.flatMap((b) => b.quickFilters.filter((f) => f.kind === 'app'));
     expect(appFilters.length).toBeGreaterThan(0);
     const left = report.warnings.filter((w) => w.kind === 'board');
-    expect(left.map((w) => [w.code, w.detail?.split(':')[0], w.count])).toEqual([
-      ['board_filter_not_imported', 'Commented (app)', appFilters.length],
-    ]);
+    const noted = left.map((w) => JSON.stringify([w.code, w.detail?.split(':')[0], w.count]));
+    expect(noted.sort()).toEqual(
+      [
+        ['board_filter_not_imported', 'Commented (app)', appFilters.length],
+        ...foldedBoards().map((b) => ['board_became_saved_search', b.name, 1]),
+      ]
+        .map((w) => JSON.stringify(w))
+        .sort(),
+    );
+  });
+
+  it('[IMP-004] [AGL-001] keeps one board per track: another board of the track becomes a saved search of its owner', async () => {
+    const folded = foldedBoards();
+    expect(folded.length).toBeGreaterThan(0);
+    const rows = await database.db
+      .selectFrom('board')
+      .select(['id', 'location_track_id'])
+      .execute();
+    expect(rows).toHaveLength(keptBoards().length);
+    expect(new Set(rows.map((r) => r.location_track_id)).size).toBe(rows.length);
+    for (const b of folded) {
+      // Its sprints follow the id it maps to: the track's board.
+      expect(target('board', b.id), b.name).toBe(target('board', trackBoard(b).id));
+      const lead = b.projects[0]?.lead.key.toLowerCase() as string;
+      const saved = await database.db
+        .selectFrom('saved_search')
+        .select(['owner_id', 'query', 'import_problem'])
+        .where('name', '=', b.name)
+        .execute();
+      expect(saved, b.name).toEqual([
+        { owner_id: target('user', lead), query: expectedQuery(b), import_problem: null },
+      ]);
+    }
+    // The report's samples of a board compare with the board the record maps to.
+    const samples = report.samples.filter((s) => s.kind === 'board');
+    expect(samples.filter((s) => s.match === false)).toEqual([]);
+  });
+
+  it('[IMP-004] [IMP-009] a track with no owner keeps no saved search; a dry run says what the run will do', async () => {
+    const lost = foldedBoards()[0] as AgileBoard;
+    const command: BoardCommand = {
+      kind: 'board',
+      name: 'Another board',
+      description: '',
+      boardKind: 'kanban',
+      track: { kind: 'track', id: String(lost.projects[0]?.id) },
+      query: `track = ${lost.projects[0]?.key}`,
+      columns: [],
+    };
+    const trackId = (await boardRow(trackBoard(lost))).location_track_id as number;
+    class Undo extends Error {}
+    await database.db
+      .transaction()
+      .execute(async (trx) => {
+        const warnings: Warning[] = [];
+        const context = (dryRun: boolean, track: number) =>
+          ({
+            trx,
+            db: database.db,
+            workspaceId: 1,
+            system: 'test',
+            importSource: 'test',
+            dryRun,
+            refs: { get: () => track },
+            warn: (w: Warning) => warnings.push(w),
+          }) as unknown as LoadContext;
+
+        // Nobody to own it: the board still links, so its sprints stay, and the warning says so.
+        await trx.updateTable('track').set({ owner_id: null }).where('id', '=', trackId).execute();
+        const ctx = context(false, trackId);
+        const plan = await boardLoader.plan(ctx, command, null, 'another');
+        expect(plan).toMatchObject({
+          action: 'link',
+          targetId: target('board', trackBoard(lost).id),
+        });
+        expect(await boardLoader.apply(ctx, command, plan)).toBe(plan.targetId);
+        expect(warnings).toEqual([{ code: 'board_not_kept_no_owner', detail: 'Another board' }]);
+        expect(
+          await trx
+            .selectFrom('saved_search')
+            .select('id')
+            .where('name', '=', 'Another board')
+            .execute(),
+        ).toEqual([]);
+
+        // A dry run has nothing to read back: the second board of a track it would make links.
+        warnings.length = 0;
+        const dry = context(true, PENDING);
+        expect((await boardLoader.plan(dry, command, null, 'one')).action).toBe('create');
+        const second = await boardLoader.plan(dry, { ...command, name: 'Second' }, null, 'two');
+        expect(second).toMatchObject({ action: 'link', targetId: PENDING });
+        expect(warnings).toEqual([{ code: 'board_became_saved_search', detail: 'Second' }]);
+        throw new Undo();
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof Undo)) throw error;
+      });
   });
 
   it('[AGL-001] [AGL-002] [AGL-003] [AGL-005] [IMP-006] keeps each board: its kind, track, query, sub-filter, columns and board filters', async () => {
@@ -286,7 +392,7 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
     );
     const golden: unknown[] = [];
     let compared = 0;
-    for (const b of aw.boards) {
+    for (const b of keptBoards()) {
       const row = await boardRow(b);
       const columns = row.columns as unknown as Column[];
       const filters = row.board_filters as { id: string; name: string; query: string }[];
@@ -327,7 +433,7 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
       compared++;
       golden.push(got);
     }
-    expect(compared).toBe(aw.boards.length);
+    expect(compared).toBe(keptBoards().length);
     expect(aw.boards.filter((b) => b.projects.length > 1)).toHaveLength(1);
     expect(new Set(aw.boards.map((b) => b.kind))).toEqual(new Set(['scrum', 'kanban']));
     expect(KANBAN_SUB_QUERY).toContain('fixVersion');
@@ -340,8 +446,9 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
     const aw = agileWorldOf(world);
     const keyOf = new Map(issues.map(({ issue }) => [target('ticket', issue.id), issue.key]));
     const golden: unknown[] = [];
-    for (const b of aw.boards) {
-      const own = aw.sprints.filter((s) => s.board === b);
+    for (const b of keptBoards()) {
+      // Its own sprints and those of the track's other boards.
+      const own = aw.sprints.filter((s) => trackBoard(s.board) === b);
       const rows = await database.db
         .selectFrom('sprint')
         .selectAll()
@@ -495,9 +602,8 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
   });
 
   it('[AGL-002] [AGL-005] [AGL-009] reads every imported board card by card, with each board filter', async () => {
-    const aw = agileWorldOf(world);
     let cards = 0;
-    for (const b of aw.boards) {
+    for (const b of keptBoards()) {
       const id = target('board', b.id);
       const columnOf = (status: number) => b.columns.find((c) => c.statuses.includes(status));
       const shown = byRank().filter(
@@ -551,9 +657,11 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
     expect(cards).toBeGreaterThan(1000);
   });
 
-  it('[AGL-008] [AGL-010] reads the cross-track board backlog: open sprints, then the backlog, in rank order', async () => {
+  it('[AGL-008] [AGL-010] reads the backlog of a board with the sprints of a cross-track board: open sprints, then the backlog, in rank order', async () => {
     const aw = agileWorldOf(world);
-    const b = aw.boards.find((x) => x.projects.length > 1) as AgileBoard;
+    const cross = aw.boards.find((x) => x.projects.length > 1) as AgileBoard;
+    const b = trackBoard(cross);
+    expect(b).not.toBe(cross);
     const res = await as({ method: 'GET', url: `/api/v1/boards/${target('board', b.id)}/backlog` });
     expect(res.statusCode, res.body).toBe(200);
     const body = res.json() as {
@@ -568,8 +676,8 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
     );
     // The active sprint first, then the future ones in their order.
     const open = aw.sprints
-      .filter((s) => s.board === b && !s.closed)
-      .sort((x, y) => Number(y.started) - Number(x.started) || x.sequence - y.sequence);
+      .filter((s) => trackBoard(s.board) === b && !s.closed)
+      .sort((x, y) => Number(y.started) - Number(x.started));
     expect(body.sprints.map((s) => s.id)).toEqual(open.map((s) => target('sprint', s.id)));
     for (const [k, s] of open.entries()) {
       expect(
@@ -594,12 +702,14 @@ describe('Data Center backup import: boards, sprints, rank, releases and areas (
 
   it('[IMP-009] changes nothing when the same backup is imported again', async () => {
     const before = await database.db.selectFrom('board').select('id').execute();
+    const searches = await database.db.selectFrom('saved_search').select('id').execute();
     const again = await runImport();
     for (const kind of ['release', 'area', 'board', 'sprint', 'ticket']) {
       const e = again.entities.find((x) => x.kind === kind);
       expect(e?.outcomes.unchanged, kind).toBe(e?.source);
     }
     expect(await database.db.selectFrom('board').select('id').execute()).toEqual(before);
+    expect(await database.db.selectFrom('saved_search').select('id').execute()).toEqual(searches);
     expect(again.warnings.filter((w) => w.code === 'rank_changed')).toEqual([]);
     expect(runId).toBeGreaterThan(0);
   }, 600_000);

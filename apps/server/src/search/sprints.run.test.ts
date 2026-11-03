@@ -62,7 +62,6 @@ describe('sprint and release functions (M1-045)', () => {
     const res = await post('alice', '/api/v1/boards', {
       name,
       kind: 'scrum',
-      trackId: tracks.SP,
       source: { query },
       columns: [
         { id: 'todo', name: 'To do', statusIds: [S('New')] },
@@ -154,7 +153,7 @@ describe('sprint and release functions (M1-045)', () => {
     }
     const roles = await database.db.selectFrom('role').select(['id', 'name']).execute();
     const members = roles.find((r) => r.name === 'Members')?.id as number;
-    for (const key of ['SP', 'SQ']) {
+    for (const key of ['SP', 'SQ', 'SR']) {
       const res = await as('admin', {
         method: 'POST',
         url: '/api/v1/tracks',
@@ -188,9 +187,9 @@ describe('sprint and release functions (M1-045)', () => {
     await start('Alpha 2');
     await add('Alpha 3', ['t4']);
     await add('Alpha 4', ['t5']);
-    // Beta: its own active and future sprint.
-    for (const n of ['b1', 'b2', 'b3']) await ticket(n, 'SP', 'grpz');
-    await scrumBoard('Beta', 'track = SP AND summary ~ grpz');
+    // Beta, the board of another track: its own active and future sprint.
+    for (const n of ['b1', 'b2', 'b3']) await ticket(n, 'SR', 'grpz');
+    await scrumBoard('Beta', 'track = SR AND summary ~ grpz');
     await sprint('Beta', 'Beta 1');
     await sprint('Beta', 'Beta 2');
     await add('Beta 1', ['b1']);

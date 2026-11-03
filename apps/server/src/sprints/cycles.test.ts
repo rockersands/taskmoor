@@ -38,7 +38,7 @@ describe('sprint cycles (M1-045)', () => {
   let app: FastifyInstance;
   let catalogs: FieldCatalogs;
   const users: Record<string, { id: number; cookie: string }> = {};
-  let track = 0;
+  const trackIds: Record<string, number> = {};
   const status: Record<string, number> = {};
   const tickets: Record<string, { id: number; key: string }> = {};
 
@@ -76,12 +76,17 @@ describe('sprint cycles (M1-045)', () => {
     cycle: { lengthDays: 14, timeZone: MADRID },
     ...extra,
   });
-  async function board(name: string, group: string, sprintSettings: unknown = cycle()) {
+  async function board(name: string, group: string, sprintSettings: unknown = cycle(), key = 'CY') {
+    // A track has one board (ADR-116): each test starts the track's board afresh.
+    await database.db
+      .deleteFrom('board')
+      .where('location_track_id', '=', trackIds[key] as number)
+      .execute();
     const res = await post('/api/v1/boards', {
       name,
       kind: 'scrum',
-      trackId: track,
-      source: { query: `track = CY AND summary ~ ${group}` },
+      trackId: trackIds[key],
+      source: { query: `track = ${key} AND summary ~ ${group}` },
       columns: [
         { id: 'todo', name: 'To do', statusIds: [S('New')] },
         { id: 'doing', name: 'Doing', statusIds: [S('Active'), S('In Review')] },
@@ -169,25 +174,27 @@ describe('sprint cycles (M1-045)', () => {
       });
       users[name] = { id: row.id, cookie: sessionCookie(res.headers['set-cookie']) };
     }
-    const res = await as('admin', {
-      method: 'POST',
-      url: '/api/v1/tracks',
-      payload: { key: 'CY', name: 'Cycles', mode: 'shared' },
-    });
-    expect(res.statusCode, res.body).toBe(201);
-    track = res.json().track.id;
     const members = (await database.db.selectFrom('role').select(['id', 'name']).execute()).find(
       (r) => r.name === 'Members',
     )?.id as number;
-    await database.db
-      .insertInto('track_role_actor')
-      .values({
-        workspace_id: 1,
-        track_id: track,
-        role_id: members,
-        user_id: users.alice?.id as number,
-      })
-      .execute();
+    for (const key of ['CY', 'CZ']) {
+      const res = await as('admin', {
+        method: 'POST',
+        url: '/api/v1/tracks',
+        payload: { key, name: `Cycles ${key}`, mode: 'shared' },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+      trackIds[key] = res.json().track.id;
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: trackIds[key] as number,
+          role_id: members,
+          user_id: users.alice?.id as number,
+        })
+        .execute();
+    }
     for (const s of await database.db.selectFrom('status').select(['id', 'name']).execute()) {
       status[s.name] = s.id;
     }
@@ -336,7 +343,7 @@ describe('sprint cycles (M1-045)', () => {
     const s1 = await sprint(plain);
     await add(s1, ['e1']);
     await start(s1, '2026-10-05T07:00:00Z', '2026-10-19T07:00:00Z');
-    const idle = await board('Idle', 'grpe');
+    const idle = await board('Idle', 'grpe', cycle(), 'CZ');
     await sprint(idle);
     await roll('2027-01-01T00:00:00Z');
     expect((await sprintsOf(plain)).map((s) => s.state)).toEqual(['active']);

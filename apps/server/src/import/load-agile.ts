@@ -1,3 +1,4 @@
+import type { JsonValue } from '@taskmoor/db';
 import { parseQuery, printQuery, QueryError } from '@taskmoor/query';
 import { sql } from 'kysely';
 import { bindCondition, type Scope } from '../boards/data';
@@ -17,6 +18,8 @@ import {
   type Loader,
   lower,
   PENDING,
+  type Plan,
+  PlanFailure,
   real,
   required,
 } from './load';
@@ -27,6 +30,12 @@ import type { BoardCommand, Ref, SprintCommand } from './model';
  * loaders, keeping what the source says: a sprint's state and dates as they were, a closed
  * sprint's tickets in its history. Board settings the source does not carry take the defaults
  * a new board gets (swimlanes, quick filters, card rules, sprint settings).
+ *
+ * A track has one board (ADR-116). A source may hold several: the first one a track meets is its
+ * board, and any other links to it, so its sprints stay on the track, with its query kept as a
+ * saved search of the track's owner and a warning naming it. A track with no owner has nobody to
+ * keep the query for: the warning says so and nothing is made up. Linking, not updating, is what
+ * keeps a later run from writing the other board's name and columns over the track's.
  */
 
 interface BoardData {
@@ -36,6 +45,106 @@ interface BoardData {
   /** Given by the command (M1-093): written on create and update. */
   subQuery?: string | null;
   boardFilters?: BoardFilter[];
+  /** The track already has a board: who owns the saved search this one's query becomes. */
+  savedSearchOwner?: number;
+}
+
+/** What a dry run has planned as a track's board, per batch: nothing is written to read back. */
+const plannedBoards = new WeakMap<LoadContext, Map<string, string>>();
+
+/** Whether an earlier run linked this record to a board that is another's (see the header). */
+async function linkedToAnotherBoard(
+  ctx: LoadContext,
+  board: number,
+  sourceId: string,
+  name: string,
+): Promise<boolean> {
+  const own = await ctx.trx
+    .selectFrom('board')
+    .select('name')
+    .where('id', '=', board)
+    .executeTakeFirst();
+  if (own === undefined || lower(own.name) === lower(name)) return false;
+  const first = await ctx.trx
+    .selectFrom('import_external_id as e')
+    .innerJoin('import_record as r', (join) =>
+      join
+        .onRef('r.run_id', '=', 'e.first_run_id')
+        .onRef('r.entity_kind', '=', 'e.entity_kind')
+        .onRef('r.source_id', '=', 'e.source_id'),
+    )
+    .select('r.outcome')
+    .where('e.workspace_id', '=', ctx.workspaceId)
+    .where('e.import_source', '=', ctx.importSource)
+    .where('e.source_system', '=', ctx.system)
+    .where('e.entity_kind', '=', 'board')
+    .where('e.source_id', '=', sourceId)
+    .executeTakeFirst();
+  return first?.outcome === 'linked';
+}
+
+/** The plan of a board whose track has one already; `board` is PENDING in a dry run. */
+async function linkToTrackBoard(
+  ctx: LoadContext,
+  cmd: BoardCommand,
+  data: BoardData,
+  board: number,
+  fingerprint: JsonValue,
+): Promise<Plan> {
+  const owner =
+    data.track === PENDING
+      ? undefined
+      : (
+          await ctx.trx
+            .selectFrom('track')
+            .select('owner_id')
+            .where('id', '=', data.track)
+            .executeTakeFirst()
+        )?.owner_id;
+  ctx.warn({
+    code: owner === null ? 'board_not_kept_no_owner' : 'board_became_saved_search',
+    detail: cmd.name,
+  });
+  const read =
+    board === PENDING
+      ? new Map<number, JsonValue>()
+      : await boards.read(ctx.trx, ctx.workspaceId, [board]);
+  return {
+    action: 'link',
+    targetId: board,
+    // What the sample finds at the target is the track's board.
+    fingerprint: read.get(board) ?? fingerprint,
+    data: { ...data, ...(owner == null ? {} : { savedSearchOwner: owner }) },
+  };
+}
+
+/** Keeps a board's query as a saved search, under a name its owner does not have yet. */
+async function saveBoardQuery(ctx: LoadContext, cmd: BoardCommand, query: string, owner: number) {
+  const base = cmd.name.slice(0, 240);
+  for (let n = 1; n < 100; n++) {
+    const name = n === 1 ? base : n === 2 ? `${base} (imported)` : `${base} (imported ${n - 1})`;
+    const taken = await ctx.trx
+      .selectFrom('saved_search')
+      .select('id')
+      .where('workspace_id', '=', ctx.workspaceId)
+      .where('owner_id', '=', owner)
+      .where(sql<string>`lower(name)`, '=', lower(name))
+      .executeTakeFirst();
+    if (taken) continue;
+    if (n > 1) ctx.warn({ code: 'name_taken' });
+    await ctx.trx
+      .insertInto('saved_search')
+      .values({
+        workspace_id: ctx.workspaceId,
+        owner_id: owner,
+        name,
+        description: cmd.description,
+        query,
+      })
+      .execute();
+    return;
+  }
+  throw new PlanFailure('name_taken');
 }
 
 /**
@@ -110,7 +219,7 @@ const scopes = new WeakMap<LoadContext, Scope>();
 
 export const boards: Loader<BoardCommand> = {
   table: { name: 'board', id: 'id' },
-  async plan(ctx, cmd, existing) {
+  async plan(ctx, cmd, existing, sourceId) {
     const track = required(ctx, cmd.track, 'track');
     const fields = cmd.fields ?? [];
     // Queries a source gives in full (M1-093) are checked against the target.
@@ -193,23 +302,43 @@ export const boards: Loader<BoardCommand> = {
     };
     if (existing !== null) {
       await existingTarget(ctx, 'board', existing);
+      if (await linkedToAnotherBoard(ctx, existing, sourceId, cmd.name)) {
+        return linkToTrackBoard(ctx, cmd, data, existing, fingerprint);
+      }
       return { action: 'update', targetId: existing, fingerprint, data };
     }
     if (track !== PENDING) {
       const found = await ctx.trx
         .selectFrom('board')
-        .select('id')
+        .select(['id', 'name'])
         .where('workspace_id', '=', ctx.workspaceId)
         .where('location_track_id', '=', track)
-        .where(sql<string>`lower(name)`, '=', lower(cmd.name))
         .executeTakeFirst();
-      if (found) return { action: 'link', targetId: found.id, fingerprint, data };
+      if (found) {
+        return lower(found.name) === lower(cmd.name)
+          ? { action: 'link', targetId: found.id, fingerprint, data }
+          : linkToTrackBoard(ctx, cmd, data, found.id, fingerprint);
+      }
+    }
+    if (ctx.dryRun) {
+      const planned = plannedBoards.get(ctx) ?? new Map<string, string>();
+      plannedBoards.set(ctx, planned);
+      const first = planned.get(cmd.track.id);
+      if (first === undefined) planned.set(cmd.track.id, cmd.name);
+      else if (lower(first) === lower(cmd.name)) {
+        return { action: 'link', targetId: PENDING, fingerprint, data };
+      } else return linkToTrackBoard(ctx, cmd, data, PENDING, fingerprint);
     }
     return { action: 'create', targetId: null, fingerprint, data };
   },
   async apply(ctx, cmd, plan) {
     const d = plan.data as BoardData;
-    if (plan.action === 'link') return plan.targetId as number;
+    if (plan.action === 'link') {
+      if (d.savedSearchOwner !== undefined) {
+        await saveBoardQuery(ctx, cmd, d.query, d.savedSearchOwner);
+      }
+      return plan.targetId as number;
+    }
     if (plan.action === 'update') {
       const id = plan.targetId as number;
       await ctx.trx

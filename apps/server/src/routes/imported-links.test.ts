@@ -241,7 +241,12 @@ describe('links and keys from the tracker an import came from (M1-128)', () => {
     expect(dash.json().route).toMatch(/^#\/dashboards\/\d+$/);
 
     // A board's external id (the board import writes them): mapped the same way.
-    const track = await database.db.selectFrom('track').select('id').executeTakeFirstOrThrow();
+    const track = await database.db
+      .selectFrom('track')
+      .select(['id', 'key'])
+      .executeTakeFirstOrThrow();
+    // A track has one board (ADR-116): this test's board takes the place of the imported one.
+    await database.db.deleteFrom('board').where('location_track_id', '=', track.id).execute();
     const board = await as({
       method: 'POST',
       url: '/api/v1/boards',
@@ -249,7 +254,7 @@ describe('links and keys from the tracker an import came from (M1-128)', () => {
         name: 'Imported board',
         kind: 'kanban',
         trackId: track.id,
-        source: { query: 'type IS NOT EMPTY' },
+        source: { query: `track = ${track.key} AND type IS NOT EMPTY` },
       },
     });
     expect(board.statusCode, board.body).toBe(201);

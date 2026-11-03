@@ -279,8 +279,8 @@ describe('dashboard widgets (M1-064)', () => {
           payload: {
             name: 'Widgets flow',
             kind: 'kanban',
-            trackId: tracks.WA,
-            source: { query: 'track = WA' },
+            trackId: tracks.WB,
+            source: { query: 'track = WB' },
           },
         },
         201,

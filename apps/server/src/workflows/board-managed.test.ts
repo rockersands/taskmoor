@@ -214,7 +214,7 @@ describe('board-managed workflows (M1-126)', () => {
     );
   });
 
-  it('[WF-010] refuses a board of a shared-mode track, and a second managing board', async () => {
+  it('[WF-010] refuses a board of a shared-mode track, and a second board on the track', async () => {
     const shared = await call('admin', 'POST', '/api/v1/tracks', {
       key: 'SH',
       name: 'Shared',
@@ -233,17 +233,15 @@ describe('board-managed workflows (M1-126)', () => {
       { managed: true },
     );
     expect(refused.json()).toEqual({ error: 'shared_mode_track' });
+    // A track has one board (ADR-116), so no second board can come to manage its workflow.
     const second = await call('admin', 'POST', '/api/v1/boards', {
       name: 'Second board',
       kind: 'kanban',
       trackId,
       source: { query: 'track = BM' },
     });
-    const again = await call('admin', 'PUT', `/api/v1/boards/${second.json().board.id}/workflow`, {
-      managed: true,
-    });
-    expect(again.statusCode).toBe(409);
-    expect(again.json()).toEqual({ error: 'another_board_manages' });
+    expect(second.statusCode).toBe(409);
+    expect(second.json()).toEqual({ error: 'track_has_board', boardId: board.id });
   });
 
   it('[WF-010] stops managing and leaves the workflow as it was', async () => {

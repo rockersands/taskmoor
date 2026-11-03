@@ -129,11 +129,7 @@ describe('sprint charts (M1-060)', () => {
     const members = (await database.db.selectFrom('role').select(['id', 'name']).execute()).find(
       (r) => r.name === 'Members',
     )?.id as number;
-    // Bob sees CA only; alice sees both.
-    for (const [key, who] of [
-      ['CA', ['alice', 'bob']],
-      ['CB', ['alice']],
-    ] as const) {
+    for (const [key, who] of [['CA', ['alice', 'bob']]] as const) {
       const res = await call(
         'admin',
         {
@@ -173,7 +169,7 @@ describe('sprint charts (M1-060)', () => {
           name: 'Charts',
           kind: 'scrum',
           trackId: tracks.CA,
-          source: { query: 'track IN (CA, CB) AND summary ~ chart' },
+          source: { query: 'track = CA AND summary ~ chart' },
           columns: [
             { id: 'todo', name: 'To do', statusIds: [status.New] },
             { id: 'doing', name: 'Doing', statusIds: [status.Active, status['In Review']] },
@@ -190,8 +186,33 @@ describe('sprint charts (M1-060)', () => {
     ).board.id;
     await ticket('a', 'CA', 5);
     await ticket('b', 'CA', 3);
-    await ticket('c', 'CB', 8);
+    await ticket('c', 'CA', 8);
     await ticket('d', 'CA', 2);
+    // A visibility level only alice is on: bob browses the track, but not c.
+    const policy = await database.db
+      .insertInto('visibility_policy')
+      .values({ workspace_id: 1, name: 'Private' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const level = await database.db
+      .insertInto('visibility_level')
+      .values({ workspace_id: 1, policy_id: policy.id, name: 'Alice only', position: 0 })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('visibility_member')
+      .values({
+        workspace_id: 1,
+        level_id: level.id,
+        grantee: 'user',
+        user_id: users.alice?.id as number,
+      })
+      .execute();
+    await database.db
+      .updateTable('ticket')
+      .set({ visibility_level_id: level.id })
+      .where('id', '=', t.c?.id as number)
+      .execute();
     sprints.one = (await post(`/api/v1/boards/${board}/sprints`, { name: 'One' }, 201)).sprint.id;
     await post(`/api/v1/sprints/${sprints.one}/tickets`, {
       tickets: [t.a?.key, t.b?.key, t.c?.key],
@@ -223,7 +244,7 @@ describe('sprint charts (M1-060)', () => {
   });
 
   it('[RPT-001] counts only the tickets the viewer may see, on their time zone', async () => {
-    // Bob does not see CB, so c's 8 points are not his to count.
+    // Bob is not on c's visibility level, so its 8 points are not his to count.
     const chart = await burndown('bob', sprints.one as number);
     expect(chart.start).toEqual(expect.objectContaining({ remaining: 8, scope: 8 }));
     expect(chart.end).toEqual(expect.objectContaining({ remaining: 3, scope: 8, completed: 5 }));

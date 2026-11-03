@@ -14,6 +14,7 @@ import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { JobRunner } from '../events/queue';
 import { FieldCatalogs } from '../fields/catalog';
+import { agileWorldOf } from './dc-backup/agile';
 import { AGILE_CONFIGURATION_TABLES } from './dc-backup/agile-format';
 import { defaultOptions, generateDcBackup } from './dc-backup/generate';
 import type { Manifest } from './dc-backup/manifest';
@@ -231,7 +232,10 @@ describe('Data Center backup import (M1-088)', () => {
       expect(e?.outcomes.failed, kind).toBe(0);
       expect(e?.outcomes.skipped, kind).toBe(skippedOf(kind));
       expect((e?.outcomes.created ?? 0) + (e?.outcomes.linked ?? 0), kind).toBe(n);
-      expect(e?.fidelity, kind).toBe(1);
+      // A track keeps one board (ADR-116): the report counts the others as not kept as boards.
+      const boards = agileWorldOf(world).boards;
+      const kept = new Set(boards.map((b) => b.projects[0])).size;
+      expect(e?.fidelity, kind).toBe(kind === 'board' ? kept / boards.length : 1);
     }
     expect(r.failures).toEqual([]);
     // Names the target had are linked, the others created; the dry run said the same.

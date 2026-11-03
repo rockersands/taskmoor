@@ -170,7 +170,7 @@ describe('report event store (M1-059)', () => {
           name: 'Reports board',
           kind: 'scrum',
           trackId: tracks.RP,
-          source: { query: 'track IN (RP, RQ) AND summary ~ rpt' },
+          source: { query: 'track = RP AND summary ~ rpt' },
           columns: [
             { id: 'todo', name: 'To do', statusIds: [status.New] },
             { id: 'doing', name: 'Doing', statusIds: [status.Active, status['In Review']] },
