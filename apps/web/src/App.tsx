@@ -4,6 +4,7 @@ import { accountClient } from './account/client';
 import { AdminGroupPage } from './admin/AdminGroupPage';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminOverviewPage } from './admin/AdminOverviewPage';
+import { AiLimitsPage } from './admin/AiLimitsPage';
 import { AiSettingsPage } from './admin/AiSettingsPage';
 import { AiUsagePage } from './admin/AiUsagePage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
@@ -172,6 +173,7 @@ const ADMIN_TRASH = '#/admin/trash';
 const ADMIN_MCP = '#/admin/mcp';
 const ADMIN_API_USAGE = '#/admin/api-usage';
 const ADMIN_AI_USAGE = '#/admin/ai-usage';
+const ADMIN_AI_LIMITS = '#/admin/ai-limits';
 const ADMIN_AUDIT = '#/admin/audit';
 const ADMIN_NETWORK = '#/admin/network-access';
 const ADMIN_FRONTENDS = '#/admin/frontends';
@@ -480,6 +482,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-ai-limits',
+              labelId: 'settings.aiLimits' as const,
+              keywords: ['ai', 'limit', 'spend', 'budget', 'price', 'rate', 'cost', 'tokens'],
+              run: () => {
+                navigate(ADMIN_AI_LIMITS);
+              },
+            },
+            {
               id: 'go-webhooks',
               labelId: 'settings.webhooks' as const,
               keywords: ['webhook', 'events', 'deliveries', 'integration', 'callback'],
@@ -583,6 +593,8 @@ function Pages() {
     content = <ApiUsagePage />;
   } else if (isRoute(hash, ADMIN_AI_USAGE)) {
     content = <AiUsagePage />;
+  } else if (isRoute(hash, ADMIN_AI_LIMITS)) {
+    content = <AiLimitsPage />;
   } else if (isRoute(hash, ADMIN_AUDIT)) {
     content = <AuditPage />;
   } else if (isRoute(hash, ADMIN_NETWORK)) {

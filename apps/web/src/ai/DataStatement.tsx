@@ -29,7 +29,7 @@ export interface DataStatement {
   neverSent: string[];
 }
 
-const FEATURE_NAMES: Record<string, MessageId> = {
+export const FEATURE_NAMES: Record<string, MessageId> = {
   summarize: 'ai.statement.feature.summarize',
   'query-from-text': 'ai.statement.feature.queryFromText',
   'assisted-creation': 'ai.statement.feature.assistedCreation',

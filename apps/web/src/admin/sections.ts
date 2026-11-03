@@ -178,6 +178,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         labelId: 'settings.aiUsage',
         hintId: 'settings.aiUsageHint',
       },
+      {
+        id: 'ai-limits',
+        href: '#/admin/ai-limits',
+        labelId: 'settings.aiLimits',
+        hintId: 'settings.aiLimitsHint',
+      },
     ],
   },
   {
