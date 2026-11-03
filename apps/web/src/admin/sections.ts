@@ -165,6 +165,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         labelId: 'settings.frontends',
         hintId: 'settings.frontendsHint',
       },
+      {
+        id: 'webhooks',
+        href: '#/admin/webhooks',
+        labelId: 'settings.webhooks',
+        hintId: 'settings.webhooksHint',
+      },
       { id: 'ai', href: '#/admin/ai', labelId: 'settings.ai', hintId: 'settings.aiHint' },
       {
         id: 'ai-usage',

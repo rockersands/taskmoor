@@ -267,6 +267,26 @@
   overflow-wrap: anywhere;
 }
 
+.webhook-url {
+  overflow-wrap: anywhere;
+}
+
+.webhook-panel {
+  flex-basis: 100%;
+  min-width: 0;
+  margin-top: var(--space-2);
+}
+
+.webhook-events {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: var(--space-1) var(--space-3);
+}
+
+.webhook-events legend {
+  grid-column: 1 / -1;
+}
+
 .admin-page-links {
   max-width: 44rem;
 }

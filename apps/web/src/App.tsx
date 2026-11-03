@@ -106,6 +106,7 @@ import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
 import { TracksPage } from './tracks/TracksPage';
 import { TutorialsPage } from './tutorial/TutorialsPage';
+import { WebhooksPage } from './webhooks/WebhooksPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
 import { WorkflowsPage } from './workflow/WorkflowsPage';
 
@@ -175,6 +176,7 @@ const ADMIN_AUDIT = '#/admin/audit';
 const ADMIN_NETWORK = '#/admin/network-access';
 const ADMIN_FRONTENDS = '#/admin/frontends';
 const ADMIN_AI = '#/admin/ai';
+const ADMIN_WEBHOOKS = '#/admin/webhooks';
 const ADMIN_DIRECTORIES = '#/admin/directories';
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
@@ -478,6 +480,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-webhooks',
+              labelId: 'settings.webhooks' as const,
+              keywords: ['webhook', 'events', 'deliveries', 'integration', 'callback'],
+              run: () => {
+                navigate(ADMIN_WEBHOOKS);
+              },
+            },
+            {
               id: 'go-visibility',
               labelId: 'settings.visibility' as const,
               keywords: ['visibility', 'level', 'security level', 'scheme', 'hide'],
@@ -581,6 +591,8 @@ function Pages() {
     content = <FrontendsPage />;
   } else if (isRoute(hash, ADMIN_AI)) {
     content = <AiSettingsPage />;
+  } else if (isRoute(hash, ADMIN_WEBHOOKS)) {
+    content = <WebhooksPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
   } else if (isRoute(hash, ADMIN_USERS)) {
