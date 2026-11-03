@@ -142,8 +142,9 @@ export const messagesEs: Record<MessageId, string> = {
   'home.findTicket': 'Buscar un ticket',
   'home.tracks': 'Tus tracks',
   'home.tracksHelp':
-    'Los tracks que puedes ver. Abre uno para ver su resumen, lista, tablero y versiones.',
-  'home.tracksEmpty': 'Aún no hay tracks. Un administrador del sitio crea el primero en Gestionar.',
+    'Los tracks que puedes ver, primero los que abriste hace poco. Abre uno para ver su tablero, lista y versiones.',
+  'home.tracksEmpty': 'Aún no hay tracks',
+  'home.tracksAll': 'Todos los tracks ({count})',
   'home.trackKey': 'Clave {key}',
   'home.count': '{count, number}',
   'tutorial.title': 'Tutoriales',

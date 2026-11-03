@@ -128,8 +128,10 @@ export const messagesEn = {
   'home.followedEmptyHint': 'Follow a ticket to hear about its changes in your inbox.',
   'home.findTicket': 'Find a ticket',
   'home.tracks': 'Your tracks',
-  'home.tracksHelp': 'The tracks you can see. Open one for its summary, list, board and releases.',
-  'home.tracksEmpty': 'No tracks yet. A site administrator creates the first one in Manage.',
+  'home.tracksHelp':
+    'The tracks you can see, the latest you opened first. Open one for its board, list and releases.',
+  'home.tracksEmpty': 'No tracks yet',
+  'home.tracksAll': 'All tracks ({count})',
   'home.trackKey': 'Key {key}',
   'home.count': '{count, number}',
   // The guided tutorial (ADR-115): sections a person picks, each making one real thing.
