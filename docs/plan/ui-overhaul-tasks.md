@@ -1,5 +1,29 @@
 # Interface overhaul and guided tutorial: tasks
 
+## Review of the closer pass (2026-11-02, local session)
+
+The closer Liquid Glass pass was shown in the user's Chrome on the home page, a board and a ticket,
+light and dark. **Waiting on the user's answer; nothing big is built until then.**
+
+- **The one real choice left is the canvas behind the glass.** A small preview: `?canvas=base`,
+  `soft` or `vivid` and `?art=on` or `off` in the address, then a switch at the bottom of the page.
+  The choice stays in the browser. `base` is the pass as written, in CSS. `soft` and `vivid` use
+  generated pictures (`docs/plan/ui-assets-provenance.md`). `art` swaps the small icon in an empty
+  state for a generated illustration.
+- **To remove after the choice:** `apps/web/public/glass/preview.js`, the `<script>` for it in
+  `apps/web/index.html`, `apps/web/src/styles/glass-preview.css` and its import in `main.tsx`,
+  and the pictures not chosen.
+- **New on the page:** `<meta name="darkreader-lock">` in `apps/web/index.html` (ADR-114, section
+  4). The Dark Reader extension in the user's Chrome was repainting every colour, so what a person
+  with that extension saw was not the design.
+- **Still unclear after the pass, for later tasks:** a ticket opened from a board lights up Tracks
+  in the sidebar and has no link back to the board (UI-T04); a board's columns stop well short of
+  the page's width at 1920 px (UI-T07, UI-T16); the keyboard hint under a board's title competes
+  with its purpose line (UI-T07); the ticket's side panel still has Details and Information with
+  no word on the difference (UI-T07); a ticket's content stops short of the right of a wide screen.
+- **For UI-T02's test:** the values measured so far are one-off calculations, not a test. Muted
+  text directly on the canvas is the tightest pair.
+
 ## Handoff (2026-11-03, from the cloud session)
 
 The work continues in a local session on the user's PC. Start there with: read `CLAUDE.md`,

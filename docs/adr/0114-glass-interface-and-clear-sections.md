@@ -137,6 +137,9 @@ become **translucent glass**:
 - The new top-bar button switches between light and dark in one press.
 - Account, Appearance keeps the full choice (System, Light, Dark), saved with the account.
 - Every story keeps running its axe checks in both skins.
+- The page carries `<meta name="darkreader-lock">`: it has its own skins, and an extension that
+  repaints pages (found in the user's Chrome on 2026-11-02) replaces every colour, removes the
+  canvas and so hides the glass. A person who wants another look uses the skins.
 
 ### 5. Empty states that explain
 
