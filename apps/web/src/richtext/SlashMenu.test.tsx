@@ -232,7 +232,7 @@ describe('the slash menu (NTF-013)', () => {
     const title = await screen.findByRole('textbox', { name: 'Section title' });
     await waitFor(() => expect(title).toHaveFocus());
     await user.keyboard('More{Enter}');
-    expect(textbox).toHaveFocus();
+    await waitFor(() => expect(textbox).toHaveFocus());
     await user.keyboard('inside');
     expect(changes.at(-1)?.content?.[0]).toMatchObject({
       type: 'expand',
