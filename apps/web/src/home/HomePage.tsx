@@ -66,7 +66,7 @@ const STARTS: {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
 }[] = [
   { href: '#/create', title: 'home.start.create', hint: 'home.start.createHint', icon: PlusIcon },
-  { href: '#/boards', title: 'home.start.board', hint: 'home.start.boardHint', icon: BoardsIcon },
+  { href: '#/tracks', title: 'home.start.board', hint: 'home.start.boardHint', icon: BoardsIcon },
   {
     href: '#/search',
     title: 'home.start.search',

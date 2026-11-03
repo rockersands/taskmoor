@@ -167,6 +167,161 @@
   overflow-y: auto;
 }
 
+/* A track's sections: one tab bar shared by all its pages; it scrolls inside itself on a phone. */
+.track-tabs {
+  margin-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.track-tabs ul {
+  display: flex;
+  gap: var(--space-1);
+  width: max-content;
+  margin: 0;
+  padding: 0 0 var(--space-1);
+  list-style: none;
+}
+
+.track-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-target);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-text);
+  font-size: var(--font-size-200);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.track-tabs a:hover {
+  background: var(--glass-surface-sunken);
+}
+
+.track-tabs a[aria-current="page"] {
+  background: var(--glass-fill-strong);
+  box-shadow: var(--glass-highlight-flat);
+  font-weight: 600;
+}
+
+/* The tracks under "Tracks": its own scroll, so a long list never pushes the sidebar away. */
+.nav-sublist {
+  display: grid;
+  gap: 2px;
+  max-height: 16rem;
+  margin: 2px 0 0;
+  padding: 0 0 0 var(--space-6);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.nav-sublink {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.nav-sublink:hover {
+  background: var(--glass-surface-sunken);
+  color: var(--color-text);
+}
+
+.nav-sublink[aria-current="page"] {
+  background: var(--glass-lens-fill);
+  box-shadow: var(--glass-highlight-flat);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.nav-sublink-all {
+  margin-inline-start: var(--space-6);
+}
+
+@media (pointer: coarse) {
+  .track-tabs a,
+  .nav-sublink {
+    min-height: var(--hit-target-touch);
+  }
+}
+
+/* A track's files and links. */
+.track-files-group {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+}
+
+.track-files-group ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.track-files-group li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  overflow-wrap: anywhere;
+}
+
+.track-files-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+/* The directory of tracks. */
+.tracks-find {
+  max-width: 24rem;
+  margin-block: var(--space-3);
+}
+
+.tracks-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tracks-item {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-4);
+}
+
+.tracks-item a {
+  display: grid;
+  gap: 2px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.tracks-item-key {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+.tracks-item-name {
+  font-weight: 650;
+}
+
+.tracks-item-owner {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
 /* Empty states say what would be here, how it gets here, and offer the next step. */
 .empty-state {
   display: grid;

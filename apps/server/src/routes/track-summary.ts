@@ -42,6 +42,9 @@ export interface TrackSummaryOptions {
   timeoutMs?: number;
 }
 
+/** How many files and how many links the track's page lists, newest first. */
+const FILES_SHOWN = 200;
+
 export function registerTrackSummaryRoutes(
   app: FastifyInstance,
   db: Kysely<Database>,
@@ -66,6 +69,80 @@ export function registerTrackSummaryRoutes(
     });
     return { count: Math.min(n, COUNT_CAP), exact: n <= COUNT_CAP };
   }
+
+  // The files and web links on a track's tickets (ADR-116), through the same permission filter as
+  // a search of the track: a ticket the person may not see brings nothing here.
+  app.get('/api/v1/tracks/:id/files', async (request, reply) => {
+    if (!request.user) return reply.code(401).send({ error: 'unauthenticated' });
+    const p = trackParam.safeParse(request.params);
+    if (!p.success) return reply.code(404).send({ error: 'not_found' });
+    const lookup = db
+      .selectFrom('track')
+      .select(['id', 'key'])
+      .where('workspace_id', '=', request.workspaceId)
+      .where('deleted_at', 'is', null);
+    const track = await (typeof p.data.id === 'number'
+      ? lookup.where('id', '=', p.data.id)
+      : lookup.where(sql<boolean>`upper(key) = upper(${p.data.id})`)
+    ).executeTakeFirst();
+    const held = track ? await request.authz.track(track.id) : null;
+    if (!track || !held || !(held.has('browse_track') || held.has('administer_track'))) {
+      return reply.code(404).send({ error: 'not_found' });
+    }
+    try {
+      const scope = await boardScope(db, options.catalogs, request);
+      const where = await compileQuery(db, scope, `track = "${track.key}"`, new Date());
+      const { attachments, links } = await readOnly(db, timeoutMs, async (trx) => {
+        const files = await sql<{
+          id: number;
+          name: string;
+          size: string;
+          created_at: Date;
+          key: string;
+          summary: string;
+        }>`
+          SELECT a.id, a.name, a.size, a.created_at, ${track.key}::text || '-' || k.number AS key,
+                 k.summary
+            FROM attachment a
+            JOIN ticket k ON k.id = a.ticket_id
+           WHERE a.scan_state <> 'infected' AND ${where}
+           ORDER BY a.created_at DESC, a.id DESC
+           LIMIT ${FILES_SHOWN + 1}`.execute(trx);
+        const webLinks = await sql<{
+          id: number;
+          url: string;
+          title: string;
+          key: string;
+          summary: string;
+        }>`
+          SELECT w.id, w.url, w.title, ${track.key}::text || '-' || k.number AS key, k.summary
+            FROM ticket_web_link w
+            JOIN ticket k ON k.id = w.ticket_id
+           WHERE ${where}
+           ORDER BY w.created_at DESC, w.id DESC
+           LIMIT ${FILES_SHOWN + 1}`.execute(trx);
+        return { attachments: files.rows, links: webLinks.rows };
+      });
+      return {
+        attachments: attachments.slice(0, FILES_SHOWN).map((a) => ({
+          id: a.id,
+          name: a.name,
+          size: Number(a.size),
+          createdAt: new Date(a.created_at).toISOString(),
+          ticket: { key: a.key, summary: a.summary },
+        })),
+        links: links.slice(0, FILES_SHOWN).map((l) => ({
+          id: l.id,
+          url: l.url,
+          title: l.title,
+          ticket: { key: l.key, summary: l.summary },
+        })),
+        truncated: attachments.length > FILES_SHOWN || links.length > FILES_SHOWN,
+      };
+    } catch (error) {
+      return searchRefusal(reply, error, timeoutMs);
+    }
+  });
 
   app.get('/api/v1/tracks/:id/summary', async (request, reply) => {
     if (!request.user) return reply.code(401).send({ error: 'unauthenticated' });

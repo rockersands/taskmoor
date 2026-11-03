@@ -1,3 +1,4 @@
+import { BOARD } from '../boards/fixtures';
 import type { SummaryItem, TrackClient, TrackSummary } from './client';
 
 /** A track's summary for stories and tests (M1-064): made up, its parts adding up. */
@@ -41,6 +42,31 @@ export const SHOP_SUMMARY: TrackSummary = {
 
 export function fakeTrackClient(summary: TrackSummary | null = SHOP_SUMMARY): TrackClient {
   return {
+    list: async () => [
+      { key: 'SHOP', name: 'Shop', owner: { id: 1, name: 'Ada Lovelace' } },
+      { key: 'WEB', name: 'Web', owner: null },
+    ],
+    board: async () => BOARD,
+    files: async () => ({
+      attachments: [
+        {
+          id: 1,
+          name: 'invoice.pdf',
+          size: 2048,
+          createdAt: '2026-10-01T10:00:00Z',
+          ticket: { key: 'SHOP-41', summary: 'Checkout fails for expired cards' },
+        },
+      ],
+      links: [
+        {
+          id: 1,
+          url: 'https://example.com/design',
+          title: 'Design',
+          ticket: { key: 'SHOP-40', summary: 'Card payments' },
+        },
+      ],
+      truncated: false,
+    }),
     summary: async () => {
       if (!summary) throw new Error('not_found');
       return summary;

@@ -15,7 +15,6 @@ import { SystemPage } from './admin/SystemPage';
 import { TrashPage } from './admin/TrashPage';
 import { BoardPage } from './boards/BoardPage';
 import { BoardSettingsPage } from './boards/BoardSettingsPage';
-import { BoardsPage } from './boards/BoardsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
 import { CalendarPage } from './calendar/CalendarPage';
 import { TracksAdminPage } from './configuration/TracksAdminPage';
@@ -47,7 +46,6 @@ import { PermissionsPage } from './permissions/PermissionsPage';
 import { ReleasePage } from './releases/ReleasePage';
 import { ReleasesPage } from './releases/ReleasesPage';
 import { BOARD_REPORTS, BoardReportsPage } from './reports/BoardReportsPage';
-import { boardBehind } from './routing/cameFrom';
 import { ImportedLinkPage, sourceLinkRoute } from './routing/ImportedLinkPage';
 import { currentRoute, navigate, useRoute } from './routing/router';
 import { runtimeConfig } from './runtime/config';
@@ -64,7 +62,6 @@ import { AppShell } from './shell/AppShell';
 import { type Command, CommandPalette } from './shell/CommandPalette';
 import { HelpMenu } from './shell/HelpMenu';
 import {
-  BoardsIcon,
   DashboardsIcon,
   HomeIcon,
   InboxIcon,
@@ -87,7 +84,13 @@ import { TicketPage } from './tickets/view/TicketPage';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
+import { BoardInTrack, KanbanHasNoBacklog, Redirect } from './tracks/BoardInTrack';
+import { TrackBoardSection } from './tracks/TrackBoardSection';
+import { TrackFilesPage } from './tracks/TrackFilesPage';
+import { TrackLayout, type TrackSection } from './tracks/TrackLayout';
+import { TrackNavList } from './tracks/TrackNavList';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
+import { TracksPage } from './tracks/TracksPage';
 import { TutorialsPage } from './tutorial/TutorialsPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
 import { WorkflowsPage } from './workflow/WorkflowsPage';
@@ -104,7 +107,6 @@ export const NAV_ITEMS: readonly (NavItem & { requiresSession?: boolean })[] = [
     group: 'you',
   },
   { id: 'tracks', labelId: 'nav.tracks', href: '#/tracks', icon: TracksIcon, group: 'work' },
-  { id: 'boards', labelId: 'nav.boards', href: '#/boards', icon: BoardsIcon, group: 'work' },
   { id: 'search', labelId: 'nav.search', href: '#/search', icon: SearchIcon, group: 'work' },
   {
     id: 'dashboards',
@@ -171,7 +173,13 @@ const BULK = '#/bulk';
 /** A board by id (#/boards/7), and the list of boards at #/boards (M1-043). */
 const BOARDS = '#/boards';
 /** A track's summary by key (M1-064); the list of tracks itself is still to come. */
+const TRACKS = '#/tracks';
 const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
+/** A track's files and web links. */
+const TRACK_FILES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/files(?:[/?]|$)/;
+/** A track's board, backlog and statistics, which read its one board. */
+const TRACK_BOARD_SECTION =
+  /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/(board|backlog|statistics)(?:\/([a-z-]{1,40}))?(?:[/?]|$)/;
 /** A track's releases hub and a release's page (M1-050). */
 const TRACK_RELEASES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/releases(?:[/?]|$)/;
 const RELEASE = /^#\/releases\/(\d{1,10})(?:[/?]|$)/;
@@ -544,10 +552,10 @@ function Pages() {
     content = <TutorialsPage />;
   } else if (hash.startsWith(`${TICKET}/`) && hash.length > TICKET.length + 1) {
     const ticket = decodedSegment(hash.slice(TICKET.length + 1).split(/[/?]/)[0] ?? '');
-    active = boardBehind(ticket) ? 'boards' : 'tracks';
+    active = 'tracks';
     content = <TicketPage key={ticket} ticket={ticket} />;
   } else if (isRoute(hash, BOARDS)) {
-    active = 'boards';
+    active = 'tracks';
     guarded = true;
     const boardId = /^#\/boards\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
     const settings = /^#\/boards\/\d{1,10}\/settings(?:[/?]|$)/.test(hash);
@@ -557,8 +565,8 @@ function Pages() {
     // Flow reports (M1-061): #/boards/7/reports and #/boards/7/reports/<report>.
     const reports = /^#\/boards\/\d{1,10}\/reports(?:\/([a-z-]{1,40}))?(?:[/?]|$)/.exec(hash);
     const flowReport = BOARD_REPORTS.find((r) => r === reports?.[1]) ?? 'cumulative-flow';
-    content = !boardId ? (
-      <BoardsPage />
+    const inner = !boardId ? (
+      <Redirect to={TRACKS} />
     ) : backlog ? (
       <BacklogPage key={`${boardId}-backlog`} boardId={Number(boardId)} />
     ) : report ? (
@@ -574,6 +582,16 @@ function Pages() {
     ) : (
       <BoardPage key={boardId} boardId={Number(boardId)} />
     );
+    content = boardId ? (
+      <BoardInTrack
+        boardId={Number(boardId)}
+        section={backlog ? 'backlog' : reports || report ? 'statistics' : 'board'}
+      >
+        {inner}
+      </BoardInTrack>
+    ) : (
+      inner
+    );
   } else if (hash.startsWith(`${BULK}/`) && hash.length > BULK.length + 1) {
     active = 'tracks';
     const id = decodedSegment(hash.slice(BULK.length + 1).split(/[/?]/)[0] ?? '');
@@ -582,32 +600,91 @@ function Pages() {
     active = 'tracks';
     guarded = true;
     const key = TRACK_CALENDAR.exec(hash)?.[1] ?? '';
-    content = <CalendarPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="calendar">
+        <CalendarPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (TRACK_LIST.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_LIST.exec(hash)?.[1] ?? '';
-    content = <ListPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="list">
+        <ListPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (TRACK_TIMELINE.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_TIMELINE.exec(hash)?.[1] ?? '';
-    content = <TimelinePage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="timeline">
+        <TimelinePage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (TRACK_RELEASES.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_RELEASES.exec(hash)?.[1] ?? '';
-    content = <ReleasesPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="releases">
+        <ReleasesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
   } else if (RELEASE.test(hash)) {
     active = 'tracks';
     guarded = true;
     const releaseId = Number(RELEASE.exec(hash)?.[1]);
     content = <ReleasePage key={releaseId} releaseId={releaseId} />;
+  } else if (TRACK_FILES.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_FILES.exec(hash)?.[1] ?? '';
+    content = (
+      <TrackLayout trackKey={key} section="files">
+        <TrackFilesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
+  } else if (TRACK_BOARD_SECTION.test(hash)) {
+    // The sections that read the track's one board (ADR-116).
+    active = 'tracks';
+    guarded = true;
+    const [, key = '', section = 'board', report] = TRACK_BOARD_SECTION.exec(hash) ?? [];
+    const flowReport = BOARD_REPORTS.find((r) => r === report) ?? 'cumulative-flow';
+    content = (
+      <TrackLayout key={key} trackKey={key} section={section as TrackSection}>
+        <TrackBoardSection trackKey={key}>
+          {(board) =>
+            section === 'backlog' ? (
+              board.kind === 'scrum' ? (
+                <BacklogPage key={board.id} boardId={board.id} />
+              ) : (
+                <KanbanHasNoBacklog boardId={board.id} />
+              )
+            ) : section === 'statistics' ? (
+              <BoardReportsPage key={board.id} boardId={board.id} report={flowReport} />
+            ) : (
+              <BoardPage key={board.id} boardId={board.id} />
+            )
+          }
+        </TrackBoardSection>
+      </TrackLayout>
+    );
   } else if (TRACK_SUMMARY.test(hash)) {
     active = 'tracks';
     guarded = true;
     const key = TRACK_SUMMARY.exec(hash)?.[1] ?? '';
-    content = <TrackSummaryPage key={key} trackKey={key} />;
+    content = (
+      <TrackLayout trackKey={key} section="summary">
+        <TrackSummaryPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
+  } else if (hash === TRACKS || hash.startsWith(`${TRACKS}?`)) {
+    active = 'tracks';
+    // Public like the rest of the sidebar: a track the visitor may see, if any, shows.
+    guarded = false;
+    content = <TracksPage />;
   } else if (isRoute(hash, DASHBOARDS)) {
     active = 'dashboards';
     guarded = true;
@@ -680,6 +757,14 @@ function Pages() {
     <AppShell
       items={NAV_ITEMS}
       activeId={active}
+      navExpanded={(onNavigate) =>
+        signedIn && active === 'tracks'
+          ? {
+              id: 'tracks',
+              content: <TrackNavList hash={hash} {...(onNavigate ? { onNavigate } : {})} />,
+            }
+          : null
+      }
       topbarEnd={
         <>
           {signedIn && (

@@ -329,6 +329,23 @@ describe('boards (M1-043)', () => {
     expect(back.statusCode, back.body).toBe(200);
   });
 
+  it("[CORE-001] lists a track's files and links, only on tickets the viewer may see", async () => {
+    const made = await post('alice', '/api/v1/tickets', { track: 'BC', summary: 'With a link' });
+    const id = made.json().ticket.id as number;
+    await database.db
+      .insertInto('ticket_web_link')
+      .values({ workspace_id: 1, ticket_id: id, url: 'https://example.com/a', title: 'A link' })
+      .execute();
+    const read = await get('alice', `/api/v1/tracks/${tracks.BC}/files`);
+    expect(read.statusCode, read.body).toBe(200);
+    expect(read.json().links).toMatchObject([
+      { url: 'https://example.com/a', title: 'A link', ticket: { key: made.json().ticket.key } },
+    ]);
+    expect(read.json().attachments).toEqual([]);
+    // Bob does not browse this track.
+    expect((await get('bob', `/api/v1/tracks/${tracks.BC}/files`)).statusCode).toBe(404);
+  });
+
   it('[AGL-001] gives a track its board the first time it is opened, once', async () => {
     await database.db
       .deleteFrom('board')

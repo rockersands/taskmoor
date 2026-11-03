@@ -16,6 +16,8 @@ import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
 interface AppShellProps {
   items: readonly NavItem[];
   activeId: string;
+  /** A list under a sidebar item while the person is inside it; undefined when none can open. */
+  navExpanded?: (onNavigate?: () => void) => { id: string; content: ReactNode } | null;
   /** Controls shown at the right end of the top bar, such as the command palette. */
   topbarEnd?: ReactNode;
   children: ReactNode;
@@ -27,7 +29,7 @@ interface AppShellProps {
  * Desktop first: on wide screens the sidebar is always there and can collapse to an icon rail.
  * Below 768px it becomes a drawer opened from the menu button, so the app still works on phones.
  */
-export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps) {
+export function AppShell({ items, activeId, navExpanded, topbarEnd, children }: AppShellProps) {
   const t = useT();
   const compact = useMediaQuery(COMPACT_QUERY);
   const [collapsed, setCollapsed] = useState(false);
@@ -114,7 +116,12 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
 
       {!compact && (
         <aside id="shell-sidebar" className="shell-sidebar">
-          <NavList items={items} activeId={activeId} showLabels={!collapsed} />
+          <NavList
+            items={items}
+            activeId={activeId}
+            showLabels={!collapsed}
+            {...(navExpanded ? { expanded: navExpanded() } : {})}
+          />
         </aside>
       )}
 
@@ -136,7 +143,13 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
             aria-label={t('shell.navigationDialog')}
             onKeyDown={trapFocus}
           >
-            <NavList items={items} activeId={activeId} showLabels onNavigate={closeDrawer} />
+            <NavList
+              items={items}
+              activeId={activeId}
+              showLabels
+              onNavigate={closeDrawer}
+              {...(navExpanded ? { expanded: navExpanded(closeDrawer) } : {})}
+            />
           </div>
         </>
       )}

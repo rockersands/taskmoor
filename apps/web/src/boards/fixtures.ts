@@ -249,10 +249,6 @@ export function fakeBoardClient(
     peopleCalls: [],
     patches: [],
     list: async () => boards,
-    tracks: async () => [
-      { key: 'PAY', name: 'Payments' },
-      { key: 'WEB', name: 'Web app' },
-    ],
     create: async (input) => {
       const created: BoardSummary = {
         id: 9,
