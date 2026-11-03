@@ -106,7 +106,8 @@ import { TrackLayout, type TrackSection } from './tracks/TrackLayout';
 import { TrackNavList } from './tracks/TrackNavList';
 import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
-import { TracksPage } from './tracks/TracksPage';
+import { NEW_TRACK_ROUTE, TracksPage } from './tracks/TracksPage';
+import { newTrackModes } from './tracks/trackAccess';
 import { TutorialsPage } from './tutorial/TutorialsPage';
 import { WebhooksPage } from './webhooks/WebhooksPage';
 import { WorkflowEditorPage } from './workflow/WorkflowEditorPage';
@@ -299,6 +300,7 @@ function Pages() {
     },
     [setUser],
   );
+  const mayMakeTrack = newTrackModes(signedIn ? session.user : null).length > 0;
   const commands = useMemo<Command[]>(
     () => [
       ...NAV_ITEMS.map((item) => ({
@@ -308,6 +310,19 @@ function Pages() {
           navigate(item.href);
         },
       })),
+      // Making a track, for those the server lets (CORE-001).
+      ...(mayMakeTrack
+        ? [
+            {
+              id: 'new-track',
+              labelId: 'tracks.new' as const,
+              keywords: ['create', 'add'],
+              run: () => {
+                navigate(NEW_TRACK_ROUTE);
+              },
+            },
+          ]
+        : []),
       // The person's own account, once there is one to show.
       ...(signedIn
         ? [
@@ -558,7 +573,7 @@ function Pages() {
           ]
         : []),
     ],
-    [signedIn, admin, access, appear, showSignIn, signOut],
+    [signedIn, admin, access, mayMakeTrack, appear, showSignIn, signOut],
   );
 
   // First-run setup and password links stand alone: no shell before someone can sign in.

@@ -75,6 +75,13 @@ export const messagesEs: Record<MessageId, string> = {
   'tracks.emptyTitle': 'Aún no hay tracks',
   'tracks.empty':
     'Un track reúne los tickets de un equipo o proyecto. Los administradores los crean en Administración.',
+  'tracks.emptyMayCreate':
+    'Un track reúne los tickets de un equipo o proyecto, con su tablero, su backlog o su lista, y sus informes. Crea el primero para empezar.',
+  'tracks.new': 'Nuevo track',
+  'tracks.new.intro': 'Un track reúne los tickets de un equipo o proyecto. Su clave inicia la clave de cada ticket.',
+  'tracks.new.create': 'Crear track',
+  'tracks.new.cancel': 'Cancelar',
+  'tracks.new.close': 'Cerrar sin crear un track',
   'tracks.find': 'Buscar un track',
   'tracks.noMatch': 'Ningún track tiene ese nombre o clave.',
   'tracks.owner': 'A cargo de {name}',

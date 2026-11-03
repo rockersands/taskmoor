@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -22,22 +22,26 @@ Everything else is done through the [REST API](rest-api.md) under `/api/v1/track
 `GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the
 `admin` scope; see [API tokens](api-tokens.md).
 
-Taskmoor does not yet have a page that lists every track for everyone; the **Tracks** entry of
-the navigation is not finished.
+**Tracks** in the sidebar lists every track you can see, with a box to find one by name or key.
 
 ## Creating a track
 
 ### In the web app
 
-1. Go to **Administration**, **Tracks**.
-2. Under **Add a track**, fill in **Key** and **Track name**.
+Anyone who may make a track, see [Who may create one](#who-may-create-one), finds **New track** on the
+**Tracks** page and in the command palette. Others do not see it. If no track exists yet, the empty
+page offers it too.
+
+1. Press **New track**.
+2. Fill in **Key** and **Track name**.
 3. Choose **Configuration**: **Shared configuration** (shared mode) or **Its own
-   configuration** (local mode).
+   configuration** (local mode). Only the ones you may make are listed.
 4. Choose **Start from**: one of the **Templates**, or, for a shared track, **The configuration
    of another track**.
-5. Press **Add a track**.
+5. Press **Create track**. You land in the new track.
 
-When the template makes a board, the page shows a link, **Open the board of** and the key.
+Administrators can also use **Administration**, **Tracks**, with the same form under **Add a track**.
+There, when the template makes a board, the page shows a link, **Open the board of** and the key.
 
 ### Keys
 
@@ -92,7 +96,8 @@ track, and the template's board when one was made.
 
 - Shared-mode tracks: site and configuration administrators.
 - Local-mode tracks: people with the global permission **Create tracks with their own
-  configuration**.
+  configuration**. A new site grants it to every signed-in person; change that under
+  [permissions and access](permissions.md).
 
 The person who creates the track becomes its owner unless another owner is named, and joins the
 role that the track's access policy lets run the track (Administrators in the default policy).

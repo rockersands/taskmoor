@@ -127,6 +127,22 @@ describe('a track is one place with its sections (ADR-116)', () => {
     expect(screen.getByRole('link', { name: 'Web' })).not.toHaveAttribute('aria-current');
   });
 
+  it('[CORE-001] lists a track made a moment ago once the person lands in it', async () => {
+    const client = fakeTrackClient();
+    const before = await client.list();
+    const list = vi
+      .fn()
+      .mockResolvedValueOnce(before)
+      .mockResolvedValue([...before, { key: 'PAY', name: 'Payments', owner: null }]);
+    client.list = list;
+    inEnglish(<TrackNavList hash="#/tracks/PAY" client={client} />);
+    expect(await screen.findByRole('link', { name: 'Payments' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
   it('[CORE-001] keeps a long list short, with a link to all of them', async () => {
     const client = fakeTrackClient();
     client.list = async () =>

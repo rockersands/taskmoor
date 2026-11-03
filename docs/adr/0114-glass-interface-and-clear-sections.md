@@ -52,6 +52,9 @@ under its title.
 - **Tracks** becomes a real page: a directory of tracks (key, name, type, owner) with a search
   box. Inside a track, a tab bar holds Summary, List, Board, Backlog, Calendar, Timeline and
   Releases, so a track's pages read as one place.
+  It offers **New track** (a dialog with the form Administration uses) to those the server lets make
+  one: shared configuration for site and configuration administrators, local for
+  `create_local_tracks`, which the session reports. A person with neither sees no button.
 - **Settings** is personal: Account, Appearance and Tutorials.
 - **Administration** is a section of its own, separate from Settings, with its own navigation (the
   user's decision, 2026-11-03: a full panel in 1.0; it replaces the Settings hub first planned

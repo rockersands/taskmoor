@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { BOARD } from '../boards/fixtures';
+import type { ConfigurationClient } from '../configuration/client';
+import { SessionProvider } from '../session/SessionProvider';
 import { NoBacklog } from './BoardInTrack';
 import { fakeTrackClient } from './fixtures';
 import { TrackFilesPage } from './TrackFilesPage';
@@ -56,6 +58,23 @@ export const NoBacklogHere: Story = {
   },
 };
 
+const mayMakeTracks = {
+  status: 'signed-in',
+  user: {
+    id: 1,
+    name: 'Kalo',
+    email: 'kalo@example.com',
+    isSiteAdmin: true,
+    mayCreateLocalTracks: true,
+    timeZone: null,
+    locale: null,
+  },
+} as const;
+const creator = {
+  tracks: async () => [],
+  createTrack: async () => ({ track: { key: 'PAY' } }),
+} as unknown as ConfigurationClient;
+
 /** The directory of tracks. */
 export const Directory: Story = {
   render: () => (
@@ -63,6 +82,59 @@ export const Directory: Story = {
       <TracksPage client={fakeTrackClient()} />
     </main>
   ),
+};
+
+/** The directory for someone who may make a track. */
+export const DirectoryWithNewTrack: Story = {
+  render: () => (
+    <SessionProvider session={mayMakeTracks}>
+      <main>
+        <TracksPage client={fakeTrackClient()} creator={creator} />
+      </main>
+    </SessionProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('button', { name: 'New track' })).toBeVisible();
+  },
+};
+
+/** The form that makes a track, in its dialog. */
+export const NewTrackOpen: Story = {
+  render: () => (
+    <SessionProvider session={mayMakeTracks}>
+      <main>
+        <TracksPage client={fakeTrackClient()} creator={creator} />
+      </main>
+    </SessionProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'New track' }));
+    const dialog = within(canvas.getByRole('dialog', { name: 'New track' }));
+    await expect(dialog.getByLabelText('Key')).toHaveFocus();
+    await expect(dialog.getByRole('button', { name: 'Create track' })).toBeVisible();
+  },
+};
+
+/** No tracks yet, for someone who may make the first. */
+export const EmptyDirectoryOffersIt: Story = {
+  render: () => {
+    const client = fakeTrackClient();
+    client.list = async () => [];
+    return (
+      <SessionProvider session={mayMakeTracks}>
+        <main>
+          <TracksPage client={client} creator={creator} />
+        </main>
+      </SessionProvider>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('No tracks yet')).toBeVisible();
+    await expect(canvas.getAllByRole('button', { name: 'New track' })).toHaveLength(2);
+  },
 };
 
 /** The tracks under "Tracks" in the sidebar, the current one marked. */

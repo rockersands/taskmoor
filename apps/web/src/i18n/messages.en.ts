@@ -62,6 +62,14 @@ export const messagesEn = {
   'tracks.emptyTitle': 'No tracks yet',
   'tracks.empty':
     "A track holds a team or project's tickets. Administrators make them under Administration.",
+  'tracks.emptyMayCreate':
+    "A track holds a team or project's tickets, with its board, backlog or list, and reports. Make the first one to start.",
+  'tracks.new': 'New track',
+  'tracks.new.intro':
+    "A track holds a team or project's tickets. Its key starts every ticket's key.",
+  'tracks.new.create': 'Create track',
+  'tracks.new.cancel': 'Cancel',
+  'tracks.new.close': 'Close without making a track',
   'tracks.find': 'Find a track',
   'tracks.noMatch': 'No track has that name or key.',
   'tracks.owner': 'Led by {name}',

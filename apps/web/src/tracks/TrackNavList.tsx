@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { boardClient } from '../boards/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
@@ -89,6 +89,14 @@ export function TrackNavList({
   }, [boardId, boardTrack]);
 
   const routed = trackKeyOfRoute(hash) ?? ofBoard;
+  // A track made a moment ago: read the list again once, so it shows here at once.
+  const askedAbout = useRef<string | null>(null);
+  useEffect(() => {
+    if (!tracks || !routed || askedAbout.current === routed) return;
+    if (tracks.some((track) => track.key.toLowerCase() === routed.toLowerCase())) return;
+    askedAbout.current = routed;
+    client.list().then(setTracks, () => {});
+  }, [tracks, routed, client]);
   const current =
     tracks?.find((track) => track.key.toLowerCase() === routed?.toLowerCase())?.key ?? null;
   useEffect(() => {

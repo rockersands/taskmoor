@@ -226,6 +226,8 @@ describe('roles, access policies, global grants and track roles (M1-002)', () =>
     expect(session.json().user).toMatchObject({ isSiteAdmin: false, isConfigAdmin: true });
     const plain = await as('member', { method: 'GET', url: '/api/v1/session' });
     expect(plain.json().user).toMatchObject({ isSiteAdmin: false, isConfigAdmin: false });
+    // A plain member holds what every signed-in person is granted by default (CORE-001).
+    expect(plain.json().user.mayCreateLocalTracks).toBe(true);
     // Every read the setup pages make answers them (ADR-114).
     for (const url of [
       '/api/v1/tracks?archived=include&limit=200',

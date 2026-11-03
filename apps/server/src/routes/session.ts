@@ -61,6 +61,8 @@ export function registerSessionRoutes(
       isSiteAdmin: await request.authz.isSiteAdmin(),
       // Which parts of Administration the web app offers (ADR-114); the routes still decide.
       isConfigAdmin: await request.authz.hasGlobal('configuration_admin'),
+      // Whether the web app offers a track with its own configuration (POST /api/v1/tracks).
+      mayCreateLocalTracks: await request.authz.hasGlobal('create_local_tracks'),
     };
     // A program holding a token can ask what it is and what it may do (IAM-007).
     if (request.apiToken) {

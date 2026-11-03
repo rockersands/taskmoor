@@ -13,6 +13,8 @@ export interface SessionUser {
    * for a moment after signing in; the provider asks when it is.
    */
   isConfigAdmin?: boolean;
+  /** Holds Create tracks with their own configuration; known from the same answer. */
+  mayCreateLocalTracks?: boolean;
   /** IANA time zone the person chose; null follows the device. */
   timeZone: string | null;
   /** BCP 47 locale the person chose; null follows the browser. */
@@ -124,6 +126,7 @@ export function SessionProvider({
                   ...current.user,
                   isSiteAdmin: user.isSiteAdmin,
                   isConfigAdmin: Boolean(user.isConfigAdmin),
+                  mayCreateLocalTracks: Boolean(user.mayCreateLocalTracks),
                 },
               }
             : current,
@@ -161,14 +164,16 @@ export function SessionProvider({
   const setUser = useCallback((user: SessionUser) => {
     setSession((current) => {
       const known =
-        current.status === 'signed-in' && current.user.id === user.id
-          ? current.user.isConfigAdmin
-          : undefined;
+        current.status === 'signed-in' && current.user.id === user.id ? current.user : undefined;
       return {
         status: 'signed-in',
         user:
-          user.isConfigAdmin === undefined && known !== undefined
-            ? { ...user, isConfigAdmin: known }
+          user.isConfigAdmin === undefined && known?.isConfigAdmin !== undefined
+            ? {
+                ...user,
+                isConfigAdmin: known.isConfigAdmin,
+                mayCreateLocalTracks: Boolean(known.mayCreateLocalTracks),
+              }
             : user,
       };
     });
