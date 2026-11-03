@@ -123,6 +123,10 @@ export function SettingsPage() {
               <p className="page-note">{t('settings.setsHint')}</p>
             </li>
             <li>
+              <a href={routeHref('#/admin/ticket-templates')}>{t('settings.ticketTemplates')}</a>
+              <p className="page-note">{t('settings.ticketTemplatesHint')}</p>
+            </li>
+            <li>
               <a href={routeHref('#/admin/guardrails')}>{t('settings.guardrails')}</a>
               <p className="page-note">{t('settings.guardrailsHint')}</p>
             </li>

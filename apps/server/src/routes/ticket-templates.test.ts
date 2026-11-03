@@ -348,9 +348,10 @@ describe('ticket templates (CORE-029, CORE-030)', () => {
       .selectFrom('domain_event')
       .select(['type', 'payload'])
       .where('type', '=', 'ticket.created')
-      .where(({ eb, ref }) => eb(ref('payload', '->>').key('templateId'), '=', String(tpl.id)))
       .execute();
-    expect(events).toHaveLength(3);
+    expect(
+      events.filter((e) => (e.payload as { templateId?: number }).templateId === tpl.id),
+    ).toHaveLength(3);
     // Subtickets are optional, and a template value can be left out by name.
     const plain = ok(
       await apply('carol', tpl.id, {

@@ -4472,4 +4472,84 @@ export const messagesEs: Record<MessageId, string> = {
   'duplicates.likely': 'Probablemente el mismo. ',
   'duplicates.reason': '{reason}',
   'duplicates.byAi': 'Ordenados por IA, con sus motivos. Revísalos antes de fiarte de ellos.',
+  'summary.templates': 'Plantillas de ticket',
+  'settings.ticketTemplates': 'Plantillas de ticket',
+  'settings.ticketTemplatesHint':
+    'Plantillas que se ofrecen al crear un ticket en cualquier track.',
+  'tickets.templates.adminTitle': 'Plantillas de ticket para todos los tracks',
+  'tickets.templates.trackTitle': 'Plantillas de ticket de {name}',
+  'tickets.templates.toSummary': 'Volver al resumen',
+  'tickets.templates.intro':
+    'Una plantilla inicia un ticket nuevo con un resumen, un esquema, valores predeterminados y subtickets. Las personas revisan los valores en el formulario de creación antes de crear el ticket, y lo que no pueden establecer se omite.',
+  'tickets.templates.loading': 'Cargando las plantillas…',
+  'tickets.templates.failed':
+    'No se pudieron cargar las plantillas. Comprueba la dirección o inténtalo de nuevo en un momento.',
+  'tickets.templates.readOnlyTrack':
+    'Solo los administradores de este track pueden cambiar sus plantillas.',
+  'tickets.templates.readOnlyEveryTrack':
+    'Solo los administradores de configuración pueden cambiar estas plantillas.',
+  'tickets.templates.none': 'Todavía no hay plantillas aquí.',
+  'tickets.templates.new': 'Nueva plantilla',
+  'tickets.templates.saved': 'Se guardó la plantilla {name}.',
+  'tickets.templates.deleted': 'Se eliminó la plantilla {name}.',
+  'tickets.templates.everyTrack': 'Todos los tracks',
+  'tickets.templates.everyType': 'Todos los tipos de ticket',
+  'tickets.templates.subticketCount': '{count, plural, one {# subticket} other {# subtickets}}',
+  'tickets.templates.edit': 'Editar',
+  'tickets.templates.editOf': 'Editar la plantilla {name}',
+  'tickets.templates.delete': 'Eliminar',
+  'tickets.templates.deleteOf': 'Eliminar la plantilla {name}',
+  'tickets.templates.confirmDelete': 'Sí, eliminarla',
+  'tickets.templates.confirmDeleteOf': 'Sí, eliminar la plantilla {name}',
+  'tickets.templates.keep': 'Conservarla',
+  'tickets.templates.name': 'Nombre',
+  'tickets.templates.purpose': 'Para qué sirve',
+  'tickets.templates.types': 'Tipos de ticket a los que se aplica',
+  'tickets.templates.typesHint': 'No elijas ninguno para aplicarla a todos los tipos de ticket.',
+  'tickets.templates.summaryHint':
+    '{date} se convierte en la fecha de hoy, {track} en la clave del track, {user} en el nombre de quien crea el ticket.',
+  'tickets.templates.startInDays': 'Fecha de inicio, en días desde hoy',
+  'tickets.templates.dueInDays': 'Fecha de vencimiento, en días desde hoy',
+  'tickets.templates.assigneeHint': 'Escribe un nombre para buscar a alguien.',
+  'tickets.templates.removeAssignee': 'Quitar a {name} como responsable',
+  'tickets.templates.remove': 'Quitar',
+  'tickets.templates.customFields': 'Campos personalizados',
+  'tickets.templates.addFieldLabel': 'Añadir un valor para un campo',
+  'tickets.templates.addField': 'Añadir el campo',
+  'tickets.templates.removeField': 'Quitar el valor de {name}',
+  'tickets.templates.keptFields':
+    '{count, plural, one {# valor de un campo que este formulario no puede mostrar se queda como está.} other {# valores de campos que este formulario no puede mostrar se quedan como están.}}',
+  'tickets.templates.subtickets': 'Subtickets',
+  'tickets.templates.subticketSummary': 'Subticket {number}: resumen',
+  'tickets.templates.subticketType': 'Subticket {number}: tipo',
+  'tickets.templates.subticketTypeFirst': 'El primer tipo de subticket del track',
+  'tickets.templates.removeSubticket': 'Quitar el subticket {number}',
+  'tickets.templates.addSubticket': 'Añadir un subticket',
+  'tickets.templates.save': 'Guardar la plantilla',
+  'tickets.templates.cancel': 'Cancelar',
+  'tickets.templates.problem.nameTaken': 'Otra plantilla de aquí ya tiene ese nombre.',
+  'tickets.templates.problem.conflict':
+    'Otra persona cambió esta plantilla. Recarga la página e inténtalo de nuevo.',
+  'tickets.templates.problem.limit':
+    'Aquí ya hay tantas plantillas como se permite. Elimina una primero.',
+  'tickets.templates.problem.archived':
+    'Este track está archivado, así que sus plantillas no pueden cambiar.',
+  'tickets.templates.problem.invalid':
+    'Algunos valores no se pueden usar. Revisa los días, los campos y los subtickets.',
+  'tickets.templates.problem.forbidden': 'No puedes cambiar esta plantilla.',
+  'tickets.templates.problem.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'tickets.templates.pick': 'Empezar desde una plantilla',
+  'tickets.templates.pickNone': 'Sin plantilla',
+  'tickets.templates.pickFailed':
+    'No se pudo cargar esa plantilla. Inténtalo de nuevo en un momento.',
+  'tickets.templates.filled': 'Se rellenaron los valores de {name}: cambia lo que sea distinto.',
+  'tickets.templates.also': 'También de esta plantilla',
+  'tickets.templates.alsoSubtickets':
+    '{count, plural, one {Crear su # subticket} other {Crear sus # subtickets}}',
+  'tickets.templates.fieldNumber': 'campo {id}',
+  'tickets.templates.left': 'Se omitieron porque no se pueden establecer aquí: {fields}.',
+  'tickets.templates.subticketsMade':
+    '{count, plural, one {Subticket creado: {keys}.} other {Subtickets creados: {keys}.}}',
+  'tickets.templates.subticketsFailed':
+    'El ticket se creó, pero estos subtickets no se pudieron crear:',
 };

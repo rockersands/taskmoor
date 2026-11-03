@@ -1,0 +1,232 @@
+import { useCallback, useEffect, useId, useState } from 'react';
+import { useT } from '../../i18n/I18nProvider';
+import { routeHref } from '../../routing/router';
+import { useSessionExpiry } from '../../session/useSessionExpiry';
+import {
+  type SavedTemplate,
+  type TemplateClient,
+  type TemplateList,
+  type TemplateOptions,
+  templateClient,
+} from './client';
+import { refusalOf } from './draft';
+import { TemplateForm } from './TemplateForm';
+
+export interface TicketTemplatesPageProps {
+  /** The track whose templates these are (#/tracks/KEY/templates); none for every track. */
+  trackKey?: string;
+  /** Stories and tests pass their own backend; the page calls the API otherwise. */
+  client?: TemplateClient;
+}
+
+type Editing = { template: SavedTemplate | null } | null;
+
+/**
+ * Ticket templates (CORE-029): a track's at #/tracks/KEY/templates, with those for every track
+ * alongside, read-only; those for every track at #/admin/ticket-templates. Those who may change
+ * them add, edit and delete here; everyone else reads what the create form will offer.
+ */
+export function TicketTemplatesPage({
+  trackKey,
+  client = templateClient,
+}: TicketTemplatesPageProps) {
+  const t = useT();
+  const expired = useSessionExpiry();
+  const titleId = useId();
+  const track = trackKey ?? null;
+  const [state, setState] = useState<
+    | { status: 'loading' }
+    | { status: 'failed' }
+    | { status: 'loaded'; list: TemplateList; options: TemplateOptions }
+  >({ status: 'loading' });
+  const [editing, setEditing] = useState<Editing>(null);
+  const [confirming, setConfirming] = useState<number | null>(null);
+  const [message, setMessage] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [list, options] = await Promise.all([client.list(track), client.options(track)]);
+      setState({ status: 'loaded', list, options });
+    } catch (error) {
+      if (!expired(error)) setState({ status: 'failed' });
+    }
+  }, [client, track, expired]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const typeName = (options: TemplateOptions, id: number) =>
+    options.types.find((type) => type.id === id)?.name ?? String(id);
+
+  const remove = (template: SavedTemplate) => {
+    client.remove(template.id).then(
+      () => {
+        setConfirming(null);
+        setProblem(null);
+        setMessage(t('tickets.templates.deleted', { name: template.name }));
+        void load();
+      },
+      (error) => setProblem(t(refusalOf(error))),
+    );
+  };
+
+  const title =
+    state.status === 'loaded' && state.options.track
+      ? t('tickets.templates.trackTitle', { name: state.options.track.name })
+      : t('tickets.templates.adminTitle');
+
+  return (
+    <section aria-labelledby={titleId} className="admin-page people-page ticket-templates-page">
+      <div className="board-header">
+        <h1 id={titleId} className="page-title">
+          {title}
+        </h1>
+        {track && (
+          <a href={routeHref(`#/tracks/${encodeURIComponent(track)}`)}>
+            {t('tickets.templates.toSummary')}
+          </a>
+        )}
+      </div>
+      <p className="page-note">{t('tickets.templates.intro')}</p>
+      <p role="status" className="form-status">
+        {message}
+      </p>
+      {problem && (
+        <p role="alert" className="form-error">
+          {problem}
+        </p>
+      )}
+      {state.status === 'loading' && <p className="page-note">{t('tickets.templates.loading')}</p>}
+      {state.status === 'failed' && (
+        <p role="alert" className="form-error">
+          {t('tickets.templates.failed')}
+        </p>
+      )}
+      {state.status === 'loaded' && (
+        <>
+          {!state.list.mayCreate && (
+            <p className="page-note">
+              {track
+                ? t('tickets.templates.readOnlyTrack')
+                : t('tickets.templates.readOnlyEveryTrack')}
+            </p>
+          )}
+          {state.list.mayCreate && !editing && (
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button-primary"
+                onClick={() => {
+                  setMessage('');
+                  setEditing({ template: null });
+                }}
+              >
+                {t('tickets.templates.new')}
+              </button>
+            </div>
+          )}
+          {editing && (
+            <TemplateForm
+              key={editing.template?.id ?? 'new'}
+              client={client}
+              track={track}
+              options={state.options}
+              template={editing.template}
+              onCancel={() => setEditing(null)}
+              onSaved={(saved) => {
+                setEditing(null);
+                setProblem(null);
+                setMessage(t('tickets.templates.saved', { name: saved.name }));
+                void load();
+              }}
+            />
+          )}
+          {state.list.templates.length === 0 ? (
+            <p className="page-note">{t('tickets.templates.none')}</p>
+          ) : (
+            <ul className="people-list">
+              {state.list.templates.map((template) => {
+                // A template for every track is kept on its own page: a track's form would
+                // offer that track's areas and releases, which it cannot hold.
+                const here = track === null || template.track !== null;
+                return (
+                  <li key={template.id} className="people-item">
+                    <div className="people-main">
+                      <p className="people-name">
+                        {template.name}
+                        {track !== null && template.track === null && (
+                          <span className="people-badge">{t('tickets.templates.everyTrack')}</span>
+                        )}
+                      </p>
+                      {template.purpose && <p className="people-meta">{template.purpose}</p>}
+                      <p className="people-meta">
+                        {template.ticketTypeIds.length === 0
+                          ? t('tickets.templates.everyType')
+                          : template.ticketTypeIds
+                              .map((id) => typeName(state.options, id))
+                              .join(', ')}
+                      </p>
+                      {template.subtickets.length > 0 && (
+                        <p className="people-meta">
+                          {t('tickets.templates.subticketCount', {
+                            count: template.subtickets.length,
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    {template.mayEdit && here && (
+                      <div className="people-actions">
+                        <button
+                          type="button"
+                          className="button-secondary people-action"
+                          aria-label={t('tickets.templates.editOf', { name: template.name })}
+                          onClick={() => {
+                            setMessage('');
+                            setEditing({ template });
+                          }}
+                        >
+                          {t('tickets.templates.edit')}
+                        </button>
+                        {confirming === template.id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="button-danger people-action"
+                              aria-label={t('tickets.templates.confirmDeleteOf', {
+                                name: template.name,
+                              })}
+                              onClick={() => remove(template)}
+                            >
+                              {t('tickets.templates.confirmDelete')}
+                            </button>
+                            <button
+                              type="button"
+                              className="button-secondary people-action"
+                              onClick={() => setConfirming(null)}
+                            >
+                              {t('tickets.templates.keep')}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="button-secondary people-action"
+                            aria-label={t('tickets.templates.deleteOf', { name: template.name })}
+                            onClick={() => setConfirming(template.id)}
+                          >
+                            {t('tickets.templates.delete')}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
