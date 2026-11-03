@@ -203,9 +203,9 @@ const TUTORIALS = '#/settings/tutorials';
 /** A ticket by key (#/tickets/ABC-1); its attachments until the ticket view arrives (M1-051). */
 const TICKET = '#/tickets';
 const BULK = '#/bulk';
-/** A board by id (#/boards/7), and the list of boards at #/boards (M1-043). */
+/** A board by id (#/boards/7), which goes to its track's Board tab; #/boards itself goes to Tracks. */
 const BOARDS = '#/boards';
-/** A track's summary by key (M1-064); the list of tracks itself is still to come. */
+/** The directory of tracks, and a track's summary by key (M1-064). */
 const TRACKS = '#/tracks';
 const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 /** A track's files and web links. */

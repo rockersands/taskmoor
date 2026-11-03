@@ -74,7 +74,8 @@ export const Closing: Story = {
   args: { client: fakeTicketClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Close, to Closed' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /^Status: / }));
+    await userEvent.click(canvas.getByRole('menuitem', { name: 'Closed' }));
     await expect(canvas.getByRole('combobox', { name: 'Close reason' })).toBeVisible();
   },
 };

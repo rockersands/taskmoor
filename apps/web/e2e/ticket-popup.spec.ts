@@ -241,7 +241,7 @@ test('[CORE-023] [CORE-014] clone, copy a link and set the priority from the pop
 
   // The priority, by icon and name.
   await dialog.getByRole('combobox', { name: 'Priority' }).click();
-  await dialog.getByRole('option').first().click();
+  await dialog.getByRole('listbox').getByRole('option', { name: 'Urgent' }).click();
   await expect(dialog.getByText('Saved.')).toBeVisible();
 
   // Clone: a dialog inside the pop-up, and the copy opens in place of the original.

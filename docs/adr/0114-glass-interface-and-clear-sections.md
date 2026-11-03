@@ -42,8 +42,7 @@ under its title.
 |---|---|---|
 | Your work | Home | Your work in one place: what is assigned to you, what you opened lately and what you follow. |
 | | Inbox | Mentions of you and changes to the tickets you follow, newest first. |
-| Plan and track | Tracks | Every track you can see: open one for its summary, list, board, calendar, timeline and releases. |
-| | Boards | A board shows tickets as cards in columns, one column per step of the work. |
+| Plan and track | Tracks | Every track you can see: open one for its summary, list, board, calendar, timeline and releases. A board has no sidebar link of its own: each track has one, in its tabs (ADR-116). |
 | | Search | Find tickets with filters or the query language, and save the searches you reuse. |
 | | Dashboards | Charts and lists that sum up the work at a glance, for you or a team. |
 | Manage | Settings | Your own account, how Taskmoor looks for you and your tutorials. |

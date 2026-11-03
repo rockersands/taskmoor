@@ -20,7 +20,7 @@ test.describe('desktop', () => {
 
     await page.getByRole('button', { name: 'Collapse sidebar' }).click();
     await expect.poll(async () => (await sidebar.boundingBox())?.width).toBeLessThan(80);
-    await expect(sidebar.getByRole('link', { name: 'Boards', exact: true })).toBeVisible();
+    await expect(sidebar.getByRole('link', { name: 'Tracks', exact: true })).toBeVisible();
   });
 
   test('navigation changes the page', async ({ page }) => {
