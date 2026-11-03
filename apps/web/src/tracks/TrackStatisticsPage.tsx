@@ -575,6 +575,8 @@ export function TrackStatisticsPage({
         <VelocityReport boardId={board.id} client={sprints} />
       ) : (
         <TicketReport
+          // Each report starts from its own settings.
+          key={report}
           trackKey={trackKey}
           trackId={trackId}
           report={report as TicketReportKind}
