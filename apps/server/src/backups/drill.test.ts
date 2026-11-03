@@ -196,41 +196,43 @@ describe('the restore drill', () => {
     }
   });
 
-  it('[OPS-008] runs as `node cli.mjs drill` on the latest backup and exits 0 when it passes', async ({
-    skip,
-  }) => {
-    if (!available) skip('no pg_dump for this server version');
-    const data = mkdtempSync(join(tmpdir(), 'taskmoor-cli-'));
-    try {
-      const tsx = createRequire(import.meta.url).resolve('tsx/cli');
-      const cli = fileURLToPath(new URL('../cli.ts', import.meta.url));
-      const env = {
-        ...process.env,
-        DATABASE_URL: database.url,
-        TASKMOOR_DATA: data,
-        LOG_LEVEL: 'silent',
-      };
-      const taken = await run(process.execPath, [tsx, cli, 'backup'], { env });
-      expect(taken.stdout).toMatch(/backup complete/);
-      const drilled = await run(process.execPath, [tsx, cli, 'drill'], { env });
-      expect(drilled.stdout).toMatch(
-        /restore drill passed: \d+ tables, \d+ rows; verify .* total [\d.]+ s/,
-      );
-      expect(drilled.stdout).not.toContain('postgres:postgres@');
-      const report = JSON.parse(drilled.stdout.trim().split('\n').pop() ?? '{}');
-      expect(report).toMatchObject({ ok: true, countsChecked: true });
-      expect(report.backup.startsWith(join(data, 'backups'))).toBe(true);
-      expect(await drills()).toEqual([]);
-      // With nothing to drill it says so and exits 2.
-      const empty = mkdtempSync(join(tmpdir(), 'taskmoor-cli-empty-'));
-      const none = await run(process.execPath, [tsx, cli, 'drill'], {
-        env: { ...env, TASKMOOR_DATA: empty },
-      }).catch((error: { code: number; stderr: string }) => error);
-      expect(none).toMatchObject({ code: 2 });
-      expect((none as { stderr: string }).stderr).toMatch(/no backup found/);
-      rmSync(empty, { recursive: true, force: true });
-    } finally {
-      rmSync(data, { recursive: true, force: true });
-    }
-  }, process.platform === 'win32' ? 180_000 : 60_000);
+  it(
+    '[OPS-008] runs as `node cli.mjs drill` on the latest backup and exits 0 when it passes',
+    async ({ skip }) => {
+      if (!available) skip('no pg_dump for this server version');
+      const data = mkdtempSync(join(tmpdir(), 'taskmoor-cli-'));
+      try {
+        const tsx = createRequire(import.meta.url).resolve('tsx/cli');
+        const cli = fileURLToPath(new URL('../cli.ts', import.meta.url));
+        const env = {
+          ...process.env,
+          DATABASE_URL: database.url,
+          TASKMOOR_DATA: data,
+          LOG_LEVEL: 'silent',
+        };
+        const taken = await run(process.execPath, [tsx, cli, 'backup'], { env });
+        expect(taken.stdout).toMatch(/backup complete/);
+        const drilled = await run(process.execPath, [tsx, cli, 'drill'], { env });
+        expect(drilled.stdout).toMatch(
+          /restore drill passed: \d+ tables, \d+ rows; verify .* total [\d.]+ s/,
+        );
+        expect(drilled.stdout).not.toContain('postgres:postgres@');
+        const report = JSON.parse(drilled.stdout.trim().split('\n').pop() ?? '{}');
+        expect(report).toMatchObject({ ok: true, countsChecked: true });
+        expect(report.backup.startsWith(join(data, 'backups'))).toBe(true);
+        expect(await drills()).toEqual([]);
+        // With nothing to drill it says so and exits 2.
+        const empty = mkdtempSync(join(tmpdir(), 'taskmoor-cli-empty-'));
+        const none = await run(process.execPath, [tsx, cli, 'drill'], {
+          env: { ...env, TASKMOOR_DATA: empty },
+        }).catch((error: { code: number; stderr: string }) => error);
+        expect(none).toMatchObject({ code: 2 });
+        expect((none as { stderr: string }).stderr).toMatch(/no backup found/);
+        rmSync(empty, { recursive: true, force: true });
+      } finally {
+        rmSync(data, { recursive: true, force: true });
+      }
+    },
+    process.platform === 'win32' ? 180_000 : 60_000,
+  );
 });
