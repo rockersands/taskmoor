@@ -161,13 +161,16 @@ reported, and the coordinator checked that it was pushed.
 | T-111 | A way back from a ticket to its board | On branch | `claude/ui-overhaul` |
 | T-112 | Fix Escape after Create in the create dialog | On branch | `claude/ui-overhaul` |
 | T-113 | Ticket templates | On branch | `claude/ticket-templates`; form limits accepted by the user |
-| T-114 | Links with categories, on every ticket type | In progress | `claude/ticket-tools` |
-| T-115 | Link picker searches by number or name, same track only | In progress | `claude/ticket-tools` |
-| T-116 | Subtickets on the ticket page, with a completion percentage | In progress | `claude/ticket-tools`; normal ticket statuses |
-| T-117 | Checklists with completion, item states open, in progress, done, rejected | In progress | `claude/ticket-tools`; rejected items are left out of the percentage |
-| T-118 | A `/` menu in descriptions and comments | In progress | `claude/ticket-tools`; our own list, no Atlassian site opened |
+| T-114 | Links with categories, on every ticket type | On branch | `claude/ticket-tools` |
+| T-115 | Link picker searches by number or name, same track only | On branch | `claude/ticket-tools` |
+| T-116 | Subtickets on the ticket page, with a completion percentage | On branch | `claude/ticket-tools`; normal ticket statuses |
+| T-117 | Checklists with completion, item states open, in progress, done, rejected | On branch | `claude/ticket-tools`; rejected items are left out of the percentage |
+| T-118 | A `/` menu in descriptions and comments | On branch | `claude/ticket-tools`; our own list, no Atlassian site opened |
 | T-119 | Mention someone with `@` to notify them | Done | Already built |
 | T-120 | Add any tool the `/` menu is missing | You | Describe it in words, no screenshots |
+| T-118a | Should followers be notified of checklist changes? | You | Off now, so a run of ticks does not flood them; recommended: keep off |
+| T-118b | Should a clone keep rejected checklist items as rejected? | You | Today every item restarts as open; recommended: keep that |
+| T-118c | Is "Tickets under this" right for the section on an outcome? | You | Recommended: yes |
 | T-121 | Open a ticket in a pop-up from the board or any section, instead of leaving the page | To do | With the front sub chat |
 | T-122 | Clone a ticket from the pop-up and the ticket page | To do | Clone exists on the ticket page; the pop-up needs it |
 | T-123 | Copy a link to a ticket | To do | With the front sub chat |
