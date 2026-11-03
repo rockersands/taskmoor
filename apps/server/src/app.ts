@@ -104,6 +104,7 @@ import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
 import { registerTimelineRoutes } from './routes/timeline';
 import { registerTokenRoutes } from './routes/tokens';
+import { registerTrackOutcomeRoutes } from './routes/track-outcomes';
 import { registerTrackSummaryRoutes } from './routes/track-summary';
 import { registerTrackRoutes, type TrackRouteHooks } from './routes/tracks';
 import { registerTrashRoutes } from './routes/trash';
@@ -569,6 +570,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // A track's summary (M1-064): every number with the query it counts.
     registerTrackSummaryRoutes(app, db, {
       catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // A track's outcomes (AGL-024): each with how many of the tickets under it are done.
+    registerTrackOutcomeRoutes(app, db, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     // A track's timeline (M1-048): dated tickets, roll-ups, dependencies and markers.

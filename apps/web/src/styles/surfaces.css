@@ -239,6 +239,78 @@
   font-size: var(--font-size-100);
 }
 
+/* A track's outcomes (AGL-024): a row each, the progress beside the name on a wide screen and
+   under it on a phone. */
+.track-outcomes-list {
+  display: grid;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-1) var(--space-4);
+  list-style: none;
+}
+
+.track-outcome {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 15rem);
+  gap: var(--space-1) var(--space-4);
+  align-items: center;
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--color-field-border);
+}
+
+.track-outcome:first-child {
+  border-top: 0;
+}
+
+.track-outcome-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.track-outcome-key {
+  margin-inline-end: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: 600;
+}
+
+.track-outcome-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.track-outcome-dates {
+  grid-column: 1;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.track-outcomes-more {
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 40rem) {
+  .track-outcome {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (pointer: coarse) {
+  .track-outcome-head a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
 /* The directory of tracks. */
 .tracks-find {
   max-width: 24rem;

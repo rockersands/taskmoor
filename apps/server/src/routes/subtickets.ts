@@ -1,8 +1,9 @@
 import type { Database } from '@taskmoor/db';
 import type { FastifyInstance } from 'fastify';
-import { type Kysely, sql } from 'kysely';
+import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import { childProgress } from '../tickets/progress';
 
 const MAX_INT = 2_147_483_647;
 /**
@@ -21,9 +22,9 @@ export const subticketProgressBody = z
  * How far along the tickets under some tickets are (CORE-032; ADR-120), for the ticket page,
  * board cards and lists. `POST /api/v1/tickets/subticket-progress` answers, for each ticket the
  * caller may see that has any, how many tickets sit under it and how many of those are in a
- * closed stage. One statement however many tickets it is asked about, and the permission filter
- * is part of it: a ticket someone may not see counts for nothing, for them. Only reads, like a
- * search too long for a URL.
+ * closed stage (`childProgress`, the one definition of done for progress). One statement however
+ * many tickets it is asked about, and the permission filter is part of it: a ticket someone may
+ * not see counts for nothing, for them. Only reads, like a search too long for a URL.
  */
 export function registerSubticketRoutes(app: FastifyInstance, db: Kysely<Database>): void {
   app.post('/api/v1/tickets/subticket-progress', async (request, reply) => {
@@ -35,26 +36,10 @@ export function registerSubticketRoutes(app: FastifyInstance, db: Kysely<Databas
     const parents = [...(await request.authz.visibleTickets(asked))];
     if (parents.length === 0) return { progress: {} };
     const filter = await request.authz.ticketFilter();
-    const rows = await db
-      .selectFrom('ticket as k')
-      .innerJoin('status as st', 'st.id', 'k.status_id')
-      .select([
-        'k.parent_id',
-        sql<string>`count(*)`.as('total'),
-        sql<string>`count(*) FILTER (WHERE st.stage = 'closed')`.as('closed'),
-      ])
-      .where('k.workspace_id', '=', request.workspaceId)
-      .where('k.parent_id', 'in', parents)
-      .where('k.deleted_at', 'is', null)
-      .where(filter.sql)
-      .groupBy('k.parent_id')
-      .execute();
+    const { rows } = await childProgress(request.workspaceId, parents, filter.sql).execute(db);
     return {
       progress: Object.fromEntries(
-        rows.map((r) => [
-          String(r.parent_id),
-          { total: Number(r.total), closed: Number(r.closed) },
-        ]),
+        rows.map((r) => [String(r.parent_id), { total: r.total, closed: r.closed }]),
       ),
     };
   });

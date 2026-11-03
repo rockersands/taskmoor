@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import { boardScope, boardTracks, compileBoard } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
 import { readOnly } from '../search/run';
+import { childProgress } from '../tickets/progress';
 import { searchRefusal } from './search';
 import type { SprintBoard } from './sprints';
 
@@ -13,7 +14,8 @@ import type { SprintBoard } from './sprints';
  * Planning on a Scrum board's backlog (M1-047; AGL-008, AGL-009; ADR-054 "Planning"):
  *
  * - `GET /api/v1/boards/:id/backlog/panels`: the outcomes (tickets of the outcome level) and the
- *   unshipped releases of the board's tracks, with how many of their tickets the viewer sees.
+ *   unshipped releases of the board's tracks, with how many of their tickets the viewer sees and,
+ *   for outcomes, how many of those are done (`childProgress`, a closed stage).
  * - `POST /api/v1/boards/:id/backlog/rank`: a block of selected tickets, in the order given,
  *   before or after another ticket (or at the top or the bottom).
  * - `POST /api/v1/boards/:id/backlog/parent` and `/release`: selected tickets put under an
@@ -175,13 +177,11 @@ export function registerBacklogPlanningRoutes(
           outcomes.length === 0
             ? []
             : (
-                await sql<{ parent_id: number; total: number; closed: number }>`
-                  SELECT k.parent_id, count(*)::int AS total,
-                         count(*) FILTER (WHERE k.close_reason_id IS NOT NULL)::int AS closed
-                    FROM ticket k
-                   WHERE k.workspace_id = ${ws}::int AND k.deleted_at IS NULL
-                     AND k.parent_id = ANY(${outcomes.map((o) => o.id)}::int[]) AND ${scope.filter.sql}
-                   GROUP BY k.parent_id`.execute(trx)
+                await childProgress(
+                  ws,
+                  outcomes.map((o) => o.id),
+                  scope.filter.sql,
+                ).execute(trx)
               ).rows;
         const childrenOf = new Map(children.map((c) => [c.parent_id, c]));
         const releases = (

@@ -2303,5 +2303,5 @@ Read-only info fields, computed from comments and history. Only comments everyon
 
 ## Internal routes
 
-The document also lists 490 internal routes (`x-taskmoor-stability: internal`): they serve
+The document also lists 491 internal routes (`x-taskmoor-stability: internal`): they serve
 the web app and may change in any release, so programs should not rely on them.

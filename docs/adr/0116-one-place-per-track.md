@@ -15,7 +15,7 @@ them.
 ## Decision
 
 - **A track's sections** share one tab bar: Summary, Board, Backlog, List, Calendar, Timeline,
-  Releases, Files and links, Statistics. List and Releases were not in the user's list of sections;
+  Outcomes, Releases, Files and links, Statistics (Outcomes added 2026-11-03, below). List and Releases were not in the user's list of sections;
   they stay because those pages exist and nothing replaces them. The sidebar has "Tracks" and no
   "Boards". "Tracks" opens the directory and expands with the current track, then the latest
   opened, up to eight, with a link to all of them; it collapses when the person leaves every track.
@@ -96,6 +96,27 @@ them.
   follows it as columns move. The people who manage the board can choose another or none, and a
   choice stays with its column. Tickets already closed keep their close reason and history. A
   status other workflows share keeps its stage.
+
+- **Outcomes** (T-079, the user's decision of 2026-11-03; AGL-024) lists the track's outcomes
+  with their progress, on Scrum and Kanban tracks alike. How a Kanban track manages its outcomes
+  (T-082) is still the user's question; this section only lists them.
+  - `GET /api/v1/tracks/:id/outcomes` reads a page of up to 100 in one statement: the outcomes and,
+    in a second common table expression of the same statement, the counts under them. The person's
+    ticket filter is in both, as in search (QRY-008), so a hidden outcome is not listed and a hidden
+    ticket under one counts for nothing. It is an internal route like the track's other sections,
+    needs a read token, and emits nothing.
+  - Order: open outcomes first, then closed ones, each by rank, the order the backlog's outcome panel
+    uses. Rank is unique in a workspace, so a cursor of (closed, rank) pages without gaps or repeats.
+  - Done is one definition everywhere progress shows: a direct child in a status of the closed stage
+    (ADR-120), in one function, `childProgress`. The backlog's outcome panel counted tickets with a
+    close reason until now; it uses the same function, so the panel and this section always agree.
+    On a workflow that sets a close reason on entering Closed, as the default one does, nothing
+    changes.
+  - Each row leads to the ticket's own address, which opens it in the ticket pop-up. With none, the
+    section says what an outcome is and names the outcome-level types the track offers, or says
+    that an administrator can add one.
+  - Measured on 2026-11-03: a page of a track with 1,000 outcomes and 100,000 tickets, median 21 ms
+    (budget 100 ms, `track-outcomes.test.ts`). No index was added.
 
 ## Options considered
 

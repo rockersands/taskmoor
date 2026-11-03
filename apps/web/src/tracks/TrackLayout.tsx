@@ -15,6 +15,7 @@ export const TRACK_SECTIONS = [
   { id: 'list', path: '/list', labelId: 'track.section.list' },
   { id: 'calendar', path: '/calendar', labelId: 'track.section.calendar' },
   { id: 'timeline', path: '/timeline', labelId: 'track.section.timeline' },
+  { id: 'outcomes', path: '/outcomes', labelId: 'track.section.outcomes' },
   { id: 'releases', path: '/releases', labelId: 'track.section.releases' },
   { id: 'files', path: '/files', labelId: 'track.section.files' },
   { id: 'statistics', path: '/statistics', labelId: 'track.section.statistics' },

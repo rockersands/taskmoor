@@ -3,6 +3,8 @@ import type { Widget } from '../dashboards/client';
 import type {
   SummaryItem,
   TrackClient,
+  TrackOutcome,
+  TrackOutcomes,
   TrackSections,
   TrackSummary,
   TrackSummaryLayout,
@@ -106,6 +108,68 @@ export const CUSTOM_WIDGETS: Widget[] = [
   },
 ];
 
+/** A track's outcomes for stories and tests (AGL-024): open ones first, one closed. */
+export const SHOP_OUTCOMES: TrackOutcome[] = [
+  {
+    id: 50,
+    key: 'SHOP-50',
+    summary: 'Card payments in every market',
+    type: 'Outcome',
+    status: { name: 'Active', stage: 'active' },
+    startDate: '2026-10-05',
+    dueDate: '2026-12-18',
+    progress: { total: 8, closed: 5 },
+  },
+  {
+    id: 51,
+    key: 'SHOP-51',
+    summary: 'A faster checkout',
+    type: 'Outcome',
+    status: { name: 'New', stage: 'new' },
+    startDate: null,
+    dueDate: '2027-01-29',
+    progress: { total: 3, closed: 0 },
+  },
+  {
+    id: 52,
+    key: 'SHOP-52',
+    summary: 'Gift cards',
+    type: 'Outcome',
+    status: { name: 'New', stage: 'new' },
+    startDate: null,
+    dueDate: null,
+    progress: { total: 0, closed: 0 },
+  },
+  {
+    id: 47,
+    key: 'SHOP-47',
+    summary: 'Saved addresses',
+    type: 'Outcome',
+    status: { name: 'Closed', stage: 'closed' },
+    startDate: '2026-08-03',
+    dueDate: '2026-09-25',
+    progress: { total: 6, closed: 6 },
+  },
+];
+
+/** Outcomes as the server pages them, `size` a page, for stories and tests. */
+export function outcomePages(
+  outcomes: TrackOutcome[],
+  size = 100,
+  outcomeTypes = ['Outcome'],
+): (key: string, cursor?: string) => Promise<TrackOutcomes> {
+  return async (_key, cursor) => {
+    const from = cursor ? Number(cursor) : 0;
+    const next = from + size < outcomes.length ? String(from + size) : null;
+    return {
+      track: { id: 1, key: 'SHOP', name: 'Shop' },
+      outcomeTypes,
+      outcomes: outcomes.slice(from, from + size),
+      next,
+    };
+  };
+}
+
 export interface FakeTrackOptions {
   /** Which sections the track has; a Scrum track's by default. */
   sections?: TrackSections;
@@ -186,6 +250,7 @@ export function fakeTrackClient(
       ],
       truncated: false,
     }),
+    outcomes: outcomePages(SHOP_OUTCOMES),
     summary: async () => {
       if (!summary) throw new Error('not_found');
       return summary;

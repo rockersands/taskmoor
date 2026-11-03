@@ -1,14 +1,15 @@
 ---
-title: "List, calendar and timeline"
+title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md
 accessed: 2026-11-03
 attestation: own-words
 ---
-# List, calendar and timeline
+# List, calendar, timeline and outcomes
 
-Every track has three views of its tickets besides its boards: a list, a calendar and a
-timeline. Each shows only the tickets you may see. You reach them from the track's summary.
+Every track has three views of its tickets besides its board: a list, a calendar and a
+timeline, and a list of its outcomes with their progress. Each shows only the tickets you may see.
+You reach them from the track's summary.
 
 ## The track summary
 
@@ -22,8 +23,8 @@ A track's summary is at the address ending in `tracks/` and the track's key, for
 
 Every number is a link to the search that finds exactly those tickets. The tab bar above it holds
 the track's other sections, such as its [**Releases**](boards.md#releases),
-[**Statistics**](dashboards-and-reports.md#a-tracks-statistics), **Timeline**, **List** and
-**Calendar**.
+[**Statistics**](dashboards-and-reports.md#a-tracks-statistics), **Timeline**,
+[**Outcomes**](#outcomes), **List** and **Calendar**.
 
 ### Customizing the summary
 
@@ -146,3 +147,29 @@ by its sprint gets days of its own once you save. As in the calendar, rescheduli
 **Set due dates** permission and is recorded in the ticket's history.
 
 The timeline lists the first 5,000 tickets of the track; roll-ups still count them all.
+
+## Outcomes
+
+An outcome is a result that several tickets deliver together: a ticket whose type sits at the
+outcome level, such as the seeded **Outcome** type, with the tickets that work towards it under it.
+**Outcomes** in a track's tab bar lists the track's outcomes, on Scrum and Kanban tracks alike.
+Each row shows:
+
+- the outcome's type, key and summary, and its status;
+- its progress: how many of the tickets directly under it are closed, of all of them, as a bar and
+  as "5 of 8". An outcome with nothing under it yet says so;
+- its start and due dates, when they are set.
+
+Open outcomes come first, in their planned (ranked) order, the order the backlog shows them in;
+closed ones follow. The list shows 100 at a time: **Show more outcomes** adds the next 100.
+Choosing an outcome opens it over the list, where its page shows the tickets under it.
+
+As everywhere, the list holds only what you may see. An outcome you may not see is left out, and so
+is a ticket under an outcome that you may not see: it counts neither as closed nor in the total. Two
+people can therefore read different progress for the same outcome. A ticket counts as closed when its
+status is in the closed stage, as subticket progress and the backlog's outcome panel count it.
+
+To make an outcome, create a ticket of a type at the outcome level, then add the tickets that work
+towards it from its page. When none of the track's ticket types is at the outcome level, the empty
+list says so; an administrator can add one to the track's
+[ticket types](../admin/tracks.md#configuration-sets).
