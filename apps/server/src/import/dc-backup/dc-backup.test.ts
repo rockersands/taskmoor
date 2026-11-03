@@ -11,6 +11,7 @@ import { ATTRIBUTE_TEXT_MAX, attachmentPath, ENTITIES, timestamp } from './forma
 import { defaultOptions, generateDcBackup } from './generate';
 import type { Manifest } from './manifest';
 import { validateDcBackup } from './validate';
+import { projectKey } from './world';
 
 /**
  * The synthetic Data Center backup (M1-087): the generator writes the documented shape at
@@ -134,6 +135,16 @@ describe('the backup generator', () => {
       'data/attachments/ABC/20000/ABC-10001/7',
     );
     expect(timestamp(Date.UTC(2024, 0, 2, 3, 4, 5, 6))).toBe('2024-01-02 03:04:05.006');
+  });
+
+  it('[IMP-001] gives every project its own key, however many there are', () => {
+    // The manifest allows 10,000. At 200 projects (500,000 issues) keys used to repeat, and the
+    // import rightly refused the second track of each.
+    const keys = Array.from({ length: 10_000 }, (_, index) => projectKey(index));
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const key of keys) expect(key).toMatch(/^[A-Z][A-Z0-9]{1,9}$/);
+    expect(projectKey(0)).toBe('AX');
+    expect(projectKey(49)).toBe('AX0');
   });
 });
 

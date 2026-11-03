@@ -201,7 +201,10 @@ export function paragraphs(random: Random, max: number): string {
   return out.join('\n\n');
 }
 
-/** Project keys: two to four capitals, unique by construction from the index. */
+/**
+ * Project keys: capitals from the index, unique by construction. A single letter gets an X, so
+ * a two-letter key ending in X (the 50th project is AX, like the first) takes a 0 to stay apart.
+ */
 export function projectKey(index: number): string {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let n = index;
@@ -210,7 +213,8 @@ export function projectKey(index: number): string {
     key = letters[n % 26] + key;
     n = Math.floor(n / 26) - 1;
   } while (n >= 0);
-  return key.length === 1 ? `${key}X` : key;
+  if (key.length === 1) return `${key}X`;
+  return key.length === 2 && key.endsWith('X') ? `${key}0` : key;
 }
 
 // --- The instance ----------------------------------------------------------------------------
