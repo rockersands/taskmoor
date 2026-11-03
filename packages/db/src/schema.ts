@@ -2567,12 +2567,39 @@ export interface AiNoticeAckTable {
   acknowledged_at: DefaultTimestamp;
 }
 
+/**
+ * A ticket template (CORE-029; ADR-113): a named starting point for new tickets, in one track
+ * or (`track_id` null) for every track, optionally only for some ticket types (empty: all).
+ */
+export interface TicketTemplateTable {
+  id: Generated<number>;
+  workspace_id: number;
+  track_id: number | null;
+  name: string;
+  /** What it is for, shown in the picker. */
+  purpose: Generated<string>;
+  ticket_type_ids: ColumnType<number[], number[] | undefined, number[]>;
+  /** The summary pattern: `{date}`, `{track}` and `{user}` are filled in. */
+  summary: Generated<string>;
+  /** The description outline, a document. */
+  description: NullableJson;
+  /** Default values by API body name (`priorityId`, `labels`, `dueInDays`, `fields`, ...). */
+  defaults: ColumnType<JsonValue, string | undefined, string>;
+  /** Subtickets made with it: `{ summary, ticketTypeId }`. */
+  subtickets: ColumnType<JsonValue, string | undefined, string>;
+  created_by: number | null;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  version: Generated<number>;
+}
+
 /** Every table Kysely knows about. Add a table here in the same change as its migration. */
 export interface Database {
   instance_setting: InstanceSettingTable;
   workspace: WorkspaceTable;
   app_user: AppUserTable;
   personal_export: PersonalExportTable;
+  ticket_template: TicketTemplateTable;
   user_group: UserGroupTable;
   group_member: GroupMemberTable;
   team: TeamTable;

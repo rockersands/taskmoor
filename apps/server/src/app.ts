@@ -93,6 +93,7 @@ import { registerSimilarRoutes } from './routes/similar';
 import { registerSsoRoutes } from './routes/sso';
 import { registerSyncRoutes } from './routes/sync';
 import { registerTeamRoutes } from './routes/teams';
+import { registerTicketTemplateRoutes } from './routes/ticket-templates';
 import { registerTicketTypeRoutes } from './routes/ticket-types';
 import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
@@ -498,6 +499,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.queryTimeoutMs !== undefined ? { queryTimeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerCloneRoutes(app, db);
+    registerTicketTemplateRoutes(app, db, authorizer, fieldCatalogs);
     registerImportRoutes(app, db, {
       peppers: deps.peppers,
       ...(deps.importDir !== undefined ? { importDir: deps.importDir } : {}),

@@ -1107,6 +1107,47 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'track.restored',
       run: () => admin({ method: 'POST', url: `/api/v1/tracks/${state.newTrack}/restore` }),
     },
+    // Ticket templates (CORE-029, CORE-030; ADR-113): kept, changed, used and removed. A
+    // ticket made from one is the create route's own event, naming the template.
+    {
+      route: 'POST /api/v1/ticket-templates',
+      expect: 'ticket_template.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/ticket-templates',
+          payload: { track: state.newTrack, name: 'Contract template', summary: 'From {date}' },
+        });
+        state.ticketTemplate = res.json().template?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/ticket-templates/:id',
+      expect: 'ticket_template.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/ticket-templates/${state.ticketTemplate}`,
+          payload: { defaults: { labels: ['contract'] } },
+        }),
+    },
+    {
+      route: 'POST /api/v1/ticket-templates/:id/tickets',
+      expect: 'ticket.created',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/ticket-templates/${state.ticketTemplate}/tickets`,
+          payload: {},
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/ticket-templates/:id',
+      expect: 'ticket_template.deleted',
+      run: () =>
+        admin({ method: 'DELETE', url: `/api/v1/ticket-templates/${state.ticketTemplate}` }),
+    },
     {
       route: 'POST /api/v1/tickets',
       expect: 'ticket.created',

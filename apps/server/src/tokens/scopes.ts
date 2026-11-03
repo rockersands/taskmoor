@@ -15,7 +15,9 @@
  *   track configuration (track categories, hierarchy levels, ticket types, type sets):
  *   everyone reads the levels and a track's ticket types, and a local-mode track's
  *   administrators change the types and type set it owns with a write token; shared ones need
- *   configuration administrators, whose rights only the admin scope keeps (below).
+ *   configuration administrators, whose rights only the admin scope keeps (below). Ticket
+ *   templates (ADR-113) are the same: a track's administrators keep its templates with a write
+ *   token, and making a ticket from one is a ticket create.
  *
  * - the SCIM service (`/api/v1/scim/v2`, IAM-006, ADR-038) needs the scim scope, which a
  *   service account's token holds alone: it reaches SCIM and nothing else, and no other token,

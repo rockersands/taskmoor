@@ -2,6 +2,55 @@
 
 Read this first in every session, then update it before you stop.
 
+## Start here: 2026-11-03 (cloud session): ticket templates, half-done on `claude/ticket-templates`
+
+Stopped at the user's request before the web, docs and gate. Tasks: `docs/plan/ticket-templates-tasks.md`.
+**Nothing here is gated: do not merge until `pnpm verify --e2e` passes.**
+
+- **Done (server):** migration 0085 `ticket_template` (`track_id` null = every track,
+  `ticket_type_ids` empty = every type, `summary` pattern, `description` outline document,
+  `defaults` JSON, `subtickets` JSON, unique name per track ignoring case, `NULLS NOT DISTINCT`);
+  type in `schema.ts`; upgrade seed; schema golden regenerated.
+  - `templates/model.ts` (pure): zod bodies; `{date}` (today in the person's time zone, UTC
+    without one), `{track}`, `{user}` in the summary; `dueInDays`/`startInDays` offsets;
+    `startValues` (a template as a create body); `mergeBody` (the person's values win; a key
+    left out of the body takes the template's value unless `omit` names it; a body value equal
+    to the template's still counts as the template's).
+  - `routes/ticket-templates.ts`: `GET/POST /api/v1/ticket-templates`, `GET/PATCH/DELETE
+    .../:id` (`GET ...?track=KEY` adds `start`, the values for this person), and `POST
+    .../:id/tickets`. Track templates: seen by browsers of the track, kept by "Administer
+    track" or configuration/site administrators; every-track templates: seen by all, kept by
+    configuration/site administrators. Areas and releases only in track templates
+    (`track_only`). 500 templates per scope.
+  - Create-from-template runs the ticket create route as the person (`callRoute`), so every
+    permission, field rule, lock and default applies. A refused value that came from the
+    template is left out and listed in `left` (reusing clone's now-exported `refusedKeys`); the
+    person's own values are refused, never dropped. Subtickets are made after, each through the
+    create route under the new ticket (type: the template's or the track's first subticket-level
+    type); a failure is listed per subticket and the ticket stays. Events: no template event; each
+    ticket made is its own `ticket.created`, with the new optional `templateId` (`Caller` has
+    `ticketTemplateId`). So a template with N subtickets emits N+1 events: say so in ADR-113
+    (as ADR-077 does for clone).
+  - Events `ticket_template.created/updated/deleted` in the catalogue and audited
+    (`audit/subscriber.ts`); `updated` records an outline change as document hashes.
+    Scope classes: read/write by method (comment in `tokens/scopes.ts`, expectations in
+    `scopes.test.ts`). Contract scenarios added before `POST /api/v1/tickets` in
+    `events/contract.test.ts`, on `state.newTrack`.
+  - Tests: `templates/model.test.ts` (6) and `routes/ticket-templates.test.ts` (7) pass.
+    **Not run after their edits:** `events/contract.test.ts`, `tokens/scopes.test.ts`,
+    `audit/*`, `packages/db` (the golden update ran but the db suite was not rerun).
+- **Next:** ADR-113 and the spec rows (CORE-029, CORE-030 are free in
+  `requirements-index.csv`; tests already cite them). DC importer note for the ADR: core
+  backups hold no ticket templates; the template-like things it meets are per-context field
+  default values (already imported as field context defaults, M1-090) and third-party apps'
+  tables, which it does not read. Then the web: picker in `CreateTicketPage` (keep the change
+  small: the UI overhaul branch edits it) that fills the form from `GET ...?track=` `start`,
+  sends the form body to `POST .../:id/tickets` with `omit` for template values the person
+  cleared and `subtickets`; and the management page. Then the manual, STATUS, the gate.
+- **Cloud setup used:** system Postgres 16 (`service postgresql start`), a random password set
+  for `postgres` and `TASKMOOR_TEST_DATABASE_URL` exported from the session scratchpad only
+  (nothing in the repository).
+
 ## Start here: 2026-11-02 (cloud session): M1-079 merged, M1-117 done, the ASVS gaps next
 
 - **M1-079 (AI v1 features) is on `main`** (ADR-108). It stays in-progress only for the measured

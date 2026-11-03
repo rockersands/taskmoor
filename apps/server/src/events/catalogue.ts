@@ -417,6 +417,8 @@ export const EVENT_TYPES = {
       webhookCount: z.number().int().min(0),
       /** Mentions in the description and environment it starts with (M1-058). */
       mentions: mentions.optional(),
+      /** The ticket template it started from (ADR-113). */
+      templateId: id.optional(),
     }),
   },
   /**
@@ -904,6 +906,18 @@ export const EVENT_TYPES = {
   },
   // Saved searches (M1-063): `shares` names the scopes it is shared with (QRY-011); a
   // subscription names its recipient and schedule (QRY-012), never an email address.
+  // Ticket templates (CORE-029; ADR-113): a ticket made from one is `ticket.created` with its
+  // `templateId`.
+  'ticket_template.created': {
+    subject: 'ticket_template',
+    payload: z.object({ name: z.string(), trackId: id.nullable() }),
+  },
+  /** Changes by API name; a description outline's change as the hashes of its documents. */
+  'ticket_template.updated': { subject: 'ticket_template', payload: z.object({ changes }) },
+  'ticket_template.deleted': {
+    subject: 'ticket_template',
+    payload: z.object({ name: z.string(), trackId: id.nullable() }),
+  },
   'saved_search.created': {
     subject: 'saved_search',
     payload: z.object({ name: z.string(), query: z.string(), shares: z.array(z.string()) }),
