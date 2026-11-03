@@ -135,7 +135,7 @@ reported, and the coordinator checked that it was pushed.
 | T-089e | Multi-track: draft changes and scenarios | To do | In 1.0 |
 | T-089f | Multi-track: auto-scheduler | To do | In 1.0 |
 | T-089g | Multi-track: duplicate a plan, link to a view, CSV and image export | To do | In 1.0 |
-| T-089h | A "Your tracks" section at the top of Home | To do | With the front sub chat |
+| T-089h | A "Your tracks" section at the top of Home | Done | On `main`; shows tracks the person can see, as the track list cannot yet say which they belong to |
 | T-089a | Multi-track: hierarchy grid (PLN-010) and baselines (PLN-011) | You | Not in what the user described; 2.0 and 4.0 unless the user says otherwise |
 
 ## Boards and moving tickets
@@ -178,17 +178,17 @@ reported, and the coordinator checked that it was pushed.
 | T-118a | Followers are not notified of checklist changes | Done | Decided by the user; webhooks still get the event |
 | T-118b | A clone restarts every checklist item as open | Done | Decided by the user |
 | T-118c | The section on an Outcome reads "Tickets under this" | Done | Decided by the user |
-| T-121 | Open a ticket in a pop-up from the board or any section, instead of leaving the page | To do | With the front sub chat |
-| T-122 | Clone a ticket from the pop-up and the ticket page | To do | Clone exists on the ticket page; the pop-up needs it |
-| T-123 | Copy a link to a ticket | To do | With the front sub chat |
-| T-124 | Set a ticket's priority from the pop-up | To do | With the front sub chat |
+| T-121 | Open a ticket in a pop-up from the board or any section, instead of leaving the page | Done | On `main`; a shared link shows the full page |
+| T-122 | Clone a ticket from the pop-up and the ticket page | Done | On `main` |
+| T-123 | Copy a link to a ticket | Done | On `main` |
+| T-124 | Set a ticket's priority from the pop-up | Done | On `main` |
 | T-125 | Board cards show title, priority, assignee and points | Done | points only where set |
 | T-126 | Edit a ticket's title from the card, with a pencil button | Done | `claude/ui-overhaul` |
 | T-127 | The ticket's type shows as an icon on the card, not a word | Done | our own icons; the name stays for screen readers |
 | T-128 | Priority shows as an icon, not a word | Done | shape as well as colour; custom priorities too |
 | T-129 | Add a Very low priority and remove the None choice | Done | new tickets take the default priority |
-| T-129a | A seeded Points field, so points can show on cards | In progress | Migration 0095; the coordinator's choice while the user was away |
-| T-129b | Show the ticket key on board cards again | To do | Decided by the user; with the front sub chat |
+| T-129a | A seeded Points field, so points can show on cards | Done | Migration 0095, on `main`; a backup's field of another type arrives as "Points (imported)" |
+| T-129b | Show the ticket key on board cards again | Done | On `main`, on its own line above the title |
 
 ## Search and dashboards
 
@@ -210,7 +210,7 @@ reported, and the coordinator checked that it was pushed.
 | T-143 | Glass on every page, starting with the track sections | To do | Waits for the merges; the list section was called out |
 | T-144 | The design is consistent through the whole app | To do | Waits for the merges; shared styles, a guard, then a sweep of every route |
 | T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | Done | The user's own skin choice is kept |
-| T-146 | Fix the English filters in the Spanish interface | To do | With the front sub chat |
+| T-146 | Fix the English filters in the Spanish interface | To do | Check first: filter names were reworked, and type names are now translated |
 | T-147 | A watery look for every animation in the app | Done | off with reduced motion |
 
 ## Administration
@@ -241,6 +241,21 @@ reported, and the coordinator checked that it was pushed.
 |---|---|---|---|
 | T-170 | AI key for the live tests | You | Not yet, the user said |
 | T-171 | Spanish review | You | Once every M1 task is finished |
+
+## Known gaps found along the way
+
+| ID | Ticket | State | Where and notes |
+|---|---|---|---|
+| T-190 | The full ticket page has no protection for unsaved text | To do | The pop-up has it |
+| T-191 | Controls follow edit permission up front, not only priority | To do | Today other fields show controls and the server refuses |
+| T-192 | Turning a track's sprints off while a sprint runs is not guarded | To do | Changing a board to Kanban during a sprint is refused already |
+| T-193 | A 5,000-card column is not smooth | To do | About 15 frames a second scrolling and a 0.9 s pause on a drop; `content-visibility` might help, but clips card menus |
+| T-194 | Home's "Your tracks" should show the tracks a person belongs to | To do | Today, tracks they can see; "latest opened" is remembered per browser |
+| T-195 | A backup's saved filter naming Points reads the seeded field, not the imported one | To do | Known limit, not tested |
+| T-196 | Ticket tools' own follow-ups, TT-1 to TT-8 | To do | `docs/plan/ticket-tools-tasks.md`: same-named files, live co-editing of collapsible sections, email |
+| T-197 | Run the fuzz targets adf, markdown and wiki over the slash menu's new blocks | To do | Part of T-019 |
+| T-198 | Load these tickets into the demo again | To do | T-121 onward never reached the demo, and a new device starts with none |
+| T-199 | Old notes in `.cache/from-old-clone` on the last PC | You | Not on GitHub; copy them first if wanted |
 
 ## Flutter app (stopped)
 

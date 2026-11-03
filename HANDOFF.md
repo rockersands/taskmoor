@@ -9,15 +9,27 @@ one. The work is all in this repository. Read this section, then `docs/plan/tick
 request as a ticket, with its state), then `docs/plan/decisions.csv` (the user's decisions, newest
 at the bottom), then `CLAUDE.md`.
 
+### The message to start with
+
+Paste this into a new Claude Code session on the other device:
+
+```
+You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/taskmoor). Clone it if needed and check out claude/api-key-upload-prevention-9ucz4x. Read HANDOFF.md, starting with the section "continuing on another device", then docs/plan/tickets.md, docs/plan/decisions.csv and CLAUDE.md, and follow them exactly. Rules with no exceptions: no secrets in any file, commit, message or log; never use any Atlassian site, product or connection; never push to main except by fast-forward after a green full gate; ask me before anything outside the repository folder and before decisions that are mine. Keep every new request as a ticket in tickets.md. Tell me in plain words what finished, what failed and what you need from me. Start with the next step in the handoff.
+```
+
+The user chose to stop before the ticket tools gate, so `main` stays at `6015efc` and that gate is the
+first job. The handoff, tickets and decisions are on the coordinator branch, not yet on `main`.
+
 ### Where things are
 
 - **`main`** holds ticket templates, easier updates, invitations and manager pages, Google sign-in,
   the import results and all the front work so far. Each merge passed a full gate.
 - **Coordinator branch:** `claude/api-key-upload-prevention-9ucz4x`. It is `main` plus documents.
   Work there, and fast-forward `main` only after a green `corepack pnpm verify --e2e`.
-- **`claude/ticket-tools`:** links, subtickets, checklists and the slash menu, built and waiting for
-  a merge. See its Handoff section in `docs/plan/ticket-tools-tasks.md`, which says how far its merge
-  of `main` got. It must not reach `main` before a full gate. Its migration moves from 0091 to 0096.
+- **`claude/ticket-tools`:** links, subtickets, checklists and the slash menu, ready for the gate at
+  `6c28a30`. It holds `main` at `6015efc`, its migration is now 0096, and its panels work in the ticket
+  pop-up. Its own whole e2e run passed (187 passed, 0 failed), but `pnpm verify` has not run on it. See
+  the Handoff section in `docs/plan/ticket-tools-tasks.md`. Run the full gate before it reaches `main`.
 - **`claude/multi-track`:** a plan only, no code, in `docs/plan/multi-track-tasks.md`. Restart from
   `main`, and take the next free migration number at that time.
 - **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
@@ -45,8 +57,10 @@ corepack pnpm install
 
 ### Next, in order
 
-1. Finish `claude/ticket-tools`: merge `main` if that is not done, fix what fails, full gate,
-   fast-forward `main`.
+1. Merge `claude/ticket-tools` into the coordinator branch, run the full gate, fast-forward `main`. Its
+   last worktree force-stopped its Postgres, so a stale lock is possible only on the old PC.
+   The slash menu's new blocks have not been through `pnpm fuzz adf`, `markdown` and `wiki`: T-019 covers
+   that on the final code.
 2. Start the waiting tickets a few at a time, merging each as it finishes rather than letting
    branches drift (the user's decision): the glass pass and the sweep of every route (T-143, T-144),
    the Objetivos tab (T-079), completing a sprint from the board (T-106), the box for creating tracks
