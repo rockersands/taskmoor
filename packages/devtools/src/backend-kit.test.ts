@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 import {
   backendKit,
   buildKits,
@@ -78,6 +78,12 @@ function fakeDocker(kind: 'working' | 'absent' | 'stopped'): string {
 let systemTools: string | undefined;
 function toolsWithoutDocker(): string {
   if (systemTools) return systemTools;
+  if (process.platform === 'win32') {
+    // Git for Windows' own tools, bash among them; a real Docker is never in that folder.
+    const gitCore = execFileSync('git', ['--exec-path'], { encoding: 'utf8' }).trim();
+    systemTools = resolve(gitCore, '../../../usr/bin');
+    return systemTools;
+  }
   const dir = mkdtempSync(join(tmpdir(), 'taskmoor-tools-'));
   for (const from of ['/usr/bin', '/bin']) {
     if (!existsSync(from)) continue;
@@ -95,7 +101,12 @@ function preflight(dir: string, bin: string): { code: number; out: string } {
   try {
     const out = execFileSync('bash', ['install.sh', '--preflight'], {
       cwd: dir,
-      env: { PATH: `${bin}:${toolsWithoutDocker()}`, HOME: dir },
+      env: {
+        PATH: `${bin}${delimiter}${toolsWithoutDocker()}`,
+        HOME: dir,
+        // Sockets on Windows need it, and the port check opens one.
+        ...(process.env.SYSTEMROOT ? { SYSTEMROOT: process.env.SYSTEMROOT } : {}),
+      },
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });

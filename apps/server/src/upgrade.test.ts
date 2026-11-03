@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import {
   compareSchema,
@@ -684,7 +685,7 @@ describe('node cli.mjs upgrade', () => {
   }) => {
     if (!pgDumpAvailable) skip('no pg_dump for this server version');
     const tsx = createRequire(import.meta.url).resolve('tsx/cli');
-    const cli = new URL('./cli.ts', import.meta.url).pathname;
+    const cli = fileURLToPath(new URL('./cli.ts', import.meta.url));
     const env = {
       ...process.env,
       DATABASE_URL: target.url,

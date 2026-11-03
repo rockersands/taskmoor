@@ -19,7 +19,7 @@ function openApiValidator() {
   const addFormats = require('ajv-formats').default;
   const ajv = new Ajv2020({ strict: false, allErrors: true });
   addFormats(ajv);
-  const dir = `${require.resolve('@apidevtools/openapi-schemas').replace(/lib\/index\.js$/, '')}schemas/v3.1/`;
+  const dir = `${require.resolve('@apidevtools/openapi-schemas').replace(/lib[\\/]index\.js$/, '')}schemas/v3.1/`;
   // ajv resolves `$dynamicRef` only in part; without a custom dialect, `#meta` is the
   // schema object's own definition, so it is referred to directly.
   const direct = (node: unknown): unknown => {
