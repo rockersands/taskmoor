@@ -123,7 +123,7 @@ reported, and the coordinator checked that it was pushed.
 | T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
 | T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | To do | Decided by the user; goes with the invitations merge, since it changes the same dialog |
 | T-087b | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
-| T-087c | Keep Paneles in the sidebar? | You | Dashboards that can span tracks; recommended: keep |
+| T-087c | Keep Paneles in the sidebar | Done | Decided by the user; dashboards that can span tracks |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | To do | Paused on `claude/multi-track`; restarts after the merges |
 | T-089 | Multi-track: dependencies view | To do | In 1.0; starts after T-088 |
 | T-089b | Multi-track: teams and capacity | To do | In 1.0 |
@@ -171,9 +171,9 @@ reported, and the coordinator checked that it was pushed.
 | T-118 | A `/` menu in descriptions and comments | On branch | `claude/ticket-tools`; our own list, no Atlassian site opened |
 | T-119 | Mention someone with `@` to notify them | Done | Already built |
 | T-120 | Add any tool the `/` menu is missing | You | Describe it in words, no screenshots |
-| T-118a | Should followers be notified of checklist changes? | You | Off now, so a run of ticks does not flood them; recommended: keep off |
-| T-118b | Should a clone keep rejected checklist items as rejected? | You | Today every item restarts as open; recommended: keep that |
-| T-118c | Is "Tickets under this" right for the section on an outcome? | You | Recommended: yes |
+| T-118a | Followers are not notified of checklist changes | Done | Decided by the user; webhooks still get the event |
+| T-118b | A clone restarts every checklist item as open | Done | Decided by the user |
+| T-118c | The section on an Outcome reads "Tickets under this" | Done | Decided by the user |
 | T-121 | Open a ticket in a pop-up from the board or any section, instead of leaving the page | To do | With the front sub chat |
 | T-122 | Clone a ticket from the pop-up and the ticket page | To do | Clone exists on the ticket page; the pop-up needs it |
 | T-123 | Copy a link to a ticket | To do | With the front sub chat |
