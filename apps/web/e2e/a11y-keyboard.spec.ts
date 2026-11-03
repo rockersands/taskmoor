@@ -82,11 +82,14 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
   await tabTo(page, page.getByLabel('Password', { exact: true }));
   await page.keyboard.type(ADMIN.password);
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  // The sign-in page has a heading of its own, so wait for the page signing in leads to.
+  const home = page.getByRole('heading', { level: 1, name: 'Home', exact: true });
+  await expect(home).toBeVisible();
 
-  // The first Tab reaches the skip link, which moves focus to the content.
-  await page.goto(`${BASE}/#/home`);
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  // The first Tab reaches the skip link, which moves focus to the content. It takes a real
+  // reload: going to another #/ address keeps the document and the place Tab starts from.
+  await page.reload();
+  await expect(home).toBeVisible();
   // Signed in again after the reload: until then the start page offers its own sign-in link.
   await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' })).toHaveCount(0);
   await page.keyboard.press('Tab');
