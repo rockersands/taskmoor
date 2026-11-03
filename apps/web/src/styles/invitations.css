@@ -6,7 +6,7 @@
 }
 
 .invite-dialog textarea,
-.invite-dialog input[type='search'],
+.invite-dialog input[type="search"],
 .invite-result input {
   width: 100%;
   min-width: 0;
