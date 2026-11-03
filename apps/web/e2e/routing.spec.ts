@@ -44,7 +44,10 @@ test('[OPS-013] [OPS-017] clean URLs: deep links, links, history and old hash li
   // A deep link straight to a page, then links inside the app, all as paths.
   await page.goto(`${PATH}/tracks`);
   await expect(page.getByRole('heading', { name: 'Tracks', level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: 'Routes', exact: true }).click();
+  await page
+    .getByRole('link', { name: /Routes/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(`${PATH}/tracks/RT`);
   await page.getByRole('link', { name: 'Board', exact: true }).click();
   await expect(page).toHaveURL(`${PATH}/tracks/RT/board`);
@@ -88,7 +91,10 @@ test('[OPS-013] [OPS-017] hash routing: routes in the fragment, clean links redi
   await page.goto(`${HASH}/tracks`);
   await expect(page).toHaveURL(`${HASH}/#/tracks`);
   await expect(page.getByRole('heading', { name: 'Tracks', level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: 'Routes', exact: true }).click();
+  await page
+    .getByRole('link', { name: /Routes/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(`${HASH}/#/tracks/RT`);
   await page.getByRole('link', { name: 'Board', exact: true }).click();
   await expect(page).toHaveURL(`${HASH}/#/tracks/RT/board`);

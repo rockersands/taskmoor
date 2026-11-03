@@ -81,7 +81,7 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
   // A priority, in place.
   const priority = details.getByRole('combobox', { name: 'Priority' });
   await priority.click();
-  await page.getByRole('option').first().click();
+  await details.getByRole('listbox').getByRole('option', { name: 'Urgent' }).click();
   await expect(page.getByText('Saved.')).toBeVisible();
 
   // M: comment.

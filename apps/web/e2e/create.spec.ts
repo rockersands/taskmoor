@@ -111,6 +111,7 @@ test('[CORE-008] [CORE-013] the create dialog shows each ticket type its own lay
 
   // Back to the first: refused without its environment, created with it.
   await chooseType(report.name);
+  await expect(dialog.getByLabel('Environment (required)')).toBeVisible();
   await dialog
     .getByLabel('Summary (required)')
     .fill(`Checkout times out on ${testInfo.project.name}`);

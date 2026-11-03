@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { describe, expect, it, vi } from 'vitest';
 import { BOARD } from '../boards/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { NoBacklog } from './BoardInTrack';
+import { onRouteChange } from '../routing/router';
+import { NoBacklog, Redirect } from './BoardInTrack';
 import { fakeTrackClient } from './fixtures';
 import { TrackFilesPage } from './TrackFilesPage';
 import { TrackLayout } from './TrackLayout';
@@ -125,6 +126,14 @@ describe('a track is one place with its sections (ADR-116)', () => {
     expect(screen.getByRole('textbox', { name: 'Kept while the tab changes' })).toBe(field);
     expect(region).toHaveClass('motion-rise');
     await screen.findByRole('navigation', { name: /SHOP/ });
+  });
+
+  it('[CORE-001] a redirect tells the app, so the page it leads to shows', () => {
+    const heard = vi.fn();
+    const stop = onRouteChange(heard);
+    inEnglish(<Redirect to="#/tracks/SHOP/statistics" />);
+    stop();
+    expect(heard).toHaveBeenCalled();
   });
 
   it('[CORE-001] lists the tracks the person can see and finds them by name or key', async () => {

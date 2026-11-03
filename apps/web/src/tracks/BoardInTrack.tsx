@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { type Board, boardClient } from '../boards/client';
 import { useT } from '../i18n/I18nProvider';
-import { replaceRoute, routeHref } from '../routing/router';
+import { redirectRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
 import { BacklogPage } from '../sprints/BacklogPage';
 import { TrackLayout, type TrackSection, trackHref } from './TrackLayout';
@@ -9,7 +9,7 @@ import { useTrackSections } from './trackSections';
 
 /** A route that moved: goes on without leaving the old address in the history. */
 export function Redirect({ to }: { to: string }) {
-  useEffect(() => replaceRoute(to), [to]);
+  useEffect(() => redirectRoute(to), [to]);
   return null;
 }
 

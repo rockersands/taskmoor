@@ -247,6 +247,8 @@ test('[QRY-014] [QRY-006] basic date and field filters run on the server and sur
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // Releases and areas: a real name is taken and finds nothing here; the values are offered.
+  // A site with many tracks offers values only for the tracks chosen, and this run makes many.
+  await basic.getByRole('group', { name: 'Tracks' }).getByRole('checkbox', { name: /ATT/ }).check();
   const target = await addFilter('Target release');
   await expect(target.locator(`datalist option[value="${release}"]`)).toHaveCount(1);
   await target.getByRole('combobox', { name: 'Value for Target release' }).fill(release);

@@ -1,33 +1,71 @@
 # Interface overhaul and guided tutorial: tasks
 
-## Where this stands (2026-11-03, local session)
+## Where this stands (2026-11-03, local session; read this first)
 
-The user accepted the look and said to build the rest. ADR-116 records one place per track, one board
-per track, a column is a status, and moves that ask for nothing by default.
+This section is the true state; the older sections below are history. The branch is being made ready
+to merge: new work stopped on the coordinator's word, and what is not built waits as a ticket.
 
-Done and on the branch: Deep glass, Soft canvas, illustration (UI-T02); Help menu (UI-T03); tutorial
-storage (UI-T10, migration 0084); one board per track (migration 0088); the free-moving default
-workflow (migration 0089); one column per status; column reach and fix, closing column, removing a
-column that holds cards (UI-T16, most of it); the ticket's one status control; track tab bar, directory
-and sidebar (UI-T04); Files and links; board person filter; search basic filters; Statistics, every
-report of a track in its tabs; a customizable Summary (migration 0090, `track_summary_layout`).
+**Done and on the branch, each checked against the code:**
 
-Known gaps from that work:
+- Look: Deep glass, the Soft canvas and the illustration (UI-T02), contrast test over the real canvas
+  (tables are not covered yet), Dark Reader detection, one field style on `--field-surface`, shared
+  filter chip, popover, check and thin scrollbar.
+- Motion: one set of tokens and classes (`styles/motion.css`, `shell/motion.ts`), off under reduced
+  motion, with a check in `styles/motion.test.ts`. It was finished before it was deferred as T-147, and
+  the coordinator kept it.
+- Shared pieces: PageHeader, HelpTip, EmptyState, ThemeToggle, Help menu, Popover, ModalDialog (UI-T03).
+- Tracks (ADR-116): one place per track with its tabs, the directory, New track (for those the server
+  lets), Tracks as one plain sidebar link, one board per track (0088), a column is a status with moves
+  asking for nothing (0089), Files and links, Statistics, a customizable Summary (0090). A Kanban track
+  shows no Backlog and nothing else that needs sprints (0094); a board cannot go Kanban while a sprint
+  runs.
+- Board: the filter row (popover, People filter, "Me" instead of "Only my tickets"); cards with title,
+  type and priority icons, assignee, points and the pencil (0093, 0095); column reach and closing column.
+- Ticket: the pop-up from every list, one status control, clone, copy link, the priority picker.
+- Priorities: Very low, and no empty choice (0092). Points seeded as a number field boards estimate with
+  (0095). Seeded types and priorities read in Spanish.
+- Administration (UI-T05, UI-T17 to UI-T20): its own section, with a page per group, the overview,
+  visibility policies and the explainer, webhooks, AI limits, track sets. Tracks you run is a group of its
+  own there, and all that a track's manager sees (moved from Settings when invitations merged). Ticket
+  templates are among the setup pages.
+- Search basic filters; tutorial storage only (UI-T10, 0084).
+- origin/main is merged: templates, updates, invitations and manager pages, Google sign-in.
 
+**Partly done:**
+
+- UI-T06, UI-T07: pages the work touched use PageHeader and the shared styles; many others do not. The
+  page-by-page pass is T-143.
+- UI-T16: reach, closing column and removal are built; adding, renaming and reordering by drag on the
+  board are not.
+- UI-T11: the picker and page exist; the Start buttons still do nothing.
+
+**Left as tickets, not started:** personal track groups and sharing them with access (T-084 to T-087;
+their migration takes whatever number is next free when they start, not a fixed one); creating tracks off
+by default with a ticked box when giving the manager role (T-087a: it needs a rule for who may tick it, an
+audit record, an event and a contract scenario, and every fixture that makes a local track as an ordinary
+person changes); the page-by-page glass pass (T-143); the tutorial's offer and steps (UI-T12, UI-T13); drag
+and drop beyond boards (UI-T08); the layout editor (UI-T15); UI-T21; the phone and accessibility pass
+(UI-T09); the route sweep (UI-T22); the manual's overview pages (UI-T14).
+
+**Known gaps to carry:**
+
+- The full ticket page has no draft protection; the pop-up has.
+- Only the priority follows edit permission up front; other fields show controls and the server refuses.
+- Turning a track's sprints toggle off while a sprint runs is not guarded.
+- Board settings offer fields the card never draws (it draws assignee, priority, points, due date, labels).
+- The other track toggles (board, releases, calendar, timeline) hide nothing, though CORE-002 (2) says they
+  should; the API still serves backlog resources on a Scrum board with its toggle off.
+- Another person's change of a board's kind reaches a person's next page only.
 - An import can put sprints on a Kanban board when a track's first source board is Kanban.
-- `apps/web/e2e` specs that make boards through the old page or POST free boards, and those clicking
-  the old transition buttons, need updating; `person-and-basic-filters.spec.ts` has not passed yet.
-- Running e2e rebuilds `apps/web/dist`: restart the demo straight after, or its page breaks.
-
-The Administration panel is built (UI-T05, UI-T17 to UI-T20): five groups, an overview, a page per group,
-breadcrumbs, and four new pages. Not there yet: Invitations (from `claude/track-invites`, when the branches
-join: its page goes in the People and access group of `admin/sections.ts`, its pending list replaces the
-overview's "not signed in yet" panel), and pages for layout sets (UI-T15), priorities and notification policies
-(UI-T21), which join Tracks and setup with their pages. UI-T21's list stays for the user.
-
-Next, in order: every page on
-PageHeader (UI-T06); column and widget drag (UI-T08, rest of UI-T16); layout editor (UI-T15); tutorial
-(UI-T11 to UI-T13); phones and accessibility (UI-T09); manual (UI-T14).
+- `--color-surface-sunken` remains on about 30 non-field panels (T-143).
+- An edit in the pop-up does not refresh a release page, sprint report, board reports or files beneath it
+  until the page is read again.
+- No ADR for the pop-up's history design; it is written at the top of `routing/router.ts`.
+- `reports` still lists a board's old "Only my tickets" filter, since "Me" does not exist there.
+- Migrations: a database already past a number cannot take a lower one. Fresh installs are fine; a kept
+  database on main at 0087 needs its 0084 applied by hand, and the demo likewise.
+- Running e2e rebuilds `apps/web/dist`: restart the demo straight after, or its page breaks. Restarts keep
+  `.cache`; never `pnpm demo --fresh`, the demo holds the project's own tickets.
 
 ## Review of the closer pass (2026-11-02, local session)
 
@@ -120,20 +158,21 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 |---|---|---|---|---|
 | UI-T01 | Direction: ADR drafts and a prototype of Home, a board and a ticket, with screenshots for the user | done | The user agrees the direction or names changes; ADR-114 and ADR-115 move to Accepted | 265af8b, c4e6b60 |
 | UI-T02 | Glass tokens and fallbacks in both skins; composited contrast test | done (the test found dark muted text at 4.36 under the sheen's brightest corner; the sheen went from 12 % to 9 %) | Glass tokens in `tokens.css` with the opaque fallbacks; `contrast.test.ts` composites each glass token over the canvas and its glows at WCAG AA in both skins | 265af8b (tokens only) |
-| UI-T03 | Shared pieces: PageHeader, HelpTip, EmptyState, ThemeToggle, Help menu | in progress (PageHeader, HelpTip, EmptyState, ThemeToggle with tests and stories; Help menu to do) | Each has a story (axe in both skins) and tests by role and name; Help menu built as an APG menu button like the person's menu | 265af8b (components, no stories yet) |
-| UI-T04 | Navigation in sections, Tracks directory and track tabs | in progress | Sidebar grouped (done in the prototype); Tracks lists every visible track; a track's pages share one tab bar; NavList and AppShell tests and stories updated | 265af8b (groups only) |
+| UI-T03 | Shared pieces: PageHeader, HelpTip, EmptyState, ThemeToggle, Help menu | done) | Each has a story (axe in both skins) and tests by role and name; Help menu built as an APG menu button like the person's menu | 265af8b (components, no stories yet) |
+| UI-T04 | Navigation in sections, Tracks directory and track tabs | done (Tracks is one plain link since the user replaced the list)s | Sidebar grouped (done in the prototype); Tracks lists every visible track; a track's pages share one tab bar; NavList and AppShell tests and stories updated | 265af8b (groups only) |
 | UI-T05 | Administration panel: its own section and navigation, separate from personal Settings (decided by the user 2026-11-03 for 1.0; replaces the Settings hub) | done, e2e not run; Invitations wait for the branch | Five groups as in ADR-114: People and access; Tracks and setup; Sign-in and security; Integrations and AI; System. A site administrator sees all of them. A configuration administrator sees only the setup pages, and those work in the web app without the API, with tests for both roles. An overview page shows system health, pending invitations and recent security alerts. Every page has a breadcrumb back to its group; admin routes keep their paths; e2e that open admin pages still pass. The invite permission and track managers' page from `claude/track-invites` moves into the panel when the branches join | |
-| UI-T06 | Every page on PageHeader with a purpose line and explaining empty states | todo | No page renders a bare `page-title` heading; each has its purpose line and, where useful, "What is this for?"; empty lists use EmptyState | |
-| UI-T07 | Board, backlog and ticket view in the glass language | in progress | Board and ticket header done in the prototype; backlog, reports, ticket side panel fields and activity follow; BoardPage, BacklogPage and TicketPage tests and stories updated | 265af8b (board and ticket header) |
+| UI-T06 | Every page on PageHeader with a purpose line and explaining empty states | partly done; the rest is T-143o | No page renders a bare `page-title` heading; each has its purpose line and, where useful, "What is this for?"; empty lists use EmptyState | |
+| UI-T07 | Board, backlog and ticket view in the glass language | partly done (board, ticket and pop-up); the rest is T-143s | Board and ticket header done in the prototype; backlog, reports, ticket side panel fields and activity follow; BoardPage, BacklogPage and TicketPage tests and stories updated | 265af8b (board and ticket header) |
 | UI-T08 | Drag and drop with a keyboard path: board columns, dashboard widgets; restyle the existing drags | todo | Columns reorder by drag and by Move left/right; widgets by drag and by the existing buttons; every drop announced; tests for both paths | |
 | UI-T09 | Phones and accessibility pass across the app | todo | No sideways scroll at 360 px on every page; 44 px targets under a coarse pointer; axe clean in both skins on every story; `pnpm verify --e2e` green | |
-| UI-T10 | Tutorial progress on the server: migration 0084 (exactly), `GET` and `PUT /api/v1/account/tutorial` | todo | Table type in `schema.ts`, schema golden reviewed; routes session-only with a strict body, own progress only, a domain event and its contract scenario, route tests | |
+| UI-T10 | Tutorial progress on the server: migration 0084 (exactly), `GET` and `PUT /api/v1/account/tutorial` | doneo | Table type in `schema.ts`, schema golden reviewed; routes session-only with a strict body, own progress only, a domain event and its contract scenario, route tests | |
 | UI-T11 | Tutorial picker and Settings, Tutorials page | in progress (picker with test and story; page without storage) | Page and picker built (prototype, no storage); then reads and saves progress, starts, resumes and replays a section; story and tests | 265af8b (page without storage) |
 | UI-T12 | First-run offer: Start, Not now, Don't offer again | todo | Offered once at a person's first sign-in; skipping leaves every section in Settings, Tutorials; story, tests and an e2e | |
 | UI-T13 | Coach card and the steps of the eight sections | todo | Card highlights `data-tutorial` targets, waits for real actions, Back, Next, Pause, Skip, Escape pauses, docks on phones; a test walks every section's steps; one section end to end in e2e | |
+| UI-T22 | Route sweep: the whole app reads as one design | todo | Every route gone through in Chrome in both skins and at phone width, including sign-in, first-run setup, invitation and password pages, error and not-found pages, the update notice, the Builder page, the imports wizard and printed views; differences listed and fixed from tokens and shared components; a cheap guard if one exists (raw colours outside tokens, unstyled native controls) | |
 | UI-T14 | Manual and HANDOFF | todo | A "Getting around" page and a "Tutorials" page in `docs/manual`; changed pages updated; HANDOFF says what changed and what is next | |
 | UI-T15 | Layout editor page under Settings, Configuration sets (confirmed by the user 2026-11-03) | todo | A page for layout sets (`/api/v1/layout-sets`): drag fields into tabs and sections (main or side column), reorder them, mark a section "hide when empty"; "show only the fields I placed" maps to `others: "omit"`; a live preview per ticket type and per operation (create, edit, view); a keyboard path for every drag; the field rules page and this one link to each other and each explains what it does and how the two combine; manual `admin/fields.md` updated (the "no web page yet" line goes); story, tests and an e2e | |
-| UI-T16 | Board columns easy to manage (confirmed by the user 2026-11-03) | todo | On the board and in its settings: add, rename, reorder by drag (and by Move left/right), set minimum and maximum; the limit stays 30 (`MAX_COLUMNS` in `apps/server/src/boards/model.ts`) and the page says so when it is reached; tests for drag and keyboard paths. Overlaps UI-T08's column drag | |
+| UI-T16 | Board columns easy to manage (confirmed by the user 2026-11-03) | partly done (reach, closing column, removal); drag on the board is noto | On the board and in its settings: add, rename, reorder by drag (and by Move left/right), set minimum and maximum; the limit stays 30 (`MAX_COLUMNS` in `apps/server/src/boards/model.ts`) and the page says so when it is reached; tests for drag and keyboard paths. Overlaps UI-T08's column drag | |
 | UI-T17 | Administration: visibility policies and the permission explainer (first new page) | done | Policies and levels managed in the web app; the explainer answers who can do what and why; story, tests; `admin/permissions.md` updated | |
 | UI-T18 | Administration: webhooks (second) | done | Create, change, delete and see deliveries in the web app, site administrators only; story, tests; `admin/rest-api.md` updated | |
 | UI-T19 | Administration: AI limits and prices (third) | done | Limits and the price table managed in the web app; story, tests; `admin/ai-usage.md` updated | |
@@ -164,20 +203,5 @@ a control described in other words could be missing.
 
 ## Next session: start here
 
-The user asked to wrap up on 2026-11-03; the work stops here with everything committed and the
-gate green (see HANDOFF). In order:
-
-1. UI-T02: composite each glass token over the canvas and its four glows in
-   `apps/web/src/styles/contrast.test.ts` (both skins, WCAG AA for text and muted text).
-2. UI-T03: the Help menu (Tutorials, Keyboard shortcuts, Manual) as an APG menu button; reuse the
-   keyboard handling of `session/UserMenu.tsx` (extract a shared hook).
-3. UI-T10: the server storage. A helper had started it and was stopped before committing
-   anything; start again from ADR-115. The four checks every mutating route must pass: an event
-   with a scenario in `events/contract.test.ts`, the OpenAPI entry (`api/openapi.test.ts`), the
-   token scope class (`tokens/scopes.test.ts`, session only) and the account-route session check
-   (`routes/identity.test.ts`). Migration 0084 exactly.
-4. UI-T04, UI-T05, UI-T06: Tracks directory and tabs, the Administration panel, every page on
-   PageHeader; then UI-T17 to UI-T21, its new pages.
-5. UI-T15 (layout editor) and UI-T16 (board columns), then UI-T08 (widget drag).
-6. UI-T12, UI-T13: the first-run offer and the coach card, on UI-T10's routes.
-7. UI-T09 and UI-T14: the phone and accessibility pass, the manual.
+Read "Where this stands" at the top. The older handoff and review sections are history, kept for why things
+are as they are. After the merge, in the order the user asks for them: the tickets named there.

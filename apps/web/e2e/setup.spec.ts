@@ -1130,7 +1130,7 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
 
   await page.goto('./#/create');
   await expect(heading(page)).toHaveText('Create ticket');
-  await page.getByLabel('Track').selectOption({ label: 'FORM Forms' });
+  await page.getByLabel('Track', { exact: true }).selectOption({ label: 'FORM Forms' });
   await page.getByLabel('Ticket type').click();
   await page.getByRole('option', { name: 'Bug', exact: true }).click();
   await expect(page.getByLabel('Due date (required)')).toBeVisible();

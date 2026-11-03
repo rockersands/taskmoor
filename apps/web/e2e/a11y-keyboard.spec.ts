@@ -129,6 +129,9 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
   await page.keyboard.press('t');
   const transition = page.locator(':focus');
   await expect(transition).toHaveText(/./);
+  // The one status control: Enter opens its menu on the first status, Enter again moves there.
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('menuitem').first()).toBeFocused();
   await page.keyboard.press('Enter');
   await expect
     .poll(
