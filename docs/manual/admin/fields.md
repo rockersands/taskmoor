@@ -46,8 +46,9 @@ the forms and in search like any custom field you add. Boards of new tracks esti
 - **Remove it** once no ticket holds a value, as with any field. Boards that estimated with it go back
   to the original time estimate, and it does not come back on its own.
 
-On upgrade, a workspace that already has a shared number field named Points, Story points or Puntos
-keeps it and gets no second one (the oldest counts, if it has several). The boards that follow are
+On upgrade, a workspace that already has a shared number field named Points or Puntos, or under the
+name an imported one usually has, keeps it and gets no second one (the oldest counts, if it has
+several). The boards that follow are
 those on the default statistic, unless the track's tickets already hold time estimates; a board that
 names a field or counts tickets stays as it is. If a shared field of another type is already called
 Points, no field is made and the boards stay as they are. Tickets keep their values.

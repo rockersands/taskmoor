@@ -13,6 +13,7 @@ import {
   ToDoIcon,
 } from './icons';
 import { priorityName } from './priorityName';
+import { typeName } from './seededNames';
 
 /** The ticket type icons, by the name a type's `icon` holds. */
 const TYPE_ICONS: Readonly<Record<string, ComponentType<IconProps>>> = {
@@ -69,8 +70,9 @@ function Labelled({
  * and tooltip, and shape carries it: colour does not.
  */
 export function TypeIcon({ name, icon }: { name: string; icon?: string | null | undefined }) {
+  const t = useT();
   return (
-    <Labelled name={name}>
+    <Labelled name={typeName(t, name)}>
       <TypeGlyph name={name} icon={icon} />
     </Labelled>
   );

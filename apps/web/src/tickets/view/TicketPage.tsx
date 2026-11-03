@@ -29,7 +29,7 @@ import { IconSelect } from '../../shell/IconSelect';
 import { leaveMotion } from '../../shell/motion';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { priorityName } from '../../shell/priorityName';
-import { fieldName } from '../../shell/seededNames';
+import { fieldName, typeName } from '../../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../../shell/TicketIcons';
 import { useSyncEngine } from '../../sync/SyncProvider';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
@@ -571,7 +571,9 @@ export function TicketView({
           {shown.track.name && (
             <TypeGlyph name={shown.ticketType.name} icon={shown.ticketType.icon} />
           )}
-          <span>{shown.track.name ? `${shown.track.name} · ${shown.ticketType.name}` : ''}</span>
+          <span>
+            {shown.track.name ? `${shown.track.name} · ${typeName(t, shown.ticketType.name)}` : ''}
+          </span>
         </p>
         {editingSummary && loaded ? (
           <SummaryForm

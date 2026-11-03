@@ -12,7 +12,7 @@ import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
 import { IconSelect } from '../shell/IconSelect';
 import { priorityName } from '../shell/priorityName';
-import { fieldName } from '../shell/seededNames';
+import { fieldName, typeName } from '../shell/seededNames';
 import { PriorityGlyph, TypeGlyph } from '../shell/TicketIcons';
 import { type DuplicateLookup, DuplicateSuggestions } from './DuplicateSuggestions';
 import {
@@ -668,7 +668,7 @@ export function CreateTicketPage({
                 value={String(typeId ?? '')}
                 options={types.map((k) => ({
                   value: String(k.id),
-                  label: k.name,
+                  label: typeName(t, k.name),
                   icon: <TypeGlyph name={k.name} icon={k.icon} />,
                 }))}
                 onChange={(next) => setTypeId(Number(next))}

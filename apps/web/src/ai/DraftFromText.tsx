@@ -2,6 +2,8 @@ import { useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { priorityName } from '../shell/priorityName';
+import { typeName } from '../shell/seededNames';
 import { AiFeature, type AiFeatures } from './AiFeature';
 import { type AiNoticeClient, aiNoticeClient, aiRefusalMessage } from './AiNotice';
 import { type AiClient, aiClient, type TicketDraft } from './client';
@@ -135,7 +137,13 @@ function DraftBody({
             <li key={i} className="ai-proposal">
               <p className="ai-proposal-summary">{d.summary}</p>
               <p className="form-hint">
-                {[d.ticketType?.name, d.priority?.name, ...d.labels].filter(Boolean).join(' · ')}
+                {[
+                  d.ticketType && typeName(t, d.ticketType.name),
+                  d.priority && priorityName(t, d.priority.name),
+                  ...d.labels,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </p>
               <button
                 type="button"

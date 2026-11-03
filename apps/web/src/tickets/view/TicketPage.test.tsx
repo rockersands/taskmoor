@@ -8,7 +8,7 @@ import { ApiError } from '../../api/client';
 import { fakeAttachmentClient } from '../../attachments/fixtures';
 import { fakeCommentClient } from '../../comments/fixtures';
 import { I18nProvider } from '../../i18n/I18nProvider';
-import type { Locale } from '../../i18n/locale';
+import { type Locale, messagesFor } from '../../i18n/locale';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { rememberBoard } from '../../routing/cameFrom';
 import { type Session, SessionProvider } from '../../session/SessionProvider';
@@ -362,7 +362,7 @@ describe('the ticket view (M1-051)', () => {
     const data = new Set<string>([
       ticket.summary,
       `${ticket.key} ${ticket.summary}`,
-      `${ticket.track.name} · ${ticket.ticketType.name}`,
+      `${ticket.track.name} · ${messagesFor('en-XA')['ticketType.name.bug']}`,
       ticket.status.name,
       ...['Grace Hopper', 'Ada Lovelace', 'High', 'Highest', 'Medium', '2.4', 'Payments'],
       'payments, checkout',

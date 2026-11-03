@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { priorityName } from '../shell/priorityName';
+import { typeName } from '../shell/seededNames';
 import {
   type BasicQuery,
   CHOICE_FIELDS,
@@ -323,7 +325,9 @@ function ChoiceFilter({
                         : removeValue(current as string)
                     }
                   />
-                  <label htmlFor={`${id}-${option}`}>{option}</label>
+                  <label htmlFor={`${id}-${option}`}>
+                    {field === 'type' ? typeName(t, option) : priorityName(t, option)}
+                  </label>
                 </div>
               );
             })}
