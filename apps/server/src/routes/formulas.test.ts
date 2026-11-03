@@ -638,15 +638,9 @@ describe('formula fields (M1-013)', () => {
     expect(t.fields[closedDay]).toBe('open');
     const transitions = (await get('alice', `/api/v1/tickets/${t.id}/transitions`)).json()
       .transitions as { id: number; name: string }[];
-    const close = transitions.find((x) => x.name === 'Close');
-    const reason = await database.db
-      .selectFrom('close_reason')
-      .select('id')
-      .orderBy('id')
-      .executeTakeFirstOrThrow();
+    const close = transitions.find((x) => x.name === 'Closed');
     const closed = await post('alice', `/api/v1/tickets/${t.id}/transitions`, {
       transitionId: close?.id,
-      fields: { 'close-reason': reason.id },
     });
     expect(closed.statusCode, closed.body).toBe(200);
     expect(closed.json().ticket.fields[closedDay]).toBe(

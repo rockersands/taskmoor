@@ -259,10 +259,10 @@ describe('history operators through the search API (M1-039)', () => {
   it('[QRY-005] status WAS "In Review" still matches after the status is renamed', async () => {
     await ticket('r1', 'HS', 'renamegrp one');
     await ticket('r2', 'HS', 'renamegrp two');
-    // Start, Send to review, Back to active; the other ticket only starts.
+    // To Active, to In Review and back to Active; the other ticket only goes to Active.
     await transition('r1', 1);
     await transition('r1', 2);
-    await transition('r1', 3);
+    await transition('r1', 1);
     await transition('r2', 1);
     const scoped = (q: string) => found(`summary ~ renamegrp AND (${q})`);
     expect(await scoped('status WAS "In Review"')).toEqual(K('r1'));

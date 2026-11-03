@@ -107,15 +107,17 @@ where new tickets start. A transition can have:
 - **effects**: what happens after it, such as assigning the ticket.
 
 A **workflow map** says which workflow each ticket type follows in the tracks that use the map.
-The default workflow goes from New to Active to In Review to Closed, with a Reopen back to New.
+The default workflow has the statuses New, Active, In Review and Closed, and a ticket can move
+from any of them to any other at once.
 See [workflows](admin/workflows.md).
 
 ## Close reasons
 
 A **close reason** says why a ticket was closed. The defaults are Completed, Not planned,
 Duplicate and Not reproducible. Setting a close reason stamps the ticket's **Closed** time;
-clearing it clears the stamp. In the default workflow, the Close transition asks for a close
-reason and Reopen clears it.
+clearing it clears the stamp. In the default workflow, moving to Closed sets the reason to
+Completed, moving anywhere else clears it, and nothing asks for one; why a ticket moved goes in a
+comment. An administrator can make a workflow ask for a reason.
 
 ## Priorities
 

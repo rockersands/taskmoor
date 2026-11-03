@@ -319,13 +319,14 @@ export async function buildCompatSource(db: Kysely<Database>): Promise<CompatSou
   }
   for (const t of made.filter((_, i) => i % 3 === 0)) {
     const transitions = (await must({ method: 'GET', url: `/api/v1/tickets/${t.key}/transitions` }))
-      .transitions as { id: number }[];
-    const first = transitions[0];
-    if (first) {
+      .transitions as { id: number; name: string }[];
+    // The default workflow's first transition leads to New, where these tickets already are.
+    const start = transitions.find((x) => x.name === 'Active');
+    if (start) {
       await must({
         method: 'POST',
         url: `/api/v1/tickets/${t.key}/transitions`,
-        payload: { transitionId: first.id },
+        payload: { transitionId: start.id },
       });
     }
   }

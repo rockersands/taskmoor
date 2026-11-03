@@ -147,7 +147,7 @@ Words are ANDed; quoted phrases; trailing `*` and single `?` wildcards; `term~` 
 ### 3.1 Board configuration options
 
 - **Source and ownership**: one saved search (single or multiple tracks); location (a track or a user); board admins; visibility follows the saved search and browse permission.
-- **Columns**: add, rename, delete, move; several statuses per column; an "unmapped statuses" panel (tickets in unmapped statuses are hidden); the rightmost column means done; optional Kanban backlog column.
+- **Columns**: add, rename, delete, move; several statuses per column; an "unmapped statuses" panel (tickets in unmapped statuses are hidden); the rightmost column means done; optional Kanban backlog column. A new board starts with one column per status of its tracks' workflows, ordered by stage.
 - **WIP limits**: min and max per column; header turns red above max and yellow below min; counts include tickets hidden by board filters; limits never hide cards.
 - **Swimlanes**: by queries (one query per lane; default lanes "Expedite" with `priority = Urgent` and an undeletable catch-all "Everything else"), by subtickets (each parent with its subtickets), by assignees (unassigned lane first or last), by outcomes or parents, by tracks, or none. Lanes are ordered by rank; ORDER BY in lane queries is ignored.
 - **Board filters** (Jira: quick filters): name, query, description; defaults "Only my tickets" (`assignee = currentUser()`) and "Recently updated" (`updated >= -1d`); reorderable; shown as buttons or dropdown; several active board filters combine with AND (verify).

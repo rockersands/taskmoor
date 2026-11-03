@@ -202,8 +202,8 @@ describe('boards (M1-043)', () => {
       trackId: tracks.BA,
       source: { query: 'track = BA' },
     });
-    // Default columns: one per status stage of the board's workflows.
-    expect(board.columns.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
+    // Default columns: one per status of the board's workflows, from new to closed.
+    expect(board.columns.map((c) => c.id)).toEqual(['c1', 'c2', 'c3', 'c4']);
     const d = await data('alice', board.id);
     expect(d.cards.map((c) => c.key)).toEqual(
       ['a1', 'a2', 'b1', 'b2', 'c1', 'c2'].map((n) => T(n).key),
@@ -211,6 +211,7 @@ describe('boards (M1-043)', () => {
     expect(d.columns.map((c) => [c.name, c.count])).toEqual([
       ['New', 6],
       ['Active', 0],
+      ['In Review', 0],
       ['Closed', 0],
     ]);
     // The board's statuses: those of the default workflow, each in a column.
@@ -665,7 +666,7 @@ describe('boards (M1-043)', () => {
     });
     const history = (await get('alice', `/api/v1/tickets/${T('a2').id}/history`)).json();
     expect(JSON.stringify(history)).toContain('Active');
-    // From Active, "Send to review" and "Close" both lead into the last column.
+    // From Active, "In Review" and "Closed" both lead into the last column.
     const ask = await move('alice', { ticket: T('a2').id, columnId: 'review' });
     expect(ask.statusCode).toBe(409);
     expect(ask.json().error).toBe('transition_choice');
@@ -674,10 +675,8 @@ describe('boards (M1-043)', () => {
         .json()
         .transitions.map((t: { name: string }) => t.name)
         .sort(),
-    ).toEqual(['Close', 'Send to review']);
-    const chosen = ask
-      .json()
-      .transitions.find((t: { name: string }) => t.name === 'Send to review');
+    ).toEqual(['Closed', 'In Review']);
+    const chosen = ask.json().transitions.find((t: { name: string }) => t.name === 'In Review');
     const reviewed = await move('alice', {
       ticket: T('a2').id,
       columnId: 'review',
@@ -688,9 +687,6 @@ describe('boards (M1-043)', () => {
     expect(reviewed.json()).toMatchObject({ transitioned: true, ranked: true });
     // Ranked before a1: it now leads the board.
     expect((await data('alice', board.id)).cards[0]?.key).toBe(T('a2').key);
-    // No transition leads back to To do from In Review.
-    const none = await move('alice', { ticket: T('a2').id, columnId: 'todo' });
-    expect(none.json()).toEqual({ error: 'no_transition', columnId: 'todo' });
     // Within a column, only the rank changes.
     const rankOnly = await move('alice', {
       ticket: T('a2').id,
@@ -704,5 +700,63 @@ describe('boards (M1-043)', () => {
     const unseen = await move('bob', { ticket: T('c1').id, columnId: 'doing' });
     expect(unseen.json().fields).toEqual({ ticket: 'not_on_board' });
     await setStatus('a2', 'New');
+  });
+
+  it('[AGL-002] refuses a move that no transition of the workflow leads to', async () => {
+    // The default workflow reaches every status from every status; this one goes one way.
+    const workflow = await post('admin', '/api/v1/workflows', {
+      name: 'One way',
+      definition: {
+        initialStatusId: S('New'),
+        statuses: [{ statusId: S('New') }, { statusId: S('Active') }],
+        transitions: [{ id: 1, name: 'Start', from: [S('New')], to: S('Active') }],
+      },
+    });
+    expect(workflow.statusCode, workflow.body).toBe(201);
+    const map = await post('admin', '/api/v1/workflow-maps', {
+      name: 'One way',
+      defaultWorkflowId: workflow.json().workflow.id,
+    });
+    expect(map.statusCode, map.body).toBe(201);
+    const track = await post('admin', '/api/v1/tracks', {
+      key: 'BW',
+      name: 'Track BW',
+      mode: 'shared',
+    });
+    expect(track.statusCode, track.body).toBe(201);
+    const trackId = track.json().track.id as number;
+    const set = await patch('admin', `/api/v1/tracks/${trackId}`, {
+      workflowMapId: map.json().workflowMap.id,
+    });
+    expect(set.statusCode, set.body).toBe(200);
+    const members = await database.db
+      .selectFrom('role')
+      .select('id')
+      .where('name', '=', 'Members')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('track_role_actor')
+      .values({
+        workspace_id: 1,
+        track_id: trackId,
+        role_id: members.id,
+        user_id: users.alice?.id as number,
+      })
+      .execute();
+    const card = await ticket('w1', 'BW');
+    const board = await createBoard('alice', {
+      name: 'One way',
+      kind: 'kanban',
+      trackId,
+      source: { query: 'track = BW' },
+      columns: [
+        { id: 'todo', name: 'To do', statusIds: [S('New')] },
+        { id: 'doing', name: 'Doing', statusIds: [S('Active')] },
+      ],
+    });
+    const move = (columnId: string) =>
+      post('alice', `/api/v1/boards/${board.id}/moves`, { ticket: card.id, columnId });
+    expect((await move('doing')).json()).toMatchObject({ transitioned: true });
+    expect((await move('todo')).json()).toEqual({ error: 'no_transition', columnId: 'todo' });
   });
 });

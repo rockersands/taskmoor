@@ -24,8 +24,8 @@ To make a board, fill in **New board** at the bottom of the list:
    language](search.md#the-query-language), for example `track = PAY`.
 3. Press **Create board**.
 
-A board you make here is kept by you. It starts with one column per stage (new, active and
-closed) holding the statuses of its tracks' workflows, the board filters "Only my tickets" and
+A board you make here is kept by you. It starts with one column per status of its tracks'
+workflows, named after the status and ordered from new to closed, the board filters "Only my tickets" and
 "Recently updated" (changed in the last day), cards coloured by ticket type, and the assignee and priority on each card.
 Change any of it in the board's settings.
 

@@ -31,6 +31,12 @@
       "description": ""
     }
   ],
+  "closeReasons": [
+    {
+      "id": 1,
+      "name": "Completed"
+    }
+  ],
   "definition": {
     "initialStatusId": 1,
     "statuses": [
@@ -49,55 +55,51 @@
     ],
     "transitions": [
       {
-        "id": 1,
-        "name": "Start",
-        "from": [
-          1
-        ],
-        "to": 2
-      },
-      {
-        "id": 2,
-        "name": "Send to review",
-        "from": [
-          2
-        ],
-        "to": 3
-      },
-      {
-        "id": 3,
-        "name": "Back to active",
-        "from": [
-          3
-        ],
-        "to": 2
-      },
-      {
-        "id": 4,
-        "name": "Close",
-        "from": "any",
-        "to": 4,
-        "layout": [
-          "close-reason"
-        ],
-        "checks": [
-          {
-            "type": "field-required",
-            "field": "close-reason"
-          }
-        ]
-      },
-      {
         "id": 5,
-        "name": "Reopen",
-        "from": [
-          4
-        ],
+        "name": "New",
+        "from": "any",
         "to": 1,
         "effects": [
           {
             "type": "clear-field",
             "field": "close-reason"
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "name": "Active",
+        "from": "any",
+        "to": 2,
+        "effects": [
+          {
+            "type": "clear-field",
+            "field": "close-reason"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "In Review",
+        "from": "any",
+        "to": 3,
+        "effects": [
+          {
+            "type": "clear-field",
+            "field": "close-reason"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Closed",
+        "from": "any",
+        "to": 4,
+        "effects": [
+          {
+            "type": "update-system-field",
+            "field": "close-reason",
+            "value": "1"
           }
         ]
       }

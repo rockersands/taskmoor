@@ -73,11 +73,13 @@ describe('report event store (M1-059)', () => {
     );
     t[name] = res.ticket;
   }
-  async function transition(name: string) {
+  async function transition(name: string, to: string) {
     const listed = await ok({ method: 'GET', url: `/api/v1/tickets/${t[name]?.id}/transitions` });
-    const first = (listed.transitions as { id: number }[])[0];
-    expect(first, `a transition for ${name}`).toBeDefined();
-    await post(`/api/v1/tickets/${t[name]?.id}/transitions`, { transitionId: first?.id });
+    const chosen = (listed.transitions as { id: number; name: string }[]).find(
+      (x) => x.name === to,
+    );
+    expect(chosen, `a transition for ${name}`).toBeDefined();
+    await post(`/api/v1/tickets/${t[name]?.id}/transitions`, { transitionId: chosen?.id });
   }
   /** What a simple report shows: tickets per status, open estimate and points, sprint scope. */
   function summary(states: Map<number, ReportState>) {
@@ -192,8 +194,8 @@ describe('report event store (M1-059)', () => {
       originalEstimate: 8 * HOUR,
       fields: { [points]: 13 },
     });
-    await transition('a');
-    await transition('a');
+    await transition('a', 'Active');
+    await transition('a', 'In Review');
     await patch(`/api/v1/tickets/${t.c?.id}`, { assigneeId: users.alice?.id });
     await post(`/api/v1/sprints/${sprints.one}/tickets`, { tickets: [t.c?.key] });
     await post(`/api/v1/sprints/${sprints.one}/tickets/remove`, { tickets: [t.b?.key] });
@@ -251,7 +253,7 @@ describe('report event store (M1-059)', () => {
       remainingEstimate: 4 * HOUR,
       fields: { [points]: 5 },
     });
-    await transition('d');
+    await transition('d', 'Active');
     await post(`/api/v1/tickets/${t.a?.id}/time-entries`, { duration: '30m' }, 201);
     const after = summary(await stateAt(database.db, 1, ids(), mark, { numberFields: [points] }));
     expect(after).toEqual(before);

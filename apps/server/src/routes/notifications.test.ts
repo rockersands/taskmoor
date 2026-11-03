@@ -363,14 +363,7 @@ describe('notification rules (M1-056)', () => {
     const closed = await as('actor', {
       method: 'POST',
       url: `/api/v1/tickets/${ticket.key}/transitions`,
-      payload: {
-        transitionId: closing?.id,
-        fields: {
-          'close-reason': (
-            await database.db.selectFrom('close_reason').select('id').executeTakeFirstOrThrow()
-          ).id,
-        },
-      },
+      payload: { transitionId: closing?.id },
     });
     expect(closed.statusCode, closed.body).toBe(200);
     // Time only Administrators of the track may see: followers who are not are left out.

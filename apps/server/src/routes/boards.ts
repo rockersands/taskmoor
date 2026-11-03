@@ -208,8 +208,6 @@ function sortKeys(value: unknown): unknown {
   );
 }
 
-const STAGE_NAMES: Record<string, string> = { new: 'New', active: 'Active', closed: 'Closed' };
-
 function boardAdmins(db: Db, boardId: number): Promise<{ id: number; name: string }[]> {
   return db
     .selectFrom('board_admin as a')
