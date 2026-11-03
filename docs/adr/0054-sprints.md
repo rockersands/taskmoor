@@ -116,6 +116,25 @@ sprint's remaining total. The next tasks read what this one stores: sprint query
   track (into that sprint for a sprint section). Phones use the menus; the panels follow the
   sections in one column.
 
+## Completing from the board (T-106; AGL-010, AGL-011)
+
+- **Who sees the button.** A Scrum board reads `GET /api/v1/boards/:id/sprints`, whose
+  `mayManage` is the right the sprint routes check (Manage sprints in the track, or the right to
+  configure the board). Only then does the board offer **Complete sprint**, one button per active
+  sprint. The server stays the judge: `POST /sprints/:id/complete` refuses without that right,
+  and the pop-up says why in words, as it does for a sprint completed elsewhere first or a
+  planned sprint that has gone. No API change.
+- **Counts from the board's data, not a second query.** Done is the rightmost column (the
+  statuses completion keeps with the sprint); open is every other column plus the unmapped
+  count, which completion carries over too. Column counts ignore board filters and the person
+  filter, so the numbers do not depend on what the person narrowed the board to. With one active
+  sprint the board's data is that sprint's; with several, the pop-up reads
+  `GET /boards/:id/data?sprints=<id>` for its own sprint. The counts are of the tickets the
+  viewer may see; completion also moves open tickets the viewer cannot see.
+- **One target choice.** The choice of where open tickets go (`CompleteTargetSelect`) and the
+  refusal words (`completeRefusal`) are shared with the backlog, which still completes in place
+  without a pop-up.
+
 ## Options considered
 
 | Option | For | Against |

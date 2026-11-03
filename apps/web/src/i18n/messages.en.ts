@@ -3680,6 +3680,7 @@ export const messagesEn = {
   'boards.choose.intro': 'Several transitions lead there. Which one?',
   'boards.choose.option': '{name} (to {status})',
   'boards.choose.cancel': 'Cancel',
+  'boards.sprint.complete': 'Complete {name}',
   'boards.list.title': 'Boards',
   'boards.list.failed': 'The boards could not be loaded.',
   'boards.list.emptyTitle': 'No boards yet',
@@ -3847,6 +3848,24 @@ export const messagesEn = {
   'sprints.complete.newSprint': 'A new sprint',
   'sprints.complete.submit': 'Complete sprint',
   'sprints.complete.failed': 'The sprint could not be completed.',
+  'sprints.complete.forbidden': 'Only people who manage this board’s sprints can complete them.',
+  'sprints.complete.notActive':
+    'This sprint is no longer active: someone may have completed it already.',
+  'sprints.complete.gone': 'This sprint or its board is no longer there.',
+  'sprints.complete.targetGone':
+    'The sprint you chose for the open tickets is no longer planned. Choose another place.',
+  // Completing a sprint from its board (T-106; AGL-010): a pop-up that counts its tickets.
+  'sprints.completeDialog.title': 'Complete {name}?',
+  'sprints.completeDialog.counts':
+    '{done, plural, =0 {No tickets are done} one {# ticket is done} other {# tickets are done}} and {open, plural, one {# is open} other {# are open}}.',
+  'sprints.completeDialog.allDone':
+    '{done, plural, one {Its only ticket is done} other {All # tickets are done}}, so nothing moves.',
+  'sprints.completeDialog.empty': 'The sprint has no tickets.',
+  'sprints.completeDialog.uncounted':
+    'The tickets could not be counted. The open ones go where you choose.',
+  'sprints.completeDialog.target': 'Open tickets go to',
+  'sprints.completeDialog.cancel': 'Cancel',
+  'sprints.completeDialog.close': 'Close without completing',
   'sprints.move.label': 'Move {key} to',
   'sprints.move.placeholder': 'Move to…',
   'sprints.move.failed': 'The tickets could not be moved.',

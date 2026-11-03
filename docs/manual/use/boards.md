@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -217,9 +217,24 @@ change the board.
   board allows several active sprints, complete the active one first.
 - An active sprint links to its **Sprint report** (see [Dashboards and
   reports](dashboards-and-reports.md)).
-- To finish an active sprint, choose where its unfinished tickets go under **Move unfinished
-  tickets to**: the **Backlog**, a planned sprint, or **A new sprint**. Then press **Complete
-  sprint**. A ticket counts as finished when it is in the board's rightmost column.
+- To finish an active sprint on the backlog, choose where its unfinished tickets go under **Move
+  unfinished tickets to**: the **Backlog**, a planned sprint, or **A new sprint**. Then press
+  **Complete sprint**. A ticket counts as finished when it is in the board's rightmost column.
+
+You can also finish the active sprint from the board itself. **Complete sprint**, at the top of
+the board, opens a pop-up that names the sprint, says how many of its tickets are done and how
+many are open, and asks where the open ones go under **Open tickets go to**: the **Backlog**, a
+planned sprint, or **A new sprint**. When every ticket is done it asks nothing, as nothing moves.
+**Complete sprint** in the pop-up finishes the sprint and the board shows what comes next at once;
+**Cancel** or **Escape** closes it and changes nothing.
+
+The pop-up counts the way the board does: a ticket in the rightmost column is done, and any other
+ticket of the sprint is open, including one in a status no column shows. Board filters and the
+person filter do not change the counts. When several sprints are active at once, the board has a
+button for each, named after its sprint, and each pop-up counts only that sprint's tickets. The
+button is there only for people who may manage the board's sprints, and the server checks again:
+if it refuses, for example because someone else completed the sprint a moment earlier, the pop-up
+says why.
 
 ### Sprint settings
 

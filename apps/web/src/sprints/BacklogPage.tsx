@@ -11,6 +11,7 @@ import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
+import { CompleteTargetSelect, completeRefusal, targetOf } from './CompleteSprint';
 import {
   type Backlog,
   type BacklogPanels,
@@ -120,7 +121,10 @@ export function BacklogPage({
   }, [data]);
 
   /** Runs a change, says what it did (or why not) and reads the backlog again. */
-  const run = (work: () => Promise<string>, failure: string): Promise<boolean> => {
+  const run = (
+    work: () => Promise<string>,
+    failure: string | ((error: unknown) => string),
+  ): Promise<boolean> => {
     setBusy(true);
     setProblem(null);
     setNotice('');
@@ -131,9 +135,9 @@ export function BacklogPage({
         load();
         return true;
       },
-      () => {
+      (error: unknown) => {
         setBusy(false);
-        setProblem(failure);
+        setProblem(typeof failure === 'string' ? failure : failure(error));
         load();
         return false;
       },
@@ -634,10 +638,13 @@ export function BacklogPage({
                     }, t('sprints.start.failed'))
                   }
                   onComplete={(target) =>
-                    run(async () => {
-                      await client.complete(sprint.id, target);
-                      return t('sprints.complete.done', { name: sprint.name });
-                    }, t('sprints.complete.failed'))
+                    run(
+                      async () => {
+                        await client.complete(sprint.id, target);
+                        return t('sprints.complete.done', { name: sprint.name });
+                      },
+                      (error) => completeRefusal(t, error),
+                    )
                   }
                 >
                   {body.list}
@@ -751,12 +758,6 @@ function SprintPanel({
   const id = useId();
   const [target, setTarget] = useState('backlog');
   const futures = sections.filter((s) => s.state === 'future' && s.id !== section.id);
-  const chosen = (): CompleteTarget =>
-    target === 'backlog'
-      ? { type: 'backlog' }
-      : target === 'new'
-        ? { type: 'new' }
-        : { type: 'sprint', sprintId: Number(target) };
   return (
     <section {...drop} aria-labelledby={`${id}-name`}>
       <div className="sprint-section-header">
@@ -785,24 +786,17 @@ function SprintPanel({
           <label htmlFor={`${id}-target`} className="form-label">
             {t('sprints.complete.target')}
           </label>
-          <select
+          <CompleteTargetSelect
             id={`${id}-target`}
             value={target}
-            onChange={(event) => setTarget(event.target.value)}
-          >
-            <option value="backlog">{t('sprints.backlog.title')}</option>
-            {futures.map((s) => (
-              <option key={s.id} value={String(s.id)}>
-                {s.name}
-              </option>
-            ))}
-            <option value="new">{t('sprints.complete.newSprint')}</option>
-          </select>
+            onChange={setTarget}
+            futures={futures}
+          />
           <button
             type="button"
             className="button-primary"
             disabled={busy}
-            onClick={() => onComplete(chosen())}
+            onClick={() => onComplete(targetOf(target))}
           >
             {t('sprints.complete.submit')}
           </button>

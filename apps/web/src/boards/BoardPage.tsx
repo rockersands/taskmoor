@@ -20,6 +20,8 @@ import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
 import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
+import { CompleteSprintDialog, type SprintCounts } from '../sprints/CompleteSprint';
+import { type Sprint, type SprintClient, sprintClient } from '../sprints/client';
 import { useSyncEngine } from '../sync/SyncProvider';
 import type { SubticketProgress } from '../tickets/tools/client';
 import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
@@ -44,6 +46,8 @@ import {
 export interface BoardPageProps {
   boardId: number;
   client?: BoardClient;
+  /** A Scrum board's sprints: which are active, and whether the person may complete them. */
+  sprints?: Pick<SprintClient, 'boardSprints' | 'complete'>;
 }
 
 type Column = BoardData['columns'][number];
@@ -135,6 +139,17 @@ function ColumnHead({ column, t, at }: { column: Column; t: Translate; at: numbe
   );
 }
 
+/**
+ * A sprint's tickets as the board counts them (AGL-010; spec 01b section 3.2): done in the
+ * rightmost column, open in the others or in a status no column takes. Column counts ignore
+ * board filters, so a filter never changes them (AGL-003 (2)).
+ */
+export function sprintCounts(data: Pick<BoardData, 'columns' | 'unmapped'>): SprintCounts {
+  const done = data.columns.at(-1)?.count ?? 0;
+  const all = data.columns.reduce((sum, c) => sum + c.count, 0) + data.unmapped.count;
+  return { done, open: all - done };
+}
+
 /** The plain reason a move was refused: the server's refusal in the person's words. */
 function refusedText(
   t: Translate,
@@ -190,9 +205,14 @@ export function boardFilterName(t: Translate, filter: { id: string; name: string
  * with its Move menu, or by dragging it to a place in a column (M1-046); a move runs the
  * ticket's transition on the server and asks which one when several lead into the column.
  * Board filters and the person filter (AGL-005 (3), in the address as `?people=`) narrow the
- * cards; counts stay whole.
+ * cards; counts stay whole. On a Scrum board, those who manage its sprints complete an active
+ * one from here (T-106; AGL-010), after a pop-up that counts its done and open tickets.
  */
-export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
+export function BoardPage({
+  boardId,
+  client = boardClient,
+  sprints = sprintClient,
+}: BoardPageProps) {
   const t = useT();
   const lockText = useLockText();
   const sections = useTrackSections();
@@ -214,6 +234,18 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   /** The card whose title is being edited, with the version the person read. */
   const [editing, setEditing] = useState<{ id: number; version: number | undefined } | null>(null);
   const [busy, setBusy] = useState(false);
+  /** A Scrum board's sprints and whether the person may manage them (the server's answer). */
+  const [sprintList, setSprintList] = useState<{ sprints: Sprint[]; mayManage: boolean } | null>(
+    null,
+  );
+  /** The sprint being completed, with what the board counts in it. */
+  const [completing, setCompleting] = useState<{
+    sprint: Sprint;
+    counts: SprintCounts | null;
+  } | null>(null);
+  const completed = useRef(false);
+  const backlogLink = useRef<HTMLAnchorElement>(null);
+  const scrollRegion = useRef<HTMLElement>(null);
   /** The card being dragged, and where it would land: before a card, or at the cell's end. */
   const [dragging, setDragging] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<{
@@ -276,6 +308,15 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
   useEffect(() => {
     void load(filters, people);
   }, [load, filters, people]);
+
+  const loadSprints = useCallback(() => {
+    sprints.boardSprints(boardId).then(setSprintList, () => setSprintList(null));
+  }, [sprints, boardId]);
+  const scrum = board?.kind === 'scrum';
+  useEffect(() => {
+    if (scrum) loadSprints();
+    else setSprintList(null);
+  }, [scrum, loadSprints]);
 
   // A link or the browser's Back can change the address while the page stays: it follows.
   useEffect(
@@ -612,6 +653,27 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       ? t('boards.location.track', { track: board.location.track.name ?? '' })
       : t('boards.location.user', { name: board.location.user.name ?? '' });
   const hasBacklog = board.kind === 'scrum' && sections?.backlog !== false;
+  const activeSprints =
+    board.kind === 'scrum' && sprintList?.mayManage
+      ? sprintList.sprints.filter((s) => s.state === 'active')
+      : [];
+  const futureSprints = sprintList?.sprints.filter((s) => s.state === 'future') ?? [];
+
+  /** Opens the pop-up for a sprint, counted from the board's own data. */
+  async function openComplete(sprint: Sprint) {
+    if (!data) return;
+    completed.current = false;
+    if (activeSprints.length === 1) {
+      setCompleting({ sprint, counts: sprintCounts(data) });
+      return;
+    }
+    // Several sprints run at once and the board shows them together: count this one alone.
+    try {
+      setCompleting({ sprint, counts: sprintCounts(await client.data(boardId, [], [sprint.id])) });
+    } catch {
+      setCompleting({ sprint, counts: null });
+    }
+  }
   const showLanes = data.lanes.length > 1 || data.lanes.some((l) => !l.catchAll);
   const offered = offeredBoardFilters(board.boardFilters);
   const filterButtons = offered.map((f) => (
@@ -831,10 +893,26 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
         actions={
           <>
             {hasBacklog && (
-              <a className="button-quiet" href={routeHref(`#/boards/${boardId}/backlog`)}>
+              <a
+                ref={backlogLink}
+                className="button-quiet"
+                href={routeHref(`#/boards/${boardId}/backlog`)}
+              >
                 {t('sprints.backlog.link')}
               </a>
             )}
+            {activeSprints.map((sprint) => (
+              <button
+                key={sprint.id}
+                type="button"
+                className="button-quiet"
+                onClick={() => void openComplete(sprint)}
+              >
+                {activeSprints.length === 1
+                  ? t('sprints.complete.submit')
+                  : t('boards.sprint.complete', { name: sprint.name })}
+              </button>
+            ))}
             <a
               className="button-quiet"
               href={routeHref(
@@ -926,8 +1004,13 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
             {t('boards.emptyBody')}
           </EmptyState>
         ))}
-      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region is reached by keyboard to scroll it */}
-      <section className="board-scroll" aria-label={t('boards.columns')} tabIndex={0}>
+      <section
+        ref={scrollRegion}
+        className="board-scroll"
+        aria-label={t('boards.columns')}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region is reached by keyboard to scroll it
+        tabIndex={0}
+      >
         <div className="board-grid" style={grid}>
           <div className="board-row board-heads">
             {columns.map((column, i) => (
@@ -988,6 +1071,31 @@ export function BoardPage({ boardId, client = boardClient }: BoardPageProps) {
       <div className="visually-hidden" aria-live="polite">
         {announcement}
       </div>
+      {completing && (
+        <CompleteSprintDialog
+          sprint={completing.sprint}
+          futures={futureSprints}
+          counts={completing.counts}
+          client={sprints}
+          onCompleted={() => {
+            completed.current = true;
+            setAnnouncement(t('sprints.complete.done', { name: completing.sprint.name }));
+            setCompleting(null);
+            loadSprints();
+            void load(filters, people);
+          }}
+          onClose={() => {
+            setCompleting(null);
+            // A refusal may mean the sprint changed elsewhere: the buttons follow.
+            loadSprints();
+          }}
+          restoreFocus={(opener) => {
+            // The button of a completed sprint goes: the backlog is where its open tickets went.
+            if (completed.current) (backlogLink.current ?? scrollRegion.current)?.focus();
+            else opener?.focus();
+          }}
+        />
+      )}
       {asking && (
         <div
           className="board-choice"

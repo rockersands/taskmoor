@@ -674,11 +674,30 @@
   margin: 0;
 }
 
+/* Completing a sprint from its board (T-106): a small pop-up over the board, full width on phones. */
+.create-dialog.sprint-complete-dialog {
+  width: min(94vw, 32rem);
+}
+
+.sprint-complete-dialog .form-field,
+.sprint-complete-dialog .form-error {
+  margin-block-end: var(--space-3);
+}
+
+@media (max-width: 599px) {
+  .create-dialog.sprint-complete-dialog {
+    width: 100vw;
+    height: auto;
+  }
+}
+
 @media (pointer: coarse) {
   .sprint-ticket-move select,
   .sprint-ticket-key,
   .sprint-complete select,
   .sprint-complete button,
+  .sprint-complete-dialog select,
+  .sprint-complete-dialog button,
   .sprint-section .form-actions button {
     min-height: var(--hit-target-touch);
   }
