@@ -17,6 +17,8 @@ States:
 - **You**: waiting on the user.
 - **Later**: agreed for after 1.0.
 
+Work runs in waves, the user's decision on 2026-11-03: a ticket waits here rather than start beside too much else. First the finished branches merge, then the front work, then the rest.
+
 A ticket is only Done on `main` after a green full gate. "On branch" means what its sub chat
 reported, and the coordinator checked that it was pushed.
 
@@ -115,12 +117,18 @@ reported, and the coordinator checked that it was pushed.
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | To do | With the front sub chat |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
 | T-083 | A cross-track timeline | In progress | Part of T-088 |
-| T-084 | Personal track groups: drag tracks together, name the group | To do | With the front sub chat; private to the person |
-| T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | With the front sub chat |
-| T-086 | Share a whole group, or set it on another person | To do | With the front sub chat |
-| T-087 | Sharing a group gives access to its tracks | To do | Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
-| T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | In progress | `claude/multi-track`; decided by the user for 1.0 |
-| T-089 | Multi-track in full: dependencies, teams and capacity, cross-track releases, program board, scenarios, auto-scheduler, duplicate and export | In progress | `claude/multi-track`; decided by the user for 1.0 |
+| T-084 | Personal track groups: drag tracks together, name the group | To do | Waits for the merges; private to the person |
+| T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | Waits for the merges |
+| T-086 | Share a whole group, or set it on another person | To do | Waits for the merges |
+| T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
+| T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | To do | Paused on `claude/multi-track`; restarts after the merges |
+| T-089 | Multi-track: dependencies view | To do | In 1.0; starts after T-088 |
+| T-089b | Multi-track: teams and capacity | To do | In 1.0 |
+| T-089c | Multi-track: releases across tracks | To do | In 1.0 |
+| T-089d | Multi-track: program board with live editing | To do | In 1.0 |
+| T-089e | Multi-track: draft changes and scenarios | To do | In 1.0 |
+| T-089f | Multi-track: auto-scheduler | To do | In 1.0 |
+| T-089g | Multi-track: duplicate a plan, link to a view, CSV and image export | To do | In 1.0 |
 | T-089a | Multi-track: hierarchy grid (PLN-010) and baselines (PLN-011) | You | Not in what the user described; 2.0 and 4.0 unless the user says otherwise |
 
 ## Boards and moving tickets
@@ -186,11 +194,11 @@ reported, and the coordinator checked that it was pushed.
 | T-140 | Liquid Glass style, in our own design | On branch | No Apple or Atlassian assets |
 | T-141 | Deep strength, Soft canvas, the generated illustration | On branch | Decided by the user, who says Gemini's terms allow it |
 | T-142 | Controls need not truly bend their colour for now | Done | Decision recorded |
-| T-143 | Glass on every page, starting with the track sections | In progress | The list section was called out |
-| T-144 | The design is consistent through the whole app | In progress | Shared styles, a guard, then a sweep of every route |
+| T-143 | Glass on every page, starting with the track sections | To do | Waits for the merges; the list section was called out |
+| T-144 | The design is consistent through the whole app | To do | Waits for the merges; shared styles, a guard, then a sweep of every route |
 | T-145 | Dark Reader: detect it, use our dark mode, tell it to back off | On branch | The user's own skin choice is kept |
 | T-146 | Fix the English filters in the Spanish interface | To do | With the front sub chat |
-| T-147 | A watery look for every animation in the app | To do | With the front sub chat; off with reduced motion |
+| T-147 | A watery look for every animation in the app | To do | Waits for the merges; off with reduced motion |
 
 ## Administration
 
@@ -208,7 +216,7 @@ reported, and the coordinator checked that it was pushed.
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
 | T-160 | Help menu with tutorials and keyboard shortcuts | On branch | `claude/ui-overhaul` |
-| T-161 | Tutorial: first-run offer, sections to pick, one of everything | In progress | Progress and picker exist; the steps do not |
+| T-161 | Tutorial: first-run offer, sections to pick, one of everything | To do | Waits for the merges; progress and picker exist |
 | T-162 | Drag and drop with a keyboard path beyond boards | To do | Backlog, dashboard widgets, files onto tickets |
 | T-163 | Layout editor page | To do | UI-T15 |
 | T-164 | Phone and accessibility pass | To do | UI-T09 |
