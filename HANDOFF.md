@@ -5,12 +5,17 @@ Read this first in every session, then update it before you stop.
 ## Start here: ONE local session runs everything (2026-11-03)
 
 The user moves all work to **one local Claude Code session** on their PC (Ryzen 7 3700X, 16
-threads, 64 GB, Windows with WSL 2 Ubuntu, Claude in Chrome enabled). That session coordinates
+threads, 64 GB, Windows, Claude in Chrome enabled). That session coordinates
 and starts its own subagents for the parallel workstreams. The cloud sessions stop. This
 section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 
 ### How to run it
 
+- **Where (the user's decision, 2026-11-03):** everything is on `G:` (NVMe) and runs on native
+  Windows with Git Bash; this PC has no WSL Ubuntu. The clone is `G:\taskmoor`, the workstream
+  worktrees are `G:\tm-ticket-templates`, `G:\tm-ui-overhaul` and `G:\tm-flutter-mobile-app`.
+  Older notes below that name `E:` or `C:` copies are out of date. The bash image and kit scripts
+  (`tools/image`, `tools/airgap`) have not been run here and may still need Linux.
 - **Coordinator:** this session works on `claude/api-key-upload-prevention-9ucz4x` (M1) and is
   the only one that fast-forwards `main`, after a green `corepack pnpm verify --e2e`, by
   fast-forward only.
@@ -41,9 +46,11 @@ from its brief.
 
 ### Workstream 1: finishing M1 (in order)
 
-1. `corepack pnpm verify --e2e`, then fast-forward `main`. On Windows, use WSL 2 (the image and
-   kit scripts are bash). The e2e suite needs `127.0.0.1 api.taskmoor.localhost
-   app.taskmoor.localhost evil.taskmoor.localhost kit2.taskmoor.localhost` in `/etc/hosts`.
+1. `corepack pnpm verify --e2e`, then fast-forward `main`. The e2e suite needs `127.0.0.1
+   api.taskmoor.localhost app.taskmoor.localhost evil.taskmoor.localhost kit2.taskmoor.localhost`
+   in the hosts file (on this PC, `C:\Windows\System32\drivers\etc\hosts`; it is there). Database
+   tests time out when the machine is busy, so hold the subagents' builds and test runs during a
+   gate.
 2. **Flaky e2e:** `e2e/a11y-keyboard.spec.ts:37` ("Skip to content" not focused) fails 4 of 8
    runs on `main` with `--repeat-each=8` (measured by the Flutter session). It is not only a
    cold-server problem: find why the first Tab sometimes misses the skip link (focus still in
