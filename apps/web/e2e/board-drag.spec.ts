@@ -1,9 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
 
 /**
- * Dragging a card with the mouse really moves its ticket (M1-046; AGL-003, ADR-049), and when the
- * workflow's transition asks for something, here a close reason, the board asks for it: the
- * user's report was a refusal with a raw code on the demo's default workflow.
+ * Dragging a card with the mouse really moves its ticket (M1-046; AGL-003, ADR-049). On the
+ * workflow a site starts with, any card goes to any column, left or right, with no dialog.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -14,7 +13,7 @@ async function drag(page: Page, card: string, column: string) {
   await from.dragTo(to);
 }
 
-test('[AGL-003] a mouse drag runs the transition, and asks for the close reason it needs', async ({
+test('[AGL-003] a mouse drag moves a card to any column with nothing asked', async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'dragging with a mouse is a desktop path');
@@ -46,11 +45,9 @@ test('[AGL-003] a mouse drag runs the transition, and asks for the close reason 
       .name;
   expect(await read()).toBe('Active');
 
-  // Active to Closed: the transition needs a close reason, so the board asks.
+  // Active to Closed: one drag, nothing asked (the user's decision, ADR-116).
   await drag(page, word, 'Closed');
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('combobox', { name: 'Close reason' })).toBeVisible();
-  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(
     page.getByRole('list', { name: 'Closed', exact: true }).getByRole('link', {
       name: new RegExp(word),
@@ -58,4 +55,13 @@ test('[AGL-003] a mouse drag runs the transition, and asks for the close reason 
   ).toBeVisible();
   expect(await read()).toBe('Closed');
   await expect(page.getByRole('alert')).toHaveCount(0);
+
+  // And back to the leftmost column.
+  await drag(page, word, 'New');
+  await expect(
+    page.getByRole('list', { name: 'New', exact: true }).getByRole('link', {
+      name: new RegExp(word),
+    }),
+  ).toBeVisible();
+  expect(await read()).toBe('New');
 });

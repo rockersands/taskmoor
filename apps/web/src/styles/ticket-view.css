@@ -88,13 +88,48 @@
   color: var(--color-success);
 }
 
-/* The workflow's moves come first and look like the next step; the rest are quieter. */
-.ticket-transitions .ticket-action {
-  border-color: transparent;
-  background: var(--color-primary);
-  box-shadow: var(--glass-highlight), var(--shadow-1);
-  color: var(--color-on-primary);
-  font-weight: 600;
+/* The status is the one control for moving a ticket: its words, its stage's colour, a caret. */
+.status-menu {
+  position: relative;
+}
+
+.status-menu-button {
+  gap: var(--space-2);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-highlight-flat);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.status-menu-caret {
+  width: 0;
+  height: 0;
+  border-inline: 4px solid transparent;
+  border-top: 5px solid currentcolor;
+}
+
+.status-menu-popup {
+  inset-inline: 0 auto;
+}
+
+.status-menu-item::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-inline-end: var(--space-2);
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+.status-menu-item[data-stage="active"]::before {
+  background: var(--color-blue);
+}
+
+.status-menu-item[data-stage="closed"]::before {
+  background: var(--color-success);
 }
 
 .ticket-transitions .ticket-action:hover:not(:disabled) {

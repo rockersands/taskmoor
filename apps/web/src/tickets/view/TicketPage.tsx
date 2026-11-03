@@ -19,6 +19,7 @@ import type { Command } from '../../shell/CommandPalette';
 import { HelpTip } from '../../shell/HelpTip';
 import { usePaletteCommands } from '../../shell/paletteCommands';
 import { useSyncEngine } from '../../sync/SyncProvider';
+import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
 import { CloneDialog } from '../clone/CloneDialog';
 import type { CloneClient } from '../clone/client';
 import { splitLabels } from '../form';
@@ -34,6 +35,7 @@ import {
   type WebLink,
 } from './client';
 import { InfoPanel } from './InfoPanel';
+import { StatusMenu } from './StatusMenu';
 import { TICKET_SHORTCUTS } from './shortcuts';
 import { TransitionForm } from './TransitionForm';
 
@@ -116,7 +118,7 @@ export function TicketPage({
   const [cloning, setCloning] = useState(false);
   const [tab, setTab] = useState<ActivityTab>('comments');
   const [revision, setRevision] = useState(0);
-  const transitionsRef = useRef<HTMLFieldSetElement>(null);
+  const statusMenu = useRef<{ focus: () => void }>(null);
   const helpButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -242,6 +244,9 @@ export function TicketPage({
         if (error.status === 409 && body?.error === 'version_conflict') {
           return t('ticketView.problem.stale');
         }
+        if (body?.error === 'transition_refused' && (body as Partial<TransitionRefusal>).by) {
+          return refusalMessage(t, body as unknown as TransitionRefusal);
+        }
         if (body?.error === 'transition_refused' || body?.error === 'transition_unavailable') {
           return t('ticketView.problem.transition');
         }
@@ -348,7 +353,7 @@ export function TicketPage({
       assignToMe();
     } else if (key === 't') {
       event.preventDefault();
-      transitionsRef.current?.querySelector('button')?.focus();
+      statusMenu.current?.focus();
     } else if (key === 'e') {
       event.preventDefault();
       setEditingSummary(true);
@@ -517,25 +522,12 @@ export function TicketPage({
         )}
         {loaded && (
           <div className="ticket-toolbar">
-            <span className="ticket-status" data-stage={loaded.status.stage}>
-              {loaded.status.name}
-            </span>
-            {transitions.length > 0 && (
-              <fieldset ref={transitionsRef} className="ticket-transitions">
-                <legend className="visually-hidden">{t('ticketView.transitions')}</legend>
-                {transitions.map((to) => (
-                  <button
-                    key={to.id}
-                    type="button"
-                    className="button-secondary ticket-action"
-                    aria-label={t('ticketView.transitionTo', { name: to.name, status: to.to.name })}
-                    onClick={() => void transition(to)}
-                  >
-                    {to.name}
-                  </button>
-                ))}
-              </fieldset>
-            )}
+            <StatusMenu
+              ref={statusMenu}
+              status={loaded.status}
+              transitions={transitions}
+              onChoose={(to) => void transition(to)}
+            />
             <span className="ticket-toolbar-gap" aria-hidden="true" />
             {following && (
               <button

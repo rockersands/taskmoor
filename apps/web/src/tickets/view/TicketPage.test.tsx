@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { MEMBER } from '../../admin/fixtures';
+import { ApiError } from '../../api/client';
 import { fakeAttachmentClient } from '../../attachments/fixtures';
 import { fakeCommentClient } from '../../comments/fixtures';
 import { I18nProvider } from '../../i18n/I18nProvider';
@@ -75,10 +76,8 @@ describe('the ticket view (M1-051)', () => {
     expect(within(links).getByRole('link', { name: 'SHOP-39' })).toBeVisible();
     expect(screen.getByRole('region', { name: 'Attachments' })).toBeVisible();
     expect(await screen.findByRole('region', { name: 'Comments' })).toBeVisible();
-    // Transitions, follow and vote, as the backend offers them.
-    expect(
-      await screen.findByRole('button', { name: 'Send to review, to In review' }),
-    ).toBeVisible();
+    // Its status as one control, follow and vote, as the backend offers them.
+    expect(await screen.findByRole('button', { name: /^Status: / })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Follow (2)' })).toHaveAttribute(
       'aria-pressed',
       'false',
@@ -131,10 +130,45 @@ describe('the ticket view (M1-051)', () => {
     ]);
   });
 
+  it('[WF-006] moves at once when the status needs nothing, and lists only other statuses', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage();
+    const control = await screen.findByRole('button', { name: /^Status: / });
+    expect(control).toHaveAttribute('aria-haspopup', 'menu');
+    await user.click(control);
+    const menu = screen.getByRole('menu');
+    const names = within(menu)
+      .getAllByRole('menuitem')
+      .map((item) => item.textContent);
+    expect(names).not.toContain(SHOP_41.status.name);
+    await user.click(within(menu).getByRole('menuitem', { name: 'In review' }));
+    expect(await screen.findByText(/^Moved to /)).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: /what it needs/ })).toBeNull();
+    expect(client.calls.find((c) => c.action === 'transition')?.args[1]).toBe(2);
+  });
+
+  it('[WF-006] says in plain words why a transition was refused', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPage();
+    client.transition = async () => {
+      throw new ApiError(409, {
+        error: 'transition_refused',
+        by: 'guard',
+        name: 'only-assignee',
+      });
+    };
+    await user.click(await screen.findByRole('button', { name: /^Status: / }));
+    await user.click(screen.getByRole('menuitem', { name: 'In review' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).not.toHaveTextContent('transition_refused');
+    expect(alert).not.toHaveTextContent('The workflow does not let');
+  });
+
   it('[WF-006] runs a transition, asking for a close reason when it needs one', async () => {
     const user = userEvent.setup();
     const { client } = renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Close, to Closed' }));
+    await user.click(await screen.findByRole('button', { name: /^Status: / }));
+    await user.click(screen.getByRole('menuitem', { name: 'Closed' }));
     const form = screen.getByRole('form', { name: 'Close: what it needs' });
     expect(within(form).getByRole('combobox', { name: 'Close reason' })).toBeVisible();
     await user.click(within(form).getByRole('button', { name: 'Close' }));
@@ -193,7 +227,7 @@ describe('the ticket view (M1-051)', () => {
     expect(await within(details()).findByText('Ada Lovelace', { selector: 'span' })).toBeVisible();
     expect(client.calls.find((c) => c.action === 'edit')?.args[1]).toEqual({ assigneeId: 1 });
     await user.keyboard('t');
-    expect(screen.getByRole('button', { name: 'Send to review, to In review' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: /^Status: / })).toHaveFocus();
     await user.keyboard('{Escape}');
     (document.activeElement as HTMLElement).blur();
     await user.keyboard('m');
@@ -239,7 +273,7 @@ describe('the ticket view (M1-051)', () => {
     renderPage({}, 'en-XA');
     const main = screen.getByRole('main');
     await within(main).findAllByRole('listitem');
-    await within(main).findAllByRole('button', { name: /Send to review/ });
+    await within(main).findAllByRole('button', { expanded: false });
     // The ticket's own values, people and what they wrote are data.
     const ticket: TicketDetails = SHOP_41;
     const data = new Set<string>([

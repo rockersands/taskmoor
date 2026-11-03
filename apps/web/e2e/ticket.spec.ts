@@ -100,13 +100,13 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
     page.getByRole('tabpanel', { name: 'Time entries' }).getByText(/^1\.5 h/),
   ).toBeVisible();
 
-  // Through the workflow: started, then closed with a reason.
-  await page.getByRole('button', { name: /^Start, to / }).click();
+  // Through the status control: active, then closed, each at once.
+  const status = page.getByRole('button', { name: /^Status: / });
+  await status.click();
+  await page.getByRole('menuitem', { name: 'Active' }).click();
   await expect(page.getByText(/^Moved to /)).toBeVisible();
-  await page.getByRole('button', { name: /^Close, to / }).click();
-  const closing = page.getByRole('form', { name: 'Close: what it needs' });
-  await expect(closing.getByRole('combobox', { name: 'Close reason' })).toBeVisible();
-  await closing.getByRole('button', { name: 'Close' }).click();
+  await status.click();
+  await page.getByRole('menuitem', { name: 'Closed' }).click();
   await expect(page.locator('.ticket-status')).toHaveAttribute('data-stage', 'closed');
 
   // The history tells the story.

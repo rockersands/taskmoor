@@ -85,7 +85,7 @@ kept from that tracker, such as `.../browse/PAY-42` or an old filter or board li
 ticket, saved search or board the import made of them (see
 [Old links keep working](../admin/import-export.md#old-links-keep-working)).
 
-The header holds the ticket's status, its transitions (see
+The header holds the ticket's status, which also moves it (see
 [Moving a ticket through its workflow](#moving-a-ticket-through-its-workflow)), **Follow** and
 **Vote** with their counts, **Clone** (see [Cloning a ticket](#cloning-a-ticket)) and
 **Keyboard shortcuts**. **Edit summary** changes the summary: press Save, or Escape to cancel.
@@ -191,10 +191,15 @@ comments, changes and time entries in one stream.
 
 ## Moving a ticket through its workflow
 
-The buttons next to the status are the transitions you may run now. Press one to move the
-ticket. If the transition needs a close reason or a priority, a short form asks for it first.
-If it needs other fields, the page names them and cannot run that transition yet. When the
-workflow refuses, the page says **The workflow does not let this transition happen now.**
+The status in the ticket's header is one control. Open it, with a click or by pressing **T**, and
+it lists the statuses the ticket can go to, in the same words as the board's columns. Pick one and
+the ticket moves at once. On the workflow a site starts with, nothing is asked: any ticket goes to
+any status, and entering **Closed** sets the close reason **Completed**. If you want to say why,
+write a comment.
+
+An administrator can set stricter rules on a workflow. If a move then needs a close reason or a
+priority, a short form asks for it first; if it needs other fields, the page names them. When the
+workflow refuses a move, the page says why in plain words.
 
 Tickets also move by dragging their cards on a [board](boards.md).
 
