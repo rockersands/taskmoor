@@ -26,21 +26,29 @@ export function BoardInTrack({
   section: TrackSection;
   children: ReactNode;
 }) {
-  const [key, setKey] = useState<string | null>(null);
+  const t = useT();
+  // The page waits for the answer: wrapping it in the tabs afterwards would make it start again,
+  // losing whatever the person had done in it by then.
+  const [known, setKnown] = useState<{ boardId: number; key: string | null } | null>(null);
   useEffect(() => {
     let live = true;
     boardClient.board(boardId).then(
       (board) => {
-        if (live && board.location.type === 'track') setKey(board.location.track.key);
+        const key = board.location.type === 'track' ? board.location.track.key : null;
+        if (live) setKnown({ boardId, key });
       },
-      () => {},
+      // The page itself says so.
+      () => {
+        if (live) setKnown({ boardId, key: null });
+      },
     );
     return () => {
       live = false;
     };
   }, [boardId]);
-  return key ? (
-    <TrackLayout trackKey={key} section={section}>
+  if (known?.boardId !== boardId) return <p className="page-note">{t('boards.loading')}</p>;
+  return known.key ? (
+    <TrackLayout trackKey={known.key} section={section}>
       {children}
     </TrackLayout>
   ) : (
