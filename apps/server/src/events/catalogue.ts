@@ -36,6 +36,11 @@ const ticketLink = z.object({
  * event of the change that gave the role: absent when none was written, and in older events.
  */
 const createTracksGrantId = id.optional();
+/**
+ * Roles in tracks that a change to a track group gave or took away (IAM-034; ADR-121): what a
+ * share gave or took back, never a role the person held otherwise.
+ */
+const groupAccess = z.array(z.object({ trackId: id, userId: id, roleId: id }));
 /** A value deleted, and what tickets that had it took instead. */
 const replaced = z.object({
   name: z.string(),
@@ -290,6 +295,11 @@ export const EVENT_TYPES = {
       userId: id.nullable(),
       groupId: id.nullable(),
       createTracksGrantId,
+      /**
+       * The person held the role only through shared track groups, and it is now their own
+       * (IAM-034): taking the shares back leaves it. Absent otherwise, and in older events.
+       */
+      keptFromGroupShares: z.literal(true).optional(),
     }),
   },
   'track_role.actor_removed': {
@@ -1677,6 +1687,50 @@ export const EVENT_TYPES = {
   /** Content logging and redaction changed; terms appear as their count, never as text. */
   'ai_policy.updated': { subject: 'workspace', payload: z.object({ changes }) },
   /** A person read the data-egress notice before their first AI use. */
+  // Personal track groups (CORE-034; ADR-121): ids and names, and the roles shares gave or took.
+  'track_group.created': {
+    subject: 'track_group',
+    payload: z.object({ name: z.string(), trackIds: z.array(id), removed: groupAccess }),
+  },
+  /** A rename, or the group minimized or opened by its owner or by someone it is shared with. */
+  'track_group.updated': { subject: 'track_group', payload: z.object({ changes }) },
+  'track_group.deleted': {
+    subject: 'track_group',
+    payload: z.object({ name: z.string(), trackIds: z.array(id), removed: groupAccess }),
+  },
+  /** A person's order of their groups and those shared with them. */
+  'track_group.reordered': { subject: 'user', payload: z.object({ groupIds: z.array(id) }) },
+  /** A track into the group (`toGroupId`), out of one (`fromGroupId`), or within one. */
+  'track_group.track_moved': {
+    subject: 'track_group',
+    payload: z.object({
+      trackId: id,
+      fromGroupId: id.nullable(),
+      toGroupId: id.nullable(),
+      position: z.number().int().min(0).nullable(),
+      given: groupAccess,
+      removed: groupAccess,
+    }),
+  },
+  'track_group.shared': {
+    subject: 'track_group',
+    payload: z.object({ shareId: id, userId: id, roleId: id.nullable(), given: groupAccess }),
+  },
+  'track_group.unshared': {
+    subject: 'track_group',
+    payload: z.object({ shareId: id, userId: id, roleId: id.nullable(), removed: groupAccess }),
+  },
+  /** A group set on someone: their own copy (the subject), and the roles given outright. */
+  'track_group.copied': {
+    subject: 'track_group',
+    payload: z.object({
+      fromGroupId: id,
+      userId: id,
+      roleId: id.nullable(),
+      trackIds: z.array(id),
+      given: groupAccess,
+    }),
+  },
   'ai_notice.acknowledged': { subject: 'user', payload: z.object({}) },
   /**
    * An agent run ended (M1-131; AI-011; ADR-101): how, which limit stopped it, what it used

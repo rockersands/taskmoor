@@ -229,6 +229,14 @@ export const AUDITED_EVENTS = [
   'dashboard.updated',
   'dashboard.deleted',
   'dashboard.default_set',
+  // Track groups that give or take roles in tracks (IAM-034; ADR-121): who shared what with
+  // whom, which roles came and went, and moves and deletions that took roles with them.
+  'track_group.created',
+  'track_group.deleted',
+  'track_group.track_moved',
+  'track_group.shared',
+  'track_group.unshared',
+  'track_group.copied',
   'track.summary_layout_set',
   'track.summary_layout_removed',
   'audit.settings_updated',
@@ -308,6 +316,9 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
   'ticket.voted': 'ticket activity: a vote, not a security or configuration event',
   'ticket.unvoted': 'ticket activity: a vote, not a security or configuration event',
   'user.preferences_updated': 'a personal setting (auto-follow), not a security event',
+  'track_group.updated':
+    "a person's own arrangement of the Tracks page: a group's name, or whether it is minimized",
+  'track_group.reordered': "a person's own arrangement of the Tracks page: the order of groups",
   'saved_search.starred': 'a personal favourite, not a security or configuration event',
   'saved_search.unstarred': 'a personal favourite, not a security or configuration event',
   'sprint.tickets_added':

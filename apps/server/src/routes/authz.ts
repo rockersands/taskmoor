@@ -18,6 +18,7 @@ import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { ticketKey } from '../tickets/model';
 import { loadTicket, resolveTicket } from '../tickets/store';
+import { keepRole } from '../trackgroups/access';
 import { trackInTrash } from '../trash/policy';
 
 const id = z.coerce.number().int().positive();
@@ -866,6 +867,13 @@ export function registerAuthzRoutes(
               ...(grantId !== null ? { createTracksGrantId: grantId } : {}),
             },
           });
+        } else if (kind === 'users' && (await keepRole(trx, trackId, roleId, actorId))) {
+          // A role only shared track groups held becomes the person's own (IAM-034).
+          await emit(trx, by(request), {
+            type: 'track_role.actor_added',
+            subjectId: trackId,
+            payload: { roleId, userId: actorId, groupId: null, keptFromGroupShares: true },
+          });
         }
       });
       return reply.code(204).send();
@@ -898,6 +906,8 @@ export function registerAuthzRoutes(
           .executeTakeFirst();
         const count = Number(result.numDeletedRows);
         if (count > 0) {
+          // Shares that held the role hold nothing now (IAM-034).
+          if (kind === 'users') await keepRole(trx, trackId, roleId, actorId);
           await emit(trx, by(request), {
             type: 'track_role.actor_removed',
             subjectId: trackId,

@@ -30,6 +30,7 @@ import { emit } from '../events/bus';
 import { RateLimiter } from '../ratelimit/limiter';
 import { emailDomain, providerForDomain } from '../sso/oidc';
 import { lockedUntil, recordFailure, secondsUntil } from '../throttle';
+import { keepRole } from '../trackgroups/access';
 import { trackInTrash } from '../trash/policy';
 import { isExternal, readPolicy } from '../two-factor';
 
@@ -367,7 +368,10 @@ export function registerInvitationRoutes(
       .values({ workspace_id: workspaceId, track_id: trackId, role_id: roleId, user_id: userId })
       .onConflict((oc) => oc.doNothing())
       .executeTakeFirst();
-    return Number(added.numInsertedOrUpdatedRows ?? 0) > 0;
+    if (Number(added.numInsertedOrUpdatedRows ?? 0) > 0) return true;
+    // A role only shared track groups held becomes the person's own (IAM-034).
+    await keepRole(trx, trackId, roleId, userId);
+    return false;
   }
 
   /** Takes `count` sends from the inviter's bucket; the wait in seconds when it is empty. */

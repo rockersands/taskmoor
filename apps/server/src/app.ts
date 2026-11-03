@@ -104,6 +104,7 @@ import { registerTicketRoutes } from './routes/tickets';
 import { registerTimeRoutes } from './routes/time';
 import { registerTimelineRoutes } from './routes/timeline';
 import { registerTokenRoutes } from './routes/tokens';
+import { registerTrackGroupRoutes } from './routes/track-groups';
 import { registerTrackOutcomeRoutes } from './routes/track-outcomes';
 import { registerTrackSummaryRoutes } from './routes/track-summary';
 import { registerTrackRoutes, type TrackRouteHooks } from './routes/tracks';
@@ -576,6 +577,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerTrackOutcomeRoutes(app, db, {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
+    // Personal track groups on the Tracks page, and sharing them (CORE-034, IAM-034).
+    registerTrackGroupRoutes(app, db);
     // A track's timeline (M1-048): dated tickets, roll-ups, dependencies and markers.
     registerTimelineRoutes(app, db, {
       catalogs: fieldCatalogs,

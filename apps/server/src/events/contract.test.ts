@@ -3335,6 +3335,93 @@ describe('every mutation emits exactly one event (M1-005)', () => {
       expect: 'track.summary_layout_removed',
       run: () => admin({ method: 'DELETE', url: `/api/v1/tracks/${state.track}/summary-layout` }),
     },
+    // Personal track groups (CORE-034, IAM-034): made, arranged, shared, set on someone, removed.
+    {
+      route: 'POST /api/v1/track-groups',
+      expect: 'track_group.created',
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: '/api/v1/track-groups',
+          payload: { name: 'Contract group', trackIds: [] },
+        });
+        state.trackGroup = res.json().groupId;
+        return res;
+      },
+    },
+    {
+      route: 'PUT /api/v1/track-groups/:id/tracks/:trackId',
+      expect: 'track_group.track_moved',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/track-groups/${state.trackGroup}/tracks/${state.track}`,
+          payload: { position: 0 },
+        }),
+    },
+    {
+      route: 'PATCH /api/v1/track-groups/:id',
+      expect: 'track_group.updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/track-groups/${state.trackGroup}`,
+          payload: { name: 'Contract group, renamed', minimized: true },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/track-groups/order',
+      expect: 'track_group.reordered',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: '/api/v1/track-groups/order',
+          payload: { groupIds: [state.trackGroup] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/track-groups/:id/shares',
+      expect: 'track_group.shared',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/track-groups/${state.trackGroup}/shares`,
+          payload: { userId: state.bo, roleId: state.role },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/track-groups/:id/shares/:userId',
+      expect: 'track_group.unshared',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/track-groups/${state.trackGroup}/shares/${state.bo}`,
+        }),
+    },
+    {
+      route: 'POST /api/v1/track-groups/:id/copies',
+      expect: 'track_group.copied',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/track-groups/${state.trackGroup}/copies`,
+          payload: { userId: state.bo, roleId: null },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/track-groups/:id/tracks/:trackId',
+      expect: 'track_group.track_moved',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/track-groups/${state.trackGroup}/tracks/${state.track}`,
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/track-groups/:id',
+      expect: 'track_group.deleted',
+      run: () => admin({ method: 'DELETE', url: `/api/v1/track-groups/${state.trackGroup}` }),
+    },
     // Dashboards (M1-064): made, changed, copied, made the default and removed.
     {
       route: 'POST /api/v1/dashboards',
