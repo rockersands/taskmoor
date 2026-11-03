@@ -102,6 +102,18 @@ const play: Story['play'] = async ({ canvasElement }) => {
   await waitFor(() => expect(cardLink(80)?.closest('li')).toHaveAttribute('aria-posinset', '79'));
   await waitFor(() => expect(cardLink(80)).toHaveFocus());
   await clearOfBar(80);
+
+  // Focus moving into the bar itself leaves the page where it is.
+  window.scrollTo(0, 900);
+  await nextFrame();
+  const before = window.scrollY;
+  const inBar = document.querySelector<HTMLElement>(
+    '.shell-topbar a, .shell-topbar button, .shell-topbar input',
+  );
+  if (!inBar) throw new Error('no control in the top bar');
+  inBar.focus();
+  await nextFrame();
+  await expect(window.scrollY).toBe(before);
   window.scrollTo(0, 0);
 };
 

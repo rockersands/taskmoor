@@ -23,12 +23,6 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-/* The shell's sticky top bar covers the top of the page: what is brought into view (a card the
-   arrows reach, a focused field) stops below it. AppShell measures how far the bar reaches. */
-html {
-  scroll-padding-top: var(--shell-topbar-reach, 0px);
-}
-
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;

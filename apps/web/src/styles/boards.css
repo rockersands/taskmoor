@@ -172,8 +172,11 @@
   box-shadow: var(--glass-highlight), var(--shadow-1);
   overflow-wrap: anywhere;
   cursor: grab;
-  /* A card the arrows reach is brought into view with a little room around it. */
+  /* A card the arrows reach is brought into view with a little room around it, and whole below
+     the shell's sticky top bar (AppShell measures how far it reaches). Only cards: a page-wide
+     scroll padding would also scroll the page when focus moves into the bar itself. */
   scroll-margin-block: var(--space-4);
+  scroll-margin-top: calc(var(--shell-topbar-reach, 0px) + var(--space-4));
   transition:
     transform var(--motion-base) var(--ease-settle),
     opacity var(--motion-fast) var(--ease-soft);
