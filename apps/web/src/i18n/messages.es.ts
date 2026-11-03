@@ -85,7 +85,6 @@ export const messagesEs: Record<MessageId, string> = {
   'tracks.find': 'Buscar un track',
   'tracks.noMatch': 'Ningún track tiene ese nombre o clave.',
   'tracks.owner': 'A cargo de {name}',
-  'tracks.all': 'Los {count} tracks',
   'purpose.tracks':
     'Todos los tracks que puedes ver. Abre uno para ver su resumen, tablero, backlog, calendario, cronograma y estadísticas.',
   'nav.search': 'Buscar',

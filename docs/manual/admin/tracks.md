@@ -22,7 +22,9 @@ Everything else is done through the [REST API](rest-api.md) under `/api/v1/track
 `GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the
 `admin` scope; see [API tokens](api-tokens.md).
 
-**Tracks** in the sidebar lists every track you can see, with a box to find one by name or key.
+**Tracks** in the sidebar opens the page that lists every track you can see, with a box to find one
+by name or key. It stays marked as the current place while you are inside a track, on a ticket or on a
+board.
 
 ## Creating a track
 

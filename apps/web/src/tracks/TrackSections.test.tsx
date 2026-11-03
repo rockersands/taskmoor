@@ -2,11 +2,10 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { BOARD } from '../boards/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { fakeTrackClient } from './fixtures';
 import { NoBacklog } from './BoardInTrack';
+import { fakeTrackClient } from './fixtures';
 import { TrackFilesPage } from './TrackFilesPage';
 import { TrackLayout } from './TrackLayout';
-import { TrackNavList } from './TrackNavList';
 import { TracksPage } from './TracksPage';
 import { trackSectionsChanged } from './trackSections';
 
@@ -116,45 +115,6 @@ describe('a track is one place with its sections (ADR-116)', () => {
     );
     expect(screen.getByRole('heading', { level: 1, name: 'Tracks' })).toBeVisible();
     expect(screen.getByLabelText('Find a track')).toBeVisible();
-  });
-
-  it('[CORE-001] marks the current track in the sidebar, also from a ticket inside it', async () => {
-    inEnglish(<TrackNavList hash="#/tickets/SHOP-41" client={fakeTrackClient()} />);
-    expect(await screen.findByRole('link', { name: 'Shop' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.getByRole('link', { name: 'Web' })).not.toHaveAttribute('aria-current');
-  });
-
-  it('[CORE-001] lists a track made a moment ago once the person lands in it', async () => {
-    const client = fakeTrackClient();
-    const before = await client.list();
-    const list = vi
-      .fn()
-      .mockResolvedValueOnce(before)
-      .mockResolvedValue([...before, { key: 'PAY', name: 'Payments', owner: null }]);
-    client.list = list;
-    inEnglish(<TrackNavList hash="#/tracks/PAY" client={client} />);
-    expect(await screen.findByRole('link', { name: 'Payments' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(list).toHaveBeenCalledTimes(2);
-  });
-
-  it('[CORE-001] keeps a long list short, with a link to all of them', async () => {
-    const client = fakeTrackClient();
-    client.list = async () =>
-      Array.from({ length: 12 }, (_, i) => ({ key: `T${i}`, name: `Track ${i}`, owner: null }));
-    inEnglish(<TrackNavList hash="#/tracks/T11" client={client} />);
-    expect(await screen.findByRole('link', { name: 'All 12 tracks' })).toHaveAttribute(
-      'href',
-      '#/tracks',
-    );
-    const items = screen.getAllByRole('listitem');
-    expect(items).toHaveLength(8);
-    expect(items[0]).toHaveTextContent('Track 11');
   });
 
   it("[CORE-001] shows a track's files and links, each leading to its ticket", async () => {

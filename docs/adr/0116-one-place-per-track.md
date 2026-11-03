@@ -19,6 +19,9 @@ them.
   they stay because those pages exist and nothing replaces them. The sidebar has "Tracks" and no
   "Boards". "Tracks" opens the directory and expands with the current track, then the latest
   opened, up to eight, with a link to all of them; it collapses when the person leaves every track.
+  **2026-11-03: the user replaced that list with one plain link to the directory, because there
+  could be many tracks.** "Tracks" no longer expands; it shows as current inside a track, on a
+  ticket and on a board.
 - **One board per track, none outside a track,** enforced by the server and by the unique index
   `board_one_per_track_idx` (migration 0088).
   - A track gets its board from its template, or the first time anyone who can see it opens it

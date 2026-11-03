@@ -103,7 +103,6 @@ import {
 import { TrackBoardSection } from './tracks/TrackBoardSection';
 import { TrackFilesPage } from './tracks/TrackFilesPage';
 import { TrackLayout, type TrackSection } from './tracks/TrackLayout';
-import { TrackNavList } from './tracks/TrackNavList';
 import { TRACK_REPORTS, TrackStatisticsPage } from './tracks/TrackStatisticsPage';
 import { TrackSummaryPage } from './tracks/TrackSummaryPage';
 import { NEW_TRACK_ROUTE, TracksPage } from './tracks/TracksPage';
@@ -894,14 +893,6 @@ function Pages() {
     <AppShell
       items={access === 'none' ? NAV_ITEMS : [...NAV_ITEMS, ADMIN_NAV_ITEM]}
       activeId={active}
-      navExpanded={(onNavigate) =>
-        signedIn && active === 'tracks'
-          ? {
-              id: 'tracks',
-              content: <TrackNavList hash={hash} {...(onNavigate ? { onNavigate } : {})} />,
-            }
-          : null
-      }
       topbarEnd={
         <>
           {signedIn && (

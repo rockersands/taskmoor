@@ -7,7 +7,6 @@ import { NoBacklog } from './BoardInTrack';
 import { fakeTrackClient } from './fixtures';
 import { TrackFilesPage } from './TrackFilesPage';
 import { TrackLayout } from './TrackLayout';
-import { TrackNavList } from './TrackNavList';
 import { TracksPage } from './TracksPage';
 
 const meta = {
@@ -135,15 +134,6 @@ export const EmptyDirectoryOffersIt: Story = {
     await expect(await canvas.findByText('No tracks yet')).toBeVisible();
     await expect(canvas.getAllByRole('button', { name: 'New track' })).toHaveLength(2);
   },
-};
-
-/** The tracks under "Tracks" in the sidebar, the current one marked. */
-export const InTheSidebar: Story = {
-  render: () => (
-    <nav aria-label="Main">
-      <TrackNavList hash="#/tracks/SHOP/board" client={fakeTrackClient()} />
-    </nav>
-  ),
 };
 
 /** A track's files and web links. */

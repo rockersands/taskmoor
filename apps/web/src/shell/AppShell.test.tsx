@@ -36,6 +36,36 @@ describe('desktop layout', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tracks');
     expect(screen.getByRole('link', { name: 'Tracks' })).toHaveAttribute('aria-current', 'page');
   });
+
+  it.each([
+    '#/tracks',
+    '#/tracks/SHOP',
+    '#/tracks/SHOP/board',
+    '#/tickets/SHOP-1',
+    '#/boards/7',
+    '#/boards/7/settings',
+  ])('[CORE-001] Tracks is one plain link, current inside %s', (hash) => {
+    render(<App />);
+    act(() => {
+      window.location.hash = hash;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const tracks = within(nav).getByRole('link', { name: 'Tracks' });
+    expect(tracks).toHaveAttribute('aria-current', 'page');
+    expect(tracks).toHaveAttribute('href', '#/tracks');
+    expect(tracks).not.toHaveAttribute('aria-expanded');
+    expect(within(nav).getAllByRole('link')).toHaveLength(NAV_ITEMS.length);
+  });
+
+  it('[CORE-001] Tracks is not current outside a track', () => {
+    render(<App />);
+    act(() => {
+      window.location.hash = '#/search';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(screen.getByRole('link', { name: 'Tracks' })).not.toHaveAttribute('aria-current');
+  });
 });
 
 describe('compact layout (phones)', () => {

@@ -73,7 +73,6 @@ export const messagesEn = {
   'tracks.find': 'Find a track',
   'tracks.noMatch': 'No track has that name or key.',
   'tracks.owner': 'Led by {name}',
-  'tracks.all': 'All {count} tracks',
   'purpose.tracks':
     'Every track you can see. Open one for its summary, board, backlog, calendar, timeline and statistics.',
   'nav.search': 'Search',
