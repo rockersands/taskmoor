@@ -53,6 +53,14 @@ describe('Markdown round trip (corpus)', () => {
 });
 
 describe('Markdown round trip (properties)', () => {
+  it('[NTF-007] keeps a link address with a backslash the same over repeated saves', () => {
+    // The document of a seed a full gate found: the address gained a backslash on every save.
+    const once = fromMarkdown(toMarkdown(fromAdfJson(generateAdfDocument(365932749))));
+    const markdown = toMarkdown(once);
+    expect(fromMarkdown(markdown)).toEqual(once);
+    expect(toMarkdown(fromMarkdown(markdown))).toBe(markdown);
+  });
+
   it('[NTF-007] reaches a fixed point for any synthetic imported document', () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: 2 ** 31 - 1 }), (seed) => {

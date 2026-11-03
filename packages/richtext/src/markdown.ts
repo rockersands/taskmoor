@@ -23,7 +23,7 @@ import {
   gfmTaskListItemFromMarkdown,
   gfmTaskListItemToMarkdown,
 } from 'mdast-util-gfm-task-list-item';
-import { toMarkdown as writeMarkdown } from 'mdast-util-to-markdown';
+import { defaultHandlers, type Handle, toMarkdown as writeMarkdown } from 'mdast-util-to-markdown';
 import { gfmAutolinkLiteral } from 'micromark-extension-gfm-autolink-literal';
 import { gfmStrikethrough } from 'micromark-extension-gfm-strikethrough';
 import { gfmTable } from 'micromark-extension-gfm-table';
@@ -73,12 +73,30 @@ interface MarkJson {
   attrs?: Attrs;
 }
 
+/**
+ * A link whose address holds a backslash is written `[text](address)`, not `<address>`: the
+ * writer escapes the backslash, but `<...>` reads no escapes, so each save would double it.
+ */
+const writeLink: Handle = (node, parent, state, info) => {
+  if (!node.url.includes('\\')) return defaultHandlers.link(node, parent, state, info);
+  const before = state.options.resourceLink;
+  state.options.resourceLink = true;
+  try {
+    return defaultHandlers.link(node, parent, state, info);
+  } finally {
+    state.options.resourceLink = before;
+  }
+};
+writeLink.peek = (node, parent, state, info) =>
+  node.url.includes('\\') ? '[' : (defaultHandlers.link.peek?.(node, parent, state, info) ?? '[');
+
 // No autolink-literal writer: GFM finds web and email addresses in text after escapes are
 // read, so escaping them cannot keep them text. They are written as links instead.
 const TO_MARKDOWN = [
   gfmTableToMarkdown(),
   gfmStrikethroughToMarkdown(),
   gfmTaskListItemToMarkdown(),
+  { handlers: { link: writeLink } },
 ];
 const FROM_MARKDOWN = [
   gfmTableFromMarkdown(),
