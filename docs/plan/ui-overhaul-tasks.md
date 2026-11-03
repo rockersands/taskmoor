@@ -97,7 +97,7 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 | UI-T02 | Glass tokens and fallbacks in both skins; composited contrast test | done (the test found dark muted text at 4.36 under the sheen's brightest corner; the sheen went from 12 % to 9 %) | Glass tokens in `tokens.css` with the opaque fallbacks; `contrast.test.ts` composites each glass token over the canvas and its glows at WCAG AA in both skins | 265af8b (tokens only) |
 | UI-T03 | Shared pieces: PageHeader, HelpTip, EmptyState, ThemeToggle, Help menu | in progress (PageHeader, HelpTip, EmptyState, ThemeToggle with tests and stories; Help menu to do) | Each has a story (axe in both skins) and tests by role and name; Help menu built as an APG menu button like the person's menu | 265af8b (components, no stories yet) |
 | UI-T04 | Navigation in sections, Tracks directory and track tabs | in progress | Sidebar grouped (done in the prototype); Tracks lists every visible track; a track's pages share one tab bar; NavList and AppShell tests and stories updated | 265af8b (groups only) |
-| UI-T05 | Settings hub in groups, breadcrumbs on admin pages | todo | Settings shows the six groups of ADR-114 as cards with one line each; every admin page links back to its group; e2e that open admin pages still pass | |
+| UI-T05 | Administration panel: its own section and navigation, separate from personal Settings (decided by the user 2026-11-03 for 1.0; replaces the Settings hub) | todo | Five groups as in ADR-114: People and access; Tracks and setup; Sign-in and security; Integrations and AI; System. A site administrator sees all of them. A configuration administrator sees only the setup pages, and those work in the web app without the API, with tests for both roles. An overview page shows system health, pending invitations and recent security alerts. Every page has a breadcrumb back to its group; admin routes keep their paths; e2e that open admin pages still pass. The invite permission and track managers' page from `claude/track-invites` moves into the panel when the branches join | |
 | UI-T06 | Every page on PageHeader with a purpose line and explaining empty states | todo | No page renders a bare `page-title` heading; each has its purpose line and, where useful, "What is this for?"; empty lists use EmptyState | |
 | UI-T07 | Board, backlog and ticket view in the glass language | in progress | Board and ticket header done in the prototype; backlog, reports, ticket side panel fields and activity follow; BoardPage, BacklogPage and TicketPage tests and stories updated | 265af8b (board and ticket header) |
 | UI-T08 | Drag and drop with a keyboard path: board columns, dashboard widgets; restyle the existing drags | todo | Columns reorder by drag and by Move left/right; widgets by drag and by the existing buttons; every drop announced; tests for both paths | |
@@ -109,6 +109,33 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 | UI-T14 | Manual and HANDOFF | todo | A "Getting around" page and a "Tutorials" page in `docs/manual`; changed pages updated; HANDOFF says what changed and what is next | |
 | UI-T15 | Layout editor page under Settings, Configuration sets (confirmed by the user 2026-11-03) | todo | A page for layout sets (`/api/v1/layout-sets`): drag fields into tabs and sections (main or side column), reorder them, mark a section "hide when empty"; "show only the fields I placed" maps to `others: "omit"`; a live preview per ticket type and per operation (create, edit, view); a keyboard path for every drag; the field rules page and this one link to each other and each explains what it does and how the two combine; manual `admin/fields.md` updated (the "no web page yet" line goes); story, tests and an e2e | |
 | UI-T16 | Board columns easy to manage (confirmed by the user 2026-11-03) | todo | On the board and in its settings: add, rename, reorder by drag (and by Move left/right), set minimum and maximum; the limit stays 30 (`MAX_COLUMNS` in `apps/server/src/boards/model.ts`) and the page says so when it is reached; tests for drag and keyboard paths. Overlaps UI-T08's column drag | |
+| UI-T17 | Administration: visibility policies and the permission explainer (first new page) | todo | Policies and levels managed in the web app; the explainer answers who can do what and why; story, tests; `admin/permissions.md` updated | |
+| UI-T18 | Administration: webhooks (second) | todo | Create, change, delete and see deliveries in the web app, site administrators only; story, tests; `admin/rest-api.md` updated | |
+| UI-T19 | Administration: AI limits and prices (third) | todo | Limits and the price table managed in the web app; story, tests; `admin/ai-usage.md` updated | |
+| UI-T20 | Administration: which sets a track uses (fourth) | todo | A track's layout, priority, visibility and notification sets chosen in the web app; the "API only" rows in `admin/fields.md` go. Needs a list to choose from, so it joins UI-T15 (layouts), UI-T17 (visibility) and the priority and notification pages in UI-T21 | |
+| UI-T21 | Administration: the rest of what the manual marks API-only; the user decides which are in 1.0 | todo | Each item below has a page, or a line saying why it stays in the API | |
+
+### UI-T21: other controls `docs/manual/admin` marks as API-only
+
+Beyond UI-T17 to UI-T20 and the layout sets of UI-T15:
+
+| Control | Manual page |
+|---|---|
+| Ticket types and levels | `fields.md` |
+| Priorities and priority sets | `fields.md` |
+| Formula fields, field contexts' scopes and defaults, child options of a two-level list, field type settings | `fields.md` |
+| Notification policies; the batch window and digest hour | `notifications.md` |
+| Areas of a track | `tracks.md` |
+| Status mapping when a workflow map switch affects tickets (the web app refuses the switch) | `tracks.md` |
+| Renaming a group; adding a service account to a group | `people-and-groups.md`, `api-tokens.md` |
+| Roles in a user or group field of the ticket (People in field, Groups in field) | `permissions.md` |
+| Sharing saved searches and dashboards with people, groups and tracks | `permissions.md` |
+| The backup schedule (the page only reads it) | `backups.md` |
+| The AI provider's key (other ways to set it exist; check whether the AI page covers it) | `ai.md` |
+
+Left out as developer features, not administration: track and ticket properties and the REST API
+itself (`rest-api.md`). Found by searching for "through the API", "API only" and "no web page", so
+a control described in other words could be missing.
 
 ## Next session: start here
 
@@ -124,7 +151,8 @@ gate green (see HANDOFF). In order:
    with a scenario in `events/contract.test.ts`, the OpenAPI entry (`api/openapi.test.ts`), the
    token scope class (`tokens/scopes.test.ts`, session only) and the account-route session check
    (`routes/identity.test.ts`). Migration 0084 exactly.
-4. UI-T04, UI-T05, UI-T06: Tracks directory and tabs, the Settings hub, every page on PageHeader.
+4. UI-T04, UI-T05, UI-T06: Tracks directory and tabs, the Administration panel, every page on
+   PageHeader; then UI-T17 to UI-T21, its new pages.
 5. UI-T15 (layout editor) and UI-T16 (board columns), then UI-T08 (widget drag).
 6. UI-T12, UI-T13: the first-run offer and the coach card, on UI-T10's routes.
 7. UI-T09 and UI-T14: the phone and accessibility pass, the manual.

@@ -1,9 +1,10 @@
 # ADR-114: The glass interface and clear sections
 
 - Status: Accepted (the user, 2026-11-03: the direction yes, closer to Liquid Glass; "Manage" kept;
-  the Tracks directory and the Settings hub yes; the layout editor and board columns in scope)
+  the Tracks directory yes; the layout editor and board columns in scope; 2026-11-03: a full
+  Administration panel in place of the Settings hub)
 - Date: 2026-11-02 (accepted 2026-11-03)
-- Tasks: `docs/plan/ui-overhaul-tasks.md` (UI-T01 to UI-T09); the tutorial is ADR-115
+- Tasks: `docs/plan/ui-overhaul-tasks.md` (UI-T01 to UI-T09, UI-T15 to UI-T21); the tutorial is ADR-115
 
 ## Context
 
@@ -50,16 +51,27 @@ under its title.
 - **Tracks** becomes a real page: a directory of tracks (key, name, type, owner) with a search
   box. Inside a track, a tab bar holds Summary, List, Board, Backlog, Calendar, Timeline and
   Releases, so a track's pages read as one place.
-- **Settings** becomes a hub of grouped cards, each with one line on what it holds:
-  - Personal: Account, Appearance, Tutorials.
-  - People and access: People, Groups, Teams, Access policies, Security, Identity providers,
-    Directories.
-  - Work configuration: Tracks, Workflows, Workflow maps, Fields, Configuration sets.
-  - Data: Imports, Trash, Guardrails.
-  - Integrations: API tokens, Service accounts, MCP, Frontends, Network access, AI.
-  - Monitoring: System status, Audit log, API usage, AI usage.
-
-  Each admin page gets a breadcrumb back to its group.
+- **Settings** is personal: Account, Appearance and Tutorials.
+- **Administration** is a section of its own, separate from Settings, with its own navigation (the
+  user's decision, 2026-11-03: a full panel in 1.0; it replaces the Settings hub first planned
+  here). It sits under **Manage** for those allowed to see it, and its groups are:
+  - People and access: People, Groups, Teams, Invitations, Access policies, Visibility policies and
+    the permission explainer.
+  - Tracks and setup: Tracks, Workflows, Workflow maps, Fields, Configuration sets, Layout sets,
+    Priorities, Notification policies, and which sets a track uses.
+  - Sign-in and security: Security, Identity providers, Directories, Network access, Audit log.
+  - Integrations and AI: API tokens, Service accounts, MCP, Frontends, Webhooks, AI, AI usage,
+    limits and prices.
+  - System: System status, Backups, API usage, Imports, Trash, Guardrails.
+- **Who sees it:** a site administrator sees every group. A configuration administrator sees only
+  the setup pages, and those must work in the web app without the API, which they need today.
+- **The overview page** opens the section: system health, pending invitations and recent security
+  alerts.
+- **Controls that only the API has today get pages**, in this order: visibility policies and the
+  permission explainer; webhooks; AI limits and prices; which layout, priority, visibility and
+  notification sets a track uses. The rest of what the manual marks as API-only is listed in
+  `docs/plan/ui-overhaul-tasks.md`.
+- Each administration page has a breadcrumb back to its group, and admin routes keep their paths.
 - **The top bar** keeps New ticket, the command palette and the person's menu. It gains a
   light and dark toggle and a **Help** menu: Tutorials, Keyboard shortcuts and the Manual.
 - **Names** follow `docs/specs/00-terminology.md`. No Atlassian term appears in the interface.
@@ -244,7 +256,7 @@ left and Move right) and given a minimum and a maximum. The limit stays 30 per b
   in review.
 - Glass makes contrast depend on what sits behind a surface. The composited contrast test and
   the opaque fallbacks hold the line, and axe still runs on every story.
-- Settings and Tracks change structure. Links to `#/settings` and `#/tracks` keep working, and
-  admin routes keep their paths.
+- Settings, Administration and Tracks change structure. Links to `#/settings` and `#/tracks` keep
+  working, and admin routes keep their paths.
 - Revisit if blur proves slow on low-end hardware (then lower `--glass-blur` or go opaque per
   surface), or if the user prefers a denser default.
