@@ -32,10 +32,7 @@ interface Strength {
   dispersion: number;
 }
 
-const STRENGTH: Record<string, Strength> = {
-  clear: { bend: 18, rim: 18, dispersion: 0.1 },
-  deep: { bend: 30, rim: 26, dispersion: 0.18 },
-};
+const STRENGTH: Strength = { bend: 30, rim: 26, dispersion: 0.18 };
 
 /**
  * How far a point of a rounded slab bends, as a fraction of the full bend along each axis: no
@@ -221,19 +218,15 @@ export function startGlassLens(): () => void {
   document.body.append(holder);
 
   const filters = new Map<string, string>();
-  let lastLevel = '';
   let timer = 0;
 
   const resize = new ResizeObserver(() => schedule());
 
   const update = () => {
-    const level = document.documentElement.dataset.glassLevel === 'deep' ? 'deep' : 'clear';
-    if (level !== lastLevel || filters.size > MAX_FILTERS) {
+    if (filters.size > MAX_FILTERS) {
       holder.replaceChildren();
       filters.clear();
-      lastLevel = level;
     }
-    const strength = STRENGTH[level] as Strength;
     const surfaces = [...document.querySelectorAll<HTMLElement>(LENS_SURFACES)].slice(
       0,
       MAX_SURFACES,
@@ -255,7 +248,7 @@ export function startGlassLens(): () => void {
       if (!id) {
         id = `glass-lens-${filters.size}`;
         filters.set(key, id);
-        addFilter(holder, id, width, height, radius, strength);
+        addFilter(holder, id, width, height, radius, STRENGTH);
       }
       surface.style.setProperty('--glass-lens', `url(#${id})`);
     }
@@ -275,17 +268,11 @@ export function startGlassLens(): () => void {
     attributes: true,
     attributeFilter: ['aria-current', 'aria-selected'],
   });
-  const level = new MutationObserver(schedule);
-  level.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['data-glass-level'],
-  });
   schedule();
 
   return () => {
     window.clearTimeout(timer);
     changes.disconnect();
-    level.disconnect();
     resize.disconnect();
     holder.remove();
   };

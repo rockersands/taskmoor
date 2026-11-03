@@ -165,21 +165,6 @@ const hexToRgb = (hex: string): Rgb => {
 };
 const saturation = Number(/--glass-saturate:\s*(\d+)%/.exec(css)?.[1] ?? '100') / 100;
 
-/** A token of the stronger level under review; see shell/glassLevelPreview.ts. */
-function deepLayer(name: 'light' | 'dark', token: string): Layer {
-  const scope =
-    new RegExp(
-      String.raw`\[data-glass-level="deep"\]\[data-skin="${name}"\]\s*\{([\s\S]*?)\n\}`,
-    ).exec(css)?.[1] ?? '';
-  const m = new RegExp(String.raw`--${token}:\s*rgb\((\d+) (\d+) (\d+) / (\d+)%\)`).exec(scope);
-  if (!m) throw new Error(`${token} is missing from the deep level of the ${name} skin`);
-  return { colour: [Number(m[1]), Number(m[2]), Number(m[3])], alpha: Number(m[4]) / 100 };
-}
-const deepSaturation =
-  Number(
-    /\[data-glass-level="deep"\]\s*\{[\s\S]*?--glass-saturate:\s*(\d+)%/.exec(css)?.[1] ?? '100',
-  ) / 100;
-
 describe('text on the canvas picture and on glass (UI-T02)', () => {
   for (const name of ['light', 'dark'] as const) {
     const sample = samples.skins[name];
@@ -227,12 +212,11 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
       expect(short).toEqual([]);
     });
 
-    for (const level of ['clear', 'deep'] as const) {
-      const tintOf = (token: string) =>
-        level === 'deep' ? deepLayer(name, token) : layer(name, token);
-      const amount = level === 'deep' ? deepSaturation : saturation;
+    {
+      const tintOf = (token: string) => layer(name, token);
+      const amount = saturation;
 
-      it(`[NFR-005] keeps text on ${level} glass at AA over the whole canvas in the ${name} skin`, () => {
+      it(`[NFR-005] keeps text on glass at AA over the whole canvas in the ${name} skin`, () => {
         const short: string[] = [];
         for (const surface of [
           'glass-surface',
@@ -248,7 +232,7 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
         expect(short).toEqual([]);
       });
 
-      it(`[NFR-005] keeps the top bar's text at AA over what scrolls under it, ${level}, ${name}`, () => {
+      it(`[NFR-005] keeps the top bar's text at AA over what scrolls under it, ${name}`, () => {
         // The strongest fill that passes under it, at full strength, as if the blur mixed nothing.
         const chrome = tintOf('glass-surface-chrome');
         const short: string[] = [];

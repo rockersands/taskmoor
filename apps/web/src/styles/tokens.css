@@ -45,10 +45,10 @@
 
   /* Glass (ADR-114): how much a translucent surface blurs and lifts the colour behind it. Low,
      so a slab reads as clear glass rather than frost. */
-  --glass-blur: 8px;
-  --glass-blur-chrome: 8px;
-  --glass-blur-strong: 16px;
-  --glass-saturate: 150%;
+  --glass-blur: 4px;
+  --glass-blur-chrome: 5px;
+  --glass-blur-strong: 12px;
+  --glass-saturate: 170%;
   /* A surface's fill: the sheen of light across it over its tint (ADR-114). */
   --glass-fill: var(--glass-sheen), var(--glass-surface);
   --glass-fill-chrome: var(--glass-sheen), var(--glass-surface-chrome);
@@ -122,10 +122,10 @@
 
   /* Glass (ADR-114): translucent surfaces over the canvas. Opaque enough that text keeps the
      ADR-036 ratios over the darkest point of the canvas (contrast.test.ts composites them). */
-  --glass-surface: rgb(255 255 255 / 40%);
-  --glass-surface-chrome: rgb(255 255 255 / 58%);
-  --glass-surface-strong: rgb(255 255 255 / 74%);
-  --glass-surface-sunken: rgb(255 255 255 / 26%);
+  --glass-surface: rgb(255 255 255 / 26%);
+  --glass-surface-chrome: rgb(255 255 255 / 46%);
+  --glass-surface-strong: rgb(255 255 255 / 66%);
+  --glass-surface-sunken: rgb(255 255 255 / 18%);
   /* The clear part of a control, over the colour under it. */
   --glass-lens-fill: rgb(255 255 255 / 26%);
   --glass-edge: rgb(255 255 255 / 55%);
@@ -229,10 +229,10 @@
   --color-flow-first: #1c5cab;
   --color-flow-last: #b7d3f6;
 
-  --glass-surface: rgb(38 34 48 / 44%);
-  --glass-surface-chrome: rgb(38 34 48 / 62%);
-  --glass-surface-strong: rgb(38 34 48 / 78%);
-  --glass-surface-sunken: rgb(16 14 22 / 30%);
+  --glass-surface: rgb(38 34 48 / 30%);
+  --glass-surface-chrome: rgb(38 34 48 / 54%);
+  --glass-surface-strong: rgb(38 34 48 / 70%);
+  --glass-surface-sunken: rgb(16 14 22 / 22%);
   --glass-lens-fill: rgb(255 255 255 / 7%);
   --glass-edge: rgb(255 255 255 / 12%);
   --glass-highlight-flat:
@@ -300,29 +300,4 @@
     --glass-sheen: linear-gradient(transparent, transparent);
     --glass-rim: linear-gradient(var(--color-border), var(--color-border));
   }
-}
-
-/*
- * The stronger level of glass, for the user's review only; goes with shell/glassLevelPreview.ts
- * once the choice is made. contrast.test.ts holds it to the same ratios.
- */
-[data-glass-level="deep"] {
-  --glass-blur: 4px;
-  --glass-blur-chrome: 5px;
-  --glass-blur-strong: 12px;
-  --glass-saturate: 170%;
-}
-
-[data-glass-level="deep"][data-skin="light"] {
-  --glass-surface: rgb(255 255 255 / 26%);
-  --glass-surface-chrome: rgb(255 255 255 / 46%);
-  --glass-surface-strong: rgb(255 255 255 / 66%);
-  --glass-surface-sunken: rgb(255 255 255 / 18%);
-}
-
-[data-glass-level="deep"][data-skin="dark"] {
-  --glass-surface: rgb(38 34 48 / 30%);
-  --glass-surface-chrome: rgb(38 34 48 / 54%);
-  --glass-surface-strong: rgb(38 34 48 / 70%);
-  --glass-surface-sunken: rgb(16 14 22 / 22%);
 }

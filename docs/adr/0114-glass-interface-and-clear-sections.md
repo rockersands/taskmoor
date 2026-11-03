@@ -133,8 +133,8 @@ become **translucent glass**:
   - The current navigation item is a lens of brighter glass; filled pills carry a gloss that
     fades halfway down; the search field and quiet pills are clear glass.
   - Sheen and rim turn off with the opaque fallbacks and in forced colours.
-- **Thick glass** (the user, 2026-11-03: "more glasslike"), working from how a slab of glass
-  behaves, in our own design:
+- **Thick glass** (the user, 2026-11-03: "more glasslike"; of two strengths they chose the
+  stronger, Deep), working from how a slab of glass behaves, in our own design:
   - Refraction at the rim: `shell/glassLens.ts` draws an SVG displacement filter per surface size
     and radius and sets it as `--glass-lens`, used in `backdrop-filter`. It splits red, green and
     blue slightly, so the colour at the edge comes from what is really behind the glass. Only
@@ -150,7 +150,7 @@ become **translucent glass**:
     `--glass-rim`, `--glass-contact`).
   - Glass over colour: the current place in the sidebar, the selected tab and the light and dark
     switch have a coloured part under a clear part; filled pills are a dome over their colour.
-  - Blur is low (8 px on cards and the top bar). The top bar's text uses the full text colour, as
+  - Blur is low (4 px on cards, 5 px on the top bar, 12 px on floating surfaces). The top bar's text uses the full text colour, as
     bright fills pass under it. `contrast.test.ts` holds all of it to WCAG AA.
   - An empty state shows one generated illustration of stacked cards (the user's choice,
     2026-11-02) in place of its small icon.
