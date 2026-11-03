@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ADMIN, MEMBER } from '../admin/fixtures';
@@ -240,6 +240,144 @@ describe('the invite dialog (IAM-027)', () => {
       'notanaddress',
       'a@x.example',
     ]);
+  });
+});
+
+/** A manager who may create tracks, and so give that permission (IAM-033). */
+const CREATOR = {
+  status: 'signed-in' as const,
+  user: {
+    ...(MEMBER as Extract<typeof MEMBER, { status: 'signed-in' }>).user,
+    mayCreateLocalTracks: true,
+  },
+};
+
+describe('the permission to create tracks with the role that runs the track (IAM-033)', () => {
+  const box = () => screen.getByRole('checkbox', { name: 'Also let them create tracks' });
+  const setRoleCalls = (client: ReturnType<typeof renderPeople>) =>
+    client.calls.filter((c) => c.action === 'setRole').map((c) => c.args);
+
+  it('[IAM-033] the box is ticked when the role runs the track, and goes with the role', async () => {
+    const user = userEvent.setup();
+    const client = renderPeople({}, CREATOR);
+    await screen.findByText('Kalo Reyes: Administrators');
+    expect(screen.getByLabelText('Role')).toHaveDisplayValue('Administrators');
+    expect(box()).toBeChecked();
+    expect(box()).toHaveAccessibleDescription(/permission for the whole site/);
+    await user.type(screen.getByLabelText('Find a person by name'), 'ana');
+    await user.click(
+      await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),
+    );
+    expect(
+      await screen.findByText('Ana Duarte now holds Administrators and can create tracks.'),
+    ).toBeInTheDocument();
+    expect(setRoleCalls(client)).toEqual([[3, 7, 'users', 4, true, { createTracks: true }]]);
+  });
+
+  it('[IAM-033] unticked, the role goes alone', async () => {
+    const user = userEvent.setup();
+    const client = renderPeople({}, CREATOR);
+    await screen.findByText('Kalo Reyes: Administrators');
+    await user.click(box());
+    expect(box()).not.toBeChecked();
+    await user.type(screen.getByLabelText('Find a person by name'), 'ana');
+    await user.click(
+      await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),
+    );
+    expect(await screen.findByText('Ana Duarte now holds Administrators.')).toBeInTheDocument();
+    expect(setRoleCalls(client)).toEqual([[3, 7, 'users', 4, true]]);
+  });
+
+  it('[IAM-033] no box with a role that does not run the track, nor for someone who cannot give it', async () => {
+    const user = userEvent.setup();
+    renderPeople({}, CREATOR);
+    await screen.findByText('Kalo Reyes: Administrators');
+    await user.selectOptions(screen.getByLabelText('Role'), 'Members');
+    expect(screen.queryByRole('checkbox')).toBe(null);
+    cleanup();
+    renderPeople({}, MEMBER);
+    await screen.findByText('Kalo Reyes: Administrators');
+    expect(screen.getByLabelText('Role')).toHaveDisplayValue('Administrators');
+    expect(screen.queryByRole('checkbox')).toBe(null);
+  });
+
+  it('[IAM-033] a site administrator is offered the box', async () => {
+    renderPeople({}, ADMIN);
+    await screen.findByText('Kalo Reyes: Administrators');
+    expect(box()).toBeChecked();
+  });
+
+  it('[IAM-033] says so when the server refuses the permission', async () => {
+    const user = userEvent.setup();
+    renderPeople({ refuseCreateTracks: true }, CREATOR);
+    await screen.findByText('Kalo Reyes: Administrators');
+    await user.type(screen.getByLabelText('Find a person by name'), 'ana');
+    await user.click(
+      await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Only site administrators and people who can create tracks themselves can give that permission.',
+    );
+  });
+
+  it('[IAM-033] the invite dialog offers the box with the role that runs the track', async () => {
+    const user = userEvent.setup();
+    const client = renderPeople({}, CREATOR);
+    await user.click(await screen.findByRole('button', { name: 'Invite people' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).queryByRole('checkbox')).toBe(null);
+    await user.selectOptions(within(dialog).getByLabelText('Role'), 'Administrators');
+    const ticked = within(dialog).getByRole('checkbox', { name: 'Also let them create tracks' });
+    expect(ticked).toBeChecked();
+    await user.type(within(dialog).getByLabelText('Email addresses'), 'lead@example.com');
+    await user.click(within(dialog).getByRole('button', { name: 'Send invitations' }));
+    expect(await within(dialog).findByText('lead@example.com: invited.')).toBeInTheDocument();
+    expect(client.calls.find((c) => c.action === 'invite')?.args[1]).toEqual({
+      addresses: ['lead@example.com'],
+      userIds: [],
+      roleId: 7,
+      delivery: 'email',
+      createTracks: true,
+    });
+  });
+
+  it('[IAM-033] the invite dialog sends no permission once unticked, or to someone who cannot give it', async () => {
+    const user = userEvent.setup();
+    const client = renderPeople({}, CREATOR);
+    await user.click(await screen.findByRole('button', { name: 'Invite people' }));
+    const dialog = screen.getByRole('dialog');
+    await user.selectOptions(within(dialog).getByLabelText('Role'), 'Administrators');
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Also let them create tracks' }));
+    await user.type(within(dialog).getByLabelText('Email addresses'), 'lead@example.com');
+    await user.click(within(dialog).getByRole('button', { name: 'Send invitations' }));
+    await within(dialog).findByText('lead@example.com: invited.');
+    expect(client.calls.find((c) => c.action === 'invite')?.args[1]).not.toHaveProperty(
+      'createTracks',
+    );
+    cleanup();
+    renderPeople({}, MEMBER);
+    await user.click(await screen.findByRole('button', { name: 'Invite people' }));
+    await user.selectOptions(
+      within(screen.getByRole('dialog')).getByLabelText('Role'),
+      'Administrators',
+    );
+    expect(within(screen.getByRole('dialog')).queryByRole('checkbox')).toBe(null);
+  });
+
+  it('[IAM-033] fits a phone, in Spanish too', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    renderPeople({}, CREATOR, 'es');
+    expect(
+      await screen.findByRole('checkbox', { name: 'Permitir también crear tracks' }),
+    ).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Invitar personas' }));
+    const dialog = screen.getByRole('dialog');
+    await user.selectOptions(within(dialog).getByLabelText('Rol'), 'Administrators');
+    expect(
+      within(dialog).getByRole('checkbox', { name: 'Permitir también crear tracks' }),
+    ).toBeChecked();
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(360);
   });
 });
 

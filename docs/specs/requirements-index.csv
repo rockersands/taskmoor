@@ -322,6 +322,7 @@ IAM-029,IAM,Invitations and sign-in rules,M1,Must,User requirement
 IAM-030,IAM,Track managers' pages,M1,Must,User requirement
 IAM-031,IAM,Google sign-in settings,M1,Must,User requirement
 IAM-032,IAM,Who gets in through Google,M1,Must,User requirement
+IAM-033,IAM,Who may create tracks,M1,Must,User requirement
 OPS-001,OPS,One-command install,M1,Must,User requirement; Plane; GitLab Omnibus
 OPS-002,OPS,"Dependencies, footprint and sizing",M1,Must,OpenProject sizing; exceeds Sentry and Huly footprints
 OPS-003,OPS,First-run setup,M1,Must,User requirement

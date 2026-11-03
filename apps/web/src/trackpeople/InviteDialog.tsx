@@ -3,6 +3,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { tooManyAttemptsMessage } from '../session/errors';
+import { CreateTracksBox } from './CreateTracksBox';
 import {
   type Delivery,
   type InviteResult,
@@ -16,11 +17,15 @@ export interface InviteDialogProps {
   track: { id: number; key: string };
   roles: TrackRole[];
   emailAvailable: boolean;
+  /** The person may give the permission to create tracks with the role (IAM-033). */
+  mayGrantCreateTracks?: boolean;
   client: TrackPeopleClient;
   onClose: () => void;
   /** After something was sent: the page reads its lists again. */
   onSent: () => void;
 }
+
+type Refusal = { error?: string; permission?: string };
 
 const RESULT_LABELS: Record<InviteResult['status'], MessageId> = {
   invited: 'trackPeople.result.invited',
@@ -40,6 +45,7 @@ export function InviteDialog({
   track,
   roles,
   emailAvailable,
+  mayGrantCreateTracks = false,
   client,
   onClose,
   onSent,
@@ -57,6 +63,7 @@ export function InviteDialog({
     return String(quiet?.id ?? '');
   });
   const [delivery, setDelivery] = useState<Delivery>(emailAvailable ? 'email' : 'link');
+  const [createTracks, setCreateTracks] = useState(true);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [results, setResults] = useState<InviteResult[] | null>(null);
@@ -85,6 +92,8 @@ export function InviteDialog({
   }, [client, search, track.key]);
 
   const typed = parseAddresses(addresses);
+  const offerCreateTracks =
+    mayGrantCreateTracks && givable.some((r) => String(r.id) === role && r.runsTrack);
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setBusy(true);
@@ -95,20 +104,23 @@ export function InviteDialog({
         userIds: picked.map((p) => p.id),
         roleId: Number(role),
         delivery,
+        ...(offerCreateTracks && createTracks ? { createTracks: true } : {}),
       });
       setResults(answer);
       onSent();
     } catch (error) {
-      const code =
-        error instanceof ApiError ? (error.body as { error?: string } | null)?.error : '';
+      const body = error instanceof ApiError ? (error.body as Refusal | null) : null;
+      const code = body?.error ?? '';
       setProblem(
-        code === 'too_many_invitations'
-          ? t('trackPeople.problem.tooMany')
-          : code === 'email_not_set_up'
-            ? t('trackPeople.emailOff')
-            : error instanceof ApiError && error.status === 403
-              ? t('trackPeople.problem.forbidden')
-              : (tooManyAttemptsMessage(t, error) ?? t('trackPeople.problem.other')),
+        body?.permission === 'create_local_tracks'
+          ? t('trackPeople.problem.createTracks')
+          : code === 'too_many_invitations'
+            ? t('trackPeople.problem.tooMany')
+            : code === 'email_not_set_up'
+              ? t('trackPeople.emailOff')
+              : error instanceof ApiError && error.status === 403
+                ? t('trackPeople.problem.forbidden')
+                : (tooManyAttemptsMessage(t, error) ?? t('trackPeople.problem.other')),
       );
     } finally {
       setBusy(false);
@@ -253,6 +265,9 @@ export function InviteDialog({
                 ))}
               </select>
             </div>
+            {offerCreateTracks && (
+              <CreateTracksBox checked={createTracks} onChange={setCreateTracks} />
+            )}
             {emailAvailable && (
               <fieldset className="form-field invite-delivery">
                 <legend className="form-label">{t('trackPeople.delivery')}</legend>

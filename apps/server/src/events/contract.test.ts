@@ -260,6 +260,16 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           .returning('id')
           .executeTakeFirstOrThrow();
         state.bo = bo.id;
+        // Bo creates local-mode tracks below, which a new site leaves to administrators (IAM-033).
+        await database.db
+          .insertInto('global_grant')
+          .values({
+            workspace_id: 1,
+            permission: 'create_local_tracks',
+            grantee: 'user',
+            user_id: bo.id,
+          })
+          .execute();
         const policy = await database.db
           .selectFrom('access_policy')
           .select('id')
@@ -803,6 +813,41 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           method: 'PUT',
           url: `/api/v1/tracks/${state.track}/roles/${state.role}/users/${state.bo}`,
         }),
+    },
+    {
+      // The role that runs the track with the permission to create tracks (IAM-033): the grant
+      // is in the role's event, not an event of its own.
+      route: 'PUT /api/v1/tracks/:id/roles/:roleId/users/:actorId',
+      expect: 'track_role.actor_added',
+      prepare: async () => {
+        const manager = await database.db
+          .insertInto('app_user')
+          .values({ workspace_id: 1, email: 'manager@example.com', name: 'Manager' })
+          .returning('id')
+          .executeTakeFirstOrThrow();
+        state.manager = manager.id;
+        const administrators = await database.db
+          .selectFrom('role')
+          .select('id')
+          .where('name', '=', 'Administrators')
+          .executeTakeFirstOrThrow();
+        state.administrators = administrators.id;
+      },
+      run: async () => {
+        const res = await admin({
+          method: 'PUT',
+          url: `/api/v1/tracks/${state.track}/roles/${state.administrators}/users/${state.manager}`,
+          payload: { createTracks: true },
+        });
+        const event = await database.db
+          .selectFrom('domain_event')
+          .select('payload')
+          .where('type', '=', 'track_role.actor_added')
+          .orderBy('id', 'desc')
+          .executeTakeFirstOrThrow();
+        expect(event.payload).toMatchObject({ createTracksGrantId: expect.any(Number) });
+        return res;
+      },
     },
     {
       route: 'DELETE /api/v1/tracks/:id/roles/:roleId/users/:actorId',

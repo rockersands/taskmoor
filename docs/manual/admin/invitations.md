@@ -1,7 +1,7 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md
 accessed: 2026-11-03
 attestation: own-words
 ---
@@ -18,7 +18,9 @@ If you run a track you do not need to be a site administrator to manage it. Open
 then **Tracks you run** (`#/manage/tracks`), and **Manage** a track. Its page shows:
 
 - **Who holds which role**, with **Remove** on the roles you may take away;
-- **Give a role**: choose the **Role**, find a person by name and **Add**;
+- **Give a role**: choose the **Role**, find a person by name and **Add**. With the role that runs
+  the track you may also see **Also let them create tracks**: see
+  [Letting a manager create tracks](#letting-a-manager-create-tracks);
 - **Invite people**, when that is on for you;
 - **Invitations waiting**.
 
@@ -65,6 +67,30 @@ Renaming the role changes nothing. The permission reaches only that track. A man
 site administrator out of a track's role changes only that: the site administrator keeps every
 right they have.
 
+### Letting a manager create tracks
+
+On a new site only site administrators create tracks (see
+[Tracks](tracks.md#who-may-create-one)). When you give someone a role that runs the track, under
+**Give a role** or in the **Invite people** dialog, a box appears under the role: **Also let them
+create tracks**. It is ticked; untick it to give the role alone. Ticked, the person also gets the
+global permission **Create tracks with their own configuration**, for the whole site, not only
+this track.
+
+- You see the box only if you could give that permission anyway: you are a site administrator, or
+  you may create tracks yourself. Nobody else is offered it, and the server refuses a request that
+  asks for it ("Only site administrators and people who can create tracks themselves can give that
+  permission.").
+- It goes to people, never to groups, and only with a role given there and then: someone who
+  already holds the role gets nothing more.
+- An invitation keeps the box until it is taken up. If the person who backs it can no longer give
+  the permission by then, the role still comes, without the permission.
+- **Taking the role away later does not remove the permission.** A site administrator removes it on
+  **Settings** > **Permissions** > **Global permissions**, where each person who holds it is listed
+  by name.
+
+The grant shows in the audit log inside the event that gave the role: `createTracksGrantId` on
+`track_role.actor_added`, `track_invitation.created`, `.resent` or `.accepted`.
+
 ### A track keeps someone to run it
 
 Removing the last active person who may run a track is refused, for everyone: "This is the last
@@ -80,7 +106,9 @@ deactivating a person is not stopped.
 
 1. Type or paste **Email addresses**: commas, semicolons, spaces and lines all work, and so does
    `Name <address>`. Or **Find a person by name**.
-2. Choose a **Role**. Only the roles you may give are offered.
+2. Choose a **Role**. Only the roles you may give are offered. With the role that runs the track,
+   **Also let them create tracks** may appear, ticked
+   ([Letting a manager create tracks](#letting-a-manager-create-tracks)).
 3. Choose how it travels: **Taskmoor sends an email**, or **I copy a link and pass it on**.
 
 Up to 50 addresses go at once. One inviter sends up to 100 an hour, and one address gets at most 5
@@ -151,11 +179,13 @@ own checks replace Taskmoor's second factor there. For invitations to Gmail addr
 |---|---|
 | `GET /api/v1/me/managed-tracks` | The tracks the person runs |
 | `GET /api/v1/tracks/:id/roles` | The roles, with `runsTrack` and `givable` |
-| `GET`, `POST /api/v1/tracks/:id/invitations` | Waiting invitations; invite (`addresses`, `userIds`, `roleId`, `delivery`) |
+| `GET`, `POST /api/v1/tracks/:id/invitations` | Waiting invitations; invite (`addresses`, `userIds`, `roleId`, `delivery`, and `createTracks`) |
+| `PUT /api/v1/tracks/:id/roles/:roleId/users/:userId` | Give a person a role; `{"createTracks": true}` with a role that runs the track |
 | `POST /api/v1/tracks/:id/invitations/:invitationId/resend` | A new link (`delivery`) |
 | `DELETE /api/v1/tracks/:id/invitations/:invitationId` | Withdraw |
 | `POST /api/v1/invitations/inspect`, `redeem`, `accept` | The invited person's side: the token in the body, `accept` with a session |
 
-The invitation routes need an API token's `admin` scope. In the audit log, `track_invitation.created`,
+The invitation routes need an API token's `admin` scope. So does `createTracks` when giving a role,
+since it writes a site-wide grant; giving the role alone needs `write`. In the audit log, `track_invitation.created`,
 `.resent`, `.revoked` and `.accepted` name who did it and how the link travelled, never the link; an
 account made through a link shows as `accountCreated: true` on `.accepted`.

@@ -2,7 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-11-03
-- Backlog: track invitations (workstream `claude/track-invites`); requirements IAM-027 to IAM-030
+- Backlog: track invitations (workstream `claude/track-invites`); requirements IAM-027 to IAM-030;
+  who may create tracks (T-087a, IAM-033)
 
 ## Context
 
@@ -25,6 +26,9 @@ The user decided on 2026-11-03:
 5. Track managers **can** appoint other managers by default, and this must be a permission that
    can be removed. It reaches only the track they run, and gives nothing global. (This replaces
    an earlier decision the same day that only site administrators could.)
+6. Who creates tracks (`decisions.csv`, "Who creates tracks"): the permission to create tracks is
+   ticked by default when someone is given the manager role, and can be unticked in that same
+   step. Read with it, and implemented: on a new site it is off for everyone else by default.
 
 ## Decision
 
@@ -144,6 +148,49 @@ The group list stays a site administrator's: a manager sees and removes groups, 
 people. `#/admin/tracks` keeps its own panel and links to the same page. The invited person's page
 (`#/invite`) stands alone, like a password link.
 
+### Who may create tracks (T-087a; IAM-033)
+
+The permission is the existing global `create_local_tracks` (**Create tracks with their own
+configuration**); shared-mode tracks stay with site and configuration administrators. Migration 0004
+gives it to everyone signed in, and a site set up before keeps that: no migration changes a grant.
+**First-run setup removes that grant**, so on a new site only site administrators (who hold every
+global permission) create tracks until someone is given it. Setup is where the other new-site
+defaults are written (two-factor for administrators, storage quotas), and it runs once, so an
+upgraded site is never touched.
+
+**The box.** Giving a person a role that runs the track (`runsTrack`) offers **Also let them create
+tracks**, ticked; the giver may untick it. It is on both ways of giving the role: **Give a role**
+(`PUT .../roles/:roleId/users/:userId` with `{"createTracks": true}`) and an invitation
+(`createTracks` in `POST .../invitations`). Ticked, it writes an ordinary `global_grant` to that
+person, so the Permissions page, the explainer and the authorizer's cache work unchanged.
+
+The rules, which the server enforces whatever the web app shows:
+
+- **Only someone who could give it anyway ticks it**: a site administrator, or a person who holds
+  `create_local_tracks` themselves. As with sharing, nobody hands on what they do not have. Anyone
+  else gets no box, and a request that asks is refused `403` with `permission: "create_local_tracks"`,
+  and nothing is changed: not the role either.
+- **A token needs the admin scope** to tick it, since it writes a site-wide grant (`403
+  insufficient_scope`); giving the role alone still needs `write`. The invitation routes needed
+  `admin` already.
+- **Only with a role that runs the track, only to a person, only with a role given now.** Another
+  role or a group answers `400`; a person who already holds the role gets nothing more, and a person
+  who already has a grant of their own keeps it, and no second one is written.
+- **One event.** The grant's id travels in the event of the change that gave the role,
+  `createTracksGrantId` on `track_role.actor_added`, `track_invitation.created`, `.resent` or
+  `.accepted`, and so in its audit record; there is no `global_grant.added` beside it (M1-005). The
+  field is optional, so older events still match their type.
+- **Invitations keep the box** (`track_invitation.grants_create_tracks`, migration 0097) until the
+  role is given: at once for an address with an account, otherwise when the link is taken up. Then
+  the grant is written only if whoever backs the invitation (its inviter, or whoever sent it again)
+  still may give it. If not, the role still comes, alone, as an invitation's role does.
+
+**Removing the role leaves the grant** (to confirm with the user). The permission is site-wide and
+may already have been used; taking it away silently when someone leaves a track would also take it
+from a person who holds it for another reason, and the grant does not record which role brought it.
+A site administrator removes it on **Global permissions**, where each holder is listed by name.
+Withdrawing an invitation that gave the role at once likewise leaves the grant.
+
 ## Options considered
 
 | Option | For | Against |
@@ -154,6 +201,9 @@ people. `#/admin/tracks` keeps its own panel and links to the same page. The inv
 | Keep every invitation pending, also for existing accounts | No leak through the role list | The user asked for the role at once |
 | Create the account at invitation time | Simpler accept | Junk accounts for every typo; the People page lists people who never came |
 | Sign in directly after redeeming, as password links do | One step fewer in code | Skips two-factor, which breaks the external-people rule |
+| Create tracks: anyone who gives the manager role may tick the box (rejected) | Fewer refusals | A manager could hand on a site-wide permission they do not hold |
+| Create tracks: a migration removes everyone's grant on upgrade (rejected) | One default everywhere | Takes an ability away from people on an upgraded site; the user asked only about new sites |
+| Create tracks: removing the role removes the grant (open) | Nothing left behind | Takes away a site-wide right the person may hold for another reason; the grant does not say why it was given |
 
 ## Consequences
 
@@ -162,6 +212,9 @@ people. `#/admin/tracks` keeps its own panel and links to the same page. The inv
   says whether an account was made and which role was given, rather than three events. A person
   picked by name emits `track_role.actor_added`. `user.created` is therefore **not** emitted for an
   account made this way; the audit log shows `accountCreated: true`.
+- Who may create tracks: nobody gains or loses anything on upgrade; the upgrade seed proves the
+  grant to everyone and the invitation column. A new site differs from an upgraded one only in that
+  grant, and the manual says how to remove it on an older site.
 - What remains visible, and is accepted here: a manager who invites an address sees a new name in the
   role list when that address had an account; anyone holding a copied link can tell the two kinds
   apart by trying to use it; and `GET /people/mentionable` already matches an email's start for

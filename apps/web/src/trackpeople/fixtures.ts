@@ -39,6 +39,8 @@ export interface FakeTrackPeopleOptions {
   /** The manager lost the right to give the role that runs the track. */
   appointLocked?: boolean;
   invitations?: Invitation[];
+  /** The server refuses the permission to create tracks, as it does for whoever cannot give it. */
+  refuseCreateTracks?: boolean;
 }
 
 export interface FakeTrackPeopleClient extends TrackPeopleClient {
@@ -73,11 +75,14 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
     track: async () => SHOP,
     roles: async () => roles,
     roleHolders: async () => structuredClone(holders),
-    setRole: async (trackId, roleId, kind, actorId, on) => {
-      log('setRole', trackId, roleId, kind, actorId, on);
+    setRole: async (trackId, roleId, kind, actorId, on, roleOptions) => {
+      log('setRole', trackId, roleId, kind, actorId, on, ...(roleOptions ? [roleOptions] : []));
       const role = roles.find((r) => r.id === roleId);
       if (role && !role.givable) {
         throw new ApiError(403, { error: 'forbidden', permission: 'appoint_track_admins' });
+      }
+      if (roleOptions?.createTracks && options.refuseCreateTracks) {
+        throw new ApiError(403, { error: 'forbidden', permission: 'create_local_tracks' });
       }
       const name = people.find((p) => p.id === actorId)?.name ?? 'Someone';
       const entry = holders.find((h) => h.roleId === roleId);
@@ -111,6 +116,9 @@ export function fakeTrackPeopleClient(options: FakeTrackPeopleOptions = {}): Fak
     }),
     invite: async (trackId, body) => {
       log('invite', trackId, body);
+      if (body.createTracks && options.refuseCreateTracks) {
+        throw new ApiError(403, { error: 'forbidden', permission: 'create_local_tracks' });
+      }
       const results: InviteResult[] = body.addresses.map((raw) => {
         if (!raw.includes('@')) return { email: raw, status: 'invalid' };
         const email = raw.toLowerCase();

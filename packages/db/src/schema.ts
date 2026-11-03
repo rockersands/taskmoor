@@ -2622,6 +2622,11 @@ export interface TrackInvitationTable {
   invited_by: number | null;
   /** The account that got the role when the invitation was made, if it did. */
   granted_user_id: number | null;
+  /**
+   * The role comes with the site-wide permission to create tracks (IAM-033): given with the
+   * role, if whoever backs the invitation may still give it then.
+   */
+  grants_create_tracks: Generated<boolean>;
   delivery: 'email' | 'link';
   last_error: string | null;
   created_at: DefaultTimestamp;

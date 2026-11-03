@@ -2671,7 +2671,8 @@
       "last_sent_at timestamp with time zone not null default now()",
       "expires_at timestamp with time zone not null",
       "accepted_at timestamp with time zone",
-      "revoked_at timestamp with time zone"
+      "revoked_at timestamp with time zone",
+      "grants_create_tracks boolean not null default false"
     ],
     "indexes": [
       "CREATE INDEX track_invitation_email_idx ON public.track_invitation USING btree (workspace_id, email)",
