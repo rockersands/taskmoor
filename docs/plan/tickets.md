@@ -121,10 +121,11 @@ reported, and the coordinator checked that it was pushed.
 | T-081 | Hide Backlog entirely on Kanban tracks, and other Scrum-only items | Done | `claude/ui-overhaul` |
 | T-082 | A way to manage outcomes on Kanban tracks | You | Their panel lives on the backlog |
 | T-083 | A cross-track timeline | In progress | Part of T-088 |
-| T-084 | Personal track groups: drag tracks together, name the group | To do | Waits for the merges; takes the next free migration number at the start; private to the person |
-| T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | Waits for the merges |
-| T-086 | Share a whole group, or set it on another person | To do | Waits for the merges |
-| T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
+| T-084 | Personal track groups: drag tracks together, name the group | Done | On `main` (ADR-121, CORE-034, migration 0100): by mouse, touch and keyboard; private to their owner |
+| T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | Done | On `main` |
+| T-086 | Share a whole group, or set it on another person | Done | On `main` (IAM-034) |
+| T-086a | "Set it on another person": is it right that they get their own copy of the group? | You | Built as an own copy (name and tracks) with the role given outright; only the copy route changes if the user means something else (ADR-121) |
+| T-087 | Sharing a group gives access to its tracks | Done | On `main`: the sharer picks a role and gives it only where they could give it track by track; taking back removes only what the share gave |
 | T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | Done | On `main` (migration 0097, IAM-033, ADR-118): new sites let only site administrators create tracks until granted; only site administrators and holders may tick the box |
 | T-087b | When someone loses the manager role, should their permission to create tracks go too? | You | Today it stays until a site administrator removes it, and the people admin page shows who holds it |
 | T-087b | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
@@ -262,6 +263,9 @@ reported, and the coordinator checked that it was pushed.
 | T-201 | A subticket refusal names a custom field as "field 12", not by its name | Done | On `main`: the panel reads the create form's field names once per type; the template picker still says "field N" for a field not on the form |
 | T-202 | A pasted section title from another Taskmoor document keeps control characters | Done | On `main` |
 | T-203 | A checklist item rewritten by someone else shows its new words in the writer's own data download | To do | Only on tickets the person still sees; needs an `updated_by` column |
+| T-204 | A person cannot leave a group someone shared with them | To do | Only the owner takes a share back |
+| T-205 | Track groups are not in a person's data download or erasure | To do | ADR-111 |
+| T-206 | Nobody is told when a group is shared with them | To do | A notification, like other shares |
 
 ## Flutter app (stopped)
 
