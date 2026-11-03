@@ -1472,10 +1472,15 @@ test('[NTF-004] a person chooses a daily digest and turns one email off from the
   await expect(section.getByRole('radio', { name: /At once/ })).toBeChecked();
   await section.getByRole('radio', { name: /Daily digest/ }).check();
   await expect(section.getByText('Notification settings saved.')).toBeVisible();
+  // The box changes at once; wait for its save to reach the server before reloading.
+  const saved = page.waitForResponse(
+    (r) => r.url().includes('/account/notification-preferences') && r.request().method() !== 'GET',
+  );
   await section.getByRole('checkbox', { name: 'Email: Ticket moved to another track' }).uncheck();
   await expect(
     section.getByRole('checkbox', { name: 'Email: Ticket moved to another track' }),
   ).not.toBeChecked();
+  expect((await saved).ok()).toBe(true);
   // Saved with the account: still so after a reload.
   await page.reload();
   await expect(section.getByRole('radio', { name: /Daily digest/ })).toBeChecked();
