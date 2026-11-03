@@ -221,10 +221,7 @@
 .ticket-facts :is(input, select) {
   min-height: var(--hit-target);
   padding: 0 var(--space-3);
-  border: 1px solid var(--color-field-border);
   border-radius: var(--radius-pill);
-  background: var(--glass-fill-strong);
-  color: var(--color-text);
   font: inherit;
   max-width: 100%;
 }

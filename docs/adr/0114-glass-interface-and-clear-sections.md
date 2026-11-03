@@ -172,6 +172,9 @@ become **translucent glass**:
   and a heavier label when on, never colour alone), `Popover` (`shell/Popover.tsx`: over the content,
   closed by Escape or a click outside with focus back on its button, docked at the bottom of the
   screen below 768 px), `glass-check` and `thin-scroll`, for any page to reuse.
+- **Fields** (the user, 2026-11-03: no more flat beige) are one rule in `forms.css` on the token
+  `--field-surface`: clear glass, opaque where glass falls back, with `--color-field-border` at 3:1
+  beside the canvas, any glass and any opaque surface. `contrast.test.ts` holds it.
 - **Own assets only.** Icons are original line drawings on a 24 px grid (`shell/icons.tsx`).
   Nothing is taken from Apple's or Atlassian's assets, screenshots, colours or layouts. The
   translucent depth is the idea we borrow, not any asset.

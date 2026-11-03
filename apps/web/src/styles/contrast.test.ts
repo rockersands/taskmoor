@@ -272,6 +272,49 @@ describe('text on the canvas picture and on glass (UI-T02)', () => {
       expect(worstOnGlass('color-accent', tint, saturation)).toBeGreaterThanOrEqual(3);
     });
 
+    it(`[NFR-005] keeps the shared field readable, with an edge of 3:1, in the ${name} skin`, () => {
+      // `:where(input, select, textarea)` in forms.css, wherever a field can sit: straight on the
+      // canvas, on any glass surface and on an opaque one (a dialog).
+      const field = layer(name, 'field-surface');
+      const unders: { label: string; pixels: Rgb[] }[] = [
+        {
+          label: 'the canvas',
+          pixels: sample.cells.flatMap((c) => [c.lightest, c.darkest].map((p) => over(dim, p))),
+        },
+        ...['glass-surface', 'glass-surface-chrome', 'glass-surface-strong'].map((surface) => ({
+          label: surface,
+          pixels: sample.cells.flatMap((c) =>
+            [c.lightest, c.darkest].map((p) =>
+              over(layer(name, surface), saturate(over(dim, p), saturation)),
+            ),
+          ),
+        })),
+        ...['color-surface', 'color-surface-raised', 'color-surface-sunken'].map((surface) => ({
+          label: surface,
+          pixels: [textOf(surface)],
+        })),
+      ];
+      const short: string[] = [];
+      for (const { label, pixels } of unders) {
+        let text = Number.POSITIVE_INFINITY;
+        let hint = Number.POSITIVE_INFINITY;
+        let edgeOnField = Number.POSITIVE_INFINITY;
+        let edgeOnUnder = Number.POSITIVE_INFINITY;
+        for (const pixel of pixels) {
+          const back = over(field, pixel);
+          text = Math.min(text, ratioOf(textOf('color-text'), back));
+          hint = Math.min(hint, ratioOf(textOf('color-text-muted'), back));
+          edgeOnField = Math.min(edgeOnField, ratioOf(textOf('color-field-border'), back));
+          edgeOnUnder = Math.min(edgeOnUnder, ratioOf(textOf('color-field-border'), pixel));
+        }
+        if (text < 4.5) short.push(`text on a field over ${label}: ${text.toFixed(2)}`);
+        if (hint < 4.5) short.push(`muted text on a field over ${label}: ${hint.toFixed(2)}`);
+        if (edgeOnField < 3) short.push(`edge on a field over ${label}: ${edgeOnField.toFixed(2)}`);
+        if (edgeOnUnder < 3) short.push(`edge beside ${label}: ${edgeOnUnder.toFixed(2)}`);
+      }
+      expect(short).toEqual([]);
+    });
+
     it(`[NFR-005] keeps a filled pill's text at AA under its gloss in the ${name} skin`, () => {
       const fill = textOf('color-primary');
       const text = textOf('color-on-primary');

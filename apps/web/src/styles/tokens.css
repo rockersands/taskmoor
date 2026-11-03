@@ -71,7 +71,7 @@
   --color-surface-sunken: #f3efea;
   --color-border: #e6e0e8;
   /* Edges of fields and other controls: 3:1 against the surfaces. */
-  --color-field-border: #8e8599;
+  --color-field-border: #7c7387;
   --color-text: #2a2532;
   --color-text-muted: #5f5869;
 
@@ -128,6 +128,8 @@
   --glass-surface-chrome: rgb(255 255 255 / 46%);
   --glass-surface-strong: rgb(255 255 255 / 66%);
   --glass-surface-sunken: rgb(255 255 255 / 18%);
+  /* Fields: clear glass that reads as a place to type, on the canvas and on any surface. */
+  --field-surface: rgb(255 255 255 / 58%);
   /* The clear part of a control, over the colour under it. */
   --glass-lens-fill: rgb(255 255 255 / 26%);
   --glass-edge: rgb(255 255 255 / 55%);
@@ -182,7 +184,7 @@
   --color-surface-raised: #2e2937;
   --color-surface-sunken: #1f1c26;
   --color-border: #3d3747;
-  --color-field-border: #8a8096;
+  --color-field-border: #9c92a8;
   --color-text: #f2edf5;
   --color-text-muted: #c6bed0;
 
@@ -235,6 +237,7 @@
   --glass-surface-chrome: rgb(38 34 48 / 54%);
   --glass-surface-strong: rgb(38 34 48 / 70%);
   --glass-surface-sunken: rgb(16 14 22 / 22%);
+  --field-surface: rgb(16 14 22 / 42%);
   --glass-lens-fill: rgb(255 255 255 / 7%);
   --glass-edge: rgb(255 255 255 / 12%);
   --glass-highlight-flat:
@@ -282,6 +285,7 @@
     --glass-surface-strong: var(--color-surface-raised);
     --glass-lens-fill: transparent;
     --glass-surface-sunken: var(--color-surface-sunken);
+    --field-surface: var(--color-surface-raised);
     --glass-tint-accent: var(--color-accent-soft);
     --glass-sheen: linear-gradient(transparent, transparent);
     --glass-rim: linear-gradient(var(--color-border), var(--color-border));
@@ -296,6 +300,7 @@
     --glass-surface-strong: var(--color-surface-raised);
     --glass-lens-fill: transparent;
     --glass-surface-sunken: var(--color-surface-sunken);
+    --field-surface: var(--color-surface-raised);
     --glass-tint-accent: var(--color-accent-soft);
     --glass-blur: 0px;
     --glass-blur-strong: 0px;

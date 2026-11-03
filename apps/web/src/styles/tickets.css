@@ -220,3 +220,8 @@
     min-height: var(--hit-target-touch);
   }
 }
+
+/* A dialog's line under its title, with room before its form. */
+.create-dialog > .page-note {
+  margin-block: var(--space-1) var(--space-4);
+}
