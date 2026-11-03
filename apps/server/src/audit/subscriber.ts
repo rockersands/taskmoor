@@ -267,7 +267,7 @@ const TICKET_ACTIVITY = 'ticket activity: the ticket history keeps it (M1-009), 
 const PROPERTY_DATA =
   'integration data on an entity (M1-129): the property is its own record, not a change of configuration';
 export const NOT_AUDITED: Partial<Record<EventType, string>> = {
-  'tutorial.progress_changed': 'A person's own place in the tutorial; it changes no access or data',
+  'tutorial.progress_changed': "A person's own place in the tutorial; it changes no access or data",
   'ticket.created': TICKET_ACTIVITY,
   'ticket.updated': TICKET_ACTIVITY,
   'ticket.moved': TICKET_ACTIVITY,
