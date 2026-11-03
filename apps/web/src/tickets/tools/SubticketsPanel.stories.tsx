@@ -34,7 +34,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('1 of 2 closed (50%)')).toBeVisible();
-    await expect(canvas.getByRole('textbox', { name: 'Summary of a new one' })).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'New subticket' })).toBeVisible();
   },
 };
 

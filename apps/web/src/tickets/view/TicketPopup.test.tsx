@@ -101,7 +101,7 @@ describe('the ticket pop-up', () => {
     // Subtickets.
     const subs = await within(dialog).findByRole('region', { name: 'Subtickets' });
     await user.type(
-      within(subs).getByRole('textbox', { name: 'Summary of a new one' }),
+      within(subs).getByRole('textbox', { name: 'New subticket' }),
       'From the pop-up{Enter}',
     );
     expect(await within(subs).findByText('From the pop-up')).toBeVisible();

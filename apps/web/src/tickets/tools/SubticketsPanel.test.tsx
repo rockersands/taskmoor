@@ -53,7 +53,7 @@ describe('SubticketsPanel', () => {
   it('[CORE-032] adds one from a summary and stays, by keyboard', async () => {
     const user = userEvent.setup();
     const { client } = renderPanel();
-    const field = await screen.findByRole('textbox', { name: 'Summary of a new one' });
+    const field = await screen.findByRole('textbox', { name: 'New subticket' });
     await user.type(field, 'Check the receipt{Enter}');
     await waitFor(() => expect(screen.getByText('Check the receipt')).toBeVisible());
     expect(client.calls).toContainEqual({
@@ -73,13 +73,13 @@ describe('SubticketsPanel', () => {
     };
     renderPanel(client);
     await user.type(
-      await screen.findByRole('textbox', { name: 'Summary of a new one' }),
+      await screen.findByRole('textbox', { name: 'New subticket' }),
       'Needs more{Enter}',
     );
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This track also asks for: dueDate. Use the create form for this one.',
     );
-    expect(screen.getByRole('textbox', { name: 'Summary of a new one' })).toHaveValue('Needs more');
+    expect(screen.getByRole('textbox', { name: 'New subticket' })).toHaveValue('Needs more');
   });
 
   it('[CORE-032] asks which type when the track has several', async () => {
@@ -96,7 +96,7 @@ describe('SubticketsPanel', () => {
       await screen.findByRole('combobox', { name: 'Ticket type' }),
       'Sub-bug',
     );
-    await user.type(screen.getByRole('textbox', { name: 'Summary of a new one' }), 'A{Enter}');
+    await user.type(screen.getByRole('textbox', { name: 'New subticket' }), 'A{Enter}');
     await waitFor(() =>
       expect(client.calls).toContainEqual({
         action: 'createChild',
@@ -126,7 +126,7 @@ describe('SubticketsPanel', () => {
   it('[CORE-032] works on a phone', async () => {
     setViewportWidth(360);
     renderPanel();
-    expect(await screen.findByRole('textbox', { name: 'Summary of a new one' })).toBeVisible();
+    expect(await screen.findByRole('textbox', { name: 'New subticket' })).toBeVisible();
   });
 
   it('[NFR-006] comes from the catalogue, in the pseudo-locale too', async () => {

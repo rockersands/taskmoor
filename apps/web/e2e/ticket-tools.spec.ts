@@ -57,7 +57,7 @@ test('[CORE-032] adds a subticket and shows its progress', async ({ context, pag
   const here = await makeTicket(context.request, `Parent ${Date.now()}`);
   await open(page, here.key);
   const section = page.getByRole('region', { name: 'Subtickets' });
-  await section.getByRole('textbox', { name: 'Summary of a new one' }).fill('A small part');
+  await section.getByRole('textbox', { name: 'New subticket' }).fill('A small part');
   await page.keyboard.press('Enter');
   await expect(section.getByText('A small part')).toBeVisible();
   await expect(section.getByText('0 of 1 closed (0%)')).toBeVisible();

@@ -221,7 +221,7 @@ export function SubticketsPanel({
           )}
           <div className="ticket-child-field ticket-child-summary-field">
             <label htmlFor={summaryId} className="form-label">
-              {t('ticketTools.subtickets.summary')}
+              {t(rank === 0 ? 'ticketTools.subtickets.summary' : 'ticketTools.children.new')}
             </label>
             <input
               ref={input}
