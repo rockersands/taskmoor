@@ -2,6 +2,98 @@
 
 Read this first in every session, then update it before you stop.
 
+## Start here: continuing on another device (2026-11-03)
+
+The user is moving to another device, so this is written for a session with no memory of the last
+one. The work is all in this repository. Read this section, then `docs/plan/tickets.md` (every
+request as a ticket, with its state), then `docs/plan/decisions.csv` (the user's decisions, newest
+at the bottom), then `CLAUDE.md`.
+
+### Where things are
+
+- **`main`** holds ticket templates, easier updates, invitations and manager pages, Google sign-in,
+  the import results and all the front work so far. Each merge passed a full gate.
+- **Coordinator branch:** `claude/api-key-upload-prevention-9ucz4x`. It is `main` plus documents.
+  Work there, and fast-forward `main` only after a green `corepack pnpm verify --e2e`.
+- **`claude/ticket-tools`:** links, subtickets, checklists and the slash menu, built and waiting for
+  a merge. See its Handoff section in `docs/plan/ticket-tools-tasks.md`, which says how far its merge
+  of `main` got. It must not reach `main` before a full gate. Its migration moves from 0091 to 0096.
+- **`claude/multi-track`:** a plan only, no code, in `docs/plan/multi-track-tasks.md`. Restart from
+  `main`, and take the next free migration number at that time.
+- **`claude/flutter-mobile-app`:** stopped by the user at `8540a0a`. Do not resume it unless asked.
+- **Other `claude/*` branches** are merged and can be ignored.
+
+### Setting up a new device
+
+```
+git clone https://github.com/Rockersands/taskmoor
+cd taskmoor
+git checkout claude/api-key-upload-prevention-9ucz4x
+git config user.name Rockersands
+git config user.email 42122514+rockersands@users.noreply.github.com
+git config core.hooksPath .githooks
+corepack pnpm install
+```
+
+- Commit only with that identity, in this repository's config. It replaced the user's old address
+  at the user's request. Older commits keep the old one until the history rewrite (T-005).
+- On Windows also `git config core.longpaths true`.
+- The e2e suite needs this line in the hosts file (the user's job; it needs administrator rights):
+  `127.0.0.1 api.taskmoor.localhost app.taskmoor.localhost evil.taskmoor.localhost kit2.taskmoor.localhost`
+- On Linux or a Mac the Windows-only time limits do not apply, and the bash image and kit scripts
+  can finally run (T-023). Results there are the first check of the code off Windows since the merges.
+
+### Next, in order
+
+1. Finish `claude/ticket-tools`: merge `main` if that is not done, fix what fails, full gate,
+   fast-forward `main`.
+2. Start the waiting tickets a few at a time, merging each as it finishes rather than letting
+   branches drift (the user's decision): the glass pass and the sweep of every route (T-143, T-144),
+   the Objetivos tab (T-079), completing a sprint from the board (T-106), the box for creating tracks
+   (T-087a), track groups (T-084 to T-087), Multi-track in stages (T-088, T-089 to T-089g), the
+   rest of Summary and Statistics (T-075, T-076), the tutorial, the layout editor, drag and drop
+   beyond boards, and the phone and accessibility pass.
+3. The fuzz stages, on the final code (T-019; the user's decision).
+4. The release (T-020 to T-024) and going public (T-031 to T-036, T-005). Those need the user.
+
+### Rules learned here
+
+- **Only one Playwright run on a machine at a time.** All worktrees share the e2e ports. `pnpm verify`
+  now sets CI, so it starts its own servers and fails loudly if a port is held; before that, a gate
+  could test another worktree's code.
+- **One heavy job at a time** when timing matters. Sub chats run one test file at a time. Database
+  tests time out when the machine is busy.
+- **A full `pnpm verify --update` has hung.** Regenerate one file at a time:
+  `corepack pnpm exec vitest run --project=<name> <file> -u`, then review the diff.
+- **Migration numbers:** never add a number below one already on `main`; the migrator refuses it.
+- **Clean room:** never open an Atlassian site or product, and never use the Atlassian connection.
+  The user has twice shared such screens or text: do not copy them, describe features in our own
+  words, and ask the user to describe rather than paste.
+- **`decisions.csv` is parsed by tests:** quote a first field that has a comma.
+- `docs/plan/tickets.md` is the record of requests. Keep it current as work finishes.
+
+### Not in the repository
+
+These lived only on the last PC. Nothing here is needed to continue:
+
+- **The demo's data**, including the Backend, Front and Flutter tracks that hold the tickets, as a
+  test of the tool. Tickets T-121 onward were never loaded there, and some states are out of date.
+  On a new device, run `corepack pnpm demo` and load `docs/plan/tickets.md` again if wanted. The
+  sample tracks come back on a new demo: the user asked to remove them and keep only those three.
+- **`.cache`** on that PC: the generated import backups, and `from-old-clone` (tools such as helm and
+  kind, saved fuzz inputs, scratch scripts and old notes from an earlier clone). The tools can be
+  downloaded again.
+
+### Waiting on the user
+
+- Should only site administrators copy invitation links on sites where email works (T-053)?
+  Recommended: yes. Today every inviter can.
+- The real Google test (T-059), and Google's three small questions (T-061 to T-063).
+- Whether to remove the demo board `rrg` (T-074), and how to manage outcomes on Kanban tracks (T-082).
+- Which other API-only controls go in 1.0 (T-155), and the hierarchy grid and baselines (T-089a).
+- Later: the AI key, the Spanish review, acceptance of 1.0, going public, the history rewrite, the
+  name's trademark search, counsel's review. The list is every ticket marked You in `tickets.md`.
+
 ## Start here: ONE local session runs everything (2026-11-03)
 
 The user moves all work to **one local Claude Code session** on their PC (Ryzen 7 3700X, 16
@@ -35,8 +127,8 @@ section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 | # | Workstream | Branch | Task file | Numbers | State on 2026-11-03 |
 |---|---|---|---|---|---|
 | 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` was fast-forwarded to `3ad14a3` on 2026-11-03 after a green gate, with one e2e test (AI settings, Strict mode) passing only on its retry. |
-| 2 | **Ticket templates** (for 1.0) | `claude/ticket-templates` | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085, CORE-029 and CORE-030 | Finished on the branch at `f6b8a5a`: targeted tests pass, the full gate has not run on it. Merge it after the fuzz stages. |
-| 3 | **UI overhaul and tutorial** | `claude/ui-overhaul` | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, migration 0084 | The user chose the Soft canvas and the generated illustration, and on 2026-11-03 asked for a pass that looks more like real glass before anything else is built. Nothing large is built until the user approves that pass. |
+| 2 | **Ticket templates** (for 1.0) | merged | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085, CORE-029 and CORE-030 | On `main`. |
+| 3 | **UI overhaul and tutorial** | `claude/ui-overhaul`, merged so far | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, ADR-121 for track groups | The work so far is on `main`. The rest waits as tickets. |
 | 4 | **Flutter mobile app** (stopped) | `claude/flutter-mobile-app` | `apps/mobile/TASKS.md` (its own Handoff section) | ADR-112 | Stopped by the user on 2026-11-03, pushed at `8540a0a`. Do not resume it unless the user asks; merge after M1. |
 
 Check what the cloud sessions pushed: `git fetch origin claude/ticket-templates claude/ui-overhaul
