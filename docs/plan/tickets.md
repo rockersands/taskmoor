@@ -124,7 +124,7 @@ reported, and the coordinator checked that it was pushed.
 | T-085 | Open group is a glass bubble; a minimized one is the size of one track card, with a count and small glass squares | To do | Waits for the merges |
 | T-086 | Share a whole group, or set it on another person | To do | Waits for the merges |
 | T-087 | Sharing a group gives access to its tracks | To do | Waits for the merges. Decided by the user; the sharer picks a role, only tracks they may give roles on, and un-sharing removes only what the share gave |
-| T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | To do | Decided by the user; goes with the invitations merge, since it changes the same dialog |
+| T-087a | Creating tracks: off for everyone by default; a ticked box when giving someone the manager role, which can be unticked | To do | After the front merge. Larger than it looks: a track-level action writes a site-wide grant, so it needs a rule on who may tick it, for example only a site administrator or someone who already holds it, plus audit and tests |
 | T-087b | One customizable Summary per track, with Paneles for more | Done | Decided by the user; the spec is being changed on `claude/ui-overhaul` |
 | T-087c | Keep Paneles in the sidebar | Done | Decided by the user; dashboards that can span tracks |
 | T-088 | Multi-track first version: a plan over several tracks and saved searches, with Summary, Timeline, List and Calendar | To do | Paused on `claude/multi-track`; restarts after the merges |

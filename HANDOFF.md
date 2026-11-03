@@ -62,6 +62,8 @@ by default, through a removable permission.
 
 Google sign-in is merged (ADR-119, IAM-031, IAM-032; no migration), a preset of OIDC on each operator's own client: gmail.com, no account creation, not enforced. Tested only against a fake. A provider sign-in gets no Taskmoor second factor, the user's decision, and the guide says so.
 
+Migration numbers: until 1.0 is released only fresh installs matter, because the migrator refuses a number below one already run, and the merge order has put 0084 after 0087. Do not keep a database across these merges except the demo, which is fixed by hand. From now on, never add a number below one already on main.
+
 Today's new work is M1-135 to M1-144 in `docs/plan/backlog.csv`, with the user's decisions in
 `docs/plan/decisions.csv`. The order below changed: after the 1M import, the finished branches
 merge with a full gate each, and only then the fuzz stages run, so the 8-hour clean run covers the
