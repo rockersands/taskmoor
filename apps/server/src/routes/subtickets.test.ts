@@ -186,13 +186,23 @@ describe('subticket progress (CORE-032)', () => {
     });
   });
 
-  it('[CORE-032] refuses a list too long, and anyone not signed in', async () => {
+  it('[CORE-032] answers for every card of the largest board, and refuses a longer list', async () => {
+    const parent = await create({ track: 'SUB', summary: 'On a large board' });
+    const sub = await typeAt('SUB', -1);
+    await create({ track: 'SUB', summary: 'Under it', ticketTypeId: sub, parent: parent.key });
+    // A board's data holds 50,000 cards at most (`limit` of GET /boards/:id/data).
+    const board = [parent.id, ...Array.from({ length: 49_999 }, (_, i) => 1_000_000 + i)];
+    expect(board).toHaveLength(50_000);
+    expect(await progress('alice', board)).toEqual({ [parent.id]: { total: 1, closed: 0 } });
     const long = await as('alice', {
       method: 'POST',
       url: '/api/v1/tickets/subticket-progress',
-      payload: { ids: Array.from({ length: 2001 }, (_, i) => i + 1) },
+      payload: { ids: [...board, 2_000_000] },
     });
     expect(long.statusCode).toBe(400);
+  });
+
+  it('[CORE-032] refuses anyone not signed in', async () => {
     const stranger = await app.inject({
       method: 'POST',
       url: '/api/v1/tickets/subticket-progress',

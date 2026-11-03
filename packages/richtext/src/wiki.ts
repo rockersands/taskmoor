@@ -216,11 +216,17 @@ function blockOut(n: PmJson, ctx: BlockContext): string {
   }
 }
 
-/** A collapsible section's title as its opening tag can hold it. */
+/**
+ * A collapsible section's title as its opening tag can hold it, and as the document may hold it
+ * (NTF-014): one line, no `}`, and control characters read as spaces like white space does.
+ */
 function expandTitle(title: unknown): string {
-  return String(title ?? '')
-    .replace(/[}\s]+/g, (run) => (/\s/.test(run) ? ' ' : ''))
-    .trim();
+  return (
+    String(title ?? '')
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it replaces
+      .replace(/[}\s\u0000-\u001f\u007f]+/g, (run) => (/^}+$/.test(run) ? '' : ' '))
+      .trim()
+  );
 }
 
 function panelParams(panelType: string): string {

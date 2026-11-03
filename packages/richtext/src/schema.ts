@@ -132,6 +132,9 @@ const AttachmentRef = Node.create({
   addAttributes: () => ({
     name: { default: '', rendered: false },
     image: { default: false, rendered: false },
+    // The other format's media node, when it held more than the file (a size, alt text,
+    // marks): kept so an export writes it back, never shown and never read for the file.
+    adfMedia: { default: null, rendered: false },
   }),
   parseHTML: () => [
     {
@@ -163,6 +166,9 @@ const TicketRef = Node.create({
   parseHTML: () => [
     {
       tag: 'a[data-ticket-ref]',
+      // Ahead of the link mark's `a[href]` (mark rules come first at equal priority), so a
+      // copied, cut or dragged reference comes back as one, not as a link to its address.
+      priority: 60,
       getAttrs: (element: unknown) => ({
         key: (element as DomElement).getAttribute('data-ticket-ref') ?? '',
       }),

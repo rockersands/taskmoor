@@ -86,6 +86,29 @@ describe('LinksPanel', () => {
     );
   });
 
+  it('[CORE-031] keeps the focus in the panel when a link goes while the form is open', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await user.click(await screen.findByRole('button', { name: 'Add a link' }));
+    const picker = await screen.findByRole('combobox', { name: 'Ticket number or name' });
+    await waitFor(() => expect(picker).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'Remove the link: is blocked by OPS-88' }));
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'OPS-88' })).toBeNull());
+    await waitFor(() => expect(picker).toHaveFocus());
+  });
+
+  it('[CORE-031] keeps the focus in the panel when a link goes and the form offers no category', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    client.linkTypes = async () => ({ enabled: true, linkTypes: [] });
+    renderPanel(client);
+    await user.click(await screen.findByRole('button', { name: 'Add a link' }));
+    const done = await screen.findByRole('button', { name: 'Done' });
+    await user.click(screen.getByRole('button', { name: 'Remove the link: blocks SHOP-39' }));
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'SHOP-39' })).toBeNull());
+    await waitFor(() => expect(done).toHaveFocus());
+  });
+
   it('[CORE-031] adds several links in a row, by keyboard, from what is typed', async () => {
     const user = userEvent.setup();
     const changed: number[] = [];

@@ -5,8 +5,13 @@ import { z } from 'zod';
 import { requireUser } from '../auth';
 
 const MAX_INT = 2_147_483_647;
-/** More than a board or a page of a list shows at once. */
-const MAX_IDS = 2000;
+/**
+ * Every card a board's data holds at most (`limit` of GET /boards/:id/data), in one request.
+ * The pages a list has loaded can add up to more; the frontend sends those in parts this size
+ * (`loadSubticketProgress`). That many ids leave room in a statement, under Postgres's 65,535
+ * parameters, for the permission filter, and the body stays under the 1 MiB a request may hold.
+ */
+const MAX_IDS = 50_000;
 
 export const subticketProgressBody = z
   .object({ ids: z.array(z.number().int().positive().max(MAX_INT)).max(MAX_IDS) })

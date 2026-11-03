@@ -183,14 +183,27 @@ export interface TicketToolsClient {
   }) => Promise<{ id: number; key: string }>;
 }
 
-/** Progress for a board or a list: the same route the ticket page reads. */
-export const loadSubticketProgress = async (ids: number[]) =>
-  (
-    await api<{ progress: Record<string, SubticketProgress> }>('/tickets/subticket-progress', {
-      method: 'POST',
-      body: { ids },
-    })
-  ).progress;
+/**
+ * How many tickets the progress route takes at once (the server's `MAX_IDS`): every card of the
+ * largest board. A list that has loaded more pages than that asks in parts.
+ */
+export const SUBTICKET_PROGRESS_IDS = 50_000;
+
+/** Progress for a board or a list: the same route the ticket page reads, in parts if need be. */
+export async function loadSubticketProgress(
+  ids: number[],
+): Promise<Record<string, SubticketProgress>> {
+  const unique = [...new Set(ids)];
+  const found: Record<string, SubticketProgress> = {};
+  for (let at = 0; at < unique.length; at += SUBTICKET_PROGRESS_IDS) {
+    const { progress } = await api<{ progress: Record<string, SubticketProgress> }>(
+      '/tickets/subticket-progress',
+      { method: 'POST', body: { ids: unique.slice(at, at + SUBTICKET_PROGRESS_IDS) } },
+    );
+    Object.assign(found, progress);
+  }
+  return found;
+}
 
 export const ticketToolsClient: TicketToolsClient = {
   linkTypes: () => api<{ enabled: boolean; linkTypes: LinkType[] }>('/link-types'),

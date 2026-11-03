@@ -80,9 +80,9 @@ opened for it (ADR-003, `docs/legal/clean-room.md`). Names, order and icons are 
 
 | Block | Jira-compatible format | Markdown | Wiki markup | Plain text and email |
 |---|---|---|---|---|
-| Collapsible section | `expand` | `> [!EXPAND] Title` | `{expand:Title}`; a section in a section loses its frame, `}` in a title is dropped | title, then its text |
+| Collapsible section | `expand` | `> [!EXPAND] Title`; tabs and control characters in a title read as spaces, and a quote whose text starts with an escaped `\[!EXPAND]` stays a quote | `{expand:Title}`; a section in a section loses its frame, `}` in a title is dropped, control characters read as spaces | title, then its text |
 | Columns | `layoutSection`, `layoutColumn` with width | **lost:** their blocks, one column after the other; widths lost | **lost:** the same | blocks in order |
-| File of the ticket | `mediaSingle` or `mediaGroup` with `media` of our own collection | `![n](attachment:n)` or `[n](attachment:n)` | **lost:** its name, reading back as text | its name |
+| File of the ticket | `mediaSingle` or `mediaGroup` with `media` of our own collection; the media node's other attributes and marks (size, alt text, border) are kept and written back | `![n](attachment:n)` or `[n](attachment:n)`; the media node's own attributes lost | **lost:** its name, reading back as text | its name |
 | Ticket reference | `inlineCard` with `/browse/KEY` | `[KEY](ticket:KEY)` | **lost:** its key, reading back as text | its key |
 
   Other `expand`, `mediaSingle`, `mediaGroup`, `layoutSection` and `inlineCard` nodes that do not fit

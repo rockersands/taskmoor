@@ -11,7 +11,11 @@ import { type AttachmentClient, attachmentClient } from '../../attachments/clien
 import type { CommentClient } from '../../comments/client';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
-import { type EditorTools, EditorToolsProvider } from '../../richtext/EditorTools';
+import {
+  type EditorAttachment,
+  type EditorTools,
+  EditorToolsProvider,
+} from '../../richtext/EditorTools';
 import { type MentionSource, mentionSource } from '../../richtext/mentions';
 import { boardBehind } from '../../routing/cameFrom';
 import {
@@ -92,6 +96,42 @@ const FILLABLE = ['close-reason', 'priority'];
 export const TICKET_POPUP_CLASS = 'ticket-popup';
 
 const NO_COMMANDS: Command[] = [];
+
+/**
+ * What the blocks of a ticket's description and comments reach (NTF-013, NTF-014): the ticket's
+ * files, read once per page unless the menu asks again, and tickets through search. A read that
+ * failed is not kept, so the next reference asks again rather than showing bare names until a
+ * reload.
+ */
+export function ticketEditorTools(
+  files: AttachmentClient,
+  tools: Pick<TicketToolsClient, 'pick'>,
+): EditorTools {
+  let read: Promise<EditorAttachment[]> | null = null;
+  return {
+    attachments: (fresh) => {
+      if (fresh || !read) {
+        const asked = files.list().then(({ attachments: list }) =>
+          list.map((file) => ({
+            name: file.name,
+            image: file.kind === 'image',
+            href: files.urls.content(file),
+            thumbnail: file.thumbnail ? files.urls.thumbnail(file) : null,
+          })),
+        );
+        asked.catch(() => {
+          if (read === asked) read = null;
+        });
+        read = asked;
+      }
+      return read;
+    },
+    tickets: (typed) => {
+      const query = pickerQuery(typed);
+      return query ? tools.pick(query) : Promise.resolve([]);
+    },
+  };
+}
 
 const typing = (target: EventTarget | null) => {
   const el = target as HTMLElement | null;
@@ -219,32 +259,14 @@ export function TicketView({
     }
   }, [shownKey, shownSummary]);
 
-  // What the blocks of its description and comments reach (NTF-013, NTF-014): the ticket's files,
-  // read once per page unless the menu asks again, and tickets through search.
-  const editorTools = useMemo<EditorTools>(() => {
-    if (ticketId === null) return {};
-    const files = attachments ?? attachmentClient(ticketId);
-    let read: ReturnType<NonNullable<EditorTools['attachments']>> | null = null;
-    return {
-      attachments: (fresh) => {
-        if (fresh || !read) {
-          read = files.list().then(({ attachments: list }) =>
-            list.map((file) => ({
-              name: file.name,
-              image: file.kind === 'image',
-              href: files.urls.content(file),
-              thumbnail: file.thumbnail ? files.urls.thumbnail(file) : null,
-            })),
-          );
-        }
-        return read;
-      },
-      tickets: (typed) => {
-        const query = pickerQuery(typed);
-        return query ? toolsClient.pick(query) : Promise.resolve([]);
-      },
-    };
-  }, [ticketId, attachments, toolsClient]);
+  // What the blocks of its description and comments reach (NTF-013, NTF-014).
+  const editorTools = useMemo<EditorTools>(
+    () =>
+      ticketId === null
+        ? {}
+        : ticketEditorTools(attachments ?? attachmentClient(ticketId), toolsClient),
+    [ticketId, attachments, toolsClient],
+  );
 
   // A change made elsewhere reaches the local copy through the socket (NTF-008): when this
   // ticket's row there moves on, the page reads the ticket again, so the open view follows

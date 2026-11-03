@@ -1216,6 +1216,33 @@ const HAND: CorpusDocument[] = [
       ]),
     ),
   },
+  {
+    // The media node's size, alt text and marks are the other format's own: the markup drops them.
+    name: 'imported-attachment',
+    lossless: false,
+    doc: fromAdfJson(
+      adfDoc([
+        {
+          type: 'mediaSingle',
+          attrs: { layout: 'center' },
+          content: [
+            {
+              type: 'media',
+              attrs: {
+                type: 'file',
+                id: 'login.png',
+                collection: 'taskmoor-attachments',
+                width: 640,
+                height: 480,
+                alt: 'Login',
+              },
+              marks: [{ type: 'border', attrs: { size: 2 } }],
+            },
+          ],
+        },
+      ]),
+    ),
+  },
 ];
 
 // Families ---------------------------------------------------------------------------------------
@@ -1533,4 +1560,6 @@ export const SOURCES: CorpusSource[] = [
   { name: 'unclosed-markers', wiki: '*open bold and _open italic and {color:red}open colour' },
   { name: 'empty', wiki: '' },
   { name: 'only-blank-lines', wiki: '\n\n   \n\t\n' },
+  // A tab and other control characters in a section title read as spaces (NTF-014).
+  { name: 'section-title-controls', wiki: '{expand:Step\t1\u0007 of\u001b 2}\nBody.\n{expand}' },
 ];

@@ -313,10 +313,35 @@
   }
 }
 
+/* Show more while its page loads: it keeps the focus, so it is not disabled, only looks it. */
+.ticket-tool .button-secondary[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 @media (pointer: coarse) {
+  /* Every field in the tools is a 44px target, as the forms' fields are (forms.css). */
+  .ticket-tool input:not([type="checkbox"]),
+  .ticket-tool select {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* The box sits on its label, which reaches under it and is 44px tall: a tap on the box or
+     beside it ticks it, with no gap of margin that misses. */
   .checklist-item input[type="checkbox"] {
-    inline-size: 1.5rem;
-    block-size: 1.5rem;
-    margin: 0.625rem;
+    position: relative;
+    z-index: 1;
+    grid-area: 1 / 1;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+    margin: 0;
+  }
+
+  .checklist-item-text {
+    display: flex;
+    grid-area: 1 / 1 / 2 / 3;
+    align-items: center;
+    min-height: var(--hit-target-touch);
+    padding-inline-start: calc(1.75rem + var(--space-2));
   }
 }

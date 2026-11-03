@@ -195,7 +195,8 @@ export function adfShapeProblem(root: unknown): string | null {
 /**
  * The same for a stored document (the editor's JSON): its nodes, plus the other format's
  * attributes it keeps (`adfAttrs`, the whole node of an `unknownBlock` or `unknownInline`, an
- * `unknownMark`'s attributes), which the writers read back. Null when well formed.
+ * `unknownMark`'s attributes, an `attachmentRef`'s media node), which the writers read back.
+ * Null when well formed.
  */
 export function docShapeProblem(root: unknown): string | null {
   const stack: { node: unknown; depth: number }[] = [{ node: root, depth: 1 }];
@@ -226,6 +227,11 @@ export function docShapeProblem(root: unknown): string | null {
       if (node.type === 'unknownBlock' || node.type === 'unknownInline') {
         const kept = adfShapeProblem(node.attrs.adf);
         if (kept) return `the kept ${node.type}: ${kept}`;
+      }
+      const media = node.type === 'attachmentRef' ? node.attrs.adfMedia : undefined;
+      if (media !== undefined && media !== null) {
+        const kept = adfShapeProblem(media);
+        if (kept) return `the kept media of an attachment reference: ${kept}`;
       }
     }
     if (node.marks !== undefined) {

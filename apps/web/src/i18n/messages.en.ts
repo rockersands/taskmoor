@@ -1210,6 +1210,7 @@ export const messagesEn = {
   'admin.imports.kind.web_link': 'Web links',
   'admin.imports.kind.time_entry': 'Time entries',
   'admin.imports.kind.attachment': 'Attachments',
+  'admin.imports.kind.checklist': 'Checklists',
   'admin.imports.kind.history': 'History entries',
   'admin.imports.kind.saved_search': 'Saved searches',
   'admin.imports.kind.subscription': 'Subscriptions',
@@ -5316,6 +5317,12 @@ export const messagesEn = {
   'ticketTools.subtickets.forbidden': 'You may not create tickets in this track.',
   'ticketTools.subtickets.fields':
     'This track also asks for: {fields}. Use the create form for this one.',
+  'ticketTools.subtickets.refused':
+    'This track did not take the value of: {fields}. Use the create form for this one.',
+  'ticketTools.subtickets.wrongPlace': 'A ticket of this type cannot go under this one.',
+  'ticketTools.subtickets.parentGone': 'This ticket is gone, or you can no longer see it.',
+  'ticketTools.subtickets.typeGone':
+    'This track no longer offers that ticket type. Reload the page to see the ones it does.',
   'ticketTools.moveUp': 'Move up',
   'ticketTools.moveDown': 'Move down',
   'ticketTools.state.open': 'Open',

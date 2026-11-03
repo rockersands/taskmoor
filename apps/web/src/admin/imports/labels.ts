@@ -35,6 +35,7 @@ export const IMPORT_KINDS = [
   'web_link',
   'time_entry',
   'attachment',
+  'checklist',
   'history',
   'saved_search',
   'subscription',

@@ -514,15 +514,28 @@ export async function writePersonalData(
         )) {
           const named = await keys(rows.map((r) => r.ticket_id));
           options.heartbeat?.();
-          yield rows.map((r) => ({
-            id: r.id,
-            ticketId: r.ticket_id,
-            ticketKey: named.get(r.ticket_id) ?? null,
-            checklist: r.checklist,
-            text: r.text,
-            state: r.state,
-            createdAt: iso(r.created_at),
-          }));
+          // The list's name and the item's words as they read now are the ticket's content:
+          // anyone who may edit the ticket renames a list or rewrites an item. On a ticket the
+          // person no longer sees, the item appears with its state and date only.
+          yield rows.map((r) =>
+            named.has(r.ticket_id)
+              ? {
+                  id: r.id,
+                  ticketId: r.ticket_id,
+                  ticketKey: named.get(r.ticket_id) ?? null,
+                  checklist: r.checklist,
+                  text: r.text,
+                  state: r.state,
+                  createdAt: iso(r.created_at),
+                }
+              : {
+                  id: r.id,
+                  ticketId: r.ticket_id,
+                  visible: false,
+                  state: r.state,
+                  createdAt: iso(r.created_at),
+                },
+          );
         }
       })(),
     ),

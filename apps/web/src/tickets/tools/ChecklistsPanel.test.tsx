@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
@@ -7,7 +7,7 @@ import type { Locale } from '../../i18n/locale';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
 import { ChecklistsPanel } from './ChecklistsPanel';
-import { fakeToolsClient } from './fixtures';
+import { fakeToolsClient, STARTING_CHECKLISTS } from './fixtures';
 
 const TICKET = { id: 41 };
 
@@ -113,6 +113,178 @@ describe('ChecklistsPanel', () => {
     // The first and last cannot go further.
     expect(screen.queryByRole('button', { name: 'Move Tag the build up' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Move Print it down' })).toBeNull();
+  });
+
+  it('[CORE-033] keeps the focus with an item moved to the first or the last place', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    (await screen.findByRole('button', { name: 'Move Tag the build up' })).focus();
+    await user.keyboard('{Enter}');
+    // First now: it can only go back down, and that is where the focus is.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Move Tag the build down' })).toHaveFocus(),
+    );
+    expect(screen.queryByRole('button', { name: 'Move Tag the build up' })).toBeNull();
+    screen.getByRole('button', { name: 'Move Tell the people down' }).focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Move Tell the people up' })).toHaveFocus(),
+    );
+    const boxes = screen.getAllByRole('checkbox');
+    expect(boxes.map((b) => (b as HTMLInputElement).labels?.[0]?.textContent)).toEqual([
+      'Tag the build',
+      'Write the notes',
+      'Run the upgrade',
+      'Print it',
+      'Tell the people',
+    ]);
+  });
+
+  it('[CORE-033] keeps the focus with a checklist that moved, by keyboard', async () => {
+    const user = userEvent.setup();
+    const afterwards = {
+      id: 31,
+      name: 'Afterwards',
+      items: [],
+      progress: { done: 0, counted: 0, percent: null },
+    };
+    renderPanel(fakeToolsClient({ checklists: [...STARTING_CHECKLISTS, afterwards] }));
+    const titles = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+    (await screen.findByRole('button', { name: 'Move the checklist Before release down' })).focus();
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(titles()).toEqual(['Afterwards', 'Before release']));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Move the checklist Before release up' }),
+      ).toHaveFocus(),
+    );
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(titles()).toEqual(['Before release', 'Afterwards']));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Move the checklist Before release down' }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it('[CORE-033] gives the focus back to what opened a form, saved or left with Escape', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    // Renaming a checklist.
+    await user.click(
+      await screen.findByRole('button', { name: 'Rename the checklist Before release' }),
+    );
+    await user.keyboard('{Escape}');
+    expect(
+      screen.getByRole('button', { name: 'Rename the checklist Before release' }),
+    ).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Rename the checklist Before release' }));
+    await user.clear(screen.getByRole('textbox', { name: 'Checklist name' }));
+    await user.keyboard('Shipping{Enter}');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Rename the checklist Shipping' })).toHaveFocus(),
+    );
+    // Editing an item.
+    await user.click(screen.getByRole('button', { name: 'Edit Print it' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Edit Print it' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Edit Print it' }));
+    await user.clear(screen.getByRole('textbox', { name: 'Item' }));
+    await user.keyboard('Post it{Enter}');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Edit Post it' })).toHaveFocus());
+    // A new checklist.
+    await user.click(screen.getByRole('button', { name: 'Add a checklist' }));
+    await user.keyboard('Afterwards{Enter}');
+    await screen.findByRole('region', { name: 'Afterwards' });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add a checklist' })).toHaveFocus(),
+    );
+    await user.click(screen.getByRole('button', { name: 'Add a checklist' }));
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add a checklist' })).toHaveFocus(),
+    );
+  });
+
+  it('[CORE-033] keeps the focus in the panel when a checklist goes while a new one is named', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await user.click(await screen.findByRole('button', { name: 'Add a checklist' }));
+    await user.click(screen.getByRole('button', { name: 'Remove the checklist Before release' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Before release' })).toBeNull(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Checklist name' })).toHaveFocus(),
+    );
+  });
+
+  it('[CORE-033] keeps a tick shown while an earlier answer is set aside for a later one', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient({
+      checklists: [
+        {
+          id: 30,
+          name: 'Before release',
+          items: [
+            { id: 300, text: 'Print it', state: 'open' },
+            { id: 301, text: 'Tell the people', state: 'open' },
+          ],
+          progress: { done: 0, counted: 2, percent: 0 },
+        },
+      ],
+    });
+    // The server answers when the test says so, each answer as of its own write.
+    const update = client.updateItem;
+    const answers: (() => void)[] = [];
+    client.updateItem = (...args) =>
+      new Promise((resolve, reject) => {
+        answers.push(() => void update(...args).then(resolve, reject));
+      });
+    renderPanel(client);
+    const print = await screen.findByRole('checkbox', { name: 'Print it' });
+    const tell = screen.getByRole('checkbox', { name: 'Tell the people' });
+    await user.click(print);
+    await user.click(tell);
+    expect(print).toBeChecked();
+    expect(tell).toBeChecked();
+    // The first answer knows nothing of the second tick, so it is set aside: both stay ticked.
+    await act(async () => {
+      answers[0]?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(print).toBeChecked();
+    expect(tell).toBeChecked();
+    await act(async () => {
+      answers[1]?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(await screen.findByText('2 of 2 done (100%)')).toBeVisible();
+    expect(print).toBeChecked();
+    expect(tell).toBeChecked();
+  });
+
+  it('[CORE-033] holds a checklist name to 200 characters and an item to 1,000, as the server does', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await user.click(await screen.findByRole('button', { name: 'Add a checklist' }));
+    const name = screen.getByRole('textbox', { name: 'Checklist name' });
+    expect(name).toHaveAttribute('maxlength', '200');
+    await user.paste('x'.repeat(250));
+    expect(name).toHaveValue('x'.repeat(200));
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Rename the checklist Before release' }));
+    expect(screen.getByRole('textbox', { name: 'Checklist name' })).toHaveAttribute(
+      'maxlength',
+      '200',
+    );
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Edit Print it' }));
+    expect(screen.getByRole('textbox', { name: 'Item' })).toHaveAttribute('maxlength', '1000');
+    expect(screen.getByRole('textbox', { name: 'Add an item to Before release' })).toHaveAttribute(
+      'maxlength',
+      '1000',
+    );
   });
 
   it('[CORE-033] edits an item, and Escape leaves it as it was', async () => {

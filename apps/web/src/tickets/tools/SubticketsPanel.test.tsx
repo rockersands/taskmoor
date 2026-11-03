@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
@@ -8,7 +8,7 @@ import type { SearchClient } from '../../search/client';
 import { ResultTable } from '../../search/ResultTable';
 import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
-import { fakeToolsClient } from './fixtures';
+import { fakeToolsClient, STARTING_CHILDREN } from './fixtures';
 import { percentOf, SubticketProgressMini } from './Progress';
 import { SubticketsPanel } from './SubticketsPanel';
 
@@ -65,21 +65,92 @@ describe('SubticketsPanel', () => {
     expect(screen.getByText('1 of 3 closed (33%)')).toBeVisible();
   });
 
-  it('[CORE-032] says what the track also asks for when it refuses', async () => {
+  it('[CORE-032] says what the track also asks for when it refuses, by the fields’ names', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    const refusals: Record<string, string>[] = [
+      { dueDate: 'required', 'fields.12': 'required' },
+      { assigneeId: 'not_assignable' },
+      { parent: 'wrong_level' },
+      { parent: 'not_found' },
+      { ticketTypeId: 'not_in_track' },
+      { visibilityLevelId: 'not_in_track' },
+    ];
+    client.createChild = async () => {
+      throw new ApiError(400, { error: 'invalid_fields', fields: refusals.shift() });
+    };
+    renderPanel(client);
+    const field = await screen.findByRole('textbox', { name: 'New subticket' });
+    await user.type(field, 'Needs more{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This track also asks for: Due date, field 12. Use the create form for this one.',
+    );
+    expect(field).toHaveValue('Needs more');
+    const refused = async (words: string) => {
+      await user.type(field, '{Enter}');
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(words));
+    };
+    // Not a field the track asks for: one it did not take.
+    await refused('This track did not take the value of: Assignee. Use the create form');
+    // Where it goes, and its type, are no field to fill in.
+    await refused('A ticket of this type cannot go under this one.');
+    await refused('This ticket is gone, or you can no longer see it.');
+    await refused('This track no longer offers that ticket type. Reload the page');
+    // A field it cannot name: no key is shown.
+    await refused('That did not work. Try again in a moment.');
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/visibility|Id\b/);
+  });
+
+  it('[CORE-032] names the fields in Spanish too', async () => {
     const user = userEvent.setup();
     const client = fakeToolsClient();
     client.createChild = async () => {
       throw new ApiError(400, { error: 'invalid_fields', fields: { dueDate: 'required' } });
     };
-    renderPanel(client);
+    renderPanel(client, 0, 'es');
     await user.type(
-      await screen.findByRole('textbox', { name: 'New subticket' }),
-      'Needs more{Enter}',
+      await screen.findByRole('textbox', { name: 'Nuevo subticket' }),
+      'Falta algo{Enter}',
     );
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This track also asks for: dueDate. Use the create form for this one.',
+      'Este track también pide: Fecha límite. Usa el formulario de creación para este.',
     );
-    expect(screen.getByRole('textbox', { name: 'New subticket' })).toHaveValue('Needs more');
+  });
+
+  it('[CORE-032] reads the next page once, however often Show more is pressed, and keeps the focus in the list', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    const asked: (string | undefined)[] = [];
+    let answer = () => {};
+    const later = {
+      id: 203,
+      key: 'SHOP-203',
+      summary: 'Check the receipt',
+      status: { name: 'To do', stage: 'new' as const },
+    };
+    client.children = (_key, cursor) => {
+      asked.push(cursor);
+      if (!cursor)
+        return Promise.resolve({ tickets: structuredClone(STARTING_CHILDREN), next: 'p2' });
+      return new Promise((resolve) => {
+        answer = () => resolve({ tickets: [later], next: null });
+      });
+    };
+    renderPanel(client);
+    const more = await screen.findByRole('button', { name: 'Show more' });
+    more.focus();
+    await user.keyboard('{Enter}');
+    expect(more).toHaveAttribute('aria-disabled', 'true');
+    expect(more).toHaveFocus();
+    await user.keyboard('{Enter}');
+    await user.click(more);
+    expect(asked).toEqual([undefined, 'p2']);
+    await act(async () => answer());
+    const link = await screen.findByRole('link', { name: 'SHOP-203' });
+    expect(screen.getAllByRole('link', { name: 'SHOP-203' })).toHaveLength(1);
+    // The last page: the button goes, and the focus is on the first ticket it brought.
+    expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull();
+    await waitFor(() => expect(link).toHaveFocus());
   });
 
   it('[CORE-032] asks which type when the track has several', async () => {

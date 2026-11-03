@@ -2,7 +2,7 @@ import { expectWithinBudget } from '@taskmoor/testkit/budget';
 import { stableJson } from '@taskmoor/testkit/golden';
 import { fc } from '@taskmoor/testkit/property';
 import { describe, expect, it } from 'vitest';
-import { canonicalAdf } from './adf';
+import { canonicalAdf, docShapeProblem } from './adf';
 import { fromAdfJson, type PmJson, toAdfFromJson } from './convert';
 import { toMarkdown } from './markdown';
 import { schema } from './schema';
@@ -313,6 +313,14 @@ describe('Wiki markup details', () => {
         },
       ],
     });
+  });
+
+  it('[NTF-014] (2) reads a section title with control characters as one line of text', () => {
+    const doc = fromWiki('{expand:Step\t1\u0007 of\u001b 2\u007f}\nBody.\n{expand}');
+    expect(doc.content?.[0]).toMatchObject({ type: 'expand', attrs: { title: 'Step 1 of 2' } });
+    // What the reader makes, the save checks accept (API-011).
+    expect(docShapeProblem(doc)).toBeNull();
+    expect(toWiki(doc)).toBe('{expand:Step 1 of 2}\nBody.\n{expand}');
   });
 
   it('[API-011] reads an empty text as an empty document', () => {

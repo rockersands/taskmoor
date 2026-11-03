@@ -15,7 +15,6 @@ import {
   remapHistoryValue,
   remapStored,
 } from '../import/remap';
-import { itemsOf } from '../tickets/checklists';
 import { canonicalJson } from '../tickets/model';
 import {
   ATTACHMENTS_DIR,
@@ -995,10 +994,34 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
           .limit(limit)
           .execute(),
       async (rows) => {
-        const items = await itemsOf(
-          db,
-          rows.map((r) => r.id),
-        );
+        // The items with their times as text, as every other time here (`itemsOf` reads them as
+        // dates, which keep milliseconds only). `paged` never hands over an empty page.
+        const found = await db
+          .selectFrom('ticket_checklist_item')
+          .select([
+            'checklist_id',
+            'text',
+            'state',
+            'position',
+            'created_by',
+            ts('created_at').as('created_at'),
+            ts('updated_at').as('updated_at'),
+          ])
+          .where(
+            'checklist_id',
+            'in',
+            rows.map((r) => r.id),
+          )
+          .orderBy('checklist_id')
+          .orderBy('position')
+          .orderBy('id')
+          .execute();
+        const items = new Map<number, typeof found>();
+        for (const item of found) {
+          const list = items.get(item.checklist_id) ?? [];
+          list.push(item);
+          items.set(item.checklist_id, list);
+        }
         for (const c of rows) {
           await out.record({
             id: idOf('checklist', c.id),
@@ -1013,8 +1036,8 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
               state: item.state,
               position: item.position,
               creator: ref('user', item.created_by),
-              createdAt: item.created_at.toISOString(),
-              updatedAt: item.updated_at.toISOString(),
+              createdAt: item.created_at,
+              updatedAt: item.updated_at,
             })),
           });
         }

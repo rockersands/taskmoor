@@ -1,7 +1,9 @@
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
-import { navigate, routeHref } from '../../routing/router';
+import { navigate, openOverlay, overlayRoute, routeHref } from '../../routing/router';
+import { fieldErrors, SYSTEM_FIELDS } from '../form';
 import type { ChildTicket, ChildType, SubticketProgress, TicketToolsClient } from './client';
 import { ticketToolsClient } from './client';
 import { ProgressBar, percentOf } from './Progress';
@@ -46,8 +48,13 @@ export function SubticketsPanel({
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  /** The row whose link takes the focus once the last page is drawn and its button gone. */
+  const [focusRow, setFocusRow] = useState<number | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const list = useRef<HTMLUListElement>(null);
   const read = useRef(0);
+  const readingMore = useRef(false);
   const hasChildren = rank >= 0;
 
   const load = useCallback(() => {
@@ -94,15 +101,45 @@ export function SubticketsPanel({
     };
   }, [client, hasChildren, ticket.track.key, rank]);
 
+  useEffect(() => {
+    if (focusRow === null) return;
+    const rows = list.current?.querySelectorAll('li');
+    (rows?.[focusRow] ?? rows?.[rows.length - 1])?.querySelector('a')?.focus();
+    setFocusRow(null);
+  }, [focusRow]);
+
   if (!hasChildren) return null;
 
+  /** A field by the name the person knows it by; null for one this panel cannot name. */
+  const fieldName = (key: string): string | null => {
+    const system = SYSTEM_FIELDS[key];
+    if (system) return t(system.label);
+    const custom = /^cf\[(\d+)\]$/.exec(key);
+    return custom ? t('tickets.templates.fieldNumber', { id: Number(custom[1]) }) : null;
+  };
+  /** A field refusal: where the ticket cannot go, else the fields by name and what was wrong. */
+  const fieldRefusal = (fields: Record<string, string>) => {
+    if (fields.parent === 'not_found') return t('ticketTools.subtickets.parentGone');
+    if (fields.parent !== undefined) return t('ticketTools.subtickets.wrongPlace');
+    if (fields.ticketTypeId !== undefined) return t('ticketTools.subtickets.typeGone');
+    const named = Object.entries(fieldErrors(fields)).map(([key, why]) => ({
+      name: fieldName(key),
+      why,
+    }));
+    if (named.length === 0 || named.some((field) => field.name === null)) {
+      return t('ticketView.problem.other');
+    }
+    const required = named.filter((field) => field.why === 'required');
+    const names = (rows: typeof named) => rows.map((field) => field.name).join(', ');
+    return required.length > 0
+      ? t('ticketTools.subtickets.fields', { fields: names(required) })
+      : t('ticketTools.subtickets.refused', { fields: names(named) });
+  };
   const refusal = (error: unknown) => {
     if (error instanceof ApiError) {
       const body = error.body as { fields?: Record<string, string> } | null;
       if (error.status === 403) return t('ticketTools.subtickets.forbidden');
-      if (body?.fields) {
-        return t('ticketTools.subtickets.fields', { fields: Object.keys(body.fields).join(', ') });
-      }
+      if (error.code === 'invalid_fields' && body?.fields) return fieldRefusal(body.fields);
     }
     return t('ticketView.problem.other');
   };
@@ -112,6 +149,7 @@ export function SubticketsPanel({
     if (text === '' || type === null || busy) return;
     setBusy(true);
     setProblem(null);
+    let stays = true;
     try {
       const made = await client.createChild({
         track: ticket.track.key,
@@ -121,7 +159,18 @@ export function SubticketsPanel({
       });
       setSummary('');
       if (open) {
-        navigate(`#/tickets/${encodeURIComponent(made.key)}`);
+        stays = false;
+        const route = `#/tickets/${encodeURIComponent(made.key)}`;
+        // In the pop-up the new ticket opens there, as a link inside it does: the page beneath
+        // stays and hears of it, and Back returns to this ticket.
+        if (overlayRoute() !== null) {
+          onChanged?.();
+          // The summary is saved: its field is empty before the pop-up looks for drafts.
+          flushSync(() => setSummary(''));
+          openOverlay(route);
+        } else {
+          navigate(route);
+        }
         return;
       }
       setSaid(t('ticketTools.subtickets.added', { key: made.key }));
@@ -131,7 +180,7 @@ export function SubticketsPanel({
       setProblem(refusal(error));
     } finally {
       setBusy(false);
-      input.current?.focus();
+      if (stays) input.current?.focus();
     }
   };
   const submit = (event: FormEvent) => {
@@ -140,13 +189,22 @@ export function SubticketsPanel({
   };
 
   const more = async () => {
-    if (!next) return;
+    // One page at a time: a second press while it loads would add the same page again.
+    if (!next || readingMore.current) return;
+    readingMore.current = true;
+    setLoadingMore(true);
+    const from = children?.length ?? 0;
     try {
       const page = await client.children(ticket.key, next);
       setChildren((now) => [...(now ?? []), ...page.tickets]);
       setNext(page.next);
+      // The last page takes the button away: the focus goes to the first ticket it brought.
+      if (page.next === null) setFocusRow(from);
     } catch {
       setProblem(t('ticketView.problem.other'));
+    } finally {
+      readingMore.current = false;
+      setLoadingMore(false);
     }
   };
 
@@ -177,7 +235,7 @@ export function SubticketsPanel({
         <p className="ticket-tool-empty">{t('ticketTools.subtickets.empty')}</p>
       )}
       {children && children.length > 0 && (
-        <ul className="ticket-child-list">
+        <ul ref={list} className="ticket-child-list">
           {children.map((child) => (
             <li key={child.id} className="ticket-child">
               <a
@@ -195,7 +253,13 @@ export function SubticketsPanel({
         </ul>
       )}
       {next && (
-        <button type="button" className="button-secondary" onClick={() => void more()}>
+        <button
+          type="button"
+          className="button-secondary"
+          // Not disabled: the focus stays on it while the page loads.
+          aria-disabled={loadingMore || undefined}
+          onClick={() => void more()}
+        >
           {t('ticketTools.subtickets.more')}
         </button>
       )}

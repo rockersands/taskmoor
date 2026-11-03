@@ -1,7 +1,8 @@
 import type { PmJson } from '@taskmoor/richtext';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import type { Editor } from '@tiptap/core';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { messagesEn } from '../i18n/messages.en';
@@ -241,6 +242,52 @@ describe('the slash menu (NTF-013)', () => {
     });
   });
 
+  it('[NTF-014] keeps a section title to one line of text: a pasted tab becomes a space', async () => {
+    const user = userEvent.setup();
+    const { textbox, changes } = renderEditor();
+    await choose(textbox, 'collaps');
+    const title = await screen.findByRole('textbox', { name: 'Section title' });
+    await waitFor(() => expect(title).toHaveFocus());
+    await user.paste('Step\t1\u0007');
+    await user.keyboard('!');
+    expect(title).toHaveValue('Step 1 !');
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(textbox).toHaveFocus());
+    await user.keyboard('inside');
+    expect(changes.at(-1)?.content?.[0]).toMatchObject({
+      type: 'expand',
+      attrs: { title: 'Step 1 !' },
+    });
+  });
+
+  it('[NTF-014] puts the caret in the title of the section that went in, not of another untitled one', async () => {
+    const user = userEvent.setup();
+    const { textbox, changes } = renderEditor({
+      initial: {
+        type: 'doc',
+        content: [
+          { type: 'expand', attrs: { title: '' }, content: [{ type: 'paragraph' }] },
+          { type: 'paragraph', content: [{ type: 'text', text: 'Later' }] },
+        ],
+      },
+    });
+    await user.click(textbox);
+    // The caret at the end of "Later", below the untitled section (jsdom lays nothing out to
+    // click on, so the editor puts it there).
+    act(() => {
+      (textbox as HTMLElement & { editor: Editor }).editor.commands.focus('end');
+    });
+    await user.keyboard(' /collaps');
+    await menu();
+    await user.keyboard('{Enter}');
+    const titles = await screen.findAllByRole('textbox', { name: 'Section title' });
+    expect(titles).toHaveLength(2);
+    await waitFor(() => expect(titles[1]).toHaveFocus());
+    await user.keyboard('New');
+    const sections = changes.at(-1)?.content?.filter((n) => n.type === 'expand');
+    expect(sections?.map((n) => n.attrs?.title)).toEqual(['', 'New']);
+  });
+
   it('[NTF-014] inserts columns, and writing goes in the first', async () => {
     const user = userEvent.setup();
     const { textbox, changes } = renderEditor();
@@ -299,6 +346,27 @@ describe('the slash menu (NTF-013)', () => {
     });
   });
 
+  it('[NTF-013] offers today as the reader’s own day, not the day in UTC', async () => {
+    // 19:00 on 3 November in Mexico City is already 4 November in UTC.
+    vi.stubEnv('TZ', 'America/Mexico_City');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-04T01:00:00Z'));
+    try {
+      const user = userEvent.setup();
+      const { textbox, changes } = renderEditor();
+      await choose(textbox, 'date');
+      expect(await screen.findByLabelText('Date')).toHaveValue('2026-11-03');
+      await user.keyboard('{Enter}');
+      expect(changes.at(-1)?.content?.[0]?.content?.[0]).toMatchObject({
+        type: 'date',
+        attrs: { timestamp: String(Date.UTC(2026, 10, 3)) },
+      });
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('[NTF-013] finds an emoji by name, by keyboard', async () => {
     const user = userEvent.setup();
     const { textbox, changes } = renderEditor();
@@ -322,6 +390,34 @@ describe('the slash menu (NTF-013)', () => {
       expect(changes.at(-1)?.content?.[0]).toMatchObject({
         type: 'attachmentRef',
         attrs: { name: 'screen.png', image: true },
+      }),
+    );
+  });
+
+  it('[NTF-013] offers two files of one name once, since a reference holds only the name', async () => {
+    const user = userEvent.setup();
+    const shot = (n: number) => ({
+      name: 'image.png',
+      image: true,
+      href: `https://files.example.test/${n}`,
+      thumbnail: null,
+    });
+    const { textbox, changes } = renderEditor(
+      {},
+      { attachments: async () => [shot(1), shot(2), { ...shot(3), name: 'notes.pdf' }] },
+    );
+    await choose(textbox, 'image');
+    const list = await screen.findByRole('listbox', { name: 'Image or file from this ticket' });
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['image.png', 'notes.pdf']);
+    await user.keyboard('image{Enter}');
+    await waitFor(() =>
+      expect(changes.at(-1)?.content?.[0]).toMatchObject({
+        type: 'attachmentRef',
+        attrs: { name: 'image.png', image: true },
       }),
     );
   });

@@ -8,7 +8,7 @@ import {
   countNodes,
   docShapeProblem,
 } from './adf';
-import { fromAdf, fromAdfJson, toAdf, toAdfFromJson } from './convert';
+import { fromAdf, fromAdfJson, type PmJson, toAdf, toAdfFromJson } from './convert';
 import { schema } from './schema';
 import { generateAdfDocument, generateAdfDocuments } from './testing';
 
@@ -389,6 +389,49 @@ describe('the new blocks (NTF-014)', () => {
     expect(canonicalAdf(toAdf(pm))).toEqual(canonicalAdf(doc));
   });
 
+  it("[NTF-014] (1) brings an attachment's media back with its own attributes and marks", () => {
+    const media = (id: string, extra: Record<string, unknown>, marks?: AdfNode['marks']) => ({
+      type: 'media',
+      attrs: { type: 'file', id, collection: 'taskmoor-attachments', ...extra },
+      ...(marks ? { marks } : {}),
+    });
+    const doc = adfDoc([
+      {
+        type: 'mediaSingle',
+        attrs: { layout: 'center', width: 80 },
+        content: [
+          media('a.png', { width: 640, height: 480, alt: 'Login' }, [
+            { type: 'border', attrs: { size: 2, color: '#091e4224' } },
+          ]),
+        ],
+      },
+      {
+        type: 'mediaGroup',
+        content: [
+          media('notes.pdf', { occurrenceKey: 'k1' }, [
+            { type: 'link', attrs: { href: 'https://example.test/n' } },
+          ]),
+        ],
+      },
+    ]);
+    const pm = fromAdf(doc);
+    pm.check();
+    expect(pm.content.content.map((n) => n.type.name)).toEqual(['attachmentRef', 'attachmentRef']);
+    expect(canonicalAdf(toAdf(pm))).toEqual(canonicalAdf(doc));
+    expect(docShapeProblem(pm.toJSON())).toBeNull();
+
+    // The file the editor names wins over the one the media named, and the rest stays.
+    const json = pm.toJSON() as PmJson;
+    const first = json.content?.[0];
+    if (first?.attrs) first.attrs.name = 'b.png';
+    const out = toAdfFromJson(json);
+    expect(out.content?.[0]?.content?.[0]).toEqual(
+      media('b.png', { width: 640, height: 480, alt: 'Login' }, [
+        { type: 'border', attrs: { size: 2, color: '#091e4224' } },
+      ]),
+    );
+  });
+
   it('[NTF-014] keeps whole what does not fit: other media, cards, empty sections, too many columns', () => {
     const column: AdfNode = { type: 'layoutColumn', content: [para('c')] };
     for (const node of [
@@ -434,6 +477,12 @@ describe('the new blocks (NTF-014)', () => {
     expect(docShapeProblem(inside({ type: 'ticketRef' }))).toMatch(/ticket reference/);
     const block = (node: Record<string, unknown>) => ({ type: 'doc', content: [node] });
     expect(docShapeProblem(block({ type: 'attachmentRef', attrs: { name: 'a.png' } }))).toBeNull();
+    for (const adfMedia of ['media', [], { attrs: {} }, { type: 'media', attrs: 'x' }]) {
+      expect(
+        docShapeProblem(block({ type: 'attachmentRef', attrs: { name: 'a.png', adfMedia } })),
+        JSON.stringify(adfMedia),
+      ).toMatch(/kept media/);
+    }
     for (const name of ['', '   ', 'a'.repeat(256), 'two\nlines', 7]) {
       expect(docShapeProblem(block({ type: 'attachmentRef', attrs: { name } }))).toMatch(
         /attachment reference/,

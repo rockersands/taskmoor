@@ -17,7 +17,7 @@ import { setViewportWidth } from '../../test/viewport';
 import { fakeCloneClient } from '../clone/fixtures';
 import type { TicketDetails } from './client';
 import { fakeTicketClient, SHOP_41 } from './fixtures';
-import { TicketPage } from './TicketPage';
+import { TicketPage, ticketEditorTools } from './TicketPage';
 
 const member = MEMBER as Extract<Session, { status: 'signed-in' }>;
 const ADA_SESSION: Session = {
@@ -396,5 +396,23 @@ describe('the ticket view (M1-051)', () => {
         !/\d{4}|\d:\d\d/.test(t),
     );
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('what the ticket offers the editors in it (NTF-014)', () => {
+  it('[NTF-014] asks for the files again after a read that failed, rather than keeping the failure', async () => {
+    const files = fakeAttachmentClient();
+    let down = true;
+    const list = vi.fn(() => (down ? Promise.reject(new Error('Bad gateway')) : files.list()));
+    const tools = ticketEditorTools({ ...files, list }, { pick: async () => [] });
+    await expect(tools.attachments?.()).rejects.toThrow('Bad gateway');
+    down = false;
+    const found = await tools.attachments?.();
+    expect(found?.map((file) => file.name)).toContain('checkout-error.png');
+    // A good answer is kept for the page: only the menu's own fresh read asks again.
+    await tools.attachments?.();
+    expect(list).toHaveBeenCalledTimes(2);
+    await tools.attachments?.(true);
+    expect(list).toHaveBeenCalledTimes(3);
   });
 });

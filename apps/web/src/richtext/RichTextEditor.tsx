@@ -87,6 +87,13 @@ interface SlashMenu {
   pick: (tool: SlashTool) => void;
 }
 
+/**
+ * What a section's title may not hold: the server takes it only as one line of text
+ * (`isExpandTitle`), and a text field keeps a pasted tab.
+ */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/g;
+
 /** The document, or null when it is empty. */
 export function docOf(editor: Editor): PmJson | null {
   return editor.isEmpty ? null : (editor.getJSON() as PmJson);
@@ -305,18 +312,28 @@ export function RichTextEditor({
   // biome-ignore lint/correctness/useExhaustiveDependencies: the editor is built once
   const extensions = useMemo(() => {
     const toolLabel = (tool: SlashTool) => translate.current(tool.label, tool.values);
-    const slashContext = (): SlashContext => ({
+    /** What a tool reaches; `from` is where "/" was typed, so what goes in starts there. */
+    const slashContext = (current: Editor, from?: number): SlashContext => ({
       tools: toolsRef.current,
       hasMentions: Boolean(mentionsRef.current),
       openPrompt: setPrompt,
       openLink: () => openLinkRef.current(),
-      focusTitle: () =>
-        window.setTimeout(() => {
-          const titles = wrapperRef.current?.querySelectorAll<HTMLInputElement>('.rt-expand-title');
-          // The empty one is the one that just went in.
-          const fresh = [...(titles ?? [])].find((title) => title.value === '');
-          fresh?.focus();
-        }, 0),
+      focusTitle: () => {
+        // The section that just went in is the first from where "/" was typed: another section
+        // above it may have no title either.
+        const start = (from ?? current.state.selection.from) - 1;
+        let at: number | null = null;
+        current.state.doc.descendants((node, position) => {
+          if (at === null && node.type.name === 'expand' && position >= start) at = position;
+          return at === null;
+        });
+        const section = at === null ? null : current.view.nodeDOM(at);
+        const title =
+          section instanceof HTMLElement
+            ? section.querySelector<HTMLInputElement>('.rt-expand-title')
+            : null;
+        window.setTimeout(() => title?.focus(), 0);
+      },
     });
     const base = editorExtensions({
       undoRedo: !collaboration,
@@ -330,7 +347,7 @@ export function RichTextEditor({
               return parent.isTextblock && parent.type.name !== 'codeBlock';
             },
             items: ({ query, editor: current }) => {
-              const context = slashContext();
+              const context = slashContext(current);
               return matchingTools(
                 SLASH_TOOLS.filter((tool) => tool.available?.(current, context) ?? true),
                 query,
@@ -339,7 +356,7 @@ export function RichTextEditor({
             },
             command: ({ editor: current, range, props }) => {
               current.chain().focus().deleteRange(range).run();
-              (props as unknown as SlashTool).run(current, slashContext());
+              (props as unknown as SlashTool).run(current, slashContext(current, range.from));
             },
             render: () => {
               const show = (props: {
@@ -462,12 +479,19 @@ export function RichTextEditor({
               title.disabled = !current.isEditable;
               title.setAttribute('aria-label', labelsRef.current.expandTitle);
               title.addEventListener('input', () => {
+                // A pasted tab or other control character becomes a space, as it is typed.
+                const clean = title.value.replace(CONTROL_CHARACTERS, ' ');
+                if (clean !== title.value) {
+                  const caret = title.selectionStart;
+                  title.value = clean;
+                  if (caret !== null) title.setSelectionRange(caret, caret);
+                }
                 const at = typeof getPos === 'function' ? getPos() : undefined;
                 if (at === undefined) return;
                 current.view.dispatch(
                   current.state.tr.setNodeMarkup(at, undefined, {
                     ...node.attrs,
-                    title: title.value,
+                    title: clean,
                   }),
                 );
               });

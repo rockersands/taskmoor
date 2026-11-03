@@ -16,14 +16,18 @@ export interface BlockPromptProps {
 /** The languages a code block's fence and the wiki markup can both carry. */
 const LANGUAGE = /^[A-Za-z0-9_+#.-]{1,40}$/;
 
-/** Today, as a date field holds it. */
-const today = () => new Date().toISOString().slice(0, 10);
+/** Today where the reader is, as a date field holds it. */
+const today = () => {
+  const now = new Date();
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
+};
 
 /**
  * Enter in a prompt's field applies it. These are not forms: the editor they open from often sits
  * inside a comment's or a new ticket's form, which Enter must not send.
  */
-const onEnter = (apply: () => void) => (event: KeyboardEvent<HTMLDivElement>) => {
+const onEnter = (apply: () => void) => (event: KeyboardEvent<HTMLElement>) => {
   if (event.key === 'Enter' && (event.target as HTMLElement).tagName === 'INPUT') {
     event.preventDefault();
     apply();
@@ -325,7 +329,8 @@ function AttachmentPrompt({ onInsert, onCancel }: PartProps) {
     let live = true;
     tools.attachments?.(true).then(
       (list) => {
-        if (live) setFiles(list);
+        // A reference holds a name, and two files of one name are the same choice: the first.
+        if (live) setFiles(list.filter((f, i) => list.findIndex((g) => g.name === f.name) === i));
       },
       () => {
         if (live) setFiles([]);

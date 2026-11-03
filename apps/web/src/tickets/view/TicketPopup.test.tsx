@@ -124,6 +124,85 @@ describe('the ticket pop-up', () => {
     expect(within(dialog).queryByRole('listbox')).toBeNull();
   });
 
+  it('[CORE-032] Add and open shows the new subticket in the pop-up, with the page still beneath', async () => {
+    const user = userEvent.setup();
+    const tools = fakeToolsClient();
+    tools.createChild = async () => ({ id: 400, key: 'SHOP-400' });
+    const client = fakeTicketClient();
+    const made = { ...SHOP_41, id: 400, key: 'SHOP-400', summary: 'Made in the pop-up' };
+    client.get = async (key) => (key === 'SHOP-400' ? made : SHOP_41);
+    const onChange = vi.fn();
+    function Page() {
+      useTicketChanges(onChange);
+      return <a href="#/tickets/SHOP-41">The card</a>;
+    }
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <Page />
+            <TicketPopup client={client} tools={tools} {...clientProps()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+    const subs = await within(dialog).findByRole('region', { name: 'Subtickets' });
+    await user.type(
+      within(subs).getByRole('textbox', { name: 'New subticket' }),
+      'Made in the pop-up',
+    );
+    await user.click(within(subs).getByRole('button', { name: 'Add and open' }));
+    // No question about a draft: the summary was saved, not left behind.
+    expect(
+      await screen.findByRole('dialog', { name: 'SHOP-400 Made in the pop-up' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(addressRoute()).toBe('#/tickets/SHOP-400');
+    expect(currentRoute()).toBe('#/tracks/SHOP/board?people=7');
+    // The board beneath hears of the new ticket.
+    expect(onChange).toHaveBeenCalled();
+    window.history.back();
+    expect(await screen.findByRole('dialog', { name: NAME })).toBeVisible();
+  });
+
+  it('[NFR-005] a subticket summary on its way is still a draft, so a refusal loses nothing', async () => {
+    const user = userEvent.setup();
+    const tools = fakeToolsClient();
+    let refuse: (() => void) | undefined;
+    tools.createChild = () =>
+      new Promise((_, reject) => {
+        refuse = () => reject(new Error('refused'));
+      });
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <a href="#/tickets/SHOP-41">The card</a>
+            <TicketPopup client={fakeTicketClient()} tools={tools} {...clientProps()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(screen.getByRole('link', { name: 'The card' }));
+    const dialog = await opened();
+    const subs = await within(dialog).findByRole('region', { name: 'Subtickets' });
+    const field = within(subs).getByRole('textbox', { name: 'New subticket' });
+    await user.type(field, 'Not saved yet');
+    await user.click(within(subs).getByRole('button', { name: 'Add' }));
+    expect(hasDraft(dialog)).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Close this ticket' }));
+    await user.click(
+      within(
+        await screen.findByRole('alertdialog', { name: 'Discard what you have not saved?' }),
+      ).getByRole('button', { name: 'Keep editing' }),
+    );
+    await act(async () => refuse?.());
+    expect(field).toHaveValue('Not saved yet');
+    expect(screen.getByRole('dialog', { name: NAME })).toBeVisible();
+  });
+
   it('[CORE-033] counts a half-written item as a draft, and not a saved name', async () => {
     const user = userEvent.setup();
     render(

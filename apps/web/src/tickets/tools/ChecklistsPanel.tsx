@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { useLockText } from '../../locks/useLockText';
@@ -27,6 +27,25 @@ type Run = (
   said?: string,
   after?: () => void,
 ) => Promise<boolean>;
+
+/** What the server takes (`routes/checklists.ts`): a checklist's name, and an item's text. */
+const NAME_MAX = 200;
+const TEXT_MAX = 1000;
+
+/** A list or an item that a move button moved, and which way. */
+interface Moved {
+  id: number;
+  step: -1 | 1;
+}
+
+/** When a form closes, saved or left, the focus goes back to the control that opened it. */
+function useFocusBack(open: boolean, opener: RefObject<HTMLElement | null>) {
+  const was = useRef(open);
+  useEffect(() => {
+    if (was.current && !open) opener.current?.focus();
+    was.current = open;
+  }, [open, opener]);
+}
 
 /** Which position an item or a list moves to, and the order that makes. */
 function moved(ids: readonly number[], id: number, step: -1 | 1): number[] | null {
@@ -76,8 +95,11 @@ export function ChecklistsPanel({
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const [movedList, setMovedList] = useState<Moved | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
+  const nameField = useRef<HTMLInputElement>(null);
   const read = useRef(0);
+  useFocusBack(adding, addButton);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the ticket changes
   useEffect(() => {
@@ -177,23 +199,27 @@ export function ChecklistsPanel({
               void run(
                 () => client.orderChecklists(ticket.id, next),
                 t('ticketTools.checklists.moved', { name: list.name }),
+                // The keyboard stays with the list that moved, wherever it went.
+                () => setMovedList({ id: list.id, step }),
               );
             }
           }}
           canMoveUp={order.indexOf(list.id) > 0}
           canMoveDown={order.indexOf(list.id) < order.length - 1}
-          onRemoved={() => addButton.current?.focus()}
+          focusMove={movedList?.id === list.id ? movedList.step : null}
+          onMoveFocused={() => setMovedList(null)}
+          // The add button, or the name of the list being made while it stands in its place.
+          onRemoved={() => (addButton.current ?? nameField.current)?.focus()}
         />
       ))}
       {adding && (
         <NameForm
           label={t('ticketTools.checklists.name')}
           submit={t('ticketTools.checklists.create')}
+          maxLength={NAME_MAX}
+          field={nameField}
           busy={busy}
-          onCancel={() => {
-            setAdding(false);
-            window.setTimeout(() => addButton.current?.focus(), 0);
-          }}
+          onCancel={() => setAdding(false)}
           onSave={async (name) => {
             const ok = await run(
               () => client.addChecklist(ticket.id, name),
@@ -220,6 +246,8 @@ function NameForm({
   label,
   submit,
   start = '',
+  maxLength,
+  field,
   busy,
   onSave,
   onCancel,
@@ -227,6 +255,10 @@ function NameForm({
   label: string;
   submit: string;
   start?: string;
+  /** What the server takes for this text. */
+  maxLength: number;
+  /** The field, for the panel to give it the focus. */
+  field?: RefObject<HTMLInputElement | null>;
   busy: boolean;
   onSave: (value: string) => Promise<boolean>;
   onCancel: () => void;
@@ -234,7 +266,9 @@ function NameForm({
   const t = useT();
   const id = useId();
   const [value, setValue] = useState(start);
-  const input = useRef<HTMLInputElement>(null);
+  const own = useRef<HTMLInputElement>(null);
+  const input = field ?? own;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only when the form appears
   useEffect(() => {
     input.current?.focus();
     input.current?.select();
@@ -259,7 +293,7 @@ function NameForm({
           id={id}
           type="text"
           value={value}
-          maxLength={1000}
+          maxLength={maxLength}
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
@@ -281,6 +315,66 @@ function NameForm({
   );
 }
 
+/**
+ * Up and down for a list or an item, each shown only where that move is possible. Once a move
+ * is drawn, the focus goes back to the button pressed, or to the other one when the move reached
+ * the first or the last place, so the keyboard stays with what moved.
+ */
+function MoveButtons({
+  up,
+  down,
+  busy,
+  focus,
+  onFocused,
+  onMove,
+}: {
+  /** The button's name, or null where it cannot go that way. */
+  up: string | null;
+  down: string | null;
+  busy: boolean;
+  focus: -1 | 1 | null;
+  onFocused: () => void;
+  onMove: (step: -1 | 1) => void;
+}) {
+  const t = useT();
+  const upButton = useRef<HTMLButtonElement>(null);
+  const downButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (focus === null) return;
+    const [pressed, other] = focus === -1 ? [upButton, downButton] : [downButton, upButton];
+    (pressed.current ?? other.current)?.focus();
+    onFocused();
+  }, [focus, onFocused]);
+  return (
+    <>
+      {up !== null && (
+        <button
+          ref={upButton}
+          type="button"
+          className="button-secondary ticket-action"
+          disabled={busy}
+          aria-label={up}
+          onClick={() => onMove(-1)}
+        >
+          {t('ticketTools.moveUp')}
+        </button>
+      )}
+      {down !== null && (
+        <button
+          ref={downButton}
+          type="button"
+          className="button-secondary ticket-action"
+          disabled={busy}
+          aria-label={down}
+          onClick={() => onMove(1)}
+        >
+          {t('ticketTools.moveDown')}
+        </button>
+      )}
+    </>
+  );
+}
+
 function ChecklistBlock({
   list,
   ticketId,
@@ -291,6 +385,8 @@ function ChecklistBlock({
   moveList,
   canMoveUp,
   canMoveDown,
+  focusMove,
+  onMoveFocused,
   onRemoved,
 }: {
   list: Checklist;
@@ -302,6 +398,9 @@ function ChecklistBlock({
   moveList: (step: -1 | 1) => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  /** The list just moved this way: its move button takes the focus again. */
+  focusMove: -1 | 1 | null;
+  onMoveFocused: () => void;
   onRemoved: () => void;
 }) {
   const t = useT();
@@ -309,16 +408,19 @@ function ChecklistBlock({
   const addId = useId();
   const [renaming, setRenaming] = useState(false);
   const [text, setText] = useState('');
+  const [movedItem, setMovedItem] = useState<Moved | null>(null);
   const addInput = useRef<HTMLInputElement>(null);
+  const renameButton = useRef<HTMLButtonElement>(null);
+  useFocusBack(renaming, renameButton);
   const order = list.items.map((item) => item.id);
-  const moveItem = (item: ChecklistItem, step: -1 | 1, button: HTMLElement) => {
+  const moveItem = (item: ChecklistItem, step: -1 | 1) => {
     const next = moved(order, item.id, step);
     if (next) {
       void run(
         () => client.orderItems(ticketId, list.id, next),
         t('ticketTools.checklists.itemMoved', { text: item.text }),
-        // The button stays where the keyboard is, with its item.
-        () => window.setTimeout(() => button.focus(), 0),
+        // The keyboard stays with the item that moved, wherever it went.
+        () => setMovedItem({ id: item.id, step }),
       );
     }
   };
@@ -342,6 +444,7 @@ function ChecklistBlock({
             label={t('ticketTools.checklists.name')}
             submit={t('ticketView.save')}
             start={list.name}
+            maxLength={NAME_MAX}
             busy={busy}
             onCancel={() => setRenaming(false)}
             onSave={async (name) => {
@@ -358,6 +461,7 @@ function ChecklistBlock({
         {canEdit && !renaming && (
           <span className="checklist-actions">
             <button
+              ref={renameButton}
               type="button"
               className="button-secondary ticket-action"
               aria-label={t('ticketTools.checklists.rename', { name: list.name })}
@@ -365,28 +469,16 @@ function ChecklistBlock({
             >
               {t('ticketView.edit')}
             </button>
-            {canMoveUp && (
-              <button
-                type="button"
-                className="button-secondary ticket-action"
-                disabled={busy}
-                aria-label={t('ticketTools.checklists.moveListUp', { name: list.name })}
-                onClick={() => moveList(-1)}
-              >
-                {t('ticketTools.moveUp')}
-              </button>
-            )}
-            {canMoveDown && (
-              <button
-                type="button"
-                className="button-secondary ticket-action"
-                disabled={busy}
-                aria-label={t('ticketTools.checklists.moveListDown', { name: list.name })}
-                onClick={() => moveList(1)}
-              >
-                {t('ticketTools.moveDown')}
-              </button>
-            )}
+            <MoveButtons
+              up={canMoveUp ? t('ticketTools.checklists.moveListUp', { name: list.name }) : null}
+              down={
+                canMoveDown ? t('ticketTools.checklists.moveListDown', { name: list.name }) : null
+              }
+              busy={busy}
+              focus={focusMove}
+              onFocused={onMoveFocused}
+              onMove={moveList}
+            />
             <button
               type="button"
               className="button-secondary ticket-action"
@@ -416,13 +508,15 @@ function ChecklistBlock({
               busy={busy}
               canMoveUp={at > 0}
               canMoveDown={at < list.items.length - 1}
+              focusMove={movedItem?.id === item.id ? movedItem.step : null}
+              onMoveFocused={() => setMovedItem(null)}
               onState={(state) =>
                 run(() => client.updateItem(ticketId, list.id, item.id, { state }))
               }
               onText={(words) =>
                 run(() => client.updateItem(ticketId, list.id, item.id, { text: words }))
               }
-              onMove={(step, button) => moveItem(item, step, button)}
+              onMove={(step) => moveItem(item, step)}
               onRemove={() =>
                 void run(
                   () => client.removeItem(ticketId, list.id, item.id),
@@ -445,7 +539,7 @@ function ChecklistBlock({
               id={addId}
               type="text"
               value={text}
-              maxLength={1000}
+              maxLength={TEXT_MAX}
               onChange={(event) => setText(event.target.value)}
             />
           </div>
@@ -470,6 +564,8 @@ function ChecklistRow({
   busy,
   canMoveUp,
   canMoveDown,
+  focusMove,
+  onMoveFocused,
   onState,
   onText,
   onMove,
@@ -480,21 +576,43 @@ function ChecklistRow({
   busy: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  /** The item just moved this way: its move button takes the focus again. */
+  focusMove: -1 | 1 | null;
+  onMoveFocused: () => void;
   onState: (state: ItemState) => Promise<boolean>;
   onText: (text: string) => Promise<boolean>;
-  onMove: (step: -1 | 1, button: HTMLElement) => void;
+  onMove: (step: -1 | 1) => void;
   onRemove: () => void;
 }) {
   const t = useT();
   const boxId = useId();
   const [editing, setEditing] = useState(false);
-  // What was just chosen, shown at once while the server answers; a refusal puts it back.
+  const editButton = useRef<HTMLButtonElement>(null);
+  useFocusBack(editing, editButton);
+  // What was just chosen, shown at once while the server answers. It goes when the list shows
+  // it, or with the next list after its own answer: ticking another box meanwhile sets that
+  // answer aside for a later one. A refusal puts it back; an older choice never clears a newer.
   const [chosen, setChosen] = useState<ItemState | null>(null);
+  const asked = useRef(0);
+  const answered = useRef(false);
   const state = chosen ?? item.state;
   const choose = (next: ItemState) => {
+    const mine = ++asked.current;
+    answered.current = false;
     setChosen(next);
-    void onState(next).finally(() => setChosen(null));
+    void onState(next).then((ok) => {
+      if (mine !== asked.current) return;
+      if (ok) answered.current = true;
+      else setChosen(null);
+    });
   };
+  useEffect(() => {
+    if (chosen === null) return;
+    if (item.state === chosen || answered.current) {
+      answered.current = false;
+      setChosen(null);
+    }
+  }, [item, chosen]);
   const box = useRef<HTMLInputElement>(null);
   useEffect(() => {
     // Something is under way: neither ticked nor empty, for sight and for screen readers.
@@ -508,6 +626,7 @@ function ChecklistRow({
           label={t('ticketTools.checklists.itemText')}
           submit={t('ticketView.save')}
           start={item.text}
+          maxLength={TEXT_MAX}
           busy={busy}
           onCancel={() => setEditing(false)}
           onSave={async (words) => {
@@ -546,6 +665,7 @@ function ChecklistRow({
             ))}
           </select>
           <button
+            ref={editButton}
             type="button"
             className="button-secondary ticket-action"
             aria-label={t('ticketTools.checklists.edit', { text: item.text })}
@@ -553,28 +673,14 @@ function ChecklistRow({
           >
             {t('ticketView.edit')}
           </button>
-          {canMoveUp && (
-            <button
-              type="button"
-              className="button-secondary ticket-action"
-              disabled={busy}
-              aria-label={t('ticketTools.checklists.moveUp', { text: item.text })}
-              onClick={(event) => onMove(-1, event.currentTarget)}
-            >
-              {t('ticketTools.moveUp')}
-            </button>
-          )}
-          {canMoveDown && (
-            <button
-              type="button"
-              className="button-secondary ticket-action"
-              disabled={busy}
-              aria-label={t('ticketTools.checklists.moveDown', { text: item.text })}
-              onClick={(event) => onMove(1, event.currentTarget)}
-            >
-              {t('ticketTools.moveDown')}
-            </button>
-          )}
+          <MoveButtons
+            up={canMoveUp ? t('ticketTools.checklists.moveUp', { text: item.text }) : null}
+            down={canMoveDown ? t('ticketTools.checklists.moveDown', { text: item.text }) : null}
+            busy={busy}
+            focus={focusMove}
+            onFocused={onMoveFocused}
+            onMove={onMove}
+          />
           <button
             type="button"
             className="button-secondary ticket-action"

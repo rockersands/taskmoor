@@ -690,6 +690,8 @@ export function fromMarkdown(markdown: string): PmJson {
   const tree = parseMarkdown(markdown, { extensions: SYNTAX, mdastExtensions: FROM_MARKDOWN });
   const definitions = new Map<string, Definition>();
   collectDefinitions(tree, definitions);
+  // micromark skips a leading byte order mark and counts offsets after it.
+  markTypedMarkers(tree, markdown.charCodeAt(0) === 0xfeff ? markdown.slice(1) : markdown);
   const content = blocksIn(tree.children, definitions);
   const json: PmJson = {
     type: 'doc',
@@ -704,6 +706,25 @@ function collectDefinitions(node: { children?: unknown[] }, out: Map<string, Def
   for (const child of (node.children ?? []) as (RootContent & { children?: unknown[] })[]) {
     if (child.type === 'definition' && !out.has(child.identifier)) out.set(child.identifier, child);
     if ('children' in child) collectDefinitions(child, out);
+  }
+}
+
+/**
+ * Quote leads whose opening `[` the source escaped (`\[`) or wrote as a character reference
+ * (`&#91;`). The parser hands both over as a plain `[`, so without this a quote whose text starts
+ * with `[!EXPAND]` or `[!INFO]` (which the writer escapes) would read back as a section or panel.
+ */
+const typedMarkers = new WeakSet<PhrasingContent>();
+
+function markTypedMarkers(node: { children?: unknown[] }, source: string) {
+  for (const child of (node.children ?? []) as (RootContent & { children?: unknown[] })[]) {
+    if (child.type === 'blockquote') {
+      const first = child.children[0];
+      const lead = first?.type === 'paragraph' ? first.children[0] : undefined;
+      const at = lead?.position?.start.offset;
+      if (lead?.type === 'text' && at !== undefined && source[at] !== '[') typedMarkers.add(lead);
+    }
+    if ('children' in child) markTypedMarkers(child, source);
   }
 }
 
@@ -761,7 +782,8 @@ function quoteIn(children: readonly RootContent[], defs: Definitions): PmJson {
   const [first, ...rest] = children;
   if (first?.type === 'paragraph') {
     const lead = first.children[0];
-    const value = lead?.type === 'text' || lead?.type === 'html' ? lead.value : '';
+    const value =
+      (lead?.type === 'text' || lead?.type === 'html') && !typedMarkers.has(lead) ? lead.value : '';
     const expand = /^\[!EXPAND\][ \t]*([^\r\n]*)(?:\r?\n|$)/i.exec(value);
     if (expand) {
       const remaining = value.slice(expand[0].length);
@@ -776,7 +798,7 @@ function quoteIn(children: readonly RootContent[], defs: Definitions): PmJson {
       ];
       return {
         type: 'expand',
-        attrs: { title: (expand[1] ?? '').trim().slice(0, MAX_TITLE_LENGTH) },
+        attrs: { title: titleLine(expand[1] ?? '') },
         content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }],
       };
     }
@@ -803,6 +825,21 @@ function quoteIn(children: readonly RootContent[], defs: Definitions): PmJson {
   }
   const blocks = blocksIn(children, defs);
   return { type: 'blockquote', content: blocks.length > 0 ? blocks : [{ type: 'paragraph' }] };
+}
+
+/**
+ * A section title as the document may hold it (NTF-014): one line with no control characters.
+ * Tabs and other controls read as spaces, so a title like `Step<tab>1` is not refused on save.
+ */
+function titleLine(text: string): string {
+  return (
+    text
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it replaces
+      .replace(/[\u0000-\u001f\u007f\s]+/g, ' ')
+      .trim()
+      .slice(0, MAX_TITLE_LENGTH)
+      .trimEnd()
+  );
 }
 
 function listIn(list: List, defs: Definitions): PmJson {

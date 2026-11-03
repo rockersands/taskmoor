@@ -1,0 +1,14 @@
+{
+  "content": [
+    {
+      "attrs": {
+        "adfAttrs": null,
+        "adfMedia": null,
+        "image": true,
+        "name": "login.png"
+      },
+      "type": "attachmentRef"
+    }
+  ],
+  "type": "doc"
+}

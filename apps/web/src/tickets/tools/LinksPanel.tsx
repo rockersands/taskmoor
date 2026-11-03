@@ -57,7 +57,11 @@ export function LinksPanel({
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  /** Counts removals: after each, the focus finds a place in the panel once it is drawn. */
+  const [removals, setRemovals] = useState(0);
+  const panel = useRef<HTMLElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
+  const doneButton = useRef<HTMLButtonElement>(null);
 
   const read = useRef(0);
   const load = () => {
@@ -98,6 +102,15 @@ export function LinksPanel({
       live = false;
     };
   }, [client, adding, categories]);
+
+  // The removed row's button is gone. With the form open, its picker takes the focus back once
+  // it is free again; without one that can, the add button or the form's Done button does.
+  useEffect(() => {
+    if (removals === 0) return;
+    const now = document.activeElement;
+    if (now && now !== document.body && panel.current?.contains(now)) return;
+    (addButton.current ?? doneButton.current)?.focus();
+  }, [removals]);
 
   const refusal = (error: unknown) => {
     if (error instanceof ApiError) {
@@ -141,6 +154,7 @@ export function LinksPanel({
       await load();
       onChanged?.();
       addButton.current?.focus();
+      setRemovals((n) => n + 1);
     } catch (error) {
       setProblem(refusal(error));
     } finally {
@@ -158,7 +172,7 @@ export function LinksPanel({
   };
 
   return (
-    <section aria-labelledby={titleId} className="ticket-links ticket-tool">
+    <section ref={panel} aria-labelledby={titleId} className="ticket-links ticket-tool">
       <div className="ticket-tool-head">
         <h2 id={titleId} className="ticket-section-title">
           {t('ticketView.links')}
@@ -255,7 +269,7 @@ export function LinksPanel({
             onCancel={closeForm}
           />
           <div className="form-actions">
-            <button type="button" className="button-secondary" onClick={closeForm}>
+            <button ref={doneButton} type="button" className="button-secondary" onClick={closeForm}>
               {t('ticketTools.done')}
             </button>
           </div>

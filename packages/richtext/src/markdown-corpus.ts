@@ -116,6 +116,16 @@ export const DOCUMENTS: CorpusDocument[] = [
     }),
   },
   {
+    // Quotes whose text only looks like a marker: the writer escapes it, the reader keeps it text.
+    name: 'quote-starting-with-a-marker',
+    lossless: true,
+    doc: doc(
+      quote(p(t('[!EXPAND] is how a section starts.'))),
+      quote(p(t('[!WARNING]')), p(t('Not a panel.'))),
+      quote(p(t('[!expand]'))),
+    ),
+  },
+  {
     name: 'ticket-reference',
     lossless: true,
     doc: doc(
@@ -620,6 +630,33 @@ export const DOCUMENTS: CorpusDocument[] = [
       ]),
     ),
   },
+  {
+    // The media node's size, alt text and marks are the other format's own: Markdown drops them.
+    name: 'imported-attachment',
+    lossless: false,
+    doc: fromAdfJson(
+      adfDoc([
+        {
+          type: 'mediaSingle',
+          attrs: { layout: 'center' },
+          content: [
+            {
+              type: 'media',
+              attrs: {
+                type: 'file',
+                id: 'login.png',
+                collection: 'taskmoor-attachments',
+                width: 640,
+                height: 480,
+                alt: 'Login',
+              },
+              marks: [{ type: 'border', attrs: { size: 2 } }],
+            },
+          ],
+        },
+      ]),
+    ),
+  },
 ];
 
 export interface CorpusSource {
@@ -733,6 +770,16 @@ export const SOURCES: CorpusSource[] = [
   {
     name: 'soft-breaks',
     markdown: 'One sentence\nwraps onto\n  the next line.\n',
+  },
+  {
+    // A tab and other control characters in a section title read as spaces (NTF-014).
+    name: 'section-title-controls',
+    markdown: '> [!EXPAND] Step\t1\u0007 of\u000b 2\n>\n> Body.\n',
+  },
+  {
+    // An escaped marker or one written as a character reference is text, in a plain quote.
+    name: 'escaped-markers',
+    markdown: '> \\[!EXPAND] Not a section\n\n> &#91;!INFO]\n> Not a panel.\n',
   },
   { name: 'empty', markdown: '' },
 ];

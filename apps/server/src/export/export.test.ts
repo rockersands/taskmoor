@@ -6,6 +6,7 @@ import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import { LocalStore } from '@taskmoor/storage';
 import type { FastifyInstance, InjectOptions } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { type AttachmentStores, storesOf } from '../attachments/stores';
@@ -563,6 +564,40 @@ describe('the full export (M1-098)', () => {
       const record = JSON.parse(line);
       expect(typeof record.id).toBe('string');
       expect(Object.keys(record)).toEqual([...Object.keys(record)].sort());
+    }
+    // [CORE-033] A checklist item's times keep their microseconds, as the checklist's do.
+    const [list] = (await readFile(join(out, 'checklists.ndjson'), 'utf8'))
+      .trim()
+      .split('\n')
+      .map(
+        (l) =>
+          JSON.parse(l) as {
+            createdAt: string;
+            items: { text: string; createdAt: string; updatedAt: string }[];
+          },
+      );
+    const micro = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/;
+    expect(list?.createdAt).toMatch(micro);
+    const stored = await source.db
+      .selectFrom('ticket_checklist_item')
+      .select([
+        'text',
+        sql<string>`to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`.as(
+          'created',
+        ),
+        sql<string>`to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`.as(
+          'updated',
+        ),
+      ])
+      .execute();
+    expect(list?.items).toHaveLength(4);
+    for (const item of list?.items ?? []) {
+      expect(item.createdAt, item.text).toMatch(micro);
+      const row = stored.find((s) => s.text === item.text);
+      expect({ createdAt: item.createdAt, updatedAt: item.updatedAt }, item.text).toEqual({
+        createdAt: row?.created,
+        updatedAt: row?.updated,
+      });
     }
     // Parents come before their children.
     const order = tickets.map((l) => JSON.parse(l) as { id: string; parent: string | null });

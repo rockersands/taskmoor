@@ -1248,6 +1248,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.imports.kind.web_link': 'Enlaces web',
   'admin.imports.kind.time_entry': 'Registros de tiempo',
   'admin.imports.kind.attachment': 'Adjuntos',
+  'admin.imports.kind.checklist': 'Listas de comprobación',
   'admin.imports.kind.history': 'Entradas del historial',
   'admin.imports.kind.saved_search': 'Búsquedas guardadas',
   'admin.imports.kind.subscription': 'Suscripciones',
@@ -5449,6 +5450,12 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.subtickets.forbidden': 'No puedes crear tickets en este track.',
   'ticketTools.subtickets.fields':
     'Este track también pide: {fields}. Usa el formulario de creación para este.',
+  'ticketTools.subtickets.refused':
+    'Este track no aceptó el valor de: {fields}. Usa el formulario de creación para este.',
+  'ticketTools.subtickets.wrongPlace': 'Un ticket de este tipo no puede ir debajo de este.',
+  'ticketTools.subtickets.parentGone': 'Este ticket ya no existe, o ya no puedes verlo.',
+  'ticketTools.subtickets.typeGone':
+    'Este track ya no ofrece ese tipo de ticket. Vuelve a cargar la página para ver los que ofrece.',
   'ticketTools.moveUp': 'Subir',
   'ticketTools.moveDown': 'Bajar',
   'ticketTools.state.open': 'Abierto',
