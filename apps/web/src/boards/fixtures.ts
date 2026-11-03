@@ -203,6 +203,22 @@ export function manyCards(n: number): FakeCard[] {
   }));
 }
 
+/** One lane for the whole board: no swimlanes. */
+export const ONE_LANE: BoardLane[] = [{ id: 'all', name: '', catchAll: true }];
+
+/**
+ * A long column (T-193): `n` cards in rank order, the first `inDoing` of them in Doing and the
+ * rest in To do, all in one lane.
+ */
+export function longColumn(n: number, inDoing = 0): FakeCard[] {
+  return manyCards(n).map((c, i) => ({
+    ...c,
+    summary: `Card ${i + 1} of a long column`,
+    status: i < inDoing ? { id: STATUS.Active, name: 'Active' } : { id: STATUS.New, name: 'New' },
+    laneId: 'all',
+  }));
+}
+
 const TRANSITIONS: { id: number; name: string; from: StatusName[] | 'any'; to: StatusName }[] = [
   { id: 1, name: 'Start', from: ['New'], to: 'Active' },
   { id: 2, name: 'Send to review', from: ['Active'], to: 'In Review' },
@@ -460,7 +476,7 @@ export function fakeBoardClient(
         const without = ordered.filter((c) => c.id !== moving.id);
         const at = without.findIndex((c) => c.id === anchorId);
         without.splice(move.before !== undefined ? at : at + 1, 0, moving);
-        cards = without.map((c, i) => ({ ...c, rank: `a${String(i).padStart(3, '0')}` }));
+        cards = without.map((c, i) => ({ ...c, rank: `a${String(i).padStart(6, '0')}` }));
       }
       return { kind: 'moved' };
     },

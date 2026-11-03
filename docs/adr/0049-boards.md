@@ -111,7 +111,79 @@ backlog column and estimation (AGL-007, AGL-014 (1)) and the full board UI with 
 - **Rendering**: the cards are grouped by cell once per render, with each card's place, instead
   of filtering the list per card. 5,000 cards render in 455 to 458 ms after the data arrives
   (Chromium, `FiveThousandCards` story, two runs in each skin; budget 1 s), so no virtualised
-  list was needed; revisit at the 50,000-card load of AGL-013 (2).
+  list was needed then. A long column was not smooth all the same: see "Large columns (T-193)",
+  which replaced the first-50-cards-then-a-transition drawing of M1-117.
+
+## Large columns (T-193)
+
+A column of 5,000 cards scrolled at about 15 frames a second on the development PC, and a drop held
+one frame of about 0.9 s: every card stayed on the page, and every read of the board drew all of
+them again. `content-visibility` was tried in thought and left: it keeps every card on the page and
+in React (the drop's cost was React drawing 5,000 cards, not the browser laying them out), and its
+paint containment clips whatever a card draws outside its box (its glass rim, the focus ring's
+offset, a menu that leaves the flow).
+
+- **A board of more than 100 cards draws, in each cell, the cards near the screen** (`BoardCell`,
+  `WINDOW_FROM`): the screen and one screen more above and below. It draws again when the screen,
+  give or take a quarter of it, leaves what is drawn. One listener per board (scrolls of the page or
+  of any part of it, and resizes) lets every cell read where it is, then the cells that must change
+  do so together in the same frame. A card drawn once is measured (`ResizeObserver`, so an open
+  menu or a wrapped title counts); one never drawn counts as the mean of those measured, or 104 px.
+  The room of the cards not drawn is kept: those above a drawn card as its top margin, those after
+  the last one as the cell's bottom padding (`--cell-skip-after`). The page keeps the column's whole
+  length, and the browser's scroll anchoring holds the screen still when a guess becomes a measure
+  above it. A board of 100 cards or fewer draws them all, as before.
+- **Always drawn, wherever they are:** the cell's current card (its tab stop), the card dragged
+  (its drag must end on it), the card being edited, the card with its Move menu open, the card a
+  question is about (which transition, or the fields one needs) and the card landing after a move.
+  So the Move menu, in the card's own flow, is never cut, and focus is never lost to a card that
+  scrolled away.
+- **Keyboard and screen readers.** Each cell is one tab stop on every board, large or not (roving
+  focus): Up and Down go to the next card, Home and End to the first and last; the card reached is
+  drawn, focused and scrolled to the nearest edge (`scroll-margin-block` leaves a little room).
+  The shell's top bar stays over the top of the page, so the shell measures how far down it
+  reaches (`--shell-topbar-reach`, the bar's height and the gap below it, kept current by a
+  `ResizeObserver`) and the page's `scroll-padding-top` keeps that much clear: a card reached by
+  Up or Home, or moved up with Alt, stops whole below the bar, on a phone too (WCAG 2.4.11; the
+  `BoardInShell` stories measure it in both skins). Tab goes on to that card's pencil and Move button, then to the next cell. Every card says its
+  place and its cell's size (`aria-posinset`, `aria-setsize`), so "12 of 5,000" is read although
+  12 cards are on the page. Alt with the arrows moves a card as before; after a move the card is
+  drawn where it lands, focused and brought into view. A screen reader's browse mode reads the
+  cards drawn: the arrows in focus mode reach the rest. The browser's find sees only the cards
+  drawn; the manual says to filter or search instead.
+- **A drop draws only what changed.** A card is a memoised component (`BoardCard`) whose handlers
+  are one object for the whole board; a new read of the board keeps each card whose JSON did not
+  change as the object already drawn (`shareCards`); the cells are grouped once per read, not per
+  drawing; and only the card on the move waits with its buttons off (the others ignore presses
+  until it is done, as the keyboard and drops already did). A drop draws again the moved card and,
+  among the cards drawn, those whose place or cell size changed.
+- **Limits.** Each cell keeps its current card drawn, so a board of hundreds of small cells (lanes
+  by assignee) has at least one card per cell on the page. Very fast scrolling can show the cell's
+  background for a frame before the cards arrive; none was seen at 60 px a frame.
+
+Measured on 2026-11-03 on the Mac (headless Chromium of the Playwright desktop
+project, 1440 by 900, `e2e/board-large.spec.ts`, `TASKMOOR_LARGE_BOARD=1`; the board's real answer
+multiplied into 5,000 cards in its first column in the browser's network layer, moves answered as
+the server would, so the numbers are the page's own; three runs before, six after):
+
+| | Before (main at `4bd9c564`) | After |
+|---|---|---|
+| Cards on the page | 5,000 | 13 at the top of the board |
+| Scrolling 60 px a frame for 3 s | 41.1 to 42.1 frames a second | 50.1 to 54.7 frames a second |
+| The same with a hit test each frame (a pointer over the column) | 31.7 to 33.0 | 51.7 to 54.4, no blank frame |
+| Frame p95 while scrolling | 33.4 ms | 33.3 to 33.4 ms |
+| Drop to the card drawn in its new column | 1,305 to 1,382 ms | 106 to 124 ms |
+| ... of which after the board's new answer arrived | 504 to 529 ms | 51 to 69 ms |
+| Longest frame after the drop | 356 to 379 ms | none over 50 ms |
+
+This browser draws 61 frames a second with nothing to do. A trace of the scroll after the change
+shows the page's main thread busy for 221 ms of the 3 s (longest task 6.4 ms; moving the drawn
+cards takes 3 to 4 ms), while the headless browser's software compositor is busy throughout: the
+frames over 16.7 ms are its, not the page's, and a browser drawing with a GPU does better. The
+`FiveThousandCards` story now runs axe too, as only the cards near the screen are on the page, and
+`LongColumn` checks End, Home, the Move menu and a scroll far down in a real browser. The spec's
+speed limits (enforced only by `pnpm bench:check --e2e` with `TASKMOOR_LARGE_BOARD=1`): a mean
+frame under the pointer of 22 ms, a drop settled in 500 ms, no frame after it over 100 ms.
 
 ## Filtering by person (AGL-005 (3))
 

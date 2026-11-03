@@ -69,12 +69,14 @@ and drop beyond boards (UI-T08); the layout editor (UI-T15); UI-T21; the phone a
   until the page is read again.
 - No ADR for the pop-up's history design; it is written at the top of `routing/router.ts`.
 - `reports` still lists a board's old "Only my tickets" filter, since "Me" does not exist there.
-- A large board, measured once in headless Chromium on the development PC with motion on, every card in
-  one column (a worst case, with the API's answer multiplied): 500 cards show at once, all drawn in 1.3 s,
-  scrolling at 33 ms a frame (p95 50); 5,000 cards show their first cards in 0.7 s (05b's limit is 1 s), all
-  drawn in 5.5 s, scrolling at 67 ms a frame (p95 83), and a card's drop holds one frame of about 0.9 s.
-  Motion adds no class to every card. A column that long is not smooth; `content-visibility` on cards would
-  help but clips the card's menus, so it needs care.
+- A large board (T-193, ADR-049 "Large columns"): past 100 cards each cell draws only the cards near the
+  screen, and each cell is one tab stop whose arrows, Home and End reach every card, brought into view
+  below the sticky top bar. Measured on 2026-11-03 in headless Chromium with 5,000 cards in one column
+  (`e2e/board-large.spec.ts`, `TASKMOOR_LARGE_BOARD=1`): scrolling at 50 to 55 frames a second, a drop
+  settled in 106 to 124 ms, no frame after it over 50 ms. What is left: the browser's find sees only the
+  cards drawn (the manual says to filter or search); a board of hundreds of small cells (lanes by
+  assignee) keeps at least one card per cell on the page; very fast scrolling may show a cell's
+  background for a frame.
 - Tickets to add after the merge: an Objetivos tab listing a track's outcomes with progress.
 - Your tracks on Home shows the tracks a person belongs to since T-194 (ADR-046).
 - The board's reports page still lists "Only my tickets" on old boards.

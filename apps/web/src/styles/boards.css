@@ -148,6 +148,9 @@
   min-height: 6rem;
   margin: 0;
   padding: var(--space-2);
+  /* A long cell draws only the cards near the screen and keeps the room of the rest (T-193): the
+     cards past the last one drawn are room here, those between two drawn cards a card's margin. */
+  padding-block-end: calc(var(--space-2) + var(--cell-skip-after, 0px));
   border: 1px solid var(--glass-edge);
   border-radius: var(--radius-2);
   background: var(--glass-surface-sunken);
@@ -169,6 +172,11 @@
   box-shadow: var(--glass-highlight), var(--shadow-1);
   overflow-wrap: anywhere;
   cursor: grab;
+  /* A card the arrows reach is brought into view with a little room around it, and whole below
+     the shell's sticky top bar (AppShell measures how far it reaches). Only cards: a page-wide
+     scroll padding would also scroll the page when focus moves into the bar itself. */
+  scroll-margin-block: var(--space-4);
+  scroll-margin-top: calc(var(--shell-topbar-reach, 0px) + var(--space-4));
   transition:
     transform var(--motion-base) var(--ease-settle),
     opacity var(--motion-fast) var(--ease-soft);

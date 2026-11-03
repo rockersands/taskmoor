@@ -2,10 +2,11 @@ import {
   type CSSProperties,
   type DragEvent,
   type KeyboardEvent,
-  startTransition,
+  type MouseEvent,
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -15,21 +16,21 @@ import { type Lock, useLockText } from '../locks/useLockText';
 import { rememberBoard } from '../routing/cameFrom';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
-import { BoardsIcon, ClockIcon, MoreIcon, NobodyIcon, PencilIcon } from '../shell/icons';
+import { BoardsIcon } from '../shell/icons';
 import { playMotion } from '../shell/motion';
 import { PageHeader } from '../shell/PageHeader';
 import { Popover } from '../shell/Popover';
-import { PriorityIcon, TypeIcon } from '../shell/TicketIcons';
 import { CompleteSprintDialog, type SprintCounts } from '../sprints/CompleteSprint';
 import { type Sprint, type SprintClient, sprintClient } from '../sprints/client';
 import { useSyncEngine } from '../sync/SyncProvider';
-import type { SubticketProgress } from '../tickets/tools/client';
-import { SubticketProgressMini, useSubticketProgress } from '../tickets/tools/Progress';
+import { useSubticketProgress } from '../tickets/tools/Progress';
 import type { Transition as TicketTransition } from '../tickets/view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../tickets/view/TransitionForm';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { useTrackSections } from '../tracks/trackSections';
 import { refusalMessage } from '../workflow/refusal';
+import { BoardCardItem, type CardActions } from './BoardCard';
+import { BoardCell, createWindowing, WINDOW_FROM } from './BoardCell';
 import { BoardPeopleFilter, peopleFromRoute, routeWithPeople } from './BoardPeopleFilter';
 import { CardTitleEditor } from './CardTitleEditor';
 import {
@@ -67,48 +68,46 @@ interface Asking {
   transition: TicketTransition;
 }
 
-/** A person, priority or other named value on a card. */
-const nameOf = (value: unknown): string | null =>
-  value && typeof value === 'object' && 'name' in value
-    ? String((value as { name: unknown }).name)
-    : null;
-
-/** How many cards of a cell are drawn before the rest: more than a screen holds. */
-const FIRST_CELL = 50;
-
-/** What a card says in words, beyond its icons: only the fields someone added. */
-function cardMeta(t: Translate, card: BoardCard): string[] {
-  const out: string[] = [];
-  if (typeof card.fields.dueDate === 'string') {
-    out.push(t('boards.card.due', { date: card.fields.dueDate }));
+const cardText = new WeakMap<BoardCard, string>();
+const textOf = (card: BoardCard): string => {
+  let text = cardText.get(card);
+  if (text === undefined) {
+    text = JSON.stringify(card);
+    cardText.set(card, text);
   }
-  if (Array.isArray(card.fields.labels) && card.fields.labels.length > 0) {
-    out.push(card.fields.labels.join(', '));
-  }
-  return out;
+  return text;
+};
+
+/**
+ * A new read of the board with each card that did not change kept as the object already drawn,
+ * so a drop or a reload draws again only the cards that changed (T-193).
+ */
+export function shareCards(previous: readonly BoardCard[] | undefined, next: BoardCard[]) {
+  if (!previous || previous.length === 0) return next;
+  const before = new Map(previous.map((card) => [card.id, card]));
+  return next.map((card) => {
+    const old = before.get(card.id);
+    return old && textOf(old) === textOf(card) ? old : card;
+  });
 }
 
-/** Up to two letters for a person's small round mark on a card. */
-const initialsOf = (name: string): string =>
-  name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word.slice(0, 1).toLocaleUpperCase())
-    .join('');
+const cellKey = (columnId: string, laneId: string) => `${columnId}\u0000${laneId}`;
+const NO_CARDS: BoardCard[] = [];
 
-/** The assignee as a small mark, with the name as its accessible name and tooltip (AGL-006). */
-function CardPerson({ name, nobody }: { name: string | null; nobody: string }) {
-  return (
-    <span
-      className={name ? 'board-card-person' : 'board-card-person is-nobody'}
-      role="img"
-      aria-label={name ?? nobody}
-      title={name ?? nobody}
-    >
-      {name ? initialsOf(name) : <NobodyIcon width={20} height={20} />}
-    </span>
-  );
+/** The cards by cell, each card's place in it and the lanes' counts, in one pass (M1-046). */
+function groupCards(cards: readonly BoardCard[]) {
+  const cells = new Map<string, BoardCard[]>();
+  const placeOf = new Map<number, number>();
+  const laneCounts = new Map<string, number>();
+  for (const card of cards) {
+    const key = cellKey(card.columnId, card.laneId);
+    const list = cells.get(key);
+    placeOf.set(card.id, list?.length ?? 0);
+    if (list) list.push(card);
+    else cells.set(key, [card]);
+    laneCounts.set(card.laneId, (laneCounts.get(card.laneId) ?? 0) + 1);
+  }
+  return { cells, placeOf, laneCounts };
 }
 
 /** The column's count, limits and breach, as its header reads them (AGL-003). */
@@ -207,6 +206,9 @@ export function boardFilterName(t: Translate, filter: { id: string; name: string
  * Board filters and the person filter (AGL-005 (3), in the address as `?people=`) narrow the
  * cards; counts stay whole. On a Scrum board, those who manage its sprints complete an active
  * one from here (T-106; AGL-010), after a pop-up that counts its done and open tickets.
+ * Each cell is one tab stop whose arrows go from card to card; a board of more than
+ * `WINDOW_FROM` cards draws only the cards near the screen, and a drop draws again only the
+ * cards that changed (T-193, `BoardCell`, `BoardCard`).
  */
 export function BoardPage({
   boardId,
@@ -253,15 +255,12 @@ export function BoardPage({
     laneId: string;
     before: number | null;
   } | null>(null);
-  // A cell's first cards are drawn at once and the rest in a transition that yields to input,
-  // so a board of thousands is usable at once (05b: 5,000 cards under 1 s to interactive).
-  const [complete, setComplete] = useState(false);
-  useEffect(() => {
-    if (!data || complete) return;
-    const frame = requestAnimationFrame(() => startTransition(() => setComplete(true)));
-    return () => cancelAnimationFrame(frame);
-  }, [data, complete]);
+  // A large board draws only the cards near the screen (T-193): every cell reads where it is on
+  // a scroll through one listener.
+  const [windowing] = useState(createWindowing);
   const focusAfter = useRef<number | null>(null);
+  /** The card a move is about: drawn wherever it lands, so the focus can follow it there. */
+  const [landing, setLanding] = useState<number | null>(null);
   const links = useRef(new Map<number, HTMLAnchorElement>());
   const pencils = useRef(new Map<number, HTMLButtonElement>());
   /** The pencil that gets focus back once its editor has closed. */
@@ -292,7 +291,7 @@ export function BoardPage({
         );
         if (mine !== generation.current) return;
         setBoard(b);
-        setData(d);
+        setData((current) => ({ ...d, cards: shareCards(current?.cards, d.cards) }));
         setState('loaded');
         if (sayShown.current) {
           sayShown.current = false;
@@ -346,7 +345,9 @@ export function BoardPage({
     const kind = boardRef.current?.kind;
     client.data(boardId, filters, kind === 'scrum' ? 'active' : undefined, people).then(
       (d) => {
-        if (mine === generation.current) setData(d);
+        if (mine === generation.current) {
+          setData((current) => ({ ...d, cards: shareCards(current?.cards, d.cards) }));
+        }
       },
       () => {},
     );
@@ -372,11 +373,14 @@ export function BoardPage({
   useEffect(() => {
     if (focusAfter.current === null || !data) return;
     const moved = links.current.get(focusAfter.current);
-    moved?.focus();
-    // Only the card that has just dropped animates: a board can hold thousands.
+    // Focused where it landed, which may be far down a long column: brought into view.
+    moved?.focus({ preventScroll: true });
     const card = moved?.closest('li');
+    card?.scrollIntoView?.({ block: 'nearest' });
+    // Only the card that has just dropped animates: a board can hold thousands.
     if (card) playMotion(card, 'motion-drop');
     focusAfter.current = null;
+    setLanding(null);
   }, [data]);
 
   useEffect(() => {
@@ -388,6 +392,28 @@ export function BoardPage({
     pencils.current.get(pencilAfter.current)?.focus();
     pencilAfter.current = null;
   }, [editing]);
+
+  // The cards by cell, once per read of the board, not once per drawing (a drag draws often).
+  const layout = useMemo(() => groupCards(data?.cards ?? NO_CARDS), [data?.cards]);
+
+  // Every card gets this same object, so a card is drawn again only when its own props change;
+  // its methods call the handlers of the latest drawing.
+  const handlers = useRef<CardActions | null>(null);
+  const [actions] = useState<CardActions>(() => {
+    const latest = () => handlers.current as CardActions;
+    return {
+      press: () => latest().press(),
+      pressButton: () => latest().pressButton(),
+      dragStart: (event, card) => latest().dragStart(event, card),
+      dragEnd: () => latest().dragEnd(),
+      keyDown: (event, card) => latest().keyDown(event, card),
+      open: (event, card) => latest().open(event, card),
+      editTitle: (card) => latest().editTitle(card),
+      toggleMenu: (card) => latest().toggleMenu(card),
+      linkRef: (id, link) => latest().linkRef(id, link),
+      pencilRef: (id, pencil) => latest().pencilRef(id, pencil),
+    };
+  });
 
   if (state === 'loading' && !data) {
     return (
@@ -408,21 +434,10 @@ export function BoardPage({
   }
 
   const columns = data.columns;
-  // The cards by cell, their place in it and the lanes' counts, in one pass: a board of
-  // thousands of cards renders without searching the list per card (M1-046).
-  const cells = new Map<string, BoardCard[]>();
-  const placeOf = new Map<number, number>();
-  const laneCounts = new Map<string, number>();
-  const cellKey = (columnId: string, laneId: string) => `${columnId}\u0000${laneId}`;
-  for (const card of data.cards) {
-    const key = cellKey(card.columnId, card.laneId);
-    const list = cells.get(key);
-    placeOf.set(card.id, list?.length ?? 0);
-    if (list) list.push(card);
-    else cells.set(key, [card]);
-    laneCounts.set(card.laneId, (laneCounts.get(card.laneId) ?? 0) + 1);
-  }
-  const cardsIn = (columnId: string, laneId: string) => cells.get(cellKey(columnId, laneId)) ?? [];
+  // A board of thousands of cards renders without searching the list per card (M1-046).
+  const { cells, placeOf, laneCounts } = layout;
+  const cardsIn = (columnId: string, laneId: string) =>
+    cells.get(cellKey(columnId, laneId)) ?? NO_CARDS;
   const columnById = (id: string) => columns.find((c) => c.id === id) as Column;
 
   /** The transition whose fields a refused move is waiting for, when a form can ask for them. */
@@ -456,6 +471,7 @@ export function BoardPage({
     setBusy(true);
     setProblem(null);
     setMenuFor(null);
+    setLanding(card.id);
     try {
       const outcome = await client.move(boardId, request);
       const column = columnById(request.columnId);
@@ -476,6 +492,7 @@ export function BoardPage({
               }),
         );
         links.current.get(card.id)?.focus();
+        setLanding(null);
         return;
       }
       if (outcome.kind === 'refused') {
@@ -488,6 +505,7 @@ export function BoardPage({
         }
         setProblem(refusedText(t, card.key, outcome));
         links.current.get(card.id)?.focus();
+        setLanding(null);
         return;
       }
       setAnnouncement(done);
@@ -495,6 +513,7 @@ export function BoardPage({
       await load(filters, people);
     } catch {
       setProblem(t('boards.refusedOther', { key: card.key }));
+      setLanding(null);
     } finally {
       setBusy(false);
     }
@@ -689,194 +708,144 @@ export function BoardPage({
     </button>
   ));
 
-  const renderCard = (card: BoardCard) => {
+  handlers.current = {
+    press: () => {
+      pressedButton.current = false;
+    },
+    pressButton: () => {
+      pressedButton.current = true;
+    },
+    dragStart: (event: DragEvent, card: BoardCard) => {
+      // No drag while a move runs, nor from a press that began on a button.
+      if (pressedButton.current || busy) {
+        pressedButton.current = false;
+        event.preventDefault();
+        return;
+      }
+      event.dataTransfer.setData('text/plain', card.key);
+      event.dataTransfer.effectAllowed = 'move';
+      setDragging(card.id);
+      setMenuFor(null);
+    },
+    dragEnd: () => {
+      dragEndedAt.current = performance.now();
+      setDragging(null);
+      setDropAt(null);
+    },
+    keyDown: onCardKey,
+    open: (event: MouseEvent, card: BoardCard) => {
+      if (performance.now() - dragEndedAt.current < 300) {
+        event.preventDefault();
+        return;
+      }
+      rememberBoard(card.key, {
+        id: boardId,
+        name: board.name,
+        ...(people.length > 0 ? { people: people.join(',') } : {}),
+      });
+    },
+    editTitle: (card: BoardCard) => {
+      if (busy) return;
+      setMenuFor(null);
+      setEditing({ id: card.id, version: card.version });
+    },
+    toggleMenu: (card: BoardCard) => {
+      if (!busy) setMenuFor((open) => (open === card.id ? null : card.id));
+    },
+    linkRef: (id: number, link: HTMLAnchorElement | null) => {
+      if (link) links.current.set(id, link);
+      else links.current.delete(id);
+    },
+    pencilRef: (id: number, pencil: HTMLButtonElement | null) => {
+      if (pencil) pencils.current.set(id, pencil);
+      else pencils.current.delete(id);
+    },
+  };
+
+  /** A card's Move menu: the other columns, then up and down in its own. */
+  const moveMenu = (card: BoardCard) => {
     const column = columnById(card.columnId);
     const at = columns.indexOf(column);
     const cell = cardsIn(card.columnId, card.laneId);
     const position = placeOf.get(card.id) ?? 0;
-    const menuOpen = menuFor === card.id;
-    const titleOpen = editing?.id === card.id;
-    const priority = card.fields.priority as { name: string; level?: number } | null | undefined;
     return (
-      <li
-        key={card.id}
-        className={`board-card${dragging === card.id ? ' is-dragging' : ''}${dropAt?.before === card.id ? ' is-drop-before' : ''}`}
-        data-card-id={card.id}
-        draggable={!busy && !titleOpen}
-        onPointerDownCapture={() => {
-          pressedButton.current = false;
-        }}
-        onDragStart={(event) => {
-          if (pressedButton.current) {
-            pressedButton.current = false;
-            event.preventDefault();
-            return;
-          }
-          event.dataTransfer.setData('text/plain', card.key);
-          event.dataTransfer.effectAllowed = 'move';
-          setDragging(card.id);
-          setMenuFor(null);
-        }}
-        onDragEnd={() => {
-          dragEndedAt.current = performance.now();
-          setDragging(null);
-          setDropAt(null);
-        }}
-        style={card.colour ? ({ '--card-colour': card.colour } as CSSProperties) : undefined}
-        onKeyDown={(event) => onCardKey(event, card)}
-      >
-        {titleOpen ? (
+      <ul className="board-move-menu">
+        {columns.map((target, i) =>
+          target.id === card.columnId ? null : (
+            <li key={target.id}>
+              <button
+                type="button"
+                onClick={() =>
+                  void move(
+                    card,
+                    { ticket: card.id, columnId: target.id },
+                    t('boards.moved', { key: card.key, column: target.name }),
+                  )
+                }
+              >
+                {i < at
+                  ? t('boards.card.moveBack', { column: target.name })
+                  : t('boards.card.moveTo', { column: target.name })}
+              </button>
+            </li>
+          ),
+        )}
+        {position > 0 && (
+          <li>
+            <button type="button" onClick={() => inColumn(card, -1)}>
+              {t('boards.card.moveUp', { column: column.name })}
+            </button>
+          </li>
+        )}
+        {position < cell.length - 1 && (
+          <li>
+            <button type="button" onClick={() => inColumn(card, 1)}>
+              {t('boards.card.moveDown', { column: column.name })}
+            </button>
+          </li>
+        )}
+      </ul>
+    );
+  };
+
+  const renderCard = (
+    card: BoardCard,
+    place: number,
+    of: number,
+    slot: { tabbable: boolean; skipBefore: number },
+  ) => (
+    <BoardCardItem
+      key={card.id}
+      card={card}
+      place={place}
+      of={of}
+      hintId={hintId}
+      tabbable={slot.tabbable}
+      skipBefore={slot.skipBefore}
+      dragging={dragging === card.id}
+      dropBefore={dropAt?.before === card.id}
+      // Only the card on the move says so: the others ignore presses until it is done, and a
+      // move draws again none of them (T-193).
+      busy={busy && landing === card.id}
+      menuOpen={menuFor === card.id}
+      editor={
+        editing?.id === card.id ? (
           <CardTitleEditor
             ticketKey={card.key}
             title={card.summary}
             onSave={(summary) => saveTitle(card, summary)}
             onCancel={() => closeEditor(card.id)}
           />
-        ) : (
-          <a
-            className="board-card-link"
-            href={routeHref(`#/tickets/${encodeURIComponent(card.key)}`)}
-            onClick={(event) => {
-              if (performance.now() - dragEndedAt.current < 300) {
-                event.preventDefault();
-                return;
-              }
-              rememberBoard(card.key, {
-                id: boardId,
-                name: board.name,
-                ...(people.length > 0 ? { people: people.join(',') } : {}),
-              });
-            }}
-            aria-describedby={hintId}
-            title={`${card.key} ${card.summary}`}
-            ref={(el) => {
-              if (el) links.current.set(card.id, el);
-              else links.current.delete(card.id);
-            }}
-          >
-            <span className="board-card-key">{card.key}</span>{' '}
-            <span className="board-card-summary">{card.summary}</span>
-          </a>
-        )}
-        <p className="board-card-meta">
-          <span className="ticket-icons">
-            <TypeIcon name={card.ticketType.name} icon={card.ticketType.icon} />
-            {priority && <PriorityIcon name={priority.name} level={priority.level} />}
-          </span>
-          {typeof card.fields.points === 'number' && (
-            <span
-              className="board-card-points"
-              role="img"
-              aria-label={t('boards.card.points', { points: card.fields.points })}
-              title={t('boards.card.points', { points: card.fields.points })}
-            >
-              {card.fields.points}
-            </span>
-          )}
-          {cardMeta(t, card).map((part, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: parts are fixed in order per card
-            <span key={i}>{part}</span>
-          ))}
-          {/* Saying a card just arrived tells nothing on a column of them: only waiting shows. */}
-          {card.daysInColumn !== null && card.daysInColumn > 0 && (
-            <span
-              className="board-card-age"
-              role="img"
-              aria-label={t('boards.card.days', { days: card.daysInColumn })}
-              title={t('boards.card.days', { days: card.daysInColumn })}
-            >
-              <ClockIcon width={14} height={14} />
-              {card.daysInColumn}
-            </span>
-          )}
-          {progress[card.id] && (
-            <SubticketProgressMini progress={progress[card.id] as SubticketProgress} />
-          )}
-          {'assignee' in card.fields && (
-            <CardPerson name={nameOf(card.fields.assignee)} nobody={t('boards.card.unassigned')} />
-          )}
-        </p>
-        {!titleOpen && (
-          <span className="board-card-actions">
-            {card.mayEdit && (
-              <button
-                type="button"
-                className="board-card-move"
-                aria-label={t('boards.card.editTitle', { key: card.key })}
-                title={t('boards.card.editTitle', { key: card.key })}
-                disabled={busy}
-                ref={(el) => {
-                  if (el) pencils.current.set(card.id, el);
-                  else pencils.current.delete(card.id);
-                }}
-                onPointerDown={() => {
-                  pressedButton.current = true;
-                }}
-                onClick={() => {
-                  setMenuFor(null);
-                  setEditing({ id: card.id, version: card.version });
-                }}
-              >
-                <PencilIcon width={18} height={18} />
-              </button>
-            )}
-            <button
-              type="button"
-              className="board-card-move"
-              aria-expanded={menuOpen}
-              aria-label={t('boards.card.move', { key: card.key })}
-              title={t('boards.card.move', { key: card.key })}
-              disabled={busy}
-              onPointerDown={() => {
-                pressedButton.current = true;
-              }}
-              onClick={() => setMenuFor(menuOpen ? null : card.id)}
-            >
-              <MoreIcon width={18} height={18} />
-            </button>
-          </span>
-        )}
-        {menuOpen && (
-          <ul className="board-move-menu">
-            {columns.map((target, i) =>
-              target.id === card.columnId ? null : (
-                <li key={target.id}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void move(
-                        card,
-                        { ticket: card.id, columnId: target.id },
-                        t('boards.moved', { key: card.key, column: target.name }),
-                      )
-                    }
-                  >
-                    {i < at
-                      ? t('boards.card.moveBack', { column: target.name })
-                      : t('boards.card.moveTo', { column: target.name })}
-                  </button>
-                </li>
-              ),
-            )}
-            {position > 0 && (
-              <li>
-                <button type="button" onClick={() => inColumn(card, -1)}>
-                  {t('boards.card.moveUp', { column: column.name })}
-                </button>
-              </li>
-            )}
-            {position < cell.length - 1 && (
-              <li>
-                <button type="button" onClick={() => inColumn(card, 1)}>
-                  {t('boards.card.moveDown', { column: column.name })}
-                </button>
-              </li>
-            )}
-          </ul>
-        )}
-      </li>
-    );
-  };
+        ) : null
+      }
+      menu={menuFor === card.id ? moveMenu(card) : null}
+      progress={progress[card.id]}
+      actions={actions}
+    />
+  );
+  // On a large board each cell draws the cards near the screen and these, wherever they are.
+  const windowed = data.cards.length > WINDOW_FROM;
+  const keep = [dragging, menuFor, editing?.id, landing, choice?.card.id, asking?.card.id];
 
   const grid = { '--board-columns': columns.length } as CSSProperties;
   return (
@@ -1040,28 +1009,33 @@ export function BoardPage({
                   </h3>
                 )}
                 <div className="board-row">
-                  {columns.map((column) => (
-                    <ul
-                      key={column.id}
-                      className={
-                        dropAt?.columnId === column.id && dropAt.laneId === lane.id
-                          ? 'board-cell is-drop-target'
-                          : 'board-cell'
-                      }
-                      onDragOver={(event) => overCell(event, column.id, lane.id)}
-                      onDrop={(event) => drop(event, column, lane.id)}
-                      aria-label={
-                        showLanes
-                          ? t('boards.cell', { column: column.name, lane: lane.name })
-                          : column.name
-                      }
-                    >
-                      {(complete
-                        ? cardsIn(column.id, lane.id)
-                        : cardsIn(column.id, lane.id).slice(0, FIRST_CELL)
-                      ).map(renderCard)}
-                    </ul>
-                  ))}
+                  {columns.map((column) => {
+                    const cell = cardsIn(column.id, lane.id);
+                    return (
+                      <BoardCell
+                        key={column.id}
+                        cards={cell}
+                        className={
+                          dropAt?.columnId === column.id && dropAt.laneId === lane.id
+                            ? 'board-cell is-drop-target'
+                            : 'board-cell'
+                        }
+                        windowed={windowed}
+                        windowing={windowing}
+                        keep={keep}
+                        onDragOver={(event) => overCell(event, column.id, lane.id)}
+                        onDrop={(event) => drop(event, column, lane.id)}
+                        label={
+                          showLanes
+                            ? t('boards.cell', { column: column.name, lane: lane.name })
+                            : column.name
+                        }
+                        renderCard={(card, place, slot) =>
+                          renderCard(card, place, cell.length, slot)
+                        }
+                      />
+                    );
+                  })}
                 </div>
               </section>
             );
