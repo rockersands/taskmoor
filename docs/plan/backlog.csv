@@ -1,5 +1,5 @@
 Task ID,Milestone,Epic,Task,Depends on,Done when,Size,Modules
-M0-001,M0,Repo and governance,"Init git repo (author set in local git config), push to github.com/Rockersands/tracksmith; SECURITY.md",None,main pushed; SECURITY.md present; LICENSE added once the licence is confirmed (DCO check and branch protection: M0-035),S,OPS
+M0-001,M0,Repo and governance,"Init git repo (author set in local git config), push to github.com/Rockersands/taskmoor; SECURITY.md",None,main pushed; SECURITY.md present; LICENSE added once the licence is confirmed (DCO check and branch protection: M0-035),S,OPS
 M0-002,M0,Repo and governance,"Write CLAUDE.md (conventions, commands, task lifecycle, module map), HANDOFF.md and STATUS.md templates",M0-001,"tools/check-governance passes: required sections present in CLAUDE.md, HANDOFF.md and STATUS.md",S,OPS
 M0-003,M0,Repo and governance,"Add backlog, decisions and risks CSVs plus tools/next-task that returns the next unblocked task",M0-002,pnpm next-task prints the first unblocked ID; unit tests for dependency and range parsing green,S,OPS
 M0-004,M0,Repo and governance,"ADR template (MADR) and ADR-001 to ADR-003: ADR process, licence and DCO, clean-room rule",M0-002,docs/adr holds 3 Accepted ADRs; markdown lint and link check pass,S,NFR

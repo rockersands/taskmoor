@@ -14,8 +14,8 @@ code; the user decides product questions. Start every session by reading `HANDOF
 - Every commit carries `Signed-off-by: Rockersands <42122514+rockersands@users.noreply.github.com>` (DCO, ADR-002). The
   hook in `.githooks/` adds it; enable it once per clone with `git config core.hooksPath .githooks`.
   The pre-push hook and CI run `pnpm dco`, and unsigned commits fail.
-- Remote: `https://github.com/Rockersands/tracksmith` (private; it keeps the codename until the
-  user renames the repository; free GitHub plan, so there is no branch protection).
+- Remote: `https://github.com/Rockersands/taskmoor` (private, the user's decision of 2026-11-03;
+  free GitHub plan, so there is no branch protection).
 - **The gate is local:** run the whole `pnpm verify --e2e` before every push to `main`. GitHub
   Actions is not used until M1 is finished (the user's decision, 2026-10-30): every workflow
   runs only by hand, and nobody runs them. Never dispatch a workflow or treat a red or missing
@@ -147,5 +147,5 @@ on another disk (for example while a benchmark saturates this one).
 
 ## Open decisions owned by the user
 
-- Release publishing (images on ghcr.io, the release signing key) and the GitHub repository
-  rename: see `docs/plan/decisions.csv` and HANDOFF.
+- Release publishing (images on ghcr.io, the release signing key): see
+  `docs/plan/decisions.csv` and HANDOFF.

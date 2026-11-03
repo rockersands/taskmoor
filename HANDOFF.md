@@ -36,9 +36,9 @@ section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 | # | Workstream | Branch | Task file | Numbers | State on 2026-11-03 |
 |---|---|---|---|---|---|
 | 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` at `ee70282`; the branch is a few doc commits ahead. Fast-forward `main` after your first gate. |
-| 2 | **Ticket templates** (for 1.0) | `claude/ticket-templates` | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085, CORE-029 and CORE-030 | Pushed at `e9345b0` (WIP): migration, routes and model written; tsc, Biome and its 13 tests pass. Not yet run: contract, scopes, audit, db suites. Still to do: the web picker and management page, spec rows, ADR-113, manual, gate. |
-| 3 | **UI overhaul and tutorial** | `claude/ui-overhaul` | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, migration 0084 | Pushed at `f36f054` (WIP). The user answered the design questions on 2026-11-03: the direction yes but closer to Liquid Glass, keep "Manage", the Tracks directory and Settings hub yes, the layout editor and board columns in scope. Lint, types, 782 web tests and 190 stories pass; the full gate never finished (run it first). Not started: the tutorial's server storage (UI-T10) and the layout editor (UI-T15). First thing: show the user the Liquid Glass pass in their Chrome. |
-| 4 | **Flutter mobile app** (after M1) | `claude/flutter-mobile-app` | `apps/mobile/TASKS.md` (its own Handoff section) | ADR-112 | Pushed at `4901a74`, nothing WIP; a first-party OAuth client `taskmoor-mobile` in `apps/server/src/oauth` (user-approved); merge after M1. |
+| 2 | **Ticket templates** (for 1.0) | `claude/ticket-templates` | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085, CORE-029 and CORE-030 | Finished on the branch at `f6b8a5a`: targeted tests pass, the full gate has not run on it. Merge it after the fuzz stages. |
+| 3 | **UI overhaul and tutorial** | `claude/ui-overhaul` | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, migration 0084 | The user chose the Soft canvas and the generated illustration, and on 2026-11-03 asked for a pass that looks more like real glass before anything else is built. Nothing large is built until the user approves that pass. |
+| 4 | **Flutter mobile app** (stopped) | `claude/flutter-mobile-app` | `apps/mobile/TASKS.md` (its own Handoff section) | ADR-112 | Stopped by the user on 2026-11-03, pushed at `8540a0a`. Do not resume it unless the user asks; merge after M1. |
 
 Check what the cloud sessions pushed: `git fetch origin claude/ticket-templates claude/ui-overhaul
 claude/flutter-mobile-app`. A branch that is missing was never pushed: start that workstream
@@ -81,14 +81,21 @@ from its brief.
    - `pnpm gate M1` all green; the user's acceptance in `decisions.csv`.
    - Images on ghcr.io only with a package-write token the user gives as an environment secret.
 7. **Waiting on the user, not on you:**
-   - an AI key, for M1-073, M1-074 and M1-079's thresholds and the live injection run:
-     `TASKMOOR_AI_EVAL_KEY` with `TASKMOOR_AI_EVAL_PROVIDER=anthropic|openai|gemini`, then
+   - an AI key (not yet, the user said on 2026-11-03), for M1-073, M1-074 and M1-079's thresholds
+     and the live injection run: `TASKMOOR_AI_EVAL_KEY` with
+     `TASKMOOR_AI_EVAL_PROVIDER=anthropic|openai|gemini`, then
      `corepack pnpm eval all --candidate apps/server/src/ai/evals/candidates/live.ts`;
-   - the Spanish review (`docs/review-spanish.md`, `corepack pnpm demo`);
-   - public or private repository;
-   - the repository rename to `taskmoor` on github.com (then update the remote, `CLAUDE.md` and
-     the docs that name `Rockersands/tracksmith`);
-   - the ghcr.io token.
+   - the Spanish review, once every M1 task is finished (`docs/review-spanish.md`, `corepack pnpm demo`);
+   - the private address for security reports in `SECURITY.md`;
+   - publishing images: whether to publish at all while the repository is private. If so, the user
+     runs `gh auth refresh -h github.com -s write:packages`, then
+     `gh auth token | docker login ghcr.io -u rockersands --password-stdin`, so no token is stored;
+   - permanently deleting `_taskmoor-old` on `C:`, `E:` and `G:` (old copies, moved there on
+     2026-11-03). Claude does not delete permanently: send them to the Recycle Bin once the gate is
+     green, checking first that they fit, and the user empties it.
+
+   The repository is private and renamed to `Rockersands/taskmoor`. The user allows using the
+   release signing key from Drive at step 6.
 
 ### Brief for workstream 2: ticket templates
 

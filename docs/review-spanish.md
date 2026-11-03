@@ -11,8 +11,8 @@ You need Git and Node.js 22 (nodejs.org). No Docker, no database to install: the
 own PostgreSQL.
 
 ```
-git clone https://github.com/Rockersands/tracksmith
-cd tracksmith
+git clone https://github.com/Rockersands/taskmoor
+cd taskmoor
 corepack enable
 corepack pnpm install
 corepack pnpm demo

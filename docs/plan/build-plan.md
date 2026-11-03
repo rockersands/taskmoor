@@ -66,7 +66,7 @@ Published sizing (estimate until M1 load tests replace it): up to 50 users on 2 
 
 ### Where things live
 
-- **Code:** a local git repo at `E:\programing\Projects\Web\Tracksmith`, pushed to `github.com/Rockersands/tracksmith` (personal account). Commits are authored as `Rockersands <42122514+rockersands@users.noreply.github.com>` through the repo's local git config. The user creates the repo or authorises access; GitHub CLI is not installed yet. Packages are named `@taskmoor/*`.
+- **Code:** a local git repo at `E:\programing\Projects\Web\Tracksmith`, pushed to `github.com/Rockersands/taskmoor` (personal account). Commits are authored as `Rockersands <42122514+rockersands@users.noreply.github.com>` through the repo's local git config. The user creates the repo or authorises access; GitHub CLI is not installed yet. Packages are named `@taskmoor/*`.
 - **Docs for the user, weekly reports and milestone release packages:** the user's Google Drive folder, written through the Drive connector or a folder synced by Google Drive for desktop. Engineering docs stay in the repo.
 - **Local environment:** the user's machine has Node 22 and git but no Docker, so local tests use an embedded Postgres (PGlite or embedded-postgres). Container builds and tests run on GitHub runners and the benchmark host. Docker Desktop or a Linux VM/VPS is needed before the M1 install and cross-origin gates.
 
@@ -255,7 +255,7 @@ Contracts and trademarks, not API copyright, set the perimeter. Claude follows t
 
 | Item | Why | Needed by |
 |---|---|---|
-| Repo `github.com/Rockersands/tracksmith` created, or access authorised (install GitHub CLI and log in, or a token) | Push code, run CI | M0 |
+| Repo `github.com/Rockersands/taskmoor` created, or access authorised (install GitHub CLI and log in, or a token) | Push code, run CI | M0 |
 | Google Drive folder with connector access, or a synced local folder | Reports, docs, release packages | M0 |
 | Benchmark runner (16+ vCPU, 64 GB RAM, 1 TB NVMe) and cloud VM access | 10M-ticket benchmarks, install matrix | M0 |
 | Budget for Claude usage and CI; lane count and scheduled hours | Sets the pace | M0 |
@@ -308,7 +308,7 @@ The full register is risks.csv (22 rows). The most serious:
 
 ## 13. First steps (M0, in order)
 
-1. M0-001 Init the Taskmoor repo, push to `github.com/Rockersands/tracksmith`, DCO check (CI and hooks; no branch protection on the free plan).
+1. M0-001 Init the Taskmoor repo, push to `github.com/Rockersands/taskmoor`, DCO check (CI and hooks; no branch protection on the free plan).
 2. M0-002 Write CLAUDE.md, HANDOFF.md and STATUS.md.
 3. M0-003 Add the CSVs and `tools/next-task`.
 4. M0-004 ADR process plus ADR-001 to 003.
