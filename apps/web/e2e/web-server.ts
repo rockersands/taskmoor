@@ -26,7 +26,7 @@ import {
   registerImportJobs,
 } from '@taskmoor/server';
 import { defaultOptions, generateDcBackup } from '@taskmoor/server/testing';
-import { createDatabase } from '@taskmoor/testkit/pg';
+import { cleanupLeftovers, createDatabase } from '@taskmoor/testkit/pg';
 import { startEmbeddedPostgres } from '@taskmoor/testkit/server';
 import { buildVersion, type RoutingMode } from '@taskmoor/webconfig';
 import { anyLoopback } from './loopback';
@@ -49,6 +49,8 @@ const external = process.env.TASKMOOR_TEST_DATABASE_URL;
 const server = external
   ? { adminUrl: external, stop: async () => {} }
   : await startEmbeddedPostgres({ name: 'e2e-web' });
+// This process is the only user of its cluster: what an earlier run left goes first.
+if (!external) await cleanupLeftovers(server.adminUrl);
 
 /** One instance: migrated, set up through the API, then listening with the frontend. */
 async function instance(

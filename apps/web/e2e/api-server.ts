@@ -44,7 +44,7 @@ import {
 import { FakeIdp, FakeLdap, FakeProviderServer, FakeSamlIdp } from '@taskmoor/server/testing';
 import { LocalStore, S3Store } from '@taskmoor/storage';
 import { FakeS3 } from '@taskmoor/storage/testing';
-import { createDatabase } from '@taskmoor/testkit/pg';
+import { cleanupLeftovers, createDatabase } from '@taskmoor/testkit/pg';
 import { startEmbeddedPostgres } from '@taskmoor/testkit/server';
 
 export const E2E_API_PORT = 8787;
@@ -105,6 +105,9 @@ const external = process.env.TASKMOOR_TEST_DATABASE_URL;
 const server = external
   ? { adminUrl: external, stop: async () => {} }
   : await startEmbeddedPostgres({ name: 'e2e' });
+// This process is the only user of its cluster: what an earlier run left (a killed server never
+// drops its databases) goes first, or the cluster grows with every gate.
+if (!external) await cleanupLeftovers(server.adminUrl);
 const database = await createDatabase(server.adminUrl);
 const db = createDb({ connectionString: database.url, maxConnections: 5 });
 await migrateToLatest(db);
