@@ -3,7 +3,7 @@ import { checkPassword, describePasswordProblem, type PasswordHasher } from '@ta
 import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
-import { requireSiteAdmin, revokeUserSessions } from '../auth';
+import { requireGlobal, requireSiteAdmin, revokeUserSessions } from '../auth';
 import {
   activeAdminCount,
   canonicalTimeZone,
@@ -28,6 +28,11 @@ const listQuery = z.object({
   status: z.enum(['active', 'deactivated', 'all']).default('active'),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
+});
+
+const lookupQuery = z.object({
+  q: z.string().trim().min(1).max(200),
+  limit: z.coerce.number().int().min(1).max(50).default(8),
 });
 
 const createBody = z
@@ -100,6 +105,33 @@ export function registerUserRoutes(
       base.select((eb) => eb.fn.countAll<string>().as('n')).executeTakeFirstOrThrow(),
     ]);
     return { users: rows.map(toUserView), total: Number(total.n) };
+  });
+
+  // Finding someone to give a track's role to (ADR-114): a name and an id, nothing else, for those
+  // who set tracks up. The list above, with addresses and account details, stays with site
+  // administrators.
+  app.get('/api/v1/people/lookup', async (request, reply) => {
+    if (!(await requireGlobal(request, reply, 'site_admin', 'configuration_admin'))) return reply;
+    const parsed = lookupQuery.safeParse(request.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
+    const text = parsed.data.q.toLowerCase().replace(/[\%_]/g, (c) => `\${c}`);
+    const people = await db
+      .selectFrom('app_user')
+      .select(['id', 'name'])
+      .where('workspace_id', '=', request.workspaceId)
+      .where('deactivated_at', 'is', null)
+      .where('kind', '=', 'person')
+      .where((eb) =>
+        eb.or([
+          sql<boolean>`lower(name) LIKE ${`%${text}%`}`,
+          sql<boolean>`lower(email) LIKE ${`${text}%`}`,
+        ]),
+      )
+      .orderBy(sql`lower(name)`)
+      .orderBy('id')
+      .limit(parsed.data.limit)
+      .execute();
+    return { people };
   });
 
   app.post('/api/v1/users', async (request, reply) => {

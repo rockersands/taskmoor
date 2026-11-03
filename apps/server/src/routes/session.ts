@@ -56,7 +56,12 @@ export function registerSessionRoutes(
 ): void {
   app.get('/api/v1/session', async (request, reply) => {
     if (!request.user) return reply.code(401).send({ error: 'not_signed_in' });
-    const user = { ...request.user, isSiteAdmin: await request.authz.isSiteAdmin() };
+    const user = {
+      ...request.user,
+      isSiteAdmin: await request.authz.isSiteAdmin(),
+      // Which parts of Administration the web app offers (ADR-114); the routes still decide.
+      isConfigAdmin: await request.authz.hasGlobal('configuration_admin'),
+    };
     // A program holding a token can ask what it is and what it may do (IAM-007).
     if (request.apiToken) {
       return { user, apiToken: { id: request.apiToken.id, scopes: request.apiToken.scopes } };

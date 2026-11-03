@@ -14898,6 +14898,39 @@
         "x-taskmoor-stability": "internal"
       }
     },
+    "/api/v1/people/lookup": {
+      "get": {
+        "operationId": "internal-get-people-lookup",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The route’s answer; refusals have the shared error shape."
+          }
+        },
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "token": [
+              "admin"
+            ]
+          }
+        ],
+        "summary": "Internal route of the web app; it may change in any release.",
+        "tags": [
+          "Internal"
+        ],
+        "x-taskmoor-access": "admin",
+        "x-taskmoor-stability": "internal"
+      }
+    },
     "/api/v1/people/mentionable": {
       "get": {
         "operationId": "internal-get-people-mentionable",

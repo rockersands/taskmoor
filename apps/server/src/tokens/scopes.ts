@@ -115,6 +115,7 @@ export const READ_ONLY_ROUTES: ReadonlySet<string> = new Set([
 export const ADMIN_ROUTE_PREFIXES: readonly string[] = [
   '/api/v1/admin',
   '/api/v1/users',
+  '/api/v1/people/lookup',
   '/api/v1/groups',
   '/api/v1/roles',
   '/api/v1/access-policies',

@@ -221,6 +221,50 @@ describe('roles, access policies, global grants and track roles (M1-002)', () =>
     expect((await as('member', { method: 'GET', url: '/api/v1/roles' })).statusCode).toBe(403);
   });
 
+  it('[IAM-009] lets a configuration administrator set up tracks and nothing about people', async () => {
+    const session = await as('config', { method: 'GET', url: '/api/v1/session' });
+    expect(session.json().user).toMatchObject({ isSiteAdmin: false, isConfigAdmin: true });
+    const plain = await as('member', { method: 'GET', url: '/api/v1/session' });
+    expect(plain.json().user).toMatchObject({ isSiteAdmin: false, isConfigAdmin: false });
+    // Every read the setup pages make answers them (ADR-114).
+    for (const url of [
+      '/api/v1/tracks?archived=include&limit=200',
+      '/api/v1/roles',
+      '/api/v1/workflows',
+      '/api/v1/statuses',
+      '/api/v1/workflow-maps',
+      '/api/v1/fields',
+      '/api/v1/ticket-types',
+      '/api/v1/type-sets',
+      '/api/v1/field-rule-sets',
+      '/api/v1/layout-sets',
+      '/api/v1/priority-sets',
+      '/api/v1/visibility-policies',
+      '/api/v1/notification-policies',
+    ]) {
+      const res = await as('config', { method: 'GET', url });
+      expect(res.statusCode, `${url}: ${res.body}`).toBe(200);
+    }
+    // To give a track's role: the groups, and a person's name and id only.
+    expect((await as('config', { method: 'GET', url: '/api/v1/groups' })).statusCode).toBe(200);
+    const found = await as('config', { method: 'GET', url: '/api/v1/people/lookup?q=member' });
+    expect(found.statusCode, found.body).toBe(200);
+    expect(found.json().people).toEqual([
+      { id: users.member?.id, name: expect.stringContaining('member') },
+    ]);
+    for (const url of ['/api/v1/groups', '/api/v1/people/lookup?q=member']) {
+      expect((await as('member', { method: 'GET', url })).statusCode, url).toBe(403);
+    }
+    // Reading is all: changing groups and people, and the full list of people, stay refused.
+    expect((await as('config', { method: 'GET', url: '/api/v1/users' })).statusCode).toBe(403);
+    const group = await as('config', {
+      method: 'POST',
+      url: '/api/v1/groups',
+      payload: { name: 'Not allowed' },
+    });
+    expect(group.statusCode).toBe(403);
+  });
+
   it('[IAM-009] makes the members of a group site administrators through a global grant', async () => {
     const admins = (
       await as('admin', { method: 'POST', url: '/api/v1/groups', payload: { name: 'Admins' } })
