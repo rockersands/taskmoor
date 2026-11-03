@@ -252,6 +252,9 @@ describe('roles, access policies, global grants and track roles (M1-002)', () =>
     expect(found.json().people).toEqual([
       { id: users.member?.id, name: expect.stringContaining('member') },
     ]);
+    // A wildcard is only a character here: it does not list everyone.
+    const wild = await as('config', { method: 'GET', url: '/api/v1/people/lookup?q=%25' });
+    expect(wild.json().people).toEqual([]);
     for (const url of ['/api/v1/groups', '/api/v1/people/lookup?q=member']) {
       expect((await as('member', { method: 'GET', url })).statusCode, url).toBe(403);
     }
